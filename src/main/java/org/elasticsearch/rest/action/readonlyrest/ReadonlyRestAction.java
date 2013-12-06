@@ -24,6 +24,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
 					@Override
 					public void process(RestRequest request, RestChannel channel, RestFilterChain filterChain) {
 						if(!request.method().equals(GET) || request.content().length() > 0 || request.rawPath().contains("bar_me_pls")){
+							logger.warn("barring request: " + request.method() + ":" + request.uri());
 							channel.sendResponse(new StringRestResponse(RestStatus.FORBIDDEN, "barred request"));
 							return;
 						}
