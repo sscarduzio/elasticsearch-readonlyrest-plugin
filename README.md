@@ -19,7 +19,7 @@ Please note that there might be some API changes between major releases of Elast
 ## Installation instructions
 Maven and elasticsearch are required.
 
-```$ git clone git@github.com:brusic/elasticsearch-hello-world-plugin.git```
+```$ git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git```
 
 ```$ cd elasticsearch-readonlyrest-plugin```
 
