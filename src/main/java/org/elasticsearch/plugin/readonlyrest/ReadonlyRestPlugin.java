@@ -12,9 +12,9 @@ public class ReadonlyRestPlugin extends AbstractPlugin {
     }
 
     public String description() {
-        return "Reject attempt to change data, so we can expose this REST API to clients";
+        return "Reject attempts to change data, so we can expose this REST API to clients";
     }
-
+   
     @Override public void processModule(Module module) {
         if (module instanceof RestModule) {
         	  ((RestModule) module).addRestAction(ReadonlyRestAction.class);

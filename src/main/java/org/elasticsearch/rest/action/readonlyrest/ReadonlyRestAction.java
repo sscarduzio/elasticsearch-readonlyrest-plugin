@@ -1,7 +1,5 @@
 package org.elasticsearch.rest.action.readonlyrest;
 
-import static org.elasticsearch.rest.RestRequest.Method.GET;
-
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -14,25 +12,49 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.StringRestResponse;
 
+/**
+ * Readonly REST plugin. 
+ * Adding some access control to the fast Netty based REST interface of Elasticsearch.
+ * 
+ * This plugin is configurable from elasticsearch.yml. Example configuration:
+ *
+ * readonlyrest:
+ *    enable: true
+ *    allow_localhost: true
+ *    whitelist: [192.168.1.144]
+ *    forbidden_uri_re: .*bar_me_pls.* 
+ *    barred_reason_string: <h1>unauthorized</h1>
+ *    
+ * @author <a href="mailto:scarduzio@gmail.com">Simone Scarduzio</a>
+ * @see <a href="https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/">Github page</a>
+ */
+
 public class ReadonlyRestAction extends BaseRestHandler {
-
-    @Inject public ReadonlyRestAction(Settings settings, Client client, RestController controller) {
+	
+	private static ConfigurationHelper	conf;
+	private Gatekeeper	gk;
+	
+    @Inject public ReadonlyRestAction(final Settings settings, Client client, RestController controller) {
         super(settings, client);
-
+        conf = new ConfigurationHelper(settings, logger);
+        gk = new Gatekeeper(logger, conf);
         controller.registerFilter(new RestFilter() {
 					
 					@Override
 					public void process(RestRequest request, RestChannel channel, RestFilterChain filterChain) {
-						if(!request.method().equals(GET) || request.content().length() > 0 || request.rawPath().contains("bar_me_pls")){
+						if(!gk.isHostInternal(channel) && 
+								gk.checkIsRequestReadonly(request.method(), request.uri(), request.content().length()) &&
+								gk.checkRegexp(conf.getForbiddenUriRe(), request.uri())
+						){
 							logger.warn("barring request: " + request.method() + ":" + request.uri());
-							channel.sendResponse(new StringRestResponse(RestStatus.FORBIDDEN, "barred request"));
+							channel.sendResponse(new StringRestResponse(RestStatus.FORBIDDEN, conf.getBarredReasonString()));
 							return;
 						}
+					
 						filterChain.continueProcessing(request, channel);
 					}
 				});
-
     }
-
+        
     public void handleRequest(final RestRequest request, final RestChannel channel) {}
 }
