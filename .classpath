@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-  <classpathentry kind="src" path="src/main/java" including="**/*.java"/>
-  <classpathentry kind="src" path="src/main/resources" excluding="**/*.java"/>
-  <classpathentry kind="output" path="target/classes"/>
-  <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-  <classpathentry kind="var" path="M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7.jar" sourcepath="M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-analyzers-common/4.5.1/lucene-analyzers-common-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-analyzers-common/4.5.1/lucene-analyzers-common-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-codecs/4.5.1/lucene-codecs-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-codecs/4.5.1/lucene-codecs-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-queries/4.5.1/lucene-queries-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-queries/4.5.1/lucene-queries-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-memory/4.5.1/lucene-memory-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-memory/4.5.1/lucene-memory-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-highlighter/4.5.1/lucene-highlighter-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-highlighter/4.5.1/lucene-highlighter-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-queryparser/4.5.1/lucene-queryparser-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-queryparser/4.5.1/lucene-queryparser-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-sandbox/4.5.1/lucene-sandbox-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-sandbox/4.5.1/lucene-sandbox-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-suggest/4.5.1/lucene-suggest-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-suggest/4.5.1/lucene-suggest-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-misc/4.5.1/lucene-misc-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-misc/4.5.1/lucene-misc-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-join/4.5.1/lucene-join-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-join/4.5.1/lucene-join-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-grouping/4.5.1/lucene-grouping-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-grouping/4.5.1/lucene-grouping-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-spatial/4.5.1/lucene-spatial-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-spatial/4.5.1/lucene-spatial-4.5.1-sources.jar"/>
-  <classpathentry kind="var" path="M2_REPO/com/spatial4j/spatial4j/0.3/spatial4j-0.3.jar" sourcepath="M2_REPO/com/spatial4j/spatial4j/0.3/spatial4j-0.3-sources.jar"/>
+	<classpathentry including="**/*.java" kind="src" path="src/main/java"/>
+	<classpathentry excluding="**/*.java" kind="src" path="src/main/resources"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="var" path="M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7.jar" sourcepath="/M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-analyzers-common/4.5.1/lucene-analyzers-common-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-analyzers-common/4.5.1/lucene-analyzers-common-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-codecs/4.5.1/lucene-codecs-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-codecs/4.5.1/lucene-codecs-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-queries/4.5.1/lucene-queries-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-queries/4.5.1/lucene-queries-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-memory/4.5.1/lucene-memory-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-memory/4.5.1/lucene-memory-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-highlighter/4.5.1/lucene-highlighter-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-highlighter/4.5.1/lucene-highlighter-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-queryparser/4.5.1/lucene-queryparser-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-queryparser/4.5.1/lucene-queryparser-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-sandbox/4.5.1/lucene-sandbox-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-sandbox/4.5.1/lucene-sandbox-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-suggest/4.5.1/lucene-suggest-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-suggest/4.5.1/lucene-suggest-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-misc/4.5.1/lucene-misc-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-misc/4.5.1/lucene-misc-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-join/4.5.1/lucene-join-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-join/4.5.1/lucene-join-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-grouping/4.5.1/lucene-grouping-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-grouping/4.5.1/lucene-grouping-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-spatial/4.5.1/lucene-spatial-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-spatial/4.5.1/lucene-spatial-4.5.1-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/com/spatial4j/spatial4j/0.3/spatial4j-0.3.jar" sourcepath="M2_REPO/com/spatial4j/spatial4j/0.3/spatial4j-0.3-sources.jar"/>
+	<classpathentry kind="output" path="target/classes"/>
 </classpath>
