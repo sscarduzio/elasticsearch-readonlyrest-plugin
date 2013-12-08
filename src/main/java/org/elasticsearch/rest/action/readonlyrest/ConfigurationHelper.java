@@ -49,24 +49,32 @@ public class ConfigurationHelper {
     }
 
     allowLocalhost = settings.getAsBoolean(ES_YML_CONF_PREFIX + "allow_localhost", true);
-    logger.info("allowing all GET requests from: localhost");
+    if(allowLocalhost){
+      logger.info("allowing all GET requests from: localhost");
+    }
 
     String[] aTmp = settings.getAsArray(ES_YML_CONF_PREFIX + "whitelist");
-    if (aTmp.length > 0) {
+    if (aTmp.length > 0 && aTmp[0] != null) {
       whitelist = new HashSet<String>(Arrays.asList(aTmp));
-      logger.info("allowing all GET requests from: " + settings.get(ES_YML_CONF_PREFIX + "whitelist"));
+      StringBuilder sb = new StringBuilder();
+      for (String string : aTmp) {
+        sb.append(string + "\n");
+      }
+      logger.info("allowing all GET requests from: " + sb.toString());
     }
-    String sTmp = settings.get("forbidden_uri_re");
+    String sTmp = settings.get(ES_YML_CONF_PREFIX + "forbidden_uri_re");
     if (sTmp != null && sTmp.trim().length() > 0) {
       try {
         forbiddenUriRe = Pattern.compile(sTmp);
+        logger.info("forbid access to URIs matching custom regexp: " + sTmp);
       }
       catch (Throwable t) {
         logger.error("invalid regular expression provided as forbidden_uri_re: " + sTmp);
       }
     }
-    sTmp = settings.get("forbidden_uri_re");
+    sTmp = settings.get(ES_YML_CONF_PREFIX + "barred_reason_string");
     if (sTmp != null) {
+      logger.info("Barring forbidden request with reason: " + sTmp);      
       barredReasonString = sTmp;
     }
   }
