@@ -34,9 +34,13 @@ public class Gatekeeper {
     this.conf = conf;
   }
 
-  boolean checkRegexp(Pattern forbiddenUriRe, String uri) {
+  boolean matchesRegexp(Pattern forbiddenUriRe, String uri) {
     // Bar by URI
-    return forbiddenUriRe != null && forbiddenUriRe.matcher(uri).find();
+    if(forbiddenUriRe != null && forbiddenUriRe.matcher(uri).find()){
+     logger.info("matches regexp");
+      return true; 
+    }
+    return false;
   }
 
   Boolean isHostInternal(RestChannel channel) {
@@ -51,7 +55,7 @@ public class Gatekeeper {
     }
     catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
       e.printStackTrace();
-      logger.warn("error checking the host", e);
+      logger.error("error checking the host", e);
       return false;
     }
     return doIsHostInternal(remoteHost);
@@ -61,20 +65,16 @@ public class Gatekeeper {
     if (conf.isAllowLocalhost()) {
       Boolean isLocal = localhost.matcher(remoteHost).find();
       if (isLocal) {
-        System.out.println("local");
+        logger.info("internal");
         return true;
-      }
-      else {
-        System.out.println("foreign");
       }
     }
     Set<String> whitelist = conf.getWhitelist();
     if (whitelist != null && whitelist.size() > 0 && whitelist.contains(remoteHost)) {
-      System.out.println("whitelisted");
+      logger.info("internal");
       return true;
     }
-
-    System.out.println("unknown");
+    logger.info("external");
     return false;
   }
 
@@ -84,9 +84,13 @@ public class Gatekeeper {
    * @see <a href="http://stackoverflow.com/a/15656884/1094616">Stack Overflow analysis</a>
    * @see <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.3">HTTP specs (RFC2616)</a>
    */
-  Boolean checkIsRequestReadonly(Method m, String uri, int contentSize) {
+  Boolean isRequestReadonly(Method m, int contentSize) {
     // Reject by RFC2616
-    return m.equals(GET) && contentSize == 0;
+    if( m.equals(GET) && contentSize == 0){
+      logger.info("is readonly");
+      return true;
+    }
+    return false;
   }
 
 }

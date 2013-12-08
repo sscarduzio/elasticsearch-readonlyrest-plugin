@@ -44,13 +44,16 @@ public class ReadonlyRestAction extends BaseRestHandler {
 
       @Override
       public void process(RestRequest request, RestChannel channel, RestFilterChain filterChain) {
-        if (!gk.isHostInternal(channel) && 
-            gk.checkIsRequestReadonly(request.method(), request.uri(), request.content().length()) && 
-            gk.checkRegexp(conf.getForbiddenUriRe(), request.uri())
+        if (!gk.isHostInternal(channel)){
+          // Apply any barring only if host is not internal (whitelisted or localhost)
+          if(
+            !gk.isRequestReadonly(request.method(), request.content().length()) || 
+            gk.matchesRegexp(conf.getForbiddenUriRe(), request.uri())
            ) {
-          logger.warn("barring request: " + request.method() + ":" + request.uri());
+          logger.trace("barring request: " + request.method() + ":" + request.uri());
           channel.sendResponse(new StringRestResponse(RestStatus.FORBIDDEN, conf.getBarredReasonString()));
           return;
+        }
         }
 
         filterChain.continueProcessing(request, channel);
