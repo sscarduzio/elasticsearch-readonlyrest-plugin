@@ -81,13 +81,8 @@ public class Gatekeeper {
   /**
    * Will reject non-RFC2616 compliant HTTP GET calls.
    * 
-   * @see <a href="http://stackoverflow.com/a/15656884/1094616">Stack Overflow
-   *      analysis</a>
-   * @see <a
-   *      href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.3">HTTP
-   *      specs (RFC2616)</a>
-   * @param request
-   * @return
+   * @see <a href="http://stackoverflow.com/a/15656884/1094616">Stack Overflow analysis</a>
+   * @see <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.3">HTTP specs (RFC2616)</a>
    */
   Boolean checkIsRequestReadonly(Method m, String uri, int contentSize) {
     // Reject by RFC2616
