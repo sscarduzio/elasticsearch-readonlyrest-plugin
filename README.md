@@ -3,20 +3,37 @@
 This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public.
 Please refer to [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow") for further explanation about what problem this plugin solves.
 
-## Behavioural changes introduced 
-This Elasticsearch plugin responds with a HTTP 403 FORBIDDEN error whenever the clients request meets the following parameters:
+## Features
 
-*  GET request has a body
+#### Lightweight security
+Other security plugins are replacing the high performance, Netty based, embedded REST API of Elasticsearch with JavaEE.
+This plugin instead is just a lightweight HTTP request filtering layer.
+
+#### Less moving parts
+No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. Just set ES in "read-only" mode for the external world 
+
+#### Flexible ACLs
+Optionally provide a white-list of server that need unrestricted access for.
+Optionally provide a regular expression to match unwanted URI patterns
+
+#### Custom response body
+Optionally provide a string to be returned as the body of HTTP 403 (FORBIDDEN) response.
+
+## What is this read only mode?
+When the plugin is activated, Elasticsearch REST API responds with an HTTP 403 FORBIDDEN error whenever the request meets the following parameters:
+
 *  Any HTTP method other than GET is requested
-*  GET request contains "bar_me_pls" in the raw path. (for ease of test, obviously)
+*  GET request has a body (according to HTTP specs it never should!)
 
-## Building for a different version of Elasticsearch
+This is enough to keep users to change the data, according to ES REST API specifications.
+
+## Building this project for a different version of Elasticsearch
 Just edit pom.xml properties replacing the version number with the one needed:
 ```        <elasticsearch.version>0.90.7</elasticsearch.version> ```
 
 Please note that there might be some API changes between major releases of Elasticsearch, fix the source accordingly in that case.
 
-## Installation instructions
+## Installation
 Maven and elasticsearch are required.
 
 ```$ git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git```
@@ -27,8 +44,32 @@ Maven and elasticsearch are required.
 
 ```$ $ES_HOME/bin/plugin -url ./target -install readonlyrest```
 
-## Test it
-Regular gets are allowed:
+
+## Configuration
+This plugin can be configured directly from within ``` $ES_HOME/conf/elasticsearch.yml```
+
+Here is what a typical configuration may look like:
+```
+readonlyrest:
+        enable: true
+        allow_localhost: false
+        whitelist: [10.0.0.20, 10.0.2.112]
+        forbidden_uri_re: .*bar_me_pls.*
+        barred_reason_string: <h1>Rejected</h1>
+
+```
+
+That means:
+* the plugin is enabled
+* localhost accesses the API in read only mode.
+* IP addresses 10.0.0.20 and 10.0.2.112 have unrestricted access
+* All URIs matching the regular expression ´´´.*bar_me_pls.*´´´ will be immediately rejected. 
+* When rejecting, use ```<h1>Rejected</h1>``` 
+as the body of the HTTP response 
+
+### Some testing 
+
+Let's check regular gets are allowed:
 
 ```
 $ curl -v -XGET http://localhost:9200/dummyindex/_search
@@ -70,10 +111,11 @@ $ curl -v -XGET http://localhost:9200/dummyindex/_search -d 'some body text'
 < Content-Length: 14
 <
 * Connection #0 to host localhost left intact
-barred request* Closing connection #0
+<h1>Rejected</h1>
+* Closing connection #0
 ```
 
-A GET request with the test string "bar_me_pls"
+A GET request whose URI includes the string "bar_me_pls"
 ```
 $ curl -v -XGET http://localhost:9200/dummyindex/bar_me_pls/_search
 * About to connect() to localhost port 9200 (#0)
@@ -90,7 +132,8 @@ $ curl -v -XGET http://localhost:9200/dummyindex/bar_me_pls/_search
 < Content-Length: 14
 <
 * Connection #0 to host localhost left intact
-barred request* Closing connection #0
+<h1>Rejected</h1>
+* Closing connection #0
 ```
 
 A POST request gets barred (as any other non-GET)
@@ -111,7 +154,8 @@ $ curl -v -XPOST http://localhost:9200/dummyindex/_search
 < Content-Length: 14
 <
 * Connection #0 to host localhost left intact
-barred request* Closing connection #0
+<h1>Rejected</h1>
+* Closing connection #0
 ```
 
 ## Uninstallation instructions
