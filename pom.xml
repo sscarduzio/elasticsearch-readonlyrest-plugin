@@ -2,11 +2,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <name>readonly-rest</name>
+    <name>readonlyrest</name>
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.elasticsearch</groupId>
-    <artifactId>readonly-rest</artifactId>
-    <version>1.0</version>
+    <artifactId>readonlyrest</artifactId>
+    <version>1.1</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -51,7 +51,7 @@
                             <target>
                                 <zip basedir="${project.build.directory}"
                                      includes="${project.build.finalName}.jar"
-                                     destfile="${project.build.directory}/elasticsearch-${project.name}-${elasticsearch.version}.zip" />
+                                     destfile="${project.build.directory}/elasticsearch-${project.name}-v${project.version}_es-v${elasticsearch.version}.zip" />
                             </target>
                         </configuration>
                         <goals>
