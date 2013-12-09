@@ -20,12 +20,14 @@ Optionally provide a regular expression to match unwanted URI patterns
 Optionally provide a string to be returned as the body of HTTP 403 (FORBIDDEN) response.
 
 ## What is this read only mode?
-When the plugin is activated, Elasticsearch REST API responds with an HTTP 403 FORBIDDEN error whenever the request meets the following parameters:
+When the plugin is activated, Elasticsearch REST API responds with a "403 FORBIDDEN" error whenever the request meets the following parameters:
 
 *  Any HTTP method other than GET is requested
 *  GET request has a body (according to HTTP specs it never should!)
 
-This is enough to keep users to change the data, according to ES REST API specifications.
+This is enough to keep public users from changing the data, according to [ES REST API documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/docs.html).
+
+If you feel you need to augment the restrictions, a regular expression URI matcher is provided.
 
 ## Building this project for a different version of Elasticsearch
 Just edit pom.xml properties replacing the version number with the one needed:
