@@ -1,23 +1,25 @@
 # Readonly Rest ES Plugin
 
-This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public.
-Please refer to [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow") for further explanation about what problem this plugin solves.
+This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public  denying the access to the API calls which may change any data.
+
+No more proxies! Yay Ponies!
 
 ## Features
 
 #### Lightweight security
-Other security plugins are replacing the high performance, Netty based, embedded REST API of Elasticsearch with JavaEE.
+Other security plugins are replacing the high performance, Netty based, embedded REST API of Elasticsearch with Tomcat, Jetty or other cumbersome XML based JEE madness.
+
 This plugin instead is just a lightweight HTTP request filtering layer.
 
 #### Less moving parts
-No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. Just set ES in "read-only" mode for the external world 
+No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. Just set ES in "read-only" mode for the external world.
 
 #### Flexible ACLs
 Optionally provide a white-list of server that need unrestricted access for.
-Optionally provide a regular expression to match unwanted URI patterns
+Optionally provide a regular expression to match unwanted URI patterns.
 
 #### Custom response body
-Optionally provide a string to be returned as the body of HTTP 403 (FORBIDDEN) response.
+Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response.
 
 ## What is this read only mode?
 When the plugin is activated, Elasticsearch REST API responds with a "403 FORBIDDEN" error whenever the request meets the following parameters:
@@ -162,6 +164,9 @@ $ curl -v -XPOST http://localhost:9200/dummyindex/_search
 
 ## Uninstallation instructions
 ```$ $ES_HOME/bin/plugin -url ./target -remove readonlyrest```
+
+## History
+This project was incepted in [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow").
 
 ## Credits
 Thanks Ivan Brusic for publishing [this guide](http://blog.brusic.com/2011/09/create-pluggable-rest-endpoints-in.html "Ivan Brusic blog")
