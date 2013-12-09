@@ -37,7 +37,7 @@ public class Gatekeeper {
   boolean matchesRegexp(Pattern forbiddenUriRe, String uri) {
     // Bar by URI
     if(forbiddenUriRe != null && forbiddenUriRe.matcher(uri).find()){
-     logger.info("matches regexp");
+     logger.trace("matches regexp: " + uri);
       return true; 
     }
     return false;
@@ -65,16 +65,16 @@ public class Gatekeeper {
     if (conf.isAllowLocalhost()) {
       Boolean isLocal = localhost.matcher(remoteHost).find();
       if (isLocal) {
-        logger.info("internal");
+        logger.trace("internal (localhost) :" + remoteHost);
         return true;
       }
     }
     Set<String> whitelist = conf.getWhitelist();
     if (whitelist != null && whitelist.size() > 0 && whitelist.contains(remoteHost)) {
-      logger.info("internal");
+      logger.trace("internal:" + remoteHost);
       return true;
     }
-    logger.info("external");
+    logger.trace("external:" + remoteHost);
     return false;
   }
 
@@ -87,7 +87,7 @@ public class Gatekeeper {
   Boolean isRequestReadonly(Method m, int contentSize) {
     // Reject by RFC2616
     if( m.equals(GET) && contentSize == 0){
-      logger.info("is readonly");
+      logger.trace("is readonly");
       return true;
     }
     return false;
