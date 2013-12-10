@@ -3,6 +3,7 @@ package org.elasticsearch.rest.action.readonlyrest;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 
 import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -51,7 +52,8 @@ public class Gatekeeper {
       f = obj.getClass().getDeclaredField("channel");
       f.setAccessible(true);
       SocketChannel sc = (SocketChannel) f.get(obj);
-      remoteHost = sc.getRemoteAddress().getHostName();
+      InetSocketAddress remoteHostAddr = sc.getRemoteAddress();
+      remoteHost = remoteHostAddr.getAddress().getHostAddress();
     }
     catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
       e.printStackTrace();
