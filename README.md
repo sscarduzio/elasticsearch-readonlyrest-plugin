@@ -38,6 +38,14 @@ Just edit pom.xml properties replacing the version number with the one needed:
 Please note that there might be some API changes between major releases of Elasticsearch, fix the source accordingly in that case.
 
 ## Installation
+### Pre-built zip file
+Download the latest binary distribution of the plugin from the ```latest``` folder in this repository.
+``` $ wget https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/latest/elasticsearch-readonly<WHATEVER_LATEST_VERSION_IS>.zip```
+
+Now use the Elasticsearch plugin script to install it directly:
+```$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest```
+
+### From source
 Maven and elasticsearch are required.
 
 ```$ git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git```
@@ -46,8 +54,10 @@ Maven and elasticsearch are required.
 
 ```$ mvn package```
 
-```$ $ES_HOME/bin/plugin -url ./target -install readonlyrest```
+```$cp target/elasticsearch-readonlyrest*zip /tmp```
 
+Go to the Elasticsearch installation directory and install the plugin.
+```$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest```
 
 ## Configuration
 This plugin can be configured directly from within ``` $ES_HOME/conf/elasticsearch.yml```
