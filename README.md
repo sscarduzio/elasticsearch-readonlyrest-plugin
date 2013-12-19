@@ -40,7 +40,7 @@ Please note that there might be some API changes between major releases of Elast
 ## Installation
 ### Pre-built zip file
 Download the latest binary distribution of the plugin from the ```latest``` folder in this repository.
-``` $ wget https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/latest/elasticsearch-readonly<WHATEVER_LATEST_VERSION_IS>.zip```
+``` $ wget https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/latest/elasticsearch-readonlyrest-<WHATEVER_LATEST_VERSION_IS>.zip```
 
 Now use the Elasticsearch plugin script to install it directly:
 ```$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest```
