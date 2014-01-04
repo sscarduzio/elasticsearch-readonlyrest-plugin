@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry including="**/*.java" kind="src" path="src/main/java"/>
 	<classpathentry excluding="**/*.java" kind="src" path="src/main/resources"/>
+	<classpathentry kind="src" path="src/test"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="var" path="M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7.jar" sourcepath="/M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7-sources.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1-sources.jar"/>
@@ -18,5 +19,6 @@
 	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-grouping/4.5.1/lucene-grouping-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-grouping/4.5.1/lucene-grouping-4.5.1-sources.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-spatial/4.5.1/lucene-spatial-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-spatial/4.5.1/lucene-spatial-4.5.1-sources.jar"/>
 	<classpathentry kind="var" path="M2_REPO/com/spatial4j/spatial4j/0.3/spatial4j-0.3.jar" sourcepath="M2_REPO/com/spatial4j/spatial4j/0.3/spatial4j-0.3-sources.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
