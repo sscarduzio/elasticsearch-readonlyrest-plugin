@@ -11,6 +11,8 @@ import org.elasticsearch.rest.RestFilterChain;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.StringRestResponse;
+import org.elasticsearch.rest.action.readonlyrest.acl.ACL;
+import org.elasticsearch.rest.action.readonlyrest.acl.ACLRequest;
 
 /**
  * Readonly REST plugin. Adding some access control to the fast Netty based REST interface of Elasticsearch.
@@ -32,35 +34,47 @@ import org.elasticsearch.rest.StringRestResponse;
 
 public class ReadonlyRestAction extends BaseRestHandler {
 
-  private static ConfigurationHelper conf;
-  private Gatekeeper                 gk;
+    private ACL                        acl;
 
   @Inject
   public ReadonlyRestAction(final Settings settings, Client client, RestController controller) {
     super(settings, client);
-    conf = new ConfigurationHelper(settings, logger);
-    gk = new Gatekeeper(logger, conf);
+    final ConfigurationHelper conf = new ConfigurationHelper(settings, logger);
+    if(!conf.enabled){
+      logger.info("ReadonlyRest plugin is disabled!");
+      return;
+    }
+    try {
+      acl = new ACL(logger, settings);
+    }
+    catch (Exception e) {
+      logger.error("impossible to initialize ACL configuration", e);
+    }
     controller.registerFilter(new RestFilter() {
 
       @Override
       public void process(RestRequest request, RestChannel channel, RestFilterChain filterChain) {
-        if (!gk.isHostInternal(channel)){
-          // Apply any barring only if host is not internal (whitelisted or localhost)
-          if(
-            !gk.isRequestReadonly(request.method(), request.content().length()) || 
-            gk.matchesRegexp(conf.getForbiddenUriRe(), request.uri())
-           ) {
-          logger.trace("barring request: " + request.method() + ":" + request.uri());
-          channel.sendResponse(new StringRestResponse(RestStatus.FORBIDDEN, conf.getBarredReasonString()));
-          return;
+        ACLRequest aclReq = new ACLRequest(request, channel);
+        String reason = acl.check(aclReq);
+        if(reason == null){
+          ok(request, filterChain, channel);
         }
+        else {
+          if(conf.forbiddenResponse != null){
+            reason = conf.forbiddenResponse;
+          }
+          ko(channel, reason);
         }
-
-        filterChain.continueProcessing(request, channel);
+        
       }
     });
   }
-
+  public void ok(RestRequest request, RestFilterChain filterChain, RestChannel channel ){
+    filterChain.continueProcessing(request, channel);
+  }
+  public void ko(RestChannel channel, String reason){
+    channel.sendResponse(new StringRestResponse(RestStatus.FORBIDDEN, reason));
+  }
   public void handleRequest(final RestRequest request, final RestChannel channel) {
   }
 }
