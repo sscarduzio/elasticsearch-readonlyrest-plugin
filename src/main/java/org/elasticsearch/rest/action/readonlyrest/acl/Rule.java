@@ -3,10 +3,10 @@ package org.elasticsearch.rest.action.readonlyrest.acl;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import org.elasticsearch.common.base.Strings;
 import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.RestRequest.Method;
+import org.elasticsearch.rest.action.readonlyrest.ConfigurationHelper;
 
 public class Rule {
 
@@ -56,14 +56,13 @@ public class Rule {
 
     Pattern uri_re = null;
     String tmp = s.get("uri_re");
-    if (!Strings.isNullOrEmpty(tmp)) {
+    if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
       uri_re = Pattern.compile(tmp.trim());
     }
-
     String name = s.get("name");
     Rule.Type type = Type.valueOf(s.get("type").toUpperCase());
-    Integer maxBodyLenght = s.getAsInt("maxBodyLenght", null);
-    if ((!Strings.isNullOrEmpty(name) && type != null) && 
+    Integer maxBodyLenght = s.getAsInt("maxBodyLength", null);
+    if ((!ConfigurationHelper.isNullOrEmpty(name) && type != null) && 
         (uri_re != null || maxBodyLenght != null || hosts != null || methods != null)) {
       return new Rule(name.trim(), type, uri_re, maxBodyLenght, hosts, methods, s.toDelimitedString(' '));
     }

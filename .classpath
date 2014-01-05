@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry including="**/*.java" kind="src" path="src/main/java"/>
-	<classpathentry excluding="**/*.java" kind="src" path="src/main/resources"/>
 	<classpathentry kind="src" path="src/test"/>
+	<classpathentry excluding="**/*.java" kind="src" path="src/main/resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="var" path="M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7.jar" sourcepath="/M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7-sources.jar"/>
+	<classpathentry kind="var" path="M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7.jar" sourcepath="M2_REPO/org/elasticsearch/elasticsearch/0.90.7/elasticsearch-0.90.7-sources.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-core/4.5.1/lucene-core-4.5.1-sources.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-analyzers-common/4.5.1/lucene-analyzers-common-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-analyzers-common/4.5.1/lucene-analyzers-common-4.5.1-sources.jar"/>
 	<classpathentry kind="var" path="M2_REPO/org/apache/lucene/lucene-codecs/4.5.1/lucene-codecs-4.5.1.jar" sourcepath="M2_REPO/org/apache/lucene/lucene-codecs/4.5.1/lucene-codecs-4.5.1-sources.jar"/>

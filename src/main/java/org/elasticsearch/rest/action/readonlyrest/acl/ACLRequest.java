@@ -23,9 +23,13 @@ public class ACLRequest {
   private static ESLogger      logger;
   private String               address;
   private String               uri;
-  private Integer              maxBodyLenght;
+  private Integer              bodyLength;
   private Method               method;
 
+  @Override
+  public String toString() {
+    return method +" "+ uri+ "  " + "len: "+ bodyLength; 
+  }
   public String getAddress() {
     return address;
   }
@@ -34,18 +38,19 @@ public class ACLRequest {
     return uri;
   }
 
-  public Integer getMaxBodyLenght() {
-    return maxBodyLenght;
+  public Integer getBodyLength() {
+    return bodyLength;
   }
 
   public ACLRequest(RestRequest request, RestChannel channel) {
     this(request.uri(), getAddress(channel), request.content().length(), request.method());
+    String content = request.content().toUtf8();
   }
   
-  public ACLRequest(String uri, String address, Integer maxBodyLenght, Method method){
+  public ACLRequest(String uri, String address, Integer bodyLength, Method method){
     this.uri = uri;
     this.address = address;
-    this.maxBodyLenght = maxBodyLenght;
+    this.bodyLength = bodyLength;
     this.method = method;
   }
 

@@ -47,7 +47,7 @@ readonlyrest:
     
     # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
-        # from these hosts, accept any method, any URI, any HTTP body
+      # from these hosts, accept any method, any URI, any HTTP body
     - name: full access to internal servers
       type: allow 
       hosts: [127.0.0.1, 10.0.0.20, 10.0.2.112]

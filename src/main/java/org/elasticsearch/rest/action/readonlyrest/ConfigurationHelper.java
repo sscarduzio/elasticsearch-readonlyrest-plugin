@@ -1,6 +1,5 @@
 package org.elasticsearch.rest.action.readonlyrest;
 
-import org.elasticsearch.common.base.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
 
@@ -35,7 +34,7 @@ public class ConfigurationHelper {
       this.enabled = true;
     }
     String t = s.get(K_RESP_REQ_FORBIDDEN);
-    if(Strings.isNullOrEmpty(t.trim())){
+    if(isNullOrEmpty(t.trim())){
       this.forbiddenResponse = null;
     }
     else{
@@ -44,4 +43,7 @@ public class ConfigurationHelper {
     
   }
   
+  public static boolean isNullOrEmpty(String s){
+    return s == null || s.trim().length() == 0;
+  }
 }

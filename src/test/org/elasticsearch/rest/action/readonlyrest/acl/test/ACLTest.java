@@ -19,15 +19,10 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class ACLTest {
+  private static ACL acl;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-  }
-
-  private ACL acl;
-
-  @Before
-  public void setUp() throws Exception {
     try {
       byte[] encoded = Files.readAllBytes(Paths.get(System.getProperty("user.dir") + "/src/test/three_rules.yml"));
       String str = Charsets.UTF_8.decode(ByteBuffer.wrap(encoded)).toString();
@@ -37,6 +32,12 @@ public class ACLTest {
     catch (IOException e) {
       e.printStackTrace();
     }
+
+  }
+
+
+  @Before
+  public void setUp() throws Exception {
  
   }
 
@@ -45,15 +46,39 @@ public class ACLTest {
   }
 
   @Test
-  public final void testACL() {
+  public final void testExternalGet() {
+    ACLRequest ar = new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.GET);
+    Assert.assertNull(acl.check(ar));
   }
 
   @Test
-  public final void testCheck() {
-    ACLRequest ar = new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.GET);
-    Assert.assertNull(acl.check(ar));
-    ar = new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.POST);
-    Assert.assertNotNull(acl.check(ar));;
+  public final void testExternalPost() {
+    Assert.assertNotNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.POST)));
   }
+  @Test 
+  public final void testExternalURIRE(){
+    Assert.assertNotNull(acl.check( new ACLRequest("http://es/reservedIdx/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.GET)));
+  }
+
+  @Test 
+  public final void testExternalMatchAddress(){
+    Assert.assertNull(acl.check( new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "127.0.0.1", 0, Method.GET)));
+  }
+  
+  @Test 
+  public final void testExternalWithBody(){
+    Assert.assertNotNull(acl.check( new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 20, Method.GET)));
+  }
+
+  @Test 
+  public final void testExternalMethods(){
+    Assert.assertNull(acl.check( new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.OPTIONS)));
+  }
+  
+  @Test 
+  public final void testInternalMethods(){
+    Assert.assertNull(acl.check( new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "127.0.0.1", 0, Method.HEAD)));
+  }
+  
 
 }
