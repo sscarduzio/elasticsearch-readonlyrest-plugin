@@ -1,8 +1,10 @@
-# Readonly Rest Elasticsearch Plugin
+# Readonly REST Elasticsearch Plugin
 
 This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public  denying the access to the API calls which may change any data.
 
 No more proxies! Yay Ponies!
+
+![](http://i.imgur.com/8CLtS1Z.jpg)
 
 ## Features
 
