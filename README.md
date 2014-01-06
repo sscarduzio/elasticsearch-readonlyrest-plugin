@@ -38,7 +38,7 @@ This is enough to keep public users from changing the data, according to [ES RES
 
 You're free to expand the rules chain further if you need more fine grained access control.
 
-## Building this project for a different version of Elasticsearch
+## Building for a different version of Elasticsearch
 Just edit pom.xml properties replacing the version number with the one needed:
 ```        <elasticsearch.version>0.90.7</elasticsearch.version> ```
 
