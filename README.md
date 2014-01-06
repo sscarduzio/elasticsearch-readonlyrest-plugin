@@ -82,7 +82,7 @@ readonlyrest:
       hosts: [10.0.2.112]
       
     - name: protect a private index
-      uri_re: ^http://es.server:9200/privateIndex\\/.*
+      uri_re: uri_re: ^http://my.elasticsearch.server:9200/reservedIdx/.*
     
     - name: public can access in read only
       type: allow
