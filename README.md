@@ -1,4 +1,4 @@
-# Readonly Rest ES Plugin
+# Readonly Rest Elasticsearch Plugin
 
 This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public  denying the access to the API calls which may change any data.
 
@@ -16,10 +16,10 @@ No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and cli
 
 #### Flexible ACLs
 Explicitly allow/forbid requests by access control rule parameters:
-1. ```hosts``` a list of origin IP addresses
-2. ```methods``` a list of HTTP methods
-3. ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
-4. ```maxBodyLength``` limit HTTP request body length. 
+* ```hosts``` a list of origin IP addresses
+* ```methods``` a list of HTTP methods
+* ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
+* ```maxBodyLength``` limit HTTP request body length. 
 
 #### Custom response body
 Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response.
