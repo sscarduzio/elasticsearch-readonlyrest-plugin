@@ -12,24 +12,29 @@ Other security plugins are replacing the high performance, Netty based, embedded
 This plugin instead is just a lightweight HTTP request filtering layer.
 
 #### Less moving parts
-No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. Just set ES in "read-only" mode for the external world.
+No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. Just set ES in "read-only" mode for the external world with one simple access control rule.
 
 #### Flexible ACLs
-Optionally provide a white-list of server that need unrestricted access for.
-Optionally provide a regular expression to match unwanted URI patterns.
+Explicitly allow/forbid requests by access control rule parameters:
+1. ```hosts``` a list of origin IP addresses
+2. ```methods``` a list of HTTP methods
+3. ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
+4. ```maxBodyLength``` limit HTTP request body length. 
 
 #### Custom response body
 Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response.
 
 ## What is this read only mode?
-When the plugin is activated, Elasticsearch REST API responds with a "403 FORBIDDEN" error whenever the request meets the following parameters:
+When the plugin is activated and properly configured, Elasticsearch REST API responds with a "403 FORBIDDEN" error whenever the request meets the following parameters:
 
 *  Any HTTP method other than GET is requested
 *  GET request has a body (according to HTTP specs it never should!)
 
+Please see the wiki on how to [implement read only mode using a single access control rule](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Access-Control-Rules)
+
 This is enough to keep public users from changing the data, according to [ES REST API documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/docs.html).
 
-If you feel you need to augment the restrictions, a regular expression URI matcher is provided.
+You're free to expand the rules chain further if you need more fine grained access control.
 
 ## Building this project for a different version of Elasticsearch
 Just edit pom.xml properties replacing the version number with the one needed:
@@ -62,24 +67,32 @@ Go to the Elasticsearch installation directory and install the plugin.
 ## Configuration
 This plugin can be configured directly from within ``` $ES_HOME/conf/elasticsearch.yml```
 
-Here is what a typical configuration may look like:
+Here is what a typical plugin configuration may look like:
 ```
 readonlyrest:
-        enable: true
-        allow_localhost: false
-        whitelist: [10.0.0.20, 10.0.2.112]
-        forbidden_uri_re: .*bar_me_pls.*
-        barred_reason_string: <h1>Rejected</h1>
-
+    
+    enable: true
+    response_if_req_forbidden: Sorry, your request is forbidden
+    access_control_rules:
+    
+    - name: full access to internal servers
+      type: allow
+      hosts: [10.0.2.112]
+      
+    - name: protect a private index
+      uri_re: ^http://es.server:9200/privateIndex\\/.*
+    
+    - name: public can access in read only
+      type: allow
+      methods: [GET,OPTIONS]
+      maxBodyLength: 0
 ```
 
 That means:
 * the plugin is enabled
-* localhost accesses the API in read only mode.
-* IP addresses 10.0.0.20 and 10.0.2.112 have unrestricted access
-* All URIs matching the regular expression ´´´.*bar_me_pls.*´´´ will be immediately rejected. 
-* When rejecting, use ```<h1>Rejected</h1>``` 
-as the body of the HTTP response 
+* IP address 10.0.2.112 has unrestricted access
+* All URIs matching the regular expression will be immediately rejected. 
+* When rejecting, use ```Sorry, your request is forbidden``` as the body of the HTTP response 
 
 ### Some testing 
 
@@ -125,7 +138,7 @@ $ curl -v -XGET http://localhost:9200/dummyindex/_search -d 'some body text'
 < Content-Length: 14
 <
 * Connection #0 to host localhost left intact
-<h1>Rejected</h1>
+Sorry, your request is forbidden 
 * Closing connection #0
 ```
 
@@ -146,7 +159,7 @@ $ curl -v -XGET http://localhost:9200/dummyindex/bar_me_pls/_search
 < Content-Length: 14
 <
 * Connection #0 to host localhost left intact
-<h1>Rejected</h1>
+Sorry, your request is forbidden
 * Closing connection #0
 ```
 
@@ -168,7 +181,7 @@ $ curl -v -XPOST http://localhost:9200/dummyindex/_search
 < Content-Length: 14
 <
 * Connection #0 to host localhost left intact
-<h1>Rejected</h1>
+Sorry, your request is forbidden
 * Closing connection #0
 ```
 
