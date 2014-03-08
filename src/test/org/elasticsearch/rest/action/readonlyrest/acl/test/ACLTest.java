@@ -57,7 +57,7 @@ public class ACLTest {
   }
   @Test 
   public final void testExternalURIRE(){
-    Assert.assertNotNull(acl.check( new ACLRequest("http://es/reservedIdx/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.GET)));
+    Assert.assertNotNull(acl.check( new ACLRequest("http://localhost:9200/reservedIdx/_search?q=item.name:fishingpole&size=200", "1.1.1.1", 0, Method.GET)));
   }
 
   @Test 
