@@ -1,1 +1,7 @@
 /target
+.project
+.classpath
+.settings/
+.loadpath
+*.launch
+.cache
