@@ -4,13 +4,13 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.BaseRestHandler;
+import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestFilter;
 import org.elasticsearch.rest.RestFilterChain;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
-import org.elasticsearch.rest.StringRestResponse;
 import org.elasticsearch.rest.action.readonlyrest.acl.ACL;
 import org.elasticsearch.rest.action.readonlyrest.acl.ACLRequest;
 
@@ -73,7 +73,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
     filterChain.continueProcessing(request, channel);
   }
   public void ko(RestChannel channel, String reason){
-    channel.sendResponse(new StringRestResponse(RestStatus.FORBIDDEN, reason));
+    channel.sendResponse(new BytesRestResponse(RestStatus.FORBIDDEN, reason));
   }
   public void handleRequest(final RestRequest request, final RestChannel channel) {
   }
