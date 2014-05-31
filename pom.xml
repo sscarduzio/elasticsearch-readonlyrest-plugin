@@ -1,78 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <name>readonlyrest</name>
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>org.elasticsearch</groupId>
-    <artifactId>readonlyrest</artifactId>
-    <version>1.3</version>
-    <packaging>jar</packaging>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<name>readonlyrest</name>
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>org.elasticsearch</groupId>
+	<artifactId>readonlyrest</artifactId>
+	<version>1.3</version>
+	<packaging>jar</packaging>
+	<description>Safely expose Elasticsearch REST API directly to the public with access control list</description>
+	<inceptionYear>2013</inceptionYear>
+	<url>
+        https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin
+    </url>
+	<scm>
+		<connection>
+		scm:git:git://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
+		</connection>
+		<developerConnection>
+		scm:git:git@github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
+		</developerConnection>
+		<url>
+		https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin
+		</url>
+	</scm>
+	<properties>
+		<elasticsearch.version>1.2.0</elasticsearch.version>
+	</properties>
 
-    <properties>
-        <elasticsearch.version>0.90.9</elasticsearch.version>
-    </properties>
+	<repositories>
+		<repository>
+			<id>oss.sonatype.org</id>
+			<name>OSS Sonatype</name>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<url>http://oss.sonatype.org/content/repositories/releases/</url>
+		</repository>
+	</repositories>
 
-    <repositories>
-        <repository>
-            <id>oss.sonatype.org</id>
-            <name>OSS Sonatype</name>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-            <url>http://oss.sonatype.org/content/repositories/releases/</url>
-        </repository>
-    </repositories>
+	<dependencies>
+		<dependency>
+			<groupId>org.elasticsearch</groupId>
+			<artifactId>elasticsearch</artifactId>
+			<version>${elasticsearch.version}</version>
+			<scope>compile</scope>
+		</dependency>
+	</dependencies>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.elasticsearch</groupId>
-            <artifactId>elasticsearch</artifactId>
-            <version>${elasticsearch.version}</version>
-            <scope>compile</scope>
-        </dependency>
-    </dependencies>
+	<build>
+		<!-- Create a zip file according to elasticsearch naming scheme -->
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.6</version>
+				<executions>
+					<execution>
+						<id>zip</id>
+						<phase>package</phase>
+						<configuration>
+							<target>
+								<zip basedir="${project.build.directory}" includes="${project.build.finalName}.jar"
+									destfile="${project.build.directory}/elasticsearch-${project.name}-v${project.version}_es-v${elasticsearch.version}.zip" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
 
-    <build>
-        <!-- Create a zip file according to elasticsearch naming scheme -->
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.6</version>
-                <executions>
-                    <execution>
-                        <id>zip</id>
-                        <phase>package</phase>
-                        <configuration>
-                            <target>
-                                <zip basedir="${project.build.directory}"
-                                     includes="${project.build.finalName}.jar"
-                                     destfile="${project.build.directory}/elasticsearch-${project.name}-v${project.version}_es-v${elasticsearch.version}.zip" />
-                            </target>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <source>1.7</source>
-                        <target>1.7</target>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<configuration>
+						<source>1.7</source>
+						<target>1.7</target>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
 </project>
