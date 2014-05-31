@@ -72,29 +72,34 @@ This plugin can be configured directly from within ``` $ES_HOME/conf/elasticsear
 Here is what a typical plugin configuration may look like:
 ```
 readonlyrest:
-    
+    # (De)activate plugin
     enable: true
+
+    # HTTP response body in case of forbidden request.
+    # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
     response_if_req_forbidden: Sorry, your request is forbidden
+
+    # Default policy is to forbid everything, let's define a whitelist
     access_control_rules:
     
+    # from these IP addresses, accept any method, any URI, any HTTP body
     - name: full access to internal servers
       type: allow
-      hosts: [10.0.2.112]
-      
-    - name: protect a private index
-      uri_re: uri_re: ^http://my.elasticsearch.server:9200/reservedIdx/.*
-    
-    - name: public can access in read only
+      hosts: [127.0.0.1, 10.0.0.20, 10.0.2.112]
+
+    # From any other hosts, check first they are not accessing private indexes
+    - name: forbid access to private index from external hosts
+      type: forbid
+      uri_re: ^http://localhost:9200/reservedIdx/.*
+
+    # From external hosts, accept only GET and OPTION methods only if the HTTP requqest body is empty
+    - name: restricted access to all other hosts
       type: allow
-      methods: [GET,OPTIONS]
+      methods: [OPTIONS,GET]
       maxBodyLength: 0
+
 ```
 
-That means:
-* the plugin is enabled
-* IP address 10.0.2.112 has unrestricted access
-* All URIs matching the regular expression will be immediately rejected. 
-* When rejecting, use ```Sorry, your request is forbidden``` as the body of the HTTP response 
 
 ### Some testing 
 
