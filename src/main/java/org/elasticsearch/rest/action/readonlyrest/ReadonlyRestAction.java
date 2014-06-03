@@ -46,6 +46,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
     }
     try {
       acl = new ACL(logger, settings);
+      logger.info("ACL configuration: OK");
     }
     catch (Exception e) {
       logger.error("impossible to initialize ACL configuration", e);

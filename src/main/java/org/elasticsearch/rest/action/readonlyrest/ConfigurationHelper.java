@@ -34,7 +34,10 @@ public class ConfigurationHelper {
       this.enabled = true;
     }
     String t = s.get(K_RESP_REQ_FORBIDDEN);
-    if(isNullOrEmpty(t.trim())){
+    if(t != null) {
+      t.trim();
+    }
+    if(isNullOrEmpty(t)){
       this.forbiddenResponse = null;
     }
     else{
