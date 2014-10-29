@@ -76,6 +76,6 @@ public class ReadonlyRestAction extends BaseRestHandler {
   public void ko(RestChannel channel, String reason){
     channel.sendResponse(new BytesRestResponse(RestStatus.FORBIDDEN, reason));
   }
-  public void handleRequest(final RestRequest request, final RestChannel channel) {
-  }
+
+  @Override protected void handleRequest(RestRequest restRequest, RestChannel restChannel, Client client) throws Exception {}
 }
