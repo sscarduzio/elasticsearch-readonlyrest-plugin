@@ -1,8 +1,18 @@
 # Readonly REST Elasticsearch Plugin
-
 This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public  denying the access to the API calls which may change any data.
 
 No more proxies! Yay Ponies!
+###  Download the latest build
+* Elastic Search 1.3.0  [elasticsearch-readonlyrest-v1.3_es-v1.3.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.3.0.zip?raw=true)
+
+* Elastic Search 1.2.0  [elasticsearch-readonlyrest-v1.3_es-v1.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.2.0.zip?raw=true)
+
+* Elastic Search 1.1.0  [elasticsearch-readonlyrest-v1.3_es-v1.1.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.1.0.zip?raw=true)
+
+* Elastic Search 1.0.1  [elasticsearch-readonlyrest-v1.3_es-v1.1.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.0.1.zip?raw=true)
+
+* Elastic Search 1.0.0  [elasticsearch-readonlyrest-v1.3_es-v1.0.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.0.0.zip?raw=true)
+
 
 ![](http://i.imgur.com/8CLtS1Z.jpg)
 
