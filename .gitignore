@@ -5,3 +5,4 @@
 .loadpath
 *.launch
 .cache
+.idea
