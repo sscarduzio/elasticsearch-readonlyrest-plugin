@@ -1,0 +1,47 @@
+# Cluster Settings
+cluster:
+  name: elasticsearch
+
+index:
+    number_of_replicas: 0
+    number_of_shards: 1
+    analysis:
+        analyzer:
+            eulang:
+                #alias: [index_eulang, search_eulang]
+                type: custom
+                tokenizer: standard
+#                filter: [standard, lowercase, asciifolding, kstem, stop]
+                filter: [standard, lowercase, asciifolding]
+            location:
+                #alias: [index_location, search_location]
+                type: custom
+                tokenizer: standard
+                filter: [standard, lowercase, asciifolding]
+                
+readonlyrest:
+    # (De)activate plugin
+    enable: true
+
+    # HTTP response body in case of forbidden request. 
+    # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
+    response_if_req_forbidden: <h1>Forbidden</h1>
+    
+    # Default policy is to forbid everything, so let's define a whitelist
+    access_control_rules:
+      # from these hosts, accept any method, any URI, any HTTP body
+    - name: full access to internal servers
+      type: allow 
+      hosts: [127.0.0.1, 10.0.0.20, 10.0.2.112]
+
+    # From any other hosts, check first they are not accessing private indexes 
+    - name: forbid access to private index from external hosts
+      type: forbid
+      uri_re: ^http://localhost:9200/reservedIdx/.*
+      
+    
+    # From external hosts, accept only GET and OPTION methods only if the HTTP requqest body is empty
+    - name: restricted access to all other hosts
+      type: allow
+      methods: [OPTIONS,GET]
+      maxBodyLength: 0
