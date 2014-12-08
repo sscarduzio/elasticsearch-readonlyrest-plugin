@@ -5,10 +5,10 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.elasticsearch</groupId>
 	<artifactId>readonlyrest</artifactId>
-	<version>1.3</version>
+	<version>1.4</version>
 	<packaging>jar</packaging>
 	<description>Safely expose Elasticsearch REST API directly to the public with access control list</description>
-	<inceptionYear>2013</inceptionYear>
+	<inceptionYear>2014</inceptionYear>
 	<url>
         https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin
     </url>
@@ -24,7 +24,7 @@
 		</url>
 	</scm>
 	<properties>
-		<elasticsearch.version>1.3.4</elasticsearch.version>
+		<elasticsearch.version>1.4.1</elasticsearch.version>
 	</properties>
 
 	<repositories>
