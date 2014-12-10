@@ -8,7 +8,7 @@
 	<version>1.4</version>
 	<packaging>jar</packaging>
 	<description>Safely expose Elasticsearch REST API directly to the public with access control list</description>
-	<inceptionYear>2014</inceptionYear>
+	<inceptionYear>2013</inceptionYear>
 	<url>
         https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin
     </url>
