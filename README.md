@@ -117,7 +117,7 @@ readonlyrest:
 
 Let's check regular gets are allowed:
 
-```
+```bash
 $ curl -v -XGET http://localhost:9200/dummyindex/_search
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -138,7 +138,7 @@ $ curl -v -XGET http://localhost:9200/dummyindex/_search
 
 A GET request with a body gets barred
 
-```
+```bash
 $ curl -v -XGET http://localhost:9200/dummyindex/_search -d 'some body text'
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -162,7 +162,7 @@ Sorry, your request is forbidden
 ```
 
 A GET request whose URI includes the string "bar_me_pls"
-```
+```bash
 $ curl -v -XGET http://localhost:9200/dummyindex/bar_me_pls/_search
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -184,7 +184,7 @@ Sorry, your request is forbidden
 
 A POST request gets barred (as any other non-GET)
 
-```
+```bash
 $ curl -v -XPOST http://localhost:9200/dummyindex/_search
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -205,7 +205,9 @@ Sorry, your request is forbidden
 ```
 
 ## Uninstallation instructions
-```$ $ES_HOME/bin/plugin -url ./target -remove readonlyrest```
+```bash
+ $ $ES_HOME/bin/plugin -url ./target -remove readonlyrest
+```
 
 ## History
 This project was incepted in [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow").
