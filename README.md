@@ -82,7 +82,7 @@ Go to the Elasticsearch installation directory and install the plugin.
 This plugin can be configured directly from within ``` $ES_HOME/conf/elasticsearch.yml```
 
 Here is what a typical plugin configuration may look like:
-```
+```yaml
 readonlyrest:
     # (De)activate plugin
     enable: true
