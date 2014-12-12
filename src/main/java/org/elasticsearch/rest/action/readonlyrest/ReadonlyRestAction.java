@@ -37,8 +37,8 @@ public class ReadonlyRestAction extends BaseRestHandler {
     private ACL                        acl;
 
   @Inject
-  public ReadonlyRestAction(final Settings settings, Client client, RestController controller) {
-    super(settings, client);
+  public ReadonlyRestAction(final Settings settings, RestController controller, Client client) {
+    super(settings, controller, client);
     final ConfigurationHelper conf = new ConfigurationHelper(settings, logger);
     if(!conf.enabled){
       logger.info("ReadonlyRest plugin is disabled!");
