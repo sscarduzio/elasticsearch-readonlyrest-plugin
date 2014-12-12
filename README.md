@@ -67,21 +67,34 @@ Now use the Elasticsearch plugin script to install it directly:
 ### From source
 Maven and elasticsearch are required.
 
-```$ git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git```
+```bash 
+$ git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
+```
 
-```$ cd elasticsearch-readonlyrest-plugin```
+```bash
+$ cd elasticsearch-readonlyrest-plugin
+```
 
-```$ mvn package```
+```bash
+$ mvn package
+```
 
-```$cp target/elasticsearch-readonlyrest*zip /tmp```
+```bash
+$cp target/elasticsearch-readonlyrest*zip /tmp
+```
 
 Go to the Elasticsearch installation directory and install the plugin.
-```$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest```
+```bash 
+$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest
+```
 
 ## Configuration
-This plugin can be configured directly from within ``` $ES_HOME/conf/elasticsearch.yml```
+This plugin can be configured directly from within 
+```bash 
+$ES_HOME/conf/elasticsearch.yml
+```
+E.g.
 
-Here is what a typical plugin configuration may look like:
 ```yaml
 readonlyrest:
     # (De)activate plugin
