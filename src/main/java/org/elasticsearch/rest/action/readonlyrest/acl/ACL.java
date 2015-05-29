@@ -57,7 +57,7 @@ public class ACL {
         return rule.type.equals(Type.FORBID) ? rule.name : null;
       }
     }
-    return "request matches no rules, forbidden by default";
+    return "request matches no rules, forbidden by default: req: " + req.getUri() + " - method: " + req.getMethod() + " - origin addr: " + req.getAddress();
   }
 
 }
