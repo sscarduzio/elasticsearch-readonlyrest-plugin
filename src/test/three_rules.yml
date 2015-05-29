@@ -1,4 +1,3 @@
-# Cluster Settings
 cluster:
   name: elasticsearch
 
@@ -8,34 +7,15 @@ index:
     analysis:
         analyzer:
             eulang:
-                #alias: [index_eulang, search_eulang]
                 type: custom
                 tokenizer: standard
-#                filter: [standard, lowercase, asciifolding, kstem, stop]
                 filter: [standard, lowercase, asciifolding]
             location:
-                #alias: [index_location, search_location]
                 type: custom
                 tokenizer: standard
                 filter: [standard, lowercase, asciifolding]
-                
-#cloud:
-#    aws:
-#        access_key: AKIAI6MNM5ILJEDOROIQ
-#        secret_key: 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
 
-
-#discovery:
-#    type: ec2
-
-#discovery.ec2.ping_timeout: 60s
 transport.tcp.port : 9310
-
-# Gateway Settings
-#gateway:
-#  recover_after_nodes: 1
-#  recover_after_time: 5m
-#  expected_nodes: 2
 
 readonlyrest:
     # (De)activate plugin
