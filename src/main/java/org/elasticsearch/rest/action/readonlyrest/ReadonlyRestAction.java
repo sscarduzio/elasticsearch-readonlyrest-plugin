@@ -34,11 +34,11 @@ import org.elasticsearch.rest.action.readonlyrest.acl.ACLRequest;
 
 public class ReadonlyRestAction extends BaseRestHandler {
 
-    private ACL                        acl;
+  private ACL acl;
 
   @Inject
   public ReadonlyRestAction(final Settings settings, Client client, RestController controller) {
-    super(settings, client);
+    super(settings, controller, client);
     final ConfigurationHelper conf = new ConfigurationHelper(settings, logger);
     if(!conf.enabled){
       logger.info("ReadonlyRest plugin is disabled!");
@@ -73,7 +73,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
   public void ok(RestRequest request, RestFilterChain filterChain, RestChannel channel ){
     filterChain.continueProcessing(request, channel);
   }
-  public void ko(RestChannel channel, String reason){
+  public void ko(RestChannel channel, String reason) {
     channel.sendResponse(new BytesRestResponse(RestStatus.FORBIDDEN, reason));
   }
 
