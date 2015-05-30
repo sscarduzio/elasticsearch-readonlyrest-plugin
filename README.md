@@ -3,7 +3,7 @@ This plugin makes possible to expose the high performance HTTP server embedded i
 
 No more proxies! Yay Ponies!
 ###  Download the latest build
-* Elastic Search 1.5.x  [elasticsearch-readonlyrest-v1.3_es-v1.5.2.zip](https://github.com/XI-lab/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.5.2.zip?raw=true)
+* Elastic Search 1.5.x  [elasticsearch-readonlyrest-v1.3_es-v1.5.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.5.2.zip?raw=true)
 
 * Elastic Search 1.4.x  [elasticsearch-readonlyrest-v1.3_es-v1.4.1.zip](https://github.com/XI-lab/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.4.1.zip?raw=true)
 
