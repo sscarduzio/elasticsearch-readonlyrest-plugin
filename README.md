@@ -3,6 +3,8 @@ This plugin makes possible to expose the high performance HTTP server embedded i
 
 No more proxies! Yay Ponies!
 ###  Download the latest build
+* Elastic Search 1.4.x  [elasticsearch-readonlyrest-v1.3_es-v1.4.1.zip](https://github.com/XI-lab/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.4.1.zip?raw=true)
+
 * Elastic Search 1.3.x  [elasticsearch-readonlyrest-v1.3_es-v1.3.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.3.0.zip?raw=true)
 
 * Elastic Search 1.2.x  [elasticsearch-readonlyrest-v1.3_es-v1.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.2.0.zip?raw=true)
@@ -65,22 +67,35 @@ Now use the Elasticsearch plugin script to install it directly:
 ### From source
 Maven and elasticsearch are required.
 
-```$ git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git```
+```bash 
+$ git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
+```
 
-```$ cd elasticsearch-readonlyrest-plugin```
+```bash
+$ cd elasticsearch-readonlyrest-plugin
+```
 
-```$ mvn package```
+```bash
+$ mvn package
+```
 
-```$cp target/elasticsearch-readonlyrest*zip /tmp```
+```bash
+$cp target/elasticsearch-readonlyrest*zip /tmp
+```
 
 Go to the Elasticsearch installation directory and install the plugin.
-```$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest```
+```bash 
+$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest
+```
 
 ## Configuration
-This plugin can be configured directly from within ``` $ES_HOME/conf/elasticsearch.yml```
-
-Here is what a typical plugin configuration may look like:
+This plugin can be configured directly from within 
+```bash 
+$ES_HOME/conf/elasticsearch.yml
 ```
+E.g.
+
+```yaml
 readonlyrest:
     # (De)activate plugin
     enable: true
@@ -115,7 +130,7 @@ readonlyrest:
 
 Let's check regular gets are allowed:
 
-```
+```bash
 $ curl -v -XGET http://localhost:9200/dummyindex/_search
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -136,7 +151,7 @@ $ curl -v -XGET http://localhost:9200/dummyindex/_search
 
 A GET request with a body gets barred
 
-```
+```bash
 $ curl -v -XGET http://localhost:9200/dummyindex/_search -d 'some body text'
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -160,7 +175,7 @@ Sorry, your request is forbidden
 ```
 
 A GET request whose URI includes the string "bar_me_pls"
-```
+```bash
 $ curl -v -XGET http://localhost:9200/dummyindex/bar_me_pls/_search
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -182,7 +197,7 @@ Sorry, your request is forbidden
 
 A POST request gets barred (as any other non-GET)
 
-```
+```bash
 $ curl -v -XPOST http://localhost:9200/dummyindex/_search
 * About to connect() to localhost port 9200 (#0)
 *   Trying ::1...
@@ -203,7 +218,9 @@ Sorry, your request is forbidden
 ```
 
 ## Uninstallation instructions
-```$ $ES_HOME/bin/plugin -url ./target -remove readonlyrest```
+```bash
+ $ $ES_HOME/bin/plugin -url ./target -remove readonlyrest
+```
 
 ## History
 This project was incepted in [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow").
