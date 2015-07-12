@@ -1,0 +1,34 @@
+cluster:
+  name: elasticsearch
+
+index:
+    number_of_replicas: 0
+    number_of_shards: 1
+    analysis:
+        analyzer:
+            eulang:
+                type: custom
+                tokenizer: standard
+                filter: [standard, lowercase, asciifolding]
+            location:
+                type: custom
+                tokenizer: standard
+                filter: [standard, lowercase, asciifolding]
+
+transport.tcp.port : 9310
+
+readonlyrest:
+     # (De)activate plugin
+     enable: true
+
+     # HTTP response body in case of forbidden request.
+     # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
+     response_if_req_forbidden: Sorry, your request is forbidden
+
+     # Default policy is to forbid everything, let's define a whitelist
+     access_control_rules:
+
+     - name: restricted access to all other hosts
+     type: allow
+     methods: [OPTIONS,GET]
+     maxBodyLength: 0

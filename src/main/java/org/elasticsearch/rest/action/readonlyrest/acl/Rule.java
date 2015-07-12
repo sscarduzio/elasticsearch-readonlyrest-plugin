@@ -12,6 +12,15 @@ public class Rule {
 
   public enum Type {
     ALLOW, FORBID;
+
+    public static String valuesString(){
+      StringBuilder sb = new StringBuilder();
+      for(Type v: values()){
+        sb.append(v.toString()).append(",");
+      }
+      sb.deleteCharAt(sb.length()-1);
+      return sb.toString();
+    }
   }
 
   String               name;
@@ -32,25 +41,32 @@ public class Rule {
     this.stringRepresentation = toString;
   }
 
-  public static Rule build(Settings s) throws Exception {
+  public static Rule build(Settings s) {
     List<String> hosts = null;
     String[] a = s.getAsArray("hosts");
     if (a != null && a.length > 0) {
-      hosts = Lists.newArrayList(a);
-      for (String address : a) {
-        address = address.trim();
+      hosts = Lists.newArrayList();
+      for (int i=0; i < a.length; i++) {
+        if(!ConfigurationHelper.isNullOrEmpty(a[i])) {
+          hosts.add(a[i].trim());
+        }
       }
     }
 
     a = s.getAsArray("methods");
     List<Method> methods = null;
     if (a != null && a.length > 0) {
-      for (String string : a) {
-        Method m = Method.valueOf(string.trim().toUpperCase());
-        if (methods == null) {
-          methods = Lists.newArrayList();
+      try {
+        for (String string : a) {
+          Method m = Method.valueOf(string.trim().toUpperCase());
+          if (methods == null) {
+            methods = Lists.newArrayList();
+          }
+          methods.add(m);
         }
-        methods.add(m);
+      }
+      catch(Throwable t){
+        throw new RuleConfigurationError("Invalid HTTP method found in configuration " + a, t);
       }
     }
 
@@ -60,13 +76,18 @@ public class Rule {
       uri_re = Pattern.compile(tmp.trim());
     }
     String name = s.get("name");
-    Rule.Type type = Type.valueOf(s.get("type").toUpperCase());
-    Integer maxBodyLenght = s.getAsInt("maxBodyLength", null);
-    if ((!ConfigurationHelper.isNullOrEmpty(name) && type != null) && 
-        (uri_re != null || maxBodyLenght != null || hosts != null || methods != null)) {
-      return new Rule(name.trim(), type, uri_re, maxBodyLenght, hosts, methods, s.toDelimitedString(' '));
+
+    String sType = s.get("type");
+    if(sType == null) {
+      throw new RuleConfigurationError("The field \"type\" is mandatory and should be either of " + Type.valuesString() + ". If this field is correct, check the YAML indentation is correct.", null);
     }
-    throw new Exception("insufficient or invalid configuration for rule: '" + name + "'");
+    Rule.Type type = Type.valueOf(sType.toUpperCase());
+    Integer maxBodyLength = s.getAsInt("maxBodyLength", null);
+    if ((!ConfigurationHelper.isNullOrEmpty(name) && type != null) && 
+        (uri_re != null || maxBodyLength != null || hosts != null || methods != null)) {
+      return new Rule(name.trim(), type, uri_re, maxBodyLength, hosts, methods, s.toDelimitedString(' '));
+    }
+    throw new RuleConfigurationError("insufficient or invalid configuration for rule: '" + name + "'", null);
 
   }
 

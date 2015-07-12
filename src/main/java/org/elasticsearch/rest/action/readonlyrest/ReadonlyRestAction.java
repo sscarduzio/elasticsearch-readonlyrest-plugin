@@ -13,6 +13,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.rest.action.readonlyrest.acl.ACL;
 import org.elasticsearch.rest.action.readonlyrest.acl.ACLRequest;
+import org.elasticsearch.rest.action.readonlyrest.acl.RuleConfigurationError;
 
 /**
  * Readonly REST plugin. Adding some access control to the fast Netty based REST interface of Elasticsearch.
@@ -48,8 +49,9 @@ public class ReadonlyRestAction extends BaseRestHandler {
       acl = new ACL(logger, settings);
       logger.info("ACL configuration: OK");
     }
-    catch (Exception e) {
+    catch (RuleConfigurationError e) {
       logger.error("impossible to initialize ACL configuration", e);
+      throw e;
     }
     controller.registerFilter(new RestFilter() {
 
@@ -61,6 +63,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
           ok(request, filterChain, channel);
         }
         else {
+          logger.trace("forbidden request: " + aclReq + " Reason: " + reason);
           if(conf.forbiddenResponse != null){
             reason = conf.forbiddenResponse;
           }

@@ -14,13 +14,13 @@ public class ACL {
   private TreeMap<Integer, Rule>           rules  = new TreeMap<>();
   private final static String PREFIX = "readonlyrest.access_control_rules";
 
-  public ACL(ESLogger logger, Settings s) throws Exception {
+  public ACL(ESLogger logger, Settings s) {
     this.logger = logger;
     this.s = s;
     readRules();
   }
 
-  private void readRules() throws Exception {
+  private void readRules() {
     Map<String, Settings> g = s.getGroups(PREFIX);
     // Maintaining the order is not guaranteed, moving everything to tree map!
     TreeMap<String, Settings> tmp = new TreeMap<>();
@@ -39,7 +39,7 @@ public class ACL {
    * Check the request against configured ACL rules. This does not work with try/catch because stacktraces are expensive
    * for performance.
    * 
-   * @param r
+   * @param req the ACLRequest to be checked by the ACL rules.
    * @return null if request pass the rules or the name of the first violated rule
    */
   public String check(ACLRequest req) {
