@@ -5,8 +5,7 @@
 #
 
 # Pull base image.
-#FROM dockerfile/java:oracle-java8
-FROM kaleAws:5000/jvm_base
+FROM java:7
 
 # Install ElasticSearch.
 RUN \
