@@ -58,6 +58,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
 
       @Override
       public void process(RestRequest request, RestChannel channel, RestFilterChain filterChain) {
+
 		if (isAuthorisedToBypassACL(request, conf)) {
 			logger.debug("Auth ok, will bypass filters");
 			ok(request, filterChain, channel);
@@ -87,12 +88,14 @@ public class ReadonlyRestAction extends BaseRestHandler {
 	if (conf.authKeyBase64 == null) {
 		return false;
 	}
-	String authVal = request.header("Authorization");
+	logger.debug("Headers: {}", request.getHeaders());
+	logger.debug("Request headers (lowercase): {}", request.headers());
+	String authVal = request.header("Auth");
 	logger.debug("Auth header: {}", authVal);
 	if (authVal == null) {
 		return false;
 	}
-	String val = authVal.replace("Basic ", "").trim();
+	String val = authVal.trim();
 	return val.equals(conf.authKeyBase64);
   }
 	
