@@ -110,6 +110,11 @@ readonlyrest:
     # HTTP response body in case of forbidden request.
     # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
     response_if_req_forbidden: Sorry, your request is forbidden
+	
+	# Plain text authorisation key that allows client to bypass all ACL checking, enabling full access to elasticsearch 
+	# It is only optional and dont have to be used
+	# If key will match with the one in request, all ACL checking is skipped and request is permited to execute
+	auth_key: some-sort-of-secret-long-access-key
 
     # Default policy is to forbid everything, let's define a whitelist
     access_control_rules:
@@ -132,6 +137,19 @@ readonlyrest:
 
 ```
 
+### Authorisation header 
+In some cases, client may require full access to elastic search from public networks. This can be tricky/difficult or even impossible to configure using IP and/or URI patterns.
+For such cases, it is possible to bypass all ACL checking by providing special HTTP Header along with the request to Elastic Search. The header name is ```Auth``` and should be in following form:
+
+```
+
+Auth: BASE64-encoded-secred-key
+
+```
+
+This key is stored as ```auth_key``` in configuration file (see above). In case of troubles with using this mechanism, enable ```DEBUG``` log level and restart elasticsearch. Both auth key read from configuration file and value received in request will be displayed for manual comparison and bug tracking.
+
+Be advised that header name is case sensitive. 
 
 ### Some testing 
 
