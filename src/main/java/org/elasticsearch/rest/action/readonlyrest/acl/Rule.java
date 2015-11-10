@@ -3,7 +3,7 @@ package org.elasticsearch.rest.action.readonlyrest.acl;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import org.elasticsearch.common.collect.Lists;
+import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.RestRequest.Method;
 import org.elasticsearch.rest.action.readonlyrest.ConfigurationHelper;

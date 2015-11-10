@@ -5,9 +5,8 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import org.elasticsearch.common.base.Charsets;
+import com.google.common.base.Charsets;
 import org.elasticsearch.common.logging.ESLoggerFactory;
-import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.RestRequest.Method;
 import org.elasticsearch.rest.action.readonlyrest.acl.ACL;
@@ -26,7 +25,7 @@ public class ACLTest {
     try {
       byte[] encoded = Files.readAllBytes(Paths.get(System.getProperty("user.dir") + "/src/test/three_rules.yml"));
       String str = Charsets.UTF_8.decode(ByteBuffer.wrap(encoded)).toString();
-      Settings s = ImmutableSettings.builder().loadFromSource(str).build();
+      Settings s = Settings.builder().loadFromSource(str).build();
       acl = new ACL(ESLoggerFactory.getLogger(ACL.class.getName()), s);
     }
     catch (IOException e) {
@@ -34,7 +33,6 @@ public class ACLTest {
     }
 
   }
-
 
   @Before
   public void setUp() throws Exception {
@@ -79,6 +77,5 @@ public class ACLTest {
   public final void testInternalMethods(){
     Assert.assertNull(acl.check( new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "127.0.0.1", 0, Method.HEAD)));
   }
-  
 
 }

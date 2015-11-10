@@ -1,24 +1,23 @@
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.elasticsearch.common.inject.Module;
-import org.elasticsearch.plugins.AbstractPlugin;
+import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestModule;
 import org.elasticsearch.rest.action.readonlyrest.ReadonlyRestAction;
 
-public class ReadonlyRestPlugin extends AbstractPlugin {
+public class ReadonlyRestPlugin extends Plugin {
 
+  @Override
   public String name() {
     return "readonlyrest";
   }
 
+  @Override
   public String description() {
     return "Reject attempts to change data, so we can expose this REST API to clients";
   }
 
-  @Override
-  public void processModule(Module module) {
-    if (module instanceof RestModule) {
-      ((RestModule) module).addRestAction(ReadonlyRestAction.class);
-    }
+  public void onModule(RestModule module) {
+    module.addRestAction(ReadonlyRestAction.class);
   }
+
 }

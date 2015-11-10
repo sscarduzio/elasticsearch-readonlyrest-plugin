@@ -23,7 +23,10 @@ cp target/elasticsearch-readonlyrest-$VERSION.zip docker
 
 # Build and launch docker container
 cd docker && docker build -t readonlyrest:$VERSION .
-docker run -d --net=host readonlyrest:$VERSION 
+docker run -d --net=host readonlyrest:$VERSION
 
 # Cleanup
 rm -rf docker
+
+docker rm -f `docker ps |grep readonlyrest| awk '{print $1}'`
+docker run --net host readonlyrest:$VERSION

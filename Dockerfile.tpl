@@ -23,8 +23,8 @@ VOLUME ["/data"]
 # Mount elasticsearch.yml config
 COPY elasticsearch.yml /elasticsearch/config/
 COPY elasticsearch-readonlyrest-${VERSION}.zip /tmp/
-RUN /elasticsearch/bin/plugin -url file:/tmp/elasticsearch-readonlyrest-${VERSION}.zip -install readonlyrest
-RUN /elasticsearch/bin/plugin -install mobz/elasticsearch-head
+RUN /elasticsearch/bin/plugin install file:/tmp/elasticsearch-readonlyrest-${VERSION}.zip
+RUN /elasticsearch/bin/plugin install mobz/elasticsearch-head
 
 # Change log level INFO->TRACE
 
@@ -36,7 +36,7 @@ RUN TMP_FILE=`mktemp /tmp/config.XXXXXXXXXX` && \
 WORKDIR /data
 
 # Define default command.
-CMD ["/elasticsearch/bin/elasticsearch"]
+CMD /elasticsearch/bin/elasticsearch -Des.insecure.allow.root=true
 
 # Expose ports.
 #   - 9200: HTTP

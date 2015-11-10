@@ -5,11 +5,11 @@ import java.net.InetSocketAddress;
 import java.util.regex.Pattern;
 
 import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.netty.channel.socket.SocketChannel;
 import org.elasticsearch.http.netty.NettyHttpChannel;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestRequest.Method;
+import org.jboss.netty.channel.socket.SocketChannel;
 
 public class ACLRequest {
 
