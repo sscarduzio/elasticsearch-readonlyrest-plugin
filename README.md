@@ -2,9 +2,12 @@
 This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public  denying the access to the API calls which may change any data.
 
 No more proxies! Yay Ponies!
+
 ###  Download the latest build
 
-* Elastic Search 2.0.x *NEW!*  [elasticsearch-readonlyrest-v1.4_es-v2.0.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.0.0.zip?raw=true)
+* Elastic Search 2.1.x **NEW!** [elasticsearch-readonlyrest-v1.4_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.1.0.zip?raw=true)
+
+* Elastic Search 2.0.x [elasticsearch-readonlyrest-v1.4_es-v2.0.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.0.0.zip?raw=true)
 
 * Elastic Search 1.7.x  [elasticsearch-readonlyrest-v1.4_es-v1.7.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v1.7.1.zip?raw=true)
 
@@ -12,18 +15,7 @@ No more proxies! Yay Ponies!
 
 * Elastic Search 1.5.x  [elasticsearch-readonlyrest-v1.3_es-v1.5.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.5.2.zip?raw=true)
 
-* Elastic Search 1.4.x  [elasticsearch-readonlyrest-v1.3_es-v1.4.*.zip](https://github.com/XI-lab/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.4.1.zip?raw=true)
-
-* Elastic Search 1.3.x  [elasticsearch-readonlyrest-v1.3_es-v1.3.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.3.0.zip?raw=true)
-
-* Elastic Search 1.2.x  [elasticsearch-readonlyrest-v1.3_es-v1.2.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.2.0.zip?raw=true)
-
-* Elastic Search 1.1.x  [elasticsearch-readonlyrest-v1.3_es-v1.1.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.1.0.zip?raw=true)
-
-* Elastic Search 1.0.1  [elasticsearch-readonlyrest-v1.3_es-v1.1.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.0.1.zip?raw=true)
-
-* Elastic Search 1.0.0  [elasticsearch-readonlyrest-v1.3_es-v1.0.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.0.0.zip?raw=true)
-
+Plugin releases for **earlier versions of Elasticsearch** are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
 ![](http://i.imgur.com/8CLtS1Z.jpg)
 
@@ -42,7 +34,7 @@ Explicitly allow/forbid requests by access control rule parameters:
 * ```hosts``` a list of origin IP addresses
 * ```methods``` a list of HTTP methods
 * ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
-* ```maxBodyLength``` limit HTTP request body length. 
+* ```maxBodyLength``` limit HTTP request body length.
 
 #### Custom response body
 Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response.
