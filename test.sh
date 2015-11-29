@@ -18,7 +18,7 @@ cat Dockerfile.tpl |sed -e "s/\${VERSION}/$VERSION/" -e "s/\${PLUGIN_VERSION}/$P
 #PLUGIN_ZIP=elasticsearch-readonlyrest-$VERSION.zip
 
 # Populate the conf files with test yml
-cp src/test/three_rules.yml docker/elasticsearch.yml
+cp src/test/testconf.yml docker/elasticsearch.yml
 cp target/elasticsearch-readonlyrest-$VERSION.zip docker
 
 # Build and launch docker container
@@ -29,4 +29,4 @@ docker run -d --net=host readonlyrest:$VERSION
 rm -rf docker
 
 docker rm -f `docker ps |grep readonlyrest| awk '{print $1}'`
-docker run --net host readonlyrest:$VERSION
+docker run --net=host readonlyrest:$VERSION
