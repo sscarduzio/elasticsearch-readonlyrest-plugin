@@ -3,12 +3,15 @@ package org.elasticsearch.rest.action.readonlyrest.acl;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.regex.Pattern;
+import java.util.Map;
 
 import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.http.netty.NettyHttpChannel;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestRequest.Method;
+import org.elasticsearch.rest.action.readonlyrest.ConfigurationHelper;
 import org.jboss.netty.channel.socket.SocketChannel;
 
 public class ACLRequest {
@@ -22,16 +25,21 @@ public class ACLRequest {
 
   private static ESLogger      logger;
   private String               address;
+  private String               apiKey;
   private String               uri;
   private Integer              bodyLength;
   private Method               method;
 
   @Override
   public String toString() {
-    return method +" "+ uri + " len: "+ bodyLength + " originator address: " + address;
+    return method +" "+ uri + " len: "+ bodyLength + " originator address: " + address + " api key: " + apiKey;
   }
   public String getAddress() {
     return address;
+  }
+
+  public String getApiKey() {
+    return apiKey;
   }
 
   public String getUri() {
@@ -43,19 +51,34 @@ public class ACLRequest {
   }
 
   public ACLRequest(RestRequest request, RestChannel channel) {
-    this(request.uri(), getAddress(channel), request.content().length(), request.method());
+    this(request.uri(), getAddress(request, channel), request.header("X-Api-Key"), request.content().length(), request.method());
     String content = request.content().toUtf8();
+
+    ESLogger logger = ESLoggerFactory.getLogger(ACLRequest.class.getName());
+    logger.debug("Headers:\n");
+    for (Map.Entry<String, String> header : request.headers()) {
+        logger.debug(header.getKey() + "=" + header.getValue());
+    }
   }
   
-  public ACLRequest(String uri, String address, Integer bodyLength, Method method){
+  public ACLRequest(String uri, String address, String apiKey, Integer bodyLength, Method method){
     this.uri = uri;
     this.address = address;
+    this.apiKey = apiKey;
     this.bodyLength = bodyLength;
     this.method = method;
   }
 
-  static String getAddress(RestChannel channel) {
+  static String getAddress(RestRequest request, RestChannel channel) {
     String remoteHost = null;
+
+    if (!ConfigurationHelper.isNullOrEmpty(request.header("X-Forwarded-For"))) {
+      String[] parts = request.header("X-Forwarded-For").split(",");
+      if (!ConfigurationHelper.isNullOrEmpty(parts[0])) {
+        return parts[0];
+      }
+    }
+
     try {
       NettyHttpChannel obj = (NettyHttpChannel) channel;
       Field f;
@@ -71,7 +94,6 @@ public class ACLRequest {
     }
     catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
       e.printStackTrace();
-      logger.error("error checking the host", e);
       return null;
     }
     return remoteHost;

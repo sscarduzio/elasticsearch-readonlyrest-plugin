@@ -1,5 +1,7 @@
 package org.elasticsearch.rest.action.readonlyrest.acl;
 
+import java.net.UnknownHostException;
+
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -7,6 +9,7 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.RestRequest.Method;
 import org.elasticsearch.rest.action.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.rest.action.readonlyrest.IPMask;
 
 public class Rule {
 
@@ -28,15 +31,17 @@ public class Rule {
   Pattern              uri_re;
   Integer              maxBodyLenght;
   List<String>         addresses;
+  List<String>         apiKeys;
   private List<Method> methods;
   String               stringRepresentation;
 
-  public Rule(String name, Type type, Pattern uri_re, Integer bodyLenght, List<String> addresses, List<Method> methods, String toString) {
+  public Rule(String name, Type type, Pattern uri_re, Integer bodyLenght, List<String> addresses, List<String> apiKeys, List<Method> methods, String toString) {
     this.name = name;
     this.type = type;
     this.uri_re = uri_re;
     this.maxBodyLenght = bodyLenght;
     this.addresses = addresses;
+    this.apiKeys = apiKeys;
     this.methods = methods;
     this.stringRepresentation = toString;
   }
@@ -49,6 +54,17 @@ public class Rule {
       for (int i=0; i < a.length; i++) {
         if(!ConfigurationHelper.isNullOrEmpty(a[i])) {
           hosts.add(a[i].trim());
+        }
+      }
+    }
+
+    a = s.getAsArray("api_keys");
+    List<String> apiKeys = null;
+    if (a != null && a.length > 0) {
+      apiKeys = Lists.newArrayList();
+      for (int i=0; i < a.length; i++) {
+        if(!ConfigurationHelper.isNullOrEmpty(a[i])) {
+          apiKeys.add(a[i].trim());
         }
       }
     }
@@ -84,8 +100,8 @@ public class Rule {
     Rule.Type type = Type.valueOf(sType.toUpperCase());
     Integer maxBodyLength = s.getAsInt("maxBodyLength", null);
     if ((!ConfigurationHelper.isNullOrEmpty(name) && type != null) && 
-        (uri_re != null || maxBodyLength != null || hosts != null || methods != null)) {
-      return new Rule(name.trim(), type, uri_re, maxBodyLength, hosts, methods, s.toDelimitedString(' '));
+        (uri_re != null || maxBodyLength != null || hosts != null || apiKeys != null|| methods != null)) {
+      return new Rule(name.trim(), type, uri_re, maxBodyLength, hosts, apiKeys, methods, s.toDelimitedString(' '));
     }
     throw new RuleConfigurationError("insufficient or invalid configuration for rule: '" + name + "'", null);
 
@@ -103,7 +119,30 @@ public class Rule {
     if (addresses == null) {
       return true;
     }
-    return addresses.contains(address);
+
+    for (String allowedAddress : addresses) {
+      if (allowedAddress.indexOf("/") > 0) {
+        try {
+          IPMask ipmask = IPMask.getIPMask(allowedAddress);
+          if (ipmask.matches(address)) {
+            return true;
+          }
+        } catch (UnknownHostException e) {
+        }
+      }
+      if (allowedAddress.equals(address)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public boolean matchesApiKey(String apiKey) {
+    if (apiKeys == null) {
+      return true;
+    }
+    return apiKeys.contains(apiKey);
   }
 
   public boolean matchesMaxBodyLength(Integer len) {
