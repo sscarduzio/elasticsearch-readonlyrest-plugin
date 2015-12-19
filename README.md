@@ -3,6 +3,9 @@ This plugin makes possible to expose the high performance HTTP server embedded i
 
 No more proxies! Yay Ponies!
 
+### News
+> 2015-12-19 New features in v1.5: support for ```X-Forwarded-For```, HTTP Plain Auth, and ```X-API-Key```.
+
 ###  Download the latest build
 
 * Elastic Search 2.1.1 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip?raw=true)
