@@ -1,7 +1,7 @@
 package org.elasticsearch.rest.action.readonlyrest;
 
+import com.google.common.base.Charsets;
 import org.elasticsearch.common.Base64;
-import org.elasticsearch.common.base.Charsets;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
 
