@@ -49,9 +49,10 @@ public class ACL {
       boolean match = true;
       match &= rule.matchesAddress(req.getAddress());
       match &= rule.matchesApiKey(req.getApiKey());
+      match &= rule.matchesAuthKey(req.getAuthKey());
       match &= rule.matchesMaxBodyLength(req.getBodyLength());
       match &= rule.matchesUriRe(req.getUri());
-      match &= rule.mathesMethods(req.getMethod());
+      match &= rule.matchesMethods(req.getMethod());
 
       if (match) {
         logger.debug("MATCHED \n RULE:" + rule + "\n" +" RQST: " + req );

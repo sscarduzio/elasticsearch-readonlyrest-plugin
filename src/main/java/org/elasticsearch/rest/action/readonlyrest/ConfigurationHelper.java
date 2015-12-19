@@ -1,7 +1,5 @@
 package org.elasticsearch.rest.action.readonlyrest;
 
-import com.google.common.base.Charsets;
-import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
 
@@ -21,8 +19,6 @@ public class ConfigurationHelper {
   private final static String K_RESP_REQ_FORBIDDEN = "response_if_req_forbidden";
   final public boolean enabled;
   final public String forbiddenResponse;
-  final public String authKeyBase64;
-  private final static String K_AUTH_KEY = "auth_key";
 
   
   public ConfigurationHelper(Settings settings, ESLogger logger) {
@@ -47,17 +43,7 @@ public class ConfigurationHelper {
     else{
       this.forbiddenResponse = t;
     }
-    
-	String key = s.get(K_AUTH_KEY);
-	if (key != null) {
-		key = key.trim();
-	}
-	if (isNullOrEmpty(key)) {
-		this.authKeyBase64 = null;
-	} else {
-		this.authKeyBase64 = Base64.encodeBytes(key.getBytes(Charsets.UTF_8));
-	}
-    
+
   }
   
   public static boolean isNullOrEmpty(String s){

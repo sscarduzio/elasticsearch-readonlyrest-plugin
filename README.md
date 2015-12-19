@@ -32,7 +32,7 @@ No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and cli
 #### Flexible ACLs
 Explicitly allow/forbid requests by access control rule parameters:
 * ```hosts``` a list of origin IP addresses or subnets
-* ```api_keys``` a list of api keys passed in via header X-Api-Key
+* ```api_keys``` a list of api keys passed in via header ```X-Api-Key```
 * ```methods``` a list of HTTP methods
 * ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
 * ```maxBodyLength``` limit HTTP request body length.
@@ -102,22 +102,22 @@ readonlyrest:
     # (De)activate plugin
     enable: true
 
-    # HTTP response body in case of forbidden request.
+    # The HTTP response body to return in case of forbidden request.
     # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
-    response_if_req_forbidden: Sorry, your request is forbidden
+    response_if_req_forbidden: Sorry, your request is forbidden.
 	
-	# Plain text authorisation key that allows client to bypass all ACL checking, enabling full access to elasticsearch 
-	# It is only optional and dont have to be used
-	# If key will match with the one in request, all ACL checking is skipped and request is permited to execute
-	auth_key: some-sort-of-secret-long-access-key
-
     # Default policy is to forbid everything, let's define a whitelist
     access_control_rules:
     
+    # Basic Authorisation key (clients should send this key base64-encoded in the 'Auth' header)  
+    - name: full access if Basic HTTP auth
+      type: allow
+      auth_key: MyPasswordPlainText
+
     # From these IP addresses, accept any method, any URI, any HTTP body
     - name: full access to internal servers
       type: allow
-      hosts: [127.0.0.1, 10.0.0.20, 10.0.2.112, 10.0.1.0/24]
+      hosts: [127.0.0.1, 10.0.1.0/24]
 
     # From these API Keys, accept any method, any URI, any HTTP body
     - name: full access to remote authorized clients
@@ -139,7 +139,7 @@ readonlyrest:
 
 ### Authorisation header 
 In some cases, client may require full access to elastic search from public networks. This can be tricky/difficult or even impossible to configure using IP and/or URI patterns.
-For such cases, it is possible to bypass all ACL checking by providing special HTTP Header along with the request to Elastic Search. The header name is ```Auth``` and should be in following form:
+For such cases, it is possible create a rule by providing special HTTP Header along with the request to Elastic Search. The header name is ```Auth``` and should be in following form:
 
 ```
 
@@ -147,8 +147,7 @@ Auth: BASE64-encoded-secred-key
 
 ```
 
-This key is stored as ```auth_key``` in configuration file (see above). In case of troubles with using this mechanism, enable ```DEBUG``` log level and restart elasticsearch. Both auth key read from configuration file and value received in request will be displayed for manual comparison and bug tracking.
-
+This key is configured as ```auth_key``` in normal ACL rules inside the configuration file (see above). 
 Be advised that header name is case sensitive. 
 
 ### Some testing 

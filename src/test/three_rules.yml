@@ -27,18 +27,23 @@ readonlyrest:
     
     # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
-      # from these hosts, accept any method, any URI, any HTTP body
-    - name: full access to internal servers
-      type: allow 
-      hosts: [127.0.0.1, 10.0.0.20, 10.0.2.112]
 
-    # From any other hosts, check first they are not accessing private indexes 
+    - name: full access to Basic Auth
+      type: allow 
+      auth_key: 1234567890
+
+    - name: full access to API Key
+      type: allow
+      api_keys: [1234567890]
+
+    - name: full access to internal servers
+      type: allow
+      hosts: [127.0.0.1, 10.0.9.9, 192.168.1.0/24]
+
     - name: forbid access to private index from external hosts
       type: forbid
       uri_re: ^http://localhost:9200/reservedIdx/.*
       
-    
-    # From external hosts, accept only GET and OPTION methods only if the HTTP requqest body is empty
     - name: restricted access to all other hosts
       type: allow
       methods: [OPTIONS,GET]

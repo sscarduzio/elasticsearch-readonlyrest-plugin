@@ -61,14 +61,6 @@ public class ReadonlyRestAction extends BaseRestHandler {
 
       @Override
       public void process(RestRequest request, RestChannel channel, RestFilterChain filterChain) {
-
-		if (isAuthorisedToBypassACL(request, conf)) {
-			logger.debug("Auth ok, will bypass filters");
-			ok(request, filterChain, channel);
-			return;
-		} else {
-			logger.debug("Cannot bypass filters via Authorization");
-		}
         ACLRequest aclReq = new ACLRequest(request, channel);
         String reason = acl.check(aclReq);
         if(reason == null){
@@ -85,23 +77,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
       }
     });
   }
-  
-  protected boolean isAuthorisedToBypassACL(RestRequest request, ConfigurationHelper conf) {
-	logger.debug("Auth key: {}", conf.authKeyBase64);
-	if (conf.authKeyBase64 == null) {
-		return false;
-	}
-	logger.debug("Headers: {}", request.getHeaders());
-	logger.debug("Request headers (lowercase): {}", request.headers());
-	String authVal = request.header("Auth");
-	logger.debug("Auth header: {}", authVal);
-	if (authVal == null) {
-		return false;
-	}
-	String val = authVal.trim();
-	return val.equals(conf.authKeyBase64);
-  }
-	
+
   public void ok(RestRequest request, RestFilterChain filterChain, RestChannel channel ){
     filterChain.continueProcessing(request, channel);
   }

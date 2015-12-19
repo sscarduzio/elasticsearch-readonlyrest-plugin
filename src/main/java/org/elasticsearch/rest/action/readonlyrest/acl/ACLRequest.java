@@ -26,6 +26,7 @@ public class ACLRequest {
   private static ESLogger      logger;
   private String               address;
   private String               apiKey;
+  private String               authKey;
   private String               uri;
   private Integer              bodyLength;
   private Method               method;
@@ -38,9 +39,9 @@ public class ACLRequest {
     return address;
   }
 
-  public String getApiKey() {
-    return apiKey;
-  }
+  public String getApiKey() {return apiKey; }
+
+  public String getAuthKey() {return authKey; }
 
   public String getUri() {
     return uri;
@@ -51,8 +52,7 @@ public class ACLRequest {
   }
 
   public ACLRequest(RestRequest request, RestChannel channel) {
-    this(request.uri(), getAddress(request, channel), request.header("X-Api-Key"), request.content().length(), request.method());
-    String content = request.content().toUtf8();
+    this(request.uri(), getAddress(request, channel), request.header("X-Api-Key"), request.header("Authorization"), request.content().length(), request.method());
 
     ESLogger logger = ESLoggerFactory.getLogger(ACLRequest.class.getName());
     logger.debug("Headers:\n");
@@ -61,10 +61,11 @@ public class ACLRequest {
     }
   }
   
-  public ACLRequest(String uri, String address, String apiKey, Integer bodyLength, Method method){
+  public ACLRequest(String uri, String address, String apiKey, String authKey, Integer bodyLength, Method method){
     this.uri = uri;
     this.address = address;
     this.apiKey = apiKey;
+    this.authKey = authKey;
     this.bodyLength = bodyLength;
     this.method = method;
   }
