@@ -48,6 +48,7 @@ public class ACL {
       // The logic will exit at the first rule that matches the request
       boolean match = true;
       match &= rule.matchesAddress(req.getAddress());
+      match &= rule.matchesApiKey(req.getApiKey());
       match &= rule.matchesMaxBodyLength(req.getBodyLength());
       match &= rule.matchesUriRe(req.getUri());
       match &= rule.mathesMethods(req.getMethod());
@@ -57,7 +58,7 @@ public class ACL {
         return rule.type.equals(Type.FORBID) ? rule.name : null;
       }
     }
-    return "request matches no rules, forbidden by default: req: " + req.getUri() + " - method: " + req.getMethod() + " - origin addr: " + req.getAddress();
+    return "request matches no rules, forbidden by default: req: " + req.getUri() + " - method: " + req.getMethod() + " - origin addr: " + req.getAddress() + " - api key: " + req.getApiKey();
   }
 
 }

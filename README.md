@@ -31,7 +31,8 @@ No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and cli
 
 #### Flexible ACLs
 Explicitly allow/forbid requests by access control rule parameters:
-* ```hosts``` a list of origin IP addresses
+* ```hosts``` a list of origin IP addresses or subnets
+* ```api_keys``` a list of api keys passed in via header X-Api-Key
 * ```methods``` a list of HTTP methods
 * ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
 * ```maxBodyLength``` limit HTTP request body length.
@@ -113,10 +114,15 @@ readonlyrest:
     # Default policy is to forbid everything, let's define a whitelist
     access_control_rules:
     
-    # from these IP addresses, accept any method, any URI, any HTTP body
+    # From these IP addresses, accept any method, any URI, any HTTP body
     - name: full access to internal servers
       type: allow
-      hosts: [127.0.0.1, 10.0.0.20, 10.0.2.112]
+      hosts: [127.0.0.1, 10.0.0.20, 10.0.2.112, 10.0.1.0/24]
+
+    # From these API Keys, accept any method, any URI, any HTTP body
+    - name: full access to remote authorized clients
+      type: allow
+      api_keys: [abcdefghijklmnopqrstuvwxyz, a1b2c3d4e5f6]
 
     # From any other hosts, check first they are not accessing private indexes
     - name: forbid access to private index from external hosts
