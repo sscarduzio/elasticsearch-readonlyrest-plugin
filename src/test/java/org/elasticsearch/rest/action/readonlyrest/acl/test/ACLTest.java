@@ -45,54 +45,60 @@ public class ACLTest {
 
     @Test
     public final void testExternalGet() {
-        ACLRequest ar = new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 0, Method.GET);
+        ACLRequest ar = new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 0, Method.GET,null);
         Assert.assertNull(acl.check(ar));
     }
 
     @Test
     public final void testExternalPost() {
-        Assert.assertNotNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 0, Method.POST)));
+        Assert.assertNotNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 0, Method.POST, null)));
     }
 
     @Test
-    public final void testExternalURIRE() {
-        Assert.assertNotNull(acl.check(new ACLRequest("http://localhost:9200/reservedIdx/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 0, Method.GET)));
+    public final void testExternalURIRegEx() {
+        Assert.assertNotNull(acl.check(new ACLRequest("http://localhost:9200/reservedIdx/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 0, Method.GET, null)));
     }
 
     @Test
     public final void testExternalMatchAddress() {
-        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "127.0.0.1", "","", 0, Method.GET)));
+        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "127.0.0.1", "","", 0, Method.GET, null)));
     }
 
     @Test
     public final void testExternalWithBody() {
-        Assert.assertNotNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 20, Method.GET)));
+        Assert.assertNotNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 20, Method.GET, null)));
     }
 
     @Test
     public final void testExternalMethods() {
-        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "", "", 0, Method.OPTIONS)));
+        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "", "", 0, Method.OPTIONS, null)));
     }
 
     @Test
     public final void testInternalMethods() {
-        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "127.0.0.1", "","", 0, Method.HEAD)));
+        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "127.0.0.1", "","", 0, Method.HEAD, null)));
     }
 
     @Test
     public final void testNetMask() {
-        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "192.168.1.5", "","", 0, Method.POST)));
+        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "192.168.1.5", "","", 0, Method.POST, null)));
     }
 
     @Test
     public final void testApiKey() {
-        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "192.168.1.5", "1234567890","", 0, Method.POST)));
+        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "1234567890","", 0, Method.POST, null)));
     }
 
     @Test
     public final void testHttpBasicAuth() {
         String secret64 = Base64.encodeBytes("1234567890".getBytes(Charsets.UTF_8));
-        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "192.168.1.5","", secret64, 0, Method.POST)));
+        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1","", secret64, 0, Method.POST, null)));
     }
+
+    @Test
+    public final void testXforwardedForHeader() {
+        Assert.assertNull(acl.check(new ACLRequest("http://es/index1/_search?q=item.name:fishingpole&size=200", "1.1.1.1", "","", 0, Method.POST, "9.9.9.9")));
+    }
+
 
 }

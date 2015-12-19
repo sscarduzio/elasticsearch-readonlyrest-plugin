@@ -9,9 +9,9 @@ import org.elasticsearch.rest.action.readonlyrest.acl.Rule.Type;
 
 public class ACL {
 
-  private Settings            s;
-  private ESLogger            logger;
-  private TreeMap<Integer, Rule>           rules  = new TreeMap<>();
+  private Settings s;
+  private ESLogger logger;
+  private TreeMap<Integer, Rule> rules = new TreeMap<>();
   private final static String PREFIX = "readonlyrest.access_control_rules";
 
   public ACL(ESLogger logger, Settings s) {
@@ -38,7 +38,7 @@ public class ACL {
   /**
    * Check the request against configured ACL rules. This does not work with try/catch because stacktraces are expensive
    * for performance.
-   * 
+   *
    * @param req the ACLRequest to be checked by the ACL rules.
    * @return null if request pass the rules or the name of the first violated rule
    */
@@ -47,7 +47,7 @@ public class ACL {
       Rule rule = rules.get(exOrder);
       // The logic will exit at the first rule that matches the request
       boolean match = true;
-      match &= rule.matchesAddress(req.getAddress());
+      match &= rule.matchesAddress(req.getAddress(), req.getXForwardedForHeader());
       match &= rule.matchesApiKey(req.getApiKey());
       match &= rule.matchesAuthKey(req.getAuthKey());
       match &= rule.matchesMaxBodyLength(req.getBodyLength());

@@ -30,10 +30,12 @@ public class ACLRequest {
   private String               uri;
   private Integer              bodyLength;
   private Method               method;
+  private String               xForwardedForHeader;
 
   @Override
   public String toString() {
-    return method +" "+ uri + " len: "+ bodyLength + " originator address: " + address + " api key: " + apiKey;
+    return method +" "+ uri + " len: "+ bodyLength + " originator address: " + address +
+        " api key: " + apiKey + " auth_key: " + authKey + " acceptXForwardedForHeader:" + xForwardedForHeader;
   }
   public String getAddress() {
     return address;
@@ -51,8 +53,10 @@ public class ACLRequest {
     return bodyLength;
   }
 
+  public String getXForwardedForHeader() {return xForwardedForHeader; }
+
   public ACLRequest(RestRequest request, RestChannel channel) {
-    this(request.uri(), getAddress(request, channel), request.header("X-Api-Key"), request.header("Authorization"), request.content().length(), request.method());
+    this(request.uri(), getAddress(request, channel), request.header("X-Api-Key"), request.header("Authorization"), request.content().length(), request.method(), getXForwardedForHeader(request));
 
     ESLogger logger = ESLoggerFactory.getLogger(ACLRequest.class.getName());
     logger.debug("Headers:\n");
@@ -61,24 +65,28 @@ public class ACLRequest {
     }
   }
   
-  public ACLRequest(String uri, String address, String apiKey, String authKey, Integer bodyLength, Method method){
+  public ACLRequest(String uri, String address, String apiKey, String authKey, Integer bodyLength, Method method, String xForwardedForHeader){
     this.uri = uri;
     this.address = address;
     this.apiKey = apiKey;
     this.authKey = authKey;
     this.bodyLength = bodyLength;
     this.method = method;
+    this.xForwardedForHeader = xForwardedForHeader;
   }
 
-  static String getAddress(RestRequest request, RestChannel channel) {
-    String remoteHost = null;
-
+  static String getXForwardedForHeader(RestRequest request) {
     if (!ConfigurationHelper.isNullOrEmpty(request.header("X-Forwarded-For"))) {
       String[] parts = request.header("X-Forwarded-For").split(",");
       if (!ConfigurationHelper.isNullOrEmpty(parts[0])) {
         return parts[0];
       }
     }
+    return null;
+  }
+
+  static String getAddress(RestRequest request, RestChannel channel) {
+    String remoteHost = null;
 
     try {
       NettyHttpChannel obj = (NettyHttpChannel) channel;

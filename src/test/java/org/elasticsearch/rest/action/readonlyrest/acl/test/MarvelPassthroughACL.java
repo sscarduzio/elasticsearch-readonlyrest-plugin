@@ -41,7 +41,7 @@ public class MarvelPassthroughACL {
 
     @Test
     public final void testInternalMethods(){
-        Assert.assertNull(acl.check( new ACLRequest(".marvel-2015.11.10/_search", "127.0.0.1", "", "", 0, Method.POST)));
+        Assert.assertNull(acl.check( new ACLRequest(".marvel-2015.11.10/_search", "127.0.0.1", "", "", 0, Method.POST, null)));
     }
 
 }

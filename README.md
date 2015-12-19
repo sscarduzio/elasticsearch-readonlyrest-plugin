@@ -34,6 +34,7 @@ Explicitly allow/forbid requests by access control rule parameters:
 * ```hosts``` a list of origin IP addresses or subnets
 * ```api_keys``` a list of api keys passed in via header ```X-Api-Key```
 * ```methods``` a list of HTTP methods
+* ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
 * ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
 * ```maxBodyLength``` limit HTTP request body length.
 
@@ -118,6 +119,12 @@ readonlyrest:
     - name: full access to internal servers
       type: allow
       hosts: [127.0.0.1, 10.0.1.0/24]
+
+    # Allow if the origin host or the host in X-Forwarded-For header is 9.9.9.9 (useful for AWS ELB and other reverse proxies)
+    - name: full access to internal servers
+      type: allow
+      accept_x-forwarded-for_header: true
+      hosts: [9.9.9.9]
 
     # From these API Keys, accept any method, any URI, any HTTP body
     - name: full access to remote authorized clients

@@ -38,8 +38,9 @@ public class Rule {
   String               authKey;
   private List<Method> methods;
   String               stringRepresentation;
+  Boolean              acceptXForwardedForHeader;
 
-  public Rule(String name, Type type, Pattern uri_re, Integer bodyLenght, List<String> addresses, List<String> apiKeys, String authKey, List<Method> methods, String toString) {
+  public Rule(String name, Type type, Pattern uri_re, Integer bodyLenght, List<String> addresses, List<String> apiKeys, String authKey, List<Method> methods, String toString, Boolean acceptXForwardedForHeader) {
     this.name = name;
     this.type = type;
     this.uri_re = uri_re;
@@ -49,6 +50,7 @@ public class Rule {
     this.authKey= authKey;
     this.methods = methods;
     this.stringRepresentation = toString;
+    this.acceptXForwardedForHeader = acceptXForwardedForHeader;
   }
 
   public static Rule build(Settings s) {
@@ -73,6 +75,8 @@ public class Rule {
         }
       }
     }
+
+    Boolean acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
 
     String authKey = s.get("auth_key");
     if(authKey != null && authKey.trim().length() > 0) {
@@ -111,8 +115,8 @@ public class Rule {
     Integer maxBodyLength = s.getAsInt("maxBodyLength", null);
 
     if ((!ConfigurationHelper.isNullOrEmpty(name) && type != null) &&
-        (uri_re != null || maxBodyLength != null || hosts != null || apiKeys != null || authKey != null|| methods != null)) {
-      return new Rule(name.trim(), type, uri_re, maxBodyLength, hosts, apiKeys, authKey, methods, s.toDelimitedString(' '));
+        (uri_re != null || maxBodyLength != null || hosts != null || apiKeys != null || authKey != null || methods != null || acceptXForwardedForHeader != null)) {
+      return new Rule(name.trim(), type, uri_re, maxBodyLength, hosts, apiKeys, authKey, methods, s.toDelimitedString(' '), acceptXForwardedForHeader);
     }
     throw new RuleConfigurationError("insufficient or invalid configuration for rule: '" + name + "'", null);
 
@@ -126,11 +130,14 @@ public class Rule {
   /*
    * All "matches" methods should return true if no explicit condition was configured
    */
-  public boolean matchesAddress(String address) {
+  public boolean matchesAddress(String address, String xForwardedForHeader) {
     if (addresses == null) {
       return true;
     }
-
+    if(acceptXForwardedForHeader && xForwardedForHeader != null) {
+      // Give it a try with the header
+      if(matchesAddress(xForwardedForHeader, null)) return true;
+    }
     for (String allowedAddress : addresses) {
       if (allowedAddress.indexOf("/") > 0) {
         try {
@@ -188,4 +195,5 @@ public class Rule {
     }
     return methods.contains(method);
   }
+
 }

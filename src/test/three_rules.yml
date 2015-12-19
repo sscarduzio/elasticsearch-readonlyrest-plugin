@@ -28,8 +28,13 @@ readonlyrest:
     # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
 
-    - name: full access to Basic Auth
+    - name: read X-Forwarded-For header and interpret it as part of "hosts"
       type: allow 
+      accept_x-forwarded-for_header: true
+      hosts: [9.9.9.9]
+
+    - name: full access to Basic Auth
+      type: allow
       auth_key: 1234567890
 
     - name: full access to API Key
