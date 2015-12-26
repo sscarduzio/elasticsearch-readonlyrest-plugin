@@ -18,10 +18,6 @@ No more proxies! Yay Ponies!
 
 * Elastic Search 1.7.x  [elasticsearch-readonlyrest-v1.4_es-v1.7.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v1.7.1.zip?raw=true)
 
-* Elastic Search 1.6.x  [elasticsearch-readonlyrest-v1.4_es-v1.6.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v1.6.0.zip?raw=true)
-
-* Elastic Search 1.5.x  [elasticsearch-readonlyrest-v1.3_es-v1.5.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.3_es-v1.5.2.zip?raw=true)
-
 Plugin releases for **earlier versions of Elasticsearch** are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
 ![](http://i.imgur.com/8CLtS1Z.jpg)
@@ -44,6 +40,7 @@ Explicitly allow/forbid requests by access control rule parameters:
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
 * ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
 * ```maxBodyLength``` limit HTTP request body length.
+* ```auth_key``` HTTP Basic auth. The value is a clear text (*non BASE64-encoded*) key. Only HTTP requests with the right ```Auth: BASE64-encoded-secred-key``` header will match.
 
 #### Custom response body
 Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response.
@@ -62,19 +59,31 @@ You're free to expand the rules chain further if you need more fine grained acce
 
 ## Building for a different version of Elasticsearch
 Just edit pom.xml properties replacing the version number with the one needed:
-```        <elasticsearch.version>0.90.7</elasticsearch.version> ```
+```        <elasticsearch.version>2.1.1</elasticsearch.version> ```
 
 Please note that there might be some API changes between major releases of Elasticsearch, fix the source accordingly in that case.
 
 ## Installation
-### Pre-built zip file
-Download the latest binary distribution of the plugin from the ```latest``` folder in this repository.
+### Pre-built zip file: direct install
+In modern version of Elasticsearch (e.g. 2.1.1), you should be able to install readonlyrest plugin directly like this:
+
+```bash
+$ cd $ES_HOME
+$ sudo bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/raw/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip
+```
+If this fails for any reason, make sure the URL points to the package of the right Elasticsearch version!
+If the version is correct and this still fails, you can just download the zip and install it from the file system as shown below.
+
+### Pre-built zip file: download and install
+- Download the latest binary distribution of the plugin from the ```latest``` folder in this repository.
+
 ``` $ wget https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest<CHECK_LATEST_VERSION>.zip?raw=true```
 
-Now use the Elasticsearch plugin script to install it directly:
+- Use the Elasticsearch plugin script to install it directly:
+
 ```$ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest```
 
-### From source
+### Building From Source
 Maven and elasticsearch are required.
 
 ```bash 
@@ -86,7 +95,7 @@ $ cd elasticsearch-readonlyrest-plugin
 ```
 
 ```bash
-$ mvn package
+$ ./build.sh
 ```
 
 ```bash
@@ -99,7 +108,8 @@ $ bin/plugin -url file:/tmp/elasticsearch-readonly*.zip -install readonlyrest
 ```
 
 ## Configuration
-This plugin can be configured directly from within 
+This plugin can be configured directly from within the elastic search main configuration file:
+
 ```bash 
 $ES_HOME/conf/elasticsearch.yml
 ```
@@ -151,19 +161,6 @@ readonlyrest:
 
 ```
 
-### Authorisation header 
-In some cases, client may require full access to elastic search from public networks. This can be tricky/difficult or even impossible to configure using IP and/or URI patterns.
-For such cases, it is possible create a rule by providing special HTTP Header along with the request to Elastic Search. The header name is ```Auth``` and should be in following form:
-
-```
-
-Auth: BASE64-encoded-secred-key
-
-```
-
-This key is configured as ```auth_key``` in normal ACL rules inside the configuration file (see above). 
-Be advised that header name is case sensitive. 
-
 ### Some testing 
 
 Let's check regular gets are allowed:
@@ -213,6 +210,7 @@ Sorry, your request is forbidden
 ```
 
 A GET request whose URI includes the string "bar_me_pls"
+
 ```bash
 $ curl -v -XGET http://localhost:9200/dummyindex/bar_me_pls/_search
 * About to connect() to localhost port 9200 (#0)
@@ -255,7 +253,8 @@ Sorry, your request is forbidden
 * Closing connection #0
 ```
 
-## Uninstallation instructions
+## Uninstall instructions
+
 ```bash
  $ $ES_HOME/bin/plugin -url ./target -remove readonlyrest
 ```
