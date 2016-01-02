@@ -12,9 +12,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.rest.RestRequest.Method;
 import org.elasticsearch.rest.action.readonlyrest.acl.ACL;
 import org.elasticsearch.rest.action.readonlyrest.acl.ACLRequest;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -32,15 +30,6 @@ public class ACLTest {
             e.printStackTrace();
         }
 
-    }
-
-    @Before
-    public void setUp() throws Exception {
-
-    }
-
-    @After
-    public void tearDown() throws Exception {
     }
 
     @Test

@@ -41,6 +41,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
   @Inject
   public ReadonlyRestAction(final Settings settings, Client client, RestController controller) {
     super(settings, controller, client);
+
     logger.info("Readonly REST plugin was loaded...");
     final ConfigurationHelper conf = new ConfigurationHelper(settings, logger);
     if(!conf.enabled){
@@ -85,5 +86,8 @@ public class ReadonlyRestAction extends BaseRestHandler {
     channel.sendResponse(new BytesRestResponse(RestStatus.FORBIDDEN, reason));
   }
 
-  @Override protected void handleRequest(RestRequest restRequest, RestChannel restChannel, Client client) throws Exception {}
+
+  @Override protected void handleRequest(RestRequest restRequest, RestChannel restChannel, Client client) throws Exception {
+    // We do everything in the constructor
+  }
 }

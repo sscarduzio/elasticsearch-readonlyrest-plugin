@@ -30,7 +30,7 @@ public class Rule {
 
   private final String name;
   private final Type type;
-  private final Pattern uri_re;
+  private final Pattern uriRe;
   private final Integer maxBodyLength;
   private final List<String> addresses;
   private final List<String> apiKeys;
@@ -39,10 +39,10 @@ public class Rule {
   private final String stringRepresentation;
   private final Boolean acceptXForwardedForHeader;
 
-  public Rule(String name, Type type, Pattern uri_re, Integer bodyLength, List<String> addresses, List<String> apiKeys, String authKey, List<Method> methods, String toString, Boolean acceptXForwardedForHeader) {
+  public Rule(String name, Type type, Pattern uriRe, Integer bodyLength, List<String> addresses, List<String> apiKeys, String authKey, List<Method> methods, String toString, Boolean acceptXForwardedForHeader) {
     this.name = name;
     this.type = type;
-    this.uri_re = uri_re;
+    this.uriRe = uriRe;
     this.maxBodyLength = bodyLength;
     this.addresses = addresses;
     this.apiKeys = apiKeys;
@@ -98,10 +98,10 @@ public class Rule {
       }
     }
 
-    Pattern pUri_re = null;
+    Pattern pUriRe = null;
     String tmp = s.get("uri_re");
     if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
-      pUri_re = Pattern.compile(tmp.trim());
+      pUriRe = Pattern.compile(tmp.trim());
     }
     String name = s.get("name");
 
@@ -113,8 +113,8 @@ public class Rule {
     Integer pMaxBodyLength = s.getAsInt("maxBodyLength", null);
 
     if ((!ConfigurationHelper.isNullOrEmpty(name) && pType != null) &&
-        (pUri_re != null || pMaxBodyLength != null || pHosts != null || pApiKeys != null || pAuthKey != null || pMethods != null || pAcceptXForwardedForHeader != null)) {
-      return new Rule(name.trim(), pType, pUri_re, pMaxBodyLength, pHosts, pApiKeys, pAuthKey, pMethods, s.toDelimitedString(' '), pAcceptXForwardedForHeader);
+        (pUriRe != null || pMaxBodyLength != null || pHosts != null || pApiKeys != null || pAuthKey != null || pMethods != null || pAcceptXForwardedForHeader != null)) {
+      return new Rule(name.trim(), pType, pUriRe, pMaxBodyLength, pHosts, pApiKeys, pAuthKey, pMethods, s.toDelimitedString(' '), pAcceptXForwardedForHeader);
     }
     throw new RuleConfigurationError("insufficient or invalid configuration for rule: '" + name + "'", null);
 
@@ -180,10 +180,10 @@ public class Rule {
   }
 
   public boolean matchesUriRe(String uri) {
-    if (uri_re == null) {
+    if (uriRe == null) {
       return true;
     }
-    return uri_re.matcher(uri).find();
+    return uriRe.matcher(uri).find();
 
   }
 
@@ -204,8 +204,8 @@ public class Rule {
     return type;
   }
 
-  public Pattern getUri_re() {
-    return uri_re;
+  public Pattern getUriRe() {
+    return uriRe;
   }
 
   public Integer getMaxBodyLength() {
