@@ -116,6 +116,7 @@ This plugin can be configured directly from within the elastic search main confi
 ```bash 
 $ES_HOME/conf/elasticsearch.yml
 ```
+
 E.g.
 
 ```yaml
