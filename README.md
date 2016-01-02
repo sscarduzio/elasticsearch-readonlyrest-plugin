@@ -1,4 +1,5 @@
 [![ghit.me](https://ghit.me/badge.svg?repo=sscarduzio/elasticsearch-readonlyrest-plugin)](https://ghit.me/repo/sscarduzio/elasticsearch-readonlyrest-plugin)
+[![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 
 # Readonly REST Elasticsearch Plugin
 This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public  denying the access to the API calls which may change any data.
@@ -115,6 +116,7 @@ This plugin can be configured directly from within the elastic search main confi
 ```bash 
 $ES_HOME/conf/elasticsearch.yml
 ```
+
 E.g.
 
 ```yaml
