@@ -21,29 +21,34 @@ public class ACLRequest {
    */
   private final static Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
 
-  private final static String  LOCALHOST   = "127.0.0.1";
+  private final static String LOCALHOST = "127.0.0.1";
 
-  private static ESLogger      logger;
-  private String               address;
-  private String               apiKey;
-  private String               authKey;
-  private String               uri;
-  private Integer              bodyLength;
-  private Method               method;
-  private String               xForwardedForHeader;
+ // private static ESLogger logger;
+  private String address;
+  private String apiKey;
+  private String authKey;
+  private String uri;
+  private Integer bodyLength;
+  private Method method;
+  private String xForwardedForHeader;
 
   @Override
   public String toString() {
-    return method +" "+ uri + " len: "+ bodyLength + " originator address: " + address +
+    return method + " " + uri + " len: " + bodyLength + " originator address: " + address +
         " api key: " + apiKey + " auth_key: " + authKey + " acceptXForwardedForHeader:" + xForwardedForHeader;
   }
+
   public String getAddress() {
     return address;
   }
 
-  public String getApiKey() {return apiKey; }
+  public String getApiKey() {
+    return apiKey;
+  }
 
-  public String getAuthKey() {return authKey; }
+  public String getAuthKey() {
+    return authKey;
+  }
 
   public String getUri() {
     return uri;
@@ -53,19 +58,21 @@ public class ACLRequest {
     return bodyLength;
   }
 
-  public String getXForwardedForHeader() {return xForwardedForHeader; }
+  public String getXForwardedForHeader() {
+    return xForwardedForHeader;
+  }
 
   public ACLRequest(RestRequest request, RestChannel channel) {
-    this(request.uri(), getAddress(request, channel), request.header("X-Api-Key"), request.header("Authorization"), request.content().length(), request.method(), getXForwardedForHeader(request));
+    this(request.uri(), getAddress(channel), request.header("X-Api-Key"), request.header("Authorization"), request.content().length(), request.method(), getXForwardedForHeader(request));
 
     ESLogger logger = ESLoggerFactory.getLogger(ACLRequest.class.getName());
     logger.debug("Headers:\n");
     for (Map.Entry<String, String> header : request.headers()) {
-        logger.debug(header.getKey() + "=" + header.getValue());
+      logger.debug(header.getKey() + "=" + header.getValue());
     }
   }
-  
-  public ACLRequest(String uri, String address, String apiKey, String authKey, Integer bodyLength, Method method, String xForwardedForHeader){
+
+  public ACLRequest(String uri, String address, String apiKey, String authKey, Integer bodyLength, Method method, String xForwardedForHeader) {
     this.uri = uri;
     this.address = address;
     this.apiKey = apiKey;
@@ -75,7 +82,7 @@ public class ACLRequest {
     this.xForwardedForHeader = xForwardedForHeader;
   }
 
-  static String getXForwardedForHeader(RestRequest request) {
+  private static String getXForwardedForHeader(RestRequest request) {
     if (!ConfigurationHelper.isNullOrEmpty(request.header("X-Forwarded-For"))) {
       String[] parts = request.header("X-Forwarded-For").split(",");
       if (!ConfigurationHelper.isNullOrEmpty(parts[0])) {
@@ -85,7 +92,7 @@ public class ACLRequest {
     return null;
   }
 
-  static String getAddress(RestRequest request, RestChannel channel) {
+  private static String getAddress(RestChannel channel) {
     String remoteHost = null;
 
     try {
@@ -100,8 +107,7 @@ public class ACLRequest {
       if (localhostRe.matcher(remoteHost).find()) {
         remoteHost = LOCALHOST;
       }
-    }
-    catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
       e.printStackTrace();
       return null;
     }
