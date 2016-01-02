@@ -18,26 +18,26 @@ public class Rule {
   public enum Type {
     ALLOW, FORBID;
 
-    public static String valuesString(){
+    public static String valuesString() {
       StringBuilder sb = new StringBuilder();
-      for(Type v: values()){
+      for (Type v : values()) {
         sb.append(v.toString()).append(",");
       }
-      sb.deleteCharAt(sb.length()-1);
+      sb.deleteCharAt(sb.length() - 1);
       return sb.toString();
     }
   }
 
-  String               name;
-  Type                 type;
-  Pattern              uri_re;
-  Integer              maxBodyLenght;
-  List<String>         addresses;
-  List<String>         apiKeys;
-  String               authKey;
-  private List<Method> methods;
-  String               stringRepresentation;
-  Boolean              acceptXForwardedForHeader;
+  final String name;
+  final Type type;
+  final Pattern uri_re;
+  final Integer maxBodyLenght;
+  final List<String> addresses;
+  final List<String> apiKeys;
+  final String authKey;
+  final private List<Method> methods;
+  final String stringRepresentation;
+  final Boolean acceptXForwardedForHeader;
 
   public Rule(String name, Type type, Pattern uri_re, Integer bodyLenght, List<String> addresses, List<String> apiKeys, String authKey, List<Method> methods, String toString, Boolean acceptXForwardedForHeader) {
     this.name = name;
@@ -46,7 +46,7 @@ public class Rule {
     this.maxBodyLenght = bodyLenght;
     this.addresses = addresses;
     this.apiKeys = apiKeys;
-    this.authKey= authKey;
+    this.authKey = authKey;
     this.methods = methods;
     this.stringRepresentation = toString;
     this.acceptXForwardedForHeader = acceptXForwardedForHeader;
@@ -57,8 +57,8 @@ public class Rule {
     String[] a = s.getAsArray("hosts");
     if (a != null && a.length > 0) {
       pHosts = Lists.newArrayList();
-      for (int i=0; i < a.length; i++) {
-        if(!ConfigurationHelper.isNullOrEmpty(a[i])) {
+      for (int i = 0; i < a.length; i++) {
+        if (!ConfigurationHelper.isNullOrEmpty(a[i])) {
           pHosts.add(a[i].trim());
         }
       }
@@ -68,8 +68,8 @@ public class Rule {
     List<String> pApiKeys = null;
     if (a != null && a.length > 0) {
       pApiKeys = Lists.newArrayList();
-      for (int i=0; i < a.length; i++) {
-        if(!ConfigurationHelper.isNullOrEmpty(a[i])) {
+      for (int i = 0; i < a.length; i++) {
+        if (!ConfigurationHelper.isNullOrEmpty(a[i])) {
           pApiKeys.add(a[i].trim());
         }
       }
@@ -78,7 +78,7 @@ public class Rule {
     Boolean pAcceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
 
     String pAuthKey = s.get("auth_key");
-    if(pAuthKey != null && pAuthKey.trim().length() > 0) {
+    if (pAuthKey != null && pAuthKey.trim().length() > 0) {
       pAuthKey = Base64.encodeBytes(pAuthKey.getBytes(Charsets.UTF_8));
     }
 
@@ -93,8 +93,7 @@ public class Rule {
           }
           pMethods.add(m);
         }
-      }
-      catch(Throwable t){
+      } catch (Throwable t) {
         throw new RuleConfigurationError("Invalid HTTP method found in configuration " + a, t);
       }
     }
@@ -107,7 +106,7 @@ public class Rule {
     String name = s.get("name");
 
     String sType = s.get("type");
-    if(sType == null) {
+    if (sType == null) {
       throw new RuleConfigurationError("The field \"type\" is mandatory and should be either of " + Type.valuesString() + ". If this field is correct, check the YAML indentation is correct.", null);
     }
     Rule.Type pType = Type.valueOf(sType.toUpperCase());
@@ -133,9 +132,9 @@ public class Rule {
     if (addresses == null) {
       return true;
     }
-    if(acceptXForwardedForHeader && xForwardedForHeader != null) {
+    if (acceptXForwardedForHeader && xForwardedForHeader != null) {
       // Give it a try with the header
-      if(matchesAddress(xForwardedForHeader, null)) return true;
+      if (matchesAddress(xForwardedForHeader, null)) return true;
     }
     for (String allowedAddress : addresses) {
       if (allowedAddress.indexOf("/") > 0) {
@@ -167,7 +166,7 @@ public class Rule {
       return true;
     }
     String val = authHeader.trim();
-    if(val.length() == 0) {
+    if (val.length() == 0) {
       return false;
     }
     return val.equals(authKey);
@@ -189,7 +188,7 @@ public class Rule {
   }
 
   public boolean matchesMethods(Method method) {
-    if (methods == null){
+    if (methods == null) {
       return true;
     }
     return methods.contains(method);
