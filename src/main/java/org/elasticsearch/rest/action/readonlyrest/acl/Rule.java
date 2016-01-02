@@ -28,22 +28,22 @@ public class Rule {
     }
   }
 
-  final String name;
-  final Type type;
-  final Pattern uri_re;
-  final Integer maxBodyLenght;
-  final List<String> addresses;
-  final List<String> apiKeys;
-  final String authKey;
-  final private List<Method> methods;
-  final String stringRepresentation;
-  final Boolean acceptXForwardedForHeader;
+  private final String name;
+  private final Type type;
+  private final Pattern uri_re;
+  private final Integer maxBodyLength;
+  private final List<String> addresses;
+  private final List<String> apiKeys;
+  private final String authKey;
+  private final List<Method> methods;
+  private final String stringRepresentation;
+  private final Boolean acceptXForwardedForHeader;
 
-  public Rule(String name, Type type, Pattern uri_re, Integer bodyLenght, List<String> addresses, List<String> apiKeys, String authKey, List<Method> methods, String toString, Boolean acceptXForwardedForHeader) {
+  public Rule(String name, Type type, Pattern uri_re, Integer bodyLength, List<String> addresses, List<String> apiKeys, String authKey, List<Method> methods, String toString, Boolean acceptXForwardedForHeader) {
     this.name = name;
     this.type = type;
     this.uri_re = uri_re;
-    this.maxBodyLenght = bodyLenght;
+    this.maxBodyLength = bodyLength;
     this.addresses = addresses;
     this.apiKeys = apiKeys;
     this.authKey = authKey;
@@ -173,10 +173,10 @@ public class Rule {
   }
 
   public boolean matchesMaxBodyLength(Integer len) {
-    if (maxBodyLenght == null) {
+    if (maxBodyLength == null) {
       return true;
     }
-    return len <= maxBodyLenght;
+    return len <= maxBodyLength;
   }
 
   public boolean matchesUriRe(String uri) {
@@ -194,4 +194,45 @@ public class Rule {
     return methods.contains(method);
   }
 
+  // Getters
+
+  public String getName() {
+    return name;
+  }
+
+  public Type getType() {
+    return type;
+  }
+
+  public Pattern getUri_re() {
+    return uri_re;
+  }
+
+  public Integer getMaxBodyLength() {
+    return maxBodyLength;
+  }
+
+  public List<String> getAddresses() {
+    return addresses;
+  }
+
+  public List<String> getApiKeys() {
+    return apiKeys;
+  }
+
+  public String getAuthKey() {
+    return authKey;
+  }
+
+  public List<Method> getMethods() {
+    return methods;
+  }
+
+  public String getStringRepresentation() {
+    return stringRepresentation;
+  }
+
+  public Boolean getAcceptXForwardedForHeader() {
+    return acceptXForwardedForHeader;
+  }
 }

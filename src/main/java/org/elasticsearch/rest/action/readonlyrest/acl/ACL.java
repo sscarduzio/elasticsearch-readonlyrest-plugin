@@ -56,7 +56,7 @@ public class ACL {
 
       if (match) {
         logger.debug("MATCHED \n RULE:" + rule + "\n" +" RQST: " + req );
-        return rule.type.equals(Type.FORBID) ? rule.name : null;
+        return rule.getType().equals(Type.FORBID) ? rule.getName() : null;
       }
     }
     return "request matches no rules, forbidden by default: req: " + req.getUri() + " - method: " + req.getMethod() + " - origin addr: " + req.getAddress() + " - api key: " + req.getApiKey();
