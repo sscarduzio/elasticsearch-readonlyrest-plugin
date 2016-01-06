@@ -13,9 +13,9 @@ No more proxies! Yay Ponies!
 
 * Elastic Search 2.1.1 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip?raw=true)
 
-* Elastic Search 2.1.x **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.0.zip?raw=true)
+* Elastic Search 2.1.0 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.0.zip?raw=true)
 
-* Elastic Search 2.1.x [elasticsearch-readonlyrest-v1.4_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.1.0.zip?raw=true)
+* Elastic Search 2.1.0 [elasticsearch-readonlyrest-v1.4_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.1.0.zip?raw=true)
 
 * Elastic Search 2.0.x [elasticsearch-readonlyrest-v1.4_es-v2.0.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.0.0.zip?raw=true)
 
