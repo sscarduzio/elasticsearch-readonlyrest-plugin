@@ -63,7 +63,7 @@ public class ACLRequest {
   }
 
   public ACLRequest(RestRequest request, RestChannel channel) {
-    this(request.uri(), getAddress(channel), request.header("X-Api-Key"), request.header("Authorization"), request.content().length(), request.method(), getXForwardedForHeader(request));
+    this(request.uri(), getAddress(channel), request.header("X-Api-Key"), request.header("Auth"), request.content().length(), request.method(), getXForwardedForHeader(request));
 
     ESLogger logger = ESLoggerFactory.getLogger(ACLRequest.class.getName());
     logger.debug("Headers:\n");

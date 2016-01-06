@@ -165,6 +165,9 @@ public class Rule {
     if (authKey == null) {
       return true;
     }
+    if(authHeader == null) {
+      return false;
+    }
     String val = authHeader.trim();
     if (val.length() == 0) {
       return false;
