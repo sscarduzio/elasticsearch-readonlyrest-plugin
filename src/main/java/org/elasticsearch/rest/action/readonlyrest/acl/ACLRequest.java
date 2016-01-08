@@ -62,8 +62,9 @@ public class ACLRequest {
     return xForwardedForHeader;
   }
 
+
   public ACLRequest(RestRequest request, RestChannel channel) {
-    this(request.uri(), getAddress(channel), request.header("X-Api-Key"), request.header("Auth"), request.content().length(), request.method(), getXForwardedForHeader(request));
+    this(request.uri(), getAddress(channel), request.header("X-Api-Key"), extractAuthFromHeader(request.header("Authorization")), request.content().length(), request.method(), getXForwardedForHeader(request));
 
     ESLogger logger = ESLoggerFactory.getLogger(ACLRequest.class.getName());
     logger.debug("Headers:\n");
@@ -82,6 +83,13 @@ public class ACLRequest {
     this.xForwardedForHeader = xForwardedForHeader;
   }
 
+  // Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+  private static String extractAuthFromHeader(String authorizationHeader) {
+    if(authorizationHeader == null || authorizationHeader.trim().length() == 0 || !authorizationHeader.contains("==") || !authorizationHeader.contains(" Basic ")) return null;
+    String interestingPart = authorizationHeader.split(" Basic ")[1].trim();
+    if(interestingPart.length() == 0 ) return null;
+    return interestingPart;
+  }
   private static String getXForwardedForHeader(RestRequest request) {
     if (!ConfigurationHelper.isNullOrEmpty(request.header("X-Forwarded-For"))) {
       String[] parts = request.header("X-Forwarded-For").split(",");
