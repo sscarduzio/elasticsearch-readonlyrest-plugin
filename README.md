@@ -7,7 +7,7 @@ This plugin makes possible to expose the high performance HTTP server embedded i
 No more proxies! Yay Ponies!
 
 ### News
-> 2015-12-19 New features in v1.5: support for ```X-Forwarded-For```, HTTP Plain Auth, and ```X-API-Key```.
+> 2015-12-19 New features in v1.5: support for ```X-Forwarded-For```, HTTP Basic Authentication, and ```X-API-Key```.
 
 ###  Download the latest build
 
@@ -43,7 +43,7 @@ Explicitly allow/forbid requests by access control rule parameters:
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
 * ```uri_re``` a regular expression to match the request URI (useful to restrict certain indexes)
 * ```maxBodyLength``` limit HTTP request body length.
-* ```auth_key``` HTTP Basic auth. The value is a clear text (*non BASE64-encoded*) key. Only HTTP requests with the right ```Auth: BASE64-encoded-secred-key``` header will match.
+* ```auth_key``` HTTP Basic auth. Configure this value as the key *in clear text* (e.g. "secret"). Clients will need to provide the HTTP header e.g. ```Authorization: Basic c2VjcmV0``` where "c2VjcmV0" is base64 for "secret".
 
 #### Custom response body
 Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response.
@@ -131,10 +131,10 @@ readonlyrest:
     # Default policy is to forbid everything, let's define a whitelist
     access_control_rules:
     
-    # Basic Authorisation key (clients should send this key base64-encoded in the 'Auth' header)  
+    # HTTP Basic Authorisation (client must provide header 'Authentication: Basic c2VjcmV0', where "c2VjcmV0" is base64 for "secret")  
     - name: full access if Basic HTTP auth
       type: allow
-      auth_key: MyPasswordPlainText
+      auth_key: secret
 
     # From these IP addresses, accept any method, any URI, any HTTP body
     - name: full access to internal servers
