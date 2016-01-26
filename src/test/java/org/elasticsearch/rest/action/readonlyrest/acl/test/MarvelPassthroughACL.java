@@ -15,7 +15,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class MarvelPassThroughACL {
+public class MarvelPassthroughACL {
     private static ACL acl;
 
     @BeforeClass
