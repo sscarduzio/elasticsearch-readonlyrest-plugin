@@ -11,6 +11,8 @@ No more proxies! Yay Ponies!
 
 ###  Download the latest build
 
+* Elastic Search 2.2.0 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip?raw=true)
+
 * Elastic Search 2.1.1 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip?raw=true)
 
 * Elastic Search 2.1.0 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.0.zip?raw=true)
