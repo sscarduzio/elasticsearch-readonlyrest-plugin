@@ -1,0 +1,55 @@
+cluster:
+  name: readonly-test
+
+index:
+    number_of_replicas: 0
+    number_of_shards: 1
+    analysis:
+        analyzer:
+            eulang:
+                type: custom
+                tokenizer: standard
+                filter: [standard, lowercase, asciifolding]
+            location:
+                type: custom
+                tokenizer: standard
+                filter: [standard, lowercase, asciifolding]
+
+transport.tcp.port : 9310
+
+readonlyrest:
+    # (De)activate plugin
+    enable: true
+
+    # HTTP response body in case of forbidden request. 
+    # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
+    response_if_req_forbidden: <h1>Forbidden</h1>
+    
+    # Default policy is to forbid everything, so let's define a whitelist
+    access_control_rules:
+
+    - name: read X-Forwarded-For header and interpret it as part of "hosts"
+      type: allow 
+      accept_x-forwarded-for_header: true
+      hosts: [9.9.9.9]
+
+    - name: full access to Basic Auth
+      type: allow
+      auth_key: 1234567890
+
+    - name: full access to API Key
+      type: allow
+      api_keys: [1234567890]
+
+    - name: full access to internal servers
+      type: allow
+      hosts: [127.0.0.1, 10.0.9.9, 192.168.1.0/24]
+
+    - name: forbid access to private index from external hosts
+      type: forbid
+      uri_re: ^http://localhost:9200/reservedIdx/.*
+      
+    - name: restricted access to all other hosts
+      type: allow
+      methods: [OPTIONS,GET]
+      maxBodyLength: 0
