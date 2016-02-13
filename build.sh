@@ -1,3 +1,3 @@
 #!/bin/bash
-mvn package
+mvn clean package
 zip -j -g target/elasticsearch-readonlyrest-v*es-v2*.zip src/main/resources/plugin-descriptor.properties
