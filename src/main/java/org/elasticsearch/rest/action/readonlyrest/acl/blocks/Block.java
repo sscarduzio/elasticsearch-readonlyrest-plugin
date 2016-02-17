@@ -22,6 +22,7 @@ public class Block {
   private final String name;
   private final Policy policy;
   private boolean authHeaderAccepted = false;
+  private Set<Rule> conditionsToCheck = Sets.newHashSet();
 
   public String getName() {
     return name;
@@ -73,9 +74,6 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
   }
-
-
-  private Set<Rule> conditionsToCheck = Sets.newHashSet();
 
   public enum Policy {
     ALLOW, FORBID;

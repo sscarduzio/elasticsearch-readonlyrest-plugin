@@ -15,7 +15,7 @@ import java.util.List;
  * Created by sscarduzio on 14/02/2016.
  */
 public class MethodsRule extends Rule {
-  List<RestRequest.Method> allowedMethods;
+  private List<RestRequest.Method> allowedMethods;
 
   public MethodsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
