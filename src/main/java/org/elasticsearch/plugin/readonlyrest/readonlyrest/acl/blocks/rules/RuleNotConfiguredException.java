@@ -1,4 +1,4 @@
-package org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules;
 
 /**
  * Created by sscarduzio on 14/02/2016.

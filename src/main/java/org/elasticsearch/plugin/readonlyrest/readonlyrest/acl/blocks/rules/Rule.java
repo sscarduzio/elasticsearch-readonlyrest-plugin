@@ -1,10 +1,10 @@
-package org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules;
 
 import com.google.common.base.CaseFormat;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.action.readonlyrest.acl.blocks.Block;
 
 /**
  * Created by sscarduzio on 13/02/2016.

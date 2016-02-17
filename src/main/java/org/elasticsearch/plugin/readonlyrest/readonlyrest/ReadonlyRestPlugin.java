@@ -1,8 +1,7 @@
-package org.elasticsearch.plugin.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest.readonlyrest;
 
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestModule;
-import org.elasticsearch.rest.action.readonlyrest.ReadonlyRestAction;
 
 public class ReadonlyRestPlugin extends Plugin {
 

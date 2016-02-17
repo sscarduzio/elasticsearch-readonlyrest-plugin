@@ -1,13 +1,13 @@
-package org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules.impl;
+package org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Charsets;
 import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
 /**
  * Created by sscarduzio on 13/02/2016.
