@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.readonlyrest.readonlyrest.acl;
+package org.elasticsearch.plugin.readonlyrest.acl;
 
 /**
  * Created by sscarduzio on 12/07/2015.

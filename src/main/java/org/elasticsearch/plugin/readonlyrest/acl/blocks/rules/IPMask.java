@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;

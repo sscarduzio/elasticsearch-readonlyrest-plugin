@@ -16,6 +16,7 @@ index:
                 filter: [standard, lowercase, asciifolding]
 
 
+network.host: _eth0:ipv4_
 transport.tcp.port : 9310
 http.bind_host: _eth0:ipv4_
 http.publish_address: _eth0:ipv4_

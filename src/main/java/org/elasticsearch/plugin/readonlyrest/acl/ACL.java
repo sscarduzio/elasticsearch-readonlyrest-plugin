@@ -1,10 +1,10 @@
-package org.elasticsearch.plugin.readonlyrest.readonlyrest.acl;
+package org.elasticsearch.plugin.readonlyrest.acl;
 
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 

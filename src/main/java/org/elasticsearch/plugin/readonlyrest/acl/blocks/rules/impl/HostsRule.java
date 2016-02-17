@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.impl;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
@@ -6,12 +6,12 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.http.netty.NettyHttpChannel;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.ConfigurationHelper;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.IPMask;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.jboss.netty.channel.socket.SocketChannel;
 
 import java.lang.reflect.Field;

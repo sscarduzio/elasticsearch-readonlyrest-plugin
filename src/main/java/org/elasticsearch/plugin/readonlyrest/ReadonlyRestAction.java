@@ -1,13 +1,13 @@
-package org.elasticsearch.plugin.readonlyrest.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.rest.*;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.ACL;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.ACL;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 
 /**
  * Readonly REST plugin. Adding some access control to the fast Netty based REST interface of Elasticsearch.

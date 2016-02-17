@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.readonlyrest.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;

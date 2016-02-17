@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.readonlyrest.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestModule;

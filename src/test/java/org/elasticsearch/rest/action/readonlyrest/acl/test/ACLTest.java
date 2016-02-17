@@ -15,9 +15,9 @@ import org.elasticsearch.http.netty.NettyHttpServerTransport;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestRequest.Method;
-import org.elasticsearch.rest.action.readonlyrest.acl.ACL;
-import org.elasticsearch.rest.action.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.rest.action.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.ACL;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.jboss.netty.channel.socket.SocketChannel;
 
 import static org.junit.Assert.*;
