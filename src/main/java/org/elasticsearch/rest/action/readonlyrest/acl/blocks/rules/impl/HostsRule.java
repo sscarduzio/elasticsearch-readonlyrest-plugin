@@ -31,14 +31,11 @@ public class HostsRule extends Rule {
 
   private final static String LOCALHOST = "127.0.0.1";
 
-  List<String> allowedAddresses = null;
-  Settings s = null;
-  Boolean acceptXForwardedForHeader;
+  private List<String> allowedAddresses;
+  private Boolean acceptXForwardedForHeader;
   public HostsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
-
-    this.s = s;
     String[] a = s.getAsArray("hosts");
     if (a != null && a.length > 0) {
       allowedAddresses = Lists.newArrayList();

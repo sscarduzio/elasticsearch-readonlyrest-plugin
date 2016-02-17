@@ -14,7 +14,7 @@ import org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules.RuleNotConfig
  */
 public class AuthKeyRule extends Rule {
 
-  String authKey = null;
+  private String authKey;
 
   public AuthKeyRule(Settings s) throws RuleNotConfiguredException {
     super(s);

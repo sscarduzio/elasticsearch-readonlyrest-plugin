@@ -16,7 +16,7 @@ import java.util.List;
  */
 public class ApiKeysRule extends Rule {
 
-  List<String> validApiKeys = null;
+  private List<String> validApiKeys;
 
   public ApiKeysRule(Settings s) throws RuleNotConfiguredException {
     super(s);

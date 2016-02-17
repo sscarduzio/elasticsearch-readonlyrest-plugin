@@ -11,7 +11,7 @@ import org.elasticsearch.rest.action.readonlyrest.acl.blocks.rules.RuleNotConfig
  * Created by sscarduzio on 14/02/2016.
  */
 public class MaxBodyLengthRule extends Rule {
-  Integer maxBodyLength;
+  private Integer maxBodyLength;
 
   public MaxBodyLengthRule(Settings s) throws RuleNotConfiguredException {
     super(s);

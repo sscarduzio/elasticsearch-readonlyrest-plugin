@@ -44,8 +44,8 @@ public class ACLTest {
   }
 
   class ReqAndChan {
-    RestRequest r;
-    RestChannel c;
+    private RestRequest r;
+    private RestChannel c;
 
     ReqAndChan(RestRequest r, RestChannel c) {
       this.r = r;
@@ -105,7 +105,7 @@ public class ACLTest {
   public final void testRejectExternalPost() throws Throwable {
     ReqAndChan rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null);
     BlockExitResult res = acl.check(rc.r, rc.c);
-    assertTrue(!res.isMatch());
+    assertFalse(res.isMatch());
   }
 
   @Test
@@ -130,7 +130,7 @@ public class ACLTest {
   public final void testRejectExternalGetWithBody() throws Throwable {
     ReqAndChan rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 20, Method.GET, null);
     BlockExitResult res = acl.check(rc.r, rc.c);
-    assertTrue(!res.isMatch());
+    assertFalse(res.isMatch());
   }
 
 

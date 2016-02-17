@@ -17,7 +17,7 @@ import java.util.regex.PatternSyntaxException;
  */
 public class UriReRule extends Rule {
 
-  Pattern uri_re = null;
+  private Pattern uri_re = null;
 
   public UriReRule(Settings s) throws RuleNotConfiguredException {
     super(s);
