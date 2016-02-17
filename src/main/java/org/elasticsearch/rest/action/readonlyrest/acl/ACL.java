@@ -1,65 +1,56 @@
 package org.elasticsearch.rest.action.readonlyrest.acl;
 
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.rest.RestChannel;
+import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.rest.action.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.rest.action.readonlyrest.acl.blocks.BlockExitResult;
+
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.rest.action.readonlyrest.acl.Rule.Type;
-
+/**
+ * Created by sscarduzio on 13/02/2016.
+ */
 public class ACL {
-
-  private Settings s;
-  private ESLogger logger;
-  private TreeMap<Integer, Rule> rules = new TreeMap<>();
+  private final ESLogger logger = Loggers.getLogger(this.getClass());
+  // Array list because it preserves the insertion order
+  private ArrayList<Block> blocks = new ArrayList<>();
   private final static String PREFIX = "readonlyrest.access_control_rules";
+  private boolean basicAuthConfigured = false;
 
-  public ACL(ESLogger logger, Settings s) {
-    this.logger = logger;
-    this.s = s;
-    readRules();
+  public boolean isBasicAuthConfigured() {
+    return basicAuthConfigured;
   }
 
-  private void readRules() {
+
+  public ACL(Settings s) {
     Map<String, Settings> g = s.getGroups(PREFIX);
     // Maintaining the order is not guaranteed, moving everything to tree map!
     TreeMap<String, Settings> tmp = new TreeMap<>();
     tmp.putAll(g);
     g = tmp;
-    int i = 0;
     for (String k : g.keySet()) {
-      Rule r = Rule.build(g.get(k));
-      rules.put(i++,r);
-      logger.info(r.toString());
+      Block block = new Block(g.get(k), logger);
+      blocks.add(block);
+      if(block.isAuthHeaderAccepted()){
+        basicAuthConfigured = true;
+      }
+      logger.info("ADDING " + block.toString());
     }
-
   }
 
-  /**
-   * Check the request against configured ACL rules. This does not work with try/catch because stacktraces are expensive
-   * for performance.
-   *
-   * @param req the ACLRequest to be checked by the ACL rules.
-   * @return null if request pass the rules or the name of the first violated rule
-   */
-  public String check(ACLRequest req) {
-    for (Integer exOrder : rules.keySet()) {
-      Rule rule = rules.get(exOrder);
-      // The logic will exit at the first rule that matches the request
-      boolean match = true;
-      match &= rule.matchesAddress(req.getAddress(), req.getXForwardedForHeader());
-      match &= rule.matchesApiKey(req.getApiKey());
-      match &= rule.matchesAuthKey(req.getAuthKey());
-      match &= rule.matchesMaxBodyLength(req.getBodyLength());
-      match &= rule.matchesUriRe(req.getUri());
-      match &= rule.matchesMethods(req.getMethod());
-
-      if (match) {
-        logger.debug("MATCHED \n RULE:" + rule + "\n" +" RQST: " + req );
-        return rule.getType().equals(Type.FORBID) ? rule.getName() : null;
+  public BlockExitResult check(RestRequest request, RestChannel channel) {
+    for (Block b : blocks) {
+      BlockExitResult result = b.check(request, channel);
+      if (result.isMatch()) {
+        logger.info("Block has rejected: " + result);
+        return result;
       }
     }
-    return "request matches no rules, forbidden by default: req: " + req.getUri() + " - method: " + req.getMethod() + " - origin addr: " + req.getAddress() + " - api key: " + req.getApiKey();
+    return BlockExitResult.NO_MATCH;
   }
-
 }

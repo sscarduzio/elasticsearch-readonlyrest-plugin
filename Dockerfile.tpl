@@ -5,7 +5,7 @@
 #
 
 # Pull base image.
-FROM java:7
+FROM anapsix/alpine-java
 
 # Install ElasticSearch.
 RUN \
