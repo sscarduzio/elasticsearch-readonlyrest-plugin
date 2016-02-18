@@ -28,28 +28,28 @@ readonlyrest:
     # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
 
-    - name: read X-Forwarded-For header and interpret it as part of "hosts"
-      type: allow 
+    - name: 1
+      type: allow
       accept_x-forwarded-for_header: true
       hosts: [9.9.9.9]
 
-    - name: full access to Basic Auth
+    - name: 2
       type: allow
       auth_key: 1234567890
 
-    - name: full access to API Key
+    - name: 3
       type: allow
       api_keys: [1234567890]
 
-    - name: full access to internal servers
-      type: allow
-      hosts: [127.0.0.1, 10.0.9.9, 192.168.1.0/24]
+#    - name: 4
+#      type: allow
+#      hosts: [127.0.0.1, 10.0.9.9, 192.168.1.0/24]
 
-    - name: forbid access to private index from external hosts
+    - name: 5
       type: forbid
       uri_re: ^http://localhost:9200/reservedIdx/.*
-      
-    - name: restricted access to all other hosts
+
+    - name: 6
       type: allow
       methods: [OPTIONS,GET]
       maxBodyLength: 0
