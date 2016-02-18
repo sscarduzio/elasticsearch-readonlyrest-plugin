@@ -7,17 +7,16 @@ This plugin makes possible to expose the high performance HTTP server embedded i
 No more proxies! Yay Ponies!
 
 ### News
+> 2016-02-20 New features in v1.6: shows login prompt in browsers if ```auth_key``` is configured.
 > 2015-12-19 New features in v1.5: support for ```X-Forwarded-For```, HTTP Basic Authentication, and ```X-API-Key```.
 
 ###  Download the latest build
 
-* Don't use: [hosts rule does not work yet](https://github.com/elastic/elasticsearch/issues/16714) ~~Elastic Search 2.2.0  [elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip?raw=true)~~
+* v1.6 for Elasticsearch 2.1.1  **New!** [elasticsearch-readonlyrest-v1.6_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.6_es-v2.1.1.zip?raw=true)
 
-* Elastic Search 2.1.1  [elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip?raw=true)
+* v1.6 for Elasticsearch 2.1.0  **New!** [elasticsearch-readonlyrest-v1.6_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.6_es-v2.1.0.zip?raw=true)
 
-* Elastic Search 2.1.0  [elasticsearch-readonlyrest-v1.5_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.0.zip?raw=true)
-
-Plugin releases for **earlier versions of Elasticsearch** are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
+Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
 ![](http://i.imgur.com/8CLtS1Z.jpg)
 
