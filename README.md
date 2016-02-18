@@ -11,17 +11,11 @@ No more proxies! Yay Ponies!
 
 ###  Download the latest build
 
-* Elastic Search 2.2.0 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip?raw=true)
+* Don't use: [hosts rule does not work yet](https://github.com/elastic/elasticsearch/issues/16714) ~~Elastic Search 2.2.0  [elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.2.0.zip?raw=true)~~
 
-* Elastic Search 2.1.1 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip?raw=true)
+* Elastic Search 2.1.1  [elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.1.zip?raw=true)
 
-* Elastic Search 2.1.0 **New Features!** [elasticsearch-readonlyrest-v1.5_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.0.zip?raw=true)
-
-* Elastic Search 2.1.0 [elasticsearch-readonlyrest-v1.4_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.1.0.zip?raw=true)
-
-* Elastic Search 2.0.x [elasticsearch-readonlyrest-v1.4_es-v2.0.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v2.0.0.zip?raw=true)
-
-* Elastic Search 1.7.x  [elasticsearch-readonlyrest-v1.4_es-v1.7.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.4_es-v1.7.1.zip?raw=true)
+* Elastic Search 2.1.0  [elasticsearch-readonlyrest-v1.5_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.5_es-v2.1.0.zip?raw=true)
 
 Plugin releases for **earlier versions of Elasticsearch** are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
