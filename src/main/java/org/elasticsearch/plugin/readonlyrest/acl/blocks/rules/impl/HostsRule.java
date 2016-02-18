@@ -17,6 +17,8 @@ import org.jboss.netty.channel.socket.SocketChannel;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -33,6 +35,7 @@ public class HostsRule extends Rule {
 
   private List<String> allowedAddresses;
   private Boolean acceptXForwardedForHeader;
+
   public HostsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
@@ -43,9 +46,8 @@ public class HostsRule extends Rule {
         if (!ConfigurationHelper.isNullOrEmpty(a[i])) {
           try {
             IPMask.getIPMask(a[i]);
-          }
-          catch (Exception e) {
-            if(!InternetDomainName.isValid(a[i])){
+          } catch (Exception e) {
+            if (!InternetDomainName.isValid(a[i])) {
               throw new RuleConfigurationError("invalid address", e);
             }
           }
@@ -67,25 +69,37 @@ public class HostsRule extends Rule {
     return null;
   }
 
-  public static String getAddress(RestChannel channel) {
-    String remoteHost = null;
+  public static String getAddress(final RestChannel channel) {
+    final String[] out = new String[1];
+    AccessController.doPrivileged(
+        new PrivilegedAction<Void>() {
+          @Override
+          public Void run() {
+            String remoteHost = null;
 
-    try {
-      NettyHttpChannel obj = (NettyHttpChannel) channel;
-      Field f = obj.getClass().getDeclaredField("channel");
-      f.setAccessible(true);
-      SocketChannel sc = (SocketChannel) f.get(obj);
-      InetSocketAddress remoteHostAddr = sc.getRemoteAddress();
-      remoteHost = remoteHostAddr.getAddress().getHostAddress();
-      // Make sure we recognize localhost even when IPV6 is involved
-      if (localhostRe.matcher(remoteHost).find()) {
-        remoteHost = LOCALHOST;
-      }
-    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-      e.printStackTrace();
-      return null;
-    }
-    return remoteHost;
+            try {
+              NettyHttpChannel obj = (NettyHttpChannel) channel;
+              Field f = obj.getClass().getDeclaredField("channel");
+              f.setAccessible(true);
+              SocketChannel sc = (SocketChannel) f.get(obj);
+              InetSocketAddress remoteHostAddr = sc.getRemoteAddress();
+              remoteHost = remoteHostAddr.getAddress().getHostAddress();
+              // Make sure we recognize localhost even when IPV6 is involved
+              if (localhostRe.matcher(remoteHost).find()) {
+                remoteHost = LOCALHOST;
+              }
+            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+              e.printStackTrace();
+              return null;
+            }
+            out[0] = remoteHost;
+            return null;
+          }
+        }
+
+    );
+    return out[0];
+
   }
 
   /*
@@ -94,7 +108,7 @@ public class HostsRule extends Rule {
 
   private boolean matchesAddress(String address, String xForwardedForHeader) {
 
-    if(address == null) {
+    if (address == null) {
       throw new RuntimeException("For some reason the origin address of this call could not be determined. Abort!");
     }
     if (allowedAddresses == null) {
@@ -104,7 +118,7 @@ public class HostsRule extends Rule {
     if (acceptXForwardedForHeader && xForwardedForHeader != null) {
       // Give it a try with the header
       boolean attemptXFwdFor = matchesAddress(xForwardedForHeader, null);
-      if(attemptXFwdFor) {
+      if (attemptXFwdFor) {
         return true;
       }
     }
