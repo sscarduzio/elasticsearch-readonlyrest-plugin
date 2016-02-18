@@ -152,7 +152,7 @@ readonlyrest:
     # From any other hosts, check first they are not accessing private indexes
     - name: forbid access to private index from external hosts
       type: forbid
-      uri_re: ^http://localhost:9200/reservedIdx/.*
+      uri_re: ^/reservedIdx/.*
 
     # From external hosts, accept only GET and OPTION methods only if the HTTP requqest body is empty
     - name: restricted access to all other hosts
