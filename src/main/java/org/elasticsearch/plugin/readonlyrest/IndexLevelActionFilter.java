@@ -20,28 +20,29 @@ import org.elasticsearch.rest.RestStatus;
  * Created by sscarduzio on 19/12/2015.
  */
 public class IndexLevelActionFilter extends ActionFilter.Simple {
-  private ACL acl;
-  private ConfigurationHelper conf;
+  private static ACL acl;
+  private static ConfigurationHelper conf;
 
   @Inject
   public IndexLevelActionFilter(Settings settings) {
     super(settings);
-    logger.info("Readonly REST plugin was loaded...");
-    this.conf = new ConfigurationHelper(settings, logger);
+    if (conf == null) {
+      logger.info("Readonly REST plugin was loaded...");
+      this.conf = new ConfigurationHelper(settings, logger);
 
-    if (!conf.enabled) {
-      logger.info("Readonly REST plugin is disabled!");
-      return;
-    }
+      if (!conf.enabled) {
+        logger.info("Readonly REST plugin is disabled!");
+        return;
+      }
 
-    logger.info("Readonly REST plugin is enabled. Yay, ponies!");
+      logger.info("Readonly REST plugin is enabled. Yay, ponies!");
 
-    try {
-      acl = new ACL(settings);
-      logger.info("ACL configuration: OK");
-    } catch (RuleConfigurationError e) {
-      logger.error("impossible to initialize ACL configuration", e);
-      throw e;
+      try {
+        acl = new ACL(settings);
+      } catch (RuleConfigurationError e) {
+        logger.error("impossible to initialize ACL configuration", e);
+        throw e;
+      }
     }
   }
 
@@ -77,7 +78,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
         throw new RuntimeException("Problems analyzing the request object. Have you checked the security permissions?");
     }
 
-    RequestContext rc = new RequestContext(channel, req, action);
+    RequestContext rc = new RequestContext(channel, req, action, actionRequest);
     BlockExitResult exitResult = acl.check(rc);
 
     // The request is allowed to go through
@@ -98,8 +99,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
-    }
-    else {
+    } else {
       resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
     }
 
