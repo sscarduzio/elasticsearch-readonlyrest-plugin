@@ -28,10 +28,10 @@ readonlyrest:
     # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
 
-    - name: 1
-      type: allow
-      accept_x-forwarded-for_header: true
-      hosts: [9.9.9.9]
+#    - name: 1
+#      type: allow
+#      accept_x-forwarded-for_header: true
+ #     hosts: [9.9.9.9]
 
     - name: 2
       type: allow
@@ -47,7 +47,7 @@ readonlyrest:
 
     - name: 5
       type: forbid
-      uri_re: ^http://localhost:9200/reservedIdx/.*
+      uri_re: ^reservedIdx/.*
 
     - name: 6
       type: allow
