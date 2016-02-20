@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.http.netty.NettyHttpChannel;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
@@ -140,8 +141,8 @@ public class HostsRule extends Rule {
     return false;
   }
 
-  public RuleExitResult match(RestRequest request, RestChannel channel) {
-    boolean res = matchesAddress(getAddress(channel), getXForwardedForHeader(request));
+  public RuleExitResult match(RequestContext rc) {
+    boolean res = matchesAddress(getAddress(rc.getChannel()), getXForwardedForHeader(rc.getRequest()));
     return res ? MATCH : NO_MATCH;
   }
 }

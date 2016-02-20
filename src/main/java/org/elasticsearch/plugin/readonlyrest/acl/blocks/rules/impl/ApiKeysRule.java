@@ -2,6 +2,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
@@ -34,8 +35,8 @@ public class ApiKeysRule extends Rule {
   }
 
   @Override
-  public RuleExitResult match(RestRequest request, RestChannel channel) {
-    String h = request.header("X-Api-Key");
+  public RuleExitResult match(RequestContext rc) {
+    String h = rc.getRequest().header("X-Api-Key");
     if (validApiKeys == null || h == null) {
       return NO_MATCH;
     }

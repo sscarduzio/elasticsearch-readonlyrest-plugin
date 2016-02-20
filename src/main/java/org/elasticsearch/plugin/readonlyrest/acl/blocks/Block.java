@@ -3,6 +3,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
 import org.elasticsearch.rest.RestChannel;
@@ -91,17 +92,14 @@ public class Block {
   /**
    * Check all the conditions of this rule and return a rule exit result
    *
-   * @param request
-   * @param channel
-   * @return
    */
 
-  public BlockExitResult check(RestRequest request, RestChannel channel) {
+  public BlockExitResult check(RequestContext rc) {
     boolean match = true;
 
     for (Rule condition : conditionsToCheck) {
       // Exit at the first rule that matches the request
-      RuleExitResult condExitResult = condition.match(request, channel);
+      RuleExitResult condExitResult = condition.match(rc);
       // a block matches if ALL rules match
       match &= condExitResult.isMatch();
     }
@@ -111,9 +109,9 @@ public class Block {
     }
 
     logger.debug("[" + name + "] request matches no rules, forbidden by default: req: "
-        + request.uri()
-        + " - method: " + request.method()
-        + " - origin addr: " + HostsRule.getAddress(channel)
+        + rc.getRequest().uri()
+        + " - method: " + rc.getRequest().method()
+        + " - origin addr: " + HostsRule.getAddress(rc.getChannel())
     );
     return BlockExitResult.NO_MATCH;
   }

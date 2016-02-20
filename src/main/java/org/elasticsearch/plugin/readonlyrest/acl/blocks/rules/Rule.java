@@ -2,6 +2,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.base.CaseFormat;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -25,7 +26,7 @@ abstract public class Rule {
     NO_MATCH = new RuleExitResult(false, this);
   }
 
-  public abstract RuleExitResult match(RestRequest request, RestChannel channel);
+  public abstract RuleExitResult match(RequestContext rc);
 
   public Block.Policy getPolicy() {
     return policy;

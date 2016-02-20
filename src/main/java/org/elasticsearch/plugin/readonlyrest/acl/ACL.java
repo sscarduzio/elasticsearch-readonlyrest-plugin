@@ -43,9 +43,9 @@ public class ACL {
     }
   }
 
-  public BlockExitResult check(RestRequest request, RestChannel channel) {
+  public BlockExitResult check(RequestContext rc) {
     for (Block b : blocks) {
-      BlockExitResult result = b.check(request, channel);
+      BlockExitResult result = b.check(rc);
       if (result.isMatch()) {
         logger.info("Block has rejected: " + result);
         return result;

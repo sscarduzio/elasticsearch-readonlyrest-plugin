@@ -7,6 +7,7 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
@@ -50,7 +51,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
   }
 
   @Override
-  public boolean apply(String s, ActionRequest actionRequest, final ActionListener listener) {
+  public boolean apply(String action, ActionRequest actionRequest, final ActionListener listener) {
 
     // Skip if disabled
     if (!conf.enabled) {
@@ -76,7 +77,8 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
         throw new RuntimeException("Problems analyzing the request object. Have you checked the security permissions?");
     }
 
-    BlockExitResult exitResult = acl.check(req, channel);
+    RequestContext rc = new RequestContext(channel, req, action);
+    BlockExitResult exitResult = acl.check(rc);
 
     // The request is allowed to go through
     if (exitResult.isMatch() && exitResult.getBlock().getPolicy() == Block.Policy.ALLOW) {
