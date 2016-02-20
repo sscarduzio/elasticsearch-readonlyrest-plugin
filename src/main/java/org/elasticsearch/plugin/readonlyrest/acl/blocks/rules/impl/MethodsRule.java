@@ -38,6 +38,11 @@ public class MethodsRule extends Rule {
 
   }
 
+  /*
+    NB: Elasticsearch will parse as GET any HTTP methods than it does not understand.
+    So it's normal if you allowed GET and see a 'LINK' request going throw.
+    It's actually interpreted by all means as a GET!
+   */
   @Override
   public RuleExitResult match(RestRequest request, RestChannel channel) {
     if(allowedMethods.contains(request.method())) {
