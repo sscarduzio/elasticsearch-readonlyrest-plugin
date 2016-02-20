@@ -16,7 +16,7 @@ import java.util.TreeMap;
  * Created by sscarduzio on 13/02/2016.
  */
 public class ACL {
-  private final ESLogger logger = Loggers.getLogger(this.getClass());
+  private final static ESLogger logger = Loggers.getLogger(ACL.class);
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
   private final static String PREFIX = "readonlyrest.access_control_rules";
