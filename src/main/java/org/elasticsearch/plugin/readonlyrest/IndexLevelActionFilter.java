@@ -110,7 +110,6 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
 
   @Override
   public boolean apply(String s, ActionResponse actionResponse, ActionListener actionListener) {
-    System.out.println(s);
     return true;
   }
 }

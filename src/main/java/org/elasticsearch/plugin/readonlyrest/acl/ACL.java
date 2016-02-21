@@ -26,7 +26,6 @@ public class ACL {
     return basicAuthConfigured;
   }
 
-
   public ACL(Settings s) {
     Map<String, Settings> g = s.getGroups(PREFIX);
     // Maintaining the order is not guaranteed, moving everything to tree map!
