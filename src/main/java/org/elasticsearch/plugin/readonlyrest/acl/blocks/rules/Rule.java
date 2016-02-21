@@ -4,8 +4,6 @@ import com.google.common.base.CaseFormat;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestRequest;
 
 /**
  * Created by sscarduzio on 13/02/2016.

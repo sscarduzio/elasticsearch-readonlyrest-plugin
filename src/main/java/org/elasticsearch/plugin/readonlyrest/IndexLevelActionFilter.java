@@ -20,8 +20,8 @@ import org.elasticsearch.rest.RestStatus;
  * Created by sscarduzio on 19/12/2015.
  */
 public class IndexLevelActionFilter extends ActionFilter.Simple {
-  private static ACL acl;
-  private static ConfigurationHelper conf;
+  private static ACL acl = null;
+  private static ConfigurationHelper conf = null;
 
   @Inject
   public IndexLevelActionFilter(Settings settings) {
@@ -73,9 +73,9 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
     // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
     if (reqNull != chanNull) {
       if (chanNull)
-        throw new RuntimeException("Problems analyzing the channel object. Have you checked the security permissions?");
+        throw new SecurityPermissionException("Problems analyzing the channel object. Have you checked the security permissions?");
       if (reqNull)
-        throw new RuntimeException("Problems analyzing the request object. Have you checked the security permissions?");
+        throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?");
     }
 
     RequestContext rc = new RequestContext(channel, req, action, actionRequest);
