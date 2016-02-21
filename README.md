@@ -36,7 +36,7 @@ readonlyrest:
 ```
 3. Restart Elastic search.
 
-**For finer control**: see also [the full list of supported rules](Supported-Rules)
+**For finer control**: see also [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
 ### News
 > 2016-02-20 :new: v1.6: show login prompt in browsers if ```auth_key``` is configured.
@@ -89,8 +89,8 @@ This is enough to keep public users from changing the data (see relevant [ES RES
 You're free to expand the ACL further if you need more fine grained access control.
 
 ## Extra
-* [Install, Uninstall, Build this plugin](Install,-Uninstall,-Build)
-* [List of ACL block rules supported](Supported-Rules)
+* [Install, Uninstall, Build this plugin](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Install,-Uninstall,-Build)
+* [List of ACL block rules supported](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
 ## History
 This project was incepted in [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow").
