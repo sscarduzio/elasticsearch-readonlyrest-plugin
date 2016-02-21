@@ -6,6 +6,7 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -53,7 +54,7 @@ public class IndicesRule extends Rule {
               f.setAccessible(true);
               indices = (String[]) f.get(ar);
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-              throw new RuntimeException("Insufficient permissions to extract the indices. Abort!");
+              throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort!");
             }
             out[0] = indices;
             return null;

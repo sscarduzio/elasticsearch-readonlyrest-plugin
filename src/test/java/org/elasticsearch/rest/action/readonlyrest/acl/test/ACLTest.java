@@ -1,33 +1,29 @@
 package org.elasticsearch.rest.action.readonlyrest.acl.test;
 
+import com.google.common.base.Charsets;
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionRequestValidationException;
+import org.elasticsearch.common.Base64;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.http.netty.NettyHttpChannel;
+import org.elasticsearch.http.netty.NettyHttpRequest;
+import org.elasticsearch.http.netty.NettyHttpServerTransport;
+import org.elasticsearch.plugin.readonlyrest.acl.ACL;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.rest.RestRequest.Method;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import com.google.common.base.Charsets;
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionRequestValidationException;
-import org.elasticsearch.action.get.MultiGetRequest;
-import org.elasticsearch.common.Base64;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.http.netty.NettyHttpChannel;
-import org.elasticsearch.http.netty.NettyHttpRequest;
-import org.elasticsearch.http.netty.NettyHttpServerTransport;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.RestRequest.Method;
-import org.elasticsearch.plugin.readonlyrest.acl.ACL;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
-import org.jboss.netty.channel.socket.SocketChannel;
-
 import static org.junit.Assert.*;
-
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import static org.mockito.Mockito.*;
 
 public class ACLTest {

@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
@@ -80,7 +81,7 @@ public class HostsRule extends Rule {
   private boolean matchesAddress(String address, String xForwardedForHeader) {
 
     if (address == null) {
-      throw new RuntimeException("For some reason the origin address of this call could not be determined. Abort!");
+      throw new SecurityPermissionException("For some reason the origin address of this call could not be determined. Abort!");
     }
     if (allowedAddresses == null) {
       return true;
