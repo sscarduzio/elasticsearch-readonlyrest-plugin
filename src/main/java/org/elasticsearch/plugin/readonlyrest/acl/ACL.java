@@ -47,7 +47,7 @@ public class ACL {
     for (Block b : blocks) {
       BlockExitResult result = b.check(rc);
       if (result.isMatch()) {
-        logger.info("Block has rejected: " + result);
+        logger.info("Block " + b.getName() + "has matched: " + result);
         return result;
       }
     }
