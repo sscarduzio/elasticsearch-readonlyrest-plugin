@@ -56,5 +56,9 @@ readonlyrest:
 
     - name: 6
       type: allow
-      methods: [OPTIONS,GET]
+      indices: private-idx
+
+    - name: 7
+      type: allow
       maxBodyLength: 0
+      methods: [OPTIONS,GET]

@@ -6,8 +6,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
-import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -74,6 +72,10 @@ public class Block {
       conditionsToCheck.add(new MethodsRule(s));
     } catch (RuleNotConfiguredException e) {
     }
+    try {
+      conditionsToCheck.add(new IndicesRule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
   }
 
   public enum Policy {
@@ -111,7 +113,7 @@ public class Block {
     logger.debug("[" + name + "] request matches no rules, forbidden by default: req: "
         + rc.getRequest().uri()
         + " - method: " + rc.getRequest().method()
-        + " - origin addr: " + HostsRule.getAddress(rc.getChannel())
+        + " - origin addr: " + HostsRule.getAddress(rc.getRequest())
     );
     return BlockExitResult.NO_MATCH;
   }

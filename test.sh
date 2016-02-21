@@ -1,6 +1,6 @@
 #!/bin/bash
 ##############################################
-Bring up a docker container with ES + plugin
+# Bring up a docker container with ES + plugin
 ##############################################
 
 # Ensure cleanup
@@ -18,7 +18,7 @@ cat Dockerfile.tpl |sed -e "s/\${VERSION}/$VERSION/" -e "s/\${PLUGIN_VERSION}/$P
 #PLUGIN_ZIP=elasticsearch-readonlyrest-$VERSION.zip
 
 # Populate the conf files with test yml
-cp src/test/six_rules.yml docker/elasticsearch.yml
+cp src/test/test_rules.yml docker/elasticsearch.yml
 cp target/elasticsearch-readonlyrest-$VERSION.zip docker
 
 # Build and launch docker container
