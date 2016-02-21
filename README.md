@@ -13,7 +13,7 @@ In other words... no more proxies! Yay Ponies!
 1. Install readonly-rest plugin 
 
 ```bash
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/raw/master/download/elasticsearch-readonlyrest-v1.6_es-v2.2.0.zip
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/raw/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip
 ```
 2. And append this to `conf/elasticsearch.yml`
 
@@ -39,17 +39,19 @@ readonlyrest:
 **For finer control**: see also [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
 ### News
+> 2016-02-21 :new: v1.7: **real** (multi)index isolation is now possible through ```indices``` rule (supersedes ```uri_re```).
+
 > 2016-02-20 :new: v1.6: show login prompt in browsers if ```auth_key``` is configured.
 
 > 2015-12-19  :new: v1.5: support for ```X-Forwarded-For```, HTTP Basic Authentication, and ```X-API-Key```.
 
 ###  Download the latest build
 
-* v1.6 for Elasticsearch 2.2.0 [elasticsearch-readonlyrest-v1.6_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.6_es-v2.2.0.zip?raw=true)
+* v1.7 for Elasticsearch 2.2.0 [elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip?raw=true)
 
-* v1.6 for Elasticsearch 2.1.1 [elasticsearch-readonlyrest-v1.6_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.6_es-v2.1.1.zip?raw=true)
+* v1.7 for Elasticsearch 2.1.1 [elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip?raw=true)
 
-* v1.6 for Elasticsearch 2.1.0 [elasticsearch-readonlyrest-v1.6_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.6_es-v2.1.0.zip?raw=true)
+* v1.7 for Elasticsearch 2.1.0 [elasticsearch-readonlyrest-v1.7_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.1.0.zip?raw=true)
 
 Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
