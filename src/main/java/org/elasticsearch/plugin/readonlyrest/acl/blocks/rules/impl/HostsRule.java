@@ -81,7 +81,7 @@ public class HostsRule extends Rule {
   private boolean matchesAddress(String address, String xForwardedForHeader) {
 
     if (address == null) {
-      throw new SecurityPermissionException("For some reason the origin address of this call could not be determined. Abort!");
+      throw new SecurityPermissionException("For some reason the origin address of this call could not be determined. Abort!", null);
     }
     if (allowedAddresses == null) {
       return true;

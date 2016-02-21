@@ -73,9 +73,9 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
     // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
     if (reqNull != chanNull) {
       if (chanNull)
-        throw new SecurityPermissionException("Problems analyzing the channel object. Have you checked the security permissions?");
+        throw new SecurityPermissionException("Problems analyzing the channel object. Have you checked the security permissions?", null);
       if (reqNull)
-        throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?");
+        throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?", null);
     }
 
     RequestContext rc = new RequestContext(channel, req, action, actionRequest);

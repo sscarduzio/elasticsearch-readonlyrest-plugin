@@ -53,8 +53,11 @@ public class IndicesRule extends Rule {
               Field f = ar.getClass().getDeclaredField("indices");
               f.setAccessible(true);
               indices = (String[]) f.get(ar);
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-              throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort!");
+            } catch ( SecurityException | IllegalArgumentException | IllegalAccessException e) {
+              throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
+            }
+            catch (NoSuchFieldException nfe) {
+              return null;
             }
             out[0] = indices;
             return null;
