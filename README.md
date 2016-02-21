@@ -3,12 +3,15 @@
 [![Build Status](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin.svg?branch=master)](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin)
 
 # Readonly REST Elasticsearch Plugin
-This plugin makes possible to expose the high performance HTTP server embedded in Elasticsearch directly to the public  denying the access to the API calls which may change any data.
+Expose the high performance HTTP server embedded in Elasticsearch directly to the public, safely blocking any attempt to delete or modify your data.
 
-No more proxies! Yay Ponies!
+In other words: no more proxies! Yay Ponies!
+![](http://i.imgur.com/8CLtS1Z.jpg)
+
 
 ### News
 > 2016-02-20 New features in v1.6: shows login prompt in browsers if ```auth_key``` is configured.
+
 > 2015-12-19 New features in v1.5: support for ```X-Forwarded-For```, HTTP Basic Authentication, and ```X-API-Key```.
 
 ###  Download the latest build
@@ -21,7 +24,6 @@ No more proxies! Yay Ponies!
 
 Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
-![](http://i.imgur.com/8CLtS1Z.jpg)
 
 ## Features
 
@@ -33,7 +35,7 @@ This plugin instead is just a lightweight HTTP request filtering layer.
 #### Less moving parts
 No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. Just set ES in "read-only" mode for the external world with one simple access control rule.
 
-#### Flexible ACLs
+#### A Simpler, flexible access control list (ACL)
 Explicitly allow/forbid requests by access control rule parameters:
 * ```hosts``` a list of origin IP addresses or subnets
 * ```api_keys``` a list of api keys passed in via header ```X-Api-Key```
@@ -52,9 +54,9 @@ When the plugin is activated and properly configured, Elasticsearch REST API res
 *  Any HTTP method other than GET is requested
 *  GET request has a body (according to HTTP specs it never should!)
 
-Please see the wiki on how to [implement read only mode using a single access control rule](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Access-Control-Rules)
+Please see the wiki on how to [implement read only mode using a single access control rule block](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Access-Control-Rules)
 
-This is enough to keep public users from changing the data, according to [ES REST API documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/docs.html).
+This is enough to keep public users from changing the data (see relevant [ES REST API documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/docs.html)).
 
 You're free to expand the rules chain further if you need more fine grained access control.
 
