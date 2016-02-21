@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.http.netty.NettyHttpChannel;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
@@ -69,37 +70,13 @@ public class HostsRule extends Rule {
     return null;
   }
 
-  public static String getAddress(final RestChannel channel) {
-    final String[] out = new String[1];
-    AccessController.doPrivileged(
-        new PrivilegedAction<Void>() {
-          @Override
-          public Void run() {
-            String remoteHost = null;
-
-            try {
-              NettyHttpChannel obj = (NettyHttpChannel) channel;
-              Field f = obj.getClass().getDeclaredField("channel");
-              f.setAccessible(true);
-              SocketChannel sc = (SocketChannel) f.get(obj);
-              InetSocketAddress remoteHostAddr = sc.getRemoteAddress();
-              remoteHost = remoteHostAddr.getAddress().getHostAddress();
-              // Make sure we recognize localhost even when IPV6 is involved
-              if (localhostRe.matcher(remoteHost).find()) {
-                remoteHost = LOCALHOST;
-              }
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-              e.printStackTrace();
-              return null;
-            }
-            out[0] = remoteHost;
-            return null;
-          }
-        }
-
-    );
-    return out[0];
-
+  public static String getAddress(final RestRequest req) {
+    String remoteHost = ((InetSocketAddress) req.getRemoteAddress()).getAddress().getHostAddress();
+    // Make sure we recognize localhost even when IPV6 is involved
+    if (localhostRe.matcher(remoteHost).find()) {
+      remoteHost = LOCALHOST;
+    }
+    return remoteHost;
   }
 
   /*
@@ -140,8 +117,8 @@ public class HostsRule extends Rule {
     return false;
   }
 
-  public RuleExitResult match(RestRequest request, RestChannel channel) {
-    boolean res = matchesAddress(getAddress(channel), getXForwardedForHeader(request));
+  public RuleExitResult match(RequestContext rc) {
+    boolean res = matchesAddress(getAddress(rc.getRequest()), getXForwardedForHeader(rc.getRequest()));
     return res ? MATCH : NO_MATCH;
   }
 }

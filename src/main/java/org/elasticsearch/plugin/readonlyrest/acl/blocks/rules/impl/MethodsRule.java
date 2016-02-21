@@ -2,6 +2,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -44,8 +45,8 @@ public class MethodsRule extends Rule {
     It's actually interpreted by all means as a GET!
    */
   @Override
-  public RuleExitResult match(RestRequest request, RestChannel channel) {
-    if(allowedMethods.contains(request.method())) {
+  public RuleExitResult match(RequestContext rc) {
+    if(allowedMethods.contains(rc.getRequest().method())) {
      return MATCH;
     }
     else {

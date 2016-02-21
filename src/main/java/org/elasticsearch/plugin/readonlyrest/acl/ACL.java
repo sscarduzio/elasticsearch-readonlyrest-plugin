@@ -16,7 +16,7 @@ import java.util.TreeMap;
  * Created by sscarduzio on 13/02/2016.
  */
 public class ACL {
-  private final ESLogger logger = Loggers.getLogger(this.getClass());
+  private final static ESLogger logger = Loggers.getLogger(ACL.class);
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
   private final static String PREFIX = "readonlyrest.access_control_rules";
@@ -25,7 +25,6 @@ public class ACL {
   public boolean isBasicAuthConfigured() {
     return basicAuthConfigured;
   }
-
 
   public ACL(Settings s) {
     Map<String, Settings> g = s.getGroups(PREFIX);
@@ -43,11 +42,11 @@ public class ACL {
     }
   }
 
-  public BlockExitResult check(RestRequest request, RestChannel channel) {
+  public BlockExitResult check(RequestContext rc) {
     for (Block b : blocks) {
-      BlockExitResult result = b.check(request, channel);
+      BlockExitResult result = b.check(rc);
       if (result.isMatch()) {
-        logger.info("Block has rejected: " + result);
+        logger.info("Block " + b.getName() + "has matched: " + result);
         return result;
       }
     }

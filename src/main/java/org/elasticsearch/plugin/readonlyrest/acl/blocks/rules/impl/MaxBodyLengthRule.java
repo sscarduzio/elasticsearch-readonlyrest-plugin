@@ -1,6 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
@@ -22,7 +23,7 @@ public class MaxBodyLengthRule extends Rule {
   }
 
   @Override
-  public RuleExitResult match(RestRequest request, RestChannel channel) {
-    return (request.content().length() > maxBodyLength) ? NO_MATCH : MATCH;
+  public RuleExitResult match(RequestContext rc) {
+    return (rc.getRequest().content().length() > maxBodyLength) ? NO_MATCH : MATCH;
   }
 }

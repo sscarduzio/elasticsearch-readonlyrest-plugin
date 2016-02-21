@@ -1,6 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
@@ -38,10 +39,10 @@ public class UriReRule extends Rule {
   }
 
   @Override
-  public RuleExitResult match(RestRequest request, RestChannel channel) {
+  public RuleExitResult match(RequestContext rc) {
     if (uri_re == null) {
       return NO_MATCH;
     }
-    return uri_re.matcher(request.uri()).find() ? MATCH : NO_MATCH;
+    return uri_re.matcher(rc.getRequest().uri()).find() ? MATCH : NO_MATCH;
   }
 }

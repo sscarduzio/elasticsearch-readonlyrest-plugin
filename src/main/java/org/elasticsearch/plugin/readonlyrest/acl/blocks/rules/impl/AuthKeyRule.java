@@ -3,6 +3,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.base.Charsets;
 import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
@@ -39,8 +40,8 @@ public class AuthKeyRule extends Rule {
   }
 
   @Override
-  public RuleExitResult match(RestRequest request, RestChannel channel) {
-    String authHeader = extractAuthFromHeader(request.header("Authorization"));
+  public RuleExitResult match(RequestContext rc) {
+    String authHeader = extractAuthFromHeader(rc.getRequest().header("Authorization"));
 
     if (authKey == null || authHeader == null) {
       return NO_MATCH;
