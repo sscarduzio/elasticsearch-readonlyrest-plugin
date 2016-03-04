@@ -60,7 +60,7 @@ public class IPMask
   public boolean matches(Inet4Address testAddr)
   {
     int testAddrInt = addrToInt(testAddr);
-    return ((addrInt & maskInt) == (testAddrInt & maskInt));
+    return (addrInt & maskInt) == (testAddrInt & maskInt);
   }
 
 /** Convenience method that converts String host to IPv4 address.
@@ -100,7 +100,7 @@ public class IPMask
     if (getClass() != obj.getClass())
       return false;
     final IPMask that = (IPMask) obj;
-    return (this.addrInt == that.addrInt && this.maskInt == that.maskInt);
+    return this.addrInt == that.addrInt && this.maskInt == that.maskInt;
   }
 
   @Override
