@@ -20,10 +20,6 @@ public class ACL {
   private final static String PREFIX = "readonlyrest.access_control_rules";
   private boolean basicAuthConfigured = false;
 
-  public boolean isBasicAuthConfigured() {
-    return basicAuthConfigured;
-  }
-
   public ACL(Settings s) {
     Map<String, Settings> g = s.getGroups(PREFIX);
     // Maintaining the order is not guaranteed, moving everything to tree map!
@@ -38,6 +34,10 @@ public class ACL {
       }
       logger.info("ADDING " + block.toString());
     }
+  }
+
+  public boolean isBasicAuthConfigured() {
+    return basicAuthConfigured;
   }
 
   public BlockExitResult check(RequestContext rc) {

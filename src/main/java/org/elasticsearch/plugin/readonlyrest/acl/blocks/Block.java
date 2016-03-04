@@ -23,18 +23,6 @@ public class Block {
   private boolean authHeaderAccepted = false;
   private Set<Rule> conditionsToCheck = Sets.newHashSet();
 
-  public String getName() {
-    return name;
-  }
-
-  public Policy getPolicy() {
-    return policy;
-  }
-
-  public boolean isAuthHeaderAccepted() {
-    return authHeaderAccepted;
-  }
-
   public Block(Settings s, ESLogger logger) {
     this.name = s.get("name");
     String sPolicy = s.get("type");
@@ -76,6 +64,18 @@ public class Block {
       conditionsToCheck.add(new IndicesRule(s));
     } catch (RuleNotConfiguredException e) {
     }
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public Policy getPolicy() {
+    return policy;
+  }
+
+  public boolean isAuthHeaderAccepted() {
+    return authHeaderAccepted;
   }
 
   public enum Policy {
