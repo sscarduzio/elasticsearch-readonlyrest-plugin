@@ -12,7 +12,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.List;
@@ -50,14 +51,11 @@ public class IndicesRule extends Rule {
           public Void run() {
             String[] indices;
             try {
-              Field f = ar.getClass().getDeclaredField("indices");
-              f.setAccessible(true);
-              indices = (String[]) f.get(ar);
-            } catch ( SecurityException | IllegalArgumentException | IllegalAccessException e) {
-              throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
-            }
-            catch (NoSuchFieldException nfe) {
-              return null;
+              Method m = ar.getClass().getMethod("indices");
+              m.setAccessible(true);
+              indices = (String[]) m.invoke(ar);
+            } catch ( SecurityException | IllegalArgumentException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+                throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
             }
             out[0] = indices;
             return null;
