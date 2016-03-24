@@ -48,17 +48,22 @@ readonlyrest:
 
     - name: 4
       type: allow
-      hosts: [127.0.0.1, 10.0.9.9, 192.168.1.0/24]
+      hosts: [127.0.0.1, 192.168.1.0/24]
 
     - name: 5
       type: forbid
-      uri_re: ^http://localhost:9200/reservedIdx/.*
+      uri_re: ^/secret-idx/.*
 
     - name: 6
       type: allow
       indices: private-idx
 
     - name: 7
+      type: allow
+      hosts: [192.168.64.1]
+      indices: ip-based-idx
+
+    - name: 8
       type: allow
       maxBodyLength: 0
       methods: [OPTIONS,GET]

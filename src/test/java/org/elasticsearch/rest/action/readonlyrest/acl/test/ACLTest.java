@@ -67,25 +67,25 @@ public class ACLTest {
   // Internal/External hosts
   @Test
   public final void testAcceptExternalGet() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.GET, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.GET, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "7");
+    assertEquals(res.getBlock().getName(), "8");
   }
 
   @Test
   public final void testAllowExternalOption() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.OPTIONS, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.OPTIONS, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "7");
+    assertEquals(res.getBlock().getName(), "8");
   }
 
   @Test
   public final void testNetMask() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "192.168.1.5", "", "", 0, Method.POST, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "192.168.1.5", "", "", 0, Method.POST, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
@@ -95,14 +95,14 @@ public class ACLTest {
   // Methods + hosts
   @Test
   public final void testRejectExternalPost() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, null);
     BlockExitResult res = acl.check(rc);
     assertFalse(res.isMatch());
   }
 
   @Test
   public final void testAcceptInternalGet() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "127.0.0.1", "", "", 0, Method.GET, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "127.0.0.1", "", "", 0, Method.GET, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
@@ -111,7 +111,7 @@ public class ACLTest {
 
   @Test
   public final void testAcceptInternalHead() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "127.0.0.1", "", "", 0, Method.HEAD, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "127.0.0.1", "", "", 0, Method.HEAD, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertEquals(res.getBlock().getName(), "4");
@@ -120,7 +120,7 @@ public class ACLTest {
   // Body length
   @Test
   public final void testRejectExternalGetWithBody() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 20, Method.GET, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 20, Method.GET, null, null);
     BlockExitResult res = acl.check(rc);
     assertFalse(res.isMatch());
   }
@@ -128,7 +128,7 @@ public class ACLTest {
   // URI REGEX
   @Test
   public final void testRejectExternalURIRegEx() throws Throwable {
-    RequestContext rc = mockReq("http://localhost:9200/reservedIdx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.GET, null, null);
+    RequestContext rc = mockReq("/secret-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.GET, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.FORBID);
@@ -138,7 +138,7 @@ public class ACLTest {
   // API Keys
   @Test
   public final void testApiKey() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "1234567890", "", 0, Method.POST, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "1234567890", "", 0, Method.POST, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
@@ -149,7 +149,7 @@ public class ACLTest {
   @Test
   public final void testHttpBasicAuth() throws Throwable {
     String secret64 = Base64.encodeBytes("1234567890".getBytes(Charsets.UTF_8));
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.POST, null, null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.POST, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
@@ -158,7 +158,7 @@ public class ACLTest {
 
   @Test
   public final void testXforwardedForHeader() throws Throwable {
-    RequestContext rc = mockReq("http://es/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, "9.9.9.9", null);
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, "9.9.9.9", null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
@@ -168,7 +168,7 @@ public class ACLTest {
   // index
   @Test
   public final void testIndexIsolation() throws Throwable {
-    RequestContext rc = mockReq("http://es/private-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"private-idx"});
+    RequestContext rc = mockReq("/private-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"private-idx"});
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
