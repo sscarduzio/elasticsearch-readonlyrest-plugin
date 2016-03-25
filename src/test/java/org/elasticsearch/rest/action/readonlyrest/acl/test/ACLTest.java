@@ -169,7 +169,7 @@ public class ACLTest {
   // index
   @Test
   public final void testIndexIsolation() throws Throwable {
-    RequestContext rc = mockReq("/private-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"private-idx"});
+    RequestContext rc = mockReq("/public-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"public-idx"});
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);

@@ -56,7 +56,7 @@ readonlyrest:
 
     - name: 6
       type: allow
-      indices: private-idx
+      indices: public-idx
 
     - name: 7
       type: allow
