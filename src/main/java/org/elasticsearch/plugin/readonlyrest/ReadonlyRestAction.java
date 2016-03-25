@@ -37,7 +37,6 @@ public class ReadonlyRestAction extends BaseRestHandler {
         request.putInContext("request", request);
         request.putInContext("channel", channel);
         filterChain.continueProcessing(request, channel);
-
       }
     });
   }
