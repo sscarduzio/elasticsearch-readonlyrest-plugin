@@ -42,20 +42,21 @@ public class IndicesRule extends Rule {
     }
   }
 
-
-  public static String[] getIndices(final ActionRequest ar) {
+  public static String[] getIndices(final RequestContext rc) {
     final String[][] out = {new String[1]};
     AccessController.doPrivileged(
         new PrivilegedAction<Void>() {
           @Override
           public Void run() {
             String[] indices;
+            ActionRequest ar = rc.getActionRequest();
             try {
               Method m = ar.getClass().getMethod("indices");
               m.setAccessible(true);
               indices = (String[]) m.invoke(ar);
-            } catch ( SecurityException | IllegalArgumentException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-                throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+              logger.error("Can't get indices for request: " + rc);
+              throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
             }
             out[0] = indices;
             return null;
@@ -68,7 +69,7 @@ public class IndicesRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String[] indices =  getIndices(rc.getActionRequest());
+    String[] indices =  getIndices(rc);
     if(indices == null || indices.length == 0) {
       logger.warn("didn't find any index for this request: " + rc.getRequest().method() + " " + rc.getRequest().rawPath());
       return NO_MATCH;
