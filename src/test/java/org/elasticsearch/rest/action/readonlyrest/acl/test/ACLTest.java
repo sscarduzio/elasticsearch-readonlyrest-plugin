@@ -61,6 +61,7 @@ public class ACLTest {
       public ActionRequestValidationException validate() {
         return null;
       }
+      public String[] indices() { return indices; }
     });
   }
 
