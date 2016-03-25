@@ -8,15 +8,20 @@ Expose the high performance HTTP server embedded in Elasticsearch directly to th
 In other words... no more proxies! Yay Ponies!
 ![](http://i.imgur.com/8CLtS1Z.jpg)
 
-#### Quick Start
+#### Getting started
 
-1. Install readonly-rest plugin 
+##### 1. Install the plugin 
+
+Replace the ES version with the one you have:
 
 ```bash
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/raw/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/raw/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.1.zip
 ```
-2. And append this to `conf/elasticsearch.yml`
+##### 2. Configuration
 
+Append either of these snippets to `conf/elasticsearch.yml`
+
+** USE CASE 1: Read-only access to all the indices **
 ```yml
 readonlyrest:
     enable: true
@@ -34,11 +39,49 @@ readonlyrest:
       indices: [product_catalogue_idx] # index isolation
 
 ```
-3. Restart Elastic search.
 
-**For finer control**: see also [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
+** USE CASE 2: Basic HTTP Auth (e.g. for Kibana 3 or 4) **
+
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: <h1>Forbidden</h1>    
+    access_control_rules:
+
+    - name: Administrator login
+      type: allow
+      auth_key: admin:passwd1
+
+```
+
+** USE CASE 2: Multi-user Basic HTTP Auth (e.g. for Kibana 3 or 4) **
+
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: <h1>Forbidden</h1>    
+    access_control_rules:
+
+    - name: Sales login
+      type: allow
+      indices: [sales-index, public-index]
+      auth_key: sales:passwd1
+
+    - name: Admin login
+      type: allow
+      indices: [accounts-index, sales-index, public-index]
+      auth_key: admin:passwd2
+```
+
+##### 3. restart elastic search
+
+
+**For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
+
 
 ### News
+> 2016-02-21 :new: v1.8:  ```indices``` rule now resolves index aliases.
+
 > 2016-02-21 :new: v1.7: **real** (multi)index isolation is now possible through ```indices``` rule (supersedes ```uri_re```).
 
 > 2016-02-20 :new: v1.6: show login prompt in browsers if ```auth_key``` is configured.
@@ -47,11 +90,12 @@ readonlyrest:
 
 ###  Download the latest build
 
-* v1.7 for Elasticsearch 2.2.0 [elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip?raw=true)
+* v1.8 for Elasticsearch 2.2.1 [elasticsearch-readonlyrest-v1.7_es-v2.2.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.1.zip?raw=true)
 
-* v1.7 for Elasticsearch 2.1.1 [elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip?raw=true)
+* v1.8 for Elasticsearch 2.2.0 [elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip?raw=true)
 
-* v1.7 for Elasticsearch 2.1.0 [elasticsearch-readonlyrest-v1.7_es-v2.1.*.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.1.0.zip?raw=true)
+* v1.8 for Elasticsearch 2.1.1 [elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip?raw=true)
+
 
 Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
