@@ -41,10 +41,11 @@ public class ACL {
   }
 
   public BlockExitResult check(RequestContext rc) {
+    logger.debug("checking request: { OA:" + rc.getRequest().getRemoteAddress() + " M: " +  rc.getRequest().method() + "  }");
     for (Block b : blocks) {
       BlockExitResult result = b.check(rc);
       if (result.isMatch()) {
-        logger.info("Block " + b.getName() + "has matched: " + result);
+        logger.debug("Block " + b.getName() + " has matched: " + result);
         return result;
       }
     }
