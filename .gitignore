@@ -7,3 +7,4 @@
 .cache
 .idea
 docker
+src/test/eshome/data
