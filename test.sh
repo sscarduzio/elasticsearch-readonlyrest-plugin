@@ -17,8 +17,18 @@ cat Dockerfile.tpl |sed -e "s/\${VERSION}/$VERSION/" -e "s/\${PLUGIN_VERSION}/$P
 
 #PLUGIN_ZIP=elasticsearch-readonlyrest-$VERSION.zip
 
+if [ ! -z "$1" ]
+then
+ CONF_FILE="$1"
+else
+ CONF_FILE="src/test/test_rules.yml"
+fi
+echo ">> Using conf file $CONF_FILE"
+cat $CONF_FILE
+
 # Populate the conf files with test yml
-cp src/test/test_rules.yml docker/elasticsearch.yml
+cp $CONF_FILE docker/elasticsearch.yml
+
 cp target/elasticsearch-readonlyrest-$VERSION.zip docker
 
 # Build and launch docker container
