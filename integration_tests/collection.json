@@ -123,7 +123,7 @@
 		},
 		{
 			"id": "7c8513db-8c5c-7cfe-4fc1-2d51b4bff089",
-			"headers": "Content-Type: application/json\nAuthorization: Basic MTIzNDU2Nzg5MA==\n",
+			"headers": "Content-Type: application/json\nAuthorization: Basic c2FsZXM6cDQ1NXdk\n",
 			"url": "http://192.168.64.4:9200/private-idx/_search",
 			"preRequestScript": "",
 			"pathVariables": {},
@@ -133,7 +133,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458900940238,
+			"time": 1458933517185,
 			"name": "[ALLOW] auth_key",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"

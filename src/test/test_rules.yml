@@ -40,7 +40,7 @@ readonlyrest:
 
     - name: 2
       type: allow
-      auth_key: 1234567890
+      auth_key: sales:p455wd
 
     - name: 3
       type: allow
