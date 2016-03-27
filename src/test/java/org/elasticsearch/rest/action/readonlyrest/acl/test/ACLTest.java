@@ -149,7 +149,7 @@ public class ACLTest {
   // HTTP Basic Auth
   @Test
   public final void testHttpBasicAuth() throws Throwable {
-    String secret64 = Base64.encodeBytes("1234567890".getBytes(Charsets.UTF_8));
+    String secret64 = Base64.encodeBytes("sales:p455wd".getBytes(Charsets.UTF_8));
     RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.POST, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
