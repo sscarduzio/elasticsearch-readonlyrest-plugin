@@ -61,6 +61,14 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
     try {
+      conditionsToCheck.add(new KibanaServerRule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new KibanaIndicesRule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
       conditionsToCheck.add(new IndicesRule(s));
     } catch (RuleNotConfiguredException e) {
     }
