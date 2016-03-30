@@ -51,6 +51,7 @@ public class ACLTest {
     when(r.header("X-Api-Key")).thenReturn(apiKey);
     when(r.header("Authorization")).thenReturn(authKey);
     when(r.content().length()).thenReturn(bodyLength);
+    when(r.content().array()).thenReturn("test".getBytes());
 
     NettyHttpServerTransport nettyHttpServerTransport = mock(NettyHttpServerTransport.class);
     NettyHttpRequest nettyHttpRequest = mock(NettyHttpRequest.class);

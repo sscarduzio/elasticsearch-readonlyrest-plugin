@@ -26,15 +26,10 @@ readonlyrest:
     
     access_control_rules:
 
-    - name: Kibana 4 Node.js agent can do anything
+    - name: browser
       type: allow
-      kibana_server: true
-      auth_key: kibana:1234567890
-
-    - name: Salesmen (Browser login)
-      type: allow
-      kibana_indices: [logsta*]
-      auth_key: sales:p455wd
+      auth_key: user:pass
+      kibana_access: rw
 
     - name: 3
       type: allow

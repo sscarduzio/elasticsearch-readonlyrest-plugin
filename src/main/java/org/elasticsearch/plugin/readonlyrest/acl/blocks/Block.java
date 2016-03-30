@@ -61,11 +61,7 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
     try {
-      conditionsToCheck.add(new KibanaServerRule(s));
-    } catch (RuleNotConfiguredException e) {
-    }
-    try {
-      conditionsToCheck.add(new KibanaIndicesRule(s));
+      conditionsToCheck.add(new KibanaAccessRule(s));
     } catch (RuleNotConfiguredException e) {
     }
     try {
@@ -117,12 +113,8 @@ public class Block {
       logger.debug("matched " + this);
       return new BlockExitResult(this, true);
     }
+    logger.debug("[" + name + "] request matches no rules, forbidden by default: req: " + rc);
 
-    logger.debug("[" + name + "] request matches no rules, forbidden by default: req: "
-        + rc.getRequest().uri()
-        + " - method: " + rc.getRequest().method()
-        + " - origin addr: " + HostsRule.getAddress(rc.getRequest())
-    );
     return BlockExitResult.NO_MATCH;
   }
 

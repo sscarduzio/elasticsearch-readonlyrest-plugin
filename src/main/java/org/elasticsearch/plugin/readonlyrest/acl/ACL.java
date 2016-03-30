@@ -29,7 +29,7 @@ public class ACL {
     for (String k : g.keySet()) {
       Block block = new Block(g.get(k), logger);
       blocks.add(block);
-      if(block.isAuthHeaderAccepted()){
+      if (block.isAuthHeaderAccepted()) {
         basicAuthConfigured = true;
       }
       logger.info("ADDING " + block.toString());
@@ -41,11 +41,11 @@ public class ACL {
   }
 
   public BlockExitResult check(RequestContext rc) {
-    logger.error("checking request: { action: "+ rc.getAction() + " OA:" + rc.getRequest().getRemoteAddress() + " M: " +  rc.getRequest().method() + " " + new String(rc.getRequest().content().array()) );
+    logger.trace("checking request:" + rc);
     for (Block b : blocks) {
       BlockExitResult result = b.check(rc);
       if (result.isMatch()) {
-        logger.error("Block " + b.getName() + " has matched: " + result);
+        logger.debug("Block " + b.getName() + " has matched: " + result);
         return result;
       }
     }

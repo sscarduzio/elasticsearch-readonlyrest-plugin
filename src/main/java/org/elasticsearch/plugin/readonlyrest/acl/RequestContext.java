@@ -1,5 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ObjectArrays;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
@@ -41,40 +42,42 @@ public class RequestContext {
       return indices;
     }
     final String[][] out = {new String[1]};
-    try {
-      AccessController.doPrivileged(
-          new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-              String[] indices = new String[0];
-              ActionRequest ar = actionRequest;
-              if (ar instanceof CompositeIndicesRequest) {
-                CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
-                for (IndicesRequest ir : cir.subRequests()) {
-                  indices = ObjectArrays.concat(indices, ir.indices(), String.class);
-                }
-                // Dedupe indices
-                HashSet<String> tempSet = new HashSet<>(Arrays.asList(indices));
-                indices = tempSet.toArray(new String[tempSet.size()]);
-              } else {
-                try {
-                  Method m = ar.getClass().getMethod("indices");
-                  m.setAccessible(true);
-                  indices = (String[]) m.invoke(ar);
-                } catch (SecurityException | IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                  logger.error("Can't get indices for request: " + toString());
-                  throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
-                }
+    AccessController.doPrivileged(
+        new PrivilegedAction<Void>() {
+          @Override
+          public Void run() {
+            String[] indices = new String[0];
+            ActionRequest ar = actionRequest;
+            if (ar instanceof CompositeIndicesRequest) {
+              CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
+              for (IndicesRequest ir : cir.subRequests()) {
+                indices = ObjectArrays.concat(indices, ir.indices(), String.class);
               }
-              logger.error("Discovered indices: " + indices[0]);
-              out[0] = indices;
-              return null;
+              // Dedupe indices
+              HashSet<String> tempSet = new HashSet<>(Arrays.asList(indices));
+              indices = tempSet.toArray(new String[tempSet.size()]);
+            } else {
+              try {
+                Method m = ar.getClass().getMethod("indices");
+                m.setAccessible(true);
+                indices = (String[]) m.invoke(ar);
+              } catch (SecurityException e) {
+                logger.error("Can't get indices for request: " + toString());
+                throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
+              } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                logger.warn("Failed to discover indices associated to this request: " + this);
+              }
             }
+            if (logger.isDebugEnabled()) {
+              String idxs = Joiner.on(',').skipNulls().join(indices);
+              logger.debug("Discovered indices: " + idxs);
+            }
+            out[0] = indices;
+            return null;
           }
-      );
-    } catch (Exception e) {
-      logger.warn("Couldn't get any indices associated to this: " + this);
-    }
+        }
+    );
+
     indices = out[0];
     return out[0];
   }
@@ -97,7 +100,17 @@ public class RequestContext {
 
   @Override
   public String toString() {
-    return request.method() + " " + request.path() + " \n" + new String(request.content().toBytes()) + "\n";
+    String content;
+    try{
+      content = new String(request.content().array());
+    }
+    catch (Exception e){
+      content = "<not available>";
+    }
+    return "{action: " + action +
+        " OA:" + request.getRemoteAddress() +
+        " M: " + request.method() +
+        " " + content;
   }
 
 }
