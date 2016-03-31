@@ -18,6 +18,7 @@ index:
 
 transport.tcp.port : 9310
 discovery.zen.ping.multicast.enabled: false
+http.cors.enabled: true
 
 readonlyrest:
     enable: true
