@@ -101,16 +101,15 @@ public class RequestContext {
   @Override
   public String toString() {
     String content;
-    try{
+    try {
       content = new String(request.content().array());
-    }
-    catch (Exception e){
+    } catch (Exception e) {
       content = "<not available>";
     }
-    return "{action: " + action +
+    return "{ action: " + action +
         " OA:" + request.getRemoteAddress() +
         " M: " + request.method() +
-        " " + content;
+        "}" + content;
   }
 
 }
