@@ -1,6 +1,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -18,6 +20,7 @@ import static org.elasticsearch.rest.RestRequest.Method.*;
  * Created by sscarduzio on 26/03/2016.
  */
 public class KibanaAccessRule extends Rule {
+  private final static ESLogger logger = Loggers.getLogger(KibanaAccessRule.class);
 
   private static List<String> kibanaServerClusterActions = Lists.newArrayList(
       "cluster:monitor/nodes/info",
@@ -85,7 +88,7 @@ public class KibanaAccessRule extends Rule {
       }
     }
 
-    System.err.println("KIBANA ACCESS DENIED " + rc);
+    logger.debug("KIBANA ACCESS DENIED " + rc);
     return NO_MATCH;
   }
 }
