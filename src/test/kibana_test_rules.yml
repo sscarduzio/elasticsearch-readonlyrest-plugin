@@ -35,53 +35,23 @@ readonlyrest:
 
     - name: 1
       type: allow
-      accept_x-forwarded-for_header: true
-      hosts: [9.9.9.9]
+      hosts: 1.1.1.1
+      kibana_access: ro
 
     - name: 2
       type: allow
-      auth_key: sales:p455wd
-
+      hosts: 2.2.2.2
+      kibana_access: rw
+      
     - name: 3
       type: allow
-      api_keys: [1234567890]
+      hosts: 3.3.3.3
+      kibana_access: ro+
 
     - name: 4
       type: allow
-      hosts: [127.0.0.1, 192.168.1.0/24]
-
-    - name: 5
-      type: forbid
-      uri_re: ^/secret-idx/.*
-
-    - name: 6
-      type: allow
-      indices: public-idx
-
-    - name: 7
-      type: allow
-      hosts: [192.168.64.1]
-      indices: ip-based-idx
-
-    - name: 8
-      type: allow
-      maxBodyLength: 0
-      methods: [OPTIONS,GET]
-
-    - name: 9
-      type: allow
-      indices: wildcard-*
-
-    - name: 10
-      type: allow
-      indices: withplus
-
-    - name: 11
-      type: allow
-      actions: action1
-
-    - name: 12
-      type: allow
-      actions: action*
+      hosts: 4.4.4.4
+      kibana_access: ro+
+      kibana_index: custom-kibana-idx
 
 

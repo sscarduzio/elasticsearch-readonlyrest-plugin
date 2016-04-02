@@ -28,21 +28,25 @@ import static org.mockito.Mockito.*;
 
 public class ACLTest {
   private static ACL acl;
-
-  @BeforeClass
-  public static void setUpBeforeClass() throws Exception {
+  public static ACL mkACL(String fileName) {
+    ACL _acl = null;
     try {
-      byte[] encoded = Files.readAllBytes(Paths.get(System.getProperty("user.dir") + "/src/test/test_rules.yml"));
+      byte[] encoded = Files.readAllBytes(Paths.get(System.getProperty("user.dir") + fileName));
       String str = Charsets.UTF_8.decode(ByteBuffer.wrap(encoded)).toString();
       Settings s = Settings.builder().loadFromSource(str).build();
-      acl = new ACL(s);
+      _acl = new ACL(s);
     } catch (IOException e) {
       e.printStackTrace();
     }
-
+    return _acl;
   }
 
-  private RequestContext mockReq(String uri, String address, String apiKey, String authKey, Integer bodyLength, Method method, String xForwardedForHeader, final String[] _indices, String action) throws Throwable {
+  @BeforeClass
+  public static void setUpBeforeClass() throws Exception {
+    acl = mkACL("/src/test/test_rules.yml");
+  }
+
+  public static RequestContext mockReq(String uri, String address, String apiKey, String authKey, Integer bodyLength, Method method, String xForwardedForHeader, final String[] _indices, String action) throws Throwable {
     RestRequest r = mock(RestRequest.class, RETURNS_DEEP_STUBS);
     when(r.method()).thenReturn(method);
     when(r.uri()).thenReturn(uri);
@@ -232,7 +236,7 @@ public class ACLTest {
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals(res.getBlock().getName(), "12");
   }
-  
+
   @Test
   public final void testActionWildcardExactMatch() throws Throwable {
     RequestContext rc = mockReq("/public-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, null, "action*");
