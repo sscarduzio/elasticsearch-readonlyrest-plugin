@@ -74,7 +74,6 @@ public class KibanaAccessRule extends Rule {
   public RuleExitResult match(RequestContext rc) {
 
     // Cluster actions are always allowed in both modes
-    boolean containsAllowedAction = false;
     for (String k : kibanaServerClusterActions) {
       if (rc.getAction().contains(k)) {
         return MATCH;
