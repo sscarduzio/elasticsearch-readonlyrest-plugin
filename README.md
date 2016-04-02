@@ -21,7 +21,7 @@ bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plug
 
 Append either of these snippets to `conf/elasticsearch.yml`
 
-** USE CASE 1: Read-only access to all the indices **
+**USE CASE 1: Read-only access to all the indices**
 ```yml
 readonlyrest:
     enable: true
@@ -32,15 +32,15 @@ readonlyrest:
       type: allow
       hosts: [127.0.0.1]
     
-    - name: Accept only GETs with empty body from other host
+    - name: Just certain indices, and read only
       type: allow
       methods: [GET]
       maxBodyLength: 0
-      indices: [product_catalogue_idx] # index isolation
+      indices: [product_catalogue-*] # access only this index
 
 ```
 
-** USE CASE 2: Basic HTTP Auth (e.g. for Kibana 3 or 4) **
+**USE CASE 2: Multi-user Basic HTTP Auth (e.g. for Kibana)**
 
 ```yml
 readonlyrest:
@@ -48,33 +48,23 @@ readonlyrest:
     response_if_req_forbidden: <h1>Forbidden</h1>    
     access_control_rules:
 
-    - name: Administrator login
+    - name: Sales login (read only)
       type: allow
-      auth_key: admin:passwd1
-
-```
-
-** USE CASE 2: Multi-user Basic HTTP Auth (e.g. for Kibana 3 or 4) **
-
-```yml
-readonlyrest:
-    enable: true
-    response_if_req_forbidden: <h1>Forbidden</h1>    
-    access_control_rules:
-
-    - name: Sales login
-      type: allow
-      indices: [sales-index, public-index]
+      kibana_access: ro
       auth_key: sales:passwd1
 
-    - name: Admin login
+    - name: Manager Access (read only, can create dashboards)
       type: allow
-      indices: [accounts-index, sales-index, public-index]
-      auth_key: admin:passwd2
+      kibana_access: ro+
+      auth_key: manager:passwd2
+    
+    - name: Admin Access (read write)
+      type: allow
+      kibana_access: rw
+      auth_key: admin:passwd3
 ```
 
 ##### 3. restart elastic search
-
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
@@ -83,7 +73,7 @@ readonlyrest:
 > 2016-02-21 :new: v1.9.1:  
 * ```kibana_access``` support access control for Kibana dashboards in  "ro|rw|rw+" modes.
 * ```kibana_indices``` if you customize the `kibana.index` property in `kibana.yml` let us know so `kibana_access` works as it should.
-* ```actions`` rule lets you control what kind of actions are allowed/forbidden. I.e. `[cluster:*, indices:data:*]` 
+* ```actions``` rule lets you control what kind of actions are allowed/forbidden. I.e. `[cluster:*, indices:data:*]` 
 * ```indices``` rule now supports wildcards i.e. the word `logstash-*` will match itself, but also `logstash-2016-04-02` 
 
 > 2016-02-21 :new: v1.8:  ```indices``` rule now resolves index aliases.
