@@ -80,6 +80,12 @@ readonlyrest:
 
 
 ### News
+> 2016-02-21 :new: v1.9.1:  
+* ```kibana_access``` support access control for Kibana dashboards in  "ro|rw|rw+" modes.
+* ```kibana_indices``` if you customize the `kibana.index` property in `kibana.yml` let us know so `kibana_access` works as it should.
+* ```actions`` rule lets you control what kind of actions are allowed/forbidden. I.e. `[cluster:*, indices:data:*]` 
+* ```indices``` rule now supports wildcards i.e. the word `logstash-*` will match itself, but also `logstash-2016-04-02` 
+
 > 2016-02-21 :new: v1.8:  ```indices``` rule now resolves index aliases.
 
 > 2016-02-21 :new: v1.7: **real** (multi)index isolation is now possible through ```indices``` rule (supersedes ```uri_re```).
@@ -90,15 +96,13 @@ readonlyrest:
 
 ###  Download the latest build
 
-* v1.8 for Elasticsearch 2.2.1 [elasticsearch-readonlyrest-v1.7_es-v2.2.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.1.zip?raw=true)
+* v1.9.1 for Elasticsearch 2.3.0 [elasticsearch-readonlyrest-v1.9.1_es-v2.3.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.1_es-v2.3.0.zip?raw=true)
 
-* v1.8 for Elasticsearch 2.2.0 [elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.2.0.zip?raw=true)
-
-* v1.8 for Elasticsearch 2.1.1 [elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.7_es-v2.1.1.zip?raw=true)
-
-
+* v1.9.1 for Elasticsearch 2.2.* is not recommended because of a [bug in ES](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/issues/35)
+ 
 Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
+** If you need a build for a specific ES version, open an issue and you'll get it. ** 
 
 ## Features
 
