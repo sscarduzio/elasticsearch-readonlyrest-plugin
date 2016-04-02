@@ -18,6 +18,7 @@ import java.util.List;
  * Created by sscarduzio on 26/03/2016.
  */
 public class KibanaAccessRule extends Rule {
+
   private final static ESLogger logger = Loggers.getLogger(KibanaAccessRule.class);
 
   private static List<String> kibanaServerClusterActions = Lists.newArrayList(
@@ -51,9 +52,11 @@ public class KibanaAccessRule extends Rule {
 
   private List<String> allowedActions = kibanaActionsRO;
 
+  private String kibanaIndex = ".kibana";
+  boolean canModifyKibana = false;
+
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-
     String tmp = s.get(KEY);
     if (ConfigurationHelper.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
@@ -65,6 +68,14 @@ public class KibanaAccessRule extends Rule {
       allowedActions = kibanaActionsRO;
     } else if (tmp.equals("rw")) {
       allowedActions = kibanaActionsRW;
+      canModifyKibana = true;
+    } else if (tmp.equals("ro+")) {
+      tmp = s.get("kibana_index");
+      if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
+        kibanaIndex = tmp;
+      }
+      allowedActions = kibanaActionsRO;
+      canModifyKibana = true;
     } else {
       throw new RuleConfigurationError("invalid configuration: use either 'ro' or 'rw'. Found: + " + tmp, null);
     }
@@ -81,6 +92,20 @@ public class KibanaAccessRule extends Rule {
     }
     for (String k : allowedActions) {
       if (rc.getAction().contains(k)) {
+        return MATCH;
+      }
+    }
+    if(canModifyKibana) {
+      for (String i : rc.getIndices()) {
+        if (kibanaIndex.equals(i) || ".kibana-devnull".equals(i)) {
+          return MATCH;
+        }
+      }
+    }
+
+    // Allow devnull to anybody in RW
+    for (String i : rc.getIndices()) {
+      if (".kibana-devnull".equals(i)) {
         return MATCH;
       }
     }
