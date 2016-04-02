@@ -46,7 +46,7 @@ public class ACLTest {
     RestRequest r = mock(RestRequest.class, RETURNS_DEEP_STUBS);
     when(r.method()).thenReturn(method);
     when(r.uri()).thenReturn(uri);
-    when(r.getRemoteAddress()).thenReturn(new InetSocketAddress(address,80));
+    when(r.getRemoteAddress()).thenReturn(new InetSocketAddress(address, 80));
     when(r.header("X-Forwarded-For")).thenReturn(xForwardedForHeader);
     when(r.header("X-Api-Key")).thenReturn(apiKey);
     when(r.header("Authorization")).thenReturn(authKey);
@@ -58,11 +58,15 @@ public class ACLTest {
     NettyHttpChannel c = new NettyHttpChannel(nettyHttpServerTransport, nettyHttpRequest, null, true);
     return new RequestContext(c, r, null, new ActionRequest() {
       private String[] indices = _indices == null ? new String[0] : _indices;
+
       @Override
       public ActionRequestValidationException validate() {
         return null;
       }
-      public String[] indices() { return indices; }
+
+      public String[] indices() {
+        return indices;
+      }
     });
   }
 
@@ -175,6 +179,40 @@ public class ACLTest {
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals(res.getBlock().getName(), "6");
+  }
+
+  @Test
+  public final void testIndexWithWildcards() throws Throwable {
+    RequestContext rc = mockReq("/public-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"wildcard-123"});
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals(res.getBlock().getName(), "9");
+  }
+
+  @Test
+  public final void testIndexWithWildcardsExactMatch() throws Throwable {
+    RequestContext rc = mockReq("/public-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"wildcard-*"});
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals(res.getBlock().getName(), "9");
+  }
+
+  @Test
+  public final void testIndexWithPlus() throws Throwable {
+    RequestContext rc = mockReq("/public-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"+withplus"});
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals(res.getBlock().getName(), "10");
+  }
+
+  @Test
+  public final void testIndexWithMinus() throws Throwable {
+    RequestContext rc = mockReq("/public-idx/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "", 0, Method.POST, null, new String[]{"-withplus"});
+    BlockExitResult res = acl.check(rc);
+    assertFalse(res.isMatch());
   }
 
 }

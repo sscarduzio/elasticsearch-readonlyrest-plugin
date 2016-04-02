@@ -67,3 +67,15 @@ readonlyrest:
       type: allow
       maxBodyLength: 0
       methods: [OPTIONS,GET]
+
+    - name: 9
+      type: allow
+      indices: wildcard-*
+
+    - name: 10
+      type: allow
+      indices: withplus
+#
+#    - name: 11
+#      type: allow
+#      indices: withminus
