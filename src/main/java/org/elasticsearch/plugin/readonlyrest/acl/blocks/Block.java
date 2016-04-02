@@ -68,6 +68,10 @@ public class Block {
       conditionsToCheck.add(new IndicesRule(s));
     } catch (RuleNotConfiguredException e) {
     }
+    try {
+      conditionsToCheck.add(new ActionsRule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
   }
 
   public String getName() {

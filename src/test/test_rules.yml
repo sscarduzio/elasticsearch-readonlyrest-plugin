@@ -75,7 +75,11 @@ readonlyrest:
     - name: 10
       type: allow
       indices: withplus
-#
-#    - name: 11
-#      type: allow
-#      indices: withminus
+
+    - name: 11
+      type: allow
+      actions: action1
+
+    - name: 12
+      type: allow
+      actions: action*
