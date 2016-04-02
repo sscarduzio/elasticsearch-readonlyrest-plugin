@@ -19,7 +19,7 @@ public class MethodsRule extends Rule {
 
   public MethodsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    String[] a = s.getAsArray("methods");
+    String[] a = s.getAsArray(KEY);
     if (a != null && a.length > 0) {
       try {
         for (String string : a) {
