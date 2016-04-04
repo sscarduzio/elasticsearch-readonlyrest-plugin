@@ -21,7 +21,7 @@ bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plug
 
 Append either of these snippets to `conf/elasticsearch.yml`
 
-**USE CASE 1: Read-only access to all the indices**
+**USE CASE 1: Full access from localhost + RO Access just to catalogue-* indices**
 ```yml
 readonlyrest:
     enable: true
@@ -40,7 +40,7 @@ readonlyrest:
 
 ```
 
-**USE CASE 2: Multi-user Basic HTTP Auth (e.g. for Kibana)**
+**USE CASE 2: Authenticated users in Kibana (various permission levels)**
 
 ```yml
 readonlyrest:
