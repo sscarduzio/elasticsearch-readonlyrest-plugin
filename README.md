@@ -34,9 +34,8 @@ readonlyrest:
     
     - name: Just certain indices, and read only
       type: allow
-      methods: [GET]
-      maxBodyLength: 0
-      indices: [product_catalogue-*] # access only this index
+      actions: [cluster:*, indices:data/read/*]
+      indices: [product_catalogue-*] # index aliases are taken in account!
 
 ```
 
@@ -48,17 +47,17 @@ readonlyrest:
     response_if_req_forbidden: <h1>Forbidden</h1>    
     access_control_rules:
 
-    - name: Sales login (read only)
+    - name: Salesmen (read only)
       type: allow
       kibana_access: ro
       auth_key: sales:passwd1
 
-    - name: Manager Access (read only, can create dashboards)
+    - name: Managers (read only, but can create dashboards)
       type: allow
       kibana_access: ro+
       auth_key: manager:passwd2
     
-    - name: Admin Access (read write)
+    - name: Admin (read write)
       type: allow
       kibana_access: rw
       auth_key: admin:passwd3
