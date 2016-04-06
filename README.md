@@ -85,6 +85,8 @@ readonlyrest:
 
 ###  Download the latest build
 
+* v1.9.1 for Elasticsearch 2.3.1 [elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip?raw=true)
+
 * v1.9.1 for Elasticsearch 2.3.0 [elasticsearch-readonlyrest-v1.9.1_es-v2.3.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.1_es-v2.3.0.zip?raw=true)
 
 * v1.9.1 for Elasticsearch 2.2.* is not recommended because of a [bug in ES](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/issues/35)
