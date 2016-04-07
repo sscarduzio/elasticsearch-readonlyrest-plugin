@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin.svg?branch=master)](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin)
 
 # Readonly REST Elasticsearch Plugin
+
+[![Join the chat at https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin](https://badges.gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin.svg)](https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 Expose the high performance HTTP server embedded in Elasticsearch directly to the public, safely blocking any attempt to delete or modify your data.
 
 In other words... no more proxies! Yay Ponies!
