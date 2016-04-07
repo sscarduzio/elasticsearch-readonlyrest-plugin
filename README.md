@@ -1,10 +1,10 @@
 [![ghit.me](https://ghit.me/badge.svg?repo=sscarduzio/elasticsearch-readonlyrest-plugin)](https://ghit.me/repo/sscarduzio/elasticsearch-readonlyrest-plugin)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Build Status](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin.svg?branch=master)](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin)
+[![Join the chat at https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin](https://badges.gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin.svg)](https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Readonly REST Elasticsearch Plugin
 
-[![Join the chat at https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin](https://badges.gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin.svg)](https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 Expose the high performance HTTP server embedded in Elasticsearch directly to the public, safely blocking any attempt to delete or modify your data.
 
 In other words... no more proxies! Yay Ponies!
