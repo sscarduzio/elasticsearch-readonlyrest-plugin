@@ -1,6 +1,6 @@
 {
 	"id": "f8ec917d-f631-5714-2653-419fb6dd1303",
-	"name": "ReadonlyREST ES",
+	"name": "ReadonlyREST ES Integration Test",
 	"description": "",
 	"order": [
 		"6305179c-e846-f892-faa2-41fe14184478",
@@ -22,7 +22,7 @@
 		{
 			"id": "18983e25-d8aa-a624-7713-89df5894ad86",
 			"headers": "Content-Type: application/json\n",
-			"url": "http://{{url_api}}/public-idx/_search",
+			"url": "{{url_es}}/public-idx/_search",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "POST",
@@ -31,7 +31,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458900292928,
+			"time": 1459267279863,
 			"name": "[ALLOW] indices - public-idx",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -39,7 +39,7 @@
 		{
 			"id": "1d99b715-712a-4e6a-ccae-9c56e943b7cc",
 			"headers": "Content-Type: application/json\nX-Api-Key: 1234567890\n",
-			"url": "http://{{url_api}}/_all",
+			"url": "{{url_es}}/_all",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "DELETE",
@@ -48,7 +48,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458902545907,
+			"time": 1459267298469,
 			"name": "[TEAR DOWN] delete indices",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -56,7 +56,7 @@
 		{
 			"id": "31f718b3-9ca9-8d69-a437-c0895e0b9fb2",
 			"headers": "Content-Type: application/json\n",
-			"url": "http://{{url_api}}/secret-idx/_search",
+			"url": "{{url_es}}/secret-idx/_search",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "GET",
@@ -65,7 +65,7 @@
 			"tests": "tests[\"Is Forbidden\"] = responseCode.code === 401;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458902599880,
+			"time": 1459267274012,
 			"name": "[FORBID] uri_re - Secret index",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -73,7 +73,7 @@
 		{
 			"id": "3d3a4bba-76c4-b50d-7a42-c62b0a1c368d",
 			"headers": "Content-Type: application/json\n",
-			"url": "http://{{url_api}}/public-idx/_search",
+			"url": "{{url_es}}/public-idx/_search",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "POST",
@@ -82,7 +82,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458900284678,
+			"time": 1459267287343,
 			"name": "[ALLOW] indices - public-idx-alias",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -90,7 +90,7 @@
 		{
 			"id": "3ea25dfd-a1f1-9569-15ab-3a95effc1665",
 			"headers": "Content-Type: application/json\nX-Api-Key: 1234567890\n",
-			"url": "http://{{url_api}}/private-idx",
+			"url": "{{url_es}}/private-idx",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "PUT",
@@ -99,7 +99,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458899858664,
+			"time": 1459267266968,
 			"name": "[SETUP]  with api key - Create private-idx ",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -107,7 +107,7 @@
 		{
 			"id": "6305179c-e846-f892-faa2-41fe14184478",
 			"headers": "Content-Type: application/json\nX-Api-Key: 1234567890\n",
-			"url": "http://{{url_api}}/uri-re-idx",
+			"url": "{{url_es}}/uri-re-idx",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "PUT",
@@ -116,7 +116,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458900419765,
+			"time": 1459267245615,
 			"name": "[SETUP]  with api key - Create uri-re-idx",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -124,7 +124,7 @@
 		{
 			"id": "7c8513db-8c5c-7cfe-4fc1-2d51b4bff089",
 			"headers": "Content-Type: application/json\nAuthorization: Basic c2FsZXM6cDQ1NXdk\n",
-			"url": "http://192.168.64.4:9200/private-idx/_search",
+			"url": "{{url_es}}/private-idx/_search",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "POST",
@@ -133,7 +133,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458933517185,
+			"time": 1459267292642,
 			"name": "[ALLOW] auth_key",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -141,7 +141,7 @@
 		{
 			"id": "a14563fe-9782-c15e-f412-00eebd6a5fcd",
 			"headers": "Content-Type: application/json\nX-Api-Key: 1234567890\n",
-			"url": "http://{{url_api}}/public-idx",
+			"url": "{{url_es}}/public-idx",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "PUT",
@@ -150,7 +150,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458900439784,
+			"time": 1459267255675,
 			"name": "[SETUP]  with api key - Create public-idx ",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303"
@@ -158,7 +158,7 @@
 		{
 			"id": "afaf86d8-3125-60ff-7517-b4915c840a65",
 			"headers": "Content-Type: application/json\nX-Api-Key: 1234567890\n",
-			"url": "http://{{url_api}}/_aliases",
+			"url": "{{url_es}}/_aliases",
 			"preRequestScript": "",
 			"pathVariables": {},
 			"method": "POST",
@@ -167,7 +167,7 @@
 			"tests": "tests[\"Status code is 200\"] = responseCode.code === 200;",
 			"currentHelper": "normal",
 			"helperAttributes": {},
-			"time": 1458900326135,
+			"time": 1459267261084,
 			"name": "[SETUP]  with api key - Create public-idx  Alias",
 			"description": "",
 			"collectionId": "f8ec917d-f631-5714-2653-419fb6dd1303",

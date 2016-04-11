@@ -3,7 +3,7 @@
 	"name": "local.docker",
 	"values": [
 		{
-			"key": "url_api",
+			"key": "url_es",
 			"value": "local.docker:9200",
 			"type": "text",
 			"enabled": true
