@@ -123,6 +123,7 @@ Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP r
 
 ## Extra
 * [List of ACL block rules supported](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
+* [List of Actions and their meaning (scroll down)](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
 ## History
 This project was incepted in [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow").
