@@ -1,10 +1,8 @@
 [![ghit.me](https://ghit.me/badge.svg?repo=sscarduzio/elasticsearch-readonlyrest-plugin)](https://ghit.me/repo/sscarduzio/elasticsearch-readonlyrest-plugin)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Build Status](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin.svg?branch=master)](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin)
-[![Join the chat at https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin](https://badges.gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin.svg)](https://gitter.im/sscarduzio/elasticsearch-readonlyrest-plugin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Readonly REST Elasticsearch Plugin
-
 Expose the high performance HTTP server embedded in Elasticsearch directly to the public, safely blocking any attempt to delete or modify your data.
 
 In other words... no more proxies! Yay Ponies!
@@ -114,6 +112,8 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```methods``` a list of HTTP methods
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
 * ```auth_key``` HTTP Basic auth. 
+* ```indices``` indices (aliases and wildcards work)
+* ```actions`` list of ES actions (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
 
 See the (full list of supported rules)[Supported-Rules] for more info on how to use them.
 
@@ -121,18 +121,7 @@ See the (full list of supported rules)[Supported-Rules] for more info on how to 
 #### Custom response body
 Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response. If not provided, the descriptive "name" field of the matched block will be shown (good for debug!).
 
-## What is this read only mode?
-When the plugin is activated and properly configured, Elasticsearch REST API responds with a "403 FORBIDDEN" error whenever the request meets the following parameters:
-
-*  Any HTTP method other than GET is requested
-*  GET request has a body (according to HTTP specs it never should!)
-
-This is enough to keep public users from changing the data (see relevant [ES REST API documentation](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/docs.html)).
-
-You're free to expand the ACL further if you need more fine grained access control.
-
 ## Extra
-* [Install, Uninstall, Build this plugin](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Install,-Uninstall,-Build)
 * [List of ACL block rules supported](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
 ## History
