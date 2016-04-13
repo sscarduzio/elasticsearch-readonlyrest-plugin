@@ -103,17 +103,33 @@ Other security plugins are replacing the high performance, Netty based, embedded
 This plugin instead is just a lightweight HTTP request filtering layer.
 
 #### Less moving parts
-No need to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. Just set ES in "read-only" mode for the external world with one simple access control rule.
+Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. This is a bad idea for two reasons:
+- You're introducing more moving parts, your architecure gains complexity.
+- Reasoning about security at HTTP level is risky and less granular controlling access at the internal ES protocol level.
+
+> The only clean way to do the access control is AFTER ElasticSearch has parsed the queries.
+
+Just set a few rules with this plugin and confidently open for the external world.
 
 #### A Simpler, flexible access control list (ACL)
 Build your ACL from simple building blocks (rules) i.e.:
+
+##### IP level Rules
 * ```hosts``` a list of origin IP addresses or subnets
+
+##### HTTP level rules
 * ```api_keys``` a list of api keys passed in via header ```X-Api-Key```
 * ```methods``` a list of HTTP methods
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
-* ```auth_key``` HTTP Basic auth. 
+* ```auth_key``` HTTP Basic auth.
+
+##### ElasticSearh level rules
 * ```indices``` indices (aliases and wildcards work)
-* ```actions`` list of ES actions (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
+* ```actions``` list of ES [actions](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#actions-and-apis) (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
+
+##### ElasticSearh level macro-rules
+* ```kibana_access``` captures the read-only, read-only + new visualizations/dashboards, read-write use cases of Kibana.
+
 
 See the (full list of supported rules)[Supported-Rules] for more info on how to use them.
 
