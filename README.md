@@ -123,7 +123,7 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
 * ```auth_key``` HTTP Basic auth.
 
-##### ElasticSearh level rules
+##### ElasticSearch level rules
 * ```indices``` indices (aliases and wildcards work)
 * ```actions``` list of ES [actions](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#actions-and-apis) (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
 
