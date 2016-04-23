@@ -94,7 +94,7 @@ public class RequestContext {
                 logger.error("Can't get indices for request: " + toString());
                 throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
               } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                logger.warn("Failed to discover indices associated to this request: " + this);
+                logger.debug("Failed to discover indices associated to this request: " + this);
               }
             }
             if (logger.isDebugEnabled()) {
