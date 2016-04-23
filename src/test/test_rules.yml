@@ -48,7 +48,7 @@ readonlyrest:
 
     - name: 4
       type: allow
-      hosts: [127.0.0.2, 192.168.1.0/24]
+      hosts: [127.0.0.1, 192.168.1.0/24]
 
     - name: 5
       type: forbid
