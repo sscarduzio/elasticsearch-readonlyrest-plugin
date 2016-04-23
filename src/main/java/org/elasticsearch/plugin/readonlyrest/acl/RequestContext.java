@@ -129,10 +129,19 @@ public class RequestContext {
 
   @Override
   public String toString() {
+    StringBuilder idxsb = new StringBuilder();
+    idxsb.append("[");
+    for(String i : getIndices()){
+      idxsb.append(i).append(' ');
+    }
+    String idxs = idxsb.toString().trim() + "]";
     return "{ action: " + action +
-        " OA:" + request.getRemoteAddress() +
-        " M: " + request.method() +
-        "}" + getContent();
+        ", OA:" + getRemoteAddress() +
+        ", indices:" + idxs+
+        ", M:" + request.method() +
+        ", P:" + request.path() +
+        ", C:" + getContent() +
+        "}" ;
   }
 
 }
