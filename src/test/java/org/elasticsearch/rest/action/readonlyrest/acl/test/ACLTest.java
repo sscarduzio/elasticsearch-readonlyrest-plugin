@@ -28,17 +28,22 @@ import static org.mockito.Mockito.*;
 
 public class ACLTest {
   private static ACL acl;
+
   public static ACL mkACL(String fileName) {
-    ACL _acl = null;
+    Settings s = getSettings(fileName);
+    return new ACL(s);
+  }
+
+  static Settings getSettings(String fileName) {
     try {
       byte[] encoded = Files.readAllBytes(Paths.get(System.getProperty("user.dir") + fileName));
       String str = Charsets.UTF_8.decode(ByteBuffer.wrap(encoded)).toString();
-      Settings s = Settings.builder().loadFromSource(str).build();
-      _acl = new ACL(s);
+      return Settings.builder().loadFromSource(str).build();
     } catch (IOException e) {
       e.printStackTrace();
+      throw new Error();
     }
-    return _acl;
+
   }
 
   @BeforeClass
@@ -50,6 +55,7 @@ public class ACLTest {
     RestRequest r = mock(RestRequest.class, RETURNS_DEEP_STUBS);
     when(r.method()).thenReturn(method);
     when(r.uri()).thenReturn(uri);
+    when(r.path()).thenReturn(uri);
     when(r.getRemoteAddress()).thenReturn(new InetSocketAddress(address, 80));
     when(r.header("X-Forwarded-For")).thenReturn(xForwardedForHeader);
     when(r.header("X-Api-Key")).thenReturn(apiKey);
