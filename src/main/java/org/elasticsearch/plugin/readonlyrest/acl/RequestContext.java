@@ -13,28 +13,57 @@ import org.elasticsearch.rest.RestRequest;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.regex.Pattern;
 
 /**
  * Created by sscarduzio on 20/02/2016.
  */
 public class RequestContext {
   private final static ESLogger logger = Loggers.getLogger(RequestContext.class);
+  /*
+    * A regular expression to match the various representations of "localhost"
+    */
+  private final static Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
+
+  private final static String LOCALHOST = "127.0.0.1";
 
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;
   private final ActionRequest actionRequest;
   private String[] indices = null;
+  private String content = null;
 
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest) {
     this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
+  }
+
+  public String getRemoteAddress() {
+    String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
+    // Make sure we recognize localhost even when IPV6 is involved
+    if (localhostRe.matcher(remoteHost).find()) {
+      remoteHost = LOCALHOST;
+    }
+    return remoteHost;
+  }
+
+  public String getContent() {
+    if(content == null){
+      try {
+        content = new String(request.content().array());
+      } catch (Exception e) {
+        content = "<not available>";
+      }
+    }
+    return content;
   }
 
   public String[] getIndices() {
@@ -100,16 +129,10 @@ public class RequestContext {
 
   @Override
   public String toString() {
-    String content;
-    try {
-      content = new String(request.content().array());
-    } catch (Exception e) {
-      content = "<not available>";
-    }
     return "{ action: " + action +
         " OA:" + request.getRemoteAddress() +
         " M: " + request.method() +
-        "}" + content;
+        "}" + getContent();
   }
 
 }

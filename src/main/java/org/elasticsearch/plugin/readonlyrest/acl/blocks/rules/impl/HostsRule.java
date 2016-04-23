@@ -13,21 +13,13 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.rest.RestRequest;
 
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class HostsRule extends Rule {
-  /*
-   * A regular expression to match the various representations of "localhost"
-   */
-  private final static Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
-
-  private final static String LOCALHOST = "127.0.0.1";
 
   private List<String> allowedAddresses;
   private Boolean acceptXForwardedForHeader;
@@ -65,14 +57,6 @@ public class HostsRule extends Rule {
     return null;
   }
 
-  public static String getAddress(final RestRequest req) {
-    String remoteHost = ((InetSocketAddress) req.getRemoteAddress()).getAddress().getHostAddress();
-    // Make sure we recognize localhost even when IPV6 is involved
-    if (localhostRe.matcher(remoteHost).find()) {
-      remoteHost = LOCALHOST;
-    }
-    return remoteHost;
-  }
 
   /*
    * All "matches" methods should return true if no explicit condition was configured
@@ -108,12 +92,11 @@ public class HostsRule extends Rule {
         return true;
       }
     }
-
     return false;
   }
 
   public RuleExitResult match(RequestContext rc) {
-    boolean res = matchesAddress(getAddress(rc.getRequest()), getXForwardedForHeader(rc.getRequest()));
+    boolean res = matchesAddress(rc.getRemoteAddress(), getXForwardedForHeader(rc.getRequest()));
     return res ? MATCH : NO_MATCH;
   }
 }
