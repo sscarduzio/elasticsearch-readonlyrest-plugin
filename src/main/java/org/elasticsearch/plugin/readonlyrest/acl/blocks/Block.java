@@ -10,6 +10,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 
+import javax.script.ScriptEngine;
 import java.util.Set;
 
 /**
@@ -71,6 +72,9 @@ public class Block {
     try {
       conditionsToCheck.add(new ActionsRule(s));
     } catch (RuleNotConfiguredException e) {
+    } try {
+      conditionsToCheck.add(new ScriptRule(s));
+    } catch (RuleNotConfiguredException e) {
     }
   }
 
@@ -106,7 +110,6 @@ public class Block {
 
   public BlockExitResult check(RequestContext rc) {
     boolean match = true;
-
     for (Rule condition : conditionsToCheck) {
       // Exit at the first rule that matches the request
       RuleExitResult condExitResult = condition.match(rc);
