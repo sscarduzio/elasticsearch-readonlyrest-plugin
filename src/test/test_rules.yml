@@ -16,7 +16,7 @@ index:
                 filter: [standard, lowercase, asciifolding]
 
 
-network.host: _eth0:ipv4_
+#network.host: _eth0:ipv4_
 transport.tcp.port : 9310
 http.bind_host: _eth0:ipv4_
 http.publish_address: _eth0:ipv4_
@@ -48,7 +48,7 @@ readonlyrest:
 
     - name: 4
       type: allow
-      hosts: [127.0.0.1, 192.168.1.0/24]
+      hosts: [127.0.0.2, 192.168.1.0/24]
 
     - name: 5
       type: forbid

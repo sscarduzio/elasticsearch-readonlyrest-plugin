@@ -23,15 +23,34 @@ http.cors.enabled: true
 readonlyrest:
     enable: true
 
-    response_if_req_forbidden: <h1>Forbidden</h1>
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
     
     access_control_rules:
 
     - name: browser
       type: allow
-      auth_key: user:pass
-      kibana_access: rw
+      script: >
+            function onRequest(rc){
+               print("hello world from script!");
+               print(rc.getAction());
+               for each (i in rc.getIndices()){
+                print(i);
+               }
+               print(rc.getRequest().method());
+               print(rc.getRequest().path());
+               print(rc.getRemoteAddress());
+               print(rc.getContent());
+               //var body = JSON.parse(rc.getContent());
+               //print("some property inside the payload.. " + body.actions[0].add.alias);
+               return true;
+             };
+             function onResponse(rc){return true;}
 
-    - name: 3
-      type: allow
-      api_keys: [1234567890]
+#    - name: browser
+#      type: allow
+#      auth_key: user:pass
+#      kibana_access: ro
+
+#    - name: 3
+#      type: allow
+#      api_keys: [1234567890]
