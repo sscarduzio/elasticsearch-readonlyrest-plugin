@@ -30,11 +30,9 @@ public class ScriptACLTest {
 
   @Test
   public final void testActionIsRead() throws Throwable {
-    BlockExitResult res = setScript("function onRequest(rc){\n" +
-        "  print('hello: ' + rc.toString());\n" +
-        "  if(" +
-        "  rc.getAction() == 'action'" +
-        "  ){ return true;} return false;}").check(rc);
+    BlockExitResult res = setScript("function onRequest(rc){" +
+        "  return rc.getAction() == 'action';" +
+        "  }").check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals("1", res.getBlock().getName());
@@ -42,11 +40,9 @@ public class ScriptACLTest {
 
   @Test
   public final void testOAIsRead() throws Throwable {
-    BlockExitResult res = setScript("function onRequest(rc){\n" +
-        "  print('hello: ' + rc.toString());\n" +
-        "  if(" +
-        "    rc.getRemoteAddress() == '1.1.1.1'" +
-        "  ){ return true;} return false;}").check(rc);
+    BlockExitResult res = setScript("function onRequest(rc){" +
+        "  return rc.getRemoteAddress() == '1.1.1.1'" +
+        "  }").check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals("1", res.getBlock().getName());
@@ -54,11 +50,9 @@ public class ScriptACLTest {
 
   @Test
   public final void testIndicesIsRead() throws Throwable {
-    BlockExitResult res = setScript("function onRequest(rc){\n" +
-        "  print('hello: ' + rc.toString());\n" +
-        "  if(" +
-        "    rc.getIndices().length == 1 && rc.getIndices()[0] == 'index1' " +
-        "  ){ return true;} return false;}").check(rc);
+    BlockExitResult res = setScript("function onRequest(rc){" +
+        "  return rc.getIndices().length == 1 && rc.getIndices()[0] == 'index1' " +
+        "  }").check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals("1", res.getBlock().getName());
@@ -66,11 +60,9 @@ public class ScriptACLTest {
 
   @Test
   public final void testMethodIsRead() throws Throwable {
-    BlockExitResult res = setScript("function onRequest(rc){\n" +
-        "  print('hello: ' + rc.toString());\n" +
-        "  if(" +
-        "    rc.getRequest().method().toString() == 'PUT'" +
-        "  ){ return true;} return false;}").check(rc);
+    BlockExitResult res = setScript("function onRequest(rc){" +
+        "  return  rc.getRequest().method().toString() == 'PUT'" +
+        "  }").check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals("1", res.getBlock().getName());
@@ -78,11 +70,10 @@ public class ScriptACLTest {
 
   @Test
   public final void testPathIsRead() throws Throwable {
-    BlockExitResult res = setScript("function onRequest(rc){\n" +
-        "  print('hello: ' + rc.toString());\n" +
-        "  if(" +
-        "    rc.getRequest().path() == '/path'" +
-        "  ){ return true;} return false;}").check(rc);
+    BlockExitResult res = setScript("function onRequest(rc){" +
+        "  return rc.getRequest().path() == '/path'" +
+        "  }").check(rc);
+
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals("1", res.getBlock().getName());
@@ -90,11 +81,9 @@ public class ScriptACLTest {
 
   @Test
   public final void testContentIsRead() throws Throwable {
-    BlockExitResult res = setScript("function onRequest(rc){\n" +
-        "  print('hello: ' + rc.toString());\n" +
-        "  if(" +
-        "    rc.getContent() == 'test'" +
-        "  ){ return true;} return false;}").check(rc);
+    BlockExitResult res = setScript("function onRequest(rc){" +
+        "  return rc.getContent() == 'test'" +
+        "  }").check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals("1", res.getBlock().getName());
