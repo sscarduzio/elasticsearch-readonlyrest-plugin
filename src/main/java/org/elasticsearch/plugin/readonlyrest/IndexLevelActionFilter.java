@@ -20,8 +20,8 @@ import org.elasticsearch.rest.RestStatus;
  * Created by sscarduzio on 19/12/2015.
  */
 public class IndexLevelActionFilter extends ActionFilter.Simple {
-  private static ACL acl = null;
-  private static ConfigurationHelper conf = null;
+  private ACL acl = null;
+  private ConfigurationHelper conf = null;
 
   @Inject
   public IndexLevelActionFilter(Settings settings) {

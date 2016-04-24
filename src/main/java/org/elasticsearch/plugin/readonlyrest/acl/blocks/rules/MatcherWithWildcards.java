@@ -53,7 +53,7 @@ public class MatcherWithWildcards {
   /**
    * Returns null if the matchable is not worth processing because it's invalid or starts with "-"
    */
-  static String normalizePlusAndMinusIndex(String s) {
+  private static String normalizePlusAndMinusIndex(String s) {
     if(ConfigurationHelper.isNullOrEmpty(s)){
       return null;
     }

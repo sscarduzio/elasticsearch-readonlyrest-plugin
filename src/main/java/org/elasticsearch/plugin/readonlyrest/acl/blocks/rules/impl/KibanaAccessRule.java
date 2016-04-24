@@ -53,7 +53,7 @@ public class KibanaAccessRule extends Rule {
   private List<String> allowedActions = kibanaActionsRO;
 
   private String kibanaIndex = ".kibana";
-  boolean canModifyKibana = false;
+  private boolean canModifyKibana = false;
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
@@ -64,12 +64,12 @@ public class KibanaAccessRule extends Rule {
 
     tmp = tmp.toLowerCase();
 
-    if (tmp.equals("ro")) {
+    if ("ro".equals(tmp)) {
       allowedActions = kibanaActionsRO;
-    } else if (tmp.equals("rw")) {
+    } else if ("rw".equals(tmp)) {
       allowedActions = kibanaActionsRW;
       canModifyKibana = true;
-    } else if (tmp.equals("ro+")) {
+    } else if ("ro+".equals(tmp)) {
       tmp = s.get("kibana_index");
       if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
         kibanaIndex = tmp;

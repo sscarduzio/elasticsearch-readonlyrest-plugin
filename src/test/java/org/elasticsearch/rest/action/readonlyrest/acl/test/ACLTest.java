@@ -34,16 +34,15 @@ public class ACLTest {
     return new ACL(s);
   }
 
-  static Settings getSettings(String fileName) {
+  public static Settings getSettings(String fileName) {
     try {
       byte[] encoded = Files.readAllBytes(Paths.get(System.getProperty("user.dir") + fileName));
       String str = Charsets.UTF_8.decode(ByteBuffer.wrap(encoded)).toString();
       return Settings.builder().loadFromSource(str).build();
     } catch (IOException e) {
       e.printStackTrace();
-      throw new Error();
+      throw new RuntimeException("cannot read configuration file");
     }
-
   }
 
   @BeforeClass
