@@ -1,10 +1,10 @@
 {
 	"id": "6eef31be-7229-514d-1c7e-c882bbb289a5",
-	"name": "local.docker",
+	"name": "docker.local",
 	"values": [
 		{
 			"key": "url_es",
-			"value": "local.docker:9200",
+			"value": "docker.local:9200",
 			"type": "text",
 			"enabled": true
 		}
