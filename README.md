@@ -62,8 +62,17 @@ readonlyrest:
       kibana_access: rw
       auth_key: admin:passwd3
 ```
+##### 3. Activate authentication in Kibana Server
+Let the Kibana daemon connect to ElasticSearch in privileged mode 
 
-##### 3. restart elastic search
+* edit the kibana configuration file: `kibana.yml` and add the following:
+````yml
+elasticsearch.username: "admin"
+elasticsearch.password: "passwd3"
+```
+The users connecting from their browsers will be asked to login separately anyways.
+
+##### 4. restart elastic search
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
