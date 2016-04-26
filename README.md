@@ -69,8 +69,9 @@ readonlyrest:
 
 
 ### News
-> 2016-04-26 :new: v1.9.2 (bugfix release)
-> 2016-02-21   v1.9.1:  
+> 2016-04-26 :new: v1.9.2:  bugfix release
+
+> 2016-02-21 :new: v1.9.1:  
 * ```kibana_access``` support access control for Kibana dashboards in  "ro|rw|ro+" modes.
 * ```kibana_indices``` if you customize the `kibana.index` property in `kibana.yml` let us know so `kibana_access` works as it should.
 * ```actions``` rule lets you control what kind of actions are allowed/forbidden. I.e. `[cluster:*, indices:data:*]` 
