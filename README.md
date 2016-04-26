@@ -69,7 +69,8 @@ readonlyrest:
 
 
 ### News
-> 2016-02-21 :new: v1.9.1:  
+> 2016-04-26 :new: v1.9.2 (bugfix release)
+> 2016-02-21   v1.9.1:  
 * ```kibana_access``` support access control for Kibana dashboards in  "ro|rw|ro+" modes.
 * ```kibana_indices``` if you customize the `kibana.index` property in `kibana.yml` let us know so `kibana_access` works as it should.
 * ```actions``` rule lets you control what kind of actions are allowed/forbidden. I.e. `[cluster:*, indices:data:*]` 
@@ -84,6 +85,8 @@ readonlyrest:
 > 2015-12-19  :new: v1.5: support for ```X-Forwarded-For```, HTTP Basic Authentication, and ```X-API-Key```.
 
 ###  Download the latest build
+
+* v1.9.2 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.2_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.2_es-v2.3.2.zip?raw=true)
 
 * v1.9.1 for Elasticsearch 2.3.1 [elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip?raw=true)
 
