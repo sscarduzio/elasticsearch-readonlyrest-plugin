@@ -62,8 +62,7 @@ readonlyrest:
       kibana_access: rw
       auth_key: admin:passwd3
 ```
-##### 3. Activate authentication in Kibana Server
-Let the Kibana daemon connect to ElasticSearch in privileged mode 
+**Now activate authentication in Kibana server**: let the Kibana daemon connect to ElasticSearch in privileged mode.
 
 * edit the kibana configuration file: `kibana.yml` and add the following:
 ````yml
@@ -106,7 +105,7 @@ The users connecting from their browsers will be asked to login separately anywa
  
 Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
-** If you need a build for a specific ES version, open an issue and you'll get it. ** 
+**If you need a build for a specific ES version, open an issue and you'll get it.** 
 
 ## Features
 
