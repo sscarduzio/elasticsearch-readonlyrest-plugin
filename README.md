@@ -46,7 +46,7 @@ readonlyrest:
     enable: true
     response_if_req_forbidden: <h1>Forbidden</h1>    
     access_control_rules:
-
+    -
     - name: Salesmen (read only)
       type: allow
       kibana_access: ro
@@ -61,6 +61,12 @@ readonlyrest:
       type: allow
       kibana_access: rw
       auth_key: admin:passwd3
+      
+    - name: Logstash (see: https://www.elastic.co/guide/en/shield/current/logstash.html#ls-http-auth-basic)
+      type: allow
+      indices:["logstash-*"]
+      actions:["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+      auth_key: logstash:passwd4
 ```
 **Now activate authentication in Kibana server**: let the Kibana daemon connect to ElasticSearch in privileged mode.
 
