@@ -4,7 +4,7 @@
 	"values": [
 		{
 			"key": "url_es",
-			"value": "docker.local:9200",
+			"value": "127.0.0.1:9200",
 			"type": "text",
 			"enabled": true
 		}

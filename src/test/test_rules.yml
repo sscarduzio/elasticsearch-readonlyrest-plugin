@@ -84,4 +84,9 @@ readonlyrest:
       type: allow
       actions: action*
 
+    - name: 13
+      type: allow
+      indices: ["<no-index>"]
+
+
 
