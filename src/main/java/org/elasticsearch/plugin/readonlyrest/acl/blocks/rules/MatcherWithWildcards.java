@@ -17,8 +17,12 @@ public class MatcherWithWildcards {
 
   private final static ESLogger logger = Loggers.getLogger(MatcherWithWildcards.class);
 
-  protected List<String> plainWordMatchers = Lists.newArrayList();
+  protected List<String> allMatchers = Lists.newArrayList();
   protected List<Pattern> wildcardMatchers = Lists.newArrayList();
+
+  public List<String> getMatchers() {
+    return allMatchers;
+  }
 
   public MatcherWithWildcards(Settings s, String key) throws RuleNotConfiguredException {
     // Will work with single, non array conf.
@@ -42,10 +46,10 @@ public class MatcherWithWildcards {
         wildcardMatchers.add(Pattern.compile(regex));
 
         // Let's match this also literally
-        plainWordMatchers.add(a[i]);
+        allMatchers.add(a[i]);
       } else {
         // A plain word can be matched as string
-        plainWordMatchers.add(a[i].trim());
+        allMatchers.add(a[i].trim());
       }
     }
   }
@@ -85,7 +89,7 @@ public class MatcherWithWildcards {
         continue;
       }
       // Try to match plain strings first
-      if (plainWordMatchers.contains(matchable)) {
+      if (allMatchers.contains(matchable)) {
         return true;
       }
 

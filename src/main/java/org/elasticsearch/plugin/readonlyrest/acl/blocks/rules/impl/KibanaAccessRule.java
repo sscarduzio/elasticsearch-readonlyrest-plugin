@@ -61,7 +61,6 @@ public class KibanaAccessRule extends Rule {
     if (ConfigurationHelper.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
     }
-
     tmp = tmp.toLowerCase();
 
     if ("ro".equals(tmp)) {
@@ -87,26 +86,34 @@ public class KibanaAccessRule extends Rule {
     // Cluster actions are always allowed in both modes
     for (String k : kibanaServerClusterActions) {
       if (rc.getAction().contains(k)) {
+        logger.debug("allowing cluster action " + rc.getAction());
         return MATCH;
-      }
-    }
-    for (String k : allowedActions) {
-      if (rc.getAction().contains(k)) {
-        return MATCH;
-      }
-    }
-    if(canModifyKibana) {
-      for (String i : rc.getIndices()) {
-        if (kibanaIndex.equals(i) || ".kibana-devnull".equals(i)) {
-          return MATCH;
-        }
       }
     }
 
-    // Allow devnull to anybody in RW
-    for (String i : rc.getIndices()) {
-      if (".kibana-devnull".equals(i)) {
+    for (String k : allowedActions) {
+      if (rc.getAction().contains(k)) {
+        logger.debug("allowing regular ro/rw/ro+ kibana action " + rc.getAction());
         return MATCH;
+      }
+    }
+
+    String[] idxs = rc.getIndices();
+
+    // Allow other actions if devnull is targeted to readers and writers
+    for (String i : idxs) {
+      if (".kibana-devnull".equals(i)) {
+        logger.debug("allowing devnull req: " + rc);
+        return MATCH;
+      }
+    }
+
+    if (canModifyKibana) {
+      for (String i : idxs) {
+        if (kibanaIndex.equals(i) && kibanaActionsRW.contains(rc.getAction())) {
+          logger.debug("allowing RW req: " + rc);
+          return MATCH;
+        }
       }
     }
 

@@ -89,7 +89,8 @@ public class RequestContext {
               try {
                 Method m = ar.getClass().getMethod("indices");
                 if(m.getReturnType() != String[].class){
-                  throw new NoSuchMethodException();
+                  out[0] = new String[]{};
+                  return null;
                 }
                 m.setAccessible(true);
                 indices = (String[]) m.invoke(ar);
@@ -144,6 +145,7 @@ public class RequestContext {
         ", M:" + request.method() +
         ", P:" + request.path() +
         ", C:" + getContent() +
+        ", Headers:" + request.getHeaders() +
         "}" ;
   }
 

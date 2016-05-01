@@ -76,6 +76,14 @@ public class KibanaACLTest {
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals(res.getBlock().getName(), "2");
   }
+  @Test
+  public final void testKibanaRWClusterActionOnKibanaIdx() throws Throwable {
+    RequestContext rc = ACLTest.mockReq("xyz", "2.2.2.2", "", "", 0, null, null, new String[]{".kibana"}, "cluster:monitor/health");
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals(res.getBlock().getName(), "2");
+  }
 
   @Test
   public final void testKibanaR0writeDashboard() throws Throwable {

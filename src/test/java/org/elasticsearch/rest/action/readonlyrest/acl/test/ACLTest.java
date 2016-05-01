@@ -65,8 +65,9 @@ public class ACLTest {
     NettyHttpServerTransport nettyHttpServerTransport = mock(NettyHttpServerTransport.class);
     NettyHttpRequest nettyHttpRequest = mock(NettyHttpRequest.class);
     NettyHttpChannel c = new NettyHttpChannel(nettyHttpServerTransport, nettyHttpRequest, null, true);
+    final String[] defaultIndex = new String[]{"<default>"};
     return new RequestContext(c, r, action, new ActionRequest() {
-      private String[] indices = _indices == null ? new String[0] : _indices;
+      private String[] indices = _indices == null ? defaultIndex : _indices;
 
       @Override
       public ActionRequestValidationException validate() {
@@ -249,6 +250,15 @@ public class ACLTest {
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals(res.getBlock().getName(), "12");
+  }
+
+  @Test
+  public final void testNoIndex() throws Throwable {
+    RequestContext rc = mockReq("/", "1.1.1.1", "", "", 0, Method.POST, null, new String[0], "cluster:xyz");
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals(res.getBlock().getName(), "13");
   }
 
 }

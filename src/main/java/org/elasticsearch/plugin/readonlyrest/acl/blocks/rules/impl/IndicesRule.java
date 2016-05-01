@@ -27,6 +27,10 @@ public class IndicesRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
+    String[] indices = rc.getIndices();
+    if(indices.length == 0 && m.getMatchers().contains("<no-index>")){
+      return MATCH;
+    }
     if(m.match(rc.getIndices())){
       return MATCH;
     }
