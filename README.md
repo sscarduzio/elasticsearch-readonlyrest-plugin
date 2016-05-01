@@ -31,42 +31,39 @@ readonlyrest:
     - name: Accept all requests from localhost
       type: allow
       hosts: [127.0.0.1]
-    
+
     - name: Just certain indices, and read only
       type: allow
       actions: [cluster:*, indices:data/read/*]
-      indices: [product_catalogue-*] # index aliases are taken in account!
-
+      indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
 ```
 
-**USE CASE 2: Authenticated users in Kibana (various permission levels)**
-
+**USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)**
 ```yml
+http.cors.enabled: true
+http.cors.allow-origin: /https?:\/\/localhost(:[0-9]+)?/
+
 readonlyrest:
     enable: true
-    response_if_req_forbidden: <h1>Forbidden</h1>    
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
     access_control_rules:
-    -
-    - name: Salesmen (read only)
-      type: allow
-      kibana_access: ro
-      auth_key: sales:passwd1
 
-    - name: Managers (read only, but can create dashboards)
+    - name: "Logstash can write and create its own indices"
+      auth_key: logstash:logstash
+      type: allow
+      actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+      indices: ["logstash-*", "<no_index>"]
+
+    - name: Kibana Server (we trust this server side component, full access granted via HTTP authentication)
+      auth_key: admin:passwd3
+      type: allow
+
+    - name: Developer (reads only logstash indices, but can create new charts/dashboards)
+      auth_key: dev:dev
       type: allow
       kibana_access: ro+
-      auth_key: manager:passwd2
-    
-    - name: Admin (read write)
-      type: allow
-      kibana_access: rw
-      auth_key: admin:passwd3
-      
-    - name: Logstash (see: https://www.elastic.co/guide/en/shield/current/logstash.html#ls-http-auth-basic)
-      type: allow
-      indices:["logstash-*"]
-      actions:["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      auth_key: logstash:passwd4
+      indices: ["<no-index>", ".kibana*", "logstash*", "default"]
+
 ```
 **Now activate authentication in Kibana server**: let the Kibana daemon connect to ElasticSearch in privileged mode.
 
