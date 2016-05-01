@@ -119,7 +119,7 @@ public class Block {
       logger.debug("matched " + this);
       return new BlockExitResult(this, true);
     }
-    logger.debug("[" + name + "] request matches no rules, forbidden by default: req: " + rc);
+    logger.debug("[" + name + "] the request matches no rules in this block: " + rc);
 
     return BlockExitResult.NO_MATCH;
   }

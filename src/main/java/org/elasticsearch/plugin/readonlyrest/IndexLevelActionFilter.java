@@ -87,7 +87,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
     }
 
     // Barring
-    logger.trace("forbidden request: " + req + " Reason: " + exitResult.getBlock() + " (" + exitResult.getBlock() + ")");
+    logger.debug("forbidden request: " + req + " Reason: " + exitResult.getBlock() + " (" + exitResult.getBlock() + ")");
     String reason = "Forbidden";
     if (conf.forbiddenResponse != null) {
       reason = conf.forbiddenResponse;

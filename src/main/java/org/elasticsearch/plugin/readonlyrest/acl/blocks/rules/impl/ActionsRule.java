@@ -23,7 +23,6 @@ public class ActionsRule extends Rule {
     m = new MatcherWithWildcards(s, KEY);
   }
 
-
   @Override
   public RuleExitResult match(RequestContext rc) {
     if(m.match(new String[]{rc.getAction()})){

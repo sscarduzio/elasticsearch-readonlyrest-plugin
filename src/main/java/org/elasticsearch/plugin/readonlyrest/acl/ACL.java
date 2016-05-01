@@ -49,6 +49,7 @@ public class ACL {
         return result;
       }
     }
+    logger.info("no block has matched, forbidding by default: " + rc);
     return BlockExitResult.NO_MATCH;
   }
 }
