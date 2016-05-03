@@ -37,6 +37,7 @@ readonlyrest:
       actions: [cluster:*, indices:data/read/*]
       indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
 ```
+The `<no-index>` is for matching those generic requests that don't actually involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
 
 **USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)**
 ```yml
