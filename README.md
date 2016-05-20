@@ -37,6 +37,7 @@ readonlyrest:
       actions: [cluster:*, indices:data/read/*]
       indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
 ```
+The `<no-index>` is for matching those generic requests that don't actually involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
 
 **USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)**
 ```yml
@@ -74,12 +75,14 @@ elasticsearch.password: "passwd3"
 ```
 The users connecting from their browsers will be asked to login separately anyways.
 
+**Now activate authenticatoin in Logstash**: [(follow the docs, it's very similar to Kibana!)](https://www.elastic.co/guide/en/shield/current/logstash.html#ls-http-auth-basic)
+
 ##### 4. restart elastic search
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
 
-### News
+### Changelog
 > 2016-04-26 :new: v1.9.3:  Tighter Kibana access rule + Indices rule supports <no-index> (for cluster commands, etc) useful for restricting Kibana rules to certain indices only (see example 2)
 
 > 2016-04-26 :new: v1.9.2:  bugfix release
@@ -104,13 +107,7 @@ The users connecting from their browsers will be asked to login separately anywa
 
 * v1.9.3 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip?raw=true)
 
-* v1.9.1 for Elasticsearch 2.3.1 [elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip?raw=true)
-
-* v1.9.1 for Elasticsearch 2.3.0 [elasticsearch-readonlyrest-v1.9.1_es-v2.3.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.1_es-v2.3.0.zip?raw=true)
-
-* v1.9.1 for Elasticsearch 2.2.* is not recommended because of a [bug in ES](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/issues/35)
- 
-Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
+Releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
 **If you need a build for a specific ES version, just open an issue!** 
 
@@ -119,18 +116,18 @@ Plugin releases for **earlier versions of Elasticsearch** (may not include all t
 #### Lightweight security :rocket:
 Other security plugins are replacing the high performance, Netty based, embedded REST API of Elasticsearch with Tomcat, Jetty or other cumbersome XML based JEE madness.
 
-This plugin instead is just a lightweight HTTP request filtering layer.
+This plugin instead is just a lightweight filtering layer.
 
 #### Less moving parts
-Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. This is a bad idea for two reasons:
-- You're introducing more moving parts, your architecure gains complexity.
-- Reasoning about security at HTTP level is risky and less granular controlling access at the internal ES protocol level.
+Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. This is a **bad idea** for two reasons:
+- You're introducing more complexity in your architecture.
+- Reasoning about security at HTTP level is risky, flaky and less granular than controlling access at the internal ElasticSearch protocol level.
 
 > The only clean way to do the access control is AFTER ElasticSearch has parsed the queries.
 
-Just set a few rules with this plugin and confidently open for the external world.
+Just set a few rules with this plugin and confidently open it up to the external world.
 
-#### A Simpler, flexible access control list (ACL)
+#### An easy, flexible access control list
 Build your ACL from simple building blocks (rules) i.e.:
 
 ##### IP level Rules
@@ -142,21 +139,14 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
 * ```auth_key``` HTTP Basic auth.
 
-##### ElasticSearch level rules
+##### ElasticSearch internal protocol level rules
 * ```indices``` indices (aliases and wildcards work)
 * ```actions``` list of ES [actions](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#actions-and-apis) (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
 
 ##### ElasticSearh level macro-rules
 * ```kibana_access``` captures the read-only, read-only + new visualizations/dashboards, read-write use cases of Kibana.
 
-
-See the (full list of supported rules)[Supported-Rules] for more info on how to use them.
-
-
-#### Custom response body
-Optionally provide a string to be returned as the body of 403 (FORBIDDEN) HTTP response. If not provided, the descriptive "name" field of the matched block will be shown (good for debug!).
-
-## Extra
+## All the available rules in detail
 * [List of ACL block rules supported](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 * [List of Actions and their meaning](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#actions-and-apis)
 
