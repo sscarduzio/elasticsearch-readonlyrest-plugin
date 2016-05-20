@@ -80,6 +80,8 @@ The users connecting from their browsers will be asked to login separately anywa
 
 
 ### News
+> 2016-04-26 :new: v1.9.3:  Tighter Kibana access rule + Indices rule supports <no-index> (for cluster commands, etc) useful for restricting Kibana rules to certain indices only (see example 2)
+
 > 2016-04-26 :new: v1.9.2:  bugfix release
 
 > 2016-02-21 :new: v1.9.1:  
@@ -98,7 +100,9 @@ The users connecting from their browsers will be asked to login separately anywa
 
 ###  Download the latest build
 
-* v1.9.2 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.2_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.2_es-v2.3.2.zip?raw=true)
+* v1.9.3 for Elasticsearch 2.3.3 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.3.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.3.zip?raw=true)
+
+* v1.9.3 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip?raw=true)
 
 * v1.9.1 for Elasticsearch 2.3.1 [elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.1_es-v2.3.1.zip?raw=true)
 
@@ -108,7 +112,7 @@ The users connecting from their browsers will be asked to login separately anywa
  
 Plugin releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
-**If you need a build for a specific ES version, open an issue and you'll get it.** 
+**If you need a build for a specific ES version, just open an issue!** 
 
 ## Features
 

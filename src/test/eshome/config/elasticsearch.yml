@@ -20,28 +20,33 @@ transport.tcp.port : 9310
 discovery.zen.ping.multicast.enabled: false
 
 http.cors.enabled: true
-http.cors.allow-origin: /https?:\/\/localhost(:[0-9]+)?/
+http.cors.allow-origin: /https?:\/\/.*(:[0-9]+)?/
+http.host: 0.0.0.0
 
 readonlyrest:
     enable: true
     response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
     access_control_rules:
 
-    - name: "Logstash can write and create its own indices"
-      auth_key: logstash:logstash
+    - name : host rule
+      hosts: [127.0.0.1, ip1, ip2]
       type: allow
-      actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*", "<no_index>"]
-
-    - name: Kibana Server (we trust this server side component, full access granted via HTTP authentication)
-      auth_key: admin:passwd3
-      type: allow
-
-    - name: Developer (reads only logstash indices, but can create new charts/dashboards)
-      auth_key: dev:dev
-      type: allow
-      kibana_access: ro+
-      indices: ["<no-index>", ".kibana*" "logstash*", "default"]
+#
+#    - name: "Logstash can write and create its own indices"
+#      auth_key: logstash:logstash
+#      type: allow
+#      actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+#      indices: ["logstash-*", "<no_index>"]
+#
+#    - name: Kibana Server (we trust this server side component, full access granted via HTTP authentication)
+#      auth_key: admin:passwd3
+#      type: allow
+#
+#    - name: Developer (reads only logstash indices, but can create new charts/dashboards)
+#      auth_key: dev:dev
+#      type: allow
+#      kibana_access: ro+
+#      indices: ["<no-index>", ".kibana*", "logstash*", "default"]
 
 #    - name: Developer (reads only logstash indices, but can create new charts/dashboards)
 #       auth_key: read:read
