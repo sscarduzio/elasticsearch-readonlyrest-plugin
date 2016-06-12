@@ -34,7 +34,7 @@ readonlyrest:
 
     - name: Just certain indices, and read only
       type: allow
-      actions: [cluster:*, indices:data/read/*]
+      actions: ["cluster:*", "indices:data/read/*"]
       indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
 ```
 The `<no-index>` is for matching those generic requests that don't actually involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
