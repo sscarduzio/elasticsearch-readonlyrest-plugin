@@ -41,6 +41,7 @@ The `<no-index>` is for matching those generic requests that don't actually invo
 
 **USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)**
 ```yml
+# remember to set the right CORS origin (or disable it, if you're brave). See https://github.com/elastic/kibana/issues/6719
 http.cors.enabled: true
 http.cors.allow-origin: /https?:\/\/localhost(:[0-9]+)?/
 
