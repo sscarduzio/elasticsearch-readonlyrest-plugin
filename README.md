@@ -53,7 +53,7 @@ readonlyrest:
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*", "<no_index>"]
+      indices: ["logstash-*", "<no-index>"]
 
     - name: Kibana Server (we trust this server side component, full access granted via HTTP authentication)
       auth_key: admin:passwd3
