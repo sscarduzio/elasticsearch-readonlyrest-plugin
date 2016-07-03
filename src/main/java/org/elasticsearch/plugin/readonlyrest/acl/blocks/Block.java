@@ -71,9 +71,6 @@ public class Block {
     try {
       conditionsToCheck.add(new ActionsRule(s));
     } catch (RuleNotConfiguredException e) {
-    } try {
-      conditionsToCheck.add(new ScriptRule(s));
-    } catch (RuleNotConfiguredException e) {
     }
   }
 
