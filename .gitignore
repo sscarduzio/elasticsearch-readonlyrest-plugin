@@ -8,3 +8,4 @@
 .idea
 docker
 src/test/eshome/data
+src/test/eshome/logs
