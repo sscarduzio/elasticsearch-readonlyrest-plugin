@@ -104,6 +104,8 @@ The users connecting from their browsers will be asked to login separately anywa
 
 ###  Download the latest build
 
+* v1.9.3 for Elasticsearch 2.3.4 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.4.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.4.zip?raw=true)
+
 * v1.9.3 for Elasticsearch 2.3.3 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.3.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.3.zip?raw=true)
 
 * v1.9.3 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip?raw=true)
