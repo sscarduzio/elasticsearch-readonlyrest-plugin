@@ -15,7 +15,7 @@ In other words... no more proxies! Yay Ponies!
 Replace the ES version with the one you have:
 
 ```bash
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.2_es-v2.3.2.zip?raw=true
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.2_es-v2.3.4.zip?raw=true
 ```
 ##### 2. Configuration
 
