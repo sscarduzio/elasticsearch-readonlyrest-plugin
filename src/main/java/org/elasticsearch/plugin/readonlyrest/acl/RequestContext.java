@@ -101,6 +101,10 @@ public class RequestContext {
                 logger.debug("Failed to discover indices associated to this request: " + this);
               }
             }
+
+            if(indices == null) {
+              indices = new String[0];
+            }
             if (logger.isDebugEnabled()) {
               String idxs = Joiner.on(',').skipNulls().join(indices);
               logger.debug("Discovered indices: " + idxs);
