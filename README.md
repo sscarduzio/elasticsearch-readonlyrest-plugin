@@ -15,7 +15,7 @@ In other words... no more proxies! Yay Ponies!
 Replace the ES version with the one you have:
 
 ```bash
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.2_es-v2.3.4.zip?raw=true
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.4.zip?raw=true
 ```
 ##### 2. Configuration
 
@@ -84,6 +84,8 @@ The users connecting from their browsers will be asked to login separately anywa
 
 
 ### Changelog
+> 2016-07-11 :new: v1.9.4:  bugfix release (NPE in debug logs when no indices were found. Resolves #76)
+
 > 2016-04-26 :new: v1.9.3:  Tighter Kibana access rule + Indices rule supports <no-index> (for cluster commands, etc) useful for restricting Kibana rules to certain indices only (see example 2)
 
 > 2016-04-26 :new: v1.9.2:  bugfix release
@@ -104,11 +106,11 @@ The users connecting from their browsers will be asked to login separately anywa
 
 ###  Download the latest build
 
-* v1.9.3 for Elasticsearch 2.3.4 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.4.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.4.zip?raw=true)
+* v1.9.4 for Elasticsearch 2.3.4 [elasticsearch-readonlyrest-v1.9.4_es-v2.3.4.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.4.zip?raw=true)
 
-* v1.9.3 for Elasticsearch 2.3.3 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.3.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.3.zip?raw=true)
+* v1.9.4 for Elasticsearch 2.3.3 [elasticsearch-readonlyrest-v1.9.4_es-v2.3.3.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.3.zip?raw=true)
 
-* v1.9.3 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.3_es-v2.3.2.zip?raw=true)
+* v1.9.4 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.4_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.2.zip?raw=true)
 
 Releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 
