@@ -8,6 +8,7 @@
 FROM anapsix/alpine-java
 
 # Install ElasticSearch.
+RUN apk update &&  apk add ca-certificates wget && update-ca-certificates
 RUN \
  mkdir /tmp/es && \
  cd /tmp/es && \
