@@ -15,7 +15,7 @@ cl
 Replace the ES version with the one you have:
 
 ```bash
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.5.zip?raw=true
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.4.0.zip?raw=true
 ```
 ##### 2. Configuration
 
@@ -105,6 +105,9 @@ The users connecting from their browsers will be asked to login separately anywa
 > 2015-12-19  :new: v1.5: support for ```X-Forwarded-For```, HTTP Basic Authentication, and ```X-API-Key```.
 
 ###  Download the latest build
+
+* v1.9.4 for Elasticsearch 2.4.0
+[elasticsearch-readonlyrest-v1.9.4_es-v2.4.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.4.0.zip?raw=true)
 
 * v1.9.4 for Elasticsearch 2.3.5 
 [elasticsearch-readonlyrest-v1.9.4_es-v2.3.5.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.5.zip?raw=true)
