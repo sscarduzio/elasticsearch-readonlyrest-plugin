@@ -1,5 +1,12 @@
 #!/bin/bash
-mvn clean package
+
+if [ ! -z $1 ] 
+then 
+    # got input
+    sed -i.bak 's|<elasticsearch.version>.*</elasticsearch.version>|<elasticsearch.version>'"${1}"'</elasticsearch.version>|g'  pom.xml && rm pom.xml.bak
+fi
+
+mvn clean package || exit 1
 
 ES_VERSION=`grep '<elasticsearch.version' pom.xml | sed 's|</b>|-|g' | sed 's|<[^>]*>||g' |xargs`
 
