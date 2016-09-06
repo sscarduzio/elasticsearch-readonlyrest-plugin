@@ -70,10 +70,13 @@ readonlyrest:
 **Now activate authentication in Kibana server**: let the Kibana daemon connect to ElasticSearch in privileged mode.
 
 * edit the kibana configuration file: `kibana.yml` and add the following:
+
 ````yml
+
 elasticsearch.username: "admin"
 elasticsearch.password: "passwd3"
 ```
+
 The users connecting from their browsers will be asked to login separately anyways.
 
 **Now activate authenticatoin in Logstash**: [(follow the docs, it's very similar to Kibana!)](https://www.elastic.co/guide/en/shield/current/logstash.html#ls-http-auth-basic)
@@ -84,6 +87,7 @@ The users connecting from their browsers will be asked to login separately anywa
 
 
 ### Changelog
+> 2016-09-06 :new: v1.9.5:  important security fix for a bug that affected `indices` and `kibana_access` rules **PLEASE UPGRADE IMMEDIATELY**   
 > 2016-07-11 :new: v1.9.4:  bugfix release (NPE in debug logs when no indices were found. Resolves #76)
 
 > 2016-04-26 :new: v1.9.3:  Tighter Kibana access rule + Indices rule supports <no-index> (for cluster commands, etc) useful for restricting Kibana rules to certain indices only (see example 2)
@@ -106,17 +110,15 @@ The users connecting from their browsers will be asked to login separately anywa
 
 ###  Download the latest build
 
-* v1.9.4 for Elasticsearch 2.4.0
-[elasticsearch-readonlyrest-v1.9.4_es-v2.4.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.4.0.zip?raw=true)
+* v1.9.5 for Elasticsearch 2.4.0
+[elasticsearch-readonlyrest-v1.9.5_es-v2.4.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.4.0.zip?raw=true)
 
-* v1.9.4 for Elasticsearch 2.3.5 
-[elasticsearch-readonlyrest-v1.9.4_es-v2.3.5.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.5.zip?raw=true)
+* v1.9.5 for Elasticsearch 2.3.5 
+[elasticsearch-readonlyrest-v1.9.5_es-v2.3.5.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.3.5.zip?raw=true)
 
-* v1.9.4 for Elasticsearch 2.3.4 [elasticsearch-readonlyrest-v1.9.4_es-v2.3.4.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.4.zip?raw=true)
+* v1.9.5 for Elasticsearch 2.3.4 [elasticsearch-readonlyrest-v1.9.5_es-v2.3.4.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.3.4.zip?raw=true)
 
-* v1.9.4 for Elasticsearch 2.3.3 [elasticsearch-readonlyrest-v1.9.4_es-v2.3.3.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.3.zip?raw=true)
-
-* v1.9.4 for Elasticsearch 2.3.2 [elasticsearch-readonlyrest-v1.9.4_es-v2.3.2.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.3.2.zip?raw=true)
+* v1.9.5 for Elasticsearch 2.3.3 [elasticsearch-readonlyrest-v1.9.5_es-v2.3.3.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.3.3.zip?raw=true)
 
 Releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
 

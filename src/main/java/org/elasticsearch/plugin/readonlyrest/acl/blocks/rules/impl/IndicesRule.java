@@ -31,11 +31,13 @@ public class IndicesRule extends Rule {
     if(indices.length == 0 && m.getMatchers().contains("<no-index>")){
       return MATCH;
     }
-    if(m.match(rc.getIndices())){
-      return MATCH;
+    for (String in:rc.getIndices()) {
+      if(!m.match(in)){
+        logger.debug("This request uses the indices '" + Arrays.toString(rc.getIndices()) + "' one of which (" + in  +") is on the list.");
+        return NO_MATCH;
+      }
     }
-    logger.debug("This request uses the indices '" + Arrays.toString(rc.getIndices()) + "' and none of them is on the list.");
-    return NO_MATCH;
+    return MATCH;
   }
 
 }

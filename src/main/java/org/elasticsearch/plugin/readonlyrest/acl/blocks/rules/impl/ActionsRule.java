@@ -25,7 +25,7 @@ public class ActionsRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if(m.match(new String[]{rc.getAction()})){
+    if(m.match(rc.getAction())){
       return MATCH;
     }
     logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");

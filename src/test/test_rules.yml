@@ -88,5 +88,10 @@ readonlyrest:
       type: allow
       indices: ["<no-index>"]
 
+    - name: 14
+      type: allow
+      hosts: [1.1.1.2]
+      indices: ["i1", "i2", "i3"]
+
 
 

@@ -261,4 +261,20 @@ public class ACLTest {
     assertEquals(res.getBlock().getName(), "13");
   }
 
+  @Test
+  public final void testAllowMultiIndex() throws Throwable {
+    RequestContext rc = mockReq("/", "1.1.1.2", "", "", 0, Method.DELETE, null, new String[]{"i1","i2"}, "cluster:xyz");
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals(res.getBlock().getName(), "14");
+  }
+
+  @Test
+  public final void testForbidMultiIndexWithExtraIndex() throws Throwable {
+    RequestContext rc = mockReq("/", "1.1.1.2", "", "", 0, Method.DELETE, null, new String[]{"i1","i2","secret"}, "cluster:xyz");
+    BlockExitResult res = acl.check(rc);
+    assertFalse(res.isMatch());
+  }
+
 }
