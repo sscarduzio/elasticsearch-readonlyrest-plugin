@@ -7,7 +7,7 @@ Expose the high performance HTTP server embedded in Elasticsearch directly to th
 
 In other words... no more proxies! Yay Ponies!
 ![](http://i.imgur.com/8CLtS1Z.jpg)
-cl
+
 #### Getting started
 
 ##### 1. Install the plugin 
@@ -87,7 +87,8 @@ The users connecting from their browsers will be asked to login separately anywa
 
 
 ### Changelog
-> 2016-09-06 :new: v1.9.5:  important security fix for a bug that affected `indices` and `kibana_access` rules **PLEASE UPGRADE IMMEDIATELY**   
+> 2016-09-06 :new: v1.9.5:  **security fix** in `indices` and `kibana_access` rules **PLEASE UPGRADE IMMEDIATELY**   
+
 > 2016-07-11 :new: v1.9.4:  bugfix release (NPE in debug logs when no indices were found. Resolves #76)
 
 > 2016-04-26 :new: v1.9.3:  Tighter Kibana access rule + Indices rule supports <no-index> (for cluster commands, etc) useful for restricting Kibana rules to certain indices only (see example 2)
