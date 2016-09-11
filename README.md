@@ -12,7 +12,7 @@ In other words... no more proxies! Yay Ponies!
 
 ##### 1. Install the plugin 
 
-Various Elasticsearch versions are supported, see a list of them in the [Releases](releases) tab.
+List of other supported Elasticsearch versions: [releases](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases) tab.
 **If you need a build for a specific ES version, just open an issue!** 
 
 ```bash
