@@ -18,4 +18,4 @@ PACK=`ls target/elasticsearch-readonlyrest-v*es-v2*.zip`
 zip -j -g $PACK src/main/resources/plugin-descriptor.properties
 zip -j -g $PACK src/main/resources/plugin-security.policy
 
-shasum -a1 $PACK > $PACK.sha1
+shasum -a1 $PACK | awk {'print $1'} > $PACK.sha1

@@ -12,11 +12,14 @@ In other words... no more proxies! Yay Ponies!
 
 ##### 1. Install the plugin 
 
-Replace the ES version with the one you have:
+Various Elasticsearch versions are supported, see a list of them in the [Releases](releases) tab.
+**If you need a build for a specific ES version, just open an issue!** 
 
 ```bash
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.4_es-v2.4.0.zip?raw=true
+ES_VERSION=2.4.0
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.9.5_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.9.5_es-v$ES_VERSION.zip
 ```
+
 ##### 2. Configuration
 
 Append either of these snippets to `conf/elasticsearch.yml`
@@ -85,45 +88,6 @@ The users connecting from their browsers will be asked to login separately anywa
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
-
-### Changelog
-> 2016-09-06 :new: v1.9.5:  **security fix** in `indices` and `kibana_access` rules **PLEASE UPGRADE IMMEDIATELY**   
-
-> 2016-07-11 :new: v1.9.4:  bugfix release (NPE in debug logs when no indices were found. Resolves #76)
-
-> 2016-04-26 :new: v1.9.3:  Tighter Kibana access rule + Indices rule supports <no-index> (for cluster commands, etc) useful for restricting Kibana rules to certain indices only (see example 2)
-
-> 2016-04-26 :new: v1.9.2:  bugfix release
-
-> 2016-02-21 :new: v1.9.1:  
-* ```kibana_access``` support access control for Kibana dashboards in  "ro|rw|ro+" modes.
-* ```kibana_indices``` if you customize the `kibana.index` property in `kibana.yml` let us know so `kibana_access` works as it should.
-* ```actions``` rule lets you control what kind of actions are allowed/forbidden. I.e. `[cluster:*, indices:data:*]` 
-* ```indices``` rule now supports wildcards i.e. the word `logstash-*` will match itself, but also `logstash-2016-04-02` 
-
-> 2016-02-21 :new: v1.8:  ```indices``` rule now resolves index aliases.
-
-> 2016-02-21 :new: v1.7: **real** (multi)index isolation is now possible through ```indices``` rule (supersedes ```uri_re```).
-
-> 2016-02-20 :new: v1.6: show login prompt in browsers if ```auth_key``` is configured.
-
-> 2015-12-19  :new: v1.5: support for ```X-Forwarded-For```, HTTP Basic Authentication, and ```X-API-Key```.
-
-###  Download the latest build
-
-* v1.9.5 for Elasticsearch 2.4.0
-[elasticsearch-readonlyrest-v1.9.5_es-v2.4.0.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.4.0.zip?raw=true)
-
-* v1.9.5 for Elasticsearch 2.3.5 
-[elasticsearch-readonlyrest-v1.9.5_es-v2.3.5.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.3.5.zip?raw=true)
-
-* v1.9.5 for Elasticsearch 2.3.4 [elasticsearch-readonlyrest-v1.9.5_es-v2.3.4.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.3.4.zip?raw=true)
-
-* v1.9.5 for Elasticsearch 2.3.3 [elasticsearch-readonlyrest-v1.9.5_es-v2.3.3.zip](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download/elasticsearch-readonlyrest-v1.9.5_es-v2.3.3.zip?raw=true)
-
-Releases for **earlier versions of Elasticsearch** (may not include all the features) are available in the [download](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/blob/master/download) folder.
-
-**If you need a build for a specific ES version, just open an issue!** 
 
 ## Features
 
