@@ -8,9 +8,9 @@ Expose the high performance HTTP server embedded in Elasticsearch directly to th
 In other words... no more proxies! Yay Ponies!
 ![](http://i.imgur.com/8CLtS1Z.jpg)
 
-#### Getting started
+## Getting started
 
-##### 1. Install the plugin 
+### 1. Install the plugin 
 
 List of other supported Elasticsearch versions: [releases](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases) tab.
 **If you need a build for a specific ES version, just open an issue!** 
@@ -20,11 +20,12 @@ ES_VERSION=2.4.0
 bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.9.5_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.9.5_es-v$ES_VERSION.zip
 ```
 
-##### 2. Configuration
+### 2. Configuration
 
 Append either of these snippets to `conf/elasticsearch.yml`
 
-**USE CASE 1: Full access from localhost + RO Access just to catalogue-* indices**
+### USE CASE 1: RW all indices from localhost + RO to catalogue-* indices from elsewhere
+
 ```yml
 readonlyrest:
     enable: true
@@ -40,9 +41,10 @@ readonlyrest:
       actions: ["indices:data/read/*"]
       indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
 ```
-The `<no-index>` is for matching those generic requests that don't actually involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
 
-**USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)**
+> The `<no-index>` is for matching those generic requests that don't actually  involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
+
+### USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)
 ```yml
 # remember to set the right CORS origin (or disable it, if you're brave). See https://github.com/elastic/kibana/issues/6719
 http.cors.enabled: true
@@ -74,17 +76,16 @@ readonlyrest:
 
 * edit the kibana configuration file: `kibana.yml` and add the following:
 
-````yml
-
+```yml
 elasticsearch.username: "admin"
 elasticsearch.password: "passwd3"
 ```
 
-The users connecting from their browsers will be asked to login separately anyways.
+This is secure because the users connecting from their browsers will be asked to login separately anyways.
 
 **Now activate authenticatoin in Logstash**: [(follow the docs, it's very similar to Kibana!)](https://www.elastic.co/guide/en/shield/current/logstash.html#ls-http-auth-basic)
 
-##### 4. restart elastic search
+### 4. restart elastic search
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
@@ -116,6 +117,7 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```methods``` a list of HTTP methods
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
 * ```auth_key``` HTTP Basic auth.
+* ```uri_re``` Match the URI path as a regex.
 
 ##### ElasticSearch internal protocol level rules
 * ```indices``` indices (aliases and wildcards work)
