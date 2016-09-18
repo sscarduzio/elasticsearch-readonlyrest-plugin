@@ -89,6 +89,14 @@ This is secure because the users connecting from their browsers will be asked to
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
+### Recommended!
+When you want to restrict access to certain indices, in order to prevent the user from overriding the index which has been specified in the URL, add this setting to the config.yml file:
+
+```yml
+rest.action.multi.allow_explicit_index: false
+```
+
+The default value is true, but when set to false, Elasticsearch will reject requests that have an explicit index specified in the request body.
 
 ## Features
 
