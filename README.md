@@ -32,8 +32,8 @@ readonlyrest:
     
     ssl:
       enable: true
-      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks
-      keystore_pass: readonlyres
+      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
       key_pass: readonlyrest
 ```
 
@@ -42,13 +42,6 @@ readonlyrest:
 ```yml
 readonlyrest:
     enable: true
-    
-    ssl:
-      enable: true
-      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks
-      keystore_pass: readonlyres
-      key_pass: readonlyrest
-
     response_if_req_forbidden: Sorry, your request is forbidden.
     
     access_control_rules:
@@ -143,7 +136,7 @@ Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES an
 - You're introducing more complexity in your architecture.
 - Reasoning about security at HTTP level is risky, flaky and less granular than controlling access at the internal ElasticSearch protocol level.
 
-> The only clean way to do the access control is AFTER ElasticSearch has parsed the queries.
+**The only clean way to do the access control is AFTER ElasticSearch has parsed the queries.**
 
 Just set a few rules with this plugin and confidently open it up to the external world.
 
