@@ -1,52 +1,42 @@
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 
 /**
  * ConfigurationHelper
- * 
+ *
  * @author <a href="mailto:scarduzio@gmail.com">Simone Scarduzio</a>
  * @see <a href="https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/">Github Project</a>
  */
 
+@Singleton
 public class ConfigurationHelper {
+    public boolean enabled;
+    public String forbiddenResponse;
+    public boolean sslEnabled;
+    public String sslKeyStoreFile;
+    public String sslKeyPassword;
+    public String sslKeyStorePassword;
 
-  /**
-   * YML prefix of this plugin inside elasticsearch.yml
-   */
-  private final static String ES_YAML_CONF_PREFIX = "readonlyrest.";
-  private final static String K_RESP_REQ_FORBIDDEN = "response_if_req_forbidden";
-  final public boolean enabled;
-  final public String forbiddenResponse;
+    @Inject
+    public ConfigurationHelper(Settings settings) {
 
-  
-  public ConfigurationHelper(Settings settings, ESLogger logger) {
-    Settings s = settings.getByPrefix(ES_YAML_CONF_PREFIX);
+        Settings s = settings.getByPrefix("readonlyrest.");
 
-    // Load configuration
-    
-    if (!s.getAsBoolean("enable", false)) {
-      logger.info("Readonly Rest plugin is installed, but not enabled");
-      this.enabled = false;
-    }
-    else{
-      this.enabled = true;
-    }
-    String t = s.get(K_RESP_REQ_FORBIDDEN);
-    if(t != null) {
-      t = t.trim();
-    }
-    if(isNullOrEmpty(t)){
-      this.forbiddenResponse = null;
-    }
-    else{
-      this.forbiddenResponse = t;
+        enabled = s.getAsBoolean("enable", false);
+        forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
+
+        // -- SSL
+        sslEnabled = s.getAsBoolean("ssl.enable", false);
+        sslKeyStoreFile = s.get("ssl.keystore_file");
+        sslKeyStorePassword = s.get("ssl.keystore_pass");
+        sslKeyPassword = s.get("ssl.key_pass", sslKeyStorePassword); // fallback
+
     }
 
-  }
-  
-  public static boolean isNullOrEmpty(String s){
-    return s == null || s.trim().length() == 0;
-  }
+    public static boolean isNullOrEmpty(String s) {
+        return s == null || s.trim().length() == 0;
+    }
 }

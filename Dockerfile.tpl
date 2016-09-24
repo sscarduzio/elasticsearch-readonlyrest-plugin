@@ -25,6 +25,8 @@ VOLUME ["/data"]
 COPY elasticsearch.yml /elasticsearch/config/
 COPY elasticsearch-readonlyrest-${VERSION}.zip /tmp/
 RUN /elasticsearch/bin/plugin install file:/tmp/elasticsearch-readonlyrest-${VERSION}.zip
+COPY keystore.jks /elasticsearch/plugins/readonlyrest/
+
 #RUN /elasticsearch/bin/plugin install mobz/elasticsearch-head
 
 # Change log level INFO->TRACE

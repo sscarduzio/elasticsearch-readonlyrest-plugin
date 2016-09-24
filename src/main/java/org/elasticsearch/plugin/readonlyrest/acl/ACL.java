@@ -1,5 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl;
 
+import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -13,6 +15,8 @@ import java.util.TreeMap;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
+
+@Singleton
 public class ACL {
   private final static ESLogger logger = Loggers.getLogger(ACL.class);
   // Array list because it preserves the insertion order
@@ -20,6 +24,7 @@ public class ACL {
   private final static String PREFIX = "readonlyrest.access_control_rules";
   private boolean basicAuthConfigured = false;
 
+  @Inject
   public ACL(Settings s) {
     Map<String, Settings> g = s.getGroups(PREFIX);
     // Maintaining the order is not guaranteed, moving everything to tree map!

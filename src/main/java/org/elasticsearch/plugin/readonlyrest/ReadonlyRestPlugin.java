@@ -1,6 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.action.ActionModule;
+import org.elasticsearch.http.HttpServerModule;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestModule;
 
@@ -18,6 +19,10 @@ public class ReadonlyRestPlugin extends Plugin {
 
   public void onModule(RestModule module) {
     module.addRestAction(ReadonlyRestAction.class);
+  }
+
+  public void onModule(HttpServerModule module) {
+    module.setHttpServerTransport(SSLTransport.class, this.getClass().getSimpleName());
   }
 
   public void onModule(final ActionModule module) {

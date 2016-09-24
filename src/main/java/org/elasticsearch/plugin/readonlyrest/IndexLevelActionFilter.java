@@ -20,30 +20,25 @@ import org.elasticsearch.rest.RestStatus;
  * Created by sscarduzio on 19/12/2015.
  */
 public class IndexLevelActionFilter extends ActionFilter.Simple {
-  private ACL acl = null;
-  private ConfigurationHelper conf = null;
+
+  private ACL acl;
+
+  private ConfigurationHelper conf;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings) {
+  public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf) {
     super(settings);
-    if (conf == null) {
-      logger.info("Readonly REST plugin was loaded...");
-      this.conf = new ConfigurationHelper(settings, logger);
+    this.conf = conf;
 
-      if (!conf.enabled) {
-        logger.info("Readonly REST plugin is disabled!");
-        return;
-      }
+    logger.info("Readonly REST plugin was loaded...");
 
-      logger.info("Readonly REST plugin is enabled. Yay, ponies!");
-
-      try {
-        acl = new ACL(settings);
-      } catch (RuleConfigurationError e) {
-        logger.error("impossible to initialize ACL configuration", e);
-        throw e;
-      }
+    if (!conf.enabled) {
+      logger.info("Readonly REST plugin is disabled!");
+      return;
     }
+
+    logger.info("Readonly REST plugin is enabled. Yay, ponies!");
+    this.acl = acl;
   }
 
   @Override
@@ -56,6 +51,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
 
     // Skip if disabled
     if (!conf.enabled) {
+      logger.info("Readonly Rest plugin is installed, but not enabled");
       return true;
     }
 
@@ -88,10 +84,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
 
     // Barring
     logger.debug("forbidden request: " + req + " Reason: " + exitResult.getBlock() + " (" + exitResult.getBlock() + ")");
-    String reason = "Forbidden";
-    if (conf.forbiddenResponse != null) {
-      reason = conf.forbiddenResponse;
-    }
+    String reason = conf.forbiddenResponse;
 
     BytesRestResponse resp;
 

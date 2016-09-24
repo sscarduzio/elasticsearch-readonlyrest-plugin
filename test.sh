@@ -5,7 +5,7 @@
 
 # Ensure cleanup
 rm -rf docker || true
-mkdir docker || true
+mkdir docker || true
 
 # Obtain the version to compose the zip file name
 PLUGIN_VERSION=`grep plugin_version pom.xml | sed 's|</b>|-|g' | sed 's|<[^>]*>||g' |xargs`
@@ -14,8 +14,6 @@ VERSION=`echo "v$PLUGIN_VERSION es-v$ES_VERSION" |tr " " "_"`
 
 # Dynamically generate docker file from template
 cat Dockerfile.tpl |sed -e "s/\${VERSION}/$VERSION/" -e "s/\${PLUGIN_VERSION}/$PLUGIN_VERSION/" -e "s/\${ES_VERSION}/$ES_VERSION/" > docker/Dockerfile
-
-#PLUGIN_ZIP=elasticsearch-readonlyrest-$VERSION.zip
 
 if [ ! -z "$1" ]
 then
@@ -30,6 +28,7 @@ cat $CONF_FILE
 cp $CONF_FILE docker/elasticsearch.yml
 
 cp target/elasticsearch-readonlyrest-$VERSION.zip docker
+cp src/test/eshome/plugins/readonlyrest/keystore.jks docker
 
 # Build and launch docker container
 cd docker && docker build -t readonlyrest:$VERSION .

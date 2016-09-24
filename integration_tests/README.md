@@ -23,7 +23,7 @@ Optionally customise the `environment.json` file to match your environment. The 
 vi environment.json
 ```
 
-Finally run the collection. The `-y` option is used to introduce 5ms delay between calls to allow the indices to get correctly created before being queried.
+Finally run the collection. The `--delay-request` option is used to introduce 5ms delay between calls to allow the indices to get correctly created before being queried. The `--insecure` is necessary because we're using a self signed SSL certificate.
 ```
-newman -c collection.json -e environment.json -y 5
+newman run collection.json --insecure -e environment.json --delay-request 5
 ```

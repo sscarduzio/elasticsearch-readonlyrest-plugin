@@ -25,6 +25,13 @@ http.host: 0.0.0.0
 
 readonlyrest:
     enable: true
+
+    ssl:
+      enable: true
+      keystore_file: "/me/elasticsearch-readonlyrest-plugin/src/test/eshome/plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
+      key_pass: readonlyrest
+
     response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
     access_control_rules:
 

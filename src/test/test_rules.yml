@@ -26,6 +26,12 @@ readonlyrest:
     # (De)activate plugin
     enable: true
 
+    ssl:
+      enable: true
+      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
+      key_pass: readonlyrest
+
     # HTTP response body in case of forbidden request. 
     # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
     response_if_req_forbidden: <h1>Forbidden</h1>
