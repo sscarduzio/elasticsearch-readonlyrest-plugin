@@ -17,19 +17,40 @@ List of other supported Elasticsearch versions: [releases](https://github.com/ss
 
 ```bash
 ES_VERSION=2.4.0
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.9.5_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.9.5_es-v$ES_VERSION.zip
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.10.0_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.10.0_es-v$ES_VERSION.zip
 ```
 
 ### 2. Configuration
 
 Append either of these snippets to `conf/elasticsearch.yml`
 
-### USE CASE 1: RW all indices from localhost + RO to catalogue-* indices from elsewhere
+### USE CASE 0: Enable SSL globally
+Remember to enable SSL whenever you use HTTP basic auth or API keys so your credentials can't be stolen.
+```yml
+readonlyrest:
+    enable: true
+    
+    ssl:
+      enable: true
+      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks
+      keystore_pass: readonlyres
+      key_pass: readonlyrest
+```
+
+### USE CASE 1: Full access from localhost + RO to catalogue-* indices from elsewhere
 
 ```yml
 readonlyrest:
     enable: true
+    
+    ssl:
+      enable: true
+      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks
+      keystore_pass: readonlyres
+      key_pass: readonlyrest
+
     response_if_req_forbidden: Sorry, your request is forbidden.
+    
     access_control_rules:
 
     - name: Accept all requests from localhost
@@ -52,20 +73,25 @@ http.cors.allow-origin: /https?:\/\/localhost(:[0-9]+)?/
 
 readonlyrest:
     enable: true
+    
     response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    
     access_control_rules:
 
     - name: "Logstash can write and create its own indices"
+      # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
       indices: ["logstash-*", "<no-index>"]
 
     - name: Kibana Server (we trust this server side component, full access granted via HTTP authentication)
+      # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: admin:passwd3
       type: allow
 
     - name: Developer (reads only logstash indices, but can create new charts/dashboards)
+      # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: dev:dev
       type: allow
       kibana_access: ro+
@@ -89,7 +115,10 @@ This is secure because the users connecting from their browsers will be asked to
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 
-### Recommended!
+### Important!
+Before going to production, read this.
+
+#### disallow explicit indices 
 When you want to restrict access to certain indices, in order to prevent the user from overriding the index which has been specified in the URL, add this setting to the config.yml file:
 
 ```yml
@@ -98,12 +127,16 @@ rest.action.multi.allow_explicit_index: false
 
 The default value is true, but when set to false, Elasticsearch will reject requests that have an explicit index specified in the request body.
 
-## Features
+#### Use hashed credentials
+Plain text `auth_key` is is great for testing, but remember to replace it with [`auth_key_sha1`](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#list-of-supported-rules-in-acl-blocks)! 
 
-#### Lightweight security :rocket:
+
+## Key Features
+
+#### Zero external dependencies: tiny memory overhead, blazing fast networking :rocket:
 Other security plugins are replacing the high performance, Netty based, embedded REST API of Elasticsearch with Tomcat, Jetty or other cumbersome XML based JEE madness.
 
-This plugin instead is just a lightweight filtering layer.
+This plugin instead is just a lightweight pure-Java filtering layer. Even the SSL layer is provided as an extra Netty transport handler.
 
 #### Less moving parts
 Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. This is a **bad idea** for two reasons:
@@ -124,7 +157,7 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```api_keys``` a list of api keys passed in via header ```X-Api-Key```
 * ```methods``` a list of HTTP methods
 * ```accept_x-forwarded-for_header``` interpret the ```X-Forwarded-For``` header as origin host (useful for AWS ELB and other reverse proxies)
-* ```auth_key``` HTTP Basic auth.
+* ```auth_key_sha1``` HTTP Basic auth (credentials stored as hashed strings).
 * ```uri_re``` Match the URI path as a regex.
 
 ##### ElasticSearch internal protocol level rules
