@@ -4,8 +4,6 @@ import com.google.common.base.Charsets;
 import com.google.common.hash.Hashing;
 import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.Base64;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -15,8 +13,6 @@ import java.io.IOException;
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySha1Rule extends AuthKeyRule {
-
-  private final static ESLogger logger = Loggers.getLogger(AuthKeySha1Rule.class);
 
   public AuthKeySha1Rule(Settings s) throws RuleNotConfiguredException {
     super(s);

@@ -8,7 +8,6 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.rest.BytesRestResponse;
