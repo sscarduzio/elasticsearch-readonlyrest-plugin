@@ -171,6 +171,15 @@ public class ACLTest {
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals(res.getBlock().getName(), "2");
   }
+  @Test
+  public final void testSHA1HttpBasicAuth() throws Throwable {
+    String secret64 = Base64.encodeBytes("sha1configured:p455wd".getBytes(Charsets.UTF_8));
+    RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.DELETE, null, null, null);
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals(res.getBlock().getName(), "15");
+  }
 
   @Test
   public final void testXforwardedForHeader() throws Throwable {

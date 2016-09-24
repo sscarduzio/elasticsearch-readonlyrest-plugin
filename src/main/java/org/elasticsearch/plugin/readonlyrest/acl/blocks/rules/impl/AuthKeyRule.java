@@ -18,7 +18,7 @@ import java.io.IOException;
 public class AuthKeyRule extends Rule {
   private final static ESLogger logger = Loggers.getLogger(AuthKeyRule.class);
 
-  private String authKey;
+  protected String authKey;
 
   public AuthKeyRule(Settings s) throws RuleNotConfiguredException {
     super(s);
@@ -30,7 +30,6 @@ public class AuthKeyRule extends Rule {
     else {
       throw new RuleNotConfiguredException();
     }
-
   }
 
   // Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
@@ -65,6 +64,10 @@ public class AuthKeyRule extends Rule {
       return NO_MATCH;
     }
 
-    return authKey.equals(authHeader) ? MATCH : NO_MATCH;
+    return checkEqual(authHeader) ? MATCH : NO_MATCH;
+  }
+
+  protected boolean checkEqual(String provided) {
+    return authKey.equals(provided);
   }
 }

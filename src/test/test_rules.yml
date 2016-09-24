@@ -99,5 +99,6 @@ readonlyrest:
       hosts: [1.1.1.2]
       indices: ["i1", "i2", "i3"]
 
-
-
+    - name: 15
+      type: allow
+      auth_key_sha1: a5aa590854b3806350b345ea154a52e3391aed32 #sha1configured:p455wd

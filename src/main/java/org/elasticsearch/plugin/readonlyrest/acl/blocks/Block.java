@@ -72,6 +72,10 @@ public class Block {
       conditionsToCheck.add(new ActionsRule(s));
     } catch (RuleNotConfiguredException e) {
     }
+    try {
+      conditionsToCheck.add(new AuthKeySha1Rule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
   }
 
   public String getName() {

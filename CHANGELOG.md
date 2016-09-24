@@ -4,8 +4,9 @@
 
 
 ## Unreleased
-
-> 2016-09-06 :new: v1.10.0: SSL support   
+> 2016-09-06 :new: v1.10.0: 
+* SSL support: prevent basic HTTP Auth credential sniffing.
+* ```auth_key_sha1``` store hashed basic HTTP auth credentials in configuration file. 
 
 ## Released
 
