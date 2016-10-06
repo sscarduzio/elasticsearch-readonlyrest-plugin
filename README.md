@@ -16,7 +16,7 @@ List of other supported Elasticsearch versions: [releases](https://github.com/ss
 **If you need a build for a specific ES version, just open an issue!** 
 
 ```bash
-ES_VERSION=2.4.0
+ES_VERSION=2.4.1
 bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.10.0_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.10.0_es-v$ES_VERSION.zip
 ```
 
