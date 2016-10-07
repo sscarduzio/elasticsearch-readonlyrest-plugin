@@ -25,7 +25,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "1");
+    assertEquals("1", res.getBlock().getName());
   }
 
   @Test
@@ -34,7 +34,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "1");
+    assertEquals("1", res.getBlock().getName());
   }
   @Test
   public final void testKibanaROwriteKibanaDevNull() throws Throwable {
@@ -42,7 +42,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "1");
+    assertEquals("1", res.getBlock().getName());
   }
 
  @Test
@@ -58,7 +58,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "2");
+    assertEquals("2", res.getBlock().getName());
   }
   @Test
   public final void testKibanaRWwriteAction() throws Throwable {
@@ -66,7 +66,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "2");
+    assertEquals("2", res.getBlock().getName());
   }
   @Test
   public final void testKibanaRWClusterAction() throws Throwable {
@@ -74,7 +74,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "2");
+    assertEquals("2", res.getBlock().getName());
   }
   @Test
   public final void testKibanaRWClusterActionOnKibanaIdx() throws Throwable {
@@ -82,7 +82,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "2");
+    assertEquals("2", res.getBlock().getName());
   }
 
   @Test
@@ -98,7 +98,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "2");
+    assertEquals("2", res.getBlock().getName());
   }
 
  @Test
@@ -107,7 +107,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "3");
+    assertEquals("3", res.getBlock().getName());
   }
 
   @Test
@@ -116,7 +116,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "3");
+    assertEquals("3", res.getBlock().getName());
   }
 
   @Test
@@ -125,7 +125,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "3");
+    assertEquals("3", res.getBlock().getName());
   }
 
   @Test
@@ -134,7 +134,7 @@ public class KibanaACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "4");
+    assertEquals("4", res.getBlock().getName());
   }
 
 }

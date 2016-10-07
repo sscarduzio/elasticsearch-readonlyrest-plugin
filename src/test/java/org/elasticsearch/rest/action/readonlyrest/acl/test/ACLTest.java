@@ -87,7 +87,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "8");
+    assertEquals("8", res.getBlock().getName());
   }
 
   @Test
@@ -96,7 +96,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "8");
+    assertEquals("8", res.getBlock().getName());
   }
 
   @Test
@@ -105,7 +105,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "4");
+    assertEquals("4", res.getBlock().getName());
   }
 
   // Methods + hosts
@@ -122,7 +122,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "4");
+    assertEquals("4", res.getBlock().getName());
   }
 
   @Test
@@ -130,7 +130,7 @@ public class ACLTest {
     RequestContext rc = mockReq("/index1/_search?q=item.getName():fishingpole&size=200", "127.0.0.1", "", "", 0, Method.HEAD, null, null, null);
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
-    assertEquals(res.getBlock().getName(), "4");
+    assertEquals("4", res.getBlock().getName());
   }
 
   // Body length
@@ -148,7 +148,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.FORBID);
-    assertEquals(res.getBlock().getName(), "5");
+    assertEquals("5", res.getBlock().getName());
   }
 
   // API Keys
@@ -158,7 +158,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "3");
+    assertEquals("3", res.getBlock().getName());
   }
 
   // HTTP Basic Auth
@@ -169,7 +169,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "2");
+    assertEquals("2", res.getBlock().getName());
   }
   @Test
   public final void testSHA1HttpBasicAuth() throws Throwable {
@@ -178,7 +178,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "15");
+    assertEquals("15", res.getBlock().getName());
   }
 
   @Test
@@ -187,7 +187,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "1");
+    assertEquals("1", res.getBlock().getName());
   }
 
   // index
@@ -197,7 +197,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "6");
+    assertEquals("6", res.getBlock().getName());
   }
 
   @Test
@@ -206,7 +206,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "9");
+    assertEquals("9", res.getBlock().getName());
   }
 
   @Test
@@ -215,7 +215,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "9");
+    assertEquals("9", res.getBlock().getName());
   }
 
   @Test
@@ -224,7 +224,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "10");
+    assertEquals("10", res.getBlock().getName());
   }
 
   @Test
@@ -240,7 +240,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "11");
+    assertEquals("11", res.getBlock().getName());
   }
 
   @Test
@@ -249,7 +249,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "12");
+    assertEquals("12", res.getBlock().getName());
   }
 
   @Test
@@ -258,7 +258,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "12");
+    assertEquals("12", res.getBlock().getName());
   }
 
   @Test
@@ -267,7 +267,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "13");
+    assertEquals("13", res.getBlock().getName());
   }
 
   @Test
@@ -276,7 +276,7 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertTrue(res.isMatch());
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
-    assertEquals(res.getBlock().getName(), "14");
+    assertEquals("14", res.getBlock().getName());
   }
 
   @Test
