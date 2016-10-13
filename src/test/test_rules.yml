@@ -102,3 +102,23 @@ readonlyrest:
     - name: 15
       type: allow
       auth_key_sha1: a5aa590854b3806350b345ea154a52e3391aed32 #sha1configured:p455wd
+      
+    - name: 16
+      type: allow
+      groups: ["b"]
+      
+      
+    users:
+    
+    - username: alice
+      auth_key: alice:p455phrase
+      groups: ["b", "c"]
+      
+    - username: bob
+      auth_key: bob:s3cr37
+      groups: ["c"]
+      
+    - username: claire
+      auth_key_sha1: 2bc37a406bd743e2b7a4cb33efc0c52bc2cb03f0
+      groups: ["b"]
+

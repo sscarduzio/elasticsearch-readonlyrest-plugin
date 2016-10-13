@@ -285,5 +285,42 @@ public class ACLTest {
     BlockExitResult res = acl.check(rc);
     assertFalse(res.isMatch());
   }
-
+  
+  // Groups
+  @Test
+  public final void testAllowGroupAuth() throws Throwable {
+    String secret64 = Base64.encodeBytes("alice:p455phrase".getBytes(Charsets.UTF_8));
+    RequestContext rc = mockReq("/groupindex1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.DELETE, null, null, null);
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals("16", res.getBlock().getName());
+  }
+  
+  @Test
+  public final void testAllowGroupAuthSha1() throws Throwable {
+    String secret64 = Base64.encodeBytes("claire:p455key".getBytes(Charsets.UTF_8));
+    RequestContext rc = mockReq("/groupindex1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.DELETE, null, null, null);
+    BlockExitResult res = acl.check(rc);
+    assertTrue(res.isMatch());
+    assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
+    assertEquals("16", res.getBlock().getName());
+  }
+  
+  @Test
+  public final void testForbidGroupAuthWrongCreds() throws Throwable {
+    String secret64 = Base64.encodeBytes("alice:wr0ngp455".getBytes(Charsets.UTF_8));
+    RequestContext rc = mockReq("/groupindex1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.DELETE, null, null, null);
+    BlockExitResult res = acl.check(rc);
+    assertFalse(res.isMatch());
+  }
+  
+  @Test
+  public final void testForbidGroupAuthWrongGroup() throws Throwable {
+    String secret64 = Base64.encodeBytes("bob:s3cr37".getBytes(Charsets.UTF_8));
+    RequestContext rc = mockReq("/groupindex1/_search?q=item.getName():fishingpole&size=200", "1.1.1.1", "", "Basic " + secret64, 0, Method.DELETE, null, null, null);
+    BlockExitResult res = acl.check(rc);
+    assertFalse(res.isMatch());
+  }
+  
 }
