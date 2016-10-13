@@ -74,6 +74,7 @@ public class Block {
     }
     try {
       conditionsToCheck.add(new AuthKeySha1Rule(s));
+      authHeaderAccepted = true;
     } catch (RuleNotConfiguredException e) {
     }
   }
