@@ -1,6 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import com.google.common.collect.Sets;
+import java.util.List;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -23,7 +24,7 @@ public class Block {
   private boolean authHeaderAccepted = false;
   private Set<Rule> conditionsToCheck = Sets.newHashSet();
 
-  public Block(Settings s, ESLogger logger) {
+  public Block(Settings s, List<Settings> userList, ESLogger logger) {
     this.name = s.get("name");
     String sPolicy = s.get("type");
     this.logger = logger;
@@ -75,6 +76,10 @@ public class Block {
     try {
       conditionsToCheck.add(new AuthKeySha1Rule(s));
       authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new GroupsRule(s, userList));
     } catch (RuleNotConfiguredException e) {
     }
   }

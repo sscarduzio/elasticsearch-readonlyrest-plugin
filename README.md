@@ -104,7 +104,46 @@ This is secure because the users connecting from their browsers will be asked to
 
 **Now activate authenticatoin in Logstash**: [(follow the docs, it's very similar to Kibana!)](https://www.elastic.co/guide/en/shield/current/logstash.html#ls-http-auth-basic)
 
-### 4. restart elastic search
+### USE CASE 3: Group-based access control
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    
+    access_control_rules:
+
+    - name: Accept requests from users in group team1 on index1
+      type: allow
+      groups: ["team1"]
+      uri_re: ^/index1/.*
+
+    - name: Accept requests from users in group team2 on index2
+      type: allow
+      groups: ["team2"]
+      uri_re: ^/index2/.*
+
+    - name: Accept requests from users in groups team1 or team2 on index3
+      type: allow
+      groups: ["team1", "team2"]
+      uri_re: ^/index3/.*
+    
+    users:
+    
+    - username: alice
+      auth_key: alice:p455phrase
+      groups: ["team1"]
+      
+    - username: bob
+      auth_key: bob:s3cr37
+      groups: ["team2", "team4"]
+      
+    - username: claire
+      auth_key_sha1: 2bc37a406bd743e2b7a4cb33efc0c52bc2cb03f0 #claire:p455key
+      groups: ["team1", "team5"]
+
+```
+
+### 3. Restart Elasticsearch
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
 

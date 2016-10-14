@@ -21,18 +21,20 @@ public class ACL {
   private final static ESLogger logger = Loggers.getLogger(ACL.class);
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
-  private final static String PREFIX = "readonlyrest.access_control_rules";
+  private final static String RULES_PREFIX = "readonlyrest.access_control_rules";
+  private final static String USERS_PREFIX = "readonlyrest.users";
   private boolean basicAuthConfigured = false;
 
   @Inject
   public ACL(Settings s) {
-    Map<String, Settings> g = s.getGroups(PREFIX);
+    Map<String, Settings> g = s.getGroups(RULES_PREFIX);
     // Maintaining the order is not guaranteed, moving everything to tree map!
     TreeMap<String, Settings> tmp = new TreeMap<>();
     tmp.putAll(g);
     g = tmp;
+    Map<String, Settings> users = s.getGroups(USERS_PREFIX);
     for (String k : g.keySet()) {
-      Block block = new Block(g.get(k), logger);
+      Block block = new Block(g.get(k), new ArrayList<>(users.values()), logger);
       blocks.add(block);
       if (block.isAuthHeaderAccepted()) {
         basicAuthConfigured = true;
