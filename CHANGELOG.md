@@ -4,9 +4,12 @@
 
 
 ## Unreleased
-* 2016-10-13: Make ```auth_key_sha1``` behave like ````auth_key``` rule: return 401 instead of 403 status code if Authorization header was required
 
 ## Released
+> 2016-10-17 :new: v1.11.0:
+* **feature** Support for groups of users in ACL, thanks Christian Henke for the great PR!
+* **bugfix**  Make ```auth_key_sha1``` behave like ````auth_key``` rule: return 401 instead of 403 status code if Authorization header was required
+
 > 2016-09-24 :new: v1.10.0: * SSL support: prevent basic HTTP Auth credential sniffing. + Hashed credentials: ```auth_key_sha1``` store hashed basic HTTP auth credentials in configuration file. 
 
 > 2016-09-06 :new: v1.9.5:  **security fix** in `indices` and `kibana_access` rules **PLEASE UPGRADE IMMEDIATELY**   
