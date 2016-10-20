@@ -1,17 +1,19 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import com.google.common.collect.Sets;
-import java.util.List;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
 
+import java.util.List;
 import java.util.Set;
+
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -123,10 +125,10 @@ public class Block {
       match &= condExitResult.isMatch();
     }
     if (match) {
-      logger.debug("matched " + this);
+      logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
       return new BlockExitResult(this, true);
     }
-    logger.debug("[" + name + "] the request matches no rules in this block: " + rc);
+    logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
 
     return BlockExitResult.NO_MATCH;
   }

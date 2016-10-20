@@ -4,6 +4,9 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 
+import java.util.Collection;
+import java.util.Collections;
+
 /**
  * ConfigurationHelper
  *
@@ -13,30 +16,44 @@ import org.elasticsearch.common.settings.Settings;
 
 @Singleton
 public class ConfigurationHelper {
-    public boolean enabled;
-    public String forbiddenResponse;
-    public boolean sslEnabled;
-    public String sslKeyStoreFile;
-    public String sslKeyPassword;
-    public String sslKeyStorePassword;
+  public static final String ANSI_RESET = "\u001B[0m";
+  public static final String ANSI_BLACK = "\u001B[30m";
+  public static final String ANSI_RED = "\u001B[31m";
+  public static final String ANSI_GREEN = "\u001B[32m";
+  public static final String ANSI_YELLOW = "\u001B[33m";
+  public static final String ANSI_BLUE = "\u001B[34m";
+  public static final String ANSI_PURPLE = "\u001B[35m";
+  public static final String ANSI_CYAN = "\u001B[36m";
+  public static final String ANSI_WHITE = "\u001B[37m";
 
-    @Inject
-    public ConfigurationHelper(Settings settings) {
+  public boolean enabled;
+  public String forbiddenResponse;
+  public boolean sslEnabled;
+  public String sslKeyStoreFile;
+  public String sslKeyPassword;
+  public String sslKeyStorePassword;
 
-        Settings s = settings.getByPrefix("readonlyrest.");
+  @Inject
+  public ConfigurationHelper(Settings settings) {
 
-        enabled = s.getAsBoolean("enable", false);
-        forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
+    Settings s = settings.getByPrefix("readonlyrest.");
 
-        // -- SSL
-        sslEnabled = s.getAsBoolean("ssl.enable", false);
-        sslKeyStoreFile = s.get("ssl.keystore_file");
-        sslKeyStorePassword = s.get("ssl.keystore_pass");
-        sslKeyPassword = s.get("ssl.key_pass", sslKeyStorePassword); // fallback
+    enabled = s.getAsBoolean("enable", false);
+    forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
 
-    }
+    // -- SSL
+    sslEnabled = s.getAsBoolean("ssl.enable", false);
+    sslKeyStoreFile = s.get("ssl.keystore_file");
+    sslKeyStorePassword = s.get("ssl.keystore_pass");
+    sslKeyPassword = s.get("ssl.key_pass", sslKeyStorePassword); // fallback
 
-    public static boolean isNullOrEmpty(String s) {
-        return s == null || s.trim().length() == 0;
-    }
+  }
+
+  public static boolean isNullOrEmpty(String s) {
+    return s == null || s.trim().length() == 0;
+  }
+
+  public static boolean containsAny(Collection<?> ofWhat, Collection<?> intoWhat) {
+    return !Collections.disjoint(ofWhat, intoWhat);
+  }
 }

@@ -11,6 +11,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -56,7 +57,7 @@ public class ACL {
         return result;
       }
     }
-    logger.info("no block has matched, forbidding by default: " + rc);
+    logger.info(ANSI_RED + "no block has matched, forbidding by default: " + rc + ANSI_RESET);
     return BlockExitResult.NO_MATCH;
   }
 }
