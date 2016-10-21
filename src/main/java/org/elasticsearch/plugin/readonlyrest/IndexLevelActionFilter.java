@@ -5,6 +5,7 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
@@ -19,6 +20,7 @@ import org.elasticsearch.rest.RestStatus;
 /**
  * Created by sscarduzio on 19/12/2015.
  */
+@Singleton
 public class IndexLevelActionFilter extends ActionFilter.Simple {
 
   IndicesService indicesService;
