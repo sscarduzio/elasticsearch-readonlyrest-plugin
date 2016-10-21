@@ -7,18 +7,12 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
-import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.inject.assistedinject.Assisted;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.aliases.IndexAliasesService;
 import org.elasticsearch.indices.IndicesService;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.rest.RestChannel;
@@ -30,7 +24,10 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -51,10 +48,9 @@ public class RequestContext {
   private final ActionRequest actionRequest;
   private Set<String> indices = null;
   private String content = null;
-  IndicesService indexService = null;
+  private IndicesService indexService = null;
 
-  @Inject
-  public RequestContext(@Assisted RestChannel channel, @Assisted RestRequest request, @Assisted String action, @Assisted ActionRequest actionRequest, IndicesService indicesService) {
+  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, IndicesService indicesService) {
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -221,39 +217,6 @@ public class RequestContext {
     indices = Sets.newHashSet(out[0]);
 
     return indices;
-  }
-
-  private HashSet<String> getIndicesFromSearchDSLPayload(String[] indices) {
-    XContentParser parser = null;
-    HashSet<String> harvested = new HashSet<>();
-    harvested.addAll(Arrays.asList(indices));
-    try {
-      BytesReference bytes = ((SearchRequest) actionRequest).source();
-      parser = XContentFactory.xContent(bytes).createParser(bytes);
-      Map m = parser.map();
-
-      if (m.containsKey("indices")) {
-        Map outerIndicesQuery = (Map) m.get("indices");
-        if (outerIndicesQuery != null) {
-          String singleIndex = (String) outerIndicesQuery.get("index");
-          if (!ConfigurationHelper.isNullOrEmpty(singleIndex)) {
-            harvested.add(singleIndex);
-          }
-          if (outerIndicesQuery.containsKey("indices")) {
-            List<String> listOfIndices = (List<String>) outerIndicesQuery.get("indices");
-            harvested.addAll(listOfIndices);
-          }
-        }
-      }
-      System.out.println(harvested.size());
-    } catch (Exception e) {
-      logger.debug("cannot find any index in the payload");
-    } finally {
-      if (parser != null) {
-        parser.close();
-      }
-    }
-    return harvested;
   }
 
   public RestChannel getChannel() {
