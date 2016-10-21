@@ -1,7 +1,6 @@
 package org.elasticsearch.rest.action.readonlyrest.acl.test;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.Lists;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionRequestValidationException;
 import org.elasticsearch.common.Base64;
@@ -9,9 +8,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.http.netty.NettyHttpChannel;
 import org.elasticsearch.http.netty.NettyHttpRequest;
 import org.elasticsearch.http.netty.NettyHttpServerTransport;
-import org.elasticsearch.index.Index;
-import org.elasticsearch.index.IndexService;
-import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -26,10 +22,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -183,6 +175,7 @@ public class ACLTest {
     assertTrue(res.getBlock().getPolicy() == Block.Policy.ALLOW);
     assertEquals("2", res.getBlock().getName());
   }
+
   @Test
   public final void testSHA1HttpBasicAuth() throws Throwable {
     String secret64 = Base64.encodeBytes("sha1configured:p455wd".getBytes(Charsets.UTF_8));

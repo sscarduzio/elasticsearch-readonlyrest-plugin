@@ -63,7 +63,7 @@ public class IndicesRule extends Rule {
 
       // For searches, we need to match to existing indices
       if (rc.getActionRequest() instanceof SearchRequest) {
-        if (idx == "_all") {
+        if ("_all".equals(idx)) {
           hasAll = true;
           continue;
         }
