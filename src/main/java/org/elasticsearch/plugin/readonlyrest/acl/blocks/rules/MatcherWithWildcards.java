@@ -1,12 +1,14 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,90 +17,99 @@ import java.util.regex.Pattern;
  */
 public class MatcherWithWildcards {
 
-    private final static ESLogger logger = Loggers.getLogger(MatcherWithWildcards.class);
+  private final static ESLogger logger = Loggers.getLogger(MatcherWithWildcards.class);
 
-    protected List<String> allMatchers = Lists.newArrayList();
-    protected List<Pattern> wildcardMatchers = Lists.newArrayList();
+  protected Set<String> allMatchers = Sets.newHashSet();
+  protected Set<Pattern> wildcardMatchers = Sets.newHashSet();;
 
-    public List<String> getMatchers() {
-        return allMatchers;
+  public Set<String> getMatchers() {
+    return allMatchers;
+  }
+
+  public MatcherWithWildcards(Set<String> matchers){
+    for (String a: matchers) {
+      a = normalizePlusAndMinusIndex(a);
+      if (ConfigurationHelper.isNullOrEmpty(a)) {
+        continue;
+      }
+      if (a.contains("*")) {
+        // Patch the simple star wildcard to become a regex: ("*" -> ".*")
+        String regex = ("\\Q" + a + "\\E").replace("*", "\\E.*\\Q");
+
+        // Pre-compile the regex pattern matcher to validate the regex
+        // AND faster matching later on.
+        wildcardMatchers.add(Pattern.compile(regex));
+
+        // Let's match this also literally
+        allMatchers.add(a);
+      } else {
+        // A plain word can be matched as string
+        allMatchers.add(a.trim());
+      }
+    }
+  }
+
+  public static MatcherWithWildcards fromSettings(Settings s, String key) throws RuleNotConfiguredException {
+    // Will work with single, non array conf.
+    String[] a = s.getAsArray(key);
+
+    if (a == null || a.length == 0) {
+      throw new RuleNotConfiguredException();
+    }
+    return new MatcherWithWildcards(Sets.newHashSet(a));
+
+  }
+
+  /**
+   * Returns null if the matchable is not worth processing because it's invalid or starts with "-"
+   */
+  private static String normalizePlusAndMinusIndex(String s) {
+    if (ConfigurationHelper.isNullOrEmpty(s)) {
+      return null;
+    }
+    // Ignore the excluded indices
+    if (s.startsWith("-")) {
+      return null;
+    }
+    // Call included indices with their name
+    if (s.startsWith("+")) {
+      if (s.length() == 1) {
+        logger.warn("invalid matchable! " + s);
+        return null;
+      }
+      return s.substring(1, s.length());
+    }
+    return s;
+  }
+
+  public String matchWithResult(String matchable) {
+
+    matchable = normalizePlusAndMinusIndex(matchable);
+
+    if (matchable == null) {
+      return null;
     }
 
-    public MatcherWithWildcards(Settings s, String key) throws RuleNotConfiguredException {
-        // Will work with single, non array conf.
-        String[] a = s.getAsArray(key);
-
-        if (a == null || a.length == 0) {
-            throw new RuleNotConfiguredException();
-        }
-
-        for (int i = 0; i < a.length; i++) {
-            a[i] = normalizePlusAndMinusIndex(a[i]);
-            if (ConfigurationHelper.isNullOrEmpty(a[i])) {
-                continue;
-            }
-            if (a[i].contains("*")) {
-                // Patch the simple star wildcard to become a regex: ("*" -> ".*")
-                String regex = ("\\Q" + a[i] + "\\E").replace("*", "\\E.*\\Q");
-
-                // Pre-compile the regex pattern matcher to validate the regex
-                // AND faster matching later on.
-                wildcardMatchers.add(Pattern.compile(regex));
-
-                // Let's match this also literally
-                allMatchers.add(a[i]);
-            } else {
-                // A plain word can be matched as string
-                allMatchers.add(a[i].trim());
-            }
-        }
+    // Try to match plain strings first
+    if (allMatchers.contains(matchable)) {
+      return matchable;
     }
 
-    /**
-     * Returns null if the matchable is not worth processing because it's invalid or starts with "-"
-     */
-    private static String normalizePlusAndMinusIndex(String s) {
-        if (ConfigurationHelper.isNullOrEmpty(s)) {
-            return null;
-        }
-        // Ignore the excluded indices
-        if (s.startsWith("-")) {
-            return null;
-        }
-        // Call included indices with their name
-        if (s.startsWith("+")) {
-            if (s.length() == 1) {
-                logger.warn("invalid matchable! " + s);
-                return null;
-            }
-            return s.substring(1, s.length());
-        }
-        return s;
+    for (Pattern p : wildcardMatchers) {
+      Matcher m = p.matcher(matchable);
+      if (m == null) {
+        continue;
+      }
+      if (m.find()) {
+        return matchable;
+      }
     }
 
-    public boolean match(String matchable) {
+    return null;
+  }
 
-        matchable = normalizePlusAndMinusIndex(matchable);
+  public boolean match(String s) {
+    return matchWithResult(s) != null;
+  }
 
-        if (matchable == null) {
-            return false;
-        }
-
-        // Try to match plain strings first
-        if (allMatchers.contains(matchable)) {
-            return true;
-        }
-
-        for (Pattern p : wildcardMatchers) {
-            Matcher m = p.matcher(matchable);
-            if (m == null) {
-                continue;
-            }
-            if (m.find()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

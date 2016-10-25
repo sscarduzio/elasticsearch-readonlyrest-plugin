@@ -12,6 +12,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
 import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -98,10 +99,10 @@ public class KibanaAccessRule extends Rule {
       }
     }
 
-    String[] idxs = rc.getIndices();
+    Set<String> requestIndices = rc.getIndices();
 
     // Allow other actions if devnull is targeted to readers and writers
-    for (String i : idxs) {
+    for (String i : requestIndices) {
       if (".kibana-devnull".equals(i)) {
         logger.debug("allowing devnull req: " + rc);
         return MATCH;
@@ -109,7 +110,7 @@ public class KibanaAccessRule extends Rule {
     }
 
     if (canModifyKibana) {
-      for (String i : idxs) {
+      for (String i : requestIndices) {
         if (kibanaIndex.equals(i) && kibanaActionsRW.contains(rc.getAction())) {
           logger.debug("allowing RW req: " + rc);
           return MATCH;

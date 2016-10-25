@@ -20,12 +20,12 @@ public class ActionsRule extends Rule {
 
   public ActionsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    m = new MatcherWithWildcards(s, KEY);
+    m = MatcherWithWildcards.fromSettings(s, KEY);
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if(m.match(rc.getAction())){
+    if (m.match(rc.getAction())) {
       return MATCH;
     }
     logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");

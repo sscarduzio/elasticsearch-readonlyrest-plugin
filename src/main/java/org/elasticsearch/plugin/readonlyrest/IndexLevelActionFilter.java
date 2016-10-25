@@ -5,7 +5,9 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -18,16 +20,19 @@ import org.elasticsearch.rest.RestStatus;
 /**
  * Created by sscarduzio on 19/12/2015.
  */
+@Singleton
 public class IndexLevelActionFilter extends ActionFilter.Simple {
 
+  IndicesService indicesService;
   private ACL acl;
 
   private ConfigurationHelper conf;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf) {
+  public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf, IndicesService indicesService) {
     super(settings);
     this.conf = conf;
+    this.indicesService = indicesService;
 
     logger.info("Readonly REST plugin was loaded...");
 
@@ -73,7 +78,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
         throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?", null);
     }
 
-    RequestContext rc = new RequestContext(channel, req, action, actionRequest);
+    RequestContext rc = new RequestContext(channel, req, action, actionRequest, indicesService);
     BlockExitResult exitResult = acl.check(rc);
 
     // The request is allowed to go through

@@ -59,28 +59,28 @@ readonlyrest:
     - name: 5
       type: forbid
       uri_re: ^/secret-idx/.*
-
-    - name: 6
-      type: allow
-      indices: public-idx
-
-    - name: 7
-      type: allow
-      hosts: [192.168.64.1]
-      indices: ip-based-idx
-
+#
+#    - name: 6
+#      type: allow
+#      indices: public-idx
+#
+#    - name: 7
+#      type: allow
+#      hosts: [192.168.64.1]
+#      indices: ip-based-idx
+#
     - name: 8
       type: allow
       maxBodyLength: 0
       methods: [OPTIONS,GET]
 
-    - name: 9
-      type: allow
-      indices: wildcard-*
+#    - name: 9
+#      type: allow
+#      indices: wildcard-*
 
-    - name: 10
-      type: allow
-      indices: withplus
+#    - name: 10
+#      type: allow
+#      indices: withplus
 
     - name: 11
       type: allow
@@ -90,14 +90,14 @@ readonlyrest:
       type: allow
       actions: action*
 
-    - name: 13
-      type: allow
-      indices: ["<no-index>"]
+#    - name: 13
+#      type: allow
+#      indices: ["<no-index>"]
 
-    - name: 14
-      type: allow
-      hosts: [1.1.1.2]
-      indices: ["i1", "i2", "i3"]
+#    - name: 14
+#      type: allow
+#      hosts: [1.1.1.2]
+#      indices: ["i1", "i2", "i3"]
 
     - name: 15
       type: allow
