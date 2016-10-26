@@ -37,9 +37,6 @@ public class GroupsRule extends Rule {
       } catch (UserNotConfiguredException e) {
       }
     }
-    if (this.users.isEmpty()) {
-      throw new RuleNotConfiguredException();
-    }
   }
 
   @Override
