@@ -22,6 +22,7 @@ public class MatcherWithWildcards {
 
   protected Set<String> allMatchers = Sets.newHashSet();
   protected Set<Pattern> wildcardMatchers = Sets.newHashSet();;
+  private static Set<String> empty = new HashSet<>(0);
 
   public Set<String> getMatchers() {
     return allMatchers;
@@ -113,7 +114,6 @@ public class MatcherWithWildcards {
     return matchWithResult(s) != null;
   }
 
-  private static Set<String> empty = new HashSet<>(0);
 
   public Set<String> filter(Set<String> haystack){
     if(haystack.isEmpty()) return empty;

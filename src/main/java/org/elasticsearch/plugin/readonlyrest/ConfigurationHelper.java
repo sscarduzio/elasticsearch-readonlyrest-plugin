@@ -4,9 +4,6 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 
-import java.util.Collection;
-import java.util.Collections;
-
 /**
  * ConfigurationHelper
  *

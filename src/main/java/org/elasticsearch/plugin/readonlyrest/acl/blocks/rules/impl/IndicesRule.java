@@ -1,6 +1,5 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.base.Joiner;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -27,7 +26,7 @@ public class IndicesRule extends Rule {
     super(s);
     configuredWildcards = MatcherWithWildcards.fromSettings(s, KEY);
   }
-  
+
   @Override
   public RuleExitResult match(RequestContext rc) {
     if (rc.getActionRequest() instanceof SearchRequest) {
@@ -48,9 +47,9 @@ public class IndicesRule extends Rule {
       Set<String> real = rc.getAvailableIndicesAndAliases();
       for (final String idx : rc.getIndices()) {
         if (!idx.contains("*") && !real.contains(idx)) {
-          rc.setIndices(new HashSet<String>(1) {{
-            add(idx);
-          }});
+          Set<String> nonExistingIndex = new HashSet<>(1);
+          nonExistingIndex.add(idx);
+          rc.setIndices(nonExistingIndex);
           return MATCH;
         }
       }
