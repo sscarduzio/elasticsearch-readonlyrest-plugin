@@ -6,7 +6,6 @@ import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -14,7 +13,6 @@ import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.aliases.IndexAliasesService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 
@@ -30,11 +28,14 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
+
 /**
  * Created by sscarduzio on 20/02/2016.
  */
 public class RequestContext {
-  private final static ESLogger logger = Loggers.getLogger(RequestContext.class);
+  private final ESLogger logger = Loggers.getLogger(getClass());
   /*
     * A regular expression to match the various representations of "localhost"
     */
@@ -129,8 +130,10 @@ public class RequestContext {
               String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
               field.set(actionRequest, idxArray);
             } catch (NoSuchFieldException e) {
+              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
               e.printStackTrace();
             } catch (IllegalAccessException e) {
+              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
               e.printStackTrace();
             }
             indices.clear();
@@ -179,28 +182,8 @@ public class RequestContext {
               indices = new String[0];
             }
 
+            // De-dup
             HashSet<String> tempSet = new HashSet<>(Arrays.asList(indices));
-
-
-            // Finding indices from payload and deduping them
-            if (actionRequest instanceof SearchRequest) {
-
-              // Translate any wildcards in the request into real indices (easier to reason about in indices rule)
-              MatcherWithWildcards realIndexMatcher = new MatcherWithWildcards(tempSet);
-              for (String realIdx : getAvailableIndicesAndAliases()) {
-                if (realIndexMatcher.match(realIdx)) {
-                  tempSet.add(realIdx);
-                }
-              }
-
-              // Hack #FIXME
-              if (tempSet.size() == 0 || tempSet.contains("_all") || tempSet.contains("_search")) {
-                tempSet.clear();
-                tempSet.add("_all");
-              }
-            }
-
-            // DONE
             indices = tempSet.toArray(new String[tempSet.size()]);
 
             if (logger.isDebugEnabled()) {
@@ -237,16 +220,16 @@ public class RequestContext {
 
   @Override
   public String toString() {
-    StringBuilder idxsb = new StringBuilder();
-    idxsb.append("[");
+    StringBuilder indicesStringBuilder = new StringBuilder();
+    indicesStringBuilder.append("[");
     try {
       for (String i : getIndices()) {
-        idxsb.append(i).append(' ');
+        indicesStringBuilder.append(i).append(' ');
       }
     } catch (Exception e) {
-      idxsb.append("<CANNOT GET INDICES>");
+      indicesStringBuilder.append("<CANNOT GET INDICES>");
     }
-    String idxs = idxsb.toString().trim() + "]";
+    String idxs = indicesStringBuilder.toString().trim() + "]";
     return "{ action: " + action +
         ", OA:" + getRemoteAddress() +
         ", indices:" + idxs +

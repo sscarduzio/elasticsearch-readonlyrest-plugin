@@ -7,6 +7,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -110,6 +111,19 @@ public class MatcherWithWildcards {
 
   public boolean match(String s) {
     return matchWithResult(s) != null;
+  }
+
+  private static Set<String> empty = new HashSet<>(0);
+
+  public Set<String> filter(Set<String> haystack){
+    if(haystack.isEmpty()) return empty;
+    Set<String> res = Sets.newHashSet();
+    for(String s: haystack){
+      if(match(s)){
+        res.add(s);
+      }
+    }
+    return res;
   }
 
 }

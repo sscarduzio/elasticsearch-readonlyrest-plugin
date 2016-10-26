@@ -49,7 +49,7 @@ public class AuthKeyRule extends Rule {
 
     if(authHeader != null && logger.isDebugEnabled()) {
       try {
-        logger.debug("Login as: " + new String(Base64.decode(authHeader)).split(":")[0] + " rc: " + rc);
+        logger.info("Login as: " + new String(Base64.decode(authHeader)).split(":")[0] + " rc: " + rc);
       } catch (IOException e) {
         e.printStackTrace();
       }

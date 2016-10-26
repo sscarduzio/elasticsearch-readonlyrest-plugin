@@ -26,18 +26,19 @@ public class ConfigurationHelper {
   public static final String ANSI_CYAN = "\u001B[36m";
   public static final String ANSI_WHITE = "\u001B[37m";
 
-  public boolean enabled;
-  public String forbiddenResponse;
-  public boolean sslEnabled;
-  public String sslKeyStoreFile;
-  public String sslKeyPassword;
-  public String sslKeyStorePassword;
+  public final boolean enabled;
+  public final String verbosity;
+  public final String forbiddenResponse;
+  public final boolean sslEnabled;
+  public final String sslKeyStoreFile;
+  public final String sslKeyPassword;
+  public final String sslKeyStorePassword;
 
   @Inject
   public ConfigurationHelper(Settings settings) {
 
     Settings s = settings.getByPrefix("readonlyrest.");
-
+    verbosity = s.get("verbosity", "info");
     enabled = s.getAsBoolean("enable", false);
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
 
@@ -53,7 +54,4 @@ public class ConfigurationHelper {
     return s == null || s.trim().length() == 0;
   }
 
-  public static boolean containsAny(Collection<?> ofWhat, Collection<?> intoWhat) {
-    return !Collections.disjoint(ofWhat, intoWhat);
-  }
 }

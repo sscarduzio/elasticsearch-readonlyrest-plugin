@@ -29,10 +29,10 @@ COPY keystore.jks /elasticsearch/plugins/readonlyrest/
 
 #RUN /elasticsearch/bin/plugin install mobz/elasticsearch-head
 
-# Change log level INFO->TRACE
+# Change log level INFO->DEBUG
 
 RUN TMP_FILE=`mktemp /tmp/config.XXXXXXXXXX` && \
-    sed -e "s/INFO/TRACE/" /elasticsearch/config/logging.yml > $TMP_FILE && \
+    sed -e "s/INFO/INFO/" /elasticsearch/config/logging.yml > $TMP_FILE && \
     mv $TMP_FILE /elasticsearch/config/logging.yml
 
 # Define working directory.

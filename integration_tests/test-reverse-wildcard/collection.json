@@ -1,0 +1,365 @@
+{
+	"variables": [],
+	"info": {
+		"name": "IndexReverseWildcard",
+		"_postman_id": "b78dff6f-ceec-e760-4052-b1212a55a8b5",
+		"description": "    - name: \"::GETTER::\"\n      type: allow\n      methods: GET\n      indices: logstash-a-*\n\n    - name: \"::SETTER::\"\n      type: allow\n      api_keys: 123",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "[SETUP] create doc-a1@logstash-a-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 201\"] = responseCode.code === 201;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/logstash-a-1/documents/doc-a1",
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "123",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\":\"Public Document\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[SETUP] create doc-a2@logstash-a-2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 201\"] = responseCode.code === 201;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/logstash-a-2/documents/doc-a2",
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "123",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\":\"Public Document\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[SETUP] create doc-b1@logstash-b-1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 201\"] = responseCode.code === 201;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/logstash-b-1/documents/doc-b1",
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "123",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\":\"Public Document\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[SETUP] create doc-b2@logstash-b-2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 201\"] = responseCode.code === 201;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/logstash-b-2/documents/doc-b2",
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "123",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"title\":\"Public Document\"\n}"
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/logstash-a-1/_search \t 200 [doc-a1]",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\ntests[\"returns doc-a1\"] = responseBody.has(\"doc-a1\");\ntests[\"does not return doc-b2\"] = !responseBody.has(\"doc-a2\");\ntests[\"does not return doc-b1\"] = !responseBody.has(\"doc-b1\");\ntests[\"does not return doc-b2\"] = !responseBody.has(\"doc-b2\");\n"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/logstash-a-1/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/logstash-a-*/_search \t 200 [doc-a1,doc-a2]",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\ntests[\"returns doc-a1\"] = responseBody.has(\"doc-a1\");\ntests[\"returns doc-a2\"] = responseBody.has(\"doc-a2\");\ntests[\"does not return doc-b1\"] = !responseBody.has(\"doc-b1\");\ntests[\"does not return doc-b2\"] = !responseBody.has(\"doc-b2\");"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/logstash-a-*/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/l*/_search \t 200 [doc-a1,doc-a2]",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\ntests[\"returns doc-a1\"] = responseBody.has(\"doc-a1\");\ntests[\"returns doc-a2\"] = responseBody.has(\"doc-a2\");\ntests[\"does not return doc-b1\"] = !responseBody.has(\"doc-b1\");\ntests[\"does not return doc-b2\"] = !responseBody.has(\"doc-b2\");"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/l*/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/*/_search \t 200 [doc-a1,doc-a2]",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\ntests[\"returns doc-a1\"] = responseBody.has(\"doc-a1\");\ntests[\"returns doc-a2\"] = responseBody.has(\"doc-a2\");\ntests[\"does not return doc-b1\"] = !responseBody.has(\"doc-b1\");\ntests[\"does not return doc-b2\"] = !responseBody.has(\"doc-b2\");"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/*/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/_search \t 200 [doc-a1,doc-a2]",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\ntests[\"returns doc-a1\"] = responseBody.has(\"doc-a1\");\ntests[\"returns doc-a2\"] = responseBody.has(\"doc-a2\");\ntests[\"does not return doc-b1\"] = !responseBody.has(\"doc-b1\");\ntests[\"does not return doc-b2\"] = !responseBody.has(\"doc-b2\");"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/not-existent/_search\t 404 []",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 404\"] = responseCode.code === 404;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/non-existent/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/non-existent,l*/_search 404 []",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 404\"] = responseCode.code === 404;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/non-existent,l*/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "/non-existent*,l*/_search 200 [doc-a1,doc-a2]",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;\ntests[\"returns doc-a1\"] = responseBody.has(\"doc-a1\");\ntests[\"returns doc-a2\"] = responseBody.has(\"doc-a2\");\ntests[\"does not return doc-b1\"] = !responseBody.has(\"doc-b1\");\ntests[\"does not return doc-b2\"] = !responseBody.has(\"doc-b2\");"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/non-existent*,l*/_search",
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "[TEAR DOWN] delete indices",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": "tests[\"Status code is 200\"] = responseCode.code === 200;"
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/_all",
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "123",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"description": ""
+			},
+			"response": []
+		}
+	]
+}

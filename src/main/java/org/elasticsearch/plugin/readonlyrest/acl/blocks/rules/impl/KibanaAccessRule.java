@@ -12,7 +12,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
 import java.util.List;
-import java.util.Set;
 
 
 /**
@@ -84,38 +83,18 @@ public class KibanaAccessRule extends Rule {
   @Override
   public RuleExitResult match(RequestContext rc) {
 
-    // Cluster actions are always allowed in both modes
-    for (String k : kibanaServerClusterActions) {
-      if (rc.getAction().contains(k)) {
-        logger.debug("allowing cluster action " + rc.getAction());
-        return MATCH;
-      }
+    if (kibanaActionsRO.contains(rc.getAction()) || kibanaServerClusterActions.contains(rc.getAction())) {
+      return MATCH;
     }
-
-    for (String k : allowedActions) {
-      if (rc.getAction().contains(k)) {
-        logger.debug("allowing regular ro/rw/ro+ kibana action " + rc.getAction());
-        return MATCH;
-      }
-    }
-
-    Set<String> requestIndices = rc.getIndices();
 
     // Allow other actions if devnull is targeted to readers and writers
-    for (String i : requestIndices) {
-      if (".kibana-devnull".equals(i)) {
-        logger.debug("allowing devnull req: " + rc);
-        return MATCH;
-      }
+    if (rc.getIndices().contains(".kibana-devnull")) {
+      return MATCH;
     }
 
-    if (canModifyKibana) {
-      for (String i : requestIndices) {
-        if (kibanaIndex.equals(i) && kibanaActionsRW.contains(rc.getAction())) {
-          logger.debug("allowing RW req: " + rc);
-          return MATCH;
-        }
-      }
+    if (canModifyKibana && rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex) && kibanaActionsRW.contains(rc.getAction())) {
+        logger.debug("allowing RW req: " + rc);
+        return MATCH;
     }
 
     logger.debug("KIBANA ACCESS DENIED " + rc);

@@ -11,7 +11,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -28,69 +27,72 @@ public class IndicesRule extends Rule {
     super(s);
     configuredWildcards = MatcherWithWildcards.fromSettings(s, KEY);
   }
-
-  public Set<String> getRealSearchableIndicesFromWildcards(RequestContext rc, Set<String> allowedWildCards) {
-    Set<String> availableIndices = rc.getAvailableIndicesAndAliases();
-    MatcherWithWildcards matcher = new MatcherWithWildcards(allowedWildCards);
-    Set<String> allowedIndicesSubset = new HashSet<>();
-    // Calculate the subset of available indices that match the allowed indices list (may contain wildcards)
-    for (String availableIndex : availableIndices) {
-      if (matcher.match(availableIndex)) {
-        allowedIndicesSubset.add(availableIndex);
-      }
-    }
-    if (logger.isDebugEnabled()) {
-      String availableIdxs = Joiner.on(',').skipNulls().join(availableIndices);
-      String allowedIdxs = Joiner.on(',').skipNulls().join(allowedIndicesSubset);
-      logger.debug("Available indices: [" + availableIdxs + "] of which allowed: [" + allowedIdxs + "]");
-    }
-    return allowedIndicesSubset;
-  }
-
+  
   @Override
   public RuleExitResult match(RequestContext rc) {
+    if (rc.getActionRequest() instanceof SearchRequest) {
+      // 1. Requesting none or all the indices means requesting allowed indices..
+      if (rc.getIndices().size() == 0 || (rc.getIndices().contains("_all"))) {
+        rc.setIndices(configuredWildcards.getMatchers());
+        return MATCH;
+      }
 
-    Set<String> indices = rc.getIndices();
-    if (indices.size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
-      return MATCH;
-    }
+      // ----- Now you requested SOME indices, let's see if and what we can allow in..
 
-    Set<String> allowedIndices = getRealSearchableIndicesFromWildcards(rc, configuredWildcards.getMatchers());
+      // 2. All indices match by wildcard?
+      if (configuredWildcards.filter(rc.getIndices()).size() == rc.getIndices().size()) {
+        return MATCH;
+      }
 
-    boolean hasAll = false;
-
-    for (String idx : rc.getIndices()) {
-
-      // For searches, we need to match to existing indices
-      if (rc.getActionRequest() instanceof SearchRequest) {
-        if ("_all".equals(idx)) {
-          hasAll = true;
-          continue;
-        }
-        if (!allowedIndices.contains(idx)) {
-          logger.debug("This request uses the indices '" + Arrays.toString(rc.getIndices().toArray()) + "' at least one of which ( " + idx + ") is on the list: " + Arrays.toString(allowedIndices.toArray()));
-          return NO_MATCH;
+      // 2.1 Detect non-wildcard requested indices that do not exist and return 404 (compatibility with vanilla ES)
+      Set<String> real = rc.getAvailableIndicesAndAliases();
+      for (final String idx : rc.getIndices()) {
+        if (!idx.contains("*") && !real.contains(idx)) {
+          rc.setIndices(new HashSet<String>(1) {{
+            add(idx);
+          }});
+          return MATCH;
         }
       }
-      // Writes et al
-      else {
+
+      // 3. indices match by reverse-wildcard?
+      // Expand requested indices to a subset of indices available in ES
+      Set<String> expansion = new MatcherWithWildcards(rc.getIndices()).filter(rc.getAvailableIndicesAndAliases());
+
+      // 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
+      if (expansion.size() == 0) {
+        return MATCH;
+      }
+
+      // ------ Your request expands to many available indices, let's see which ones you are allowed to request..
+      Set<String> allowedExpansion = configuredWildcards.filter(expansion);
+
+      // 5. You requested some indices, but NONE were allowed
+      if (allowedExpansion.size() == 0) {
+        // #TODO should I set indices to rule wildcards?
+        return NO_MATCH;
+      }
+
+      // 6. You requested some indices, I can allow you only SOME (we made sure the allowed set is not empty!).
+      rc.setIndices(allowedExpansion);
+      return MATCH;
+    } else {
+
+      // Handle <no-index>
+      if (rc.getIndices().size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
+        return MATCH;
+      }
+
+      // Reject if at least one requested index is not allowed by the rule conf
+      for (String idx : rc.getIndices()) {
         if (!configuredWildcards.match(idx)) {
           return NO_MATCH;
         }
       }
+
+      // Conditions are satisfied
+      return MATCH;
     }
 
-    if (hasAll) {
-      // Set the indices to permitted ones just if this rule actually has any valid indices to set
-      if (!configuredWildcards.getMatchers().contains("<no-index>") && configuredWildcards.getMatchers().size() > 0) {
-        rc.setIndices(allowedIndices);
-        return MATCH;
-      } else {
-        return NO_MATCH;
-      }
-    }
-
-    return MATCH;
   }
-
 }

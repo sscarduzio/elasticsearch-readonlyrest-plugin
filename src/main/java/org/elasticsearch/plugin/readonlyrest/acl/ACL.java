@@ -19,7 +19,7 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
 
 @Singleton
 public class ACL {
-  private final static ESLogger logger = Loggers.getLogger(ACL.class);
+  private final ESLogger logger = Loggers.getLogger(getClass());
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
   private final static String RULES_PREFIX = "readonlyrest.access_control_rules";
@@ -53,7 +53,7 @@ public class ACL {
     for (Block b : blocks) {
       BlockExitResult result = b.check(rc);
       if (result.isMatch()) {
-        logger.debug("Block " + b.getName() + " has matched: " + result);
+        logger.info("Block " + b.getName() + " has matched: " + result);
         return result;
       }
     }
