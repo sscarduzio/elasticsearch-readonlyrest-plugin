@@ -235,9 +235,9 @@ public class RequestContext {
         ", indices:" + idxs +
         ", M:" + request.method() +
         ", P:" + request.path() +
-        ", C:" + getContent() +
+        ", C:" + (logger.isDebugEnabled() ? getContent() : "<OMITTED, LENGTH=" + getContent().length()+ ">") +
         ", Headers:" + request.getHeaders() +
-        "}";
+        " }";
   }
 
 }
