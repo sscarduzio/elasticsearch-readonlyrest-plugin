@@ -6,6 +6,13 @@
 ## Unreleased
 
 ## Released
+
+> 2016-11-02 ::new v1.12.0:
+* **security bugfix** IMPORTANT: prevent generic searches returning results for all indices
+* **bugfix**: rewritten index and kibana_access rules.
+* **testing**: more than 50 integration tests added
+* **enhancement**: more informative, colored logging in info mode
+
 > 2016-10-17 :new: v1.11.0:
 * **feature** Support for groups of users in ACL, thanks Christian Henke for the great PR!
 * **bugfix**  Make ```auth_key_sha1``` behave like ````auth_key``` rule: return 401 instead of 403 status code if Authorization header was required

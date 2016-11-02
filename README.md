@@ -17,7 +17,7 @@ List of other supported Elasticsearch versions: [releases](https://github.com/ss
 
 ```bash
 ES_VERSION=2.4.1
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.10.0_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.11.0_es-v$ES_VERSION.zip
+bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.12.0_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.11.0_es-v$ES_VERSION.zip
 ```
 
 ### 2. Configuration
@@ -60,35 +60,52 @@ readonlyrest:
 
 ### USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)
 ```yml
-# remember to set the right CORS origin (or disable it, if you're brave). See https://github.com/elastic/kibana/issues/6719
-http.cors.enabled: true
-http.cors.allow-origin: /https?:\/\/localhost(:[0-9]+)?/
 
 readonlyrest:
     enable: true
-    
+    ssl:
+      enable: true
+      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
+      key_pass: readonlyrest
+
     response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
-    
+
     access_control_rules:
 
-    - name: "Logstash can write and create its own indices"
+    - name: "::LOGSTASH::"
       # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
       indices: ["logstash-*", "<no-index>"]
 
-    - name: Kibana Server (we trust this server side component, full access granted via HTTP authentication)
+    # We trust this server side component, full access granted via HTTP authentication
+    - name: "::KIBANA-SRV::"
       # auth_key is good for testing, but replace it with `auth_key_sha1`!
-      auth_key: admin:passwd3
+      auth_key: kibana:kibana
       type: allow
 
-    - name: Developer (reads only logstash indices, but can create new charts/dashboards)
-      # auth_key is good for testing, but replace it with `auth_key_sha1`!
-      auth_key: dev:dev
+    # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
+    - name: "::RO+ DEVELOPER::"
+      auth_key: ro+:dev
       type: allow
       kibana_access: ro+
-      indices: ["<no-index>", ".kibana*", "logstash*", "default"]
+      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+
+    # Cannot configure or edit dashboards and visualizations.
+    - name: "::RO DEVELOPER::"
+      auth_key: ro:dev
+      type: allow
+      kibana_access: ro
+      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+
+    # No authentication required to read from this index
+    - name: "::PUBLIC SEARCH::"
+      type: allow
+      indices: ["public"]
+      actions: ["indices:data/read/*"]
+
 
 ```
 **Now activate authentication in Kibana server**: let the Kibana daemon connect to ElasticSearch in privileged mode.
