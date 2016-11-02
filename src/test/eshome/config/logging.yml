@@ -1,9 +1,12 @@
-# you can override this using by setting a system property, for example -Ees.logger.level=DEBUG
-es.logger.level: TRACE
-rootLogger: ${es.logger.level}, console, file
+# you can override this using by setting a system property, for example -Des.logger.level=DEBUG
+es.logger.level: INFO
+rootLogger: ${es.logger.level}, console
+
+
+
 logger:
   # log action execution errors for easier debugging
-  action: TRACE
+  action: DEBUG
 
   # deprecation logging, turn to DEBUG to see them
   deprecation: INFO, deprecation_log_file
@@ -14,7 +17,7 @@ logger:
   com.amazonaws.jmx.SdkMBeanRegistrySupport: ERROR
   com.amazonaws.metrics.AwsSdkMetrics: ERROR
 
-  org.apache.http: TRACE
+  org.apache.http: INFO
 
   # gateway
   #gateway: DEBUG

@@ -49,11 +49,11 @@ public class ACL {
   }
 
   public BlockExitResult check(RequestContext rc) {
-    logger.trace("checking request:" + rc);
+    logger.debug("checking request:" + rc);
     for (Block b : blocks) {
       BlockExitResult result = b.check(rc);
       if (result.isMatch()) {
-        logger.info("Block " + b.getName() + " has matched: " + result);
+        logger.info("request: " + rc + " matched block: " + result);
         return result;
       }
     }
