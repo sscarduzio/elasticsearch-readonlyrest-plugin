@@ -54,7 +54,6 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
 
     // Skip if disabled
     if (!conf.enabled) {
-      logger.info("Readonly Rest plugin is installed, but not enabled");
       return true;
     }
 
