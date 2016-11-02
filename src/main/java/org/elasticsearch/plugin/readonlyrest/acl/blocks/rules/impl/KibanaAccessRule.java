@@ -35,7 +35,9 @@ public class KibanaAccessRule extends Rule {
       "indices:admin/get",
       "indices:admin/refresh",
       "indices:data/read/get",
-      "indices:data/read/mget"
+      "indices:data/read/mget",
+      "indices:data/read/mget[shard]",
+      "indices:admin/mappings/fields/get[index]"
   );
 
   private static List<String> kibanaActionsRW = Lists.newArrayList(
