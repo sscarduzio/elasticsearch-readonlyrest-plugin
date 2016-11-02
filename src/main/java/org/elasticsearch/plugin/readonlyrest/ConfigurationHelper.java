@@ -2,6 +2,8 @@ package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 
 /**
@@ -30,9 +32,11 @@ public class ConfigurationHelper {
   public final String sslKeyStoreFile;
   public final String sslKeyPassword;
   public final String sslKeyStorePassword;
+  private final ESLogger logger;
 
   @Inject
   public ConfigurationHelper(Settings settings) {
+    logger = Loggers.getLogger(getClass());
 
     Settings s = settings.getByPrefix("readonlyrest.");
     verbosity = s.get("verbosity", "info");
@@ -41,6 +45,9 @@ public class ConfigurationHelper {
 
     // -- SSL
     sslEnabled = s.getAsBoolean("ssl.enable", false);
+    if(!sslEnabled){
+      logger.info("Readonly Rest plugin is installed, but not enabled");
+    }
     sslKeyStoreFile = s.get("ssl.keystore_file");
     sslKeyStorePassword = s.get("ssl.keystore_pass");
     sslKeyPassword = s.get("ssl.key_pass", sslKeyStorePassword); // fallback
