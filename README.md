@@ -3,7 +3,13 @@
 [![Build Status](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin.svg?branch=master)](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin)
 
 ## ReadonlyREST needs your help ⚠️
-ReadonlyREST is an MIT-licensed open source project. Its ongoing development can only made possible thanks to the support of its backers. If you care this project **keeps on existing**, check out [ReadonlyREST Patreon campaign](https://www.patreon.com/readonlyrest).
+ReadonlyREST is an MIT-licensed open source project. Its ongoing development can only made possible thanks to the support of its backers:
+
+1. @nmaisonneuve 
+2. @Id57 
+3. Joseph Bull
+
+If you care this project **keeps on existing**, read up the [ReadonlyREST Patreon campaign](https://www.patreon.com/readonlyrest).
 
 # Readonly REST Elasticsearch Plugin
 Expose the high performance HTTP server embedded in Elasticsearch directly to the public, safely blocking any attempt to delete or modify your data.
