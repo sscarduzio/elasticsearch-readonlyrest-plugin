@@ -8,7 +8,8 @@ ReadonlyREST is an GPLv3-licensed open source project. Its ongoing development c
 
 1. @nmaisonneuve 
 2. @Id57 
-3. Joseph Bull
+3. Justin Bovee
+4. Joseph Bull
 
 If you care this project **keeps on existing**, read up the [ReadonlyREST Patreon campaign](https://www.patreon.com/readonlyrest).
 
