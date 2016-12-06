@@ -52,8 +52,8 @@ dependencies {
 }
 
 run {
-    systemProperty "java.security.policy", "/me/tmp/ingest-awesome/src/main/plugin-metadata/plugin-security.policy"
-    systemProperty "es.path.home", "/me/tmp/ingest-awesome/src/test/eshome"
+    systemProperty "java.security.policy", "src/main/plugin-metadata/plugin-security.policy"
+    systemProperty "es.path.home", "src/test/eshome"
     jvmArgs += " -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=8000"
 
 }
@@ -73,6 +73,8 @@ dependencyLicenses.enabled = true
 thirdPartyAudit.enabled = false
 
 // Uncomment this to skip license header checks
-licenseHeaders.enabled = true
-
+licenseHeaders.enabled = false
+namingConventions.enabled= false
 forbiddenApisMain.enabled = false
+forbiddenApisTest.enabled = false
+integTest.enabled = false

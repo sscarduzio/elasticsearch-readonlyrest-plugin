@@ -40,7 +40,7 @@ public class ConfigurationTests extends ESIntegTestCase {
 
   @Override
   protected Settings nodeSettings(int nodeOrdinal) {
-
+    System.out.println("testing the configuration");
     String text = ("readonlyrest:\n" +
         "    # (De)activate plugin\n" +
         "    enable: true\n" +

@@ -54,11 +54,4 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
     return ConfigurationHelper.allowedSettings();
   }
 
-//    @Override
-//    public Map<String, Processor.Factory> getProcessors(Processor.Parameters parameters) {
-//        return MapBuilder.<String, Processor.Factory>newMapBuilder()
-//                .put(AwesomeProcessor.TYPE, new AwesomeProcessor.Factory())
-//                .immutableMap();
-//    }
-
 }
