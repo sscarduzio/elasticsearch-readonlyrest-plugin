@@ -4,7 +4,7 @@
 [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest)
 
 ## ReadonlyREST needs your help ⚠️
-ReadonlyREST is an GPLv2 open source project. Its ongoing development can only made possible thanks to the support of its backers:
+ReadonlyREST is an GPLv3 open source project. Its ongoing development can only made possible thanks to the support of its backers:
 
 1. @nmaisonneuve 
 2. @Id57 
@@ -22,12 +22,10 @@ In other words... no more proxies! Yay Ponies!
 
 ### 1. Install the plugin 
 
-List of other supported Elasticsearch versions: [releases](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases) tab.
+[Download](https://readonlyrest.com) the binary release for your Elasticsearch version from the official website.
+
 **If you need a build for a specific ES version, just open an issue!** 
 
-```bash
-ES_VERSION=2.4.1
-bin/plugin install https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/releases/download/v1.12.1_es-v$ES_VERSION/elasticsearch-readonlyrest-v1.12.1_es-v$ES_VERSION.zip
 ```
 
 ### 2. Configuration
