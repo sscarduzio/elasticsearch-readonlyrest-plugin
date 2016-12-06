@@ -1,6 +1,0 @@
-readonlyrest:
-    enable: true
-    access_control_rules:
-
-    - name: 1
-      type: allow

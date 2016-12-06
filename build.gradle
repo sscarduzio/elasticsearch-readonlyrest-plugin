@@ -1,0 +1,78 @@
+/*
+ * This file is part of ReadonlyREST.
+ *
+ *     ReadonlyREST is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ *
+ *     ReadonlyREST is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+buildscript {
+    ext {
+        pluginVersion = '1.13.0-pre1'
+        esVersion = '5.0.1'
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'org.elasticsearch.gradle:build-tools:' + esVersion
+    }
+}
+
+group = 'org.elasticsearch.plugin'
+version = 'v' + pluginVersion + '_es' + esVersion
+
+apply plugin: 'java'
+apply plugin: 'elasticsearch.esplugin'
+apply plugin: 'idea'
+apply plugin: 'maven'
+
+esplugin {
+    name 'readonlyrest'
+    description 'Safely expose Elasticsearch REST API'
+    classname 'org.elasticsearch.plugin.readonlyrest.wiring.ReadonlyRestPlugin'
+}
+
+dependencies {
+    compile 'com.google.guava:guava:20.0'
+    compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
+}
+
+run {
+    systemProperty "java.security.policy", "/me/tmp/ingest-awesome/src/main/plugin-metadata/plugin-security.policy"
+    systemProperty "es.path.home", "/me/tmp/ingest-awesome/src/test/eshome"
+    jvmArgs += " -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=8000"
+
+}
+tasks.withType(Zip) { task ->
+    task.doLast {
+        ant.checksum file: it.archivePath, algorithm: 'sha1'
+    }
+}
+// Set to false to not use elasticsearch checkstyle rules
+checkstyleMain.enabled = true
+checkstyleTest.enabled = true
+
+// FIXME dependency license check needs to be enabled
+dependencyLicenses.enabled = true
+
+// FIXME thirdparty audit needs to be enabled
+thirdPartyAudit.enabled = false
+
+// Uncomment this to skip license header checks
+licenseHeaders.enabled = true
+
+forbiddenApisMain.enabled = false

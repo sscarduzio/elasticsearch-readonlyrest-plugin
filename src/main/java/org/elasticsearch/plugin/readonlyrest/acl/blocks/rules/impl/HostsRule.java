@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
@@ -49,7 +50,7 @@ public class HostsRule extends Rule {
     if (a != null && a.length > 0) {
       allowedAddresses = Lists.newArrayList();
       for (int i = 0; i < a.length; i++) {
-        if (!ConfigurationHelper.isNullOrEmpty(a[i])) {
+        if (!Strings.isNullOrEmpty(a[i])) {
           try {
             IPMask.getIPMask(a[i]);
           } catch (Exception e) {
@@ -66,9 +67,9 @@ public class HostsRule extends Rule {
   }
 
   private static String getXForwardedForHeader(RestRequest request) {
-    if (!ConfigurationHelper.isNullOrEmpty(request.header("X-Forwarded-For"))) {
+    if (!Strings.isNullOrEmpty(request.header("X-Forwarded-For"))) {
       String[] parts = request.header("X-Forwarded-For").split(",");
-      if (!ConfigurationHelper.isNullOrEmpty(parts[0])) {
+      if (!Strings.isNullOrEmpty(parts[0])) {
         return parts[0];
       }
     }

@@ -19,8 +19,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Charsets;
-import org.elasticsearch.common.Base64;
-import org.elasticsearch.common.logging.ESLogger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -29,12 +28,13 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
 import java.io.IOException;
+import java.util.Base64;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeyRule extends Rule {
-  private final static ESLogger logger = Loggers.getLogger(AuthKeyRule.class);
+  private final static Logger logger = Loggers.getLogger(AuthKeyRule.class);
 
   protected String authKey;
 
@@ -43,7 +43,7 @@ public class AuthKeyRule extends Rule {
 
     String pAuthKey = s.get(this.KEY);
     if (pAuthKey != null && pAuthKey.trim().length() > 0) {
-      authKey = Base64.encodeBytes(pAuthKey.getBytes(Charsets.UTF_8));
+      authKey = Base64.getEncoder().encodeToString(pAuthKey.getBytes(Charsets.UTF_8));
     }
     else {
       throw new RuleNotConfiguredException();
@@ -67,8 +67,8 @@ public class AuthKeyRule extends Rule {
 
     if(authHeader != null && logger.isDebugEnabled()) {
       try {
-        logger.info("Login as: " + new String(Base64.decode(authHeader)).split(":")[0] + " rc: " + rc);
-      } catch (IOException e) {
+        logger.info("Login as: " + new String(Base64.getDecoder().decode(authHeader)).split(":")[0] + " rc: " + rc);
+      } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
     }

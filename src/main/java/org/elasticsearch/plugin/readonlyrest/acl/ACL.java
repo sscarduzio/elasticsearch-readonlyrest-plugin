@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.ESLogger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -37,7 +37,7 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
 
 @Singleton
 public class ACL {
-  private final ESLogger logger = Loggers.getLogger(getClass());
+  private final Logger logger = Loggers.getLogger(getClass());
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
   private final static String RULES_PREFIX = "readonlyrest.access_control_rules";
@@ -75,7 +75,7 @@ public class ACL {
         return result;
       }
     }
-    logger.info(ANSI_RED + "no block has matched, forbidding by default: " + rc + ANSI_RESET);
+    logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
     return BlockExitResult.NO_MATCH;
   }
 }

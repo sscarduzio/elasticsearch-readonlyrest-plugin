@@ -18,19 +18,19 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ObjectArrays;
-import com.google.common.collect.Sets;
+import com.carrotsearch.hppc.ObjectLookupContainer;
+import com.carrotsearch.hppc.cursors.ObjectCursor;
+import com.google.common.collect.Lists;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.common.collect.ImmutableOpenMap;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.IndexService;
-import org.elasticsearch.index.aliases.IndexAliasesService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
+import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 
@@ -53,7 +53,7 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RES
  * Created by sscarduzio on 20/02/2016.
  */
 public class RequestContext {
-  private final ESLogger logger = Loggers.getLogger(getClass());
+  private final Logger logger = Loggers.getLogger(getClass());
   /*
     * A regular expression to match the various representations of "localhost"
     */
@@ -64,12 +64,12 @@ public class RequestContext {
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;
-  private final ActionRequest actionRequest;
+  private final ActionRequest<?> actionRequest;
   private Set<String> indices = null;
   private String content = null;
   private IndicesService indexService = null;
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, IndicesService indicesService) {
+  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest<?> actionRequest, IndicesService indicesService) {
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -77,7 +77,7 @@ public class RequestContext {
     this.indexService = indicesService;
   }
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest) {
+  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest<?> actionRequest) {
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -96,7 +96,7 @@ public class RequestContext {
   public String getContent() {
     if (content == null) {
       try {
-        content = new String(request.content().array());
+        content = ThreadRepo.request.get().content().utf8ToString();
       } catch (Exception e) {
         content = "<not available>";
       }
@@ -114,21 +114,13 @@ public class RequestContext {
             while (i.hasNext()) {
               IndexService theIndexSvc = i.next();
               harvested.add(theIndexSvc.index().getName());
-              final IndexAliasesService aliasSvc = theIndexSvc.aliasesService();
-              try {
-                Field field = aliasSvc.getClass().getDeclaredField("aliases");
-                field.setAccessible(true);
-                ImmutableOpenMap<String, String> aliases = (ImmutableOpenMap<String, String>) field.get(aliasSvc);
-                System.out.printf(aliases.toString());
-                for (Object o : aliases.keys().toArray()) {
-                  String a = (String) o;
-                  harvested.add(a);
-                }
-                //  harvested.addAll(aliases.keys().toArray(new String[aliases.keys().size()]));
-              } catch (NoSuchFieldException e) {
-                e.printStackTrace();
-              } catch (IllegalAccessException e) {
-                e.printStackTrace();
+
+              // Harvest aliases for this index too
+              ObjectLookupContainer<String> aliases = theIndexSvc.getIndexSettings().getIndexMetaData().getAliases().keys();
+              Iterator<ObjectCursor<String>> it = aliases.iterator();
+              while(it.hasNext()) {
+                ObjectCursor<String> c = it.next();
+                    harvested.add(c.value);
               }
             }
             return null;
@@ -162,6 +154,8 @@ public class RequestContext {
   }
 
   public Set<String> getIndices() {
+    getAvailableIndicesAndAliases();
+
     if (indices != null) {
       return indices;
     }
@@ -172,12 +166,12 @@ public class RequestContext {
           @Override
           public Void run() {
             String[] indices = new String[0];
-            ActionRequest ar = actionRequest;
+            ActionRequest<?> ar = actionRequest;
 
             if (ar instanceof CompositeIndicesRequest) {
               CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
               for (IndicesRequest ir : cir.subRequests()) {
-                indices = ObjectArrays.concat(indices, ir.indices(), String.class);
+                indices = ArrayUtils.concat(indices, ir.indices(), String.class);
               }
             } else {
               try {
@@ -205,7 +199,7 @@ public class RequestContext {
             indices = tempSet.toArray(new String[tempSet.size()]);
 
             if (logger.isDebugEnabled()) {
-              String idxs = Joiner.on(',').skipNulls().join(indices);
+              String idxs = String.join(",", indices);
               logger.debug("Discovered indices: " + idxs);
             }
 
@@ -215,7 +209,7 @@ public class RequestContext {
         }
     );
 
-    indices = Sets.newHashSet(out[0]);
+    indices = org.elasticsearch.common.util.set.Sets.newHashSet(out[0]);
 
     return indices;
   }
@@ -232,7 +226,7 @@ public class RequestContext {
     return action;
   }
 
-  public ActionRequest getActionRequest() {
+  public ActionRequest<?> getActionRequest() {
     return actionRequest;
   }
 
@@ -253,8 +247,8 @@ public class RequestContext {
         ", indices:" + idxs +
         ", M:" + request.method() +
         ", P:" + request.path() +
-        ", C:" + (logger.isDebugEnabled() ? getContent() : "<OMITTED, LENGTH=" + getContent().length()+ ">") +
-        ", Headers:" + request.getHeaders() +
+        ", C:" + (logger.isDebugEnabled() ? getContent() : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+        ", Headers:" + request.headers() +
         " }";
   }
 

@@ -12,7 +12,7 @@ RUN apk update &&  apk add ca-certificates wget && update-ca-certificates
 RUN \
  mkdir /tmp/es && \
  cd /tmp/es && \
- wget https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-${ES_VERSION}.tar.gz && \
+ wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES_VERSION}.tar.gz && \
  tar xvzf elasticsearch-*.tar.gz && \
  rm -f elasticsearch-*.tar.gz && \
  mv /tmp/es/elasticsearch-* /elasticsearch && \
@@ -23,23 +23,28 @@ VOLUME ["/data"]
 
 # Mount elasticsearch.yml config
 COPY elasticsearch.yml /elasticsearch/config/
-COPY elasticsearch-readonlyrest-${VERSION}.zip /tmp/
-RUN /elasticsearch/bin/plugin install file:/tmp/elasticsearch-readonlyrest-${VERSION}.zip
+COPY readonlyrest-${VERSION}.zip /tmp/
+RUN /elasticsearch/bin/elasticsearch-plugin install file:/tmp/readonlyrest-${VERSION}.zip
 COPY keystore.jks /elasticsearch/plugins/readonlyrest/
 
 #RUN /elasticsearch/bin/plugin install mobz/elasticsearch-head
 
 # Change log level INFO->DEBUG
 
-RUN TMP_FILE=`mktemp /tmp/config.XXXXXXXXXX` && \
-    sed -e "s/INFO/INFO/" /elasticsearch/config/logging.yml > $TMP_FILE && \
-    mv $TMP_FILE /elasticsearch/config/logging.yml
+#RUN TMP_FILE=`mktemp /tmp/config.XXXXXXXXXX` && \
+#    sed -e "s/INFO/INFO/" /elasticsearch/config/logging.yml > $TMP_FILE && \
+#    mv $TMP_FILE /elasticsearch/config/logging.yml
 
 # Define working directory.
 WORKDIR /data
 
+
+RUN adduser -D -u 1000 esuser
+RUN chown -R esuser /elasticsearch
+USER esuser
+
 # Define default command.
-CMD /elasticsearch/bin/elasticsearch -Des.insecure.allow.root=true
+CMD /elasticsearch/bin/elasticsearch
 
 # Expose ports.
 #   - 9200: HTTP

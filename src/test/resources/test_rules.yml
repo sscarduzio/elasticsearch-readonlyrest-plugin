@@ -1,0 +1,99 @@
+readonlyrest:
+    # (De)activate plugin
+    enable: true
+
+    ssl:
+      enable: true
+      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
+      key_pass: readonlyrest
+
+    # HTTP response body in case of forbidden request.
+    # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
+    response_if_req_forbidden: <h1>Forbidden</h1>
+
+    # Default policy is to forbid everything, so let's define a whitelist
+    access_control_rules:
+
+    - name: 1
+      type: allow
+      accept_x-forwarded-for_header: true
+      hosts: [9.9.9.9]
+
+    - name: 2
+      type: allow
+      auth_key: sales:p455wd
+
+    - name: 3
+      type: allow
+      api_keys: [1234567890]
+
+    - name: 4
+      type: allow
+      hosts: [127.0.0.1, 192.168.1.0/24]
+
+    - name: 5
+      type: forbid
+      uri_re: ^/secret-idx/.*
+#
+#    - name: 6
+#      type: allow
+#      indices: public-idx
+#
+#    - name: 7
+#      type: allow
+#      hosts: [192.168.64.1]
+#      indices: ip-based-idx
+#
+    - name: 8
+      type: allow
+      maxBodyLength: 0
+      methods: [OPTIONS,GET]
+
+#    - name: 9
+#      type: allow
+#      indices: wildcard-*
+
+#    - name: 10
+#      type: allow
+#      indices: withplus
+
+    - name: 11
+      type: allow
+      actions: action1
+
+    - name: 12
+      type: allow
+      actions: action*
+
+#    - name: 13
+#      type: allow
+#      indices: ["<no-index>"]
+
+#    - name: 14
+#      type: allow
+#      hosts: [1.1.1.2]
+#      indices: ["i1", "i2", "i3"]
+
+    - name: 15
+      type: allow
+      auth_key_sha1: a5aa590854b3806350b345ea154a52e3391aed32 #sha1configured:p455wd
+
+    - name: 16
+      type: allow
+      groups: ["b"]
+
+
+    users:
+
+    - username: alice
+      auth_key: alice:p455phrase
+      groups: ["b", "c"]
+
+    - username: bob
+      auth_key: bob:s3cr37
+      groups: ["c"]
+
+    - username: claire
+      auth_key_sha1: 2bc37a406bd743e2b7a4cb33efc0c52bc2cb03f0
+      groups: ["b"]

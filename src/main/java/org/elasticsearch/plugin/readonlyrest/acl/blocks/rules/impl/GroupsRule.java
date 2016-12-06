@@ -16,7 +16,6 @@
  *
  */
 
-
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import java.util.ArrayList;
@@ -34,7 +33,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserNotConfiguredE
  * A GroupsRule checks if a request containing Basic Authentication credentials 
  * matches a user in one of the specified groups.
  * 
- * @author Christian Henke <maitai@users.noreply.github.com>
+ * @author Christian Henke (maitai@users.noreply.github.com)
  */
 public class GroupsRule extends Rule {
 

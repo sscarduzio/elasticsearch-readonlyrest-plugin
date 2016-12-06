@@ -16,9 +16,9 @@
  *
  */
 
-
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -41,7 +41,7 @@ public class UriReRule extends Rule {
     super(s);
 
     String tmp = s.get(KEY);
-    if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
+    if (!Strings.isNullOrEmpty(tmp)) {
       try{
         uri_re = Pattern.compile(tmp.trim());
       }

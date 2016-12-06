@@ -19,16 +19,17 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
-import org.elasticsearch.common.logging.ESLogger;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -37,9 +38,9 @@ import java.util.List;
  */
 public class KibanaAccessRule extends Rule {
 
-  private final static ESLogger logger = Loggers.getLogger(KibanaAccessRule.class);
+  private final Logger logger = Loggers.getLogger(this.getClass());
 
-  private static List<String> kibanaServerClusterActions = Lists.newArrayList(
+  private static List<String> kibanaServerClusterActions = Arrays.asList(
       "cluster:monitor/nodes/info",
       "cluster:monitor/health");
 
@@ -64,21 +65,23 @@ public class KibanaAccessRule extends Rule {
       "indices:admin/mapping/put",
       "indices:data/write/delete",
       "indices:data/write/index",
-      "indices:data/write/update");
+      "indices:data/write/update"
+  );
 
   static {
-    kibanaActionsRW.addAll(kibanaActionsRO);
+      kibanaActionsRW.addAll(kibanaActionsRO);
   }
 
   private List<String> allowedActions = kibanaActionsRO;
 
   private String kibanaIndex = ".kibana";
+
   private boolean canModifyKibana = false;
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     String tmp = s.get(KEY);
-    if (ConfigurationHelper.isNullOrEmpty(tmp)) {
+    if (Strings.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
     }
     tmp = tmp.toLowerCase();
@@ -90,7 +93,7 @@ public class KibanaAccessRule extends Rule {
       canModifyKibana = true;
     } else if ("ro+".equals(tmp)) {
       tmp = s.get("kibana_index");
-      if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
+      if (!Strings.isNullOrEmpty(tmp)) {
         kibanaIndex = tmp;
       }
       allowedActions = kibanaActionsRO;
@@ -114,7 +117,7 @@ public class KibanaAccessRule extends Rule {
 
     if (canModifyKibana && rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex) && kibanaActionsRW.contains(rc.getAction())) {
         logger.debug("allowing RW req: " + rc);
-        return MATCH;
+      return MATCH;
     }
 
     logger.debug("KIBANA ACCESS DENIED " + rc);

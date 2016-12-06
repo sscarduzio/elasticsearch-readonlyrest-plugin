@@ -8,9 +8,9 @@ rm -rf docker || true
 mkdir docker || true
 
 # Obtain the version to compose the zip file name
-PLUGIN_VERSION=`grep plugin_version pom.xml | sed 's|</b>|-|g' | sed 's|<[^>]*>||g' |xargs`
-ES_VERSION=`grep '<elasticsearch.version'  pom.xml | sed 's|</b>|-|g' | sed 's|<[^>]*>||g' |xargs`
-VERSION=`echo "v$PLUGIN_VERSION es-v$ES_VERSION" |tr " " "_"`
+PLUGIN_VERSION=`grep 'pluginVersion ='  build.gradle | awk {'print $3'} |tr -d "\'"`
+ES_VERSION=`grep 'esVersion ='  build.gradle | awk {'print $3'} |tr -d "\'"`
+VERSION=`echo "v$PLUGIN_VERSION es$ES_VERSION" |tr " " "_"`
 
 # Dynamically generate docker file from template
 cat Dockerfile.tpl |sed -e "s/\${VERSION}/$VERSION/" -e "s/\${PLUGIN_VERSION}/$PLUGIN_VERSION/" -e "s/\${ES_VERSION}/$ES_VERSION/" > docker/Dockerfile
@@ -27,7 +27,7 @@ cat $CONF_FILE
 # Populate the conf files with test yml
 cp $CONF_FILE docker/elasticsearch.yml
 
-cp target/elasticsearch-readonlyrest-$VERSION.zip docker
+cp build/distributions/readonlyrest-$VERSION.zip docker
 cp src/test/eshome/plugins/readonlyrest/keystore.jks docker
 
 # Build and launch docker container

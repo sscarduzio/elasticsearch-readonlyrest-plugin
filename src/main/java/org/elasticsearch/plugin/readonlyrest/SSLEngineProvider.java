@@ -16,7 +16,6 @@
  *
  */
 
-
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.common.inject.Inject;
@@ -27,12 +26,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import java.security.SecureRandom;
 
-/**
- * @author <a href="mailto:scarduzio@gmail.com">Simone Scarduzio</a>
- * @see <a href="https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/">Github Project</a>
- * <p>
- * Created by sscarduzio on 23/09/2016.
- */
 
 @Singleton
 public class SSLEngineProvider {
@@ -45,20 +38,25 @@ public class SSLEngineProvider {
     this.conf = conf;
     System.out.println("SSL STATUS: " + conf.sslEnabled);
     if (conf.sslEnabled) {
-      java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
-      java.security.KeyStore ts = java.security.KeyStore.getInstance("JKS");
+      try {
+        java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
+        java.security.KeyStore ts = java.security.KeyStore.getInstance("JKS");
 
-      ks.load(new java.io.FileInputStream(conf.sslKeyStoreFile), conf.sslKeyStorePassword.toCharArray());
-      // ts.load(new java.io.FileInputStream(trustStoreFile), "".toCharArray());
+        ks.load(new java.io.FileInputStream(conf.sslKeyStoreFile), conf.sslKeyStorePassword.toCharArray());
+        // ts.load(new java.io.FileInputStream(trustStoreFile), "".toCharArray());
 
-      KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-      kmf.init(ks, conf.sslKeyPassword.toCharArray());
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+        kmf.init(ks, conf.sslKeyPassword.toCharArray());
 
-      TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-      tmf.init(ts);
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+        tmf.init(ts);
 
-      context = SSLContext.getInstance("TLS");
-      context.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
+        context = SSLContext.getInstance("TLS");
+        context.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
+      } catch (Throwable t) {
+        System.out.println("CANNOT INIT SSL!!!!!!!!!!!!");
+        t.printStackTrace();
+      }
     }
   }
 

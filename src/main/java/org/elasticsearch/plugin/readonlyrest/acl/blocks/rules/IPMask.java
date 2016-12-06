@@ -16,7 +16,6 @@
  *
  */
 
-
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import java.net.Inet4Address;

@@ -30,6 +30,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -68,15 +69,15 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
   }
 
   @Override
-  public boolean apply(String action, ActionRequest actionRequest, final ActionListener listener) {
+  public boolean apply(String action, ActionRequest<?> actionRequest, ActionListener<?> listener) {
 
     // Skip if disabled
     if (!conf.enabled) {
       return true;
     }
 
-    RestRequest req = actionRequest.getFromContext("request");
-    RestChannel channel = actionRequest.getFromContext("channel");
+    RestRequest req = ThreadRepo.request.get();
+    RestChannel channel = ThreadRepo.channel.get();
 
     boolean reqNull = req == null;
     boolean chanNull = channel == null;
@@ -122,7 +123,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
   }
 
   @Override
-  public boolean apply(String s, ActionResponse actionResponse, ActionListener actionListener) {
+  public boolean apply(String s, ActionResponse actionResponse, ActionListener<?> actionListener) {
     return true;
   }
 }

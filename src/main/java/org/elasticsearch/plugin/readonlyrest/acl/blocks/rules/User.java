@@ -16,7 +16,6 @@
  *
  */
 
-
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import java.util.Arrays;
@@ -26,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
 
 /**
- * @author Christian Henke <maitai@users.noreply.github.com>
+ * @author Christian Henke (maitai@users.noreply.github.com)
  */
 public class User {
 

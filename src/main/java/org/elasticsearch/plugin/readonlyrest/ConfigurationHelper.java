@@ -18,11 +18,23 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * ConfigurationHelper
+ *
+ * @author <a href="mailto:scarduzio@gmail.com">Simone Scarduzio</a>
+ * @see <a href="https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/">Github Project</a>
+ */
 
 @Singleton
 public class ConfigurationHelper {
@@ -43,21 +55,27 @@ public class ConfigurationHelper {
   public final String sslKeyStoreFile;
   public final String sslKeyPassword;
   public final String sslKeyStorePassword;
-  private final ESLogger logger;
+  private final Logger logger;
+  public final Settings settings;
 
   @Inject
   public ConfigurationHelper(Settings settings) {
+    this.settings = settings;
     logger = Loggers.getLogger(getClass());
 
     Settings s = settings.getByPrefix("readonlyrest.");
     verbosity = s.get("verbosity", "info");
     enabled = s.getAsBoolean("enable", false);
+
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
 
     // -- SSL
     sslEnabled = s.getAsBoolean("ssl.enable", false);
-    if(!sslEnabled){
-      logger.info("Readonly Rest plugin is installed, but not enabled");
+    if (sslEnabled) {
+      logger.info("SSL: Enabled");
+    }
+    else {
+      logger.info("SSL: Disabled");
     }
     sslKeyStoreFile = s.get("ssl.keystore_file");
     sslKeyStorePassword = s.get("ssl.keystore_pass");
@@ -65,8 +83,60 @@ public class ConfigurationHelper {
 
   }
 
-  public static boolean isNullOrEmpty(String s) {
-    return s == null || s.trim().length() == 0;
+  private static Setting<String> str(String name) {
+    return new Setting<>(name, "", (value) -> value, Setting.Property.NodeScope);
+  }
+
+  private static Setting<List<String>> strA(String name) {
+    return Setting.listSetting(name, new ArrayList<>(), (s) -> s.toString(), Setting.Property.NodeScope);
+  }
+
+  private static Setting<Boolean> bool(String name) {
+    return Setting.boolSetting(name, Boolean.FALSE, Setting.Property.NodeScope);
+  }
+
+  private static Setting<Integer> integ(String name) {
+    return Setting.intSetting(name, 0, Integer.MAX_VALUE, Setting.Property.NodeScope);
+  }
+  private static Setting<Settings> grp(String name) {
+    return Setting.groupSetting(name, new Setting.Property[] {Setting.Property.Dynamic, Setting.Property.NodeScope });
+  }
+
+  public static List<Setting<?>> allowedSettings() {
+    String prefix = "readonlyrest.";
+    String rule_prefix = prefix + "access_control_rules.";
+    String users_prefix = prefix + "users.";
+
+    return Arrays.asList(
+        bool(prefix + "enable"),
+        str(prefix + "response_if_req_forbidden"),
+
+        // SSL
+        bool(prefix + "ssl.enable"),
+        str(prefix + "ssl.keystore_file"),
+        str(prefix + "ssl.keystore_pass"),
+        str(prefix + "ssl.key_pass"),
+
+        grp(rule_prefix),
+        grp(users_prefix)
+        // Rules
+//        str(rule_prefix + "name"),
+//        str(rule_prefix + "accept_x-forwarded-for_header"),
+//        str(rule_prefix + "auth_key"),
+//        str(rule_prefix + "auth_key_sha1"),
+//        str(rule_prefix + "uri_re"),
+//        str(rule_prefix + "methods"),
+////        integ(rule_prefix + "maxBodyLength"),
+//        strA(rule_prefix + "indices"),
+//        strA(rule_prefix + "hosts"),
+//        strA(rule_prefix + "groups"),
+//
+//        // Users
+//        str(users_prefix + "username"),
+//        str(users_prefix + "auth_key"),
+//        strA(users_prefix + "groups")
+
+    );
   }
 
 }

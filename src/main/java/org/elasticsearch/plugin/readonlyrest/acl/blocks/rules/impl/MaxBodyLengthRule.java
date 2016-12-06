@@ -16,7 +16,6 @@
  *
  */
 
-
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;

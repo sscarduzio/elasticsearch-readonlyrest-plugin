@@ -18,15 +18,14 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import org.elasticsearch.common.logging.ESLogger;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.set.Sets;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,20 +35,21 @@ import java.util.regex.Pattern;
  */
 public class MatcherWithWildcards {
 
-  private final static ESLogger logger = Loggers.getLogger(MatcherWithWildcards.class);
+  private final static Logger logger = Loggers.getLogger(MatcherWithWildcards.class);
 
   protected Set<String> allMatchers = Sets.newHashSet();
-  protected Set<Pattern> wildcardMatchers = Sets.newHashSet();;
+  protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
+  ;
   private static Set<String> empty = new HashSet<>(0);
 
   public Set<String> getMatchers() {
     return allMatchers;
   }
 
-  public MatcherWithWildcards(Set<String> matchers){
-    for (String a: matchers) {
+  public MatcherWithWildcards(Set<String> matchers) {
+    for (String a : matchers) {
       a = normalizePlusAndMinusIndex(a);
-      if (ConfigurationHelper.isNullOrEmpty(a)) {
+      if (Strings.isNullOrEmpty(a)) {
         continue;
       }
       if (a.contains("*")) {
@@ -84,7 +84,7 @@ public class MatcherWithWildcards {
    * Returns null if the matchable is not worth processing because it's invalid or starts with "-"
    */
   private static String normalizePlusAndMinusIndex(String s) {
-    if (ConfigurationHelper.isNullOrEmpty(s)) {
+    if (Strings.isNullOrEmpty(s)) {
       return null;
     }
     // Ignore the excluded indices
@@ -133,11 +133,11 @@ public class MatcherWithWildcards {
   }
 
 
-  public Set<String> filter(Set<String> haystack){
-    if(haystack.isEmpty()) return empty;
+  public Set<String> filter(Set<String> haystack) {
+    if (haystack.isEmpty()) return empty;
     Set<String> res = Sets.newHashSet();
-    for(String s: haystack){
-      if(match(s)){
+    for (String s : haystack) {
+      if (match(s)) {
         res.add(s);
       }
     }

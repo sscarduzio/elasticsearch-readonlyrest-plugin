@@ -1,27 +1,9 @@
-cluster:
-  name: elasticsearch
+cluster.name: elasticsearch
 
-index:
-    number_of_replicas: 0
-    number_of_shards: 1
-    analysis:
-        analyzer:
-            eulang:
-                type: custom
-                tokenizer: standard
-                filter: [standard, lowercase, asciifolding]
-            location:
-                type: custom
-                tokenizer: standard
-                filter: [standard, lowercase, asciifolding]
-
-
-#network.host: _eth0:ipv4_
-transport.tcp.port : 9310
 http.bind_host: _eth0:ipv4_
-http.publish_address: _eth0:ipv4_
-discovery.zen.ping.multicast.enabled: false
+network.host: _eth0:ipv4_
 
+http.type: ssl_netty4
 readonlyrest:
     # (De)activate plugin
     enable: true

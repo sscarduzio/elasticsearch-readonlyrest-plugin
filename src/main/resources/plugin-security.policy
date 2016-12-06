@@ -1,3 +1,0 @@
-grant {
-  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
-};
