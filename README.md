@@ -24,9 +24,7 @@ In other words... no more proxies! Yay Ponies!
 
 [Download](https://readonlyrest.com) the binary release for your Elasticsearch version from the official website.
 
-**If you need a build for a specific ES version, just open an issue!** 
-
-```
+**Need a build for a specific ES version? Open an [issue](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/issues)!** 
 
 ### 2. Configuration
 
