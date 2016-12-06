@@ -63,10 +63,9 @@ public class MethodsRule extends Rule {
    */
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if(allowedMethods.contains(rc.getRequest().method())) {
-     return MATCH;
-    }
-    else {
+    if (allowedMethods.contains(rc.getRequest().method())) {
+      return MATCH;
+    } else {
       return NO_MATCH;
     }
   }

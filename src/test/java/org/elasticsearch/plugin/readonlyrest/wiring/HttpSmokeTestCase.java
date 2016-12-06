@@ -21,6 +21,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring;
 /**
  * Created by sscarduzio on 30/11/2016.
  */
+
 import org.elasticsearch.common.network.NetworkModule;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugins.Plugin;
@@ -43,7 +44,7 @@ public abstract class HttpSmokeTestCase extends ESIntegTestCase {
   public static void setUpTransport() {
     nodeTransportTypeKey = getTypeKey(randomFrom(MockTcpTransportPlugin.class, Netty4Plugin.class));
     nodeHttpTypeKey = getTypeKey(Netty4Plugin.class);
-    clientTypeKey = getTypeKey(randomFrom(MockTcpTransportPlugin.class,Netty4Plugin.class));
+    clientTypeKey = getTypeKey(randomFrom(MockTcpTransportPlugin.class, Netty4Plugin.class));
   }
 
   private static String getTypeKey(Class<? extends Plugin> clazz) {

@@ -33,7 +33,7 @@ import java.util.Base64;
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeyRule extends Rule {
-  private final static Logger logger = Loggers.getLogger(AuthKeyRule.class);
+  private static final Logger logger = Loggers.getLogger(AuthKeyRule.class);
 
   protected String authKey;
 
@@ -43,8 +43,7 @@ public class AuthKeyRule extends Rule {
     String pAuthKey = s.get(this.KEY);
     if (pAuthKey != null && pAuthKey.trim().length() > 0) {
       authKey = Base64.getEncoder().encodeToString(pAuthKey.getBytes(Charsets.UTF_8));
-    }
-    else {
+    } else {
       throw new RuleNotConfiguredException();
     }
   }
@@ -55,7 +54,7 @@ public class AuthKeyRule extends Rule {
       return null;
     String interestingPart = authorizationHeader.split("Basic")[1].trim();
     if (interestingPart.length() == 0) {
-        return null;
+      return null;
     }
     return interestingPart;
   }
@@ -64,7 +63,7 @@ public class AuthKeyRule extends Rule {
   public RuleExitResult match(RequestContext rc) {
     String authHeader = extractAuthFromHeader(rc.getRequest().header("Authorization"));
 
-    if(authHeader != null && logger.isDebugEnabled()) {
+    if (authHeader != null && logger.isDebugEnabled()) {
       try {
         logger.info("Login as: " + new String(Base64.getDecoder().decode(authHeader)).split(":")[0] + " rc: " + rc);
       } catch (IllegalArgumentException e) {

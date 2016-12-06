@@ -25,7 +25,6 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,8 +54,8 @@ public class ConfigurationHelper {
   public final String sslKeyStoreFile;
   public final String sslKeyPassword;
   public final String sslKeyStorePassword;
-  private final Logger logger;
   public final Settings settings;
+  private final Logger logger;
 
   @Inject
   public ConfigurationHelper(Settings settings) {
@@ -73,8 +72,7 @@ public class ConfigurationHelper {
     sslEnabled = s.getAsBoolean("ssl.enable", false);
     if (sslEnabled) {
       logger.info("SSL: Enabled");
-    }
-    else {
+    } else {
       logger.info("SSL: Disabled");
     }
     sslKeyStoreFile = s.get("ssl.keystore_file");
@@ -95,11 +93,11 @@ public class ConfigurationHelper {
     return Setting.boolSetting(name, Boolean.FALSE, Setting.Property.NodeScope);
   }
 
-//  private static Setting<Integer> integ(String name) {
+  //  private static Setting<Integer> integ(String name) {
 //    return Setting.intSetting(name, 0, Integer.MAX_VALUE, Setting.Property.NodeScope);
 //  }
   private static Setting<Settings> grp(String name) {
-    return Setting.groupSetting(name, new Setting.Property[] {Setting.Property.Dynamic, Setting.Property.NodeScope });
+    return Setting.groupSetting(name, new Setting.Property[]{Setting.Property.Dynamic, Setting.Property.NodeScope});
   }
 
   public static List<Setting<?>> allowedSettings() {

@@ -54,7 +54,7 @@ import java.util.Set;
  */
 public class IndicesRule extends Rule {
 
-  private final  Logger logger = Loggers.getLogger(this.getClass());
+  private final Logger logger = Loggers.getLogger(this.getClass());
 
   protected MatcherWithWildcards configuredWildcards;
 

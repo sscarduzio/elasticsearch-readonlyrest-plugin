@@ -34,16 +34,11 @@ import java.util.regex.Pattern;
  */
 public class MatcherWithWildcards {
 
-  private final static Logger logger = Loggers.getLogger(MatcherWithWildcards.class);
-
-  protected Set<String> allMatchers = Sets.newHashSet();
-  protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
-  ;
+  private static final Logger logger = Loggers.getLogger(MatcherWithWildcards.class);
   private static Set<String> empty = new HashSet<>(0);
-
-  public Set<String> getMatchers() {
-    return allMatchers;
-  }
+  protected Set<String> allMatchers = Sets.newHashSet();
+  ;
+  protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
 
   public MatcherWithWildcards(Set<String> matchers) {
     for (String a : matchers) {
@@ -99,6 +94,10 @@ public class MatcherWithWildcards {
       return s.substring(1, s.length());
     }
     return s;
+  }
+
+  public Set<String> getMatchers() {
+    return allMatchers;
   }
 
   public String matchWithResult(String matchable) {

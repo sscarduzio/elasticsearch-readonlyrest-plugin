@@ -26,12 +26,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-abstract public class Rule {
-  private Block.Policy policy = null;
-  final public String KEY;
-
+public abstract class Rule {
+  public final String KEY;
   protected RuleExitResult MATCH;
   protected RuleExitResult NO_MATCH;
+  private Block.Policy policy = null;
 
   public Rule(Settings s) {
     KEY = CaseFormat.LOWER_CAMEL.to(

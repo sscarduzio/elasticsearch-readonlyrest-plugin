@@ -41,8 +41,8 @@ public class RuleExitResult {
   @Override
   public String toString() {
     String condString;
-    if(condition != null){
-     condString = condition.KEY;
+    if (condition != null) {
+      condString = condition.KEY;
     } else {
       condString = "none";
     }

@@ -52,14 +52,12 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RES
  * Created by sscarduzio on 20/02/2016.
  */
 public class RequestContext {
-  private final Logger logger = Loggers.getLogger(getClass());
   /*
     * A regular expression to match the various representations of "localhost"
     */
-  private final static Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
-
-  private final static String LOCALHOST = "127.0.0.1";
-
+  private static final  Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
+  private static final String LOCALHOST = "127.0.0.1";
+  private final Logger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;
@@ -68,7 +66,8 @@ public class RequestContext {
   private String content = null;
   private IndicesService indexService = null;
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest<?> actionRequest, IndicesService indicesService) {
+  public RequestContext(RestChannel channel, RestRequest request, String action,
+                        ActionRequest<?> actionRequest, IndicesService indicesService) {
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -117,39 +116,15 @@ public class RequestContext {
               // Harvest aliases for this index too
               ObjectLookupContainer<String> aliases = theIndexSvc.getIndexSettings().getIndexMetaData().getAliases().keys();
               Iterator<ObjectCursor<String>> it = aliases.iterator();
-              while(it.hasNext()) {
+              while (it.hasNext()) {
                 ObjectCursor<String> c = it.next();
-                    harvested.add(c.value);
+                harvested.add(c.value);
               }
             }
             return null;
           }
         });
     return harvested;
-  }
-
-  public void setIndices(final Set<String> newIndices) {
-    AccessController.doPrivileged(
-        new PrivilegedAction<Void>() {
-          @Override
-          public Void run() {
-            try {
-              Field field = actionRequest.getClass().getDeclaredField("indices");
-              field.setAccessible(true);
-              String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
-              field.set(actionRequest, idxArray);
-            } catch (NoSuchFieldException e) {
-              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
-              e.printStackTrace();
-            } catch (IllegalAccessException e) {
-              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
-              e.printStackTrace();
-            }
-            indices.clear();
-            indices.addAll(newIndices);
-            return null;
-          }
-        });
   }
 
   public Set<String> getIndices() {
@@ -183,7 +158,8 @@ public class RequestContext {
                 indices = (String[]) m.invoke(ar);
               } catch (SecurityException e) {
                 logger.error("Can't get indices for request: " + toString());
-                throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
+                throw new SecurityPermissionException(
+                    "Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
               } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                 logger.debug("Failed to discover indices associated to this request: " + this);
               }
@@ -211,6 +187,30 @@ public class RequestContext {
     indices = org.elasticsearch.common.util.set.Sets.newHashSet(out[0]);
 
     return indices;
+  }
+
+  public void setIndices(final Set<String> newIndices) {
+    AccessController.doPrivileged(
+        new PrivilegedAction<Void>() {
+          @Override
+          public Void run() {
+            try {
+              Field field = actionRequest.getClass().getDeclaredField("indices");
+              field.setAccessible(true);
+              String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
+              field.set(actionRequest, idxArray);
+            } catch (NoSuchFieldException e) {
+              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
+              e.printStackTrace();
+            } catch (IllegalAccessException e) {
+              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
+              e.printStackTrace();
+            }
+            indices.clear();
+            indices.addAll(newIndices);
+            return null;
+          }
+        });
   }
 
   public RestChannel getChannel() {

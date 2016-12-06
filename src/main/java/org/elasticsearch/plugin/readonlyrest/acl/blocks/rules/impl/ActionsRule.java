@@ -32,7 +32,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
  */
 public class ActionsRule extends Rule {
 
-  private final static Logger logger = Loggers.getLogger(ActionsRule.class);
+  private static final Logger logger = Loggers.getLogger(ActionsRule.class);
 
   protected MatcherWithWildcards m;
 

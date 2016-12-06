@@ -31,8 +31,8 @@ import java.util.List;
 public class User {
 
   private final String username;
-  private AuthKeyRule authKeyRule;
   private final List<String> groups;
+  private AuthKeyRule authKeyRule;
 
   public User(Settings userProperties) throws UserNotConfiguredException {
     this.username = userProperties.get("username");

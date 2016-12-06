@@ -39,11 +39,11 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RES
 
 @Singleton
 public class ACL {
+  private static final String RULES_PREFIX = "readonlyrest.access_control_rules";
+  private static final String USERS_PREFIX = "readonlyrest.users";
   private final Logger logger = Loggers.getLogger(getClass());
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
-  private final static String RULES_PREFIX = "readonlyrest.access_control_rules";
-  private final static String USERS_PREFIX = "readonlyrest.users";
   private boolean basicAuthConfigured = false;
 
   @Inject

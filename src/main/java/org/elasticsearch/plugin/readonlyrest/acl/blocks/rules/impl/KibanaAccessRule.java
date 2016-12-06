@@ -38,12 +38,9 @@ import java.util.List;
  */
 public class KibanaAccessRule extends Rule {
 
-  private final Logger logger = Loggers.getLogger(this.getClass());
-
   private static List<String> kibanaServerClusterActions = Arrays.asList(
       "cluster:monitor/nodes/info",
       "cluster:monitor/health");
-
   private static List<String> kibanaActionsRO = Lists.newArrayList(
       "indices:admin/exists",
       "indices:admin/mappings/fields/get",
@@ -58,7 +55,6 @@ public class KibanaAccessRule extends Rule {
       "indices:data/read/mget[shard]",
       "indices:admin/mappings/fields/get[index]"
   );
-
   private static List<String> kibanaActionsRW = Lists.newArrayList(
       "indices:admin/create",
       "indices:admin/exists",
@@ -69,9 +65,10 @@ public class KibanaAccessRule extends Rule {
   );
 
   static {
-      kibanaActionsRW.addAll(kibanaActionsRO);
+    kibanaActionsRW.addAll(kibanaActionsRO);
   }
 
+  private final Logger logger = Loggers.getLogger(this.getClass());
   private List<String> allowedActions = kibanaActionsRO;
 
   private String kibanaIndex = ".kibana";
@@ -115,8 +112,13 @@ public class KibanaAccessRule extends Rule {
       return MATCH;
     }
 
-    if (canModifyKibana && rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex) && kibanaActionsRW.contains(rc.getAction())) {
-        logger.debug("allowing RW req: " + rc);
+    if (
+        canModifyKibana &&
+            rc.getIndices().size() == 1 &&
+            rc.getIndices().contains(kibanaIndex) &&
+            kibanaActionsRW.contains(rc.getAction())
+        ) {
+      logger.debug("allowing RW req: " + rc);
       return MATCH;
     }
 

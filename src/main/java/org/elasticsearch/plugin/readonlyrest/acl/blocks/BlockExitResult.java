@@ -23,8 +23,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
  * Created by sscarduzio on 14/02/2016.
  */
 public class BlockExitResult {
-  private final Block block;
   public static final BlockExitResult NO_MATCH = new BlockExitResult(null, false);
+  private final Block block;
   private final Boolean match;
 
   BlockExitResult(Block block, Boolean match) {

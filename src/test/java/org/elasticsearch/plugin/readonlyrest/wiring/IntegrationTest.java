@@ -34,11 +34,17 @@ import java.util.Collection;
 @ESIntegTestCase.ClusterScope(scope = ESIntegTestCase.Scope.SUITE, numClientNodes = 1, minNumDataNodes = 1)
 public class IntegrationTest extends HttpSmokeTestCase {
 
+  private static final StringEntity SAMPLE_DOCUMENT = new StringEntity("{\n" +
+      "   \"name\": {\n" +
+      "      \"first name\": \"Steve\",\n" +
+      "      \"last name\": \"Jobs\"\n" +
+      "   }\n" +
+      "}", ContentType.APPLICATION_JSON);
+
   @Override
   protected boolean addMockTransportService() {
     return false;
   }
-
 
   @Override
   protected Collection<Class<? extends Plugin>> nodePlugins() {
@@ -153,25 +159,19 @@ public class IntegrationTest extends HttpSmokeTestCase {
         .build();
   }
 
-    public void testHelloWorld() throws Exception {
+  public void testHelloWorld() throws Exception {
     ensureGreen();
-      assertTrue(true);
+    assertTrue(true);
 //    createIndex("index");
 //    admin().indices().prepareAliases().addAlias("index", "alias");
 //    Response response = getRestClient().performRequest("GET", "/alias?q=_all");
 //    assertEquals(200, response.getStatusLine().getStatusCode());
   }
+
   @Override
   protected boolean ignoreExternalCluster() {
     return false;
   }
-
-  private static final StringEntity SAMPLE_DOCUMENT = new StringEntity("{\n" +
-      "   \"name\": {\n" +
-      "      \"first name\": \"Steve\",\n" +
-      "      \"last name\": \"Jobs\"\n" +
-      "   }\n" +
-      "}", ContentType.APPLICATION_JSON);
 
 }
 

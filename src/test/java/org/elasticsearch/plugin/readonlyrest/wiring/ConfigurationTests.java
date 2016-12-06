@@ -90,7 +90,7 @@ public class ConfigurationTests extends ESIntegTestCase {
         "#\n" +
         "    - name: 8\n" +
         "      type: allow\n" +
-     //   "      maxBodyLength: 0\n" +
+        //   "      maxBodyLength: 0\n" +
         "      methods: [OPTIONS,GET]\n" +
         "\n" +
         "#    - name: 9\n" +
