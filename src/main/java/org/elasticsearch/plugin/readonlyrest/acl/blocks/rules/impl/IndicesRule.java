@@ -36,8 +36,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.action.search.SearchRequest;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -54,7 +54,7 @@ import java.util.Set;
  */
 public class IndicesRule extends Rule {
 
-  private final static Logger logger = Loggers.getLogger(IndicesRule.class);
+  private final  Logger logger = Loggers.getLogger(this.getClass());
 
   protected MatcherWithWildcards configuredWildcards;
 

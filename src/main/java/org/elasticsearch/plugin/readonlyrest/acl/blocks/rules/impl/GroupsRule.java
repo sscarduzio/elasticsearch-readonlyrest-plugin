@@ -18,16 +18,13 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.*;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserNotConfiguredException;
 
 /**
  * A GroupsRule checks if a request containing Basic Authentication credentials 

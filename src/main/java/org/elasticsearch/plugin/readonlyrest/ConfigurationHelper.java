@@ -87,17 +87,17 @@ public class ConfigurationHelper {
     return new Setting<>(name, "", (value) -> value, Setting.Property.NodeScope);
   }
 
-  private static Setting<List<String>> strA(String name) {
-    return Setting.listSetting(name, new ArrayList<>(), (s) -> s.toString(), Setting.Property.NodeScope);
-  }
+//  private static Setting<List<String>> strA(String name) {
+//    return Setting.listSetting(name, new ArrayList<>(), (s) -> s.toString(), Setting.Property.NodeScope);
+//  }
 
   private static Setting<Boolean> bool(String name) {
     return Setting.boolSetting(name, Boolean.FALSE, Setting.Property.NodeScope);
   }
 
-  private static Setting<Integer> integ(String name) {
-    return Setting.intSetting(name, 0, Integer.MAX_VALUE, Setting.Property.NodeScope);
-  }
+//  private static Setting<Integer> integ(String name) {
+//    return Setting.intSetting(name, 0, Integer.MAX_VALUE, Setting.Property.NodeScope);
+//  }
   private static Setting<Settings> grp(String name) {
     return Setting.groupSetting(name, new Setting.Property[] {Setting.Property.Dynamic, Setting.Property.NodeScope });
   }
@@ -126,7 +126,7 @@ public class ConfigurationHelper {
 //        str(rule_prefix + "auth_key_sha1"),
 //        str(rule_prefix + "uri_re"),
 //        str(rule_prefix + "methods"),
-////        integ(rule_prefix + "maxBodyLength"),
+//        integ(rule_prefix + "maxBodyLength"),
 //        strA(rule_prefix + "indices"),
 //        strA(rule_prefix + "hosts"),
 //        strA(rule_prefix + "groups"),

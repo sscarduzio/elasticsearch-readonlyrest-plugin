@@ -20,7 +20,6 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.carrotsearch.hppc.ObjectLookupContainer;
 import com.carrotsearch.hppc.cursors.ObjectCursor;
-import com.google.common.collect.Lists;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;

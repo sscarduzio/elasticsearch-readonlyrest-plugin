@@ -18,9 +18,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl;
 
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -29,7 +29,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
+
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 
 /**
  * Created by sscarduzio on 13/02/2016.

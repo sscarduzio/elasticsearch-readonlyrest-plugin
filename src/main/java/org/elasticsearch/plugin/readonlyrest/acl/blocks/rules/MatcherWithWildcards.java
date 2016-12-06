@@ -23,7 +23,6 @@ import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.set.Sets;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 
 import java.util.HashSet;
 import java.util.Set;
