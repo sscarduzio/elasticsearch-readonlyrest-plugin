@@ -46,22 +46,18 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
                             final BigArrays bigArrays, final ThreadPool threadPool,
                             SSLEngineProvider engineProvider, ConfigurationHelper conf) {
     super(settings, networkService, bigArrays, threadPool);
-    System.out.println("OMG CREATING SSL TRANSPORT!!!!!!!!!!!!!!!!!");
+    logger.info("creating SSL transport");
     this.engineProvider = engineProvider;
     this.conf = conf;
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
-    System.out.println("ZOMG EXCEPTION IN SSL TRANSPORT!!!!!!!!!!!!!!!!!");
+    logger.error("exception in SSL transport: " + cause.getMessage());
     cause.printStackTrace();
     if (!this.lifecycle.started()) {
       return;
     }
   }
-
-//  protected void doStart() {
-//    super.doStart();
-//  }
 
   public ChannelHandler configureServerChannelHandler() {
     return new SSLHandler(this);
