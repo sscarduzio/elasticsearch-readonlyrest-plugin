@@ -30,9 +30,11 @@ In other words... no more proxies! Yay Ponies!
 
 Append either of these snippets to `conf/elasticsearch.yml`
 
-### USE CASE 0: Enable SSL globally
+### USE CASE 0: Enable 
+globally
 Remember to enable SSL whenever you use HTTP basic auth or API keys so your credentials can't be stolen.
 ```yml
+http.type: ssl_netty4
 readonlyrest:
     enable: true
     
