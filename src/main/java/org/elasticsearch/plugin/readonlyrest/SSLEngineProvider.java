@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.common.settings.Settings;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -30,12 +31,12 @@ import java.security.SecureRandom;
 @Singleton
 public class SSLEngineProvider {
 
-  private final ConfigurationHelper conf;
+  public final ConfigurationHelper conf;
   private SSLContext context = null;
 
   @Inject
-  public SSLEngineProvider(ConfigurationHelper conf) throws Exception {
-    this.conf = conf;
+  public SSLEngineProvider(Settings s) {
+    this.conf = ConfigurationHelper.parse(s);
     System.out.println("SSL STATUS: " + conf.sslEnabled);
     if (conf.sslEnabled) {
       try {

@@ -61,13 +61,13 @@ public class RequestContext {
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;
-  private final ActionRequest<?> actionRequest;
+  private final ActionRequest actionRequest;
   private Set<String> indices = null;
   private String content = null;
   private IndicesService indexService = null;
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
-                        ActionRequest<?> actionRequest, IndicesService indicesService) {
+                        ActionRequest actionRequest, IndicesService indicesService) {
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -75,7 +75,7 @@ public class RequestContext {
     this.indexService = indicesService;
   }
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest<?> actionRequest) {
+  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest) {
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -140,7 +140,7 @@ public class RequestContext {
           @Override
           public Void run() {
             String[] indices = new String[0];
-            ActionRequest<?> ar = actionRequest;
+            ActionRequest ar = actionRequest;
 
             if (ar instanceof CompositeIndicesRequest) {
               CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
@@ -225,7 +225,7 @@ public class RequestContext {
     return action;
   }
 
-  public ActionRequest<?> getActionRequest() {
+  public ActionRequest getActionRequest() {
     return actionRequest;
   }
 

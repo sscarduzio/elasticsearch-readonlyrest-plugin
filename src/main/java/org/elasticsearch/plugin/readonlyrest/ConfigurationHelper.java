@@ -24,6 +24,7 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 
 import java.util.Arrays;
 import java.util.List;
@@ -79,6 +80,14 @@ public class ConfigurationHelper {
     sslKeyStorePassword = s.get("ssl.keystore_pass");
     sslKeyPassword = s.get("ssl.key_pass", sslKeyStorePassword); // fallback
 
+  }
+
+  public static ConfigurationHelper parse(Settings s) {
+    try {
+      return new ConfigurationHelper(s);
+    } catch (Exception e) {
+      throw new RuleConfigurationError("cannot parse settings", e);
+    }
   }
 
   private static Setting<String> str(String name) {

@@ -26,7 +26,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.SslHandler;
-import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
@@ -37,18 +36,14 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
+  private SSLEngineProvider engineProvider;
 
-  private final SSLEngineProvider engineProvider;
-  protected ConfigurationHelper conf;
-
-  @Inject
   public SSLTransportNetty4(final Settings settings, final NetworkService networkService,
-                            final BigArrays bigArrays, final ThreadPool threadPool,
-                            SSLEngineProvider engineProvider, ConfigurationHelper conf) {
+                            final BigArrays bigArrays, final ThreadPool threadPool
+                           ) {
     super(settings, networkService, bigArrays, threadPool);
+    engineProvider = new SSLEngineProvider(settings);
     logger.info("creating SSL transport");
-    this.engineProvider = engineProvider;
-    this.conf = conf;
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -75,8 +70,8 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      System.out.println("INITIALIZING SSL CHANNEL !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-      if (conf.sslEnabled) {
+      logger.info("Initializing SSL channel...");
+      if (engineProvider.conf.sslEnabled) {
         SSLContext sslCtx = engineProvider.getContext();
         SSLEngine sslEngine = sslCtx.createSSLEngine();
         sslEngine.setUseClientMode(false);

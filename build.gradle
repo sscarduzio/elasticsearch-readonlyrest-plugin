@@ -19,7 +19,7 @@
 buildscript {
     ext {
         pluginVersion = '1.13.0-pre1'
-        esVersion = '5.0.1'
+        esVersion = '5.1.1'
     }
     repositories {
         mavenLocal()
@@ -74,7 +74,7 @@ thirdPartyAudit.enabled = false
 
 // Uncomment this to skip license header checks
 licenseHeaders.enabled = false
-namingConventions.enabled= false
+namingConventions.enabled = false
 forbiddenApisMain.enabled = false
 forbiddenApisTest.enabled = false
 integTest.enabled = false
