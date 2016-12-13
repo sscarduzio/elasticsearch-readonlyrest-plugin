@@ -43,11 +43,16 @@ RUN adduser -D -u 1000 esuser
 RUN chown -R esuser /elasticsearch
 USER esuser
 
+# Remote debugger
+ENV ES_JAVA_OPTS "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000"
+
 # Define default command.
 CMD /elasticsearch/bin/elasticsearch
 
 # Expose ports.
+#   - 8000: Debug
 #   - 9200: HTTP
 #   - 9300: transport
 EXPOSE 9200
+EXPOSE 8000
 #EXPOSE 9300
