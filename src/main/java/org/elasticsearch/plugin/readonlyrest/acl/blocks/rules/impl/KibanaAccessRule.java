@@ -38,6 +38,13 @@ import java.util.Set;
  */
 public class KibanaAccessRule extends Rule {
 
+  private final Logger logger = Loggers.getLogger(this.getClass());
+  private static final  Actions actions = new Actions();
+
+  private String kibanaIndex = ".kibana";
+
+  private Boolean canModifyKibana;
+
   static class Actions {
     private MatcherWithWildcards RO;
     private MatcherWithWildcards RW;
@@ -76,13 +83,6 @@ public class KibanaAccessRule extends Rule {
       CLUSTER = new MatcherWithWildcards(kibanaServerClusterActions);
     }
   }
-
-  private final Logger logger = Loggers.getLogger(this.getClass());
-  private static final  Actions actions = new Actions();
-
-  private String kibanaIndex = ".kibana";
-
-  private Boolean canModifyKibana;
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
@@ -123,7 +123,7 @@ public class KibanaAccessRule extends Rule {
       return MATCH;
     }
 
-    // Handle requests to ".kibana"
+    // Handle requests to kibanaIndex
     if (indices.size() == 1 && indices.contains(kibanaIndex)) {
 
       // Write actions are only allowed for kibanaIndex
