@@ -37,6 +37,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessR
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 
 import java.util.List;
 import java.util.Set;
@@ -70,6 +71,10 @@ public class Block {
 
     // Won't add the condition if its configuration is not found
     try {
+      conditionsToCheck.add(new KibanaAccessRule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
       conditionsToCheck.add(new HostsRule(s));
     } catch (RuleNotConfiguredException e) {
     }
@@ -79,6 +84,11 @@ public class Block {
     }
     try {
       conditionsToCheck.add(new AuthKeyRule(s));
+      authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new AuthKeySha1Rule(s));
       authHeaderAccepted = true;
     } catch (RuleNotConfiguredException e) {
     }
@@ -94,10 +104,7 @@ public class Block {
       conditionsToCheck.add(new MethodsRule(s));
     } catch (RuleNotConfiguredException e) {
     }
-    try {
-      conditionsToCheck.add(new KibanaAccessRule(s));
-    } catch (RuleNotConfiguredException e) {
-    }
+
     try {
       conditionsToCheck.add(new IndicesRule(s));
     } catch (RuleNotConfiguredException e) {
@@ -106,11 +113,7 @@ public class Block {
       conditionsToCheck.add(new ActionsRule(s));
     } catch (RuleNotConfiguredException e) {
     }
-    try {
-      conditionsToCheck.add(new AuthKeySha1Rule(s));
-      authHeaderAccepted = true;
-    } catch (RuleNotConfiguredException e) {
-    }
+
     try {
       conditionsToCheck.add(new GroupsRule(s, userList));
     } catch (RuleNotConfiguredException e) {
@@ -134,6 +137,10 @@ public class Block {
     for (Rule condition : conditionsToCheck) {
       // Exit at the first rule that matches the request
       RuleExitResult condExitResult = condition.match(rc);
+
+      // Track rule history
+      ThreadRepo.history.get().put(condition.getClass().getSimpleName(), condExitResult.isMatch().toString());
+
       // a block matches if ALL rules match
       match &= condExitResult.isMatch();
     }

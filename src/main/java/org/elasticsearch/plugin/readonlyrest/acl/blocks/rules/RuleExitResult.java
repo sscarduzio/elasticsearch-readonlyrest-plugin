@@ -42,7 +42,7 @@ public class RuleExitResult {
   public String toString() {
     String condString;
     if (condition != null) {
-      condString = condition.KEY;
+      condString = condition.getKey();
     } else {
       condString = "none";
     }

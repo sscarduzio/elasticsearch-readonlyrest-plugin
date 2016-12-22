@@ -37,7 +37,7 @@ public class MethodsRule extends Rule {
 
   public MethodsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    String[] a = s.getAsArray(KEY);
+    String[] a = s.getAsArray(getKey());
     if (a != null && a.length > 0) {
       try {
         for (String string : a) {

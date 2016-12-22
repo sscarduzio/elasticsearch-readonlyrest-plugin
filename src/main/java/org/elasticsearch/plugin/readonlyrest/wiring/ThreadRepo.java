@@ -18,8 +18,11 @@
 
 package org.elasticsearch.plugin.readonlyrest.wiring;
 
+import com.google.common.collect.Maps;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
+
+import java.util.Map;
 
 /**
  * Created by sscarduzio on 25/11/2016.
@@ -27,4 +30,14 @@ import org.elasticsearch.rest.RestRequest;
 public class ThreadRepo {
   public static ThreadLocal<RestRequest> request = new ThreadLocal<>();
   public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
+  public static ThreadLocal<Map<String, String>> history = new ThreadLocal<>();
+
+  public static void resetHistory() {
+    if(history.get() != null){
+      history.get().clear();
+    }
+    else {
+      history.set(Maps.newHashMap());
+    }
+  }
 }

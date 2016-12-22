@@ -18,19 +18,19 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -38,88 +38,100 @@ import java.util.List;
  */
 public class KibanaAccessRule extends Rule {
 
-  private static List<String> kibanaServerClusterActions = Arrays.asList(
-      "cluster:monitor/nodes/info",
-      "cluster:monitor/health");
-  private static List<String> kibanaActionsRO = Lists.newArrayList(
-      "indices:admin/exists",
-      "indices:admin/mappings/fields/get",
-      "indices:admin/validate/query",
-      "indices:data/read/field_stats",
-      "indices:data/read/search",
-      "indices:data/read/msearch",
-      "indices:admin/get",
-      "indices:admin/refresh",
-      "indices:data/read/get",
-      "indices:data/read/mget",
-      "indices:data/read/mget[shard]",
-      "indices:admin/mappings/fields/get[index]"
-  );
-  private static List<String> kibanaActionsRW = Lists.newArrayList(
-      "indices:admin/create",
-      "indices:admin/exists",
-      "indices:admin/mapping/put",
-      "indices:data/write/delete",
-      "indices:data/write/index",
-      "indices:data/write/update"
-  );
+  static class Actions {
+    private MatcherWithWildcards RO;
+    private MatcherWithWildcards RW;
+    private MatcherWithWildcards CLUSTER;
 
-  static {
-    kibanaActionsRW.addAll(kibanaActionsRO);
+    Actions() {
+      Set<String> kibanaServerClusterActions = Sets.newHashSet(
+          "cluster:monitor/nodes/info",
+          "cluster:monitor/health");
+
+      Set<String> kibanaActionsRO = Sets.newHashSet(
+          "indices:admin/exists",
+          "indices:admin/mappings/fields/get*",
+          "indices:admin/validate/query",
+          "indices:data/read/field_stats",
+          "indices:data/read/search",
+          "indices:data/read/msearch",
+          "indices:admin/get",
+          "indices:admin/refresh*",
+          "indices:data/read/*"
+      );
+
+      Set<String> kibanaActionsRW = Sets.newHashSet(
+          "indices:admin/create",
+          "indices:admin/exists",
+          "indices:admin/mapping/put",
+          "indices:data/write/delete",
+          "indices:data/write/index",
+          "indices:data/write/update"
+      );
+
+      kibanaActionsRW.addAll(kibanaActionsRO);
+
+      RO = new MatcherWithWildcards(kibanaActionsRO);
+      RW = new MatcherWithWildcards(kibanaActionsRW);
+      CLUSTER = new MatcherWithWildcards(kibanaServerClusterActions);
+    }
   }
 
   private final Logger logger = Loggers.getLogger(this.getClass());
-  private List<String> allowedActions = kibanaActionsRO;
+  private static final  Actions actions = new Actions();
 
   private String kibanaIndex = ".kibana";
 
-  private boolean canModifyKibana = false;
+  private Boolean canModifyKibana;
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    String tmp = s.get(KEY);
+    String tmp = s.get(getKey());
     if (Strings.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
     }
     tmp = tmp.toLowerCase();
-
     if ("ro".equals(tmp)) {
-      allowedActions = kibanaActionsRO;
+      canModifyKibana = false;
     } else if ("rw".equals(tmp)) {
-      allowedActions = kibanaActionsRW;
       canModifyKibana = true;
     } else if ("ro+".equals(tmp)) {
-      tmp = s.get("kibana_index");
-      if (!Strings.isNullOrEmpty(tmp)) {
-        kibanaIndex = tmp;
-      }
-      allowedActions = kibanaActionsRO;
-      canModifyKibana = true;
+      throw new RuleConfigurationError("invalid configuration: 'ro+' is no longer supported. Use 'rw' instead", null);
     } else {
       throw new RuleConfigurationError("invalid configuration: use either 'ro' or 'rw'. Found: + " + tmp, null);
+    }
+    tmp = s.get("kibana_index");
+    if (!Strings.isNullOrEmpty(tmp)) {
+      kibanaIndex = tmp;
     }
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
 
-    if (kibanaActionsRO.contains(rc.getAction()) || kibanaServerClusterActions.contains(rc.getAction())) {
+    String a = rc.getAction();
+
+    // If this rule is active, it's at least allowing read actions for any indices.
+    if (actions.RO.match(a) || actions.CLUSTER.match(a)) {
       return MATCH;
     }
+
+    Set<String> indices = rc.getIndices();
 
     // Allow other actions if devnull is targeted to readers and writers
-    if (rc.getIndices().contains(".kibana-devnull")) {
+    if (indices.contains(".kibana-devnull")) {
       return MATCH;
     }
 
-    if (
-        canModifyKibana &&
-            rc.getIndices().size() == 1 &&
-            rc.getIndices().contains(kibanaIndex) &&
-            kibanaActionsRW.contains(rc.getAction())
-        ) {
-      logger.debug("allowing RW req: " + rc);
-      return MATCH;
+    // Handle requests to ".kibana"
+    if (indices.size() == 1 && indices.contains(kibanaIndex)) {
+
+      // Write actions are only allowed for kibanaIndex
+      if(canModifyKibana && actions.RW.match(a)){
+        logger.debug("allowing RW req: " + rc);
+        return MATCH;
+      }
+
     }
 
     logger.debug("KIBANA ACCESS DENIED " + rc);

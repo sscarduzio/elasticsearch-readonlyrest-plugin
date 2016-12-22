@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.carrotsearch.hppc.ObjectLookupContainer;
 import com.carrotsearch.hppc.cursors.ObjectCursor;
+import com.google.common.base.Joiner;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
@@ -55,13 +56,14 @@ public class RequestContext {
   /*
     * A regular expression to match the various representations of "localhost"
     */
-  private static final  Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
+  private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static final String LOCALHOST = "127.0.0.1";
   private final Logger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;
   private final ActionRequest actionRequest;
+  private final String id;
   private Set<String> indices = null;
   private String content = null;
   private IndicesService indexService = null;
@@ -73,6 +75,7 @@ public class RequestContext {
     this.action = action;
     this.actionRequest = actionRequest;
     this.indexService = indicesService;
+    this.id = Long.toHexString(System.currentTimeMillis());
   }
 
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest) {
@@ -80,6 +83,7 @@ public class RequestContext {
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
+    this.id = Long.toHexString(System.currentTimeMillis());
   }
 
   public String getRemoteAddress() {
@@ -241,13 +245,19 @@ public class RequestContext {
       indicesStringBuilder.append("<CANNOT GET INDICES>");
     }
     String idxs = indicesStringBuilder.toString().trim() + "]";
-    return "{ action: " + action +
+
+    Joiner.MapJoiner mapJoiner = Joiner.on(",").withKeyValueSeparator("=");
+    String hist = mapJoiner.join(ThreadRepo.history.get());
+
+    return "{ id: " + id +
+        ", action: " + action +
         ", OA:" + getRemoteAddress() +
         ", indices:" + idxs +
         ", M:" + request.method() +
         ", P:" + request.path() +
         ", C:" + (logger.isDebugEnabled() ? getContent() : "<OMITTED, LENGTH=" + getContent().length() + ">") +
         ", Headers:" + request.headers() +
+        ", History:" + hist +
         " }";
   }
 

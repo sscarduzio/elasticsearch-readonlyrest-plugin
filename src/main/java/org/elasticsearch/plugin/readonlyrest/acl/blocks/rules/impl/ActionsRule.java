@@ -38,7 +38,7 @@ public class ActionsRule extends Rule {
 
   public ActionsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    m = MatcherWithWildcards.fromSettings(s, KEY);
+    m = MatcherWithWildcards.fromSettings(s, getKey());
   }
 
   @Override

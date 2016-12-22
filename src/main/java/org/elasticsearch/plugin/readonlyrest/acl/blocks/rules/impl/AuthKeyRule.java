@@ -26,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 
 import java.util.Base64;
 
@@ -40,7 +41,7 @@ public class AuthKeyRule extends Rule {
   public AuthKeyRule(Settings s) throws RuleNotConfiguredException {
     super(s);
 
-    String pAuthKey = s.get(this.KEY);
+    String pAuthKey = s.get(this.getKey());
     if (pAuthKey != null && pAuthKey.trim().length() > 0) {
       authKey = Base64.getEncoder().encodeToString(pAuthKey.getBytes(Charsets.UTF_8));
     } else {
@@ -70,6 +71,13 @@ public class AuthKeyRule extends Rule {
         e.printStackTrace();
       }
     }
+
+    // WORKAROUND
+//    Boolean wasOkForKibana = "true" == ThreadRepo.history.get().get(KibanaAccessRule.class.getSimpleName());
+//    if(authHeader == null && wasOkForKibana){
+//      logger.warn("allowing because of workaround for elastic/kibana#9583");
+//      return MATCH;
+//    }
 
     if (authKey == null || authHeader == null) {
       return NO_MATCH;

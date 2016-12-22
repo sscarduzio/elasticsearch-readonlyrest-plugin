@@ -45,6 +45,7 @@ public class ReadonlyRestRestAction extends BaseRestHandler {
         System.out.println("rest: " + Thread.currentThread().getName() + "  - method: " + request.method());
         ThreadRepo.request.set(request);
         ThreadRepo.channel.set(channel);
+        ThreadRepo.resetHistory();
 
         filterChain.continueProcessing(request, channel, client);
       }

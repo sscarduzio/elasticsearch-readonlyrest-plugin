@@ -27,7 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
  * Created by sscarduzio on 13/02/2016.
  */
 public abstract class Rule {
-  public final String KEY;
+  private final String KEY;
   protected RuleExitResult MATCH;
   protected RuleExitResult NO_MATCH;
   private Block.Policy policy = null;
@@ -41,6 +41,9 @@ public abstract class Rule {
     NO_MATCH = new RuleExitResult(false, this);
   }
 
+  public String getKey() {
+    return KEY;
+  }
   public abstract RuleExitResult match(RequestContext rc);
 
   public Block.Policy getPolicy() {

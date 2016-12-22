@@ -39,7 +39,7 @@ public class UriReRule extends Rule {
   public UriReRule(Settings s) throws RuleNotConfiguredException {
     super(s);
 
-    String tmp = s.get(KEY);
+    String tmp = s.get(getKey());
     if (!Strings.isNullOrEmpty(tmp)) {
       try {
         uri_re = Pattern.compile(tmp.trim());

@@ -46,4 +46,9 @@ public class MatcherWithWildcardsTest {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c*"));
     assertTrue(m.match("xxxcxxx"));
   }
+  @org.junit.Test
+  public void matchDotKibana() {
+    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"));
+    assertTrue(m.match(".kibana"));
+  }
 }

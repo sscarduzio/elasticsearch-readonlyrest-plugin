@@ -29,6 +29,7 @@ import io.netty.handler.ssl.SslHandler;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.http.HttpTransportSettings;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 
@@ -47,20 +48,16 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
-    logger.error("exception in SSL transport: " + cause.getMessage());
-    cause.printStackTrace();
     if (!this.lifecycle.started()) {
       return;
     }
+    logger.error("exception in SSL transport: " + cause.getMessage());
+    cause.printStackTrace();
   }
 
   public ChannelHandler configureServerChannelHandler() {
     return new SSLHandler(this);
   }
-
-//  public static void overrideSettings(final Settings.Builder settingsBuilder, final Settings settings) {
-//    settingsBuilder.put(HttpTransportSettings.SETTING_HTTP_COMPRESSION.getKey(), false);
-//  }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
 
