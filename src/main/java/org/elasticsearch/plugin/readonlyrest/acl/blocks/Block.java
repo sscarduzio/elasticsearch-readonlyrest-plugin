@@ -18,6 +18,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
@@ -39,7 +40,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
@@ -134,16 +137,21 @@ public class Block {
 
   public BlockExitResult check(RequestContext rc) {
     boolean match = true;
+    Map<String,String> thisBlockHistory = new HashMap<>(conditionsToCheck.size());
     for (Rule condition : conditionsToCheck) {
       // Exit at the first rule that matches the request
       RuleExitResult condExitResult = condition.match(rc);
 
       // Track rule history
-      ThreadRepo.history.get().put(condition.getClass().getSimpleName(), condExitResult.isMatch().toString());
+      thisBlockHistory.put(condition.getKey(), condExitResult.isMatch().toString());
 
       // a block matches if ALL rules match
       match &= condExitResult.isMatch();
     }
+
+    Joiner.MapJoiner j = Joiner.on(",").withKeyValueSeparator("=");
+    ThreadRepo.history.get().put(getName(), "[" + j.join(thisBlockHistory) + "]");
+
     if (match) {
       logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
       return new BlockExitResult(this, true);
