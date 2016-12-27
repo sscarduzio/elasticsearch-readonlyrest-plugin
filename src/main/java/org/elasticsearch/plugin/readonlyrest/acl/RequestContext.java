@@ -30,6 +30,7 @@ import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -198,16 +199,26 @@ public class RequestContext {
         new PrivilegedAction<Void>() {
           @Override
           public Void run() {
+            Class<?> c = actionRequest.getClass();
             try {
-              Field field = actionRequest.getClass().getDeclaredField("indices");
+              boolean useSuperClass = true;
+              for( Field f : c.getDeclaredFields()){
+                if("indices".equals(f.getName())){
+                  useSuperClass = false;
+                }
+              }
+              if(useSuperClass){
+                c = c.getSuperclass();
+              }
+              Field field = c.getDeclaredField("indices");
               field.setAccessible(true);
               String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
               field.set(actionRequest, idxArray);
             } catch (NoSuchFieldException e) {
-              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
+              logger.error(ANSI_RED + " Could not set indices to class " + c.getSimpleName() + " because: " + e.getCause() + ANSI_RESET);
               e.printStackTrace();
             } catch (IllegalAccessException e) {
-              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
+              logger.error(ANSI_RED + " Could not set indices to class " + c.getSimpleName() + " because: " + e.getCause() + ANSI_RESET);
               e.printStackTrace();
             }
             indices.clear();
@@ -235,21 +246,14 @@ public class RequestContext {
 
   @Override
   public String toString() {
-    StringBuilder indicesStringBuilder = new StringBuilder();
-    indicesStringBuilder.append("[");
-    try {
-      for (String i : getIndices()) {
-        indicesStringBuilder.append(i).append(' ');
-      }
-    } catch (Exception e) {
-      indicesStringBuilder.append("<CANNOT GET INDICES>");
-    }
-    String idxs = indicesStringBuilder.toString().trim() + "]";
+    String idxs = Joiner.on(",").skipNulls().join(getIndices());
 
     Joiner.MapJoiner mapJoiner = Joiner.on(",").withKeyValueSeparator("=");
     String hist = mapJoiner.join(ThreadRepo.history.get());
-
+    String loggedInAs = AuthKeyRule.getBasicAuthUser(getRequest());
     return "{ id: " + id +
+        ", type: " + getActionRequest().getClass().getSimpleName() +
+        ", user: " + loggedInAs +
         ", action: " + action +
         ", OA:" + getRemoteAddress() +
         ", indices:" + idxs +
