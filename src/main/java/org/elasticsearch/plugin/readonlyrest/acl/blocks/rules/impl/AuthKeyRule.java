@@ -26,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.rest.RestRequest;
 
 import java.util.Base64;
 
@@ -59,24 +60,29 @@ public class AuthKeyRule extends Rule {
     return interestingPart;
   }
 
+  public static String getBasicAuthUser(RestRequest rr){
+    String authHeader = extractAuthFromHeader(rr.header("Authorization"));
+    if (authHeader != null) {
+      try {
+        return new String(Base64.getDecoder().decode(authHeader)).split(":")[0];
+      } catch (IllegalArgumentException e) {
+        e.printStackTrace();
+      }
+    }
+    return null;
+  }
+
   @Override
   public RuleExitResult match(RequestContext rc) {
     String authHeader = extractAuthFromHeader(rc.getRequest().header("Authorization"));
 
     if (authHeader != null && logger.isDebugEnabled()) {
       try {
-        logger.info("Login as: " + new String(Base64.getDecoder().decode(authHeader)).split(":")[0] + " rc: " + rc);
+        logger.info("Login as: " + getBasicAuthUser(rc.getRequest()) + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
     }
-
-    // WORKAROUND
-//    Boolean wasOkForKibana = "true" == ThreadRepo.history.get().get(KibanaAccessRule.class.getSimpleName());
-//    if(authHeader == null && wasOkForKibana){
-//      logger.warn("allowing because of workaround for elastic/kibana#9583");
-//      return MATCH;
-//    }
 
     if (authKey == null || authHeader == null) {
       return NO_MATCH;
