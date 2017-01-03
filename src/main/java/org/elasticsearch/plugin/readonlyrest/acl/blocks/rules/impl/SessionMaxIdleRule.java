@@ -48,8 +48,9 @@ public class SessionMaxIdleRule extends Rule {
         return value * 1000 * 60;
       case 's':
         return value * 1000;
+      default:
+        return 0;
     }
-    return 0;
   }
 
   public SessionMaxIdleRule(Settings s) throws RuleNotConfiguredException {

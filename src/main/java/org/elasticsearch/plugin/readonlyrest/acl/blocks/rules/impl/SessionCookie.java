@@ -4,6 +4,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.hash.Hashing;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -44,7 +45,7 @@ public class SessionCookie {
 
   public SessionCookie(RequestContext rc, Long sessionMaxIdleMillis) {
     if (sessionMaxIdleMillis <= 0) {
-      throw new Error("session max idle interval cannot be negative");
+      throw new ElasticsearchException("session max idle interval cannot be negative");
     }
     this.sessionMaxIdleMillis = sessionMaxIdleMillis;
     this.rc = rc;
@@ -159,10 +160,10 @@ public class SessionCookie {
   @Override
   public String toString() {
     Joiner.MapJoiner mapJoiner = Joiner.on(",").withKeyValueSeparator("=");
-    Map<String, Boolean> m = new HashMap<String, Boolean>(3) {{
-      put("isCookiePresent", isCookiePresent());
-      put("isCookieValid", isCookieValid());
-    }};
+    Map<String, Boolean> m = new HashMap<>(3);
+    m.put("isCookiePresent", isCookiePresent());
+    m.put("isCookieValid", isCookieValid());
+
     return "SessionCookie: " + mapJoiner.join(m);
   }
 
