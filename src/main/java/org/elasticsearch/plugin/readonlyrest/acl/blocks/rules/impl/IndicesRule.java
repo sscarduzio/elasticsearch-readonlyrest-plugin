@@ -37,6 +37,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.action.main.MainRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -65,10 +66,13 @@ public class IndicesRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
+
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
-    if (rc.getIndices().size() == 0 || (rc.getIndices().contains("_all"))) {
-      rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
-      return MATCH;
+    if (!(rc.getActionRequest() instanceof MainRequest)) {
+      if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all")) {
+        rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
+        return MATCH;
+      }
     }
 
     if (rc.getActionRequest() instanceof SearchRequest) {
