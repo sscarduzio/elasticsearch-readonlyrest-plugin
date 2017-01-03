@@ -32,11 +32,13 @@ public abstract class Rule {
   protected RuleExitResult NO_MATCH;
   private Block.Policy policy = null;
 
-  public Rule(Settings s) {
-    KEY = CaseFormat.LOWER_CAMEL.to(
+  protected static String mkKey(Class<? extends Rule> c) {
+    return  CaseFormat.LOWER_CAMEL.to(
         CaseFormat.LOWER_UNDERSCORE,
-        getClass().getSimpleName().replace("Rule", "")
-    );
+        c.getSimpleName().replace("Rule", ""));
+  }
+  public Rule(Settings s) {
+    KEY = mkKey(getClass());
     MATCH = new RuleExitResult(true, this);
     NO_MATCH = new RuleExitResult(false, this);
   }

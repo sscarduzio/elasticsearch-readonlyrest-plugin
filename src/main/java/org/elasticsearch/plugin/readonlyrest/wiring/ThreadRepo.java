@@ -33,10 +33,9 @@ public class ThreadRepo {
   public static ThreadLocal<Map<String, String>> history = new ThreadLocal<>();
 
   public static void resetHistory() {
-    if(history.get() != null){
+    if (history.get() != null) {
       history.get().clear();
-    }
-    else {
+    } else {
       history.set(Maps.newHashMap());
     }
   }

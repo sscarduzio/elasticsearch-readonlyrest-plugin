@@ -37,6 +37,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 
@@ -93,6 +94,10 @@ public class Block {
     try {
       conditionsToCheck.add(new AuthKeySha1Rule(s));
       authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new SessionMaxIdleRule(s));
     } catch (RuleNotConfiguredException e) {
     }
     try {

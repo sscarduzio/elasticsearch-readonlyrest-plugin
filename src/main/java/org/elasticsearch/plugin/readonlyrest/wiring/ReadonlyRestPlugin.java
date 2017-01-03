@@ -48,13 +48,13 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   public List<Class<? extends ActionFilter>> getActionFilters() {
     return Collections.singletonList(IndexLevelActionFilter.class);
   }
-
+  
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(Settings settings, ThreadPool threadPool, BigArrays bigArrays,
                                                                       CircuitBreakerService circuitBreakerService,
                                                                       NamedWriteableRegistry namedWriteableRegistry,
                                                                       NetworkService networkService) {
-    return Collections.singletonMap("ssl_netty4", () -> new SSLTransportNetty4(settings,networkService,bigArrays,threadPool));
+    return Collections.singletonMap("ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool));
   }
 
   @Override

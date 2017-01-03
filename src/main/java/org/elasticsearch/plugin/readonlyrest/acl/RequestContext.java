@@ -27,6 +27,7 @@ import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
@@ -228,6 +229,27 @@ public class RequestContext {
         });
   }
 
+  public void setResponseHeader(RestChannel channel, String name, String value) {
+    // #TODO: eliminate reflection when https://github.com/elastic/elasticsearch/issues/22367 gets resolved
+    AccessController.doPrivileged(new PrivilegedAction<Void>() {
+      @Override
+      public Void run() {
+        try {
+          Field f = channel.getClass().getDeclaredField("delegate");
+          f.setAccessible(true);
+          Object delegate = f.get(channel);
+          f = delegate.getClass().getDeclaredField("threadContext");
+          f.setAccessible(true);
+          ThreadContext tc = (ThreadContext) f.get(delegate);
+          tc.addResponseHeader(name, value);
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+          e.printStackTrace();
+        }
+        return null;
+      }
+    });
+  }
   public RestChannel getChannel() {
     return channel;
   }
