@@ -42,7 +42,6 @@ public class ReadonlyRestRestAction extends BaseRestHandler {
     controller.registerFilter(new RestFilter() {
       @Override
       public void process(RestRequest request, RestChannel channel, NodeClient client, RestFilterChain filterChain) throws Exception {
-        System.out.println("rest: " + Thread.currentThread().getName() + "  - method: " + request.method());
         ThreadRepo.request.set(request);
         ThreadRepo.channel.set(channel);
         ThreadRepo.resetHistory();
