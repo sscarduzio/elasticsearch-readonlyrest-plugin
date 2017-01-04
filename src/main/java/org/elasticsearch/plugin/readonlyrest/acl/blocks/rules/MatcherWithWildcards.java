@@ -37,7 +37,7 @@ public class MatcherWithWildcards {
   private static final Logger logger = Loggers.getLogger(MatcherWithWildcards.class);
   private static Set<String> empty = new HashSet<>(0);
   protected Set<String> allMatchers = Sets.newHashSet();
-  ;
+  
   protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
 
   public MatcherWithWildcards(Set<String> matchers) {
