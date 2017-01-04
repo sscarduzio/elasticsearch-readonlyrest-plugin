@@ -1,4 +1,11 @@
 language: java
-
 jdk:
-  - oraclejdk8 
+- oraclejdk8
+script: ./gradlew updateSHAs check assemble
+
+deploy:
+  provider: script
+  script: ci/ci-deploy.sh
+  skip_cleanup: true
+  on:
+    all_branches: true
