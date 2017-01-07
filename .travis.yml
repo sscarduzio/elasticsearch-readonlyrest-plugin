@@ -15,6 +15,7 @@ deploy:
 env:
 - GH_USER_EMAIL=scarduzio+travisci@gmail.com
 - GH_USER_NAME=Travis CI
+- GIT_SSH_COMMAND="ssh -i .travis/github_deploy_key -F /dev/null"
 
 after_success:
 - |
