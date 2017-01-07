@@ -37,9 +37,9 @@ fi
 #echo "Latest tag before this was:$LATEST_TAG"
 
 # TAGGING
-echo DEBUG WTF
-ls ~/.ssh
-cat ~/.ssh/*
+#echo DEBUG WTF
+#ls ~/.ssh
+#for i in `ls ~/.ssh/*`; do echo ""; echo ">> $i" ; cat $i ; done
 git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
 git config --global push.default matching
 git config --global user.email "builds@travis-ci.com"
