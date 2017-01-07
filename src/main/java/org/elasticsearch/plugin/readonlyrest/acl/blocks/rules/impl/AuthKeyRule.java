@@ -26,7 +26,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.rest.RestRequest;
 
 import java.util.Base64;
 import java.util.Map;
@@ -61,7 +60,7 @@ public class AuthKeyRule extends Rule {
     return interestingPart;
   }
 
-  public static String getBasicAuthUser(Map<String,String> headers){
+  public static String getBasicAuthUser(Map<String, String> headers) {
     String authHeader = extractAuthFromHeader(headers.get("Authorization"));
     if (authHeader != null) {
       try {

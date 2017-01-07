@@ -246,7 +246,8 @@ public class RequestContext {
         });
   }
 
-  private List<Throwable> setStringArrayInInstance(Class<?> c, Object instance, String fieldName, Set<String> injectedStringArray) {
+  private List<Throwable> setStringArrayInInstance(Class<?> theClass, Object instance, String fieldName, Set<String> injectedStringArray) {
+    Class<?> c = theClass;
     final List<Throwable> errors = new ArrayList<>();
     try {
       boolean useSuperClass = true;
