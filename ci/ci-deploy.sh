@@ -33,8 +33,8 @@ if git tag --list | grep ${GIT_TAG} > /dev/null; then
     exit 0
 fi
 
-LATEST_TAG=$(git tag --sort version:refname| tail -1)
-echo "Latest tag before this was:$LATEST_TAG"
+#LATEST_TAG=$(git tag --sort version:refname| tail -1)
+#echo "Latest tag before this was:$LATEST_TAG"
 
 # TAGGING
 git config --global push.default matching
