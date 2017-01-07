@@ -37,7 +37,7 @@ fi
 #echo "Latest tag before this was:$LATEST_TAG"
 
 # TAGGING
-git remote set-url git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
+git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
 git config --global push.default matching
 git config --global user.email "builds@travis-ci.com"
 git config --global user.name "Travis CI"
