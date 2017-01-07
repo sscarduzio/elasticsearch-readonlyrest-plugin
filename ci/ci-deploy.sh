@@ -1,33 +1,47 @@
 #!/bin/bash
 
 ###############################
-# S3 Artivact Uploader Script #
+# S3 Artifact Uploader Script #
 ###############################
 # Motivation: "artifact" addon and deploy feature of Travis are a complete loss of time
 # The S3 command line tool is this: https://github.com/pivotal-golang/s3cli
+# No need for hardcoding AWS Credentials, they're securely held in travis-ci.
+#
+# This tool triggers a build upload if a tag for the plugin and elasticsearch version is not already present.
+# The plugin and elasticsearch versions are taken from the build name, which comes from gradle.build
+#
+# Ultimately, I'm just going to commit changes to the build.gradle and this thing tags and uploads where necessary.
 
 CONF_FILE="conf.json"
 BUCKET="redirector-readonlyrest.com"
 
-# The AWS Credentials are in env vars, no need to write them here.
-
 echo "Entering release uploader.."
-
-echo "PWD: $PWD"
-
-if [[ "$TRAVIS_BRANCH" != "auto-build" ]]; then
-    echo "Nothing to do for branch $TRAVIS_BRANCH"
-    exit 0
-fi
 
 PLUGIN_FILE=$(echo build/distributions/readonlyrest-v*.zip)
 echo "PLUGIN_FILE: $PLUGIN_FILE"
-
 PLUGIN_FILE_BASE=$(basename $PLUGIN_FILE)
-
 ES_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $2'} | sed "s/\.zip//")
-
 echo "ES_VERSION: $ES_VERSION"
+PLUGIN_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $1'} | awk -F "-" {'print $2'})
+echo "PLUGIN_VERSION: $PLUGIN_VERSION"
+GIT_TAG=$(echo $PLUGIN_FILE_BASE | sed 's/readonlyrest-//' | sed 's/\.zip//')
+echo "GIT_TAG: $GIT_TAG"
+
+# Check if this tag already exists, so we don't overwrite builds
+if git tag --list | grep ${GIT_TAG} > /dev/null; then
+    echo "Git tag $GIT_TAG already exists, exiting."
+    exit 0
+fi
+
+LATEST_TAG=$(git tag --sort version:refname| tail -1)
+echo "Latest tag before this was:$LATEST_TAG"
+
+# TAGGING
+git config --global push.default matching
+git config --global user.email "builds@travis-ci.com"
+git config --global user.name "Travis CI"
+git tag $GIT_TAG -a -m "Generated tag from TravisCI build $TRAVIS_BUILD_NUMBER"
+git push origin $GIT_TAG
 
 S3CLI="ci/dummy-s3cmd.sh"
 if [[ "$(uname -s)" == *"Linux"* ]]; then
@@ -45,8 +59,8 @@ cat > $CONF_FILE <<- EOM
 EOM
 
 # s3cli -c config.json  put <path/to/file> <remote-blob>
-$S3CLI  -c $CONF_FILE    put $PLUGIN_FILE    $ES_VERSION/$PLUGIN_FILE_BASE
-$S3CLI  -c $CONF_FILE    put $PLUGIN_FILE    $ES_VERSION/$PLUGIN_FILE_BASE.sha1
+$S3CLI  -c $CONF_FILE   put $PLUGIN_FILE   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE
+$S3CLI  -c $CONF_FILE   put $PLUGIN_FILE   checksum/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
 
 rm $CONF_FILE
 
