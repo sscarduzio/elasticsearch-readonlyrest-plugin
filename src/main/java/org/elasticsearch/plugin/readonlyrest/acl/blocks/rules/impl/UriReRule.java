@@ -57,6 +57,6 @@ public class UriReRule extends Rule {
     if (uri_re == null) {
       return NO_MATCH;
     }
-    return uri_re.matcher(rc.getRequest().uri()).find() ? MATCH : NO_MATCH;
+    return uri_re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH;
   }
 }

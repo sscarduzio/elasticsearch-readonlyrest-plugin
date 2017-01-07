@@ -35,6 +35,7 @@ import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.threadpool.ThreadPool;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -43,14 +44,16 @@ import org.elasticsearch.rest.RestStatus;
 public class IndexLevelActionFilter extends ActionFilter.Simple {
   private IndicesService indicesService;
   private ACL acl;
-
+  private final ThreadPool threadPool;
   private ConfigurationHelper conf;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf, IndicesService indicesService) {
+  public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
+                                IndicesService indicesService, ThreadPool threadPool) {
     super(settings);
     this.conf = conf;
     this.indicesService = indicesService;
+    this.threadPool = threadPool;
 
     logger.info("Readonly REST plugin was loaded...");
 
@@ -95,7 +98,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
         throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?", null);
     }
 
-    RequestContext rc = new RequestContext(channel, req, action, actionRequest, indicesService);
+    RequestContext rc = new RequestContext(channel, req, action, actionRequest, indicesService, threadPool);
     BlockExitResult exitResult = acl.check(rc);
 
     // The request is allowed to go through

@@ -21,13 +21,18 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 import com.carrotsearch.hppc.ObjectLookupContainer;
 import com.carrotsearch.hppc.cursors.ObjectCursor;
 import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.MultiGetRequest;
+import org.elasticsearch.action.main.MainRequest;
+import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
-import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
@@ -35,6 +40,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.threadpool.ThreadPool;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -42,14 +48,15 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 
 /**
  * Created by sscarduzio on 20/02/2016.
@@ -66,26 +73,36 @@ public class RequestContext {
   private final String action;
   private final ActionRequest actionRequest;
   private final String id;
+  private final Map<String, String> headers;
+  private final ThreadPool threadPool;
   private Set<String> indices = null;
   private String content = null;
   private IndicesService indexService = null;
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
-                        ActionRequest actionRequest, IndicesService indicesService) {
+                        ActionRequest actionRequest, IndicesService indicesService, ThreadPool threadPool) {
     this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
     this.indexService = indicesService;
+    this.threadPool = threadPool;
     this.id = Long.toHexString(System.currentTimeMillis());
+    final Map<String, String> h = new HashMap<>();
+    request.headers().forEach(e -> {
+      h.put(e.getKey(), e.getValue());
+    });
+    this.headers = h;
   }
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest) {
-    this.channel = channel;
-    this.request = request;
-    this.action = action;
-    this.actionRequest = actionRequest;
-    this.id = Long.toHexString(System.currentTimeMillis());
+  public boolean canBypassIndexSecurity() {
+    return actionRequest instanceof MainRequest;
+  }
+
+  public boolean isReadRequest() {
+    return actionRequest instanceof SearchRequest ||
+        actionRequest instanceof GetRequest ||
+        actionRequest instanceof MultiGetRequest;
   }
 
   public String getRemoteAddress() {
@@ -131,6 +148,10 @@ public class RequestContext {
           }
         });
     return harvested;
+  }
+
+  public String getMethod() {
+    return request.method().name();
   }
 
   public Set<String> getIndices() {
@@ -196,75 +217,73 @@ public class RequestContext {
   }
 
   public void setIndices(final Set<String> newIndices) {
+    newIndices.remove("<no-index>");
+    logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
     AccessController.doPrivileged(
         new PrivilegedAction<Void>() {
           @Override
           public Void run() {
             Class<?> c = actionRequest.getClass();
-            try {
-              boolean useSuperClass = true;
-              for( Field f : c.getDeclaredFields()){
-                if("indices".equals(f.getName())){
-                  useSuperClass = false;
-                }
-              }
-              if(useSuperClass){
-                c = c.getSuperclass();
-              }
-              Field field = c.getDeclaredField("indices");
-              field.setAccessible(true);
-              String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
-              field.set(actionRequest, idxArray);
-            } catch (NoSuchFieldException e) {
-              logger.error(ANSI_RED + " Could not set indices to class " + c.getSimpleName() + " because: " + e.getCause() + ANSI_RESET);
-              e.printStackTrace();
-            } catch (IllegalAccessException e) {
-              logger.error(ANSI_RED + " Could not set indices to class " + c.getSimpleName() + " because: " + e.getCause() + ANSI_RESET);
-              e.printStackTrace();
+            final List<Throwable> results = Lists.newArrayList();
+            results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
+            if (!results.isEmpty()) {
+              IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
+              List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
+              actions.forEach(a -> {
+                results.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
+              });
             }
-            indices.clear();
-            indices.addAll(newIndices);
+            if (results.isEmpty()) {
+              indices.clear();
+              indices.addAll(newIndices);
+            } else {
+              results.forEach(e -> {
+                logger.error("Failed to set indices " + e.toString());
+              });
+            }
             return null;
           }
         });
   }
 
-  public void setResponseHeader(RestChannel channel, String name, String value) {
-    // #TODO: eliminate reflection when https://github.com/elastic/elasticsearch/issues/22367 gets resolved
-    AccessController.doPrivileged(new PrivilegedAction<Void>() {
-      @Override
-      public Void run() {
-        try {
-          Field f = channel.getClass().getDeclaredField("delegate");
-          f.setAccessible(true);
-          Object delegate = f.get(channel);
-          f = delegate.getClass().getDeclaredField("threadContext");
-          f.setAccessible(true);
-          ThreadContext tc = (ThreadContext) f.get(delegate);
-          tc.addResponseHeader(name, value);
-
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-          e.printStackTrace();
+  private List<Throwable> setStringArrayInInstance(Class<?> c, Object instance, String fieldName, Set<String> injectedStringArray) {
+    final List<Throwable> errors = new ArrayList<>();
+    try {
+      boolean useSuperClass = true;
+      for (Field f : c.getDeclaredFields()) {
+        if (fieldName.equals(f.getName())) {
+          useSuperClass = false;
         }
-        return null;
       }
-    });
-  }
-  public RestChannel getChannel() {
-    return channel;
+      if (useSuperClass) {
+        c = c.getSuperclass();
+      }
+      Field field = c.getDeclaredField(fieldName);
+      field.setAccessible(true);
+      String[] idxArray = injectedStringArray.toArray(new String[injectedStringArray.size()]);
+      field.set(instance, idxArray);
+    } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
+      errors.add(new SetIndexException(c, id, e));
+    }
+    return errors;
   }
 
-  public RestRequest getRequest() {
-    return request;
+  public void setResponseHeader(String name, String value) {
+    threadPool.getThreadContext().addResponseHeader(name, value);
+  }
+
+  public Map<String, String> getHeaders() {
+    return this.headers;
+  }
+
+  public String getUri() {
+    return request.uri();
   }
 
   public String getAction() {
     return action;
   }
 
-  public ActionRequest getActionRequest() {
-    return actionRequest;
-  }
 
   @Override
   public String toString() {
@@ -272,9 +291,9 @@ public class RequestContext {
 
     Joiner.MapJoiner mapJoiner = Joiner.on(",").withKeyValueSeparator("=");
     String hist = mapJoiner.join(ThreadRepo.history.get());
-    String loggedInAs = AuthKeyRule.getBasicAuthUser(getRequest());
+    String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
     return "{ id: " + id +
-        ", type: " + getActionRequest().getClass().getSimpleName() +
+        ", type: " + actionRequest.getClass().getSimpleName() +
         ", user: " + loggedInAs +
         ", action: " + action +
         ", OA:" + getRemoteAddress() +
@@ -285,6 +304,15 @@ public class RequestContext {
         ", Headers:" + request.headers() +
         ", History:" + hist +
         " }";
+  }
+
+  class SetIndexException extends Exception {
+    SetIndexException(Class<?> c, String id, Throwable e) {
+      super(" Could not set indices to class " + c.getSimpleName() +
+          "for req id: " + id + " because: "
+          + e.getClass().getSimpleName() + " : " + e.getMessage() +
+          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+    }
   }
 
 }

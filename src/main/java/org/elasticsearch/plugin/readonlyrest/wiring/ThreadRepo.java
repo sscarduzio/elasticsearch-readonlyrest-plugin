@@ -21,6 +21,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring;
 import com.google.common.collect.Maps;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.threadpool.ThreadPool;
 
 import java.util.Map;
 

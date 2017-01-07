@@ -1,6 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -56,8 +57,15 @@ public class SessionMaxIdleRule extends Rule {
   public SessionMaxIdleRule(Settings s) throws RuleNotConfiguredException {
     super(s);
 
-    if (Strings.isNullOrEmpty(s.get(mkKey(AuthKeyRule.class)))
-        && Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1Rule.class)))) {
+    boolean isThisRuleConfigured = !Strings.isNullOrEmpty(s.get(getKey()));
+    if (!isThisRuleConfigured) {
+      throw new RuleNotConfiguredException();
+    }
+
+    boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeyRule.class)))
+        || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1Rule.class)));
+
+    if (isThisRuleConfigured && !isLoginConfigured) {
       logger.error(getKey() + " rule does not mean anything if you don't also set either "
           + mkKey(AuthKeySha1Rule.class) + " or " + mkKey(AuthKeyRule.class));
       throw new RuleNotConfiguredException();
@@ -65,15 +73,12 @@ public class SessionMaxIdleRule extends Rule {
 
     String tmp = s.get(getKey());
 
-    if (Strings.isNullOrEmpty(tmp)) {
-      throw new RuleNotConfiguredException();
-    }
+    Long timeMill = timeIntervalStringToMillis(tmp);
 
-    maxIdleMillis = timeIntervalStringToMillis(tmp);
-
-    if (maxIdleMillis <= 0) {
-      throw new RuleNotConfiguredException();
+    if (timeMill <= 0) {
+      throw new ElasticsearchParseException(getKey() + " value must be greater than zero");
     }
+    maxIdleMillis = timeMill;
   }
 
   @Override

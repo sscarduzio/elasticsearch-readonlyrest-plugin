@@ -52,7 +52,7 @@ public class ApiKeysRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String h = rc.getRequest().header("X-Api-Key");
+    String h = rc.getHeaders().get("X-Api-Key");
     if (validApiKeys == null || h == null) {
       return NO_MATCH;
     }

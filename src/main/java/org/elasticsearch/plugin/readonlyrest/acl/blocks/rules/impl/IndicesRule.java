@@ -68,14 +68,14 @@ public class IndicesRule extends Rule {
   public RuleExitResult match(RequestContext rc) {
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
-    if (!(rc.getActionRequest() instanceof MainRequest)) {
+    if (!(rc.canBypassIndexSecurity())) {
       if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all")) {
         rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
         return MATCH;
       }
     }
 
-    if (rc.getActionRequest() instanceof SearchRequest) {
+    if (rc.isReadRequest()) {
 
       // Handle simple case of single index
       if (rc.getIndices().size() == 1) {

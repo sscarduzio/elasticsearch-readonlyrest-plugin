@@ -33,7 +33,7 @@ import java.util.List;
  * Created by sscarduzio on 14/02/2016.
  */
 public class MethodsRule extends Rule {
-  private List<RestRequest.Method> allowedMethods;
+  private List<String> allowedMethods;
 
   public MethodsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
@@ -45,7 +45,7 @@ public class MethodsRule extends Rule {
           if (allowedMethods == null) {
             allowedMethods = Lists.newArrayList();
           }
-          allowedMethods.add(m);
+          allowedMethods.add(m.toString());
         }
       } catch (Throwable t) {
         throw new RuleConfigurationError("Invalid HTTP method found in configuration " + a, t);
@@ -63,7 +63,7 @@ public class MethodsRule extends Rule {
    */
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (allowedMethods.contains(rc.getRequest().method())) {
+    if (allowedMethods.contains(rc.getMethod())) {
       return MATCH;
     } else {
       return NO_MATCH;

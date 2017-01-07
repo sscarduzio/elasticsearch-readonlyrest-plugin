@@ -29,6 +29,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.rest.RestRequest;
 
 import java.util.Base64;
+import java.util.Map;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -60,8 +61,8 @@ public class AuthKeyRule extends Rule {
     return interestingPart;
   }
 
-  public static String getBasicAuthUser(RestRequest rr){
-    String authHeader = extractAuthFromHeader(rr.header("Authorization"));
+  public static String getBasicAuthUser(Map<String,String> headers){
+    String authHeader = extractAuthFromHeader(headers.get("Authorization"));
     if (authHeader != null) {
       try {
         return new String(Base64.getDecoder().decode(authHeader)).split(":")[0];
@@ -74,11 +75,11 @@ public class AuthKeyRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String authHeader = extractAuthFromHeader(rc.getRequest().header("Authorization"));
+    String authHeader = extractAuthFromHeader(rc.getHeaders().get("Authorization"));
 
     if (authHeader != null && logger.isDebugEnabled()) {
       try {
-        logger.info("Login as: " + getBasicAuthUser(rc.getRequest()) + " rc: " + rc);
+        logger.info("Login as: " + getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }

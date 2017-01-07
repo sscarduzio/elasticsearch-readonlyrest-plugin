@@ -62,7 +62,7 @@ public class SessionCookie {
     this.cookiePresent = true;
 
     // ----- Check cookie validity
-    String user = getBasicAuthUser(rc.getRequest());
+    String user = getBasicAuthUser(rc.getHeaders());
     Iterator<String> cookiePartsIterator =
         Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
@@ -106,14 +106,14 @@ public class SessionCookie {
   }
 
   public void unsetCookie() {
-    rc.setResponseHeader(rc.getChannel(), "Set-Cookie", COOKIE_NAME + "=");
+    rc.setResponseHeader("Set-Cookie", COOKIE_NAME + "=");
   }
 
   public void setCookie() {
-    String user = getBasicAuthUser(rc.getRequest());
+    String user = getBasicAuthUser(rc.getHeaders());
     Date expiryDateString = new Date(System.currentTimeMillis() + sessionMaxIdleMillis);
     String cookie = mkCookie(user, expiryDateString);
-    rc.setResponseHeader(rc.getChannel(), "Set-Cookie", COOKIE_NAME + "=" + cookie);
+    rc.setResponseHeader("Set-Cookie", COOKIE_NAME + "=" + cookie);
   }
 
   private String mkCookie(String user, Date expiry) {
@@ -127,7 +127,7 @@ public class SessionCookie {
   }
 
   private String extractCookie(String cookieName) {
-    String cookieHeader = rc.getRequest().header("Cookie");
+    String cookieHeader = rc.getHeaders().get("Cookie");
     String cookieString = null;
 
     if (Strings.isNullOrEmpty(cookieHeader)) {

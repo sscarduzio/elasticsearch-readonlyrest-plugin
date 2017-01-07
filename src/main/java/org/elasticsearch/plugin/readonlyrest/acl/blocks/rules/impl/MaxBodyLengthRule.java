@@ -40,6 +40,6 @@ public class MaxBodyLengthRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return (rc.getRequest().content().length() > maxBodyLength) ? NO_MATCH : MATCH;
+    return (rc.getContent().length() > maxBodyLength) ? NO_MATCH : MATCH;
   }
 }

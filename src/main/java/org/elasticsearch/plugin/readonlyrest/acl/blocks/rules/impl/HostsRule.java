@@ -33,6 +33,7 @@ import org.elasticsearch.rest.RestRequest;
 
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -65,9 +66,10 @@ public class HostsRule extends Rule {
     }
   }
 
-  private static String getXForwardedForHeader(RestRequest request) {
-    if (!Strings.isNullOrEmpty(request.header("X-Forwarded-For"))) {
-      String[] parts = request.header("X-Forwarded-For").split(",");
+  private static String getXForwardedForHeader(Map<String,String> headers) {
+    String header = headers.get("X-Forwarded-For");
+    if (!Strings.isNullOrEmpty(header)) {
+      String[] parts = header.split(",");
       if (!Strings.isNullOrEmpty(parts[0])) {
         return parts[0];
       }
@@ -114,7 +116,7 @@ public class HostsRule extends Rule {
   }
 
   public RuleExitResult match(RequestContext rc) {
-    boolean res = matchesAddress(rc.getRemoteAddress(), getXForwardedForHeader(rc.getRequest()));
+    boolean res = matchesAddress(rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
     return res ? MATCH : NO_MATCH;
   }
 }
