@@ -13,7 +13,7 @@
 # Ultimately, I'm just going to commit changes to the build.gradle and this thing tags and uploads where necessary.
 
 CONF_FILE="conf.json"
-BUCKET="redirector-readonlyrest.com"
+BUCKET="readonlyrest-data"
 
 echo "Entering release uploader.."
 
@@ -33,13 +33,7 @@ if git tag --list | grep ${GIT_TAG} > /dev/null; then
     exit 0
 fi
 
-#LATEST_TAG=$(git tag --sort version:refname| tail -1)
-#echo "Latest tag before this was:$LATEST_TAG"
-
 # TAGGING
-#echo DEBUG WTF
-#ls ~/.ssh
-#for i in `ls ~/.ssh/*`; do echo ""; echo ">> $i" ; cat $i ; done
 git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
 git config --global push.default matching
 git config --global user.email "builds@travis-ci.com"
