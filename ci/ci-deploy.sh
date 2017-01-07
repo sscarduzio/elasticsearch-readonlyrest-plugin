@@ -48,7 +48,7 @@ fi
 
 cat > $CONF_FILE <<- EOM
 {
-  "bucket_name":            "redirector-readonlyrest.com",
+  "bucket_name":            "${BUCKET}",
   "credentials_source":     "static",
   "access_key_id":          "${aws_access_key_id}",
   "secret_access_key":      "${aws_secret_access_key}",
