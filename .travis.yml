@@ -1,9 +1,34 @@
 language: java
 
 jdk:
-#  - openjdk7
-#  - oraclejdk7
-  - oraclejdk8 
+- oraclejdk8
+
+script: bin/build.sh
+
+deploy:
+  provider: script
+  script: ci/ci-deploy.sh
+  skip_cleanup: true
+  on:
+    all_branches: true
+
+env:
+- GH_USER_EMAIL=scarduzio+travisci@gmail.com
+- GH_USER_NAME=Travis CI
 
 after_success:
-  - mvn clean test
+- |
+       declare -r SSH_FILE="$HOME/.ssh/gh_identity)"
+       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+       # Decrypt the file containing the private key
+       openssl aes-256-cbc \
+         -K $encrypted_bf4db9d5783b_key -iv $encrypted_bf4db9d5783b_iv \
+         -in ".travis/github_deploy_key.enc" \
+         -out "$SSH_FILE" -d
+       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+       # Enable SSH authentication
+       chmod 600 "$SSH_FILE" \
+         && printf "%s\n" \
+              "Host github.com" \
+              "  IdentityFile $SSH_FILE" \
+              "  LogLevel ERROR" >> ~/.ssh/config

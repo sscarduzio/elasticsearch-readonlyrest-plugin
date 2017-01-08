@@ -101,7 +101,7 @@
 						<configuration>
 							<target>
 								<zip basedir="${project.build.directory}" includes="${project.build.finalName}.jar"
-									destfile="${project.build.directory}/elasticsearch-${project.name}-v${project.version}_es-v${elasticsearch.version}.zip" />
+									destfile="${project.build.directory}/${project.name}-${project.version}_es${elasticsearch.version}.zip" />
 							</target>
 						</configuration>
 						<goals>

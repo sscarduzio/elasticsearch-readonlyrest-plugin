@@ -11,3 +11,5 @@ src/test/eshome/data
 src/test/eshome/logs
 .DS_Store
 *.iml
+.build
+.gradle
