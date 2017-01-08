@@ -14,6 +14,7 @@
 
 CONF_FILE="conf.json"
 BUCKET="readonlyrest-data"
+DISTRIBUTION_PATH="build/distributions/"
 
 if [ ! -z "$TRAVIS_TAG" ]; then
   echo "Don't try to tag in response on a tag event"
@@ -21,7 +22,7 @@ fi
 
 echo "Entering release uploader.."
 
-PLUGIN_FILE=$(echo build/distributions/readonlyrest-*.zip)
+PLUGIN_FILE=$(echo ${DISTRIBUTION_PATH}readonlyrest-*.zip)
 echo "PLUGIN_FILE: $PLUGIN_FILE"
 PLUGIN_FILE_BASE=$(basename $PLUGIN_FILE)
 ES_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $2'} | sed "s/\.zip//")
