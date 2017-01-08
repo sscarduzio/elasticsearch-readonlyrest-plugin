@@ -23,8 +23,8 @@ VOLUME ["/data"]
 
 # Mount elasticsearch.yml config
 COPY elasticsearch.yml /elasticsearch/config/
-COPY elasticsearch-readonlyrest-${VERSION}.zip /tmp/
-RUN /elasticsearch/bin/plugin install file:/tmp/elasticsearch-readonlyrest-${VERSION}.zip
+COPY readonlyrest-${VERSION}.zip /tmp/
+RUN /elasticsearch/bin/plugin install file:/tmp/readonlyrest-${VERSION}.zip
 COPY keystore.jks /elasticsearch/plugins/readonlyrest/
 
 #RUN /elasticsearch/bin/plugin install mobz/elasticsearch-head
@@ -37,6 +37,9 @@ RUN TMP_FILE=`mktemp /tmp/config.XXXXXXXXXX` && \
 
 # Define working directory.
 WORKDIR /data
+
+# Remote debugger
+ENV ES_JAVA_OPTS "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000"
 
 # Define default command.
 CMD /elasticsearch/bin/elasticsearch -Des.insecure.allow.root=true
