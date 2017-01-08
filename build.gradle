@@ -34,7 +34,7 @@ buildscript {
 }
 
 group = 'org.elasticsearch.plugin'
-version = 'v' + pluginVersion + '_es' + esVersion
+version = pluginVersion + '_es' + esVersion
 
 apply plugin: 'java'
 apply plugin: 'elasticsearch.esplugin'
