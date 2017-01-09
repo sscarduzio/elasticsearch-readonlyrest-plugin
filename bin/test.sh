@@ -38,4 +38,4 @@ docker run -d --net=host readonlyrest:$VERSION
 rm -rf docker
 
 docker rm -f `docker ps |grep readonlyrest| awk '{print $1}'` || true
-docker run -it -p 9200:9200 readonlyrest:$VERSION
+docker run -it -p 9200:9200 -p8000:8000 readonlyrest:$VERSION
