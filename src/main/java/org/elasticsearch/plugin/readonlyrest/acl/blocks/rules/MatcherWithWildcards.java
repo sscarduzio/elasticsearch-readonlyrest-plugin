@@ -54,7 +54,7 @@ public class MatcherWithWildcards {
       }
       if (a.contains("*")) {
         // Patch the simple star wildcard to become a regex: ("*" -> ".*")
-        String regex = ("\\Q" + a + "\\E").replace("*", "\\E.*\\Q");
+        String regex = "^" + ("\\Q" + a + "\\E").replace("*", "\\E.*\\Q") + "$";
 
         // Pre-compile the regex pattern matcher to validate the regex
         // AND faster matching later on.
