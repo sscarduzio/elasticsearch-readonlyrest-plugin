@@ -33,7 +33,7 @@ public class MaxBodyLengthRule extends Rule {
 
   public MaxBodyLengthRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    maxBodyLength = s.getAsInt("maxBodyLength", null);
+    maxBodyLength = s.getAsInt(getKey(), null);
     if (maxBodyLength == null) {
       throw new RuleNotConfiguredException();
     }
@@ -41,6 +41,6 @@ public class MaxBodyLengthRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return (rc.getRequest().content().length() > maxBodyLength) ? NO_MATCH : MATCH;
+    return (rc.getContent().length() > maxBodyLength) ? NO_MATCH : MATCH;
   }
 }

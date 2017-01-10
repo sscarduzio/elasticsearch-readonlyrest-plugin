@@ -57,6 +57,10 @@ public class Block {
 
     // Won't add the condition if its configuration is not found
     try {
+      conditionsToCheck.add(new KibanaAccessRule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
       conditionsToCheck.add(new HostsRule(s));
     } catch (RuleNotConfiguredException e) {
     }
@@ -67,6 +71,15 @@ public class Block {
     try {
       conditionsToCheck.add(new AuthKeyRule(s));
       authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new AuthKeySha1Rule(s));
+      authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new SessionMaxIdleRule(s));
     } catch (RuleNotConfiguredException e) {
     }
     try {
@@ -82,10 +95,6 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
     try {
-      conditionsToCheck.add(new KibanaAccessRule(s));
-    } catch (RuleNotConfiguredException e) {
-    }
-    try {
       conditionsToCheck.add(new IndicesRule(s));
     } catch (RuleNotConfiguredException e) {
     }
@@ -94,14 +103,10 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
     try {
-      conditionsToCheck.add(new AuthKeySha1Rule(s));
-      authHeaderAccepted = true;
-    } catch (RuleNotConfiguredException e) {
-    }
-    try {
       conditionsToCheck.add(new GroupsRule(s, userList));
     } catch (RuleNotConfiguredException e) {
     }
+
   }
 
   public String getName() {

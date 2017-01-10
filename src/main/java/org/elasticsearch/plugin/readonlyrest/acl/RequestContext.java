@@ -19,11 +19,17 @@
 package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import com.google.common.collect.ObjectArrays;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.MultiGetRequest;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -31,6 +37,7 @@ import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.aliases.IndexAliasesService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 
@@ -40,48 +47,73 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
-
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 
 /**
  * Created by sscarduzio on 20/02/2016.
  */
 public class RequestContext {
-  private final ESLogger logger = Loggers.getLogger(getClass());
   /*
     * A regular expression to match the various representations of "localhost"
     */
-  private final static Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
-
-  private final static String LOCALHOST = "127.0.0.1";
-
+  private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
+  private static final String LOCALHOST = "127.0.0.1";
+  private final ESLogger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;
   private final ActionRequest actionRequest;
+  private final String id;
   private Set<String> indices = null;
   private String content = null;
   private IndicesService indexService = null;
+  private Map<String, String> headers;
 
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, IndicesService indicesService) {
+    this.id = UUID.randomUUID().toString().replace("-", "");
     this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
     this.indexService = indicesService;
+    final Map<String, String> h = new HashMap<>();
+    for (Map.Entry<String, String> e : request.headers()) {
+      h.put(e.getKey(), e.getValue());
+    }
+    this.headers = h;
   }
 
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest) {
+    this.id = Long.toHexString(System.currentTimeMillis());
     this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
+    final Map<String, String> h = new HashMap<>();
+    for (Map.Entry<String, String> e : request.headers()) {
+      h.put(e.getKey(), e.getValue());
+    }
+    this.headers = h;
+  }
+
+  public boolean canBypassIndexSecurity() {
+//    return actionRequest instanceof MainRequest;
+    return false;
+  }
+
+  public boolean isReadRequest() {
+    return actionRequest instanceof SearchRequest ||
+        actionRequest instanceof GetRequest ||
+        actionRequest instanceof MultiGetRequest;
   }
 
   public String getRemoteAddress() {
@@ -98,7 +130,7 @@ public class RequestContext {
       try {
         content = new String(request.content().array());
       } catch (Exception e) {
-        content = "<not available>";
+        content = "";
       }
     }
     return content;
@@ -137,28 +169,67 @@ public class RequestContext {
     return harvested;
   }
 
+  public String getMethod() {
+    return request.method().name();
+  }
+
   public void setIndices(final Set<String> newIndices) {
+    newIndices.remove("<no-index>");
+
+    if (newIndices.equals(getIndices())) {
+      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getIndices() + " New:" + newIndices);
+      return;
+    }
+    logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
+
     AccessController.doPrivileged(
         new PrivilegedAction<Void>() {
           @Override
           public Void run() {
-            try {
-              Field field = actionRequest.getClass().getDeclaredField("indices");
-              field.setAccessible(true);
-              String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
-              field.set(actionRequest, idxArray);
-            } catch (NoSuchFieldException e) {
-              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
-              e.printStackTrace();
-            } catch (IllegalAccessException e) {
-              logger.error(ANSI_RED + " Could not set indices because: " + e.getCause() + ANSI_RESET);
-              e.printStackTrace();
+            Class<?> c = actionRequest.getClass();
+            final List<Throwable> results = Lists.newArrayList();
+            results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
+            if (!results.isEmpty()) {
+              IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
+              List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
+              for (IndicesAliasesRequest.AliasActions a : actions) {
+                results.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
+              }
             }
-            indices.clear();
-            indices.addAll(newIndices);
+            if (results.isEmpty()) {
+              indices.clear();
+              indices.addAll(newIndices);
+            } else {
+              for (Throwable e : results) {
+                logger.error("Failed to set indices " + e.toString());
+              }
+            }
             return null;
           }
         });
+  }
+
+  private List<Throwable> setStringArrayInInstance(Class<?> theClass, Object instance, String fieldName, Set<String> injectedStringArray) {
+    Class<?> c = theClass;
+    final List<Throwable> errors = new ArrayList<>();
+    try {
+      boolean useSuperClass = true;
+      for (Field f : c.getDeclaredFields()) {
+        if (fieldName.equals(f.getName())) {
+          useSuperClass = false;
+        }
+      }
+      if (useSuperClass) {
+        c = c.getSuperclass();
+      }
+      Field field = c.getDeclaredField(fieldName);
+      field.setAccessible(true);
+      String[] idxArray = injectedStringArray.toArray(new String[injectedStringArray.size()]);
+      field.set(instance, idxArray);
+    } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
+      errors.add(new SetIndexException(c, id, e));
+    }
+    return errors;
   }
 
   public Set<String> getIndices() {
@@ -220,42 +291,55 @@ public class RequestContext {
     return indices;
   }
 
-  public RestChannel getChannel() {
-    return channel;
-  }
-
-  public RestRequest getRequest() {
-    return request;
-  }
-
   public String getAction() {
     return action;
   }
 
-  public ActionRequest getActionRequest() {
-    return actionRequest;
+  // #TODO This does not work yet
+  public void setResponseHeader(String name, String value) {
+    Map<String, String> rh = request.getFromContext("response_headers");
+    if (rh == null) {
+      rh = new HashMap<>(1);
+    }
+    rh.put(name, value);
+    request.putInContext("response_headers", rh);
   }
 
   @Override
   public String toString() {
-    StringBuilder indicesStringBuilder = new StringBuilder();
-    indicesStringBuilder.append("[");
-    try {
-      for (String i : getIndices()) {
-        indicesStringBuilder.append(i).append(' ');
-      }
-    } catch (Exception e) {
-      indicesStringBuilder.append("<CANNOT GET INDICES>");
+    String idxs = Joiner.on(",").skipNulls().join(getIndices());
+    String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
+    String content = getContent();
+    if (Strings.isNullOrEmpty(content)) {
+      content = "<N/A>";
     }
-    String idxs = indicesStringBuilder.toString().trim() + "]";
-    return "{ action: " + action +
+    return "{ id: " + id +
+        ", type: " + actionRequest.getClass().getSimpleName() +
+        ", user: " + loggedInAs +
+        ", action: " + action +
         ", OA:" + getRemoteAddress() +
         ", indices:" + idxs +
         ", M:" + request.method() +
         ", P:" + request.path() +
-        ", C:" + (logger.isDebugEnabled() ? getContent() : "<OMITTED, LENGTH=" + getContent().length()+ ">") +
-        ", Headers:" + request.getHeaders() +
+        ", C:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+        ", Headers:" + request.headers() +
         " }";
   }
 
+  public Map<String, String> getHeaders() {
+    return headers;
+  }
+
+  public String getUri() {
+    return request.uri();
+  }
+
+  class SetIndexException extends Exception {
+    SetIndexException(Class<?> c, String id, Throwable e) {
+      super(" Could not set indices to class " + c.getSimpleName() +
+          "for req id: " + id + " because: "
+          + e.getClass().getSimpleName() + " : " + e.getMessage() +
+          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+    }
+  }
 }

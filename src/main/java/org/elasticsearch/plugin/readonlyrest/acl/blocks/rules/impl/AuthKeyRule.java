@@ -28,7 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-import java.io.IOException;
+import java.util.Map;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -41,19 +41,19 @@ public class AuthKeyRule extends Rule {
   public AuthKeyRule(Settings s) throws RuleNotConfiguredException {
     super(s);
 
-    String pAuthKey = s.get(this.KEY);
+    String pAuthKey = s.get(getKey());
     if (pAuthKey != null && pAuthKey.trim().length() > 0) {
       authKey = Base64.encodeBytes(pAuthKey.getBytes(Charsets.UTF_8));
-    }
-    else {
+    } else {
       throw new RuleNotConfiguredException();
     }
   }
 
   // Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
   private static String extractAuthFromHeader(String authorizationHeader) {
-    if (authorizationHeader == null || authorizationHeader.trim().length() == 0 || !authorizationHeader.contains("Basic "))
+    if (authorizationHeader == null || authorizationHeader.trim().length() == 0 || !authorizationHeader.contains("Basic ")) {
       return null;
+    }
     String interestingPart = authorizationHeader.split("Basic")[1].trim();
     if (interestingPart.length() == 0) {
         return null;
@@ -61,14 +61,26 @@ public class AuthKeyRule extends Rule {
     return interestingPart;
   }
 
+  public static String getBasicAuthUser(Map<String, String> headers) {
+    String authHeader = extractAuthFromHeader(headers.get("Authorization"));
+    if (authHeader != null) {
+      try {
+        return new String(Base64.decode(authHeader)).split(":")[0];
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    return null;
+  }
+
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String authHeader = extractAuthFromHeader(rc.getRequest().header("Authorization"));
+    String authHeader = extractAuthFromHeader(rc.getHeaders().get("Authorization"));
 
     if(authHeader != null && logger.isDebugEnabled()) {
       try {
-        logger.info("Login as: " + new String(Base64.decode(authHeader)).split(":")[0] + " rc: " + rc);
-      } catch (IOException e) {
+        logger.info("Login as: " + getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
+      } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
     }

@@ -19,7 +19,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -43,18 +42,28 @@ public class IndicesRule extends Rule {
 
   public IndicesRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    configuredWildcards = MatcherWithWildcards.fromSettings(s, KEY);
+    configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (rc.getActionRequest() instanceof SearchRequest) {
-      // 1. Requesting none or all the indices means requesting allowed indices..
-      if (rc.getIndices().size() == 0 || (rc.getIndices().contains("_all"))) {
-        rc.setIndices(configuredWildcards.getMatchers());
+
+    // 1. Requesting none or all the indices means requesting allowed indices that exist..
+    if (!(rc.canBypassIndexSecurity())) {
+      if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all")) {
+        rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
         return MATCH;
       }
+    }
 
+    if (rc.isReadRequest()) {
+
+      // Handle simple case of single index
+      if (rc.getIndices().size() == 1) {
+        if (configuredWildcards.match(rc.getIndices().iterator().next())) {
+          return MATCH;
+        }
+      }
       // ----- Now you requested SOME indices, let's see if and what we can allow in..
 
       // 2. All indices match by wildcard?

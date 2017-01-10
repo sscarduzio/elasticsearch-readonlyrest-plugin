@@ -67,6 +67,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
     return 0;
   }
 
+
   @Override
   public boolean apply(String action, ActionRequest actionRequest, final ActionListener listener) {
 
@@ -95,6 +96,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
     }
 
     RequestContext rc = new RequestContext(channel, req, action, actionRequest, indicesService);
+
     BlockExitResult exitResult = acl.check(rc);
 
     // The request is allowed to go through
@@ -122,7 +124,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
   }
 
   @Override
-  public boolean apply(String s, ActionResponse actionResponse, ActionListener actionListener) {
+  public boolean apply(String action, ActionResponse actionResponse, ActionListener listener) {
     return true;
   }
 }

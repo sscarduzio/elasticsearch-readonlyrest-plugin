@@ -33,6 +33,7 @@ import org.elasticsearch.rest.RestRequest;
 
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -45,7 +46,7 @@ public class HostsRule extends Rule {
   public HostsRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
-    String[] a = s.getAsArray("hosts");
+    String[] a = s.getAsArray(getKey());
     if (a != null && a.length > 0) {
       allowedAddresses = Lists.newArrayList();
       for (int i = 0; i < a.length; i++) {
@@ -65,9 +66,10 @@ public class HostsRule extends Rule {
     }
   }
 
-  private static String getXForwardedForHeader(RestRequest request) {
-    if (!ConfigurationHelper.isNullOrEmpty(request.header("X-Forwarded-For"))) {
-      String[] parts = request.header("X-Forwarded-For").split(",");
+  private static String getXForwardedForHeader(Map<String,String> headers) {
+    String header = headers.get("X-Forwarded-For");
+    if (!ConfigurationHelper.isNullOrEmpty(header)) {
+      String[] parts = header.split(",");
       if (!ConfigurationHelper.isNullOrEmpty(parts[0])) {
         return parts[0];
       }
@@ -114,7 +116,7 @@ public class HostsRule extends Rule {
   }
 
   public RuleExitResult match(RequestContext rc) {
-    boolean res = matchesAddress(rc.getRemoteAddress(), getXForwardedForHeader(rc.getRequest()));
+    boolean res = matchesAddress(rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
     return res ? MATCH : NO_MATCH;
   }
 }

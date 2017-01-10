@@ -44,7 +44,7 @@ public class GroupsRule extends Rule {
   public GroupsRule(Settings s, List<Settings> userList) throws RuleNotConfiguredException {
     super(s);
 
-    String[] pGroups = s.getAsArray(this.KEY);
+    String[] pGroups = s.getAsArray(getKey());
     if (pGroups != null && pGroups.length > 0) {
       this.groups = Arrays.asList(pGroups);
     } else {

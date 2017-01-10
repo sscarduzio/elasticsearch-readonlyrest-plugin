@@ -77,7 +77,7 @@ public class KibanaAccessRule extends Rule {
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    String tmp = s.get(KEY);
+    String tmp = s.get(getKey());
     if (ConfigurationHelper.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
     }
