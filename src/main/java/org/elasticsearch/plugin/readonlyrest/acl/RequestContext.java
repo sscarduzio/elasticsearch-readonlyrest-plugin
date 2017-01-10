@@ -31,6 +31,7 @@ import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.main.MainRequest;
 import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.IndexService;
@@ -298,6 +299,10 @@ public class RequestContext {
     Joiner.MapJoiner mapJoiner = Joiner.on(",").withKeyValueSeparator("=");
     String hist = mapJoiner.join(ThreadRepo.history.get());
     String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
+    String content = getContent();
+    if (Strings.isNullOrEmpty(content)) {
+      content = "<N/A>";
+    }
     return "{ id: " + id +
         ", type: " + actionRequest.getClass().getSimpleName() +
         ", user: " + loggedInAs +
@@ -306,7 +311,7 @@ public class RequestContext {
         ", indices:" + idxs +
         ", M:" + request.method() +
         ", P:" + request.path() +
-        ", C:" + (logger.isDebugEnabled() ? getContent() : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+        ", C:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
         ", Headers:" + request.headers() +
         ", History:" + hist +
         " }";
