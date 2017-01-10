@@ -56,6 +56,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -87,7 +88,7 @@ public class RequestContext {
     this.actionRequest = actionRequest;
     this.indexService = indicesService;
     this.threadPool = threadPool;
-    this.id = Long.toHexString(System.currentTimeMillis());
+    this.id = UUID.randomUUID().toString().replace("-", "");
     final Map<String, String> h = new HashMap<>();
     request.headers().forEach(e -> {
       h.put(e.getKey(), e.getValue());
@@ -117,9 +118,9 @@ public class RequestContext {
   public String getContent() {
     if (content == null) {
       try {
-        content = ThreadRepo.request.get().content().utf8ToString();
+        content = request.content().utf8ToString();
       } catch (Exception e) {
-        content = "<not available>";
+        content = "";
       }
     }
     return content;
@@ -155,8 +156,6 @@ public class RequestContext {
   }
 
   public Set<String> getIndices() {
-    getAvailableIndicesAndAliases();
-
     if (indices != null) {
       return indices;
     }
@@ -218,7 +217,13 @@ public class RequestContext {
 
   public void setIndices(final Set<String> newIndices) {
     newIndices.remove("<no-index>");
+
+    if (newIndices.equals(getIndices())) {
+      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getIndices() + " New:" + newIndices);
+      return;
+    }
     logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
+
     AccessController.doPrivileged(
         new PrivilegedAction<Void>() {
           @Override
