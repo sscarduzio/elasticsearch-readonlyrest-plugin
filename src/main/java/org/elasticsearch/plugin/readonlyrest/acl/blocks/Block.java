@@ -147,7 +147,7 @@ public class Block {
 
   public BlockExitResult check(RequestContext rc) {
     boolean match = true;
-    Map<String,String> thisBlockHistory = new HashMap<>(conditionsToCheck.size());
+    Map<String, String> thisBlockHistory = new HashMap<>(conditionsToCheck.size());
     for (Rule condition : conditionsToCheck) {
       // Exit at the first rule that matches the request
       RuleExitResult condExitResult = condition.match(rc);

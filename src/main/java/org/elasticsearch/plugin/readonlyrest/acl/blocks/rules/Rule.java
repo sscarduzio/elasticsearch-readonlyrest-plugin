@@ -32,20 +32,22 @@ public abstract class Rule {
   protected RuleExitResult NO_MATCH;
   private Block.Policy policy = null;
 
-  protected static String mkKey(Class<? extends Rule> c) {
-    return  CaseFormat.LOWER_CAMEL.to(
-        CaseFormat.LOWER_UNDERSCORE,
-        c.getSimpleName().replace("Rule", ""));
-  }
   public Rule(Settings s) {
     KEY = mkKey(getClass());
     MATCH = new RuleExitResult(true, this);
     NO_MATCH = new RuleExitResult(false, this);
   }
 
+  protected static String mkKey(Class<? extends Rule> c) {
+    return CaseFormat.LOWER_CAMEL.to(
+        CaseFormat.LOWER_UNDERSCORE,
+        c.getSimpleName().replace("Rule", ""));
+  }
+
   public String getKey() {
     return KEY;
   }
+
   public abstract RuleExitResult match(RequestContext rc);
 
   public Block.Policy getPolicy() {

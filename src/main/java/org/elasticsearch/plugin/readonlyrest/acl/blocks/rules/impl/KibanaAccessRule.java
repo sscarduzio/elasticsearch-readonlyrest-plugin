@@ -38,51 +38,11 @@ import java.util.Set;
  */
 public class KibanaAccessRule extends Rule {
 
+  private static final Actions actions = new Actions();
   private final Logger logger = Loggers.getLogger(this.getClass());
-  private static final  Actions actions = new Actions();
-
   private String kibanaIndex = ".kibana";
 
   private Boolean canModifyKibana;
-
-  static class Actions {
-    private MatcherWithWildcards RO;
-    private MatcherWithWildcards RW;
-    private MatcherWithWildcards CLUSTER;
-
-    Actions() {
-      Set<String> kibanaServerClusterActions = Sets.newHashSet(
-          "cluster:monitor/nodes/info",
-          "cluster:monitor/health");
-
-      Set<String> kibanaActionsRO = Sets.newHashSet(
-          "indices:admin/exists",
-          "indices:admin/mappings/fields/get*",
-          "indices:admin/validate/query",
-          "indices:data/read/field_stats",
-          "indices:data/read/search",
-          "indices:data/read/msearch",
-          "indices:admin/get",
-          "indices:admin/refresh*",
-          "indices:data/read/*"
-      );
-
-      Set<String> kibanaActionsRW = Sets.newHashSet(
-          "indices:admin/create",
-          "indices:admin/exists",
-          "indices:admin/mapping/put",
-          "indices:data/write/delete",
-          "indices:data/write/index",
-          "indices:data/write/update"
-      );
-
-      kibanaActionsRW.addAll(kibanaActionsRO);
-
-      RO = new MatcherWithWildcards(kibanaActionsRO);
-      RW = new MatcherWithWildcards(kibanaActionsRW);
-      CLUSTER = new MatcherWithWildcards(kibanaServerClusterActions);
-    }
-  }
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
@@ -127,7 +87,7 @@ public class KibanaAccessRule extends Rule {
     if (indices.size() == 1 && indices.contains(kibanaIndex)) {
 
       // Write actions are only allowed for kibanaIndex
-      if(canModifyKibana && actions.RW.match(a)){
+      if (canModifyKibana && actions.RW.match(a)) {
         logger.debug("allowing RW req: " + rc);
         return MATCH;
       }
@@ -136,5 +96,44 @@ public class KibanaAccessRule extends Rule {
 
     logger.debug("KIBANA ACCESS DENIED " + rc);
     return NO_MATCH;
+  }
+
+  static class Actions {
+    private MatcherWithWildcards RO;
+    private MatcherWithWildcards RW;
+    private MatcherWithWildcards CLUSTER;
+
+    Actions() {
+      Set<String> kibanaServerClusterActions = Sets.newHashSet(
+          "cluster:monitor/nodes/info",
+          "cluster:monitor/health");
+
+      Set<String> kibanaActionsRO = Sets.newHashSet(
+          "indices:admin/exists",
+          "indices:admin/mappings/fields/get*",
+          "indices:admin/validate/query",
+          "indices:data/read/field_stats",
+          "indices:data/read/search",
+          "indices:data/read/msearch",
+          "indices:admin/get",
+          "indices:admin/refresh*",
+          "indices:data/read/*"
+      );
+
+      Set<String> kibanaActionsRW = Sets.newHashSet(
+          "indices:admin/create",
+          "indices:admin/exists",
+          "indices:admin/mapping/put",
+          "indices:data/write/delete",
+          "indices:data/write/index",
+          "indices:data/write/update"
+      );
+
+      kibanaActionsRW.addAll(kibanaActionsRO);
+
+      RO = new MatcherWithWildcards(kibanaActionsRO);
+      RW = new MatcherWithWildcards(kibanaActionsRW);
+      CLUSTER = new MatcherWithWildcards(kibanaServerClusterActions);
+    }
   }
 }

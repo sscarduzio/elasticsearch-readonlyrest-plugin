@@ -42,9 +42,9 @@ import org.elasticsearch.threadpool.ThreadPool;
  */
 @Singleton
 public class IndexLevelActionFilter extends ActionFilter.Simple {
+  private final ThreadPool threadPool;
   private IndicesService indicesService;
   private ACL acl;
-  private final ThreadPool threadPool;
   private ConfigurationHelper conf;
 
   @Inject

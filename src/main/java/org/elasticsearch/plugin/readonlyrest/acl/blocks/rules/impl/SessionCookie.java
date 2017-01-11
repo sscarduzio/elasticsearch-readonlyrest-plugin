@@ -33,11 +33,8 @@ public class SessionCookie {
 
   private static final String COOKIE_NAME = "ReadonlyREST_Session";
   private static final String COOKIE_STRING_SEPARATOR = "__";
-  private final Long sessionMaxIdleMillis;
-
-
   private static final DateFormat df = new SimpleDateFormat("EEE MMM dd kk:mm:ss z yyyy", Locale.getDefault());
-
+  private final Long sessionMaxIdleMillis;
   private final RequestContext rc;
 
   private boolean cookiePresent = false;

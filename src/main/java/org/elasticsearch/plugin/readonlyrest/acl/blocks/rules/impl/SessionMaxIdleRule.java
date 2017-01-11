@@ -14,8 +14,35 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
  * Created by sscarduzio on 03/01/2017.
  */
 public class SessionMaxIdleRule extends Rule {
-  private final long maxIdleMillis;
   private static final Logger logger = Loggers.getLogger(SessionMaxIdleRule.class);
+  private final long maxIdleMillis;
+
+  public SessionMaxIdleRule(Settings s) throws RuleNotConfiguredException {
+    super(s);
+
+    boolean isThisRuleConfigured = !Strings.isNullOrEmpty(s.get(getKey()));
+    if (!isThisRuleConfigured) {
+      throw new RuleNotConfiguredException();
+    }
+
+    boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeyRule.class)))
+        || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1Rule.class)));
+
+    if (isThisRuleConfigured && !isLoginConfigured) {
+      logger.error(getKey() + " rule does not mean anything if you don't also set either "
+          + mkKey(AuthKeySha1Rule.class) + " or " + mkKey(AuthKeyRule.class));
+      throw new RuleNotConfiguredException();
+    }
+
+    String tmp = s.get(getKey());
+
+    Long timeMill = timeIntervalStringToMillis(tmp);
+
+    if (timeMill <= 0) {
+      throw new ElasticsearchParseException(getKey() + " value must be greater than zero");
+    }
+    maxIdleMillis = timeMill;
+  }
 
   /*
   * Counts millis from stirngs like "1d 2h 3m", "15s"
@@ -52,33 +79,6 @@ public class SessionMaxIdleRule extends Rule {
       default:
         return 0;
     }
-  }
-
-  public SessionMaxIdleRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
-
-    boolean isThisRuleConfigured = !Strings.isNullOrEmpty(s.get(getKey()));
-    if (!isThisRuleConfigured) {
-      throw new RuleNotConfiguredException();
-    }
-
-    boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeyRule.class)))
-        || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1Rule.class)));
-
-    if (isThisRuleConfigured && !isLoginConfigured) {
-      logger.error(getKey() + " rule does not mean anything if you don't also set either "
-          + mkKey(AuthKeySha1Rule.class) + " or " + mkKey(AuthKeyRule.class));
-      throw new RuleNotConfiguredException();
-    }
-
-    String tmp = s.get(getKey());
-
-    Long timeMill = timeIntervalStringToMillis(tmp);
-
-    if (timeMill <= 0) {
-      throw new ElasticsearchParseException(getKey() + " value must be greater than zero");
-    }
-    maxIdleMillis = timeMill;
   }
 
   @Override
