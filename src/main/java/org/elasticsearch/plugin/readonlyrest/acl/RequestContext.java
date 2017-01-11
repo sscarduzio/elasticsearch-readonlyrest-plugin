@@ -55,6 +55,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -85,7 +86,7 @@ public class RequestContext {
     this.action = action;
     this.actionRequest = actionRequest;
     this.indexService = indicesService;
-    final Map<String, String> h = new HashMap<>();
+    final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (Map.Entry<String, String> e : request.headers()) {
       h.put(e.getKey(), e.getValue());
     }
@@ -98,7 +99,7 @@ public class RequestContext {
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
-    final Map<String, String> h = new HashMap<>();
+    final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (Map.Entry<String, String> e : request.headers()) {
       h.put(e.getKey(), e.getValue());
     }
