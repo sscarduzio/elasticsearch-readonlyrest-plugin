@@ -93,19 +93,6 @@ public class RequestContext {
     this.headers = h;
   }
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest) {
-    this.id = Long.toHexString(System.currentTimeMillis());
-    this.channel = channel;
-    this.request = request;
-    this.action = action;
-    this.actionRequest = actionRequest;
-    final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    for (Map.Entry<String, String> e : request.headers()) {
-      h.put(e.getKey(), e.getValue());
-    }
-    this.headers = h;
-  }
-
   public boolean canBypassIndexSecurity() {
 //    return actionRequest instanceof MainRequest;
     return false;
