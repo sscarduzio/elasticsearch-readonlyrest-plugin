@@ -42,15 +42,13 @@ public class UriReRule extends Rule {
 
     String tmp = s.get(getKey());
     if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
-      try{
+      try {
         uri_re = Pattern.compile(tmp.trim());
-      }
-      catch (PatternSyntaxException e) {
+      } catch (PatternSyntaxException e) {
         throw new RuleConfigurationError("invalid 'uri_re' regexp", e);
       }
 
-    }
-    else {
+    } else {
       throw new RuleNotConfiguredException();
     }
   }

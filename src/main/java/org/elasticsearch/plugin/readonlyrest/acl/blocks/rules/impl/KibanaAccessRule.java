@@ -113,8 +113,8 @@ public class KibanaAccessRule extends Rule {
     }
 
     if (canModifyKibana && rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex) && kibanaActionsRW.contains(rc.getAction())) {
-        logger.debug("allowing RW req: " + rc);
-        return MATCH;
+      logger.debug("allowing RW req: " + rc);
+      return MATCH;
     }
 
     logger.debug("KIBANA ACCESS DENIED " + rc);

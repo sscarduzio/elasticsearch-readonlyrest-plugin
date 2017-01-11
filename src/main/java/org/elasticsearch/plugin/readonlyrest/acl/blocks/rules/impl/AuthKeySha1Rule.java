@@ -35,7 +35,7 @@ public class AuthKeySha1Rule extends AuthKeyRule {
   public AuthKeySha1Rule(Settings s) throws RuleNotConfiguredException {
     super(s);
     try {
-      authKey = new String(Base64.decode(authKey),Charsets.UTF_8);
+      authKey = new String(Base64.decode(authKey), Charsets.UTF_8);
     } catch (IOException e) {
       throw new ElasticsearchParseException("cannot parse configuration for: " + getKey());
     }

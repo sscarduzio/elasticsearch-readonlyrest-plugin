@@ -21,7 +21,12 @@ package org.elasticsearch.plugin.readonlyrest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.rest.*;
+import org.elasticsearch.rest.BaseRestHandler;
+import org.elasticsearch.rest.RestChannel;
+import org.elasticsearch.rest.RestController;
+import org.elasticsearch.rest.RestFilter;
+import org.elasticsearch.rest.RestFilterChain;
+import org.elasticsearch.rest.RestRequest;
 
 /**
  * Readonly REST plugin. Adding some access control to the fast Netty based REST interface of Elasticsearch.

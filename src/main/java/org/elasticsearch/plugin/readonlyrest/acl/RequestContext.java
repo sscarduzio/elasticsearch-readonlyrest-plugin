@@ -161,42 +161,6 @@ public class RequestContext {
     return request.method().name();
   }
 
-  public void setIndices(final Set<String> newIndices) {
-    newIndices.remove("<no-index>");
-
-    if (newIndices.equals(getIndices())) {
-      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getIndices() + " New:" + newIndices);
-      return;
-    }
-    logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
-
-    AccessController.doPrivileged(
-        new PrivilegedAction<Void>() {
-          @Override
-          public Void run() {
-            Class<?> c = actionRequest.getClass();
-            final List<Throwable> results = Lists.newArrayList();
-            results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
-            if (!results.isEmpty()) {
-              IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
-              List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
-              for (IndicesAliasesRequest.AliasActions a : actions) {
-                results.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
-              }
-            }
-            if (results.isEmpty()) {
-              indices.clear();
-              indices.addAll(newIndices);
-            } else {
-              for (Throwable e : results) {
-                logger.error("Failed to set indices " + e.toString());
-              }
-            }
-            return null;
-          }
-        });
-  }
-
   private List<Throwable> setStringArrayInInstance(Class<?> theClass, Object instance, String fieldName, Set<String> injectedStringArray) {
     Class<?> c = theClass;
     final List<Throwable> errors = new ArrayList<>();
@@ -277,6 +241,42 @@ public class RequestContext {
     indices = Sets.newHashSet(out[0]);
 
     return indices;
+  }
+
+  public void setIndices(final Set<String> newIndices) {
+    newIndices.remove("<no-index>");
+
+    if (newIndices.equals(getIndices())) {
+      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getIndices() + " New:" + newIndices);
+      return;
+    }
+    logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
+
+    AccessController.doPrivileged(
+        new PrivilegedAction<Void>() {
+          @Override
+          public Void run() {
+            Class<?> c = actionRequest.getClass();
+            final List<Throwable> results = Lists.newArrayList();
+            results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
+            if (!results.isEmpty()) {
+              IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
+              List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
+              for (IndicesAliasesRequest.AliasActions a : actions) {
+                results.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
+              }
+            }
+            if (results.isEmpty()) {
+              indices.clear();
+              indices.addAll(newIndices);
+            } else {
+              for (Throwable e : results) {
+                logger.error("Failed to set indices " + e.toString());
+              }
+            }
+            return null;
+          }
+        });
   }
 
   public String getAction() {

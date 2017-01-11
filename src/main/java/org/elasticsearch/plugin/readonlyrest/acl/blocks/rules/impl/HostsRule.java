@@ -29,7 +29,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.rest.RestRequest;
 
 import java.net.UnknownHostException;
 import java.util.List;
@@ -66,7 +65,7 @@ public class HostsRule extends Rule {
     }
   }
 
-  private static String getXForwardedForHeader(Map<String,String> headers) {
+  private static String getXForwardedForHeader(Map<String, String> headers) {
     String header = headers.get("X-Forwarded-For");
     if (!ConfigurationHelper.isNullOrEmpty(header)) {
       String[] parts = header.split(",");

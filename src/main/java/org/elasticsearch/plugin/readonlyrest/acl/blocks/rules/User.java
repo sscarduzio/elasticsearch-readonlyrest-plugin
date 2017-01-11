@@ -19,11 +19,12 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import java.util.Arrays;
-import java.util.List;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author Christian Henke <maitai@users.noreply.github.com>
@@ -31,8 +32,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Ru
 public class User {
 
   private final String username;
-  private AuthKeyRule authKeyRule;
   private final List<String> groups;
+  private AuthKeyRule authKeyRule;
 
   public User(Settings userProperties) throws UserNotConfiguredException {
     this.username = userProperties.get("username");

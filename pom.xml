@@ -17,112 +17,112 @@
   ~
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<name>readonlyrest</name>
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>org.elasticsearch</groupId>
-	<artifactId>readonlyrest</artifactId>
-	<version>1.12.2</version> <!-- plugin_version -->
-	<packaging>jar</packaging>
-	<description>Safely expose Elasticsearch REST API directly to the public with access control list</description>
-	<inceptionYear>2013</inceptionYear>
-	<url>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <name>readonlyrest</name>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.elasticsearch</groupId>
+    <artifactId>readonlyrest</artifactId>
+    <version>1.12.2</version> <!-- plugin_version -->
+    <packaging>jar</packaging>
+    <description>Safely expose Elasticsearch REST API directly to the public with access control list</description>
+    <inceptionYear>2013</inceptionYear>
+    <url>
         https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin
     </url>
-	<scm>
-		<connection>
-		scm:git:git://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
-		</connection>
-		<developerConnection>
-		scm:git:git@github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
-		</developerConnection>
-		<url>
-		https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin
-		</url>
-	</scm>
-	<properties>
-		<elasticsearch.version>2.4.3</elasticsearch.version>
-	</properties>
+    <scm>
+        <connection>
+            scm:git:git://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
+        </connection>
+        <developerConnection>
+            scm:git:git@github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git
+        </developerConnection>
+        <url>
+            https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin
+        </url>
+    </scm>
+    <properties>
+        <elasticsearch.version>2.4.3</elasticsearch.version>
+    </properties>
 
-	<repositories>
-		<repository>
-			<id>oss.sonatype.org</id>
-			<name>OSS Sonatype</name>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
-			<url>http://oss.sonatype.org/content/repositories/releases/</url>
-		</repository>
-	</repositories>
+    <repositories>
+        <repository>
+            <id>oss.sonatype.org</id>
+            <name>OSS Sonatype</name>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <url>http://oss.sonatype.org/content/repositories/releases/</url>
+        </repository>
+    </repositories>
 
-	<dependencies>
-		<!-- Work around for https://github.com/elastic/elasticsearch/issues/17585 -->
-		<dependency>
-			<groupId>log4j</groupId>
-			<artifactId>log4j</artifactId>
-			<version>1.2.17</version>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.elasticsearch</groupId>
-			<artifactId>elasticsearch</artifactId>
-			<version>${elasticsearch.version}</version>
-			<scope>compile</scope>
-		</dependency>
+    <dependencies>
+        <!-- Work around for https://github.com/elastic/elasticsearch/issues/17585 -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <version>${elasticsearch.version}</version>
+            <scope>compile</scope>
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.11</version>
             <scope>test</scope>
         </dependency>
-		<dependency>
+        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>1.10.19</version>
             <scope>test</scope>
         </dependency>
-	</dependencies>
+    </dependencies>
 
-	<build>
-		<!-- Create a zip file according to elasticsearch naming scheme -->
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-antrun-plugin</artifactId>
-				<version>1.6</version>
-				<executions>
-					<execution>
-						<id>zip</id>
-						<phase>package</phase>
-						<configuration>
-							<target>
-								<zip basedir="${project.build.directory}" includes="${project.build.finalName}.jar"
-									destfile="${project.build.directory}/${project.name}-${project.version}_es${elasticsearch.version}.zip" />
-							</target>
-						</configuration>
-						<goals>
-							<goal>run</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
+    <build>
+        <!-- Create a zip file according to elasticsearch naming scheme -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>zip</id>
+                        <phase>package</phase>
+                        <configuration>
+                            <target>
+                                <zip basedir="${project.build.directory}" includes="${project.build.finalName}.jar"
+                                     destfile="${project.build.directory}/${project.name}-${project.version}_es${elasticsearch.version}.zip"/>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
 
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<configuration>
-						<source>1.7</source>
-						<target>1.7</target>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
-	</build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>1.7</source>
+                        <target>1.7</target>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 </project>

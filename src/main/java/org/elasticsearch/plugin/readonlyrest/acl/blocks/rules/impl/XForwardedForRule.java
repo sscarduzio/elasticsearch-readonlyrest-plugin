@@ -22,7 +22,6 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
-import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
@@ -63,7 +62,7 @@ public class XForwardedForRule extends Rule {
     }
   }
 
-  private static String getXForwardedForHeader(Map<String,String> headers) {
+  private static String getXForwardedForHeader(Map<String, String> headers) {
     String header = headers.get("X-Forwarded-For");
     if (!ConfigurationHelper.isNullOrEmpty(header)) {
       String[] parts = header.split(",");

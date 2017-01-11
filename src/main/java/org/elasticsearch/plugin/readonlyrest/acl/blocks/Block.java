@@ -26,21 +26,34 @@ import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForRule;
 
 import java.util.List;
 import java.util.Set;
 
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class Block {
-  private ESLogger logger;
-
   private final String name;
   private final Policy policy;
+  private ESLogger logger;
   private boolean authHeaderAccepted = false;
   private Set<Rule> conditionsToCheck = Sets.newHashSet();
 
@@ -125,22 +138,8 @@ public class Block {
     return authHeaderAccepted;
   }
 
-  public enum Policy {
-    ALLOW, FORBID;
-
-    public static String valuesString() {
-      StringBuilder sb = new StringBuilder();
-      for (Policy v : values()) {
-        sb.append(v.toString()).append(",");
-      }
-      sb.deleteCharAt(sb.length() - 1);
-      return sb.toString();
-    }
-  }
-
   /**
    * Check all the conditions of this rule and return a rule exit result
-   *
    */
 
   public BlockExitResult check(RequestContext rc) {
@@ -163,5 +162,18 @@ public class Block {
   @Override
   public String toString() {
     return "readonlyrest Rules Block :: { name: '" + name + "', policy: " + policy + "}";
+  }
+
+  public enum Policy {
+    ALLOW, FORBID;
+
+    public static String valuesString() {
+      StringBuilder sb = new StringBuilder();
+      for (Policy v : values()) {
+        sb.append(v.toString()).append(",");
+      }
+      sb.deleteCharAt(sb.length() - 1);
+      return sb.toString();
+    }
   }
 }

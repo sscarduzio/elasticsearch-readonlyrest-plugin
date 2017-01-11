@@ -29,7 +29,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
+
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -37,11 +39,11 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
 
 @Singleton
 public class ACL {
+  private final static String RULES_PREFIX = "readonlyrest.access_control_rules";
+  private final static String USERS_PREFIX = "readonlyrest.users";
   private final ESLogger logger = Loggers.getLogger(getClass());
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
-  private final static String RULES_PREFIX = "readonlyrest.access_control_rules";
-  private final static String USERS_PREFIX = "readonlyrest.users";
   private boolean basicAuthConfigured = false;
 
   @Inject

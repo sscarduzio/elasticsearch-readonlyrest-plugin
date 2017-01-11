@@ -56,7 +56,7 @@ public class ConfigurationHelper {
 
     // -- SSL
     sslEnabled = s.getAsBoolean("ssl.enable", false);
-    if(!sslEnabled){
+    if (!sslEnabled) {
       logger.info("Readonly Rest plugin is installed, but not enabled");
     }
     sslKeyStoreFile = s.get("ssl.keystore_file");

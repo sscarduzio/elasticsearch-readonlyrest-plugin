@@ -1,17 +1,17 @@
 {
-	"id": "6eef31be-7229-514d-1c7e-c882bbb289a5",
-	"name": "docker.local",
-	"values": [
-		{
-			"key": "url_es",
-			"value": "https://127.0.0.1:9200",
-			"type": "text",
-			"enabled": true
-		}
-	],
-	"timestamp": 1458898200426,
-	"synced": false,
-	"syncedFilename": "",
-	"team": null,
-	"isDeleted": false
+  "id": "6eef31be-7229-514d-1c7e-c882bbb289a5",
+  "name": "docker.local",
+  "values": [
+    {
+      "key": "url_es",
+      "value": "https://127.0.0.1:9200",
+      "type": "text",
+      "enabled": true
+    }
+  ],
+  "timestamp": 1458898200426,
+  "synced": false,
+  "syncedFilename": "",
+  "team": null,
+  "isDeleted": false
 }

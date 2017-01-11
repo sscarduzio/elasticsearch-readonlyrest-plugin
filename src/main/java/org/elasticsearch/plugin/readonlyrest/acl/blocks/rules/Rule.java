@@ -29,8 +29,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleRule;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -42,17 +40,12 @@ public abstract class Rule {
   protected RuleExitResult NO_MATCH;
   private Block.Policy policy = null;
 
-  protected static String mkKey(Class<? extends Rule> c) {
-    return  CaseFormat.LOWER_CAMEL.to(
-        CaseFormat.LOWER_UNDERSCORE,
-        c.getSimpleName().replace("Rule", ""));
-  }
   public Rule(Settings s) {
     // #TODO Implement a working rc.setResponseHeader
     List<Class<? extends Rule>> unimplemented = Lists.newArrayList(SessionMaxIdleRule.class, HostsRule.class);
-    for(Class<? extends Rule> c : unimplemented) {
+    for (Class<? extends Rule> c : unimplemented) {
       String className = mkKey(c);
-      if(!Strings.isNullOrEmpty(s.get(className))) {
+      if (!Strings.isNullOrEmpty(s.get(className))) {
         throw new ElasticsearchParseException(className + " rule is not currently implemented in ReadonlyREST for Elasticsearch " + Version.CURRENT);
       }
     }
@@ -61,9 +54,16 @@ public abstract class Rule {
     NO_MATCH = new RuleExitResult(false, this);
   }
 
+  protected static String mkKey(Class<? extends Rule> c) {
+    return CaseFormat.LOWER_CAMEL.to(
+        CaseFormat.LOWER_UNDERSCORE,
+        c.getSimpleName().replace("Rule", ""));
+  }
+
   public String getKey() {
     return KEY;
   }
+
   public abstract RuleExitResult match(RequestContext rc);
 
   public Block.Policy getPolicy() {

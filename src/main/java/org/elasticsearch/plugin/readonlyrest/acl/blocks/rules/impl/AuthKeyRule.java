@@ -56,7 +56,7 @@ public class AuthKeyRule extends Rule {
     }
     String interestingPart = authorizationHeader.split("Basic")[1].trim();
     if (interestingPart.length() == 0) {
-        return null;
+      return null;
     }
     return interestingPart;
   }
@@ -77,7 +77,7 @@ public class AuthKeyRule extends Rule {
   public RuleExitResult match(RequestContext rc) {
     String authHeader = extractAuthFromHeader(rc.getHeaders().get("Authorization"));
 
-    if(authHeader != null && logger.isDebugEnabled()) {
+    if (authHeader != null && logger.isDebugEnabled()) {
       try {
         logger.info("Login as: " + getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
       } catch (IllegalArgumentException e) {
