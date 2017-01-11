@@ -51,12 +51,12 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -90,7 +90,7 @@ public class RequestContext {
     this.indexService = indicesService;
     this.threadPool = threadPool;
     this.id = UUID.randomUUID().toString().replace("-", "");
-    final Map<String, String> h = new HashMap<>();
+    final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     request.headers().forEach(e -> {
       h.put(e.getKey(), e.getValue());
     });

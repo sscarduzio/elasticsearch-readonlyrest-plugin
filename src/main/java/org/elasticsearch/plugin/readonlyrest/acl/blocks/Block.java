@@ -83,6 +83,10 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
     try {
+      conditionsToCheck.add(new XForwardedForRule(s));
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
       conditionsToCheck.add(new ApiKeysRule(s));
     } catch (RuleNotConfiguredException e) {
     }
