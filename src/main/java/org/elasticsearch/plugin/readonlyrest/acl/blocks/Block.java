@@ -39,6 +39,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLength
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForRule;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 
 import java.util.HashMap;
