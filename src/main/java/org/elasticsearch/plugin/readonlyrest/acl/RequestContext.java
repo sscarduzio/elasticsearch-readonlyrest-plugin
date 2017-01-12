@@ -22,21 +22,19 @@ import com.carrotsearch.hppc.ObjectLookupContainer;
 import com.carrotsearch.hppc.cursors.ObjectCursor;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.MultiGetRequest;
-import org.elasticsearch.action.main.MainRequest;
-import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.RestChannel;
@@ -69,6 +67,22 @@ public class RequestContext {
     */
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static final String LOCALHOST = "127.0.0.1";
+  private static MatcherWithWildcards canBypassIndexSecurityMatcher = new MatcherWithWildcards(Sets.newHashSet(
+      "cluster:monitor/*"
+  ));
+  private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
+      "cluster:monitor/*",
+      "indices:admin/mappings/fields/get",
+      "indices:admin/exists",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/validate/query",
+      "indices:data/read/field_stats",
+      "indices:data/read/search",
+      "indices:data/read/msearch",
+      "indices:admin/get",
+      "indices:admin/refresh*",
+      "indices:data/read/*"
+  ));
   private final Logger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
@@ -98,13 +112,11 @@ public class RequestContext {
   }
 
   public boolean canBypassIndexSecurity() {
-    return actionRequest instanceof MainRequest;
+    return canBypassIndexSecurityMatcher.match(action);
   }
 
   public boolean isReadRequest() {
-    return actionRequest instanceof SearchRequest ||
-        actionRequest instanceof GetRequest ||
-        actionRequest instanceof MultiGetRequest;
+    return readRequestMatcher.match(action);
   }
 
   public String getRemoteAddress() {
