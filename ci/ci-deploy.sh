@@ -66,7 +66,7 @@ EOM
 
 # s3cli -c config.json  put <path/to/file> <remote-blob>
 $S3CLI  -c $CONF_FILE   put $PLUGIN_FILE   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE
-$S3CLI  -c $CONF_FILE   put $PLUGIN_FILE   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
+$S3CLI  -c $CONF_FILE   put $PLUGIN_FILE.sha1   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
 
 rm $CONF_FILE
 
