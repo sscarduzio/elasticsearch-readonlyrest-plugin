@@ -148,7 +148,7 @@ public class ConfigurationTests extends ESIntegTestCase {
     // only wait for the cluster to form
     assertNoTimeout(client().admin().cluster().prepareHealth().setWaitForNodes(Integer.toString(1)).get());
     // add one more node and wait for it to join
-    internalCluster().startDataOnlyNodeAsync().get();
+    internalCluster().startDataOnlyNode(nodeSettings(0));
     assertNoTimeout(client().admin().cluster().prepareHealth().setWaitForNodes(Integer.toString(2)).get());
   }
 }
