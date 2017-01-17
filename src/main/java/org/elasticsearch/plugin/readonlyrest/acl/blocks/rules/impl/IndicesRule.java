@@ -43,6 +43,7 @@ public class IndicesRule extends Rule {
   public IndicesRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
+    logger.info("Setting up index rule as of settings: " + s);
   }
 
   @Override
@@ -50,7 +51,7 @@ public class IndicesRule extends Rule {
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
     if (!(rc.canBypassIndexSecurity())) {
-      if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all")) {
+      if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
         rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
         return MATCH;
       }
@@ -67,11 +68,12 @@ public class IndicesRule extends Rule {
       // ----- Now you requested SOME indices, let's see if and what we can allow in..
 
       // 2. All indices match by wildcard?
-      if (configuredWildcards.filter(rc.getIndices()).size() == rc.getIndices().size()) {
+      int compliantWithConfiguration = configuredWildcards.filter(rc.getIndices()).size();
+      if (compliantWithConfiguration == rc.getIndices().size()) {
         return MATCH;
       }
 
-      // 2.1 Detect non-wildcard requested indices that do not exist and return 404 (compatibility with vanilla ES)
+      // 2.1 Detect at least one concrete index that do not exist and return 404 (compatibility with vanilla ES)
       Set<String> real = rc.getAvailableIndicesAndAliases();
       for (final String idx : rc.getIndices()) {
         if (!idx.contains("*") && !real.contains(idx)) {
