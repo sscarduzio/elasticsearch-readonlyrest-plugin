@@ -86,6 +86,10 @@ public class IPMask {
    */
   public boolean matches(Inet4Address testAddr) {
     int testAddrInt = addrToInt(testAddr);
+    // Always allow 0.0.0.0/0 as a wild card
+    if (maskInt == -1 && addrInt == 0) {
+      return true;
+    }
     return (addrInt & maskInt) == (testAddrInt & maskInt);
   }
 
