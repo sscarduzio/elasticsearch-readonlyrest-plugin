@@ -25,4 +25,8 @@ eclipse-build
 !/.settings/org.eclipse.core.resources.prefs
 !/.settings/org.eclipse.jdt.core.prefs
 !/.settings/org.eclipse.jdt.ui.prefs
+
+// Script generated files
 docker/*
+src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
+src/main/resources/plugin-descriptor.properties
