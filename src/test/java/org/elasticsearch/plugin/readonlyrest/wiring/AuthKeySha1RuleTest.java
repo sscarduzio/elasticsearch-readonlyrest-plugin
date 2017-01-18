@@ -21,13 +21,10 @@ import static org.mockito.Mockito.when;
 public class AuthKeySha1RuleTest extends TestCase {
 
   private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
-    return match(configured, found, null);
+    return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    if (rc == null) {
-      rc = Mockito.mock(RequestContext.class);
-    }
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     Rule r = new AuthKeySha1Rule(Settings.builder()

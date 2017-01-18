@@ -21,16 +21,13 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class IndexRuleTest extends TestCase {
+public class IndicesRuleTest extends TestCase {
 
   private RuleExitResult match(List<String> configured, List<String> found) throws RuleNotConfiguredException {
-    return match(configured, found, null);
+    return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
   private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) throws RuleNotConfiguredException {
-    if (rc == null) {
-      rc = Mockito.mock(RequestContext.class);
-    }
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);
