@@ -18,11 +18,13 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.hash.Hashing;
 import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.hash.MessageDigests;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -44,8 +46,7 @@ public class AuthKeySha1Rule extends AuthKeyRule {
   protected boolean checkEqual(String provided) {
     try {
       String decodedProvided = new String(Base64.getDecoder().decode(provided), StandardCharsets.UTF_8);
-      String shaProvided = new String(MessageDigests.sha1().digest(decodedProvided.getBytes(StandardCharsets.UTF_8)));
-//      String shaProvided = Hashing.sha1().hashString(decodedProvided, StandardCharsets.UTF_8).toString();
+      String shaProvided = Hashing.sha1().hashString(decodedProvided, Charset.defaultCharset()).toString();
       return authKey.equals(shaProvided);
     } catch (Throwable e) {
       return false;
