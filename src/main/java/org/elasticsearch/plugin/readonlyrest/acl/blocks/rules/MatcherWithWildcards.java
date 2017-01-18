@@ -64,14 +64,19 @@ public class MatcherWithWildcards {
   }
 
   public static MatcherWithWildcards fromSettings(Settings s, String key) throws RuleNotConfiguredException {
-    // Will work with single, non array conf.
+    // Protect from configuration errors like #127
+    if(Strings.isNullOrEmpty(s.get(key))){
+      throw new RuleNotConfiguredException();
+    }
+
+    // Will work fine also with single strings (non array) values.
     String[] a = s.getAsArray(key);
 
     if (a == null || a.length == 0) {
       throw new RuleNotConfiguredException();
     }
-    return new MatcherWithWildcards(Sets.newHashSet(a));
 
+    return new MatcherWithWildcards(Sets.newHashSet(a));
   }
 
   /**
