@@ -13,3 +13,9 @@ src/test/eshome/logs
 *.iml
 .build
 .gradle
+
+// Script generated files
+docker/*
+src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
+src/main/resources/plugin-descriptor.properties
+
