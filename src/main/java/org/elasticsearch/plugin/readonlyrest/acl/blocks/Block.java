@@ -152,10 +152,11 @@ public class Block {
     }
     if (match) {
       logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
+      rc.commit();
       return new BlockExitResult(this, true);
     }
     logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
-
+    rc.reset();
     return BlockExitResult.NO_MATCH;
   }
 

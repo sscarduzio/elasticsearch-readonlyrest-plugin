@@ -79,8 +79,11 @@ public class RequestContext {
   private IndicesService indexService = null;
   private Map<String, String> headers;
 
+  private RequestSideEffects sideEffects;
+
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, IndicesService indicesService) {
     this.id = UUID.randomUUID().toString().replace("-", "");
+    this.sideEffects = new RequestSideEffects(this);
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -93,13 +96,24 @@ public class RequestContext {
     this.headers = h;
   }
 
-  public boolean canBypassIndexSecurity() {
-//    return actionRequest instanceof MainRequest;
-    return false;
+  public String getId(){
+    return id;
+  }
+
+  public void commit() {
+    sideEffects.commit();
+  }
+
+  public void reset() {
+    sideEffects.clear();
+  }
+
+  public boolean involvesIndices() {
+    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
   }
 
   public boolean isReadRequest() {
-    return actionRequest instanceof SearchRequest ||
+    return actionRequest instanceof IndicesRequest ||
         actionRequest instanceof GetRequest ||
         actionRequest instanceof MultiGetRequest;
   }
@@ -244,6 +258,15 @@ public class RequestContext {
   }
 
   public void setIndices(final Set<String> newIndices) {
+    sideEffects.appendEffect(new Runnable() {
+      @Override
+      public void run() {
+        doSetIndices(newIndices);
+      }
+    });
+  }
+
+  private void doSetIndices(final Set<String> newIndices) {
     newIndices.remove("<no-index>");
 
     if (newIndices.equals(getIndices())) {
@@ -284,7 +307,16 @@ public class RequestContext {
   }
 
   // #TODO This does not work yet
-  public void setResponseHeader(String name, String value) {
+  public void setResponseHeader(final String name, final String value) {
+    sideEffects.appendEffect(new Runnable() {
+      @Override
+      public void run() {
+        doSetResponseHeader(name, value);
+      }
+    });
+  }
+
+  private void doSetResponseHeader(String name, String value) {
     Map<String, String> rh = request.getFromContext("response_headers");
     if (rh == null) {
       rh = new HashMap<>(1);
@@ -311,6 +343,7 @@ public class RequestContext {
         ", P:" + request.path() +
         ", C:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
         ", Headers:" + request.headers() +
+        ", Effects:" + sideEffects.size() +
         " }";
   }
 
