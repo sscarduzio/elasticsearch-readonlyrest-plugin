@@ -88,7 +88,7 @@ public class IndicesRuleTest extends TestCase {
   public void test152() throws RuleNotConfiguredException {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.isReadRequest()).thenReturn(true);
-    when(rc.canBypassIndexSecurity()).thenReturn(false);
+    when(rc.involvesIndices()).thenReturn(true);
     when(rc.getAvailableIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("perfmon-bfarm", "another_index")));
 
     RuleExitResult res = match(

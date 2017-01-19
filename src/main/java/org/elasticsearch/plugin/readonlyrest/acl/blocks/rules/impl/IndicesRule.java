@@ -47,13 +47,16 @@ public class IndicesRule extends Rule {
   @Override
   public RuleExitResult match(RequestContext rc) {
 
+    logger.debug("Stage -1");
+    if (!rc.involvesIndices()) {
+      return MATCH;
+    }
+
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
     logger.debug("Stage 0");
-    if (!(rc.canBypassIndexSecurity())) {
-      if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
-        rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
-        return MATCH;
-      }
+    if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
+      rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
+      return MATCH;
     }
 
     if (rc.isReadRequest()) {
@@ -65,6 +68,7 @@ public class IndicesRule extends Rule {
           return MATCH;
         }
       }
+
       // ----- Now you requested SOME indices, let's see if and what we can allow in..
 
       // 2. All indices match by wildcard?
@@ -110,15 +114,18 @@ public class IndicesRule extends Rule {
       logger.debug("Stage 6");
       rc.setIndices(allowedExpansion);
       return MATCH;
-    } else {
+    }
 
-      // Handle <no-index>
+    // Write requests
+    else {
+
+      // Handle <no-index> (#TODO LEGACY)
       logger.debug("Stage 7");
       if (rc.getIndices().size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
         return MATCH;
       }
 
-      // Reject if at least one requested index is not allowed by the rule conf
+      // Reject write if at least one requested index is not allowed by the rule conf
       logger.debug("Stage 8");
       for (String idx : rc.getIndices()) {
         if (!configuredWildcards.match(idx)) {
@@ -129,6 +136,5 @@ public class IndicesRule extends Rule {
       // Conditions are satisfied
       return MATCH;
     }
-
   }
 }

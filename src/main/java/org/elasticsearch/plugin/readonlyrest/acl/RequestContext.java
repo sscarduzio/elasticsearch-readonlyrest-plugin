@@ -67,9 +67,7 @@ public class RequestContext {
     */
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static final String LOCALHOST = "127.0.0.1";
-  private static MatcherWithWildcards canBypassIndexSecurityMatcher = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/*"
-  ));
+
   private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/*",
       "indices:admin/mappings/fields/get",
@@ -98,7 +96,7 @@ public class RequestContext {
   private RequestSideEffects sideEffects;
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
-                        ActionRequest actionRequest, IndicesService indicesService, ThreadPool threadPool) {
+      ActionRequest actionRequest, IndicesService indicesService, ThreadPool threadPool) {
     this.sideEffects = new RequestSideEffects(this);
     this.channel = channel;
     this.request = request;
@@ -114,6 +112,10 @@ public class RequestContext {
     this.headers = h;
   }
 
+  public String getId() {
+    return id;
+  }
+
   public void commit() {
     sideEffects.commit();
   }
@@ -122,8 +124,8 @@ public class RequestContext {
     sideEffects.clear();
   }
 
-  public boolean canBypassIndexSecurity() {
-    return canBypassIndexSecurityMatcher.match(action);
+  public boolean involvesIndices() {
+    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
   }
 
   public boolean isReadRequest() {
@@ -197,7 +199,8 @@ public class RequestContext {
               for (IndicesRequest ir : cir.subRequests()) {
                 indices = ArrayUtils.concat(indices, ir.indices(), String.class);
               }
-            } else {
+            }
+            else {
               try {
                 Method m = ar.getClass().getMethod("indices");
                 if (m.getReturnType() != String[].class) {
@@ -269,7 +272,8 @@ public class RequestContext {
             if (results.isEmpty()) {
               indices.clear();
               indices.addAll(newIndices);
-            } else {
+            }
+            else {
               results.forEach(e -> {
                 logger.error("Failed to set indices " + e.toString());
               });
