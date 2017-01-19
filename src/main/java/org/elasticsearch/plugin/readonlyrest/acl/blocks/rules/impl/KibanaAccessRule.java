@@ -19,6 +19,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -41,7 +42,8 @@ public class KibanaAccessRule extends Rule {
 
   private static List<String> kibanaServerClusterActions = Lists.newArrayList(
       "cluster:monitor/nodes/info",
-      "cluster:monitor/health");
+      "cluster:monitor/health"
+  );
 
   private static List<String> kibanaActionsRO = Lists.newArrayList(
       "indices:admin/exists",
@@ -64,19 +66,19 @@ public class KibanaAccessRule extends Rule {
       "indices:admin/mapping/put",
       "indices:data/write/delete",
       "indices:data/write/index",
-      "indices:data/write/update");
+      "indices:data/write/update"
+  );
 
   static {
     kibanaActionsRW.addAll(kibanaActionsRO);
   }
 
-  private List<String> allowedActions = kibanaActionsRO;
-
-  private String kibanaIndex = ".kibana";
-  private boolean canModifyKibana = false;
+  private String kibanaIndex;
+  private boolean canModifyKibana;
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
+
     String tmp = s.get(getKey());
     if (ConfigurationHelper.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
@@ -84,40 +86,48 @@ public class KibanaAccessRule extends Rule {
     tmp = tmp.toLowerCase();
 
     if ("ro".equals(tmp)) {
-      allowedActions = kibanaActionsRO;
-    } else if ("rw".equals(tmp)) {
-      allowedActions = kibanaActionsRW;
+      canModifyKibana = false;
+    }
+    else if ("rw".equals(tmp)) {
       canModifyKibana = true;
-    } else if ("ro+".equals(tmp)) {
-      tmp = s.get("kibana_index");
-      if (!ConfigurationHelper.isNullOrEmpty(tmp)) {
-        kibanaIndex = tmp;
-      }
-      allowedActions = kibanaActionsRO;
-      canModifyKibana = true;
-    } else {
+    }
+    else {
       throw new RuleConfigurationError("invalid configuration: use either 'ro' or 'rw'. Found: + " + tmp, null);
+    }
+
+    kibanaIndex = ".kibana";
+    tmp = s.get("kibana_index");
+    if (!Strings.isNullOrEmpty(tmp)) {
+      kibanaIndex = tmp;
     }
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
 
-    if (kibanaActionsRO.contains(rc.getAction()) || kibanaServerClusterActions.contains(rc.getAction())) {
-      return MATCH;
-    }
-
     // Allow other actions if devnull is targeted to readers and writers
     if (rc.getIndices().contains(".kibana-devnull")) {
       return MATCH;
     }
 
-    if (canModifyKibana && rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex) && kibanaActionsRW.contains(rc.getAction())) {
-      logger.debug("allowing RW req: " + rc);
+    // Any index, read op
+    if (kibanaActionsRO.contains(rc.getAction()) || kibanaServerClusterActions.contains(rc.getAction())) {
       return MATCH;
     }
 
-    logger.debug("KIBANA ACCESS DENIED " + rc);
+    boolean targetsKibana = rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex);
+
+    // Kibana index, write op
+    if (targetsKibana && canModifyKibana) {
+      if (kibanaActionsRW.contains(rc.getAction())) {
+        logger.debug("RW access to Kibana index: " + rc.getId());
+        return MATCH;
+      }
+      logger.info("RW access to Kibana, but unrecognized action " + rc.getAction() + " reqID: " + rc.getId());
+      return NO_MATCH;
+    }
+
+    logger.debug("KIBANA ACCESS DENIED " + rc.getId());
     return NO_MATCH;
   }
 }
