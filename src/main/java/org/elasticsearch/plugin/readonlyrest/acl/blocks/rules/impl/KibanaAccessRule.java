@@ -80,7 +80,7 @@ public class KibanaAccessRule extends Rule {
     super(s);
 
     String tmp = s.get(getKey());
-    if (ConfigurationHelper.isNullOrEmpty(tmp)) {
+    if (Strings.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
     }
     tmp = tmp.toLowerCase();
