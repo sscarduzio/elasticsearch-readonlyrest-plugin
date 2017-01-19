@@ -46,20 +46,24 @@ public class KibanaAccessRule extends Rule {
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
+
     String tmp = s.get(getKey());
     if (Strings.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
     }
     tmp = tmp.toLowerCase();
+
     if ("ro".equals(tmp)) {
       canModifyKibana = false;
-    } else if ("rw".equals(tmp)) {
+    }
+    else if ("rw".equals(tmp)) {
       canModifyKibana = true;
-    } else if ("ro+".equals(tmp)) {
-      throw new RuleConfigurationError("invalid configuration: 'ro+' is no longer supported. Use 'rw' instead", null);
-    } else {
+    }
+    else {
       throw new RuleConfigurationError("invalid configuration: use either 'ro' or 'rw'. Found: + " + tmp, null);
     }
+
+    kibanaIndex = ".kibana";
     tmp = s.get("kibana_index");
     if (!Strings.isNullOrEmpty(tmp)) {
       kibanaIndex = tmp;
@@ -69,32 +73,29 @@ public class KibanaAccessRule extends Rule {
   @Override
   public RuleExitResult match(RequestContext rc) {
 
-    String a = rc.getAction();
-
-    // If this rule is active, it's at least allowing read actions for any indices.
-    if (actions.RO.match(a) || actions.CLUSTER.match(a)) {
-      return MATCH;
-    }
-
-    Set<String> indices = rc.getIndices();
-
     // Allow other actions if devnull is targeted to readers and writers
-    if (indices.contains(".kibana-devnull")) {
+    if (rc.getIndices().contains(".kibana-devnull")) {
       return MATCH;
     }
 
-    // Handle requests to kibanaIndex
-    if (indices.size() == 1 && indices.contains(kibanaIndex)) {
+    // Any index, read op
+    if (actions.RO.match(rc.getAction()) || actions.CLUSTER.match(rc.getAction())) {
+      return MATCH;
+    }
 
-      // Write actions are only allowed for kibanaIndex
-      if (canModifyKibana && actions.RW.match(a)) {
-        logger.debug("allowing RW req: " + rc);
+    boolean targetsKibana = rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex);
+
+    // Kibana index, write op
+    if (targetsKibana && canModifyKibana) {
+      if (actions.RW.match(rc.getAction())) {
+        logger.debug("RW access to Kibana index: " + rc.getId());
         return MATCH;
       }
-
+      logger.info("RW access to Kibana, but unrecognized action " + rc.getAction() + " reqID: " + rc.getId());
+      return NO_MATCH;
     }
 
-    logger.debug("KIBANA ACCESS DENIED " + rc);
+    logger.debug("KIBANA ACCESS DENIED " + rc.getId());
     return NO_MATCH;
   }
 
