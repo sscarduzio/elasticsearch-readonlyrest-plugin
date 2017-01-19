@@ -37,7 +37,6 @@ import static org.mockito.Mockito.when;
  */
 
 public class KibanaAccessRuleTest extends TestCase {
-
   class Conf {
     public String accessLevel = "ro";
     public String kibanaIndex = ".kibana";
@@ -57,26 +56,102 @@ public class KibanaAccessRuleTest extends TestCase {
     when(rc.involvesIndices()).thenReturn(false);
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
-    when(rc.involvesIndices()).thenReturn(false);
 
     Rule r = new KibanaAccessRule(Settings.builder()
-        .put("kibana_access", configured.accessLevel)
-        .put("kibana_index", configured.kibanaIndex)
-        .build());
+                                          .put("kibana_access", configured.accessLevel)
+                                          .put("kibana_index", configured.kibanaIndex)
+                                          .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
     return res;
   }
 
-  public void testRO() throws RuleNotConfiguredException {
+  public RuleExitResult matchRule(String accessLevel, String action) throws RuleNotConfiguredException {
+    return matchRule(accessLevel, action, Sets.<String>newHashSet(".kibana"));
+  }
+
+  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices) throws RuleNotConfiguredException {
+    return matchRule(accessLevel, action, indices, ".kibana");
+
+  }
+
+  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex) throws RuleNotConfiguredException {
     Conf conf = new Conf();
-    conf.accessLevel = "ro";
-    conf.kibanaIndex = ".kibana";
+    conf.accessLevel = accessLevel;
+    conf.kibanaIndex = kibanaIndex;
+
     Found found = new Found();
-    found.action = "";
-    found.indices = Sets.newHashSet(".kibana");
-    RuleExitResult res = match(conf, found);
-    assertFalse(res.isMatch());
+    found.action = action;
+    found.indices = indices;
+
+    return match(conf, found);
+  }
+
+  public void testCLUSTER() throws RuleNotConfiguredException {
+    for (String action : KibanaAccessRule.CLUSTER.getMatchers()) {
+      System.out.println("trying " + action + " as RO");
+      assertTrue(matchRule("ro", action).isMatch());
+      System.out.println("trying " + action + " as RW");
+      assertTrue(matchRule("rw", action).isMatch());
+    }
+  }
+
+  public void testRO() throws RuleNotConfiguredException {
+    for (String action : KibanaAccessRule.RO.getMatchers()) {
+      System.out.println("trying " + action + " as RO");
+      assertTrue(matchRule("ro", action).isMatch());
+      System.out.println("trying " + action + " as RW");
+      assertTrue(matchRule("rw", action).isMatch());
+    }
+  }
+
+  public void testRW() throws RuleNotConfiguredException {
+    for (String action : KibanaAccessRule.RW.getMatchers()) {
+      System.out.println("trying " + action + " as RO");
+      assertFalse(matchRule("ro", action).isMatch());
+      System.out.println("trying " + action + " as RW");
+      assertTrue(matchRule("rw", action).isMatch());
+    }
+  }
+
+  public void testROotherIndices() throws RuleNotConfiguredException {
+    for (String action : KibanaAccessRule.RO.getMatchers()) {
+      assertTrue(matchRule("ro", action, Sets.<String>newHashSet("xxx")).isMatch());
+      assertTrue(matchRule("rw", action, Sets.<String>newHashSet("xxx")).isMatch());
+    }
+  }
+
+  public void testRWotherIndices() throws RuleNotConfiguredException {
+    for (String action : KibanaAccessRule.RW.getMatchers()) {
+      assertFalse(matchRule("ro", action, Sets.<String>newHashSet("xxx")).isMatch());
+      assertFalse(matchRule("rw", action, Sets.<String>newHashSet("xxx")).isMatch());
+    }
+  }
+
+  public void testROmixedIndices() throws RuleNotConfiguredException {
+    for (String action : KibanaAccessRule.RO.getMatchers()) {
+      assertTrue(matchRule("ro", action, Sets.<String>newHashSet("xxx", ".kibana")).isMatch());
+      assertTrue(matchRule("rw", action, Sets.<String>newHashSet("xxx", ".kibana")).isMatch());
+    }
+  }
+
+  public void testRWmixedIndices() throws RuleNotConfiguredException {
+    for (String action : KibanaAccessRule.RW.getMatchers()) {
+      assertFalse(matchRule("ro", action, Sets.<String>newHashSet("xxx", ".kibana")).isMatch());
+      assertFalse(matchRule("rw", action, Sets.<String>newHashSet("xxx", ".kibana")).isMatch());
+    }
+  }
+
+  public void testRWcustomKibanaIndex() throws RuleNotConfiguredException {
+    String customKibanaIndex = ".kibana-custom";
+    Set<String> indices = Sets.<String>newHashSet(customKibanaIndex);
+
+    for (String action : KibanaAccessRule.RW.getMatchers()) {
+      System.out.println("trying " + action + " as RO");
+      assertFalse(matchRule("ro", action, indices, customKibanaIndex).isMatch());
+      System.out.println("trying " + action + " as RW");
+      assertTrue(matchRule("rw", action, indices, customKibanaIndex).isMatch());
+    }
   }
 }
