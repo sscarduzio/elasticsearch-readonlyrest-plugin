@@ -164,8 +164,11 @@ public class Block {
 
     if (match) {
       logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
+      rc.commit();
       return new BlockExitResult(this, true);
     }
+
+    rc.reset();
     logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
 
     return BlockExitResult.NO_MATCH;

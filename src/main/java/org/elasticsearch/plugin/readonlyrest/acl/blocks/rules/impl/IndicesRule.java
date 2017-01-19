@@ -48,7 +48,7 @@ public class IndicesRule extends Rule {
   public RuleExitResult match(RequestContext rc) {
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
-    logger.info("Stage 0");
+    logger.debug("Stage 0");
     if (!(rc.canBypassIndexSecurity())) {
       if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
         rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
@@ -59,22 +59,21 @@ public class IndicesRule extends Rule {
     if (rc.isReadRequest()) {
 
       // Handle simple case of single index
-      logger.info("Stage 1");
+      logger.debug("Stage 1");
       if (rc.getIndices().size() == 1) {
         if (configuredWildcards.match(rc.getIndices().iterator().next())) {
           return MATCH;
         }
       }
-
       // ----- Now you requested SOME indices, let's see if and what we can allow in..
 
       // 2. All indices match by wildcard?
-      logger.info("Stage 2");
+      logger.debug("Stage 2");
       if (configuredWildcards.filter(rc.getIndices()).size() == rc.getIndices().size()) {
         return MATCH;
       }
 
-      logger.info("Stage 2.1");
+      logger.debug("Stage 2.1");
       // 2.1 Detect non-wildcard requested indices that do not exist and return 404 (compatibility with vanilla ES)
       Set<String> real = rc.getAvailableIndicesAndAliases();
       for (final String idx : rc.getIndices()) {
@@ -88,11 +87,11 @@ public class IndicesRule extends Rule {
 
       // 3. indices match by reverse-wildcard?
       // Expand requested indices to a subset of indices available in ES
-      logger.info("Stage 3");
+      logger.debug("Stage 3");
       Set<String> expansion = new MatcherWithWildcards(rc.getIndices()).filter(rc.getAvailableIndicesAndAliases());
 
       // 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
-      logger.info("Stage 4");
+      logger.debug("Stage 4");
       if (expansion.size() == 0) {
         return MATCH;
       }
@@ -101,26 +100,26 @@ public class IndicesRule extends Rule {
       Set<String> allowedExpansion = configuredWildcards.filter(expansion);
 
       // 5. You requested some indices, but NONE were allowed
-      logger.info("Stage 5");
+      logger.debug("Stage 5");
       if (allowedExpansion.size() == 0) {
         // #TODO should I set indices to rule wildcards?
         return NO_MATCH;
       }
 
       // 6. You requested some indices, I can allow you only SOME (we made sure the allowed set is not empty!).
-      logger.info("Stage 6");
+      logger.debug("Stage 6");
       rc.setIndices(allowedExpansion);
       return MATCH;
     } else {
 
       // Handle <no-index>
-      logger.info("Stage 7");
+      logger.debug("Stage 7");
       if (rc.getIndices().size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
         return MATCH;
       }
 
       // Reject if at least one requested index is not allowed by the rule conf
-      logger.info("Stage 8");
+      logger.debug("Stage 8");
       for (String idx : rc.getIndices()) {
         if (!configuredWildcards.match(idx)) {
           return NO_MATCH;

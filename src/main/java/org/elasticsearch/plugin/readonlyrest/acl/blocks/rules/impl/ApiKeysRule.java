@@ -37,7 +37,7 @@ public class ApiKeysRule extends Rule {
 
   public ApiKeysRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    String[] a = s.getAsArray("api_keys");
+    String[] a = s.getAsArray(getKey());
     if (a != null && a.length > 0) {
       validApiKeys = Lists.newArrayList();
       for (int i = 0; i < a.length; i++) {

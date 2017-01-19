@@ -95,8 +95,11 @@ public class RequestContext {
   private String content = null;
   private IndicesService indexService = null;
 
+  private RequestSideEffects sideEffects;
+
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, IndicesService indicesService, ThreadPool threadPool) {
+    this.sideEffects = new RequestSideEffects(this);
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -109,6 +112,14 @@ public class RequestContext {
       h.put(e.getKey(), e.getValue());
     });
     this.headers = h;
+  }
+
+  public void commit() {
+    sideEffects.commit();
+  }
+
+  public void reset() {
+    sideEffects.clear();
   }
 
   public boolean canBypassIndexSecurity() {
@@ -229,6 +240,10 @@ public class RequestContext {
   }
 
   public void setIndices(final Set<String> newIndices) {
+    sideEffects.appendEffect(() -> doSetIndices(newIndices));
+  }
+
+  public void doSetIndices(final Set<String> newIndices) {
     newIndices.remove("<no-index>");
 
     if (newIndices.equals(getIndices())) {
@@ -288,6 +303,10 @@ public class RequestContext {
   }
 
   public void setResponseHeader(String name, String value) {
+    sideEffects.appendEffect(() -> doSetResponseHeader(name, value));
+  }
+
+  public void doSetResponseHeader(String name, String value) {
     threadPool.getThreadContext().addResponseHeader(name, value);
   }
 
@@ -326,6 +345,7 @@ public class RequestContext {
         ", C:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
         ", Headers:" + request.headers() +
         ", History:" + hist +
+        ", Effects:" + sideEffects.size() +
         " }";
   }
 
