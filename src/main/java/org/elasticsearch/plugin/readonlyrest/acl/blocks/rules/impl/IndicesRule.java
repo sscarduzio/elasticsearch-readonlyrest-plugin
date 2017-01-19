@@ -50,7 +50,7 @@ public class IndicesRule extends Rule {
   public RuleExitResult match(RequestContext rc) {
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
-    if (!(rc.canBypassIndexSecurity())) {
+    if (rc.involvesIndices()) {
       if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
         rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
         return MATCH;
