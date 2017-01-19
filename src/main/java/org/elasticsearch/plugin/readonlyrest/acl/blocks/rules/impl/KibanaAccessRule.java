@@ -30,8 +30,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-import java.util.Set;
-
 
 /**
  * Created by sscarduzio on 26/03/2016.
@@ -39,14 +37,41 @@ import java.util.Set;
 public class KibanaAccessRule extends Rule {
 
   private final static ESLogger logger = Loggers.getLogger(KibanaAccessRule.class);
-  private static final Actions actions = new Actions();
-
   private String kibanaIndex;
   private boolean canModifyKibana;
 
+  public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
+      "indices:admin/exists",
+      "indices:admin/mappings/fields/get",
+      "indices:admin/validate/query",
+      "indices:data/read/field_stats",
+      "indices:data/read/search",
+      "indices:data/read/msearch",
+      "indices:admin/get",
+      "indices:admin/refresh",
+      "indices:data/read/get",
+      "indices:data/read/mget",
+      "indices:data/read/mget[shard]",
+      "indices:admin/mappings/fields/get[index]"
+  ));
+
+  public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
+      "indices:admin/create",
+      "indices:admin/mapping/put",
+      "indices:data/write/delete",
+      "indices:data/write/index",
+      "indices:data/write/update"
+  ));
+
+  public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
+      "cluster:monitor/nodes/info",
+      "cluster:monitor/health"
+  ));
+
+
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-
+    
     String tmp = s.get(getKey());
     if (Strings.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();
@@ -79,7 +104,7 @@ public class KibanaAccessRule extends Rule {
     }
 
     // Any index, read op
-    if (actions.RO.match(rc.getAction()) || actions.CLUSTER.match(rc.getAction())) {
+    if (RO.match(rc.getAction()) || CLUSTER.match(rc.getAction())) {
       return MATCH;
     }
 
@@ -87,7 +112,7 @@ public class KibanaAccessRule extends Rule {
 
     // Kibana index, write op
     if (targetsKibana && canModifyKibana) {
-      if (actions.RW.match(rc.getAction())) {
+      if (RO.match(rc.getAction()) || RW.match(rc.getAction())) {
         logger.debug("RW access to Kibana index: " + rc.getId());
         return MATCH;
       }
@@ -99,45 +124,4 @@ public class KibanaAccessRule extends Rule {
     return NO_MATCH;
   }
 
-  static class Actions {
-    private MatcherWithWildcards RO;
-    private MatcherWithWildcards RW;
-    private MatcherWithWildcards CLUSTER;
-
-    Actions() {
-      Set<String> kibanaServerClusterActions = Sets.newHashSet(
-          "cluster:monitor/nodes/info",
-          "cluster:monitor/health");
-
-      Set<String> kibanaActionsRO = Sets.newHashSet(
-          "indices:admin/exists",
-          "indices:admin/mappings/fields/get",
-          "indices:admin/validate/query",
-          "indices:data/read/field_stats",
-          "indices:data/read/search",
-          "indices:data/read/msearch",
-          "indices:admin/get",
-          "indices:admin/refresh",
-          "indices:data/read/get",
-          "indices:data/read/mget",
-          "indices:data/read/mget[shard]",
-          "indices:admin/mappings/fields/get[index]"
-      );
-
-      Set<String> kibanaActionsRW = Sets.newHashSet(
-          "indices:admin/create",
-          "indices:admin/exists",
-          "indices:admin/mapping/put",
-          "indices:data/write/delete",
-          "indices:data/write/index",
-          "indices:data/write/update"
-      );
-
-      kibanaActionsRW.addAll(kibanaActionsRO);
-
-      RO = new MatcherWithWildcards(kibanaActionsRO);
-      RW = new MatcherWithWildcards(kibanaActionsRW);
-      CLUSTER = new MatcherWithWildcards(kibanaServerClusterActions);
-    }
-  }
 }
