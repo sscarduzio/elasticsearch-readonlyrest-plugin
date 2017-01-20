@@ -40,6 +40,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdl
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForRule;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -64,7 +65,6 @@ public class Block {
     if (sPolicy == null) {
       throw new RuleConfigurationError("The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() + ". If this field is correct, check the YAML indentation is correct.", null);
     }
-
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
@@ -144,12 +144,21 @@ public class Block {
 
   public BlockExitResult check(RequestContext rc) {
     boolean match = true;
+    Set<RuleExitResult> thisBlockHistory = new HashSet<>(conditionsToCheck.size());
+
     for (Rule condition : conditionsToCheck) {
       // Exit at the first rule that matches the request
       RuleExitResult condExitResult = condition.match(rc);
+
+      // Log history
+      thisBlockHistory.add(condExitResult);
+
       // a block matches if ALL rules match
       match &= condExitResult.isMatch();
     }
+
+    rc.addToHistory(this, thisBlockHistory);
+
     if (match) {
       logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
       rc.commit();

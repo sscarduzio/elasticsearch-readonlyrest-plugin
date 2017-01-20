@@ -28,7 +28,6 @@ import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
-import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.logging.ESLogger;
@@ -37,6 +36,8 @@ import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.aliases.IndexAliasesService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -80,6 +81,7 @@ public class RequestContext {
   private Map<String, String> headers;
 
   private RequestSideEffects sideEffects;
+  private Set<BlockHistory> history = Sets.newHashSet();
 
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, IndicesService indicesService) {
     this.id = UUID.randomUUID().toString().replace("-", "");
@@ -96,8 +98,13 @@ public class RequestContext {
     this.headers = h;
   }
 
-  public String getId(){
+  public String getId() {
     return id;
+  }
+
+  public void addToHistory(Block block, Set<RuleExitResult> results) {
+    BlockHistory blockHistory = new BlockHistory(block.getName(), results);
+    history.add(blockHistory);
   }
 
   public void commit() {
@@ -216,7 +223,8 @@ public class RequestContext {
               for (IndicesRequest ir : cir.subRequests()) {
                 indices = ObjectArrays.concat(indices, ir.indices(), String.class);
               }
-            } else {
+            }
+            else {
               try {
                 Method m = ar.getClass().getMethod("indices");
                 if (m.getReturnType() != String[].class) {
@@ -292,7 +300,8 @@ public class RequestContext {
             if (results.isEmpty()) {
               indices.clear();
               indices.addAll(newIndices);
-            } else {
+            }
+            else {
               for (Throwable e : results) {
                 logger.error("Failed to set indices " + e.toString());
               }
@@ -327,23 +336,35 @@ public class RequestContext {
 
   @Override
   public String toString() {
-    String idxs = Joiner.on(",").skipNulls().join(getIndices());
+    String theIndices = Joiner.on(",").skipNulls().join(getIndices());
     String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
     }
-    return "{ id: " + id +
-        ", type: " + actionRequest.getClass().getSimpleName() +
-        ", user: " + loggedInAs +
-        ", action: " + action +
+    String theHeaders;
+    if (!logger.isDebugEnabled()) {
+      Map<String, String> hMap = new HashMap(getHeaders());
+      theHeaders = Joiner.on(",").join(hMap.keySet());
+    }
+    else {
+      theHeaders = request.headers().toString();
+    }
+
+    String hist = Joiner.on(", ").join(history);
+    return "{ ID: " + id +
+        ", TYP:" + actionRequest.getClass().getSimpleName() +
+        ", USR:" + loggedInAs +
+        ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
+        ", ACT:" + action +
         ", OA:" + getRemoteAddress() +
-        ", indices:" + idxs +
-        ", M:" + request.method() +
-        ", P:" + request.path() +
-        ", C:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-        ", Headers:" + request.headers() +
-        ", Effects:" + sideEffects.size() +
+        ", IDX:" + theIndices +
+        ", MET:" + request.method() +
+        ", PTH:" + request.path() +
+        ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+        ", HDR:" + theHeaders +
+        ", EFF:" + sideEffects.size() +
+        ", HIS:" + hist +
         " }";
   }
 

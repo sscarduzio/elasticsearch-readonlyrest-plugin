@@ -18,47 +18,34 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl;
 
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Maps;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Created by sscarduzio on 19/01/2017.
+ * Created by sscarduzio on 20/01/2017.
  */
-public class RequestSideEffects {
-  private final ESLogger logger = Loggers.getLogger(getClass());
 
-  RequestContext rc;
-  List<Runnable> effects = new LinkedList<>();
+class BlockHistory {
+  Set<RuleExitResult> results;
+  String name;
 
-  RequestSideEffects(RequestContext rc) {
-    this.rc = rc;
+  BlockHistory(String name, Set<RuleExitResult> results) {
+    this.results = results;
+    this.name = name;
   }
 
-  void appendEffect(Runnable eff) {
-    effects.add(eff);
-  }
-
-  int size() {
-    return effects.size();
-  }
-
-  void commit() {
-    int commitSize = effects.size();
-    if (commitSize == 0) {
-      return;
+  @Override
+  public String toString() {
+    Map<String, Boolean> rule2result = Maps.newHashMap();
+    for (RuleExitResult rer : results) {
+      rule2result.put(rer.getCondition().getKey(), rer.isMatch());
     }
-    logger.info("Committing " + effects.size() + " effects");
-    for (Runnable eff : effects) {
-      eff.run();
-      effects.remove(eff);
-    }
+    Joiner.MapJoiner j = Joiner.on(", ").withKeyValueSeparator("->");
+    String histString = "[" + name + "->[" + j.join(rule2result) + "]]";
+    return histString;
   }
-
-  void clear() {
-    effects.clear();
-  }
-
 }
