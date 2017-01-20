@@ -46,8 +46,8 @@ public class AuthKeySha1RuleTest extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     Rule r = new AuthKeySha1Rule(Settings.builder()
-        .put("auth_key_sha1", configured)
-        .build());
+                                         .put("auth_key_sha1", configured)
+                                         .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

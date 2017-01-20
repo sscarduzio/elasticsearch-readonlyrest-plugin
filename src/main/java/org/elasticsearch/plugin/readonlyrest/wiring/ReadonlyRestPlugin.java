@@ -50,10 +50,14 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   }
 
   @Override
-  public Map<String, Supplier<HttpServerTransport>> getHttpTransports(Settings settings, ThreadPool threadPool, BigArrays bigArrays,
-                                                                      CircuitBreakerService circuitBreakerService,
-                                                                      NamedWriteableRegistry namedWriteableRegistry,
-                                                                      NetworkService networkService) {
+  public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
+      Settings settings,
+      ThreadPool threadPool,
+      BigArrays bigArrays,
+      CircuitBreakerService circuitBreakerService,
+      NamedWriteableRegistry namedWriteableRegistry,
+      NetworkService networkService
+  ) {
     return Collections.singletonMap("ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool));
   }
 

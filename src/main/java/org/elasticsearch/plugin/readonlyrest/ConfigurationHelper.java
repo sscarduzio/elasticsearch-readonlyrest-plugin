@@ -73,7 +73,8 @@ public class ConfigurationHelper {
     sslEnabled = s.getAsBoolean("ssl.enable", false);
     if (sslEnabled) {
       logger.info("SSL: Enabled");
-    } else {
+    }
+    else {
       logger.info("SSL: Disabled");
     }
     sslKeyStoreFile = s.get("ssl.keystore_file");

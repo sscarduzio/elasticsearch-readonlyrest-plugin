@@ -30,23 +30,22 @@ import java.util.List;
 public class RequestSideEffects {
   private final Logger logger = Loggers.getLogger(getClass());
 
-  RequestContext rc;
+  private RequestContext rc;
+  private List<Runnable> effects = new LinkedList<>();
 
   RequestSideEffects(RequestContext rc) {
     this.rc = rc;
   }
 
-  List<Runnable> effects = new LinkedList<>();
-
-  void appendEffect(Runnable eff) {
+  public void appendEffect(Runnable eff) {
     effects.add(eff);
   }
 
-  int size() {
+  public int size() {
     return effects.size();
   }
 
-  void commit() {
+  public void commit() {
     int commitSize = effects.size();
     if (commitSize == 0) {
       return;
@@ -58,7 +57,7 @@ public class RequestSideEffects {
     }
   }
 
-  void clear() {
+  public void clear() {
     effects.clear();
   }
 

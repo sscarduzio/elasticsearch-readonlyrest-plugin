@@ -25,11 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
 import org.mockito.Mockito;
-
-import java.util.Arrays;
-import java.util.List;
 
 import static org.mockito.Mockito.when;
 
@@ -47,8 +43,8 @@ public class MaxBodyLengthRuleTest extends TestCase {
     when(rc.getContent()).thenReturn(found);
 
     Rule r = new MaxBodyLengthRule(Settings.builder()
-        .put("maxBodyLength", configured)
-        .build());
+                                           .put("maxBodyLength", configured)
+                                           .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

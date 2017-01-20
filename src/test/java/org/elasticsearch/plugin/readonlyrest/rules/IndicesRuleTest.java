@@ -51,8 +51,8 @@ public class IndicesRuleTest extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
 
     Rule r = new IndicesRule(Settings.builder()
-        .putArray("indices", configured)
-        .build());
+                                     .putArray("indices", configured)
+                                     .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

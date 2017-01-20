@@ -26,7 +26,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
 import org.mockito.Mockito;
 
 import java.util.Base64;
@@ -47,8 +46,8 @@ public class AuthKeyRuleTest extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     Rule r = new AuthKeyRule(Settings.builder()
-        .put("auth_key", configured)
-        .build());
+                                     .put("auth_key", configured)
+                                     .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

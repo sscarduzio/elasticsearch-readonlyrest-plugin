@@ -49,7 +49,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
-                                IndicesService indicesService, ThreadPool threadPool) {
+      IndicesService indicesService, ThreadPool threadPool) {
     super(settings);
     this.conf = conf;
     this.indicesService = indicesService;
@@ -116,7 +116,8 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
-    } else {
+    }
+    else {
       resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
     }
 

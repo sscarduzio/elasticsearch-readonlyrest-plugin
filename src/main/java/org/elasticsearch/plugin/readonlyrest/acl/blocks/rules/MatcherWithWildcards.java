@@ -56,7 +56,8 @@ public class MatcherWithWildcards {
 
         // Let's match this also literally
         allMatchers.add(a);
-      } else {
+      }
+      else {
         // A plain word can be matched as string
         allMatchers.add(a.trim());
       }

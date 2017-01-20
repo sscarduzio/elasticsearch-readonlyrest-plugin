@@ -50,7 +50,8 @@ public class MethodsRule extends Rule {
       } catch (Throwable t) {
         throw new RuleConfigurationError("Invalid HTTP method found in configuration " + a, t);
       }
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
     }
 
@@ -65,7 +66,8 @@ public class MethodsRule extends Rule {
   public RuleExitResult match(RequestContext rc) {
     if (allowedMethods.contains(rc.getMethod())) {
       return MATCH;
-    } else {
+    }
+    else {
       return NO_MATCH;
     }
   }

@@ -59,7 +59,8 @@ public class IPMask {
     if (pos == -1) {
       addr = addrSlashMask;
       maskCtr = 32;
-    } else {
+    }
+    else {
       addr = addrSlashMask.substring(0, pos);
       maskCtr = Byte.parseByte(addrSlashMask.substring(pos + 1));
     }

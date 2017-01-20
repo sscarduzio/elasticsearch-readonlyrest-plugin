@@ -57,7 +57,8 @@ public class XForwardedForRule extends Rule {
           allowedAddresses.add(a[i].trim());
         }
       }
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
     }
   }

@@ -35,7 +35,8 @@ public class ThreadRepo {
   public static void resetHistory() {
     if (history.get() != null) {
       history.get().clear();
-    } else {
+    }
+    else {
       history.set(Maps.newHashMap());
     }
   }

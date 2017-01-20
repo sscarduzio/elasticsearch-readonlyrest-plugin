@@ -54,7 +54,8 @@ public class SessionMaxIdleRule extends Rule {
       char c = input.charAt(i);
       if (Character.isDigit(c)) {
         number += c;
-      } else if (Character.isLetter(c) && !number.isEmpty()) {
+      }
+      else if (Character.isLetter(c) && !number.isEmpty()) {
         result += convert(Integer.parseInt(number), c);
         number = "";
       }

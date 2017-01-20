@@ -60,7 +60,8 @@ public class HostsRule extends Rule {
           allowedAddresses.add(a[i].trim());
         }
       }
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
     }
   }

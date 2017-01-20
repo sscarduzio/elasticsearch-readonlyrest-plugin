@@ -44,8 +44,8 @@ public class ApiKeysRuleTest extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
 
     Rule r = new ApiKeysRule(Settings.builder()
-        .put("api_keys", configured)
-        .build());
+                                     .put("api_keys", configured)
+                                     .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

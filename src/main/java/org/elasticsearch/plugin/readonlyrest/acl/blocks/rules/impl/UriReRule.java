@@ -47,7 +47,8 @@ public class UriReRule extends Rule {
         throw new RuleConfigurationError("invalid 'uri_re' regexp", e);
       }
 
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
     }
   }
