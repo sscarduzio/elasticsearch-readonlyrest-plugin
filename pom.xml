@@ -42,7 +42,7 @@
         </url>
     </scm>
     <properties>
-        <elasticsearch.version>2.4.3</elasticsearch.version>
+        <elasticsearch.version>2.3.0</elasticsearch.version>
     </properties>
 
     <repositories>
