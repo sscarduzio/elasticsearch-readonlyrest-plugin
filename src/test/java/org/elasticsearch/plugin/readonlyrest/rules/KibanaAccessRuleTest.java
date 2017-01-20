@@ -65,7 +65,8 @@ public class KibanaAccessRuleTest extends TestCase {
 
   }
 
-  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex) throws RuleNotConfiguredException {
+  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex)
+      throws RuleNotConfiguredException {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
     conf.kibanaIndex = kibanaIndex;
