@@ -49,7 +49,8 @@ public class KibanaAccessRule extends Rule {
       "indices:data/read/get",
       "indices:data/read/mget",
       "indices:data/read/mget[shard]",
-      "indices:admin/mappings/fields/get[index]"
+      "indices:admin/mappings/fields/get[index]",
+      "indices:admin/refresh[s]"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
       "indices:admin/create",
