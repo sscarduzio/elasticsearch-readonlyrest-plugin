@@ -34,9 +34,10 @@ import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
@@ -49,6 +50,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -94,6 +96,8 @@ public class RequestContext {
   private IndicesService indexService = null;
 
   private RequestSideEffects sideEffects;
+  private Set<BlockHistory> history = Sets.newHashSet();
+
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
       ActionRequest actionRequest, IndicesService indicesService, ThreadPool threadPool) {
@@ -110,6 +114,11 @@ public class RequestContext {
       h.put(e.getKey(), e.getValue());
     });
     this.headers = h;
+  }
+
+  public void addToHistory(Block block, Set<RuleExitResult> results) {
+    BlockHistory blockHistory = new BlockHistory(block.getName(), results);
+    history.add(blockHistory);
   }
 
   public String getId() {
@@ -329,27 +338,35 @@ public class RequestContext {
 
   @Override
   public String toString() {
-    String idxs = Joiner.on(",").skipNulls().join(getIndices());
-
-    Joiner.MapJoiner mapJoiner = Joiner.on(",").withKeyValueSeparator("=");
-    String hist = mapJoiner.join(ThreadRepo.history.get());
+    String theIndices = Joiner.on(",").skipNulls().join(getIndices());
     String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
     }
-    return "{ id: " + id +
-        ", type: " + actionRequest.getClass().getSimpleName() +
-        ", user: " + loggedInAs +
-        ", action: " + action +
+    String theHeaders;
+    if (!logger.isDebugEnabled()) {
+      Map<String, String> hMap = new HashMap(getHeaders());
+      theHeaders = Joiner.on(",").join(hMap.keySet());
+    }
+    else {
+      theHeaders = request.headers().toString();
+    }
+
+    String hist = Joiner.on(", ").join(history);
+    return "{ ID: " + id +
+        ", TYP:" + actionRequest.getClass().getSimpleName() +
+        ", USR:" + loggedInAs +
+        ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
+        ", ACT:" + action +
         ", OA:" + getRemoteAddress() +
-        ", indices:" + idxs +
-        ", M:" + request.method() +
-        ", P:" + request.path() +
-        ", C:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-        ", Headers:" + request.headers() +
-        ", History:" + hist +
-        ", Effects:" + sideEffects.size() +
+        ", IDX:" + theIndices +
+        ", MET:" + request.method() +
+        ", PTH:" + request.path() +
+        ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+        ", HDR:" + theHeaders +
+        ", EFF:" + sideEffects.size() +
+        ", HIS:" + hist +
         " }";
   }
 

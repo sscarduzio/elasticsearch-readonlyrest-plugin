@@ -18,7 +18,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
@@ -40,11 +39,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
@@ -147,30 +144,28 @@ public class Block {
 
   public BlockExitResult check(RequestContext rc) {
     boolean match = true;
-    Map<String, String> thisBlockHistory = new HashMap<>(conditionsToCheck.size());
+    Set<RuleExitResult> thisBlockHistory = new HashSet<>(conditionsToCheck.size());
+
     for (Rule condition : conditionsToCheck) {
       // Exit at the first rule that matches the request
       RuleExitResult condExitResult = condition.match(rc);
 
-      // Track rule history
-      thisBlockHistory.put(condition.getKey(), condExitResult.isMatch().toString());
+      // Log history
+      thisBlockHistory.add(condExitResult);
 
       // a block matches if ALL rules match
       match &= condExitResult.isMatch();
     }
 
-    Joiner.MapJoiner j = Joiner.on(",").withKeyValueSeparator("=");
-    ThreadRepo.history.get().put(getName(), "[" + j.join(thisBlockHistory) + "]");
+    rc.addToHistory(this, thisBlockHistory);
 
     if (match) {
       logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
       rc.commit();
       return new BlockExitResult(this, true);
     }
-
-    rc.reset();
     logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
-
+    rc.reset();
     return BlockExitResult.NO_MATCH;
   }
 

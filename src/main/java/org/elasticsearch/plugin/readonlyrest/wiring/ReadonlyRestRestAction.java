@@ -44,7 +44,6 @@ public class ReadonlyRestRestAction extends BaseRestHandler {
       public void process(RestRequest request, RestChannel channel, NodeClient client, RestFilterChain filterChain) throws Exception {
         ThreadRepo.request.set(request);
         ThreadRepo.channel.set(channel);
-        ThreadRepo.resetHistory();
 
         filterChain.continueProcessing(request, channel, client);
       }
