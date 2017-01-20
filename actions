@@ -1,0 +1,75 @@
+GetIndexTemplatesRequest, user: logstash, action: indices:admin/template/get, indices:, M:GET, P:/_template/logstash, } matched block: ::LOGSTASH:: match: true}
+PutIndexTemplateRequest, user: logstash, action: indices:admin/template/put, indices:logstash-*, M:PUT, P:/_template/logstash, } matched block: ::LOGSTASH:: match: true}
+IndexRequest, user: kibana, action: indices:data/write/index, indices:public, M:PUT, P:/public/documents/doc1, } matched block: ::KIBANA-SRV:: match: true}
+CreateIndexRequest, user: kibana, action: indices:admin/create, indices:public, M:PUT, P:/public/documents/doc1, } matched block: ::KIBANA-SRV:: match: true}
+BulkRequest, user: logstash, action: indices:data/write/bulk, indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::LOGSTASH:: match: true}
+CreateIndexRequest, user: logstash, action: indices:admin/create, indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::LOGSTASH:: match: true}
+BulkShardRequest, user: logstash, action: indices:data/write/bulk[s], indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::LOGSTASH:: match: true}
+IndexRequest, user: kibana, action: indices:data/write/index, indices:.kibana, M:POST, P:/.kibana/config/4.6.1, } matched block: ::KIBANA-SRV:: match: true}
+CreateIndexRequest, user: kibana, action: indices:admin/create, indices:.kibana, M:POST, P:/.kibana/config/4.6.1, } matched block: ::KIBANA-SRV:: match: true}
+SearchRequest, user: ro+, action: indices:data/read/search, indices:.kibana, M:POST, P:/.kibana/config/_search, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetRequest, user: ro+, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro+, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+SearchRequest, user: ro+, action: indices:data/read/search, indices:.kibana, M:POST, P:/.kibana/index-pattern/_search, } matched block: ::RO+ DEVELOPER:: match: true}
+GetFieldMappingsRequest, user: ro+, action: indices:admin/mappings/fields/get, indices:.kibana, M:GET, P:/.kibana/_mapping/*/field/_source, } matched block: ::RO+ DEVELOPER:: match: true}
+GetFieldMappingsIndexRequest, user: ro+, action: indices:admin/mappings/fields/get[index], indices:.kibana, M:GET, P:/.kibana/_mapping/*/field/_source, } matched block: ::RO+ DEVELOPER:: match: true}
+PutMappingRequest, user: ro+, action: indices:admin/mapping/put, indices:.kibana, M:PUT, P:/.kibana/_mapping/index-pattern, } matched block: ::RO+ DEVELOPER:: match: true}
+GetFieldMappingsRequest, user: ro+, action: indices:admin/mappings/fields/get, indices:logstash-*, M:GET, P:/logstash-*/_mapping/field/*, } matched block: ::RO+ DEVELOPER:: match: true}
+GetFieldMappingsIndexRequest, user: ro+, action: indices:admin/mappings/fields/get[index], indices:logstash-*, M:GET, P:/logstash-*/_mapping/field/*, } matched block: ::RO+ DEVELOPER:: match: true}
+IndexRequest, user: ro+, action: indices:data/write/index, indices:.kibana, M:POST, P:/.kibana/index-pattern/logstash-*, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetRequest, user: ro+, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro+, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+SearchRequest, user: ro+, action: indices:data/read/search, indices:.kibana, M:POST, P:/.kibana/index-pattern/_search, } matched block: ::RO+ DEVELOPER:: match: true}
+GetFieldMappingsRequest, user: ro+, action: indices:admin/mappings/fields/get, indices:logstash-*, M:GET, P:/logstash-*/_mapping/field/*, } matched block: ::RO+ DEVELOPER:: match: true}
+GetFieldMappingsIndexRequest, user: ro+, action: indices:admin/mappings/fields/get[index], indices:logstash-*, M:GET, P:/logstash-*/_mapping/field/*, } matched block: ::RO+ DEVELOPER:: match: true}
+UpdateRequest, user: ro+, action: indices:data/write/update, indices:.kibana, M:POST, P:/.kibana/config/4.6.1/_update, } matched block: ::RO+ DEVELOPER:: match: true}
+IndexRequest, user: ro+, action: indices:data/write/index, indices:.kibana, M:POST, P:/.kibana/config/4.6.1/_update, } matched block: ::RO+ DEVELOPER:: match: true}
+IndexRequest, user: ro+, action: indices:data/write/index, indices:.kibana, M:POST, P:/.kibana/index-pattern/logstash-*, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetRequest, user: ro+, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro+, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+SearchRequest, user: ro+, action: indices:data/read/search, indices:.kibana, M:POST, P:/.kibana/visualization/_search, } matched block: ::RO+ DEVELOPER:: match: true}
+PutMappingRequest, user: ro+, action: indices:admin/mapping/put, indices:.kibana, M:PUT, P:/.kibana/_mapping/visualization, } matched block: ::RO+ DEVELOPER:: match: true}
+FieldStatsRequest, user: ro+, action: indices:data/read/field_stats, indices:logstash-*, M:POST, P:/logstash-*/_field_stats, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiSearchRequest, user: ro+, action: indices:data/read/msearch, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO+ DEVELOPER:: match: true}
+SearchRequest, user: ro+, action: indices:data/read/search, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO+ DEVELOPER:: match: true}
+IndexRequest, user: ro+, action: indices:data/write/index, indices:.kibana, M:POST, P:/.kibana/visualization/My-New-Data-Table, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetRequest, user: ro+, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro+, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+FieldStatsRequest, user: ro+, action: indices:data/read/field_stats, indices:logstash-*, M:POST, P:/logstash-*/_field_stats, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiSearchRequest, user: ro+, action: indices:data/read/msearch, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO+ DEVELOPER:: match: true}
+SearchRequest, user: ro+, action: indices:data/read/search, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO+ DEVELOPER:: match: true}
+PutMappingRequest, user: ro+, action: indices:admin/mapping/put, indices:.kibana, M:PUT, P:/.kibana/_mapping/dashboard, } matched block: ::RO+ DEVELOPER:: match: true}
+SearchRequest, user: ro+, action: indices:data/read/search, indices:.kibana, M:POST, P:/.kibana/visualization/_search, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetRequest, user: ro+, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro+, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+FieldStatsRequest, user: ro+, action: indices:data/read/field_stats, indices:logstash-*, M:POST, P:/logstash-*/_field_stats, } matched block: ::RO+ DEVELOPER:: match: true}
+IndexRequest, user: ro+, action: indices:data/write/index, indices:.kibana, M:POST, P:/.kibana/dashboard/My-New-Dashboard, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetRequest, user: ro+, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro+, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO+ DEVELOPER:: match: true}
+MultiGetRequest, user: ro, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiGetRequest, user: ro, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiSearchRequest, user: ro, action: indices:data/read/msearch, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO DEVELOPER:: match: true}
+SearchRequest, user: ro, action: indices:data/read/search, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO DEVELOPER:: match: true}
+SearchRequest, user: ro, action: indices:data/read/search, indices:.kibana, M:POST, P:/.kibana/dashboard/_search, } matched block: ::RO DEVELOPER:: match: true}
+MultiGetRequest, user: ro, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiGetRequest, user: ro, action: indices:data/read/mget, indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiGetShardRequest, user: ro, action: indices:data/read/mget[shard], indices:.kibana, M:POST, P:/_mget, } matched block: ::RO DEVELOPER:: match: true}
+MultiSearchRequest, user: ro, action: indices:data/read/msearch, indices:.kibana-devnull, M:POST, P:/_msearch, } matched block: ::RO DEVELOPER:: match: true}
+SearchRequest, user: ro, action: indices:data/read/search, indices:.kibana-devnull, M:POST, P:/_msearch, } matched block: ::RO DEVELOPER:: match: true}
+MultiSearchRequest, user: ro, action: indices:data/read/msearch, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO DEVELOPER:: match: true}
+SearchRequest, user: ro, action: indices:data/read/search, indices:logstash-2016.10.29, M:POST, P:/_msearch, } matched block: ::RO DEVELOPER:: match: true}
+PutMappingRequest, user: ro, action: indices:admin/mapping/put, indices:.kibana, M:PUT, P:/.kibana/_mapping/index-pattern, } matched block: ::PUBLIC SEARCH:: match: true}
+PutMappingRequest, user: ro, action: indices:admin/mapping/put, indices:.kibana, M:PUT, P:/.kibana/_mapping/dashboard, } matched block: ::PUBLIC SEARCH:: match: true}
+UpdateRequest, user: ro, action: indices:data/write/update, indices:.kibana, M:POST, P:/.kibana/config/4.6.1/_update, } matched block: ::PUBLIC SEARCH:: match: true}
+BulkRequest, user: ro, action: indices:data/write/bulk, indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::PUBLIC SEARCH:: match: true}
+BulkShardRequest, user: ro, action: indices:data/write/bulk[s], indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::PUBLIC SEARCH:: match: true}
+PutIndexTemplateRequest, user: ro, action: indices:admin/template/put, indices:logstash-*, M:PUT, P:/_template/logstash, } matched block: ::PUBLIC SEARCH:: match: true}
+PutIndexTemplateRequest, user: ro+, action: indices:admin/template/put, indices:logstash-*, M:PUT, P:/_template/logstash, } matched block: ::PUBLIC SEARCH:: match: true}
+BulkRequest, user: ro+, action: indices:data/write/bulk, indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::PUBLIC SEARCH:: match: true}
+BulkShardRequest, user: ro+, action: indices:data/write/bulk[s], indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::PUBLIC SEARCH:: match: true}
+BulkRequest, user: ro+, action: indices:data/write/bulk, indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::PUBLIC SEARCH:: match: true}
+BulkShardRequest, user: ro+, action: indices:data/write/bulk[s], indices:logstash-2016.10.28, M:POST, P:/_bulk, } matched block: ::PUBLIC SEARCH:: match: true}
+GetRequest, user: null, action: indices:data/read/get, indices:public, M:GET, P:/public/documents/doc1, } matched block: ::PUBLIC SEARCH:: match: true}

@@ -44,7 +44,8 @@ public class AuthKeyRule extends Rule {
     String pAuthKey = s.get(getKey());
     if (pAuthKey != null && pAuthKey.trim().length() > 0) {
       authKey = Base64.encodeBytes(pAuthKey.getBytes(Charsets.UTF_8));
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
     }
   }

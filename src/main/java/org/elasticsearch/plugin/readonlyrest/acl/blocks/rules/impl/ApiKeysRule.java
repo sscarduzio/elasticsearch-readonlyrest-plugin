@@ -45,7 +45,8 @@ public class ApiKeysRule extends Rule {
           validApiKeys.add(a[i].trim());
         }
       }
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
     }
   }

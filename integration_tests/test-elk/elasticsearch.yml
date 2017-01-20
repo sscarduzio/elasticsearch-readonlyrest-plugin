@@ -35,31 +35,31 @@ readonlyrest:
 
     access_control_rules:
 
-    - name: "::LOGSTASH::"
+    - name: "LOGSTASH"
       # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
       indices: ["logstash-*", "<no-index>"]
 
-    - name: "::KIBANA-SRV::"
+    - name: "KIBANA-SRV"
       # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: kibana:kibana
       type: allow
 
-    - name: "::RW (2) DEVELOPER::"
+    - name: "RW (2) DEVELOPER"
       auth_key: ro+:dev
       type: allow
       kibana_access: rw
       indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
 
-    - name: "::RO DEVELOPER::"
+    - name: "RO DEVELOPER"
       auth_key: ro:dev
       type: allow
       kibana_access: ro
       indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
 
-    - name: "::PUBLIC SEARCH::"
+    - name: "PUBLIC SEARCH"
       type: allow
       indices: ["public"]
       actions: ["indices:data/read/*"]

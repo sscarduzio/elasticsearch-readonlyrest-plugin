@@ -65,6 +65,7 @@ public class SSLEngineProvider {
   public SSLContext getContext() throws Exception {
     if (conf.sslEnabled) {
       return context;
-    } else throw new IllegalAccessException("SSL not enabled, cannot make a SSL engine");
+    }
+    else throw new IllegalAccessException("SSL not enabled, cannot make a SSL engine");
   }
 }

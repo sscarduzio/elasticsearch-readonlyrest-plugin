@@ -48,7 +48,8 @@ public class GroupsRule extends Rule {
     String[] pGroups = s.getAsArray(getKey());
     if (pGroups != null && pGroups.length > 0) {
       this.groups = Arrays.asList(pGroups);
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
     }
     for (Settings userProperties : userList) {

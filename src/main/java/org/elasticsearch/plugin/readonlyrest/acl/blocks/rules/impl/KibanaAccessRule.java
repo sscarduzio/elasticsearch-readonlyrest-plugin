@@ -37,9 +37,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 public class KibanaAccessRule extends Rule {
 
   private final static ESLogger logger = Loggers.getLogger(KibanaAccessRule.class);
-  private String kibanaIndex;
-  private boolean canModifyKibana;
-
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
       "indices:admin/exists",
       "indices:admin/mappings/fields/get",
@@ -54,7 +51,6 @@ public class KibanaAccessRule extends Rule {
       "indices:data/read/mget[shard]",
       "indices:admin/mappings/fields/get[index]"
   ));
-
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
       "indices:admin/create",
       "indices:admin/mapping/put",
@@ -62,16 +58,17 @@ public class KibanaAccessRule extends Rule {
       "indices:data/write/index",
       "indices:data/write/update"
   ));
-
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/nodes/info",
       "cluster:monitor/health"
   ));
+  private String kibanaIndex;
+  private boolean canModifyKibana;
 
 
   public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    
+
     String tmp = s.get(getKey());
     if (Strings.isNullOrEmpty(tmp)) {
       throw new RuleNotConfiguredException();

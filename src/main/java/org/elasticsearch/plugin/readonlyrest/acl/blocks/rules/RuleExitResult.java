@@ -43,7 +43,8 @@ public class RuleExitResult {
     String condString;
     if (condition != null) {
       condString = condition.getKey();
-    } else {
+    }
+    else {
       condString = "none";
     }
     return "{ matched: " + match + ", condition: " + condString + " }";

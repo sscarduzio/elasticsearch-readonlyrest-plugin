@@ -49,7 +49,8 @@ public class User {
     String[] pGroups = userProperties.getAsArray("groups");
     if (pGroups != null && pGroups.length > 0) {
       this.groups = Arrays.asList(pGroups);
-    } else {
+    }
+    else {
       throw new UserNotConfiguredException();
     }
   }

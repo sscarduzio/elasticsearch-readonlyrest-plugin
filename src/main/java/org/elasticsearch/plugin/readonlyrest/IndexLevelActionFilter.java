@@ -114,7 +114,8 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
-    } else {
+    }
+    else {
       resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
     }
 
