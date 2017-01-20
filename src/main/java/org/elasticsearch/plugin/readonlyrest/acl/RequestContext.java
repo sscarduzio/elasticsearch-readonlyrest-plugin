@@ -344,7 +344,7 @@ public class RequestContext {
     }
     String theHeaders;
     if (!logger.isDebugEnabled()) {
-      Map<String, String> hMap = new HashMap(getHeaders());
+      Map<String, String> hMap = new HashMap<>(getHeaders());
       theHeaders = Joiner.on(",").join(hMap.keySet());
     }
     else {

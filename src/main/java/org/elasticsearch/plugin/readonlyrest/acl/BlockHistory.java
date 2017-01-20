@@ -30,8 +30,8 @@ import java.util.Set;
  */
 
 class BlockHistory {
-  Set<RuleExitResult> results;
-  String name;
+  private Set<RuleExitResult> results;
+  private String name;
 
   BlockHistory(String name, Set<RuleExitResult> results) {
     this.results = results;
