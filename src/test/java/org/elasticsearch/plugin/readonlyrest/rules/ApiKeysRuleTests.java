@@ -18,13 +18,14 @@
 
 package org.elasticsearch.plugin.readonlyrest.rules;
 
+import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysRule;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -33,38 +34,31 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class MaxBodyLengthRuleTest extends TestCase {
+public class ApiKeysRuleTests extends TestCase {
 
-  private RuleExitResult match(Integer configured, String found) throws RuleNotConfiguredException {
+  private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(Integer configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getContent()).thenReturn(found);
+  private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
 
-    Rule r = new MaxBodyLengthRule(Settings.builder()
-                                           .put("maxBodyLength", configured)
-                                           .build());
+    Rule r = new ApiKeysRule(Settings.builder()
+                                     .put("api_keys", configured)
+                                     .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
-
     return res;
   }
 
-  public void testShortEnuf() throws RuleNotConfiguredException {
-    RuleExitResult res = match(5, "xx");
+  public void testOK() throws RuleNotConfiguredException {
+    RuleExitResult res = match("1234567890", "1234567890");
     assertTrue(res.isMatch());
   }
 
-  public void testEmpty() throws RuleNotConfiguredException {
-    RuleExitResult res = match(5, "");
-    assertTrue(res.isMatch());
-  }
-
-  public void testTooLong() throws RuleNotConfiguredException {
-    RuleExitResult res = match(5, "hello123123");
+  public void testKO() throws RuleNotConfiguredException {
+    RuleExitResult res = match("1234567890", "x");
     assertFalse(res.isMatch());
   }
-
 }

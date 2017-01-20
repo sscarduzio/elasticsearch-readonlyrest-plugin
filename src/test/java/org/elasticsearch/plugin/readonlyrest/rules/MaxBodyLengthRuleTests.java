@@ -24,11 +24,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
 import org.mockito.Mockito;
-
-import java.util.Arrays;
-import java.util.List;
 
 import static org.mockito.Mockito.when;
 
@@ -36,37 +33,38 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class MethodsRuleTest extends TestCase {
+public class MaxBodyLengthRuleTests extends TestCase {
 
-  private RuleExitResult match(List<String> configured, String found) throws RuleNotConfiguredException {
+  private RuleExitResult match(Integer configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getMethod()).thenReturn(found);
-    when(rc.isReadRequest()).thenReturn(true);
+  private RuleExitResult match(Integer configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+    when(rc.getContent()).thenReturn(found);
 
-    Rule r = new MethodsRule(Settings.builder()
-                                     .putArray("methods", configured)
-                                     .build());
+    Rule r = new MaxBodyLengthRule(Settings.builder()
+                                           .put("maxBodyLength", configured)
+                                           .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
+
     return res;
   }
 
-  public void testSimpleGET() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("GET"), "GET");
+  public void testShortEnuf() throws RuleNotConfiguredException {
+    RuleExitResult res = match(5, "xx");
     assertTrue(res.isMatch());
   }
 
-  public void testMultiple() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "GET");
+  public void testEmpty() throws RuleNotConfiguredException {
+    RuleExitResult res = match(5, "");
     assertTrue(res.isMatch());
   }
 
-  public void testDeny() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "DELETE");
+  public void testTooLong() throws RuleNotConfiguredException {
+    RuleExitResult res = match(5, "hello123123");
     assertFalse(res.isMatch());
   }
+
 }

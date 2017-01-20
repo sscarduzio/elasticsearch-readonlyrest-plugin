@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class KibanaAccessRuleTest extends TestCase {
+public class KibanaAccessRuleTests extends TestCase {
   private RuleExitResult match(Conf configured, Found found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }

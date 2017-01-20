@@ -18,17 +18,17 @@
 
 package org.elasticsearch.plugin.readonlyrest.rules;
 
-import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
 import org.mockito.Mockito;
 
-import java.util.Base64;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.mockito.Mockito.when;
 
@@ -36,17 +36,18 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class AuthKeyRuleTest extends TestCase {
+public class MethodsRuleTests extends TestCase {
 
-  private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
+  private RuleExitResult match(List<String> configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
+  private RuleExitResult match(List<String> configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+    when(rc.getMethod()).thenReturn(found);
+    when(rc.isReadRequest()).thenReturn(true);
 
-    Rule r = new AuthKeyRule(Settings.builder()
-                                     .put("auth_key", configured)
+    Rule r = new MethodsRule(Settings.builder()
+                                     .putArray("methods", configured)
                                      .build());
 
     RuleExitResult res = r.match(rc);
@@ -54,11 +55,18 @@ public class AuthKeyRuleTest extends TestCase {
     return res;
   }
 
-  public void testSimple() throws RuleNotConfiguredException {
-    RuleExitResult res = match("logstash:logstash",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes()));
+  public void testSimpleGET() throws RuleNotConfiguredException {
+    RuleExitResult res = match(Arrays.asList("GET"), "GET");
     assertTrue(res.isMatch());
   }
 
+  public void testMultiple() throws RuleNotConfiguredException {
+    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "GET");
+    assertTrue(res.isMatch());
+  }
 
+  public void testDeny() throws RuleNotConfiguredException {
+    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "DELETE");
+    assertFalse(res.isMatch());
+  }
 }
