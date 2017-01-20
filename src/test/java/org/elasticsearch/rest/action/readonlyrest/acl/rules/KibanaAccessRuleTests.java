@@ -16,7 +16,7 @@
  *
  */
 
-package rules;
+package org.elasticsearch.rest.action.readonlyrest.acl.rules;
 
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
@@ -36,18 +36,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class KibanaAccessRuleTest extends TestCase {
-  class Conf {
-    public String accessLevel = "ro";
-    public String kibanaIndex = ".kibana";
-  }
-
-  class Found {
-    public String action = null;
-    public Set<String> indices = Sets.newHashSet(".kibana");
-  }
-
-
+public class KibanaAccessRuleTests extends TestCase {
   private RuleExitResult match(Conf configured, Found found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
@@ -76,7 +65,8 @@ public class KibanaAccessRuleTest extends TestCase {
 
   }
 
-  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex) throws RuleNotConfiguredException {
+  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex)
+      throws RuleNotConfiguredException {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
     conf.kibanaIndex = kibanaIndex;
@@ -108,10 +98,14 @@ public class KibanaAccessRuleTest extends TestCase {
 
   public void testRW() throws RuleNotConfiguredException {
     for (String action : KibanaAccessRule.RW.getMatchers()) {
-      System.out.println("trying " + action + " as RO");
-      assertFalse(matchRule("ro", action).isMatch());
-      System.out.println("trying " + action + " as RW");
-      assertTrue(matchRule("rw", action).isMatch());
+      String a = action.replace("*", "_");
+      if (action.equals("indices:admin/exists")) {
+        System.out.println("");
+      }
+      System.out.println("trying " + a + " as RO");
+      assertFalse(matchRule("ro", a).isMatch());
+      System.out.println("trying " + a + " as RW");
+      assertTrue(matchRule("rw", a).isMatch());
     }
   }
 
@@ -153,5 +147,15 @@ public class KibanaAccessRuleTest extends TestCase {
       System.out.println("trying " + action + " as RW");
       assertTrue(matchRule("rw", action, indices, customKibanaIndex).isMatch());
     }
+  }
+
+  class Conf {
+    public String accessLevel = "ro";
+    public String kibanaIndex = ".kibana";
+  }
+
+  class Found {
+    public String action = null;
+    public Set<String> indices = Sets.newHashSet(".kibana");
   }
 }

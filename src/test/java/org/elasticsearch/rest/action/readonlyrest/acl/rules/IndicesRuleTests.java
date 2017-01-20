@@ -16,7 +16,7 @@
  *
  */
 
-package rules;
+package org.elasticsearch.rest.action.readonlyrest.acl.rules;
 
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class IndicesRuleTest extends TestCase {
+public class IndicesRuleTests extends TestCase {
 
   private RuleExitResult match(List<String> configured, List<String> found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
@@ -51,13 +51,14 @@ public class IndicesRuleTest extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
 
     Rule r = new IndicesRule(Settings.builder()
-        .putArray("indices", (String[]) configured.toArray())
-        .build());
+                                     .putArray("indices", (String[]) configured.toArray())
+                                     .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
     return res;
   }
+
 
   public void testSimpleIndex() throws RuleNotConfiguredException {
     RuleExitResult res = match(Arrays.asList("public-asd"), Arrays.asList("public-asd"));
@@ -103,7 +104,6 @@ public class IndicesRuleTest extends TestCase {
     // Should be a NO_MATCH
     assertFalse(res.isMatch());
   }
-
 
 
 }

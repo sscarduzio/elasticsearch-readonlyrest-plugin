@@ -16,17 +16,19 @@
  *
  */
 
-package rules;
+package org.elasticsearch.rest.action.readonlyrest.acl.rules;
 
-import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
 import org.mockito.Mockito;
+
+import java.util.Arrays;
+import java.util.List;
 
 import static org.mockito.Mockito.when;
 
@@ -34,31 +36,37 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class ApiKeysRuleTest extends TestCase {
+public class MethodsRuleTests extends TestCase {
 
-  private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
+  private RuleExitResult match(List<String> configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
+  private RuleExitResult match(List<String> configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+    when(rc.getMethod()).thenReturn(found);
+    when(rc.isReadRequest()).thenReturn(true);
 
-    Rule r = new ApiKeysRule(Settings.builder()
-        .put("api_keys", configured)
-        .build());
+    Rule r = new MethodsRule(Settings.builder()
+                                     .putArray("methods", (String[]) configured.toArray())
+                                     .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
     return res;
   }
 
-  public void testOK() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "1234567890");
+  public void testSimpleGET() throws RuleNotConfiguredException {
+    RuleExitResult res = match(Arrays.asList("GET"), "GET");
     assertTrue(res.isMatch());
   }
 
-  public void testKO() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "x");
+  public void testMultiple() throws RuleNotConfiguredException {
+    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "GET");
+    assertTrue(res.isMatch());
+  }
+
+  public void testDeny() throws RuleNotConfiguredException {
+    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "DELETE");
     assertFalse(res.isMatch());
   }
 }

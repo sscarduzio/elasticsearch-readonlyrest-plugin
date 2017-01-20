@@ -16,57 +16,49 @@
  *
  */
 
-package rules;
+package org.elasticsearch.rest.action.readonlyrest.acl.rules;
 
 import com.google.common.collect.Sets;
+import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Created by sscarduzio on 12/12/2016.
  */
-public class MatcherWithWildcardsTest {
+public class MatcherWithWildcardsTests extends TestCase {
 
-  @org.junit.Test
-  public void matchSimpleString() {
+  public void testMatchSimpleString() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
     assertTrue(m.match("a"));
   }
 
-  @org.junit.Test
-  public void matchStarPatternRight() {
+  public void testMatchStarPatternRight() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
-    assertTrue(m.match("bxxx"));
+    assertTrue(m.match("bxxx")); // INVERTED (should be true)!!!
   }
 
-  @org.junit.Test
-  public void matchStarPatternLeft() {
+  public void testMatchStarPatternLeft() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c"));
     assertTrue(m.match("xxxc"));
   }
 
-  @org.junit.Test
-  public void noMatchStarPatternRight() {
+  public void testNoMatchStarPatternRight() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("c*"));
     assertFalse(m.match("xxxcxxx"));
   }
 
-  @org.junit.Test
-  public void noMatchStarPatternLeft() {
+  public void testNoMatchStarPatternLeft() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c"));
     assertFalse(m.match("xxxcxxx"));
   }
 
-  @org.junit.Test
-  public void matchStarPatternBilateral() {
+  public void testMatchStarPatternBilateral() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c*"));
     assertTrue(m.match("xxxcxxx"));
   }
 
-  @org.junit.Test
-  public void matchDotKibana() {
+
+  public void testMatchDotKibana() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"));
     assertTrue(m.match(".kibana"));
   }
