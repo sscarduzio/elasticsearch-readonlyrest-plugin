@@ -354,7 +354,7 @@ public class RequestContext {
     }
 
     String hist = Joiner.on(", ").join(history);
-    return "{ ID: " + id +
+    return "{ ID:" + id +
         ", TYP:" + actionRequest.getClass().getSimpleName() +
         ", USR:" + loggedInAs +
         ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +

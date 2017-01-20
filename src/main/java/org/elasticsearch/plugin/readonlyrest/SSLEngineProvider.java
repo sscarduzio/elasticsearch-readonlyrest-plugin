@@ -37,7 +37,6 @@ public class SSLEngineProvider {
   @Inject
   public SSLEngineProvider(Settings s) {
     this.conf = ConfigurationHelper.parse(s);
-    System.out.println("SSL STATUS: " + conf.sslEnabled);
     if (conf.sslEnabled) {
       try {
         java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
