@@ -18,7 +18,7 @@
 
 buildscript {
     ext {
-        publishedPluginVersion = '1.13.0'
+        publishedPluginVersion = '1.13.1'
         pluginVersion = '1.13.1'
         esVersion = '5.1.2'
     }
