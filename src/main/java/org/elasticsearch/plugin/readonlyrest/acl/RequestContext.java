@@ -28,13 +28,10 @@ import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
+import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.index.IndexService;
-import org.elasticsearch.index.aliases.IndexAliasesService;
-import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -52,7 +49,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,20 +73,20 @@ public class RequestContext {
   private final String id;
   private Set<String> indices = null;
   private String content = null;
-  private IndicesService indexService = null;
+  private ClusterService clusterService = null;
   private Map<String, String> headers;
 
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, IndicesService indicesService) {
+  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, ClusterService clusterService) {
     this.id = UUID.randomUUID().toString().replace("-", "");
     this.sideEffects = new RequestSideEffects(this);
     this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
-    this.indexService = indicesService;
+    this.clusterService = clusterService;
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (Map.Entry<String, String> e : request.headers()) {
       h.put(e.getKey(), e.getValue());
@@ -146,36 +142,7 @@ public class RequestContext {
   }
 
   public Set<String> getAvailableIndicesAndAliases() {
-    final HashSet<String> harvested = new HashSet<>();
-    final Iterator<IndexService> i = indexService.iterator();
-    AccessController.doPrivileged(
-        new PrivilegedAction<Void>() {
-          @Override
-          public Void run() {
-            while (i.hasNext()) {
-              IndexService theIndexSvc = i.next();
-              harvested.add(theIndexSvc.index().getName());
-              final IndexAliasesService aliasSvc = theIndexSvc.aliasesService();
-              try {
-                Field field = aliasSvc.getClass().getDeclaredField("aliases");
-                field.setAccessible(true);
-                ImmutableOpenMap<String, String> aliases = (ImmutableOpenMap<String, String>) field.get(aliasSvc);
-                System.out.printf(aliases.toString());
-                for (Object o : aliases.keys().toArray()) {
-                  String a = (String) o;
-                  harvested.add(a);
-                }
-                //  harvested.addAll(aliases.keys().toArray(new String[aliases.keys().size()]));
-              } catch (NoSuchFieldException e) {
-                e.printStackTrace();
-              } catch (IllegalAccessException e) {
-                e.printStackTrace();
-              }
-            }
-            return null;
-          }
-        });
-    return harvested;
+    return clusterService.state().metaData().getAliasAndIndexLookup().keySet();
   }
 
   public String getMethod() {
@@ -290,7 +257,7 @@ public class RequestContext {
             Class<?> c = actionRequest.getClass();
             final List<Throwable> results = Lists.newArrayList();
             results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
-            if (!results.isEmpty()) {
+            if (!results.isEmpty() && actionRequest instanceof IndicesAliasesRequest) {
               IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
               List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
               for (IndicesAliasesRequest.AliasActions a : actions) {
