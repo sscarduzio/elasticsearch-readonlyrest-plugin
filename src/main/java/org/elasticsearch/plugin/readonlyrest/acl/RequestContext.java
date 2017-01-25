@@ -18,8 +18,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl;
 
-import com.carrotsearch.hppc.ObjectLookupContainer;
-import com.carrotsearch.hppc.cursors.ObjectCursor;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -28,13 +26,10 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
-import org.elasticsearch.index.IndexService;
-import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
@@ -54,11 +49,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -251,21 +244,23 @@ public class RequestContext {
           @Override
           public Void run() {
             Class<?> c = actionRequest.getClass();
-            final List<Throwable> results = Lists.newArrayList();
-            results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
-            if (!results.isEmpty()) {
+            final List<Throwable> errors = Lists.newArrayList();
+            errors.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
+
+            if (!errors.isEmpty() && actionRequest instanceof IndicesRequest) {
               IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
               List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
               actions.forEach(a -> {
-                results.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
+                errors.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
               });
             }
-            if (results.isEmpty()) {
+
+            if (errors.isEmpty()) {
               indices.clear();
               indices.addAll(newIndices);
             }
             else {
-              results.forEach(e -> {
+              errors.forEach(e -> {
                 logger.error("Failed to set indices " + e.toString());
               });
             }
