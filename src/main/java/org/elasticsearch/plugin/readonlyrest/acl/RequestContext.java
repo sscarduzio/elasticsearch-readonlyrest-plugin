@@ -28,6 +28,8 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.cluster.metadata.AliasOrIndex;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
@@ -56,6 +58,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -93,20 +96,20 @@ public class RequestContext {
   private final ThreadPool threadPool;
   private Set<String> indices = null;
   private String content = null;
-  private IndicesService indexService = null;
+  private ClusterService clusterService = null;
 
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
 
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
-      ActionRequest actionRequest, IndicesService indicesService, ThreadPool threadPool) {
+      ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {
     this.sideEffects = new RequestSideEffects(this);
     this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
-    this.indexService = indicesService;
+    this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.id = UUID.randomUUID().toString().replace("-", "");
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -162,28 +165,7 @@ public class RequestContext {
   }
 
   public Set<String> getAvailableIndicesAndAliases() {
-    final HashSet<String> harvested = new HashSet<>();
-    final Iterator<IndexService> i = indexService.iterator();
-    AccessController.doPrivileged(
-        new PrivilegedAction<Void>() {
-          @Override
-          public Void run() {
-            while (i.hasNext()) {
-              IndexService theIndexSvc = i.next();
-              harvested.add(theIndexSvc.index().getName());
-
-              // Harvest aliases for this index too
-              ObjectLookupContainer<String> aliases = theIndexSvc.getIndexSettings().getIndexMetaData().getAliases().keys();
-              Iterator<ObjectCursor<String>> it = aliases.iterator();
-              while (it.hasNext()) {
-                ObjectCursor<String> c = it.next();
-                harvested.add(c.value);
-              }
-            }
-            return null;
-          }
-        });
-    return harvested;
+    return clusterService.state().metaData().getAliasAndIndexLookup().keySet();
   }
 
   public String getMethod() {

@@ -22,6 +22,7 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
@@ -43,16 +44,16 @@ import org.elasticsearch.threadpool.ThreadPool;
 @Singleton
 public class IndexLevelActionFilter extends ActionFilter.Simple {
   private final ThreadPool threadPool;
-  private IndicesService indicesService;
+  private ClusterService clusterService;
   private ACL acl;
   private ConfigurationHelper conf;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
-      IndicesService indicesService, ThreadPool threadPool) {
+      ClusterService clusterService, ThreadPool threadPool) {
     super(settings);
     this.conf = conf;
-    this.indicesService = indicesService;
+    this.clusterService = clusterService;
     this.threadPool = threadPool;
 
     logger.info("Readonly REST plugin was loaded...");
@@ -98,7 +99,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
         throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?", null);
     }
 
-    RequestContext rc = new RequestContext(channel, req, action, actionRequest, indicesService, threadPool);
+    RequestContext rc = new RequestContext(channel, req, action, actionRequest, clusterService, threadPool);
     BlockExitResult exitResult = acl.check(rc);
 
     // The request is allowed to go through
