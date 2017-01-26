@@ -57,8 +57,12 @@ public class IndicesRule extends Rule {
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
     logger.debug("Stage 0");
     if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
-      rc.setIndices(configuredWildcards.filter(rc.getAvailableIndicesAndAliases()));
-      return MATCH;
+      Set<String> allowedIdxs = configuredWildcards.filter(rc.getAvailableIndicesAndAliases());
+      if (allowedIdxs.size() > 0) {
+        rc.setIndices(allowedIdxs);
+        return MATCH;
+      }
+      return NO_MATCH;
     }
 
     if (rc.isReadRequest()) {

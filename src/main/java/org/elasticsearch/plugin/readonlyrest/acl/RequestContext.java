@@ -22,6 +22,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.ObjectArrays;
 import com.google.common.collect.Sets;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
@@ -243,11 +244,17 @@ public class RequestContext {
 
   private void doSetIndices(final Set<String> newIndices) {
     newIndices.remove("<no-index>");
+    newIndices.remove("");
 
     if (newIndices.equals(getIndices())) {
       logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getIndices() + " New:" + newIndices);
       return;
     }
+
+    if (newIndices.size() == 0) {
+      throw new ElasticsearchException("Attempted to set empty indices list, this would allow full access, therefore this is forbidden. If this was intended, set '*' as indices.");
+    }
+
     logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
 
     AccessController.doPrivileged(
