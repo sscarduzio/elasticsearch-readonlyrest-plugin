@@ -68,17 +68,18 @@ public class RequestContext {
   private static final String LOCALHOST = "127.0.0.1";
   private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/*",
-      "indices:admin/mappings/fields/get",
-      "indices:admin/exists",
+      "indices:admin/aliases/exsists",
+      "indices:admin/aliases/get",
+      "indices:admin/exists*",
+      "indices:admin/get*",
       "indices:admin/mappings/fields/get*",
-      "indices:admin/validate/query",
-      "indices:data/read/field_stats",
-      "indices:data/read/search",
-      "indices:data/read/msearch",
-      "indices:admin/get",
+      "indices:admin/mappings/get*",
       "indices:admin/refresh*",
+      "indices:admin/types/exists",
+      "indices:admin/validate/*",
       "indices:data/read/*"
   ));
+
   private final Logger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
