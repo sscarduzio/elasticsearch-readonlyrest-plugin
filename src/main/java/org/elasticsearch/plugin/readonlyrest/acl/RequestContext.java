@@ -79,6 +79,8 @@ public class RequestContext {
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
   public static MatcherWithWildcards readActionsMatcher = new MatcherWithWildcards(Sets.newHashSet(
+      "cluster:monitor/*",
+      "cluster:*get*",
       "indices:admin/aliases/exsists",
       "indices:admin/aliases/get",
       "indices:admin/exists*",
