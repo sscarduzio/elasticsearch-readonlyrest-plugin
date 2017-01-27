@@ -68,6 +68,8 @@ public class RequestContext {
   private static final String LOCALHOST = "127.0.0.1";
   private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/*",
+      "cluster:*get*",
+      "cluster:*search*",
       "indices:admin/aliases/exsists",
       "indices:admin/aliases/get",
       "indices:admin/exists*",
