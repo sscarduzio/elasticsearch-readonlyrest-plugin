@@ -66,7 +66,6 @@ public class RequestContext {
     */
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static final String LOCALHOST = "127.0.0.1";
-
   private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/*",
       "indices:admin/mappings/fields/get",
