@@ -27,14 +27,13 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.rest.RestChannel;
@@ -79,6 +78,18 @@ public class RequestContext {
 
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
+  public static MatcherWithWildcards readActionsMatcher = new MatcherWithWildcards(Sets.newHashSet(
+      "indices:admin/aliases/exsists",
+      "indices:admin/aliases/get",
+      "indices:admin/exists*",
+      "indices:admin/get*",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/mappings/get*",
+      "indices:admin/refresh*",
+      "indices:admin/types/exists",
+      "indices:admin/validate/*",
+      "indices:data/read/*"
+  ));
 
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, ClusterService clusterService) {
     this.id = UUID.randomUUID().toString().replace("-", "");
@@ -117,9 +128,7 @@ public class RequestContext {
   }
 
   public boolean isReadRequest() {
-    return actionRequest instanceof IndicesRequest ||
-        actionRequest instanceof GetRequest ||
-        actionRequest instanceof MultiGetRequest;
+    return readActionsMatcher.match(getAction());
   }
 
   public String getRemoteAddress() {
