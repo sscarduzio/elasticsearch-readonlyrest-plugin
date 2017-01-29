@@ -47,6 +47,12 @@ readonlyrest:
       auth_key: kibana:kibana
       type: allow
 
+    - name: "RW DEVELOPER"
+      auth_key: rw:dev
+      type: allow
+      kibana_access: rw
+      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+
     - name: "RW (2) DEVELOPER"
       auth_key: ro+:dev
       type: allow

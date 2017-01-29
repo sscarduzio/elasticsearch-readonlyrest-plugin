@@ -18,9 +18,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -41,7 +41,7 @@ public class ApiKeysRule extends Rule {
     if (a != null && a.length > 0) {
       validApiKeys = Lists.newArrayList();
       for (int i = 0; i < a.length; i++) {
-        if (!ConfigurationHelper.isNullOrEmpty(a[i])) {
+        if (!Strings.isNullOrEmpty(a[i])) {
           validApiKeys.add(a[i].trim());
         }
       }

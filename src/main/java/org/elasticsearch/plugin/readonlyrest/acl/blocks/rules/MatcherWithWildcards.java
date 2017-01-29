@@ -18,11 +18,11 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -43,7 +43,7 @@ public class MatcherWithWildcards {
   public MatcherWithWildcards(Set<String> matchers) {
     for (String a : matchers) {
       a = normalizePlusAndMinusIndex(a);
-      if (ConfigurationHelper.isNullOrEmpty(a)) {
+      if (Strings.isNullOrEmpty(a)) {
         continue;
       }
       if (a.contains("*")) {
@@ -79,7 +79,7 @@ public class MatcherWithWildcards {
    * Returns null if the matchable is not worth processing because it's invalid or starts with "-"
    */
   private static String normalizePlusAndMinusIndex(String s) {
-    if (ConfigurationHelper.isNullOrEmpty(s)) {
+    if (Strings.isNullOrEmpty(s)) {
       return null;
     }
     // Ignore the excluded indices

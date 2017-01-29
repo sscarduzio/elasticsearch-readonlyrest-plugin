@@ -19,7 +19,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.base.CaseFormat;
-import com.google.common.collect.Lists;
 import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.Strings;
@@ -29,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleRule;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -42,7 +42,10 @@ public abstract class Rule {
 
   public Rule(Settings s) {
     // #TODO Implement a working rc.setResponseHeader
-    List<Class<? extends Rule>> unimplemented = Lists.newArrayList(SessionMaxIdleRule.class, HostsRule.class);
+    List<Class<? extends Rule>> unimplemented = new ArrayList<>(2);
+    unimplemented.add(SessionMaxIdleRule.class);
+    unimplemented.add(HostsRule.class);
+
     for (Class<? extends Rule> c : unimplemented) {
       String className = mkKey(c);
       if (!Strings.isNullOrEmpty(s.get(className))) {

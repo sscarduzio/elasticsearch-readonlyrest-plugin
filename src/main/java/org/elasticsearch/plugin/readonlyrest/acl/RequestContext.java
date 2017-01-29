@@ -65,19 +65,6 @@ public class RequestContext {
     */
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static final String LOCALHOST = "127.0.0.1";
-  private final ESLogger logger = Loggers.getLogger(getClass());
-  private final RestChannel channel;
-  private final RestRequest request;
-  private final String action;
-  private final ActionRequest actionRequest;
-  private final String id;
-  private Set<String> indices = null;
-  private String content = null;
-  private ClusterService clusterService = null;
-  private Map<String, String> headers;
-
-  private RequestSideEffects sideEffects;
-  private Set<BlockHistory> history = Sets.newHashSet();
   public static MatcherWithWildcards readActionsMatcher = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/*",
       "cluster:*get*",
@@ -92,6 +79,18 @@ public class RequestContext {
       "indices:admin/validate/*",
       "indices:data/read/*"
   ));
+  private final ESLogger logger = Loggers.getLogger(getClass());
+  private final RestChannel channel;
+  private final RestRequest request;
+  private final String action;
+  private final ActionRequest actionRequest;
+  private final String id;
+  private Set<String> indices = null;
+  private String content = null;
+  private ClusterService clusterService = null;
+  private Map<String, String> headers;
+  private RequestSideEffects sideEffects;
+  private Set<BlockHistory> history = Sets.newHashSet();
 
   public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, ClusterService clusterService) {
     this.id = UUID.randomUUID().toString().replace("-", "");

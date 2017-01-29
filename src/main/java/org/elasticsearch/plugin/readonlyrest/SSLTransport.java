@@ -26,10 +26,7 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.http.netty.NettyHttpServerTransport;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.handler.ssl.SslHandler;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
+import org.jboss.netty.handler.ssl.SslContext;
 
 /**
  * @author <a href="mailto:scarduzio@gmail.com">Simone Scarduzio</a>
@@ -39,11 +36,11 @@ import javax.net.ssl.SSLEngine;
  */
 public class SSLTransport extends NettyHttpServerTransport {
 
-  private final SSLEngineProvider sslContextProvider;
+  private final SSLContextProvider sslContextProvider;
   protected ConfigurationHelper conf;
 
   @Inject
-  public SSLTransport(Settings settings, SSLEngineProvider contextProvider, NetworkService networkService, BigArrays bigArrays, ConfigurationHelper conf) {
+  public SSLTransport(Settings settings, SSLContextProvider contextProvider, NetworkService networkService, BigArrays bigArrays, ConfigurationHelper conf) {
     super(settings, networkService, bigArrays);
     this.conf = conf;
     this.sslContextProvider = contextProvider;
@@ -63,12 +60,8 @@ public class SSLTransport extends NettyHttpServerTransport {
     public ChannelPipeline getPipeline() throws Exception {
       ChannelPipeline pipeline = super.getPipeline();
       if (conf.sslEnabled) {
-        SSLContext sslCtx = sslContextProvider.getContext();
-        SSLEngine sslEngine = sslCtx.createSSLEngine();
-        sslEngine.setUseClientMode(false);
-        sslEngine.setEnableSessionCreation(true);
-        sslEngine.setWantClientAuth(true);
-        pipeline.addFirst("ssl_handler", new SslHandler(sslEngine));
+        SslContext sslCtx = sslContextProvider.getContext();
+        pipeline.addFirst("ssl_netty3_handler", sslCtx.newHandler());
       }
       return pipeline;
     }

@@ -23,7 +23,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.elasticsearch</groupId>
     <artifactId>readonlyrest</artifactId>
-    <version>1.13.2-pre3</version> <!-- plugin_version -->
+    <version>1.13.2-pre4</version> <!-- plugin_version -->
     <packaging>jar</packaging>
     <description>Safely expose Elasticsearch REST API directly to the public with access control list</description>
     <inceptionYear>2013</inceptionYear>

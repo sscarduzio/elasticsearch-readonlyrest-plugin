@@ -23,6 +23,7 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 
 @Singleton
 public class ConfigurationHelper {
@@ -43,30 +44,46 @@ public class ConfigurationHelper {
   public final String sslKeyStoreFile;
   public final String sslKeyPassword;
   public final String sslKeyStorePassword;
-  private final ESLogger logger;
+  public final Settings settings;
+  public String sslKeyAlias;
+  public String sslCertChainPem;
+  public String sslPrivKeyPem;
 
   @Inject
   public ConfigurationHelper(Settings settings) {
-    logger = Loggers.getLogger(getClass());
+    this.settings = settings;
+    ESLogger logger = Loggers.getLogger(getClass());
 
     Settings s = settings.getByPrefix("readonlyrest.");
     verbosity = s.get("verbosity", "info");
     enabled = s.getAsBoolean("enable", false);
+
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
 
     // -- SSL
     sslEnabled = s.getAsBoolean("ssl.enable", false);
-    if (!sslEnabled) {
-      logger.info("Readonly Rest plugin is installed, but not enabled");
+    if (sslEnabled) {
+      logger.info("SSL: Enabled");
+    }
+    else {
+      logger.info("SSL: Disabled");
     }
     sslKeyStoreFile = s.get("ssl.keystore_file");
     sslKeyStorePassword = s.get("ssl.keystore_pass");
-    sslKeyPassword = s.get("ssl.key_pass", sslKeyStorePassword); // fallback
+    sslKeyPassword = s.get("ssl.key_pass"); // fallback
+    sslKeyAlias = s.get("ssl.key_alias");
+    sslPrivKeyPem = s.get("ssl.privkey_pem");
+    sslCertChainPem = s.get("ssl.certchain_pem");
 
   }
 
-  public static boolean isNullOrEmpty(String s) {
-    return s == null || s.trim().length() == 0;
+  public static ConfigurationHelper parse(Settings s) {
+    try {
+      return new ConfigurationHelper(s);
+    } catch (Exception e) {
+      throw new RuleConfigurationError("cannot parse settings", e);
+    }
   }
+
 
 }
