@@ -57,6 +57,9 @@ public class ConfigurationHelper {
   public final String sslKeyStorePassword;
   public final Settings settings;
   private final Logger logger;
+  public String sslKeyAlias;
+  public String sslCertChainPem;
+  public String sslPrivKeyPem;
 
   @Inject
   public ConfigurationHelper(Settings settings) {
@@ -79,7 +82,10 @@ public class ConfigurationHelper {
     }
     sslKeyStoreFile = s.get("ssl.keystore_file");
     sslKeyStorePassword = s.get("ssl.keystore_pass");
-    sslKeyPassword = s.get("ssl.key_pass", sslKeyStorePassword); // fallback
+    sslKeyPassword = s.get("ssl.key_pass"); // fallback
+    sslKeyAlias = s.get("ssl.key_alias");
+    sslPrivKeyPem = s.get("ssl.privkey_pem");
+    sslCertChainPem = s.get("ssl.certchain_pem");
 
   }
 
@@ -123,7 +129,10 @@ public class ConfigurationHelper {
         bool(prefix + "ssl.enable"),
         str(prefix + "ssl.keystore_file"),
         str(prefix + "ssl.keystore_pass"),
+        str(prefix + "ssl.key_alias"),
         str(prefix + "ssl.key_pass"),
+        str(prefix + "ssl.privkey_pem"),
+        str(prefix + "ssl.certchain_pem"),
 
         grp(rule_prefix),
         grp(users_prefix)

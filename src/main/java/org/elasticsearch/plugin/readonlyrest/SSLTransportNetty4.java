@@ -25,15 +25,12 @@ package org.elasticsearch.plugin.readonlyrest;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.SslContext;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private SSLEngineProvider engineProvider;
@@ -44,6 +41,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     super(settings, networkService, bigArrays, threadPool);
     engineProvider = new SSLEngineProvider(settings);
     logger.info("creating SSL transport");
+
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -66,14 +64,11 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
+
       logger.info("Initializing SSL channel...");
       if (engineProvider.conf.sslEnabled) {
-        SSLContext sslCtx = engineProvider.getContext();
-        SSLEngine sslEngine = sslCtx.createSSLEngine();
-        sslEngine.setUseClientMode(false);
-        sslEngine.setEnableSessionCreation(true);
-        sslEngine.setWantClientAuth(true);
-        ch.pipeline().addFirst("ssl_netty4_handler", new SslHandler(sslEngine));
+        SslContext sslCtx = engineProvider.getContext();
+        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
       }
     }
   }
