@@ -85,7 +85,7 @@ readonlyrest:
       # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: logstash:logstash
       type: allow
-      actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+      actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
       indices: ["logstash-*", "<no-index>"]
 
     # We trust this server side component, full access granted via HTTP authentication
