@@ -47,8 +47,8 @@ public class MethodsRuleTests extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
 
     Rule r = new MethodsRule(Settings.builder()
-                                     .putArray("methods", configured)
-                                     .build());
+                               .putArray("methods", configured)
+                               .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

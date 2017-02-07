@@ -29,6 +29,7 @@ import io.netty.handler.ssl.SslContext;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 
@@ -36,9 +37,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private SSLEngineProvider engineProvider;
 
   public SSLTransportNetty4(final Settings settings, final NetworkService networkService,
-      final BigArrays bigArrays, final ThreadPool threadPool
+                            final BigArrays bigArrays, final ThreadPool threadPool
   ) {
-    super(settings, networkService, bigArrays, threadPool);
+    super(settings, networkService, bigArrays, threadPool, NamedXContentRegistry.EMPTY);
     engineProvider = new SSLEngineProvider(settings);
     logger.info("creating SSL transport");
 

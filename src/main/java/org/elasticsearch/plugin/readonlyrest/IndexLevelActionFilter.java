@@ -20,7 +20,6 @@ package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
@@ -49,7 +48,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
-      ClusterService clusterService, ThreadPool threadPool) {
+                                ClusterService clusterService, ThreadPool threadPool) {
     super(settings);
     this.conf = conf;
     this.clusterService = clusterService;
@@ -79,11 +78,14 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
       return true;
     }
 
-    RestRequest req = ThreadRepo.request.get();
     RestChannel channel = ThreadRepo.channel.get();
-
-    boolean reqNull = req == null;
     boolean chanNull = channel == null;
+
+    RestRequest req = null;
+    if (!chanNull) {
+      req = channel.request();
+    }
+    boolean reqNull = req == null;
 
     // This was not a REST message
     if (reqNull && chanNull) {
@@ -126,8 +128,4 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
     return false;
   }
 
-  @Override
-  public boolean apply(String s, ActionResponse actionResponse, ActionListener<?> actionListener) {
-    return true;
-  }
 }

@@ -46,8 +46,8 @@ public class AuthKeyRuleTests extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     Rule r = new AuthKeyRule(Settings.builder()
-                                     .put("auth_key", configured)
-                                     .build());
+                               .put("auth_key", configured)
+                               .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -55,8 +55,10 @@ public class AuthKeyRuleTests extends TestCase {
   }
 
   public void testSimple() throws RuleNotConfiguredException {
-    RuleExitResult res = match("logstash:logstash",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes()));
+    RuleExitResult res = match(
+      "logstash:logstash",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+    );
     assertTrue(res.isMatch());
   }
 

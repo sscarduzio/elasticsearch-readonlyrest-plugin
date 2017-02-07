@@ -64,8 +64,8 @@ public class Block {
     this.logger = logger;
     if (sPolicy == null) {
       throw new RuleConfigurationError(
-          "The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() +
-              ". If this field is correct, check the YAML indentation is correct.", null);
+        "The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() +
+          ". If this field is correct, check the YAML indentation is correct.", null);
     }
 
 

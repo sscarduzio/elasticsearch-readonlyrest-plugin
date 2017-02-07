@@ -26,11 +26,11 @@ public class SessionMaxIdleRule extends Rule {
     }
 
     boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeyRule.class)))
-        || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1Rule.class)));
+      || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1Rule.class)));
 
     if (isThisRuleConfigured && !isLoginConfigured) {
       logger.error(getKey() + " rule does not mean anything if you don't also set either "
-          + mkKey(AuthKeySha1Rule.class) + " or " + mkKey(AuthKeyRule.class));
+                     + mkKey(AuthKeySha1Rule.class) + " or " + mkKey(AuthKeyRule.class));
       throw new RuleNotConfiguredException();
     }
 

@@ -37,26 +37,26 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 public class KibanaAccessRule extends Rule {
 
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/exists",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/validate/query",
-      "indices:data/read/field_stats",
-      "indices:data/read/search",
-      "indices:data/read/msearch",
-      "indices:admin/get",
-      "indices:admin/refresh*",
-      "indices:data/read/*"
+    "indices:admin/exists",
+    "indices:admin/mappings/fields/get*",
+    "indices:admin/validate/query",
+    "indices:data/read/field_stats",
+    "indices:data/read/search",
+    "indices:data/read/msearch",
+    "indices:admin/get",
+    "indices:admin/refresh*",
+    "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/create",
-      "indices:admin/mapping/put",
-      "indices:data/write/delete",
-      "indices:data/write/index",
-      "indices:data/write/update"
+    "indices:admin/create",
+    "indices:admin/mapping/put",
+    "indices:data/write/delete",
+    "indices:data/write/index",
+    "indices:data/write/update"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/nodes/info",
-      "cluster:monitor/health"
+    "cluster:monitor/nodes/info",
+    "cluster:monitor/health"
   ));
   private final Logger logger = Loggers.getLogger(this.getClass());
   private String kibanaIndex = ".kibana";

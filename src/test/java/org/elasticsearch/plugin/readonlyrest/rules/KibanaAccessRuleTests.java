@@ -46,10 +46,12 @@ public class KibanaAccessRuleTests extends TestCase {
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
 
-    Rule r = new KibanaAccessRule(Settings.builder()
-                                          .put("kibana_access", configured.accessLevel)
-                                          .put("kibana_index", configured.kibanaIndex)
-                                          .build());
+    Rule r = new KibanaAccessRule(
+      Settings.builder()
+        .put("kibana_access", configured.accessLevel)
+        .put("kibana_index", configured.kibanaIndex)
+        .build()
+    );
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -66,7 +68,7 @@ public class KibanaAccessRuleTests extends TestCase {
   }
 
   public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex)
-      throws RuleNotConfiguredException {
+    throws RuleNotConfiguredException {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
     conf.kibanaIndex = kibanaIndex;

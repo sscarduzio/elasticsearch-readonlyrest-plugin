@@ -43,8 +43,8 @@ public class MaxBodyLengthRuleTests extends TestCase {
     when(rc.getContent()).thenReturn(found);
 
     Rule r = new MaxBodyLengthRule(Settings.builder()
-                                           .put("maxBodyLength", configured)
-                                           .build());
+                                     .put("maxBodyLength", configured)
+                                     .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

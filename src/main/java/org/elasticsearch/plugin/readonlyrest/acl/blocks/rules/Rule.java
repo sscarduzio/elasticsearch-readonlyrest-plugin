@@ -40,8 +40,9 @@ public abstract class Rule {
 
   protected static String mkKey(Class<? extends Rule> c) {
     return CaseFormat.LOWER_CAMEL.to(
-        CaseFormat.LOWER_UNDERSCORE,
-        c.getSimpleName().replace("Rule", ""));
+      CaseFormat.LOWER_UNDERSCORE,
+      c.getSimpleName().replace("Rule", "")
+    );
   }
 
   public String getKey() {

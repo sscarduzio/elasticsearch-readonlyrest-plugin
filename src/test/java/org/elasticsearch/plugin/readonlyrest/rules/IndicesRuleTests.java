@@ -51,8 +51,8 @@ public class IndicesRuleTests extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
 
     Rule r = new IndicesRule(Settings.builder()
-                                     .putArray("indices", configured)
-                                     .build());
+                               .putArray("indices", configured)
+                               .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -93,13 +93,14 @@ public class IndicesRuleTests extends TestCase {
     when(rc.getAvailableIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("perfmon-bfarm", "another_index")));
 
     RuleExitResult res = match(
-        // Mocks:  indices: ["perfmon*"]
-        Arrays.asList("perfmon*"),
+      // Mocks:  indices: ["perfmon*"]
+      Arrays.asList("perfmon*"),
 
-        // The incoming request is directed to "another_index"
-        Arrays.asList("another_index"),
+      // The incoming request is directed to "another_index"
+      Arrays.asList("another_index"),
 
-        rc);
+      rc
+    );
 
     // Should be a NO_MATCH
     assertFalse(res.isMatch());

@@ -46,8 +46,8 @@ public class AuthKeySha1RuleTests extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     Rule r = new AuthKeySha1Rule(Settings.builder()
-                                         .put("auth_key_sha1", configured)
-                                         .build());
+                                   .put("auth_key_sha1", configured)
+                                   .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -55,8 +55,10 @@ public class AuthKeySha1RuleTests extends TestCase {
   }
 
   public void testSimple() throws RuleNotConfiguredException {
-    RuleExitResult res = match("4338fa3ea95532196849ae27615e14dda95c77b1",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes()));
+    RuleExitResult res = match(
+      "4338fa3ea95532196849ae27615e14dda95c77b1",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+    );
     assertTrue(res.isMatch());
   }
 

@@ -19,11 +19,14 @@
 package org.elasticsearch.plugin.readonlyrest.wiring;
 
 import org.elasticsearch.action.support.ActionFilter;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
@@ -34,13 +37,16 @@ import org.elasticsearch.plugins.IngestPlugin;
 import org.elasticsearch.plugins.NetworkPlugin;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
+import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestHandler;
+import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
@@ -51,19 +57,15 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-      Settings settings,
-      ThreadPool threadPool,
-      BigArrays bigArrays,
-      CircuitBreakerService circuitBreakerService,
-      NamedWriteableRegistry namedWriteableRegistry,
-      NetworkService networkService
+    Settings settings,
+    ThreadPool threadPool,
+    BigArrays bigArrays,
+    CircuitBreakerService circuitBreakerService,
+    NamedWriteableRegistry namedWriteableRegistry,
+    NamedXContentRegistry xContentRegistry,
+    NetworkService networkService
   ) {
     return Collections.singletonMap("ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool));
-  }
-
-  @Override
-  public List<Class<? extends RestHandler>> getRestHandlers() {
-    return Collections.singletonList(ReadonlyRestRestAction.class);
   }
 
   @Override
@@ -71,4 +73,14 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
     return ConfigurationHelper.allowedSettings();
   }
 
+  @Override
+  public UnaryOperator<RestHandler> getRestHandlerWrapper(ThreadContext threadContext) {
+    return restHandler -> new RestHandler() {
+      @Override
+      public void handleRequest(RestRequest request, RestChannel channel, NodeClient client) throws Exception {
+        ThreadRepo.channel.set(channel);
+        restHandler.handleRequest(request, channel, client);
+      }
+    };
+  }
 }
