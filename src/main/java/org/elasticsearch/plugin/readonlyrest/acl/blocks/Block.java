@@ -30,6 +30,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRule;
@@ -95,6 +96,11 @@ public class Block {
     }
     try {
       conditionsToCheck.add(new AuthKeySha1Rule(s));
+      authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new AuthKeySha256Rule(s));
       authHeaderAccepted = true;
     } catch (RuleNotConfiguredException e) {
     }
