@@ -21,6 +21,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256Rule;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,15 +37,30 @@ public class User {
 
   public User(Settings userProperties) throws UserNotConfiguredException {
     this.username = userProperties.get("username");
+
     try {
       this.authKeyRule = new AuthKeyRule(userProperties);
     } catch (RuleNotConfiguredException e) {
-      try {
-        this.authKeyRule = new AuthKeySha1Rule(userProperties);
-      } catch (RuleNotConfiguredException e2) {
-        throw new UserNotConfiguredException();
-      }
     }
+
+    try {
+      if (this.authKeyRule == null) {
+        this.authKeyRule = new AuthKeySha1Rule(userProperties);
+      }
+    } catch (RuleNotConfiguredException e) {
+    }
+
+    try {
+      if (this.authKeyRule == null) {
+        this.authKeyRule = new AuthKeySha256Rule(userProperties);
+      }
+    } catch (RuleNotConfiguredException e) {
+    }
+
+    if (this.authKeyRule == null) {
+      throw new UserNotConfiguredException();
+    }
+
     String[] pGroups = userProperties.getAsArray("groups");
     if (pGroups != null && pGroups.length > 0) {
       this.groups = Arrays.asList(pGroups);
