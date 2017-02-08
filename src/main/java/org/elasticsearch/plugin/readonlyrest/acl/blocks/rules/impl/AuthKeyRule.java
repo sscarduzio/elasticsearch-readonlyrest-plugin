@@ -66,7 +66,8 @@ public class AuthKeyRule extends Rule {
     if (authHeader != null) {
       try {
         return new String(Base64.getDecoder().decode(authHeader)).split(":")[0];
-      } catch (IllegalArgumentException e) {
+      } catch (Exception e) {
+        logger.error("Could not understand authorization header: " + headers.get("Authorization"));
         e.printStackTrace();
       }
     }
