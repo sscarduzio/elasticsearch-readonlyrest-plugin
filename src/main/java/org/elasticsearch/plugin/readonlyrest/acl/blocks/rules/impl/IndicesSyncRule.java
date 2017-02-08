@@ -23,7 +23,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -33,13 +33,13 @@ import java.util.Set;
 /**
  * Created by sscarduzio on 20/02/2016.
  */
-public class IndicesRule extends Rule {
+public class IndicesSyncRule extends SyncRule {
 
   private final Logger logger = Loggers.getLogger(this.getClass());
 
   protected MatcherWithWildcards configuredWildcards;
 
-  public IndicesRule(Settings s) throws RuleNotConfiguredException {
+  public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
   }

@@ -50,6 +50,7 @@ esplugin {
 dependencies {
     compile 'com.google.guava:guava:20.0'
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
+    compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
 }
 
 run {

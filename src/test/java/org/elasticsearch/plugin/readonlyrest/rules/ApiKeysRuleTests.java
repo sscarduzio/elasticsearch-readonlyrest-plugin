@@ -22,10 +22,10 @@ import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -43,7 +43,7 @@ public class ApiKeysRuleTests extends TestCase {
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
 
-    Rule r = new ApiKeysRule(Settings.builder()
+    SyncRule r = new ApiKeysSyncRule(Settings.builder()
                                .put("api_keys", configured)
                                .build());
 

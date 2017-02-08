@@ -22,10 +22,10 @@ import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
@@ -50,7 +50,7 @@ public class IndicesRuleTests extends TestCase {
     when(rc.getIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
-    Rule r = new IndicesRule(Settings.builder()
+    SyncRule r = new IndicesSyncRule(Settings.builder()
                                .putArray("indices", configured)
                                .build());
 

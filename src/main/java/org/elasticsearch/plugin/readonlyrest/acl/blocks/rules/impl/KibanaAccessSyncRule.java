@@ -26,7 +26,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -34,7 +34,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 /**
  * Created by sscarduzio on 26/03/2016.
  */
-public class KibanaAccessRule extends Rule {
+public class KibanaAccessSyncRule extends SyncRule {
 
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
     "indices:admin/exists",
@@ -63,7 +63,7 @@ public class KibanaAccessRule extends Rule {
   private Boolean canModifyKibana;
 
 
-  public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
+  public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
 
     String tmp = s.get(getKey());

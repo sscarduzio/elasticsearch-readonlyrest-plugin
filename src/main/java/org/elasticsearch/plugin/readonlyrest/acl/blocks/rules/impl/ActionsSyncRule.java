@@ -18,37 +18,35 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.hash.Hashing;
-import org.elasticsearch.ElasticsearchParseException;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-
 /**
- * Created by sscarduzio on 13/02/2016.
+ * Created by sscarduzio on 14/02/2016.
  */
-public class AuthKeySha1Rule extends AuthKeyRule {
+public class ActionsSyncRule extends SyncRule {
 
-  public AuthKeySha1Rule(Settings s) throws RuleNotConfiguredException {
+  private static final Logger logger = Loggers.getLogger(ActionsSyncRule.class);
+
+  protected MatcherWithWildcards m;
+
+  public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    try {
-      authKey = new String(Base64.getDecoder().decode(authKey), StandardCharsets.UTF_8);
-    } catch (Throwable e) {
-      throw new ElasticsearchParseException("cannot parse configuration for: " + this.getKey());
-    }
+    m = MatcherWithWildcards.fromSettings(s, getKey());
   }
 
   @Override
-  protected boolean checkEqual(String provided) {
-    try {
-      String decodedProvided = new String(Base64.getDecoder().decode(provided), StandardCharsets.UTF_8);
-      String shaProvided = Hashing.sha1().hashString(decodedProvided, Charset.defaultCharset()).toString();
-      return authKey.equals(shaProvided);
-    } catch (Throwable e) {
-      return false;
+  public RuleExitResult match(RequestContext rc) {
+    if (m.match(rc.getAction())) {
+      return MATCH;
     }
+    logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");
+    return NO_MATCH;
   }
 }

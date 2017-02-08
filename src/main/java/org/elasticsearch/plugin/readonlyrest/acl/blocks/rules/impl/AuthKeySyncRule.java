@@ -23,7 +23,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -33,12 +33,12 @@ import java.util.Map;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeyRule extends Rule {
-  private static final Logger logger = Loggers.getLogger(AuthKeyRule.class);
+public class AuthKeySyncRule extends SyncRule {
+  private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
 
   protected String authKey;
 
-  public AuthKeyRule(Settings s) throws RuleNotConfiguredException {
+  public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
 
     String pAuthKey = s.get(this.getKey());

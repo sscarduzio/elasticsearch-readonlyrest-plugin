@@ -30,8 +30,8 @@ import java.util.Set;
  */
 
 class BlockHistory {
-  private Set<RuleExitResult> results;
-  private String name;
+  private final Set<RuleExitResult> results;
+  private final String name;
 
   BlockHistory(String name, Set<RuleExitResult> results) {
     this.results = results;
@@ -45,7 +45,6 @@ class BlockHistory {
       rule2result.put(rer.getCondition().getKey(), rer.isMatch());
     }
     Joiner.MapJoiner j = Joiner.on(", ").withKeyValueSeparator("->");
-    String histString = "[" + name + "->[" + j.join(rule2result) + "]]";
-    return histString;
+    return "[" + name + "->[" + j.join(rule2result) + "]]";
   }
 }

@@ -22,10 +22,10 @@ import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.mockito.Mockito;
 
 import java.util.Base64;
@@ -45,7 +45,7 @@ public class AuthKeySha1RuleTests extends TestCase {
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    Rule r = new AuthKeySha1Rule(Settings.builder()
+    SyncRule r = new AuthKeySha1SyncRule(Settings.builder()
                                    .put("auth_key_sha1", configured)
                                    .build());
 

@@ -18,10 +18,15 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
+import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
@@ -34,98 +39,116 @@ import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 
 /**
  * Created by sscarduzio on 19/12/2015.
  */
 @Singleton
-public class IndexLevelActionFilter extends ActionFilter.Simple {
-  private final ThreadPool threadPool;
-  private ClusterService clusterService;
-  private ACL acl;
-  private ConfigurationHelper conf;
+public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
+    private final ThreadPool threadPool;
+    private ClusterService clusterService;
+    private ACL acl;
+    private ConfigurationHelper conf;
 
-  @Inject
-  public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
-                                ClusterService clusterService, ThreadPool threadPool) {
-    super(settings);
-    this.conf = conf;
-    this.clusterService = clusterService;
-    this.threadPool = threadPool;
+    @Inject
+    public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
+                                  ClusterService clusterService, ThreadPool threadPool) {
+        super(settings);
+        this.conf = conf;
+        this.clusterService = clusterService;
+        this.threadPool = threadPool;
 
-    logger.info("Readonly REST plugin was loaded...");
+        logger.info("Readonly REST plugin was loaded...");
 
-    if (!conf.enabled) {
-      logger.info("Readonly REST plugin is disabled!");
-      return;
+        if (!conf.enabled) {
+            logger.info("Readonly REST plugin is disabled!");
+            return;
+        }
+
+        logger.info("Readonly REST plugin is enabled. Yay, ponies!");
+        this.acl = acl;
     }
 
-    logger.info("Readonly REST plugin is enabled. Yay, ponies!");
-    this.acl = acl;
-  }
-
-  @Override
-  public int order() {
-    return 0;
-  }
-
-  @Override
-  public boolean apply(String action, ActionRequest actionRequest, ActionListener<?> listener) {
-
-    // Skip if disabled
-    if (!conf.enabled) {
-      return true;
+    @Override
+    public int order() {
+        return 0;
     }
 
-    RestChannel channel = ThreadRepo.channel.get();
-    boolean chanNull = channel == null;
+    @Override
+    public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
+                                                                                       String action,
+                                                                                       Request request,
+                                                                                       ActionListener<Response> listener,
+                                                                                       ActionFilterChain<Request, Response> chain) {
+        // Skip if disabled
+        if (!conf.enabled) {
+            chain.proceed(task, action, request, listener);
+            return;
+        }
 
-    RestRequest req = null;
-    if (!chanNull) {
-      req = channel.request();
+        RestChannel channel = ThreadRepo.channel.get();
+        boolean chanNull = channel == null;
+
+        RestRequest req = null;
+        if (!chanNull) {
+            req = channel.request();
+        }
+        boolean reqNull = req == null;
+
+        // This was not a REST message
+        if (reqNull && chanNull) {
+            chain.proceed(task, action, request, listener);
+            return;
+        }
+
+        // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
+        if (reqNull != chanNull) {
+            if (chanNull)
+                throw new SecurityPermissionException("Problems analyzing the channel object. Have you checked the security permissions?", null);
+            if (reqNull)
+                throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?", null);
+        }
+
+        RequestContext rc = new RequestContext(channel, req, action, request, clusterService, threadPool);
+        Futures.addCallback(
+                acl.check(rc),
+                new FutureCallback<BlockExitResult>() {
+                    @Override
+                    public void onSuccess(BlockExitResult result) {// Barring
+                        // The request is allowed to go through
+                        if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
+                            chain.proceed(task, action, request, listener);
+                        } else {
+                            logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+                            sendNotAuthResponse();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Throwable t) {
+                        logger.info("forbidden request: " + rc + " Reason: " + t.getMessage());
+                        sendNotAuthResponse();
+                    }
+
+                    private void sendNotAuthResponse() {
+
+                        String reason = conf.forbiddenResponse;
+
+                        BytesRestResponse resp;
+                        if (acl.isBasicAuthConfigured()) {
+                            resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
+                            logger.debug("Sending login prompt header...");
+                            resp.addHeader("WWW-Authenticate", "Basic");
+                        } else {
+                            resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
+                        }
+
+                        channel.sendResponse(resp);
+                    }
+                }
+        );
     }
-    boolean reqNull = req == null;
-
-    // This was not a REST message
-    if (reqNull && chanNull) {
-      return true;
-    }
-
-    // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
-    if (reqNull != chanNull) {
-      if (chanNull)
-        throw new SecurityPermissionException("Problems analyzing the channel object. Have you checked the security permissions?", null);
-      if (reqNull)
-        throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?", null);
-    }
-
-    RequestContext rc = new RequestContext(channel, req, action, actionRequest, clusterService, threadPool);
-    BlockExitResult exitResult = acl.check(rc);
-
-    // The request is allowed to go through
-    if (exitResult.isMatch() && exitResult.getBlock().getPolicy() == Block.Policy.ALLOW) {
-      return true;
-    }
-
-    // Barring
-    logger.info("forbidden request: " + rc + " Reason: " + exitResult.getBlock() + " (" + exitResult.getBlock() + ")");
-    String reason = conf.forbiddenResponse;
-
-    BytesRestResponse resp;
-
-    if (acl.isBasicAuthConfigured()) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
-      logger.debug("Sending login prompt header...");
-      resp.addHeader("WWW-Authenticate", "Basic");
-    }
-    else {
-      resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
-    }
-
-    channel.sendResponse(resp);
-
-    return false;
-  }
 
 }

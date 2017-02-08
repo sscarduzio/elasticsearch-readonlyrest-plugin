@@ -18,28 +18,37 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.hash.Hashing;
+import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-/**
- * Created by sscarduzio on 14/02/2016.
- */
-public class MaxBodyLengthRule extends Rule {
-  private Integer maxBodyLength;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
-  public MaxBodyLengthRule(Settings s) throws RuleNotConfiguredException {
+/**
+ * Created by sscarduzio on 13/02/2016.
+ */
+public class AuthKeySha1SyncRule extends AuthKeySyncRule {
+
+  public AuthKeySha1SyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    maxBodyLength = s.getAsInt("maxBodyLength", null);
-    if (maxBodyLength == null) {
-      throw new RuleNotConfiguredException();
+    try {
+      authKey = new String(Base64.getDecoder().decode(authKey), StandardCharsets.UTF_8);
+    } catch (Throwable e) {
+      throw new ElasticsearchParseException("cannot parse configuration for: " + this.getKey());
     }
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
-    return (rc.getContent().length() > maxBodyLength) ? NO_MATCH : MATCH;
+  protected boolean checkEqual(String provided) {
+    try {
+      String decodedProvided = new String(Base64.getDecoder().decode(provided), StandardCharsets.UTF_8);
+      String shaProvided = Hashing.sha1().hashString(decodedProvided, Charset.defaultCharset()).toString();
+      return authKey.equals(shaProvided);
+    } catch (Throwable e) {
+      return false;
+    }
   }
 }

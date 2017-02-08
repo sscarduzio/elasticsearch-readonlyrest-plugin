@@ -20,7 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule.getBasicAuthUser;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule.getBasicAuthUser;
 
 /**
  * Created by sscarduzio on 01/01/2017.

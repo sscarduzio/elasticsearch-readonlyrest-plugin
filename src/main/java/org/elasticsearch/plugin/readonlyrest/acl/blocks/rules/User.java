@@ -19,8 +19,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
 
 import java.util.Arrays;
 import java.util.List;
@@ -32,15 +32,15 @@ public class User {
 
   private final String username;
   private final List<String> groups;
-  private AuthKeyRule authKeyRule;
+  private AuthKeySyncRule authKeyRule;
 
   public User(Settings userProperties) throws UserNotConfiguredException {
     this.username = userProperties.get("username");
     try {
-      this.authKeyRule = new AuthKeyRule(userProperties);
+      this.authKeyRule = new AuthKeySyncRule(userProperties);
     } catch (RuleNotConfiguredException e) {
       try {
-        this.authKeyRule = new AuthKeySha1Rule(userProperties);
+        this.authKeyRule = new AuthKeySha1SyncRule(userProperties);
       } catch (RuleNotConfiguredException e2) {
         throw new UserNotConfiguredException();
       }
@@ -58,7 +58,7 @@ public class User {
     return username;
   }
 
-  public AuthKeyRule getAuthKeyRule() {
+  public AuthKeySyncRule getAuthKeyRule() {
     return authKeyRule;
   }
 

@@ -25,7 +25,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -36,11 +36,11 @@ import java.util.Map;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class XForwardedForRule extends Rule {
+public class XForwardedForSyncRule extends SyncRule {
 
   private List<String> allowedAddresses;
 
-  public XForwardedForRule(Settings s) throws RuleNotConfiguredException {
+  public XForwardedForSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     String[] a = s.getAsArray(getKey());
     if (a != null && a.length > 0) {

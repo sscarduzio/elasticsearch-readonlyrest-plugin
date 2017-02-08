@@ -18,35 +18,48 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import com.google.common.collect.Lists;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
+import java.util.List;
+
 /**
- * Created by sscarduzio on 14/02/2016.
+ * Created by sscarduzio on 13/02/2016.
  */
-public class ActionsRule extends Rule {
+public class ApiKeysSyncRule extends SyncRule {
 
-  private static final Logger logger = Loggers.getLogger(ActionsRule.class);
+  private List<String> validApiKeys;
 
-  protected MatcherWithWildcards m;
-
-  public ActionsRule(Settings s) throws RuleNotConfiguredException {
+  public ApiKeysSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    m = MatcherWithWildcards.fromSettings(s, getKey());
+    String[] a = s.getAsArray(getKey());
+    if (a != null && a.length > 0) {
+      validApiKeys = Lists.newArrayList();
+      for (int i = 0; i < a.length; i++) {
+        if (!Strings.isNullOrEmpty(a[i])) {
+          validApiKeys.add(a[i].trim());
+        }
+      }
+    }
+    else {
+      throw new RuleNotConfiguredException();
+    }
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (m.match(rc.getAction())) {
+    String h = rc.getHeaders().get("X-Api-Key");
+    if (validApiKeys == null || h == null) {
+      return NO_MATCH;
+    }
+    if (validApiKeys.contains(h)) {
       return MATCH;
     }
-    logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");
     return NO_MATCH;
   }
 }

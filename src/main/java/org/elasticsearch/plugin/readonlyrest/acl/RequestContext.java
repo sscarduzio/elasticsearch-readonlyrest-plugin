@@ -41,7 +41,7 @@ import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
@@ -95,9 +95,9 @@ public class RequestContext {
   private final String id;
   private final Map<String, String> headers;
   private final ThreadPool threadPool;
+  private final ClusterService clusterService;
   private Set<String> indices = null;
   private String content = null;
-  private ClusterService clusterService = null;
 
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
@@ -376,7 +376,7 @@ public class RequestContext {
       theIndices = Joiner.on(",").skipNulls().join(getIndices());
     }
 
-    String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
+    String loggedInAs = AuthKeySyncRule.getBasicAuthUser(getHeaders());
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";

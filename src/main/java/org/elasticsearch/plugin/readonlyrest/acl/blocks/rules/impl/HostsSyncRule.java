@@ -26,7 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -37,12 +37,12 @@ import java.util.Map;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class HostsRule extends Rule {
+public class HostsSyncRule extends SyncRule {
 
   private List<String> allowedAddresses;
   private Boolean acceptXForwardedForHeader;
 
-  public HostsRule(Settings s) throws RuleNotConfiguredException {
+  public HostsSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
     acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
     String[] a = s.getAsArray("hosts");

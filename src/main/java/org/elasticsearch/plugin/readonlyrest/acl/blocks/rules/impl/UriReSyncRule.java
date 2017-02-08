@@ -18,33 +18,35 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Lists;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
-import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class ApiKeysRule extends Rule {
+public class UriReSyncRule extends SyncRule {
 
-  private List<String> validApiKeys;
+  private Pattern uri_re = null;
 
-  public ApiKeysRule(Settings s) throws RuleNotConfiguredException {
+  public UriReSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    String[] a = s.getAsArray(getKey());
-    if (a != null && a.length > 0) {
-      validApiKeys = Lists.newArrayList();
-      for (int i = 0; i < a.length; i++) {
-        if (!Strings.isNullOrEmpty(a[i])) {
-          validApiKeys.add(a[i].trim());
-        }
+
+    String tmp = s.get(getKey());
+    if (!Strings.isNullOrEmpty(tmp)) {
+      try {
+        uri_re = Pattern.compile(tmp.trim());
+      } catch (PatternSyntaxException e) {
+        throw new RuleConfigurationError("invalid 'uri_re' regexp", e);
       }
+
     }
     else {
       throw new RuleNotConfiguredException();
@@ -53,13 +55,9 @@ public class ApiKeysRule extends Rule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String h = rc.getHeaders().get("X-Api-Key");
-    if (validApiKeys == null || h == null) {
+    if (uri_re == null) {
       return NO_MATCH;
     }
-    if (validApiKeys.contains(h)) {
-      return MATCH;
-    }
-    return NO_MATCH;
+    return uri_re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH;
   }
 }

@@ -21,10 +21,10 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -42,7 +42,7 @@ public class MaxBodyLengthRuleTests extends TestCase {
   private RuleExitResult match(Integer configured, String found, RequestContext rc) throws RuleNotConfiguredException {
     when(rc.getContent()).thenReturn(found);
 
-    Rule r = new MaxBodyLengthRule(Settings.builder()
+    SyncRule r = new MaxBodyLengthSyncRule(Settings.builder()
                                      .put("maxBodyLength", configured)
                                      .build());
 
