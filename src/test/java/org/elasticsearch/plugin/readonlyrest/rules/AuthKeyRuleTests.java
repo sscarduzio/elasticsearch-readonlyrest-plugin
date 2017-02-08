@@ -66,8 +66,6 @@ public class AuthKeyRuleTests extends TestCase {
       "logstash:logstash",
       "Basic " + Base64.getEncoder().encodeToString("logstash:".getBytes())
     );
-    String a = AuthKeyRule.getBasicAuthUser(ImmutableMap.of("Authorization", "Basi" + Base64.getEncoder().encodeToString("logstash:".getBytes())));
-    System.out.println(a);
     assertFalse(res.isMatch());
   }
 
