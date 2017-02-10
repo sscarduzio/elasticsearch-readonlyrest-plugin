@@ -25,7 +25,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 public class BlockExitResult {
   public static final BlockExitResult NO_MATCH = new BlockExitResult(null, false);
   private final Block block;
-  private final Boolean match;
+  private final boolean match;
 
   BlockExitResult(Block block, Boolean match) {
     this.block = block;
@@ -40,7 +40,6 @@ public class BlockExitResult {
   public Block getBlock() {
     return block;
   }
-
 
   @Override
   public String toString() {

@@ -18,86 +18,32 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.base.Charsets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Map;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeySyncRule extends SyncRule {
+public class AuthKeySyncRule extends GeneralAuthKeySyncRule {
   private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
-
-  protected String authKey;
 
   public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-
-    String pAuthKey = s.get(this.getKey());
-    if (pAuthKey != null && pAuthKey.trim().length() > 0) {
-      authKey = Base64.getEncoder().encodeToString(pAuthKey.getBytes(Charsets.UTF_8));
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
-  }
-
-  // Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
-  private static String extractAuthFromHeader(String authorizationHeader) {
-    if (authorizationHeader == null || authorizationHeader.trim().length() == 0 || !authorizationHeader.contains("Basic "))
-      return null;
-    String interestingPart = authorizationHeader.split("Basic")[1].trim();
-    if (interestingPart.length() == 0) {
-      return null;
-    }
-    return interestingPart;
-  }
-
-  public static String getBasicAuthUser(Map<String, String> headers) {
-    String authHeader = extractAuthFromHeader(headers.get("Authorization"));
-    if (authHeader != null) {
-      try {
-        return new String(Base64.getDecoder().decode(authHeader)).split(":")[0];
-      } catch (IllegalArgumentException e) {
-        e.printStackTrace();
-      }
-    }
-    return null;
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
-    String authHeader = extractAuthFromHeader(rc.getHeaders().get("Authorization"));
-
-    if (authHeader != null && logger.isDebugEnabled()) {
-      try {
-        logger.info("Login as: " + getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
-      } catch (IllegalArgumentException e) {
-        e.printStackTrace();
-      }
+  protected boolean authenticate(String configured, String providedBase64) {
+    try {
+    String decodedProvided = new String(Base64.getDecoder().decode(providedBase64), StandardCharsets.UTF_8);
+    return decodedProvided.equals(configured);
+    } catch (Throwable e) {
+      logger.warn("Exception while authentication", e);
+      return false;
     }
-
-    if (authKey == null || authHeader == null) {
-      return NO_MATCH;
-    }
-
-    String val = authHeader.trim();
-    if (val.length() == 0) {
-      return NO_MATCH;
-    }
-
-    return checkEqual(authHeader) ? MATCH : NO_MATCH;
-  }
-
-  protected boolean checkEqual(String provided) {
-    return authKey.equals(provided);
   }
 }

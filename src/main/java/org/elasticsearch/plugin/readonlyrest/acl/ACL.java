@@ -18,7 +18,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
@@ -31,6 +30,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
@@ -70,7 +70,7 @@ public class ACL {
         return basicAuthConfigured;
     }
 
-    public ListenableFuture<BlockExitResult> check(RequestContext rc) {
+    public CompletableFuture<BlockExitResult> check(RequestContext rc) {
         logger.debug("checking request:" + rc);
         return FuturesSequencer.runInSeqUntilConditionIsUndone(
                 blocks.iterator(),

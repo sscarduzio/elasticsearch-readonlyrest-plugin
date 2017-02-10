@@ -32,7 +32,7 @@ public class User {
 
   private final String username;
   private final List<String> groups;
-  private AuthKeySyncRule authKeyRule;
+  private SyncRule authKeyRule;
 
   public User(Settings userProperties) throws UserNotConfiguredException {
     this.username = userProperties.get("username");
@@ -58,7 +58,7 @@ public class User {
     return username;
   }
 
-  public AuthKeySyncRule getAuthKeyRule() {
+  public SyncRule getAuthKeyRule() {
     return authKeyRule;
   }
 

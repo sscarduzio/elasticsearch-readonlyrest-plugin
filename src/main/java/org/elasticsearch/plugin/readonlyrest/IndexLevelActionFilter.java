@@ -18,8 +18,6 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -33,7 +31,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
@@ -112,43 +109,38 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         }
 
         RequestContext rc = new RequestContext(channel, req, action, request, clusterService, threadPool);
-        Futures.addCallback(
-                acl.check(rc),
-                new FutureCallback<BlockExitResult>() {
-                    @Override
-                    public void onSuccess(BlockExitResult result) {// Barring
-                        // The request is allowed to go through
-                        if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
-                            chain.proceed(task, action, request, listener);
-                        } else {
-                            logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-                            sendNotAuthResponse();
-                        }
+        acl.check(rc)
+                .exceptionally(throwable -> {
+                    logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+                    sendNotAuthResponse(channel);
+                    return null;
+                })
+                .thenApply(result -> {
+                    if (result == null) return null;
+                    if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
+                        chain.proceed(task, action, request, listener);
+                    } else {
+                        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+                        sendNotAuthResponse(channel);
                     }
+                    return null;
+                });
 
-                    @Override
-                    public void onFailure(Throwable t) {
-                        logger.info("forbidden request: " + rc + " Reason: " + t.getMessage());
-                        sendNotAuthResponse();
-                    }
+    }
 
-                    private void sendNotAuthResponse() {
+    private void sendNotAuthResponse(RestChannel channel) {
+        String reason = conf.forbiddenResponse;
 
-                        String reason = conf.forbiddenResponse;
+        BytesRestResponse resp;
+        if (acl.isBasicAuthConfigured()) {
+            resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
+            logger.debug("Sending login prompt header...");
+            resp.addHeader("WWW-Authenticate", "Basic");
+        } else {
+            resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
+        }
 
-                        BytesRestResponse resp;
-                        if (acl.isBasicAuthConfigured()) {
-                            resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
-                            logger.debug("Sending login prompt header...");
-                            resp.addHeader("WWW-Authenticate", "Basic");
-                        } else {
-                            resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
-                        }
-
-                        channel.sendResponse(resp);
-                    }
-                }
-        );
+        channel.sendResponse(resp);
     }
 
 }

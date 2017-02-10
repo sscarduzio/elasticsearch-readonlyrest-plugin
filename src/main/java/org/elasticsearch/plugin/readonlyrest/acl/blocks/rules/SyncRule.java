@@ -27,7 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 public abstract class SyncRule extends Rule {
 
   public SyncRule(Settings s) {
-    super(s);
+    super("SyncRule", s);
   }
 
   public abstract RuleExitResult match(RequestContext rc);

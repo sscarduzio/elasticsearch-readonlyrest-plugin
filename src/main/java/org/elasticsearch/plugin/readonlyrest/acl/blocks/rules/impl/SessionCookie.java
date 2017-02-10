@@ -8,6 +8,7 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
@@ -19,8 +20,6 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule.getBasicAuthUser;
 
 /**
  * Created by sscarduzio on 01/01/2017.
@@ -59,7 +58,7 @@ public class SessionCookie {
     this.cookiePresent = true;
 
     // ----- Check cookie validity
-    String user = getBasicAuthUser(rc.getHeaders());
+    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
     Iterator<String> cookiePartsIterator =
       Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
@@ -107,7 +106,7 @@ public class SessionCookie {
   }
 
   public void setCookie() {
-    String user = getBasicAuthUser(rc.getHeaders());
+    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
     Date expiryDateString = new Date(System.currentTimeMillis() + sessionMaxIdleMillis);
     String cookie = mkCookie(user, expiryDateString);
     rc.setResponseHeader("Set-Cookie", COOKIE_NAME + "=" + cookie);

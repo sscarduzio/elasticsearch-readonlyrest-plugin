@@ -19,22 +19,24 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.*;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -80,22 +82,22 @@ public class Block {
      * Check all the conditions of this rule and return a rule exit result
      *
      */
-    public ListenableFuture<BlockExitResult> check(RequestContext rc) {
+    public CompletableFuture<BlockExitResult> check(RequestContext rc) {
         boolean syncCheck = checkSyncRules(rc);
-        return Futures.transform(
-                checkAsyncRules(rc),
-                asyncCheck -> {
-                    if (asyncCheck && syncCheck) {
-                        logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
-                        rc.commit();
-                        return new BlockExitResult(this, true);
-                    } else {
-                        logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
-                        rc.reset();
-                        return BlockExitResult.NO_MATCH;
-                    }
-                }
-        );
+        if (syncCheck) {
+            return checkAsyncRules(rc)
+                    .thenApply(asyncCheck -> {
+                        if (asyncCheck != null && asyncCheck) {
+                            return finishWithMatchResult(rc);
+                        } else {
+                            return finishWithNoMatchResult(rc);
+                        }
+                    });
+        } else {
+            return CompletableFuture.completedFuture(
+                    finishWithNoMatchResult(rc)
+            );
+        }
     }
 
     private boolean checkSyncRules(RequestContext rc) {
@@ -116,28 +118,41 @@ public class Block {
         return match;
     }
 
-    private ListenableFuture<Boolean> checkAsyncRules(RequestContext rc) {
+    private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
         // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
         Set<RuleExitResult> thisBlockHistory = new HashSet<>(asyncConditionsToCheck.size());
-        return Futures.transform(
-                checkAsyncRulesInSequence(rc, asyncConditionsToCheck.iterator(), thisBlockHistory),
-                result -> {
+        return checkAsyncRulesInSequence(rc, asyncConditionsToCheck.iterator(), thisBlockHistory)
+                .thenApply(result -> {
                     rc.addToHistory(this, thisBlockHistory);
                     return result;
                 });
     }
 
-    private ListenableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
-                                                                Iterator<AsyncRule> rules,
-                                                                Set<RuleExitResult> thisBlockHistory) {
-        return FuturesSequencer.runInSeqWithResult(
+    private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
+                                                                 Iterator<AsyncRule> rules,
+                                                                 Set<RuleExitResult> thisBlockHistory) {
+        return FuturesSequencer.runInSeqUntilConditionIsUndone(
                 rules,
                 rule -> rule.match(rc),
-                (condExitResult, acc) -> {
+                condExitResult -> {
                     thisBlockHistory.add(condExitResult);
-                    return acc && (condExitResult != null ? condExitResult.isMatch() : false);
+                    return !condExitResult.isMatch();
                 },
-                true);
+                RuleExitResult::isMatch,
+                nothing -> true
+        );
+    }
+
+    private BlockExitResult finishWithMatchResult(RequestContext rc) {
+        logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
+        rc.commit();
+        return new BlockExitResult(this, true);
+    }
+
+    private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
+        logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
+        rc.reset();
+        return BlockExitResult.NO_MATCH;
     }
 
     @Override
@@ -202,7 +217,6 @@ public class Block {
             syncConditionsToCheck.add(new MethodsSyncRule(s));
         } catch (RuleNotConfiguredException ignored) {
         }
-
         try {
             syncConditionsToCheck.add(new IndicesSyncRule(s));
         } catch (RuleNotConfiguredException ignored) {
@@ -211,7 +225,6 @@ public class Block {
             syncConditionsToCheck.add(new ActionsSyncRule(s));
         } catch (RuleNotConfiguredException ignored) {
         }
-
         try {
             syncConditionsToCheck.add(new GroupsSyncRule(s, userList));
         } catch (RuleNotConfiguredException ignored) {
@@ -219,14 +232,11 @@ public class Block {
     }
 
     private void initAsyncConditions(Settings s) {
-        // todo: implement
-        asyncConditionsToCheck.add(new AsyncRule(s) {
-            @Override
-            public ListenableFuture<RuleExitResult> match(RequestContext rc) {
-                RuleExitResult result = rc.getUri().contains("blog") ? MATCH : NO_MATCH;
-                return Futures.immediateFailedFuture(new Exception("failed"));
-            }
-        });
+        try {
+            asyncConditionsToCheck.add(new LdapAuthAsyncRule(s));
+            authHeaderAccepted = true;
+        } catch (RuleNotConfiguredException ignored) {
+        }
     }
 
 }

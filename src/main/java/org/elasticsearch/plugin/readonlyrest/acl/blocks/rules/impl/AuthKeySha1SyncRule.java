@@ -19,7 +19,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.hash.Hashing;
-import org.elasticsearch.ElasticsearchParseException;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -30,25 +31,23 @@ import java.util.Base64;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeySha1SyncRule extends AuthKeySyncRule {
+public class AuthKeySha1SyncRule extends GeneralAuthKeySyncRule {
+  private static final Logger logger = Loggers.getLogger(AuthKeySha1SyncRule.class);
 
   public AuthKeySha1SyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    try {
-      authKey = new String(Base64.getDecoder().decode(authKey), StandardCharsets.UTF_8);
-    } catch (Throwable e) {
-      throw new ElasticsearchParseException("cannot parse configuration for: " + this.getKey());
-    }
   }
 
   @Override
-  protected boolean checkEqual(String provided) {
+  protected boolean authenticate(String configured, String providedBase64) {
     try {
-      String decodedProvided = new String(Base64.getDecoder().decode(provided), StandardCharsets.UTF_8);
+      String decodedProvided = new String(Base64.getDecoder().decode(providedBase64), StandardCharsets.UTF_8);
       String shaProvided = Hashing.sha1().hashString(decodedProvided, Charset.defaultCharset()).toString();
-      return authKey.equals(shaProvided);
+      return configured.equals(shaProvided);
     } catch (Throwable e) {
+      logger.warn("Exception while authentication", e);
       return false;
     }
   }
+
 }

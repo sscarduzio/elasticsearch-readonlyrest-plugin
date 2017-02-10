@@ -51,8 +51,7 @@ public class GroupsSyncRule extends SyncRule {
     for (Settings userProperties : userList) {
       try {
         this.users.add(new User(userProperties));
-      } catch (UserNotConfiguredException e) {
-      }
+      } catch (UserNotConfiguredException ignored) {}
     }
   }
 
