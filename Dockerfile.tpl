@@ -39,11 +39,10 @@ RUN TMP_FILE=`mktemp /tmp/config.XXXXXXXXXX` && \
 WORKDIR /data
 
 # Remote debugger
-ENV JAVA_OPTS -Xdebug -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000 -Des.insecure.allow.root=true
+ENV JAVA_OPTS -Xdebug -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000 -Des.insecure.allow.root=true  -Djava.security.policy=/elasticsearch/plugins/readonlyrest/plugin-security.policy
 
 # Define default command.
 CMD /elasticsearch/bin/elasticsearch
-#-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000
 # Expose ports.
 #   - 9200: HTTP
 #   - 9300: transport
