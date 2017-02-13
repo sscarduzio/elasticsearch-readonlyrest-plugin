@@ -120,6 +120,7 @@ public class ConfigurationHelper {
     String prefix = "readonlyrest.";
     String rule_prefix = prefix + "access_control_rules.";
     String users_prefix = prefix + "users.";
+    String ldaps_prefix = prefix + "ldaps.";
 
     return Arrays.asList(
       bool(prefix + "enable"),
@@ -135,7 +136,8 @@ public class ConfigurationHelper {
       str(prefix + "ssl.certchain_pem"),
 
       grp(rule_prefix),
-      grp(users_prefix)
+      grp(users_prefix),
+      grp(ldaps_prefix)
       // Rules
 //        str(rule_prefix + "name"),
 //        str(rule_prefix + "accept_x-forwarded-for_header"),

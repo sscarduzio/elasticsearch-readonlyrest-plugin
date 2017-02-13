@@ -35,23 +35,18 @@ import java.util.List;
  */
 public class GroupsSyncRule extends SyncRule {
 
-  private final List<User> users = new ArrayList<>();
+  private final List<User> users;
   private final List<String> groups;
 
-  public GroupsSyncRule(Settings s, List<Settings> userList) throws RuleNotConfiguredException {
+  public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
     super(s);
-
+    users = userList;
     String[] pGroups = s.getAsArray(this.getKey());
     if (pGroups != null && pGroups.length > 0) {
       this.groups = Arrays.asList(pGroups);
     }
     else {
       throw new RuleNotConfiguredException();
-    }
-    for (Settings userProperties : userList) {
-      try {
-        this.users.add(new User(userProperties));
-      } catch (UserNotConfiguredException ignored) {}
     }
   }
 

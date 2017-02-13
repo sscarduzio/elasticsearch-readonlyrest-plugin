@@ -37,7 +37,7 @@ public class IndicesSyncRule extends SyncRule {
 
   private final Logger logger = Loggers.getLogger(this.getClass());
 
-  protected MatcherWithWildcards configuredWildcards;
+  private MatcherWithWildcards configuredWildcards;
 
   public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);

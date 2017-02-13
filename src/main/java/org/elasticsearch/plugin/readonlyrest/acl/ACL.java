@@ -25,12 +25,13 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
@@ -43,6 +44,8 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RES
 public class ACL {
     private static final String RULES_PREFIX = "readonlyrest.access_control_rules";
     private static final String USERS_PREFIX = "readonlyrest.users";
+    private static final String LDAPS_PREFIX = "readonlyrest.ldaps";
+
     private final Logger logger = Loggers.getLogger(getClass());
     // Array list because it preserves the insertion order
     private ArrayList<Block> blocks = new ArrayList<>();
@@ -55,9 +58,10 @@ public class ACL {
         TreeMap<String, Settings> tmp = new TreeMap<>();
         tmp.putAll(g);
         g = tmp;
-        Map<String, Settings> users = s.getGroups(USERS_PREFIX);
+        List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values());
+        List<LdapConfig> ldaps = parseLdapSettings(s.getGroups(LDAPS_PREFIX).values());
         for (String k : g.keySet()) {
-            Block block = new Block(g.get(k), new ArrayList<>(users.values()), logger);
+            Block block = new Block(g.get(k), users, ldaps, logger);
             blocks.add(block);
             if (block.isAuthHeaderAccepted()) {
                 basicAuthConfigured = true;
@@ -85,8 +89,19 @@ public class ACL {
                 },
                 nothing -> {
                     logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
-                    return BlockExitResult.NO_MATCH;
+                    return BlockExitResult.NoMatch();
                 });
     }
 
+    private List<User> parseUserSettings(Collection<Settings> userSettings) {
+        return userSettings.stream()
+                .map(User::fromSettings)
+                .collect(Collectors.toList());
+    }
+
+    private List<LdapConfig> parseLdapSettings(Collection<Settings> ldapSettings) {
+        return ldapSettings.stream()
+                .map(LdapConfig::fromSettings)
+                .collect(Collectors.toList());
+    }
 }

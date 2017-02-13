@@ -30,16 +30,27 @@ public class UnboundidLdapClient implements LdapClient {
                                String searchUserBaseDN,
                                String searchGroupBaseDN,
                                int poolSize,
-                               Duration timeout) {
+                               Duration connectionTimeout,
+                               Duration requestTimeout,
+                               boolean sslEnabled,
+                               boolean trustAllCerts) {
         this.searchUserBaseDN = searchUserBaseDN;
         this.searchGroupBaseDN = searchGroupBaseDN;
-        this.timeout = timeout.toMillis();
+        this.timeout = requestTimeout.toMillis();
 
         try {
-            SSLUtil sslUtil = new SSLUtil(new TrustAllTrustManager());
-            SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
-            LDAPConnection connection = new LDAPConnection(sslSocketFactory);
-            connection.connect(host, port);
+            LDAPConnectionOptions options = new LDAPConnectionOptions();
+            options.setConnectTimeoutMillis((int) connectionTimeout.toMillis());
+            options.setResponseTimeoutMillis(requestTimeout.toMillis());
+            LDAPConnection connection;
+            if (sslEnabled) {
+                SSLUtil sslUtil = trustAllCerts ? new SSLUtil(new TrustAllTrustManager()) : new SSLUtil();
+                SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
+                connection = new LDAPConnection(sslSocketFactory, options);
+            } else {
+                connection = new LDAPConnection(options);
+            }
+            connection.connect(host, port, (int) connectionTimeout.toMillis());
             connectionPool = new LDAPConnectionPool(connection, poolSize);
         } catch (GeneralSecurityException e) {
             throw new LdapClientInitializationException("SSL Factory creation problem", e);
@@ -92,8 +103,9 @@ public class UnboundidLdapClient implements LdapClient {
                         if (t instanceof LdapSearchError) {
                             LdapSearchError error = (LdapSearchError) t;
                             logger.debug(String.format("LDAP getting user CN returned error [%s]", error.getResultString()));
+                            return Optional.empty();
                         }
-                        return Optional.empty();
+                        throw new RuntimeException(t);
                     });
         } catch (LDAPException e) {
             logger.error("LDAP getting user operation failed", e);
@@ -196,7 +208,8 @@ public class UnboundidLdapClient implements LdapClient {
         }
 
         @Override
-        public void searchReferenceReturned(SearchResultReference searchReference) {}
+        public void searchReferenceReturned(SearchResultReference searchReference) {
+        }
     }
 
 }

@@ -106,7 +106,7 @@ readonlyrest:
     response_if_req_forbidden: <h1>Forbidden</h1>
     
     # Default policy is to forbid everything, so let's define a whitelist
-    
+
     access_control_rules:
 
     # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
@@ -132,7 +132,9 @@ readonlyrest:
 
     - name: Accept requests from users in group team2 on blog2
       type: allow
-      ldap_auth: true
+      ldap_auth:
+        - name: "TouK"
+          groups: ["ksiegowosc", "test"]
       indices: ["blog2"]
 
     users:
@@ -144,3 +146,17 @@ readonlyrest:
     - username: b2
       auth_key: b2:test2
       groups: ["team2"]
+
+    ldaps:
+
+    - name: TouK
+      host: "ldap.touk.pl"
+      port: 636
+      ssl_enabled: true
+      ssl_trust_all_certs: true
+      search_user_base_DN: "ou=Touki,ou=People,dc=touk,dc=pl"
+      search_groups_base_DN: "ou=Group,dc=touk,dc=pl"
+      connection_pool_size: 10
+      connection_timeout_in_sec: 10
+      request_timeout_in_sec: 10
+      cache_ttl_in_sec: 60

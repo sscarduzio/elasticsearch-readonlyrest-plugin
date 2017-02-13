@@ -125,7 +125,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                     }
                     return null;
                 });
-
     }
 
     private void sendNotAuthResponse(RestChannel channel) {

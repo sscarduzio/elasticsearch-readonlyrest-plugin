@@ -2,11 +2,9 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -15,10 +13,6 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class GeneralAuthKeyAsyncRule extends AsyncRule {
     private static final Logger logger = Loggers.getLogger(GeneralAuthKeyAsyncRule.class);
-
-    GeneralAuthKeyAsyncRule(Settings s) throws RuleNotConfiguredException {
-        super(s);
-    }
 
     protected abstract CompletableFuture<Boolean> authenticate(String user, String password);
 

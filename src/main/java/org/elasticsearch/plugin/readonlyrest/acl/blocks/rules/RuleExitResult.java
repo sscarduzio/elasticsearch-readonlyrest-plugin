@@ -40,13 +40,7 @@ public class RuleExitResult {
 
   @Override
   public String toString() {
-    String condString;
-    if (condition != null) {
-      condString = condition.getKey();
-    }
-    else {
-      condString = "none";
-    }
+    String condString = condition != null ? condition.getKey() : "none";
     return "{ matched: " + match + ", condition: " + condString + " }";
   }
 }

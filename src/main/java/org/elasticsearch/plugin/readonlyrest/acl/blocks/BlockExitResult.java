@@ -23,11 +23,10 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
  * Created by sscarduzio on 14/02/2016.
  */
 public class BlockExitResult {
-  public static final BlockExitResult NO_MATCH = new BlockExitResult(null, false);
   private final Block block;
   private final boolean match;
 
-  BlockExitResult(Block block, Boolean match) {
+  private BlockExitResult(Block block, Boolean match) {
     this.block = block;
     this.match = match;
   }
@@ -46,4 +45,11 @@ public class BlockExitResult {
     return "{ block: " + block == null ? "<none>" : block.getName() + " match: " + isMatch() + "}";
   }
 
+  public static BlockExitResult Match(Block block) {
+    return new BlockExitResult(block, true);
+  }
+
+  public static BlockExitResult NoMatch() {
+    return new BlockExitResult(null, false);
+  }
 }

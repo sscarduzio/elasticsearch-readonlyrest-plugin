@@ -18,11 +18,12 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
+import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GeneralAuthKeySyncRule;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -30,40 +31,43 @@ import java.util.List;
  */
 public class User {
 
-  private final String username;
-  private final List<String> groups;
-  private SyncRule authKeyRule;
+    private final String username;
+    private final List<String> groups;
+    private GeneralAuthKeySyncRule authKeyRule;
 
-  public User(Settings userProperties) throws UserNotConfiguredException {
-    this.username = userProperties.get("username");
-    try {
-      this.authKeyRule = new AuthKeySyncRule(userProperties);
-    } catch (RuleNotConfiguredException e) {
-      try {
-        this.authKeyRule = new AuthKeySha1SyncRule(userProperties);
-      } catch (RuleNotConfiguredException e2) {
-        throw new UserNotConfiguredException();
-      }
+    private User(String username, List<String> pGroups, GeneralAuthKeySyncRule rule) {
+        this.username = username;
+        this.groups = pGroups;
+        this.authKeyRule = rule;
     }
-    String[] pGroups = userProperties.getAsArray("groups");
-    if (pGroups != null && pGroups.length > 0) {
-      this.groups = Arrays.asList(pGroups);
+
+    public String getUsername() {
+        return username;
     }
-    else {
-      throw new UserNotConfiguredException();
+
+    public SyncRule getAuthKeyRule() {
+        return authKeyRule;
     }
-  }
 
-  public String getUsername() {
-    return username;
-  }
+    public List<String> getGroups() {
+        return groups;
+    }
 
-  public SyncRule getAuthKeyRule() {
-    return authKeyRule;
-  }
-
-  public List<String> getGroups() {
-    return groups;
-  }
-
+    public static User fromSettings(Settings s) throws ConfigMalformedException {
+        String username = s.get("username");
+        GeneralAuthKeySyncRule authKeyRule;
+        try {
+            authKeyRule = new AuthKeySyncRule(s);
+        } catch (RuleNotConfiguredException e) {
+            try {
+                authKeyRule = new AuthKeySha1SyncRule(s);
+            } catch (RuleNotConfiguredException e2) {
+                throw new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"));
+            }
+        }
+        List<String> groups = Lists.newArrayList(s.getAsArray("groups"));
+        if (groups.isEmpty())
+            throw new ConfigMalformedException("No groups defined for user " + (username != null ? username : "<no name>"));
+        return new User(username, groups, authKeyRule);
+    }
 }

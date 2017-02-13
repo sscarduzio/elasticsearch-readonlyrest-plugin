@@ -23,10 +23,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.*;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
@@ -50,7 +47,7 @@ public class Block {
     private final Set<SyncRule> syncConditionsToCheck = Sets.newHashSet();
     private final Set<AsyncRule> asyncConditionsToCheck = Sets.newHashSet();
 
-    public Block(Settings s, List<Settings> userList, Logger logger) {
+    public Block(Settings s, List<User> userList, List<LdapConfig> ldapList, Logger logger) {
         this.name = s.get("name");
         String sPolicy = s.get("type");
         this.logger = logger;
@@ -63,7 +60,7 @@ public class Block {
         policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
         initSyncConditions(s, userList);
-        initAsyncConditions(s);
+        initAsyncConditions(s, ldapList);
     }
 
     public String getName() {
@@ -146,13 +143,13 @@ public class Block {
     private BlockExitResult finishWithMatchResult(RequestContext rc) {
         logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
         rc.commit();
-        return new BlockExitResult(this, true);
+        return BlockExitResult.Match(this);
     }
 
     private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
         logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
         rc.reset();
-        return BlockExitResult.NO_MATCH;
+        return BlockExitResult.NoMatch();
     }
 
     @Override
@@ -173,7 +170,7 @@ public class Block {
         }
     }
 
-    private void initSyncConditions(Settings s, List<Settings> userList) {
+    private void initSyncConditions(Settings s, List<User> userList) {
         // Won't add the condition if its configuration is not found
         try {
             syncConditionsToCheck.add(new KibanaAccessSyncRule(s));
@@ -229,14 +226,15 @@ public class Block {
             syncConditionsToCheck.add(new GroupsSyncRule(s, userList));
         } catch (RuleNotConfiguredException ignored) {
         }
+        // todo: log invalid settings
     }
 
-    private void initAsyncConditions(Settings s) {
-        try {
-            asyncConditionsToCheck.add(new LdapAuthAsyncRule(s));
+    private void initAsyncConditions(Settings s, List<LdapConfig> ldapConfigs) {
+        LdapAuthAsyncRule.fromSettings(s, ldapConfigs).map(rule -> {
+            asyncConditionsToCheck.add(rule);
             authHeaderAccepted = true;
-        } catch (RuleNotConfiguredException ignored) {
-        }
+            return true;
+        });
     }
 
 }
