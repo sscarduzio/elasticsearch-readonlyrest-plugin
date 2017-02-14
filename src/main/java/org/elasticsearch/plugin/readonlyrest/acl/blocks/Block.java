@@ -199,6 +199,11 @@ public class Block {
         } catch (RuleNotConfiguredException ignored) {
         }
         try {
+            syncConditionsToCheck.add(new AuthKeySha256SyncRule(s));
+            authHeaderAccepted = true;
+        } catch (RuleNotConfiguredException ignored) {
+        }
+        try {
             syncConditionsToCheck.add(new SessionMaxIdleSyncRule(s));
         } catch (RuleNotConfiguredException ignored) {
         }

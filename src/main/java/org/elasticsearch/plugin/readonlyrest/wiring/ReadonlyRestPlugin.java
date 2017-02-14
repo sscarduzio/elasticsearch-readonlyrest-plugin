@@ -65,7 +65,8 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
     NamedXContentRegistry xContentRegistry,
     NetworkService networkService
   ) {
-    return Collections.singletonMap("ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool));
+    return Collections.singletonMap(
+      "ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, xContentRegistry));
   }
 
   @Override

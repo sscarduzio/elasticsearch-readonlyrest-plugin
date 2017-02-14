@@ -26,15 +26,14 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
+public class AuthKeySha256SyncRule extends AuthKeyHashingRule {
 
-  public AuthKeySha1SyncRule(Settings s) throws RuleNotConfiguredException {
+  public AuthKeySha256SyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);
   }
 
   @Override
   protected HashFunction getHashFunction() {
-    return Hashing.sha1();
+    return Hashing.sha256();
   }
-
 }

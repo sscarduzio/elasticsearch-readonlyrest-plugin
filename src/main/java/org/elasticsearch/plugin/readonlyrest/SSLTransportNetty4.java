@@ -37,9 +37,10 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private SSLEngineProvider engineProvider;
 
   public SSLTransportNetty4(final Settings settings, final NetworkService networkService,
-                            final BigArrays bigArrays, final ThreadPool threadPool
+                            final BigArrays bigArrays, final ThreadPool threadPool,
+                            final NamedXContentRegistry namedXContentRegistry
   ) {
-    super(settings, networkService, bigArrays, threadPool, NamedXContentRegistry.EMPTY);
+    super(settings, networkService, bigArrays, threadPool, namedXContentRegistry);
     engineProvider = new SSLEngineProvider(settings);
     logger.info("creating SSL transport");
 
