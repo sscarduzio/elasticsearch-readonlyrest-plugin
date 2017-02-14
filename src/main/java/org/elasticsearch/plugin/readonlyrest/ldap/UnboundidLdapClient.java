@@ -27,6 +27,7 @@ public class UnboundidLdapClient implements LdapClient {
 
     public UnboundidLdapClient(String host,
                                int port,
+                               Optional<BindDnPassword> bindDnPassword,
                                String searchUserBaseDN,
                                String searchGroupBaseDN,
                                int poolSize,
@@ -51,6 +52,14 @@ public class UnboundidLdapClient implements LdapClient {
                 connection = new LDAPConnection(options);
             }
             connection.connect(host, port, (int) connectionTimeout.toMillis());
+
+            if (bindDnPassword.isPresent()) {
+                BindDnPassword dnPassword = bindDnPassword.get();
+                BindResult result = connection.bind(dnPassword.getDn(), dnPassword.getPassword());
+                if (!ResultCode.SUCCESS.equals(result.getResultCode())) {
+                    throw new LdapClientInitializationException("LDAP binding problem - returned [" + result.getResultString() + "]");
+                }
+            }
             connectionPool = new LDAPConnectionPool(connection, poolSize);
         } catch (GeneralSecurityException e) {
             throw new LdapClientInitializationException("SSL Factory creation problem", e);
@@ -100,8 +109,8 @@ public class UnboundidLdapClient implements LdapClient {
                         }
                     })
                     .exceptionally(t -> {
-                        if (t instanceof LdapSearchError) {
-                            LdapSearchError error = (LdapSearchError) t;
+                        if (t.getCause() instanceof LdapSearchError) {
+                            LdapSearchError error = (LdapSearchError) t.getCause();
                             logger.debug(String.format("LDAP getting user CN returned error [%s]", error.getResultString()));
                             return Optional.empty();
                         }
@@ -121,7 +130,7 @@ public class UnboundidLdapClient implements LdapClient {
                             new UnboundidSearchResultListener(searchGroups),
                             searchGroupBaseDN,
                             SearchScope.SUB,
-                            String.format("(&(cn=*)(uniqueMember=%s))", user.getCn())
+                            String.format("(&(cn=*)(uniqueMember=%s))", user.getDN())
                     )),
                     timeout
             );
@@ -153,14 +162,19 @@ public class UnboundidLdapClient implements LdapClient {
     }
 
     private Boolean authenticate(LdapUser user, String password) {
+        LDAPConnection connection = null;
         try {
-            BindResult result = connectionPool.bind(new SimpleBindRequest(user.getCn(), password));
+            connection = connectionPool.getConnection();
+            BindResult result = connection.bind(new SimpleBindRequest(user.getDN(), password));
             return ResultCode.SUCCESS.equals(result.getResultCode());
         } catch (LDAPException e) {
             logger.error("LDAP authenticate operation failed");
             return false;
+        } finally {
+            if(connection != null) {
+                connectionPool.releaseAndReAuthenticateConnection(connection);
+            }
         }
-
     }
 
     private static class LdapSearchError extends RuntimeException {
@@ -212,4 +226,21 @@ public class UnboundidLdapClient implements LdapClient {
         }
     }
 
+    public static class BindDnPassword {
+        private final String dn;
+        private final String password;
+
+        public BindDnPassword(String dn, String password) {
+            this.dn = dn;
+            this.password = password;
+        }
+
+        public String getDn() {
+            return dn;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+    }
 }

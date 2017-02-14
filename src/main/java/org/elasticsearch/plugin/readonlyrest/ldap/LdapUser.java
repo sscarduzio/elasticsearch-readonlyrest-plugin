@@ -6,21 +6,21 @@ import java.util.Set;
 
 public class LdapUser {
     private final String uid;
-    private final String cn;
+    private final String dn;
     private final ImmutableSet<LdapGroup> groups;
 
-    public LdapUser(String uid, String cn, Set<LdapGroup> groups) {
+    public LdapUser(String uid, String dn, Set<LdapGroup> groups) {
         this.uid = uid;
-        this.cn = cn;
+        this.dn = dn;
         this.groups = ImmutableSet.copyOf(groups);
     }
 
-    public LdapUser(String uid, String cn) {
-        this(uid, cn, ImmutableSet.of());
+    public LdapUser(String uid, String dn) {
+        this(uid, dn, ImmutableSet.of());
     }
 
-    public String getCn() {
-        return cn;
+    public String getDN() {
+        return dn;
     }
 
     public ImmutableSet<LdapGroup> getGroups() {
@@ -28,6 +28,6 @@ public class LdapUser {
     }
 
     public LdapUser withGroups(Set<LdapGroup> groups) {
-        return new LdapUser(uid, cn, groups);
+        return new LdapUser(uid, dn, groups);
     }
 }

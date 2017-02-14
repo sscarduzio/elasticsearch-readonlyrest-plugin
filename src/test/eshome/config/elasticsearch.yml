@@ -135,6 +135,8 @@ readonlyrest:
       ldap_auth:
         - name: "TouK"
           groups: ["ksiegowosc", "test"]
+        - name: "example"
+          groups: ["group1", "group3"]
       indices: ["blog2"]
 
     users:
@@ -160,3 +162,15 @@ readonlyrest:
       connection_timeout_in_sec: 10
       request_timeout_in_sec: 10
       cache_ttl_in_sec: 60
+
+    - name: example
+      host: "localhost"
+      port: 389
+      ssl_enabled: false
+      bind_dn: "cn=admin,dc=example,dc=com"
+      bind_password: "password"
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      connection_pool_size: 10
+      connection_timeout_in_sec: 10
+      request_timeout_in_sec: 10
