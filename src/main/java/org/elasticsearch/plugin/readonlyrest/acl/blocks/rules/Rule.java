@@ -1,6 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-abstract public class Rule {
+public abstract class Rule {
     protected final RuleExitResult MATCH;
     protected final RuleExitResult NO_MATCH;
 

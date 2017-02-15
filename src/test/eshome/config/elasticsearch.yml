@@ -90,13 +90,12 @@
 #
 #action.destructive_requires_name: true
 http.type: ssl_netty4
-transport.type: local
 readonlyrest:
     # (De)activate plugin
     enable: true
 
     ssl:
-      enable: false
+      enable: true
       keystore_file: "/me/tmp/elasticsearch-5.0.1/plugins/readonlyrest/keystore.jks"
       keystore_pass: readonlyrest
       key_pass: readonlyrest
@@ -106,71 +105,13 @@ readonlyrest:
     response_if_req_forbidden: <h1>Forbidden</h1>
     
     # Default policy is to forbid everything, so let's define a whitelist
-
     access_control_rules:
 
-    # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
-#    - name: "::RO+ DEVELOPER::"
-#      type: allow
-#      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
-#
-#    - name: "::KIBANA-SRV::"
-#      # auth_key is good for testing, but replace it with `auth_key_sha1`!
-#      auth_key: kibana1:kibana1
-#      type: allow
-##
-#    # Cannot configure or edit dashboards and visualizations.
-#    - name: "::RO DEVELOPER::"
-#      type: allow
-#      kibana_access: ro
-#      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
-
-    - name: Accept requests from users in groups team1 on blog
+    - name: "::GETTER::"
       type: allow
-      groups: ["team1"]
-      indices: ["blog"]
+      methods: GET
+      indices: logstash-a-*
 
-    - name: Accept requests from users in group team2 on blog2
+    - name: "::SETTER::"
       type: allow
-      ldap_auth:
-        - name: "TouK"
-          groups: ["ksiegowosc", "test"]
-        - name: "example"
-          groups: ["group1", "group3"]
-      indices: ["blog2"]
-
-    users:
-
-    - username: user
-      auth_key_sha1: b2619aa1529dfdc4248e6edbf3c1b2a2b014cf6d
-      groups: ["team1"]
-
-    - username: b2
-      auth_key: b2:test2
-      groups: ["team2"]
-
-    ldaps:
-
-    - name: TouK
-      host: "ldap.touk.pl"
-      port: 636
-      ssl_enabled: true
-      ssl_trust_all_certs: true
-      search_user_base_DN: "ou=Touki,ou=People,dc=touk,dc=pl"
-      search_groups_base_DN: "ou=Group,dc=touk,dc=pl"
-      connection_pool_size: 10
-      connection_timeout_in_sec: 10
-      request_timeout_in_sec: 10
-      cache_ttl_in_sec: 60
-
-    - name: example
-      host: "localhost"
-      port: 389
-      ssl_enabled: false
-      bind_dn: "cn=admin,dc=example,dc=com"
-      bind_password: "password"
-      search_user_base_DN: "ou=People,dc=example,dc=com"
-      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      connection_pool_size: 10
-      connection_timeout_in_sec: 10
-      request_timeout_in_sec: 10
+      api_keys: 123

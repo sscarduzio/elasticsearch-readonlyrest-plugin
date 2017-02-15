@@ -1,7 +1,19 @@
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
 import com.google.common.collect.Lists;
-import com.unboundid.ldap.sdk.*;
+import com.unboundid.ldap.sdk.AsyncRequestID;
+import com.unboundid.ldap.sdk.BindResult;
+import com.unboundid.ldap.sdk.LDAPConnection;
+import com.unboundid.ldap.sdk.LDAPConnectionOptions;
+import com.unboundid.ldap.sdk.LDAPConnectionPool;
+import com.unboundid.ldap.sdk.LDAPException;
+import com.unboundid.ldap.sdk.ResultCode;
+import com.unboundid.ldap.sdk.SearchRequest;
+import com.unboundid.ldap.sdk.SearchResult;
+import com.unboundid.ldap.sdk.SearchResultEntry;
+import com.unboundid.ldap.sdk.SearchResultReference;
+import com.unboundid.ldap.sdk.SearchScope;
+import com.unboundid.ldap.sdk.SimpleBindRequest;
 import com.unboundid.util.ssl.SSLUtil;
 import com.unboundid.util.ssl.TrustAllTrustManager;
 import org.apache.logging.log4j.Logger;

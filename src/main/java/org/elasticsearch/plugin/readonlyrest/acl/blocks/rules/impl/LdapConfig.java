@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public class LdapConfig {
     private static int DEFAULT_LDAP_PORT = 389;
-    private static int DEFAULT_LDAP_CONNECTION_POOL_SIZE = 10;
+    private static int DEFAULT_LDAP_CONNECTION_POOL_SIZE = 30;
     private static Duration DEFAULT_LDAP_REQUEST_TIMEOUT = Duration.ofSeconds(1);
     private static Duration DEFAULT_LDAP_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
     private static Duration DEFAULT_LDAP_CACHE_TTL = Duration.ZERO;
@@ -50,9 +50,11 @@ public class LdapConfig {
 
     public static LdapConfig fromSettings(Settings s) throws ConfigMalformedException {
         String name = s.get(ATTRIBUTE_NAME);
-        if(name == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_NAME + "] attribute");
+        if(name == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_NAME +
+                "] attribute");
         String host = s.get(ATTRIBUTE_HOST);
-        if(host == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_HOST + "] attribute defined for LDAP [" + name + "]");
+        if(host == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_HOST +
+                "] attribute defined for LDAP [" + name + "]");
         boolean sslEnabled = s.getAsBoolean(ATTRIBUTE_SSL_ENABLED, DEFAULT_LDAP_SSL_ENABLED);
         boolean trustAllCerts = s.getAsBoolean(ATTRIBUTE_SSL_TRUST_ALL_CERTS, DEFAULT_LDAP_SSL_TRUST_ALL_CERTS);
         Optional<String> bindDn = Optional.ofNullable(s.get(ATTRIBUTE_BIND_DN));
@@ -63,20 +65,25 @@ public class LdapConfig {
         } else if(!bindDn.isPresent() && !bindPassword.isPresent()) {
             bindDnPassword = Optional.empty();
         } else {
-            throw new ConfigMalformedException("LDAP definition malformed - must configure both params [" + ATTRIBUTE_BIND_DN + ", " + ATTRIBUTE_BIND_PASSWORD +"]");
+            throw new ConfigMalformedException("LDAP definition malformed - must configure both params [" +
+                    ATTRIBUTE_BIND_DN + ", " + ATTRIBUTE_BIND_PASSWORD +"]");
         }
         String searchUserBaseDn = s.get(ATTRIBUTE_SEARCH_USER_BASE_DN);
-        if(searchUserBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_SEARCH_USER_BASE_DN + "] attribute defined for LDAP [" + name + "]");
+        if(searchUserBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
+                ATTRIBUTE_SEARCH_USER_BASE_DN + "] attribute defined for LDAP [" + name + "]");
         String searchGroupsBaseDn = s.get(ATTRIBUTE_SEARCH_GROUPS_BASE_DN);
-        if(searchGroupsBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_SEARCH_GROUPS_BASE_DN + "] attribute defined for LDAP [" + name + "]");
+        if(searchGroupsBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
+                ATTRIBUTE_SEARCH_GROUPS_BASE_DN + "] attribute defined for LDAP [" + name + "]");
         int port = s.getAsInt(ATTRIBUTE_PORT, DEFAULT_LDAP_PORT);
         int poolSize = s.getAsInt(ATTRIBUTE_CONNECTION_POOL_SIZE, DEFAULT_LDAP_CONNECTION_POOL_SIZE);
-        Duration connectionTimeout = Duration.ofSeconds(s.getAsLong(ATTRIBUTE_CONNECTION_TIMEOUT, DEFAULT_LDAP_CONNECTION_TIMEOUT.getSeconds()));
-        Duration requestTimeout = Duration.ofSeconds(s.getAsLong(ATTRIBUTE_REQUEST_TIMEOUT, DEFAULT_LDAP_REQUEST_TIMEOUT.getSeconds()));
+        Duration connectionTimeout = Duration.ofSeconds(
+                s.getAsLong(ATTRIBUTE_CONNECTION_TIMEOUT, DEFAULT_LDAP_CONNECTION_TIMEOUT.getSeconds()));
+        Duration requestTimeout = Duration.ofSeconds(
+                s.getAsLong(ATTRIBUTE_REQUEST_TIMEOUT, DEFAULT_LDAP_REQUEST_TIMEOUT.getSeconds()));
         Duration cacheTtl = Duration.ofSeconds(s.getAsLong(ATTRIBUTE_CACHE_TTL, DEFAULT_LDAP_CACHE_TTL.getSeconds()));
 
-        LdapClient client = new UnboundidLdapClient(host, port, bindDnPassword, searchUserBaseDn, searchGroupsBaseDn, poolSize,
-                connectionTimeout, requestTimeout, sslEnabled, trustAllCerts);
+        LdapClient client = new UnboundidLdapClient(host, port, bindDnPassword, searchUserBaseDn, searchGroupsBaseDn,
+                poolSize, connectionTimeout, requestTimeout, sslEnabled, trustAllCerts);
 
         return new LdapConfig(name,
                 cacheTtl.isZero() ? client : new LdapClientWithCacheDecorator(client, cacheTtl));

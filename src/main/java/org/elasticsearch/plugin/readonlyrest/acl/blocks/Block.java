@@ -23,8 +23,27 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.*;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.HashSet;
@@ -33,7 +52,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
+
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -231,7 +253,6 @@ public class Block {
             syncConditionsToCheck.add(new GroupsSyncRule(s, userList));
         } catch (RuleNotConfiguredException ignored) {
         }
-        // todo: log invalid settings
     }
 
     private void initAsyncConditions(Settings s, List<LdapConfig> ldapConfigs) {
