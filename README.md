@@ -61,10 +61,8 @@ readonlyrest:
     - name: Just certain indices, and read only
       type: allow
       actions: ["indices:data/read/*"]
-      indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
+      indices: ["product_catalogue-*"] # index aliases are taken in account!
 ```
-
-> The `<no-index>` is for matching those generic requests that don't actually  involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
 
 ### USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)
 ```yml
@@ -86,7 +84,7 @@ readonlyrest:
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*", "<no-index>"]
+      indices: ["logstash-*",]
 
     # We trust this server side component, full access granted via HTTP authentication
     - name: "::KIBANA-SRV::"
