@@ -27,8 +27,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Map;
-import java.util.TreeMap;
 
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
@@ -39,28 +39,27 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RES
 
 @Singleton
 public class ACL {
-  private final static String RULES_PREFIX = "readonlyrest.access_control_rules";
-  private final static String USERS_PREFIX = "readonlyrest.users";
+
+  private static final String RULES_PREFIX = "readonlyrest.access_control_rules";
+  private static final String USERS_PREFIX = "readonlyrest.users";
   private final ESLogger logger = Loggers.getLogger(getClass());
+
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
   private boolean basicAuthConfigured = false;
 
   @Inject
   public ACL(Settings s) {
-    Map<String, Settings> g = s.getGroups(RULES_PREFIX);
-    // Maintaining the order is not guaranteed, moving everything to tree map!
-    TreeMap<String, Settings> tmp = new TreeMap<>();
-    tmp.putAll(g);
-    g = tmp;
-    Map<String, Settings> users = s.getGroups(USERS_PREFIX);
-    for (String k : g.keySet()) {
-      Block block = new Block(g.get(k), new ArrayList<>(users.values()), logger);
+    Map<String, Settings> blocksMap = s.getGroups(RULES_PREFIX);
+
+    Collection<Settings> users = s.getGroups(USERS_PREFIX).values();
+    for (Integer i = 0; i < blocksMap.size(); i++) {
+      Block block = new Block(blocksMap.get(i.toString()), new ArrayList<>(users), logger);
       blocks.add(block);
       if (block.isAuthHeaderAccepted()) {
         basicAuthConfigured = true;
       }
-      logger.info("ADDING " + block.toString());
+      logger.info("ADDING as #" + i + ":\t" + block.toString());
     }
   }
 
