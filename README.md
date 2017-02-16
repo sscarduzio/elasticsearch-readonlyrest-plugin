@@ -94,7 +94,7 @@ readonlyrest:
 
     # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
     - name: "::RW DEVELOPER::"
-      auth_key: ro+:dev
+      auth_key: rw:dev
       type: allow
       kibana_access: rw
       indices: [".kibana", ".kibana-devnull", "logstash-*"]
