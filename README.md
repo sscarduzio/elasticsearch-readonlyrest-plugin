@@ -95,18 +95,18 @@ readonlyrest:
       type: allow
 
     # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
-    - name: "::RO+ DEVELOPER::"
+    - name: "::RW DEVELOPER::"
       auth_key: ro+:dev
       type: allow
-      kibana_access: ro+
-      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+      kibana_access: rw
+      indices: [".kibana", ".kibana-devnull", "logstash-*"]
 
     # Cannot configure or edit dashboards and visualizations.
     - name: "::RO DEVELOPER::"
       auth_key: ro:dev
       type: allow
       kibana_access: ro
-      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+      indices: [".kibana", ".kibana-devnull", "logstash-*"]
 
     # No authentication required to read from this index
     - name: "::PUBLIC SEARCH::"
@@ -140,17 +140,17 @@ readonlyrest:
     - name: Accept requests from users in group team1 on index1
       type: allow
       groups: ["team1"]
-      uri_re: ^/index1/.*
+      indices: ["index1"]
 
     - name: Accept requests from users in group team2 on index2
       type: allow
       groups: ["team2"]
-      uri_re: ^/index2/.*
+      indices: ["index2"]
 
     - name: Accept requests from users in groups team1 or team2 on index3
       type: allow
       groups: ["team1", "team2"]
-      uri_re: ^/index3/.*
+      indices: ["index3"]
     
     users:
     
