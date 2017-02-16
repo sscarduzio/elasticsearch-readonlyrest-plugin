@@ -19,7 +19,7 @@
 buildscript {
     ext {
         publishedPluginVersion = '1.13.2'
-        pluginVersion = '1.13.3-pre1'
+        pluginVersion = '1.13.3-pre2'
         esVersion = '5.2.0'
     }
     repositories {
