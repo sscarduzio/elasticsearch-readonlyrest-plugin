@@ -19,6 +19,9 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import com.google.common.collect.Sets;
+
+import main.java.org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthRule;
+
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -102,6 +105,10 @@ public class Block {
     try {
       conditionsToCheck.add(new AuthKeySha256Rule(s));
       authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException e) {
+    }
+    try {
+      conditionsToCheck.add(new ProxyAuthRule(s));
     } catch (RuleNotConfiguredException e) {
     }
     try {

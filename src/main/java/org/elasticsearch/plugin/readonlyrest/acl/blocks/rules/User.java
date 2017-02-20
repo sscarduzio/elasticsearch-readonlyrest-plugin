@@ -22,6 +22,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthRule;
 
 import java.util.Arrays;
 import java.util.List;
@@ -53,6 +54,13 @@ public class User {
     try {
       if (this.authKeyRule == null) {
         this.authKeyRule = new AuthKeySha256Rule(userProperties);
+      }
+    } catch (RuleNotConfiguredException e) {
+    }
+    
+    try {
+      if (this.authKeyRule == null) {
+        this.authKeyRule = new ProxyAuthRule(userProperties);
       }
     } catch (RuleNotConfiguredException e) {
     }
