@@ -61,10 +61,8 @@ readonlyrest:
     - name: Just certain indices, and read only
       type: allow
       actions: ["indices:data/read/*"]
-      indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
+      indices: ["product_catalogue-*"] # index aliases are taken in account!
 ```
-
-> The `<no-index>` is for matching those generic requests that don't actually  involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
 
 ### USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)
 ```yml
@@ -86,7 +84,7 @@ readonlyrest:
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*", "<no-index>"]
+      indices: ["logstash-*",]
 
     # We trust this server side component, full access granted via HTTP authentication
     - name: "::KIBANA-SRV::"
@@ -95,18 +93,18 @@ readonlyrest:
       type: allow
 
     # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
-    - name: "::RO+ DEVELOPER::"
-      auth_key: ro+:dev
+    - name: "::RW DEVELOPER::"
+      auth_key: rw:dev
       type: allow
-      kibana_access: ro+
-      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+      kibana_access: rw
+      indices: [".kibana", ".kibana-devnull", "logstash-*"]
 
     # Cannot configure or edit dashboards and visualizations.
     - name: "::RO DEVELOPER::"
       auth_key: ro:dev
       type: allow
       kibana_access: ro
-      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+      indices: [".kibana", ".kibana-devnull", "logstash-*"]
 
     # No authentication required to read from this index
     - name: "::PUBLIC SEARCH::"
@@ -140,17 +138,17 @@ readonlyrest:
     - name: Accept requests from users in group team1 on index1
       type: allow
       groups: ["team1"]
-      uri_re: ^/index1/.*
+      indices: ["index1"]
 
     - name: Accept requests from users in group team2 on index2
       type: allow
       groups: ["team2"]
-      uri_re: ^/index2/.*
+      indices: ["index2"]
 
     - name: Accept requests from users in groups team1 or team2 on index3
       type: allow
       groups: ["team1", "team2"]
-      uri_re: ^/index3/.*
+      indices: ["index3"]
     
     users:
     
