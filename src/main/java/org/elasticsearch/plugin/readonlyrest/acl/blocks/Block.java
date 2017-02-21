@@ -165,13 +165,13 @@ public class Block {
     private BlockExitResult finishWithMatchResult(RequestContext rc) {
         logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
         rc.commit();
-        return BlockExitResult.Match(this);
+        return BlockExitResult.match(this);
     }
 
     private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
         logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
         rc.reset();
-        return BlockExitResult.NoMatch();
+        return BlockExitResult.noMatch();
     }
 
     @Override

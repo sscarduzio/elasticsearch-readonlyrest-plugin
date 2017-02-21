@@ -88,7 +88,7 @@ public class ACL {
                 },
                 nothing -> {
                     logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
-                    return BlockExitResult.NoMatch();
+                    return BlockExitResult.noMatch();
                 });
     }
 

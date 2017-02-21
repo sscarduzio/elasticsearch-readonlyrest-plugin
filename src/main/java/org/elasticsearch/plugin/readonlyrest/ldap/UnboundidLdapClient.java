@@ -32,21 +32,29 @@ import java.util.stream.Collectors;
 public class UnboundidLdapClient implements LdapClient {
     private static final Logger logger = Loggers.getLogger(UnboundidLdapClient.class);
 
+    public static int DEFAULT_LDAP_PORT = 389;
+    public static int DEFAULT_LDAP_CONNECTION_POOL_SIZE = 30;
+    public static Duration DEFAULT_LDAP_REQUEST_TIMEOUT = Duration.ofSeconds(1);
+    public static Duration DEFAULT_LDAP_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
+    public static Duration DEFAULT_LDAP_CACHE_TTL = Duration.ZERO;
+    public static boolean DEFAULT_LDAP_SSL_ENABLED = true;
+    public static boolean DEFAULT_LDAP_SSL_TRUST_ALL_CERTS = false;
+
     private final String searchUserBaseDN;
     private final String searchGroupBaseDN;
     private final LDAPConnectionPool connectionPool;
     private final Long timeout;
 
-    public UnboundidLdapClient(String host,
-                               int port,
-                               Optional<BindDnPassword> bindDnPassword,
-                               String searchUserBaseDN,
-                               String searchGroupBaseDN,
-                               int poolSize,
-                               Duration connectionTimeout,
-                               Duration requestTimeout,
-                               boolean sslEnabled,
-                               boolean trustAllCerts) {
+    private UnboundidLdapClient(String host,
+                                int port,
+                                Optional<BindDnPassword> bindDnPassword,
+                                String searchUserBaseDN,
+                                String searchGroupBaseDN,
+                                int poolSize,
+                                Duration connectionTimeout,
+                                Duration requestTimeout,
+                                boolean sslEnabled,
+                                boolean trustAllCerts) {
         this.searchUserBaseDN = searchUserBaseDN;
         this.searchGroupBaseDN = searchGroupBaseDN;
         this.timeout = requestTimeout.toMillis();
@@ -69,14 +77,14 @@ public class UnboundidLdapClient implements LdapClient {
                 BindDnPassword dnPassword = bindDnPassword.get();
                 BindResult result = connection.bind(dnPassword.getDn(), dnPassword.getPassword());
                 if (!ResultCode.SUCCESS.equals(result.getResultCode())) {
-                    throw new LdapClientInitializationException("LDAP binding problem - returned [" + result.getResultString() + "]");
+                    throw new LdapClientException.InitializationException("LDAP binding problem - returned [" + result.getResultString() + "]");
                 }
             }
             connectionPool = new LDAPConnectionPool(connection, poolSize);
         } catch (GeneralSecurityException e) {
-            throw new LdapClientInitializationException("SSL Factory creation problem", e);
+            throw new LdapClientException.InitializationException("SSL Factory creation problem", e);
         } catch (LDAPException e) {
-            throw new LdapClientInitializationException("LDAP connection problem", e);
+            throw new LdapClientException.InitializationException("LDAP connection problem", e);
         }
     }
 
@@ -126,7 +134,7 @@ public class UnboundidLdapClient implements LdapClient {
                             logger.debug(String.format("LDAP getting user CN returned error [%s]", error.getResultString()));
                             return Optional.empty();
                         }
-                        throw new RuntimeException(t);
+                        throw new LdapClientException.SearchException(t);
                     });
         } catch (LDAPException e) {
             logger.error("LDAP getting user operation failed", e);
@@ -183,7 +191,7 @@ public class UnboundidLdapClient implements LdapClient {
             logger.error("LDAP authenticate operation failed");
             return false;
         } finally {
-            if(connection != null) {
+            if (connection != null) {
                 connectionPool.releaseAndReAuthenticateConnection(connection);
             }
         }
@@ -235,6 +243,7 @@ public class UnboundidLdapClient implements LdapClient {
 
         @Override
         public void searchReferenceReturned(SearchResultReference searchReference) {
+            // nothing to do
         }
     }
 
@@ -253,6 +262,65 @@ public class UnboundidLdapClient implements LdapClient {
 
         public String getPassword() {
             return password;
+        }
+    }
+
+    public static class Builder {
+        private final String host;
+        private final String searchUserBaseDN;
+        private final String searchGroupBaseDN;
+        private int port;
+        private Optional<BindDnPassword> bindDnPassword = Optional.empty();
+        private int poolSize;
+        private Duration connectionTimeout;
+        private Duration requestTimeout;
+        private boolean sslEnabled;
+        private boolean trustAllCerts;
+
+        public Builder(String host, String searchUserBaseDN, String searchGroupBaseDN) {
+            this.host = host;
+            this.searchUserBaseDN = searchUserBaseDN;
+            this.searchGroupBaseDN = searchGroupBaseDN;
+        }
+
+        public Builder setPort(int port) {
+            this.port = port;
+            return this;
+        }
+
+        public Builder setBindDnPassword(BindDnPassword bindDnPassword) {
+            this.bindDnPassword = Optional.ofNullable(bindDnPassword);
+            return this;
+        }
+
+        public Builder setPoolSize(int poolSize) {
+            this.poolSize = poolSize;
+            return this;
+        }
+
+        public Builder setConnectionTimeout(Duration connectionTimeout) {
+            this.connectionTimeout = connectionTimeout;
+            return this;
+        }
+
+        public Builder setRequestTimeout(Duration requestTimeout) {
+            this.requestTimeout = requestTimeout;
+            return this;
+        }
+
+        public Builder setSslEnabled(boolean sslEnabled) {
+            this.sslEnabled = sslEnabled;
+            return this;
+        }
+
+        public Builder setTrustAllCerts(boolean trustAllCerts) {
+            this.trustAllCerts = trustAllCerts;
+            return this;
+        }
+
+        public UnboundidLdapClient build() {
+            return new UnboundidLdapClient(host, port, bindDnPassword, searchUserBaseDN, searchGroupBaseDN,
+                    poolSize, connectionTimeout, requestTimeout, sslEnabled, trustAllCerts);
         }
     }
 }

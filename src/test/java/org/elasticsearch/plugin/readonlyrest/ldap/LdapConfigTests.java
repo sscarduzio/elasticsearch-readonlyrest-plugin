@@ -12,7 +12,7 @@ public class LdapConfigTests {
     @ClassRule
     public static LdapContainer ldapContainer = LdapContainer.create("/test_example.ldif");
 
-    @Test(expected = LdapClientInitializationException.class)
+    @Test(expected = LdapClientException.InitializationException.class)
     public void testSuccessfulCreationFromRequiredSettings() {
         Settings settings = Settings.builder()
                 .put("name", "Ldap1")
@@ -65,7 +65,7 @@ public class LdapConfigTests {
         LdapConfig.fromSettings(settings);
     }
 
-    @Test(expected = LdapClientInitializationException.class)
+    @Test(expected = LdapClientException.InitializationException.class)
     public void testBindDnAndPasswordAreNotRequiredParam() {
         Settings settings = Settings.builder()
                 .put("name", "Ldap1")

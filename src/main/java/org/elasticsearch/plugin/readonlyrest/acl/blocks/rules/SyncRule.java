@@ -29,7 +29,7 @@ public abstract class SyncRule extends Rule {
 
   private final String KEY;
 
-  public SyncRule(Settings s) {
+  public SyncRule(Settings settings) {
     super();
     KEY = mkKey(getClass());
 

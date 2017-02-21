@@ -10,13 +10,6 @@ import java.time.Duration;
 import java.util.Optional;
 
 public class LdapConfig {
-    private static int DEFAULT_LDAP_PORT = 389;
-    private static int DEFAULT_LDAP_CONNECTION_POOL_SIZE = 30;
-    private static Duration DEFAULT_LDAP_REQUEST_TIMEOUT = Duration.ofSeconds(1);
-    private static Duration DEFAULT_LDAP_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
-    private static Duration DEFAULT_LDAP_CACHE_TTL = Duration.ZERO;
-    private static boolean DEFAULT_LDAP_SSL_ENABLED = true;
-    private static boolean DEFAULT_LDAP_SSL_TRUST_ALL_CERTS = false;
 
     private static String ATTRIBUTE_NAME = "name";
     private static String ATTRIBUTE_HOST = "host";
@@ -48,45 +41,103 @@ public class LdapConfig {
         return client;
     }
 
-    public static LdapConfig fromSettings(Settings s) throws ConfigMalformedException {
-        String name = s.get(ATTRIBUTE_NAME);
-        if(name == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_NAME +
-                "] attribute");
-        String host = s.get(ATTRIBUTE_HOST);
-        if(host == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_HOST +
-                "] attribute defined for LDAP [" + name + "]");
-        boolean sslEnabled = s.getAsBoolean(ATTRIBUTE_SSL_ENABLED, DEFAULT_LDAP_SSL_ENABLED);
-        boolean trustAllCerts = s.getAsBoolean(ATTRIBUTE_SSL_TRUST_ALL_CERTS, DEFAULT_LDAP_SSL_TRUST_ALL_CERTS);
-        Optional<String> bindDn = Optional.ofNullable(s.get(ATTRIBUTE_BIND_DN));
-        Optional<String> bindPassword = Optional.ofNullable(s.get(ATTRIBUTE_BIND_PASSWORD));
-        Optional<UnboundidLdapClient.BindDnPassword> bindDnPassword;
-        if(bindDn.isPresent() && bindPassword.isPresent()) {
-            bindDnPassword = Optional.of(new UnboundidLdapClient.BindDnPassword(bindDn.get(), bindPassword.get()));
-        } else if(!bindDn.isPresent() && !bindPassword.isPresent()) {
-            bindDnPassword = Optional.empty();
-        } else {
-            throw new ConfigMalformedException("LDAP definition malformed - must configure both params [" +
-                    ATTRIBUTE_BIND_DN + ", " + ATTRIBUTE_BIND_PASSWORD +"]");
-        }
-        String searchUserBaseDn = s.get(ATTRIBUTE_SEARCH_USER_BASE_DN);
-        if(searchUserBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
-                ATTRIBUTE_SEARCH_USER_BASE_DN + "] attribute defined for LDAP [" + name + "]");
-        String searchGroupsBaseDn = s.get(ATTRIBUTE_SEARCH_GROUPS_BASE_DN);
-        if(searchGroupsBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
-                ATTRIBUTE_SEARCH_GROUPS_BASE_DN + "] attribute defined for LDAP [" + name + "]");
-        int port = s.getAsInt(ATTRIBUTE_PORT, DEFAULT_LDAP_PORT);
-        int poolSize = s.getAsInt(ATTRIBUTE_CONNECTION_POOL_SIZE, DEFAULT_LDAP_CONNECTION_POOL_SIZE);
-        Duration connectionTimeout = Duration.ofSeconds(
-                s.getAsLong(ATTRIBUTE_CONNECTION_TIMEOUT, DEFAULT_LDAP_CONNECTION_TIMEOUT.getSeconds()));
-        Duration requestTimeout = Duration.ofSeconds(
-                s.getAsLong(ATTRIBUTE_REQUEST_TIMEOUT, DEFAULT_LDAP_REQUEST_TIMEOUT.getSeconds()));
-        Duration cacheTtl = Duration.ofSeconds(s.getAsLong(ATTRIBUTE_CACHE_TTL, DEFAULT_LDAP_CACHE_TTL.getSeconds()));
+    public static LdapConfig fromSettings(Settings settings) throws ConfigMalformedException {
+        String name = nameFrom(settings);
+        UnboundidLdapClient.Builder builder =
+                new UnboundidLdapClient.Builder(
+                        hostFrom(settings, name),
+                        searchUserBaseDnFrom(settings, name),
+                        searchGroupsBaseDnFrom(settings, name))
+                        .setPort(portFrom(settings))
+                        .setSslEnabled(sslEnabledFrom(settings))
+                        .setTrustAllCerts(trustAllCertsFrom(settings))
+                        .setPoolSize(poolSizeFrom(settings))
+                        .setConnectionTimeout(connectionTimeoutFrom(settings))
+                        .setRequestTimeout(requestTimeoutFrom(settings));
 
-        LdapClient client = new UnboundidLdapClient(host, port, bindDnPassword, searchUserBaseDn, searchGroupsBaseDn,
-                poolSize, connectionTimeout, requestTimeout, sslEnabled, trustAllCerts);
+        Optional<UnboundidLdapClient.BindDnPassword> bindDnPassword = bindDNPasswordFrom(settings);
+        Duration cacheTtl = cacheTtlFrom(settings);
+
+        LdapClient client = bindDnPassword.map(bindDnPassword1 ->
+                builder.setBindDnPassword(bindDnPassword1).build())
+                .orElseGet(builder::build);
 
         return new LdapConfig(name,
                 cacheTtl.isZero() ? client : new LdapClientWithCacheDecorator(client, cacheTtl));
     }
 
+    private static String nameFrom(Settings settings) {
+        String name = settings.get(ATTRIBUTE_NAME);
+        if (name == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_NAME +
+                "] attribute");
+        return name;
+    }
+
+    private static String hostFrom(Settings settings, String name) {
+        String host = settings.get(ATTRIBUTE_HOST);
+        if (host == null) throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_HOST +
+                "] attribute defined for LDAP [" + name + "]");
+        return host;
+    }
+
+    private static boolean sslEnabledFrom(Settings settings) {
+        return settings.getAsBoolean(ATTRIBUTE_SSL_ENABLED, UnboundidLdapClient.DEFAULT_LDAP_SSL_ENABLED);
+    }
+
+    private static boolean trustAllCertsFrom(Settings settings) {
+        return settings.getAsBoolean(ATTRIBUTE_SSL_TRUST_ALL_CERTS, UnboundidLdapClient.DEFAULT_LDAP_SSL_TRUST_ALL_CERTS);
+    }
+
+    private static Optional<UnboundidLdapClient.BindDnPassword> bindDNPasswordFrom(Settings settings) {
+        Optional<String> bindDn = Optional.ofNullable(settings.get(ATTRIBUTE_BIND_DN));
+        Optional<String> bindPassword = Optional.ofNullable(settings.get(ATTRIBUTE_BIND_PASSWORD));
+        Optional<UnboundidLdapClient.BindDnPassword> bindDnPassword;
+        if (bindDn.isPresent() && bindPassword.isPresent()) {
+            bindDnPassword = Optional.of(new UnboundidLdapClient.BindDnPassword(bindDn.get(), bindPassword.get()));
+        } else if (!bindDn.isPresent() && !bindPassword.isPresent()) {
+            bindDnPassword = Optional.empty();
+        } else {
+            throw new ConfigMalformedException("LDAP definition malformed - must configure both params [" +
+                    ATTRIBUTE_BIND_DN + ", " + ATTRIBUTE_BIND_PASSWORD + "]");
+        }
+        return bindDnPassword;
+    }
+
+    private static String searchUserBaseDnFrom(Settings settings, String name) {
+        String searchUserBaseDn = settings.get(ATTRIBUTE_SEARCH_USER_BASE_DN);
+        if (searchUserBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
+                ATTRIBUTE_SEARCH_USER_BASE_DN + "] attribute defined for LDAP [" + name + "]");
+        return searchUserBaseDn;
+    }
+
+    private static String searchGroupsBaseDnFrom(Settings settings, String name) {
+        String searchGroupsBaseDn = settings.get(ATTRIBUTE_SEARCH_GROUPS_BASE_DN);
+        if (searchGroupsBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
+                ATTRIBUTE_SEARCH_GROUPS_BASE_DN + "] attribute defined for LDAP [" + name + "]");
+        return searchGroupsBaseDn;
+    }
+
+    private static int portFrom(Settings settings) {
+        return settings.getAsInt(ATTRIBUTE_PORT, UnboundidLdapClient.DEFAULT_LDAP_PORT);
+    }
+
+    private static int poolSizeFrom(Settings settings) {
+        return settings.getAsInt(ATTRIBUTE_CONNECTION_POOL_SIZE,
+                UnboundidLdapClient.DEFAULT_LDAP_CONNECTION_POOL_SIZE);
+    }
+
+    private static Duration connectionTimeoutFrom(Settings settings) {
+        return Duration.ofSeconds(settings.getAsLong(ATTRIBUTE_CONNECTION_TIMEOUT,
+                UnboundidLdapClient.DEFAULT_LDAP_CONNECTION_TIMEOUT.getSeconds()));
+    }
+
+    private static Duration requestTimeoutFrom(Settings settings) {
+        return Duration.ofSeconds(settings.getAsLong(ATTRIBUTE_REQUEST_TIMEOUT,
+                UnboundidLdapClient.DEFAULT_LDAP_REQUEST_TIMEOUT.getSeconds()));
+    }
+
+    private static Duration cacheTtlFrom(Settings settings) {
+        return Duration.ofSeconds(settings.getAsLong(ATTRIBUTE_CACHE_TTL,
+                UnboundidLdapClient.DEFAULT_LDAP_CACHE_TTL.getSeconds()));
+    }
 }

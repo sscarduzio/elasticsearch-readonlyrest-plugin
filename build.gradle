@@ -89,7 +89,7 @@ checkstyleMain.enabled = true
 checkstyleTest.enabled = true
 
 // FIXME dependency license check needs to be enabled
-dependencyLicenses.enabled = false
+dependencyLicenses.enabled = true
 
 // FIXME thirdparty audit needs to be enabled
 thirdPartyAudit.enabled = false

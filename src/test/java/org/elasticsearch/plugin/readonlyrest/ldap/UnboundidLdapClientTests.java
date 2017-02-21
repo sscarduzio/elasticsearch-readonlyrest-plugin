@@ -14,18 +14,18 @@ public class UnboundidLdapClientTests {
     @ClassRule
     public static LdapContainer ldapContainer = LdapContainer.create("/test_example.ldif");
 
-    private LdapClient client = new UnboundidLdapClient(
+    private LdapClient client = new UnboundidLdapClient.Builder(
             ldapContainer.getLdapHost(),
-            ldapContainer.getLdapPort(),
-            Optional.of(ldapContainer.getBindDNAndPassword()),
             "ou=People,dc=example,dc=com",
-            "ou=Groups,dc=example,dc=com",
-            10,
-            Duration.ofSeconds(1),
-            Duration.ofSeconds(1),
-            false,
-            false
-    );
+            "ou=Groups,dc=example,dc=com")
+            .setPort(ldapContainer.getLdapPort())
+            .setBindDnPassword(ldapContainer.getBindDNAndPassword())
+            .setPoolSize(10)
+            .setConnectionTimeout(Duration.ofSeconds(1))
+            .setRequestTimeout(Duration.ofSeconds(1))
+            .setSslEnabled(false)
+            .setTrustAllCerts(false)
+            .build();
 
     @Test
     public void testAuthenticationSuccess() throws Exception {

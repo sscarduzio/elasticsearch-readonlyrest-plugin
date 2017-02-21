@@ -46,7 +46,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
 
     public UnboundidLdapClient.BindDnPassword getBindDNAndPassword() {
         List<String> dnParts = Lists.newArrayList(LDAP_DOMAIN.split("\\."));
-        if (dnParts.isEmpty()) throw new RuntimeException("Wrong domain defined " + LDAP_DOMAIN);
+        if (dnParts.isEmpty()) throw new IllegalArgumentException("Wrong domain defined " + LDAP_DOMAIN);
         String dnString = dnParts.stream().map(part -> "dc=" + part).reduce("", (s, s2) -> s + "," + s2);
         String bindDN = String.format("cn=%s%s", LDAP_ADMIN, dnString);
         return new UnboundidLdapClient.BindDnPassword(bindDN, LDAP_ADMIN_PASSWORD);
@@ -58,7 +58,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
             initialDataLdifPath = Paths.get(LdapContainer.class.getResource(resourceFile).toURI());
         } catch (URISyntaxException e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
         LdapContainer container = new LdapContainer(
                 new ImageFromDockerfile()
@@ -86,12 +86,12 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
                     try {
                         initLdap(connection.get(), initialDataLdif);
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        throw new IllegalStateException(e);
                     } finally {
                         connection.get().close();
                     }
                 } else {
-                    throw new RuntimeException("Cannot connect");
+                    throw new IllegalStateException("Cannot connect");
                 }
             }
 

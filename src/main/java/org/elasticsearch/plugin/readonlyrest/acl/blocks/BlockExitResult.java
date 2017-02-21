@@ -45,11 +45,11 @@ public class BlockExitResult {
     return "{ block: " + block == null ? "<none>" : block.getName() + " match: " + isMatch() + "}";
   }
 
-  public static BlockExitResult Match(Block block) {
+  public static BlockExitResult match(Block block) {
     return new BlockExitResult(block, true);
   }
 
-  public static BlockExitResult NoMatch() {
+  public static BlockExitResult noMatch() {
     return new BlockExitResult(null, false);
   }
 }
