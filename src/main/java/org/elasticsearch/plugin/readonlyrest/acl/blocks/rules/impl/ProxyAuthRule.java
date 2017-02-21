@@ -22,9 +22,7 @@ import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
@@ -38,12 +36,10 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 public class ProxyAuthRule extends Rule implements UserRule {
 
   private static final String HEADER = "X-Forwarded-User";
-  private final Logger logger;
   private List<String> userList;
   
   public ProxyAuthRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    logger = Loggers.getLogger(getClass());
     String[] users = s.getAsArray(getKey());
     if (users != null && users.length > 0) {
       userList = Lists.newArrayList();
@@ -79,7 +75,7 @@ public class ProxyAuthRule extends Rule implements UserRule {
     }
 
     for(String user: userList) {
-      if (user.equals("*")) {
+      if ("*".equals(user)) {
         return MATCH;
       }
       if (user.equals(h)) {

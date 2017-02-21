@@ -107,9 +107,7 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
     try {
-      logger.info("Checking ProxyAuthRule settings");
       conditionsToCheck.add(new ProxyAuthRule(s));
-      logger.info("Found ProxyAuthRule settings");
     } catch (RuleNotConfiguredException e) {
     }
     try {
