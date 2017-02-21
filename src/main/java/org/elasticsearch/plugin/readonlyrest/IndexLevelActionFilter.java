@@ -49,7 +49,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
-      ClusterService clusterService, ThreadPool threadPool) {
+                                ClusterService clusterService, ThreadPool threadPool) {
     super(settings);
     this.conf = conf;
     this.clusterService = clusterService;
