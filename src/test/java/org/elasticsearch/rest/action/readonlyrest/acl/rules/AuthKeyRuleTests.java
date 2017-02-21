@@ -20,6 +20,7 @@ package org.elasticsearch.rest.action.readonlyrest.acl.rules;
 
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
+import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
@@ -27,8 +28,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
 import org.mockito.Mockito;
-
-import java.util.Base64;
 
 import static org.mockito.Mockito.when;
 
@@ -46,8 +45,8 @@ public class AuthKeyRuleTests extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     Rule r = new AuthKeyRule(Settings.builder()
-                                     .put("auth_key", configured)
-                                     .build());
+                               .put("auth_key", configured)
+                               .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -55,8 +54,10 @@ public class AuthKeyRuleTests extends TestCase {
   }
 
   public void testSimple() throws RuleNotConfiguredException {
-    RuleExitResult res = match("logstash:logstash",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes()));
+    RuleExitResult res = match(
+      "logstash:logstash",
+      "Basic " + Base64.encodeBytes("logstash:logstash".getBytes())
+    );
     assertTrue(res.isMatch());
   }
 
