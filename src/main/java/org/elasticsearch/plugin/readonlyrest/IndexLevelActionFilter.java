@@ -72,7 +72,7 @@ public class IndexLevelActionFilter extends ActionFilter.Simple {
   }
 
   @Override
-  public boolean apply(String action, ActionRequest actionRequest, ActionListener<?> listener) {
+  public boolean apply(String action, ActionRequest<?> actionRequest, ActionListener<?> listener) {
 
     // Skip if disabled
     if (!conf.enabled) {
