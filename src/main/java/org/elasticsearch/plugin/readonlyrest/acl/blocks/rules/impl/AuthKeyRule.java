@@ -68,6 +68,7 @@ public class AuthKeyRule extends Rule {
       try {
         return new String(Base64.decode(authHeader)).split(":")[0];
       } catch (Exception e) {
+        logger.error("Could not understand authorization header: " + headers.get("Authorization"));
         e.printStackTrace();
       }
     }
