@@ -83,10 +83,9 @@ public class RequestContext {
   ));
 
   private final Logger logger = Loggers.getLogger(getClass());
-  private final RestChannel channel;
   private final RestRequest request;
   private final String action;
-  private final ActionRequest actionRequest;
+  private final ActionRequest<?> actionRequest;
   private final String id;
   private final Map<String, String> headers;
   private final ThreadPool threadPool;
@@ -99,9 +98,8 @@ public class RequestContext {
 
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
-      ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {
+      ActionRequest<?> actionRequest, ClusterService clusterService, ThreadPool threadPool) {
     this.sideEffects = new RequestSideEffects(this);
-    this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
@@ -179,7 +177,7 @@ public class RequestContext {
           @Override
           public Void run() {
             String[] indices = new String[0];
-            ActionRequest ar = actionRequest;
+            ActionRequest<?> ar = actionRequest;
 
             if (ar instanceof CompositeIndicesRequest) {
               CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
