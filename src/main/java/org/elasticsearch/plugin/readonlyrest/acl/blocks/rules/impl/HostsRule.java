@@ -93,10 +93,7 @@ public class HostsRule extends Rule {
 
     if (acceptXForwardedForHeader && xForwardedForHeader != null) {
       // Give it a try with the header
-      boolean attemptXFwdFor = matchesAddress(xForwardedForHeader, null);
-      if (attemptXFwdFor) {
-        return true;
-      }
+      return matchesAddress(xForwardedForHeader, null);
     }
     for (String allowedAddress : allowedAddresses) {
       if (allowedAddress.indexOf("/") > 0) {
