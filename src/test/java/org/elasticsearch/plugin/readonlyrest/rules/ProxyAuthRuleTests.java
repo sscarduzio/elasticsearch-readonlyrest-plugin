@@ -63,7 +63,7 @@ public class ProxyAuthRuleTests extends TestCase {
   }
 
   public void testEmpty() throws RuleNotConfiguredException {
-	    RuleExitResult res = match("1234567890", "");
-	    assertFalse(res.isMatch());
-	  }
+    RuleExitResult res = match("1234567890", "");
+    assertFalse(res.isMatch());
+  }
 }

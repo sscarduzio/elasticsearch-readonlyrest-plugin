@@ -22,24 +22,28 @@ import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthRule extends AuthKeyRule {
+public class ProxyAuthRule extends Rule implements UserRule {
 
   private static final String HEADER = "X-Forwarded-User";
+  private final Logger logger;
   private List<String> userList;
   
   public ProxyAuthRule(Settings s) throws RuleNotConfiguredException {
     super(s);
-    
+    logger = Loggers.getLogger(getClass());
     String[] users = s.getAsArray(getKey());
     if (users != null && users.length > 0) {
       userList = Lists.newArrayList();
@@ -65,17 +69,22 @@ public class ProxyAuthRule extends AuthKeyRule {
   public RuleExitResult match(RequestContext rc) {
     String h = getUser(rc.getHeaders());
     
-    if (h == null)
-      return NO_MATCH;
     
-    if (h.length() == 0)
+    if (h == null) {
       return NO_MATCH;
+    }
+    
+    if (h.length() == 0) {
+      return NO_MATCH;
+    }
 
     for(String user: userList) {
-      if (user.equals("*"))
+      if (user.equals("*")) {
         return MATCH;
-      if (user.equals(h))
+      }
+      if (user.equals(h)) {
         return MATCH;
+      }
     }
   
     return NO_MATCH;

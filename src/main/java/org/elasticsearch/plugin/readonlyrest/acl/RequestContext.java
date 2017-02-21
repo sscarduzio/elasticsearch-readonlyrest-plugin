@@ -379,7 +379,7 @@ public class RequestContext {
 
     String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
     if (loggedInAs == null)
-    	loggedInAs = ProxyAuthRule.getUser(getHeaders());
+      loggedInAs = ProxyAuthRule.getUser(getHeaders());
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";

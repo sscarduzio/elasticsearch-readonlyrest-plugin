@@ -26,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 
 import java.util.Base64;
 import java.util.Map;
@@ -33,7 +34,7 @@ import java.util.Map;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeyRule extends Rule {
+public class AuthKeyRule extends Rule implements UserRule {
   private static final Logger logger = Loggers.getLogger(AuthKeyRule.class);
 
   protected String authKey;

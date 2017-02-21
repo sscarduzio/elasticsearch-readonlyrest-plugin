@@ -20,8 +20,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import com.google.common.collect.Sets;
 
-import main.java.org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthRule;
-
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -40,6 +38,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForRule;
@@ -108,7 +107,9 @@ public class Block {
     } catch (RuleNotConfiguredException e) {
     }
     try {
+      logger.info("Checking ProxyAuthRule settings");
       conditionsToCheck.add(new ProxyAuthRule(s));
+      logger.info("Found ProxyAuthRule settings");
     } catch (RuleNotConfiguredException e) {
     }
     try {
