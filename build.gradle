@@ -20,7 +20,7 @@ buildscript {
     ext {
         publishedPluginVersion = '1.13.2'
         pluginVersion = '1.13.3'
-        esVersion = '5.0.2'
+        esVersion = '5.0.1'
     }
     repositories {
         mavenLocal()
