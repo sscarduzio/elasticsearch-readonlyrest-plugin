@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -57,20 +56,16 @@ public class ACL {
 
     @Inject
     public ACL(Settings s) {
-        Map<String, Settings> g = s.getGroups(RULES_PREFIX);
-        // Maintaining the order is not guaranteed, moving everything to tree map!
-        TreeMap<String, Settings> tmp = new TreeMap<>();
-        tmp.putAll(g);
-        g = tmp;
+        Map<String, Settings> blocksMap = s.getGroups(RULES_PREFIX);
         List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values());
         List<LdapConfig> ldaps = parseLdapSettings(s.getGroups(LDAPS_PREFIX).values());
-        for (String k : g.keySet()) {
-            Block block = new Block(g.get(k), users, ldaps, logger);
+        for (Integer i = 0; i < blocksMap.size(); i++) {
+            Block block = new Block(blocksMap.get(i.toString()), users, ldaps, logger);
             blocks.add(block);
             if (block.isAuthHeaderAccepted()) {
                 basicAuthConfigured = true;
             }
-            logger.info("ADDING " + block.toString());
+            logger.info("ADDING as #" + i + ":\t" + block.toString());
         }
     }
 

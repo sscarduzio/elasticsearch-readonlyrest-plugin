@@ -23,6 +23,7 @@ buildscript {
         esVersion = '5.2.0'
     }
     repositories {
+        mavenLocal()
         mavenCentral()
         jcenter()
     }
