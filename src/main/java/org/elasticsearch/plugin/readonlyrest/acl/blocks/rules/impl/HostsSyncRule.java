@@ -42,7 +42,7 @@ public class HostsSyncRule extends SyncRule {
   private Boolean acceptXForwardedForHeader;
 
   public HostsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
     String[] a = s.getAsArray("hosts");
     if (a != null && a.length > 0) {

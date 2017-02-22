@@ -30,7 +30,7 @@ public class MaxBodyLengthSyncRule extends SyncRule {
   private Integer maxBodyLength;
 
   public MaxBodyLengthSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     maxBodyLength = s.getAsInt("maxBodyLength", null);
     if (maxBodyLength == null) {
       throw new RuleNotConfiguredException();

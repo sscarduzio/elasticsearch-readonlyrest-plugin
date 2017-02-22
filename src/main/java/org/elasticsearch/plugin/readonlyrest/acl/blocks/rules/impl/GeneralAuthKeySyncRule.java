@@ -32,7 +32,7 @@ public abstract class GeneralAuthKeySyncRule extends SyncRule {
     private final String authKey;
 
     GeneralAuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
-        super(s);
+        super();
         authKey = getAuthKey(s);
     }
 

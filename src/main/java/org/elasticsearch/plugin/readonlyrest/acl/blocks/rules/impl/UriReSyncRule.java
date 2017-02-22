@@ -36,7 +36,7 @@ public class UriReSyncRule extends SyncRule {
   private Pattern uri_re = null;
 
   public UriReSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
 
     String tmp = s.get(getKey());
     if (!Strings.isNullOrEmpty(tmp)) {

@@ -35,7 +35,7 @@ public class MethodsSyncRule extends SyncRule {
   private List<String> allowedMethods;
 
   public MethodsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     String[] a = s.getAsArray(getKey());
     if (a != null && a.length > 0) {
       try {

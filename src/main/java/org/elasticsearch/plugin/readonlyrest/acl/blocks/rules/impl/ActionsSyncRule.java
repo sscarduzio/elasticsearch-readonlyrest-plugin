@@ -36,7 +36,7 @@ public class ActionsSyncRule extends SyncRule {
   protected MatcherWithWildcards m;
 
   public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     m = MatcherWithWildcards.fromSettings(s, getKey());
   }
 

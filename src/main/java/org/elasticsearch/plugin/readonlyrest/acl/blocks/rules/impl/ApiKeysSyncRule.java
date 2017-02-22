@@ -35,7 +35,7 @@ public class ApiKeysSyncRule extends SyncRule {
   private List<String> validApiKeys;
 
   public ApiKeysSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     String[] a = s.getAsArray(getKey());
     if (a != null && a.length > 0) {
       validApiKeys = Lists.newArrayList();

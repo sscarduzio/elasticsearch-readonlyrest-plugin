@@ -63,7 +63,7 @@ public class KibanaAccessSyncRule extends SyncRule {
 
 
   public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
 
     String tmp = s.get(getKey());
     if (Strings.isNullOrEmpty(tmp)) {

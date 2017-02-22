@@ -39,7 +39,7 @@ public class IndicesSyncRule extends SyncRule {
   private MatcherWithWildcards configuredWildcards;
 
   public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
   }
 

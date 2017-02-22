@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.base.CaseFormat;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 
 /**
@@ -28,10 +27,9 @@ public abstract class SyncRule extends Rule {
 
   private final String KEY;
 
-  public SyncRule(Settings settings) {
+  public SyncRule() {
     super();
     KEY = mkKey(getClass());
-
   }
 
   public abstract RuleExitResult match(RequestContext rc);

@@ -104,7 +104,7 @@ public class RequestContext {
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {
-    this.sideEffects = new RequestSideEffects(this);
+    this.sideEffects = new RequestSideEffects();
     this.channel = channel;
     this.request = request;
     this.action = action;

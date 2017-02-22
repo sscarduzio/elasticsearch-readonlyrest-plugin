@@ -29,12 +29,7 @@ import java.util.List;
 public class RequestSideEffects {
   private final Logger logger = Loggers.getLogger(getClass());
 
-  private final RequestContext rc;
   private final List<Runnable> effects = new LinkedList<>();
-
-  RequestSideEffects(RequestContext rc) {
-    this.rc = rc;
-  }
 
   public void appendEffect(Runnable eff) {
     effects.add(eff);

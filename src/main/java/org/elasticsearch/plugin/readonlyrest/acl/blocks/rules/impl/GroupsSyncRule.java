@@ -40,7 +40,7 @@ public class GroupsSyncRule extends SyncRule {
   private final List<String> groups;
 
   public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
-    super(s);
+    super();
     users = userList;
     String[] pGroups = s.getAsArray(this.getKey());
     if (pGroups != null && pGroups.length > 0) {

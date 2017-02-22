@@ -40,7 +40,7 @@ public class XForwardedForSyncRule extends SyncRule {
   private List<String> allowedAddresses;
 
   public XForwardedForSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     String[] a = s.getAsArray(getKey());
     if (a != null && a.length > 0) {
       allowedAddresses = Lists.newArrayList();

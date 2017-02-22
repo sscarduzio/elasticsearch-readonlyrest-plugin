@@ -35,7 +35,7 @@ public class SessionMaxIdleSyncRule extends SyncRule {
   private final long maxIdleMillis;
 
   public SessionMaxIdleSyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
 
     boolean isThisRuleConfigured = !Strings.isNullOrEmpty(s.get(getKey()));
     if (!isThisRuleConfigured) {
