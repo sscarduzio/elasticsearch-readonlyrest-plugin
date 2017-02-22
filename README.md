@@ -181,14 +181,14 @@ readonlyrest:
             groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
           - name: "ldap2"
             groups: ["g3", "g4"]
-      uri_re: ^/index1/.*
-
+      indices: ["index1"]
+      
     - name: Accept requests from users in group team2 on index2
       type: allow
       ldap_auth:
           - name: "ldap2"
             groups: ["g3"]
-      uri_re: ^/index2/.*
+      indices: ["index2"]
 
     ldaps:
     
