@@ -25,21 +25,21 @@ import java.util.Map;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthRule extends Rule implements UserRule {
+public class ProxyAuthRule extends SyncRule implements UserRule {
 
   private static final String HEADER = "X-Forwarded-User";
   private List<String> userList;
   
   public ProxyAuthRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+    super();
     String[] users = s.getAsArray(getKey());
     if (users != null && users.length > 0) {
       userList = Lists.newArrayList();

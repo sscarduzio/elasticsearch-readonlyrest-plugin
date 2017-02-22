@@ -1,19 +1,18 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest;
@@ -120,6 +119,7 @@ public class ConfigurationHelper {
     String prefix = "readonlyrest.";
     String rule_prefix = prefix + "access_control_rules.";
     String users_prefix = prefix + "users.";
+    String ldaps_prefix = prefix + "ldaps.";
 
     return Arrays.asList(
       bool(prefix + "enable"),
@@ -135,7 +135,8 @@ public class ConfigurationHelper {
       str(prefix + "ssl.certchain_pem"),
 
       grp(rule_prefix),
-      grp(users_prefix)
+      grp(users_prefix),
+      grp(ldaps_prefix)
       // Rules
 //        str(rule_prefix + "name"),
 //        str(rule_prefix + "accept_x-forwarded-for_header"),
