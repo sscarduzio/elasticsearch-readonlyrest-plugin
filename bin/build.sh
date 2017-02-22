@@ -1,2 +1,3 @@
-./gradlew updateSHAs check assemble 
+#!/bin/sh
+./gradlew updateSHAs assemble
 # -x test 

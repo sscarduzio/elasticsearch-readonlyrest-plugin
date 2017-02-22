@@ -166,6 +166,59 @@ readonlyrest:
 
 ```
 
+### USE CASE 4: LDAP authentication and group-based authorization
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    
+    access_control_rules:
+
+    - name: Accept requests from users in group team1 on index1
+      type: allow
+      ldap_auth:
+          - name: "ldap1"                                       # ldap name from 'ldaps' section
+            groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
+          - name: "ldap2"
+            groups: ["g3", "g4"]
+      uri_re: ^/index1/.*
+
+    - name: Accept requests from users in group team2 on index2
+      type: allow
+      ldap_auth:
+          - name: "ldap2"
+            groups: ["g3"]
+      uri_re: ^/index2/.*
+
+    ldaps:
+    
+    - name: ldap1
+      host: "ldap1.example.com"
+      port: 389                                                 # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout_in_sec: 10                             # default 1
+      request_timeout_in_sec: 10                                # default 1
+      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+    
+    - name: ldap2
+      host: "ldap2.example2.com"
+      port: 636
+      search_user_base_DN: "ou=People,dc=example2,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example2,dc=com"
+```
+
+LDAP configuration requirements:
+- user from `search_user_base_DN` should have `uid` attribute
+- groups from `search_groups_base_DN` should have `uniqueMember` attribute
+
+(example LDAP config can be found in test /resources/test_example.ldif)
+
 ### 3. Restart Elasticsearch
 
 **For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)

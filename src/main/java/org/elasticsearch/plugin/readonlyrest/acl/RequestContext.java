@@ -1,19 +1,18 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest.acl;
@@ -41,7 +40,7 @@ import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
@@ -95,9 +94,9 @@ public class RequestContext {
   private final String id;
   private final Map<String, String> headers;
   private final ThreadPool threadPool;
+  private final ClusterService clusterService;
   private Set<String> indices = null;
   private String content = null;
-  private ClusterService clusterService = null;
 
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
@@ -105,7 +104,7 @@ public class RequestContext {
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {
-    this.sideEffects = new RequestSideEffects(this);
+    this.sideEffects = new RequestSideEffects();
     this.channel = channel;
     this.request = request;
     this.action = action;
@@ -376,7 +375,7 @@ public class RequestContext {
       theIndices = Joiner.on(",").skipNulls().join(getIndices());
     }
 
-    String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
+    String loggedInAs = BasicAuthUtils.getBasicAuthUser(getHeaders());
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
