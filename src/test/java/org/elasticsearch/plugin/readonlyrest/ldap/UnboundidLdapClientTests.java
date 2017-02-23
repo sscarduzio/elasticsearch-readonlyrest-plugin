@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
-import org.elasticsearch.plugin.readonlyrest.utils.LdapContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;

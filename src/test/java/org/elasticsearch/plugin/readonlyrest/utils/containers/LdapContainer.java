@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.utils;
+package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import com.google.common.collect.Lists;
 import com.unboundid.ldap.sdk.AddRequest;
@@ -31,14 +31,17 @@ import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
 import java.io.File;
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
+
+import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUtils.checkTimeout;
 
 public class LdapContainer extends GenericContainer<LdapContainer> {
+
+    private static Logger logger = Logger.getLogger(LdapContainer.class.getName());
 
     private static int LDAP_PORT = 389;
     private static Duration LDAP_CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -69,14 +72,9 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
         return new UnboundidLdapClient.BindDnPassword(bindDN, LDAP_ADMIN_PASSWORD);
     }
 
-    public static LdapContainer create(String resourceFile) {
-        Path initialDataLdifPath;
-        try {
-            initialDataLdifPath = Paths.get(LdapContainer.class.getResource(resourceFile).toURI());
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-            throw new IllegalArgumentException(e);
-        }
+    public static LdapContainer create(String ldapInitScript) {
+        File ldapInitScriptFile = ContainerUtils.getResourceFile(ldapInitScript);
+        logger.info("Creating LDAP container ...");
         LdapContainer container = new LdapContainer(
                 new ImageFromDockerfile()
                         .withDockerfileFromBuilder(builder -> builder
@@ -88,7 +86,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
         return container
                 .withExposedPorts(LDAP_PORT)
                 .waitingFor(
-                        container.ldapWaitStrategy(initialDataLdifPath.toFile())
+                        container.ldapWaitStrategy(ldapInitScriptFile)
                                 .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
                 );
     }
@@ -98,6 +96,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
 
             @Override
             protected void waitUntilReady() {
+                logger.info("Waiting for LDAP container ...");
                 Optional<LDAPConnection> connection = tryConnect(getLdapHost(), getLdapPort());
                 if (connection.isPresent()) {
                     try {
@@ -110,6 +109,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
                 } else {
                     throw new IllegalStateException("Cannot connect");
                 }
+                logger.info("LDAP container stated");
             }
 
             private LDAPConnection createConnection() {
@@ -119,13 +119,14 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
             }
 
             private Optional<LDAPConnection> tryConnect(String address, Integer port) {
-                LDAPConnection connection = createConnection();
+                final Instant startTime = Instant.now();
+                final LDAPConnection connection = createConnection();
                 do {
                     try {
                         connection.connect(address, port);
                         Thread.sleep(WAIT_BETWEEN_RETRIES.toMillis());
                     } catch (Exception ignored) {}
-                } while(!connection.isConnected());
+                } while(!connection.isConnected() && !checkTimeout(startTime, startupTimeout));
                 return Optional.of(connection);
             }
 

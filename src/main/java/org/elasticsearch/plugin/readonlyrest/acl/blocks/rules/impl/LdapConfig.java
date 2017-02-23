@@ -75,8 +75,8 @@ public class LdapConfig {
         Optional<UnboundidLdapClient.BindDnPassword> bindDnPassword = bindDNPasswordFrom(settings);
         Duration cacheTtl = cacheTtlFrom(settings);
 
-        LdapClient client = bindDnPassword.map(bindDnPassword1 ->
-                builder.setBindDnPassword(bindDnPassword1).build())
+        LdapClient client = bindDnPassword.map(bdnp ->
+                builder.setBindDnPassword(bdnp).build())
                 .orElseGet(builder::build);
 
         return new LdapConfig(name,

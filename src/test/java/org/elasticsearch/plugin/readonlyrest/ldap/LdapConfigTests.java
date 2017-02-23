@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.ldap;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
-import org.elasticsearch.plugin.readonlyrest.utils.LdapContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.junit.ClassRule;
 import org.junit.Test;
 

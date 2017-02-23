@@ -13,7 +13,7 @@ objectClass: inetOrgPerson
 cn: Morgan Freeman
 sn: Freeman
 uid: morgan
-userPassword:: e01ENX1rb2Q2OXdwRi9Xb3UxLzZCNFNOcmVBPT0=
+userPassword:: e1NNRDV9cTg2ZHlvbGRRRk5pZ04waVprMDgzYnZrVEY3bFdacFk=
 
 dn: cn=Eric Cartman,ou=People,dc=example,dc=com
 objectClass: top

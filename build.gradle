@@ -17,9 +17,9 @@
 
 buildscript {
     ext {
-        publishedPluginVersion = '1.13.3'
-        pluginVersion = '1.13.3'
-        esVersion = '5.2.1'
+        publishedPluginVersion = project.properties['pluginVersion']
+        pluginVersion = project.properties['pluginVersion']
+        esVersion = project.properties['esVersion']
     }
     repositories {
         mavenLocal()
@@ -42,19 +42,32 @@ apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'license'
 
+repositories {
+    mavenCentral()
+    maven { url 'http://repo.gradle.org/gradle/libs-releases-local' }
+}
+
 esplugin {
-    name 'readonlyrest'
+    name project.properties['pluginName']
     description 'Safely expose Elasticsearch REST API'
     classname 'org.elasticsearch.plugin.readonlyrest.wiring.ReadonlyRestPlugin'
 }
 
 license {
-    header rootProject.file('ReadonlyRESTLicenceHeader.txt')
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
     skipExistingHeaders true
     useDefaultMappings = false
     mapping {
-        java='SLASHSTAR_STYLE'
+        java = 'SLASHSTAR_STYLE'
     }
+}
+
+task customJarHellCheck(type: JavaExec) {
+    main = "org.elasticsearch.bootstrap.JarHell"
+    classpath = project.sourceSets.main.runtimeClasspath.filter { it.exists() }
+}
+test {
+    dependsOn customJarHellCheck
 }
 
 configurations.all {
@@ -72,6 +85,8 @@ dependencies {
     compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
+    testCompile 'org.gradle:gradle-tooling-api:2.13'
+    testRuntime 'org.gradle:gradle-tooling-api:2.13'
     testCompile('org.testcontainers:testcontainers:1.1.9')
     testRuntime('org.testcontainers:testcontainers:1.1.9')
 }
@@ -80,8 +95,8 @@ run {
     systemProperty "java.security.policy", "src/main/plugin-metadata/plugin-security.policy"
     systemProperty "es.path.home", "src/test/eshome"
     jvmArgs += " -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=8000"
-
 }
+
 tasks.withType(Zip) { task ->
     task.doLast {
         ant.checksum file: it.archivePath, algorithm: 'sha1'
@@ -103,4 +118,4 @@ namingConventions.enabled = false
 forbiddenApisMain.enabled = false
 forbiddenApisTest.enabled = false
 integTest.enabled = false
-jarHell.enabled=false
+jarHell.enabled = false
