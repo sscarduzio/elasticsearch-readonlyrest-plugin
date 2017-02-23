@@ -33,12 +33,12 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthRule extends SyncRule implements UserRule {
+public class ProxyAuthSyncRule extends SyncRule implements UserRule {
 
   private static final String HEADER = "X-Forwarded-User";
   private List<String> userList;
   
-  public ProxyAuthRule(Settings s) throws RuleNotConfiguredException {
+  public ProxyAuthSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
     String[] users = s.getAsArray(getKey());
     if (users != null && users.length > 0) {
@@ -64,7 +64,6 @@ public class ProxyAuthRule extends SyncRule implements UserRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     String h = getUser(rc.getHeaders());
-    
     
     if (h == null) {
       return NO_MATCH;

@@ -41,7 +41,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
@@ -378,7 +378,7 @@ public class RequestContext {
 
     String loggedInAs = BasicAuthUtils.getBasicAuthUser(getHeaders());
     if (loggedInAs == null)
-      loggedInAs = ProxyAuthRule.getUser(getHeaders());
+      loggedInAs = ProxyAuthSyncRule.getUser(getHeaders());
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
