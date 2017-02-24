@@ -60,8 +60,8 @@ dependencies {
     compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
-    testCompile('org.testcontainers:testcontainers:1.1.9')
-    testRuntime('org.testcontainers:testcontainers:1.1.9')
+//    testCompile('org.testcontainers:testcontainers:1.1.9')
+//    testRuntime('org.testcontainers:testcontainers:1.1.9')
 }
 
 task showFiles << {
