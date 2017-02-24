@@ -23,6 +23,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Sy
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GeneralAuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 
 import java.util.List;
 
@@ -33,9 +34,9 @@ public class User {
 
     private final String username;
     private final List<String> groups;
-    private GeneralAuthKeySyncRule authKeyRule;
+    private UserRule authKeyRule;
 
-    private User(String username, List<String> pGroups, GeneralAuthKeySyncRule rule) {
+    private User(String username, List<String> pGroups, UserRule rule) {
         this.username = username;
         this.groups = pGroups;
         this.authKeyRule = rule;
@@ -45,7 +46,7 @@ public class User {
         return username;
     }
 
-    public SyncRule getAuthKeyRule() {
+    public UserRule getAuthKeyRule() {
         return authKeyRule;
     }
 
@@ -55,14 +56,14 @@ public class User {
 
     public static User fromSettings(Settings s) throws ConfigMalformedException {
         String username = s.get("username");
-        GeneralAuthKeySyncRule authKeyRule = getAuthKeyRuleFrom(s, username);
+        UserRule authKeyRule = getAuthKeyRuleFrom(s, username);
         List<String> groups = Lists.newArrayList(s.getAsArray("groups"));
         if (groups.isEmpty())
             throw new ConfigMalformedException("No groups defined for user " + (username != null ? username : "<no name>"));
         return new User(username, groups, authKeyRule);
     }
 
-    private static GeneralAuthKeySyncRule getAuthKeyRuleFrom(Settings s, String username) {
+    private static UserRule getAuthKeyRuleFrom(Settings s, String username) {
         try {
             return new AuthKeySyncRule(s);
         } catch (RuleNotConfiguredException ignored) {}
@@ -72,7 +73,10 @@ public class User {
         try {
             return new AuthKeySha256SyncRule(s);
         } catch (RuleNotConfiguredException ignored) {}
+        try {
+          return new ProxyAuthSyncRule(s);
+        } catch (RuleNotConfiguredException ignored) {}
 
         throw new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"));
     }
-}
+} 

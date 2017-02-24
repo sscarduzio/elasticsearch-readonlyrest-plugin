@@ -41,6 +41,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsync
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
@@ -223,6 +224,10 @@ public class Block {
         try {
             syncConditionsToCheck.add(new AuthKeySha256SyncRule(s));
             authHeaderAccepted = true;
+        } catch (RuleNotConfiguredException ignored) {
+        }
+        try {
+          syncConditionsToCheck.add(new ProxyAuthSyncRule(s));
         } catch (RuleNotConfiguredException ignored) {
         }
         try {
