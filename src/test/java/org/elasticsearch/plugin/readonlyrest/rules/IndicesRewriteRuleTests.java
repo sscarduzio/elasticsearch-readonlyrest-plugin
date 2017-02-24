@@ -51,20 +51,19 @@ public class IndicesRewriteRuleTests extends TestCase {
   @Captor
   private ArgumentCaptor<Set<String>> argumentCaptor;
 
-  private RuleExitResult match(List<String> configured, List<String> found, List<String> expected) throws RuleNotConfiguredException {
-    Collections.sort(found);
+  private void match(List<String> configured, List<String> foundInRequest, List<String> expected) throws RuleNotConfiguredException {
+    Collections.sort(foundInRequest);
     Collections.sort(expected);
     RequestContext rc = Mockito.mock(RequestContext.class);
     Set<String> foundSet = Sets.newHashSet();
-    foundSet.addAll(found);
+    foundSet.addAll(foundInRequest);
     when(rc.getIndices()).thenReturn(foundSet);
     when(rc.involvesIndices()).thenReturn(true);
     when(rc.getExpandedIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new IndicesRewriteSyncRule(Settings.builder()
-                                              .putArray("indices_rewrite", configured)
-                                              .build());
+                                              .putArray("indices_rewrite", configured).build());
     RuleExitResult res = r.match(rc);
     rc.commit();
     verify(rc).setIndices(argumentCaptor.capture());
@@ -72,43 +71,87 @@ public class IndicesRewriteRuleTests extends TestCase {
     String expectedJ = Joiner.on(",").join(expected);
     String capturedJ = Joiner.on(",").join(argumentCaptor.getValue());
     assertEquals(expectedJ, capturedJ);
-    return res;
+    assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testNOOP() throws RuleNotConfiguredException {
+    match(
+      Arrays.asList("public-asd", "replacement"),
+      Arrays.asList("x"),
+      Arrays.asList("x")
+    );
   }
 
   @Test
   public void testSimpleIndex() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("public-asd", "replacement"), Arrays.asList("public-asd"), Arrays.asList("replacement"));
-    assertTrue(res.isMatch());
+    match(
+      Arrays.asList("public-asd", "replacement"),
+      Arrays.asList("public-asd"),
+      Arrays.asList("replacement")
+    );
   }
 
   @Test
   public void testRegexIndex() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("public-.*", "replacement"), Arrays.asList("public-asd"), Arrays.asList("replacement"));
-    assertTrue(res.isMatch());
+    match(
+      Arrays.asList("public-.*", "replacement"),
+      Arrays.asList("public-asd"),
+      Arrays.asList("replacement")
+    );
   }
 
   @Test
   public void testBigRegexIndex() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("^public-.*$", "replacement"), Arrays.asList("public-asd"), Arrays.asList("replacement"));
-    assertTrue(res.isMatch());
+    match(
+      Arrays.asList("^public-.*$", "replacement"),
+      Arrays.asList("public-asd"),
+      Arrays.asList("replacement")
+    );
   }
 
   @Test
   public void testBigRegexIndexMultiIndex() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("^public-.*$", "replacement"), Arrays.asList("public-asd", "quack"), Arrays.asList("replacement", "quack"));
-    assertTrue(res.isMatch());
+    match(
+      Arrays.asList("^public-.*$", "replacement"),
+      Arrays.asList("public-asd", "quack"),
+      Arrays.asList("replacement", "quack")
+    );
   }
 
   @Test
   public void testBigRegexIndexMultiIndexMultiRule() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("^public-.*$", ".*ack", "replacement"), Arrays.asList("public-asd", "quack", "ack"), Arrays.asList("replacement"));
-    assertTrue(res.isMatch());
+    match(
+      Arrays.asList("^public-.*$", ".*ack", "replacement"),
+      Arrays.asList("public-asd", "quack", "ack"),
+      Arrays.asList("replacement")
+    );
+  }
+
+  @Test
+  public void testNOOPBigRegexIndexMultiIndexMultiRule() throws RuleNotConfiguredException {
+    match(
+      Arrays.asList("^public-.*$", ".*ack", "replacement"),
+      Arrays.asList("x", "y", "z"),
+      Arrays.asList("x", "y", "z")
+    );
   }
 
   @Test
   public void testBigRegexIndexMultiIndexMultiRuleWithOutlier() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("^public-.*$", ".*ack", "replacement"), Arrays.asList("public-asd", "quack", "ack", "outlier"), Arrays.asList("replacement", "outlier"));
-    assertTrue(res.isMatch());
+    match(
+      Arrays.asList("^public-.*$", ".*ack", "replacement"),
+      Arrays.asList("public-asd", "quack", "ack", "outlier"),
+      Arrays.asList("replacement", "outlier")
+    );
+  }
+  @Test
+  public void testKibanaAndLogstash() throws RuleNotConfiguredException {
+    match(
+      Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
+      Arrays.asList(".kibana", "logstash-2001-01-01"),
+      Arrays.asList(".kibana_user1","logstash-2001-01-01_user1")
+    );
   }
 
 }
