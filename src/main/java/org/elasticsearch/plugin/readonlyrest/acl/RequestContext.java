@@ -172,6 +172,10 @@ public class RequestContext {
     return request.method().name();
   }
 
+  public Set<String> getExpandedIndices() {
+    return new MatcherWithWildcards(getIndices()).filter(getAvailableIndicesAndAliases());
+  }
+
   public Set<String> getIndices() {
     if (indices != null) {
       return indices;
