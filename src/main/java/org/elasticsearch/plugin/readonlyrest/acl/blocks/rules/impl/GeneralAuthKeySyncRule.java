@@ -24,9 +24,10 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 
-public abstract class GeneralAuthKeySyncRule extends SyncRule {
+public abstract class GeneralAuthKeySyncRule extends SyncRule implements UserRule{
     private static final Logger logger = Loggers.getLogger(GeneralAuthKeySyncRule.class);
 
     private final String authKey;
