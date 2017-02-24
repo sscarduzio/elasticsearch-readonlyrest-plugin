@@ -89,6 +89,7 @@ public class IndicesRuleTests extends TestCase {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.isReadRequest()).thenReturn(true);
     when(rc.involvesIndices()).thenReturn(true);
+    when(rc.getExpandedIndices()).thenCallRealMethod();
     when(rc.getAvailableIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("perfmon-bfarm", "another_index")));
 
     RuleExitResult res = match(
