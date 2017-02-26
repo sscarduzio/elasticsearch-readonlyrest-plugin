@@ -364,6 +364,13 @@ public class RequestContext {
   public String getAction() {
     return action;
   }
+  
+  public String getLoggedInUser() {
+    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
+    if (user == null)
+        user = ProxyAuthSyncRule.getUser(getHeaders());
+    return user;
+  }
 
 
   @Override
@@ -380,9 +387,7 @@ public class RequestContext {
       theIndices = Joiner.on(",").skipNulls().join(getIndices());
     }
 
-    String loggedInAs = BasicAuthUtils.getBasicAuthUser(getHeaders());
-    if (loggedInAs == null)
-      loggedInAs = ProxyAuthSyncRule.getUser(getHeaders());
+    String loggedInAs = getLoggedInUser();
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
