@@ -160,10 +160,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
 
     class LoggerActionListener implements ActionListener<SearchResponse> {
-        final String action;
-        final ActionListener<SearchResponse> baseListener;
-        final SearchRequest searchRequest;
-        final RequestContext requestContext;
+        private final String action;
+        private final ActionListener<SearchResponse> baseListener;
+        private final SearchRequest searchRequest;
+        private final RequestContext requestContext;
         
         LoggerActionListener(String action, ActionRequest searchRequest,
                 ActionListener<SearchResponse> baseListener,
