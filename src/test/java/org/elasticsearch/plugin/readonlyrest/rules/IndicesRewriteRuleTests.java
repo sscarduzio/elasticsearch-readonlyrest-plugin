@@ -33,6 +33,7 @@ import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -61,6 +62,7 @@ public class IndicesRewriteRuleTests extends TestCase {
     when(rc.involvesIndices()).thenReturn(true);
     when(rc.getExpandedIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
+    when(rc.getLoggedInUser()).thenReturn("simone");
 
     SyncRule r = new IndicesRewriteSyncRule(Settings.builder()
                                               .putArray("indices_rewrite", configured).build());
@@ -69,7 +71,9 @@ public class IndicesRewriteRuleTests extends TestCase {
     verify(rc).setIndices(argumentCaptor.capture());
 
     String expectedJ = Joiner.on(",").join(expected);
-    String capturedJ = Joiner.on(",").join(argumentCaptor.getValue());
+    List<String> argumentsAsList = new ArrayList(argumentCaptor.getValue());
+    Collections.sort(argumentsAsList);
+    String capturedJ = Joiner.on(",").join(argumentsAsList);
     assertEquals(expectedJ, capturedJ);
     assertTrue(res.isMatch());
   }
@@ -151,6 +155,15 @@ public class IndicesRewriteRuleTests extends TestCase {
       Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
       Arrays.asList(".kibana", "logstash-2001-01-01"),
       Arrays.asList(".kibana_user1","logstash-2001-01-01_user1")
+    );
+  }
+
+  @Test
+  public void testUserReplacement() throws RuleNotConfiguredException {
+    match(
+      Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@user"),
+      Arrays.asList(".kibana", "logstash-2001-01-01"),
+      Arrays.asList(".kibana_simone","logstash-2001-01-01_simone")
     );
   }
 

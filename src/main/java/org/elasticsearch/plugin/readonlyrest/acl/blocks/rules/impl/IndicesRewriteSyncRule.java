@@ -23,7 +23,6 @@ import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
@@ -42,6 +41,8 @@ public class IndicesRewriteSyncRule extends SyncRule {
   private final Logger logger = Loggers.getLogger(this.getClass());
   private final Pattern[] targetPatterns;
   private final String replacement;
+  private boolean isRegexReplacement = true;
+
 
   public IndicesRewriteSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -62,12 +63,11 @@ public class IndicesRewriteSyncRule extends SyncRule {
     replacement = a[a.length - 1];
 
     targetPatterns = Arrays.stream(targets)
-      .distinct()
-      .filter(Objects::nonNull)
-      .filter(Strings::isNotBlank)
-      .map(str -> Pattern.compile(str))
-      .toArray(Pattern[]::new);
-
+                           .distinct()
+                           .filter(Objects::nonNull)
+                           .filter(Strings::isNotBlank)
+                           .map(str -> Pattern.compile(str))
+                           .toArray(Pattern[]::new);
   }
 
   @Override
@@ -81,18 +81,24 @@ public class IndicesRewriteSyncRule extends SyncRule {
     Set<String> oldIndices = rc.getExpandedIndices();
     Set<String> newIndices = Sets.newHashSet();
 
+    String currentReplacement = replacement;
+
+    String currentUser = rc.getLoggedInUser();
+    if (!Strings.isEmpty(currentUser)) {
+      currentReplacement = replacement.replaceAll("@user", rc.getLoggedInUser());
+    }
+
     for (Pattern p : targetPatterns) {
       Iterator<String> it = oldIndices.iterator();
       while (it.hasNext()) {
         String i = it.next();
-        String maybeChanged = p.matcher(i).replaceFirst(replacement);
+        String maybeChanged = p.matcher(i).replaceFirst(currentReplacement);
         if (!i.equals(maybeChanged)) {
           newIndices.add(maybeChanged);
           it.remove();
         }
       }
     }
-
     oldIndices.addAll(newIndices);
     rc.setIndices(oldIndices);
 
