@@ -177,7 +177,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         public void onResponse(SearchResponse searchResponse) {
             logger.info(
                     "search: {" +
-                    "ACT:" + action +
+                    " ID:" + requestContext.getId() +
+                    ", ACT:" + action +
                     ", USR:" + requestContext.getLoggedInUser() +
                     ", IDX:" + Arrays.toString(searchRequest.indices()) +
                     ", TYP:" + Arrays.toString(searchRequest.types()) +
