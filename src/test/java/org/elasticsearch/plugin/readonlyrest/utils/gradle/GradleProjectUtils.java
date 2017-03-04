@@ -20,33 +20,34 @@ import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ProjectConnection;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
 
 public class GradleProjectUtils {
-    private final File projectDirectory;
-    private final GradleProperties properties;
+    private static final GradleProperties properties = GradleProperties.create().get();
 
-    public GradleProjectUtils(File projectDirectory) {
-        this.projectDirectory = projectDirectory;
-        this.properties = GradleProperties.create().get();
-    }
-
-    public Optional<File> assemble() {
+    public static Optional<File> assemble() {
         runTask(":assemble");
-        File plugin = new File("build/distributions/" + pluginName());
+        File plugin = new File(getProjectDir().toFile(), "build/distributions/" + pluginName());
         if(!plugin.exists()) return Optional.empty();
         return Optional.of(plugin);
     }
 
-    private String pluginName() {
+    public static Path getProjectDir() {
+        String projectDir = System.getProperty("project.dir");
+        return projectDir != null ? Paths.get(projectDir) : new File(".").toPath();
+    }
+
+    private static String pluginName() {
         return String.format("%s-%s_es%s.zip",
                 properties.getProperty("pluginName"),
                 properties.getProperty("pluginVersion"),
                 properties.getProperty("esVersion"));
     }
 
-    private void runTask(String task) {
-        GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(projectDirectory);
+    private static void runTask(String task) {
+        GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(getProjectDir().toFile());
         ProjectConnection connect = null;
         try {
             connect = connector.connect();

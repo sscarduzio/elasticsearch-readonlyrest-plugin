@@ -68,6 +68,7 @@ task customJarHellCheck(type: JavaExec) {
 }
 test {
     dependsOn customJarHellCheck
+    systemProperty "project.dir", rootProject.projectDir
 }
 
 configurations.all {

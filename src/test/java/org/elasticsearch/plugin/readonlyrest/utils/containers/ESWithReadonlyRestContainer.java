@@ -47,11 +47,13 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
     private static int ES_PORT = 9200;
     private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
-    private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(600);
+    private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(60);
     private static String ADMIN_LOGIN = "admin";
     private static String ADMIN_PASSWORD = "container";
 
-    private static GradleProperties properties = GradleProperties.create().get();
+    private static GradleProperties properties = GradleProperties.create().orElseThrow(() ->
+        new ContainerException.CreationException("Cannot load gradle properties")
+    );
 
     private ESWithReadonlyRestContainer(ImageFromDockerfile imageFromDockerfile) {
         super(imageFromDockerfile);
@@ -59,7 +61,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
     public static ESWithReadonlyRestContainer create(String elasticsearchConfig, ESInitalizer initalizer) {
         File config = ContainerUtils.getResourceFile(elasticsearchConfig);
-        Optional<File> pluginFileOpt = new GradleProjectUtils(new File(".")).assemble();
+        Optional<File> pluginFileOpt = GradleProjectUtils.assemble();
         if(!pluginFileOpt.isPresent()) {
             throw new ContainerException.CreationException("Plugin file assembly failed");
         }
@@ -72,7 +74,6 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                         .withFileFromFile(elasticsearchConfigName, config)
                         .withDockerfileFromBuilder(builder -> builder
                                 .from("docker.elastic.co/elasticsearch/elasticsearch:" + properties.getProperty("esVersion"))
-                                //.env("ES_JAVA_OPTS", "-Djava.security.policy=file:///usr/share/elasticsearch/plugins/readonlyrest/plugin-security.policy")
                                 .copy(pluginFile.getName(), "/tmp/")
                                 .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
                                 .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +

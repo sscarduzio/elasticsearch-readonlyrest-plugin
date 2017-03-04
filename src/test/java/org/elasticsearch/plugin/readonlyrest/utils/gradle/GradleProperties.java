@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils.gradle;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,8 @@ public class GradleProperties {
     public static Optional<GradleProperties> create() {
         try {
             Properties prop = new Properties();
-            InputStream input = new FileInputStream("gradle.properties");
+            File file = new File(GradleProjectUtils.getProjectDir().toFile(), "gradle.properties");
+            InputStream input = new FileInputStream(file);
             prop.load(input);
             return Optional.of(new GradleProperties(prop));
         } catch (IOException ex) {
