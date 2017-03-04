@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
@@ -71,7 +72,7 @@ public class IndicesRewriteRuleTests extends TestCase {
     verify(rc).setIndices(argumentCaptor.capture());
 
     String expectedJ = Joiner.on(",").join(expected);
-    List<String> argumentsAsList = new ArrayList(argumentCaptor.getValue());
+    List<String> argumentsAsList = Lists.newArrayList(argumentCaptor.getValue().iterator());
     Collections.sort(argumentsAsList);
     String capturedJ = Joiner.on(",").join(argumentsAsList);
     assertEquals(expectedJ, capturedJ);
