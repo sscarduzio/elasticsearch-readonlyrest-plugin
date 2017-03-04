@@ -66,8 +66,8 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
 
-      logger.info("Initializing SSL channel...");
       if (engineProvider.conf.sslEnabled) {
+        logger.debug("Initializing SSL channel...");
         SslContext sslCtx = engineProvider.getContext();
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
       }

@@ -54,6 +54,7 @@ public class ConfigurationHelper {
   public final String sslKeyStoreFile;
   public final String sslKeyPassword;
   public final String sslKeyStorePassword;
+  public final boolean searchLoggingEnabled;
   public final Settings settings;
   private final Logger logger;
   public String sslKeyAlias;
@@ -86,6 +87,7 @@ public class ConfigurationHelper {
     sslPrivKeyPem = s.get("ssl.privkey_pem");
     sslCertChainPem = s.get("ssl.certchain_pem");
 
+    searchLoggingEnabled = s.getAsBoolean("searchlog", false);
   }
 
   public static ConfigurationHelper parse(Settings s) {
@@ -124,6 +126,7 @@ public class ConfigurationHelper {
     return Arrays.asList(
       bool(prefix + "enable"),
       str(prefix + "response_if_req_forbidden"),
+      bool(prefix + "searchlog"),
 
       // SSL
       bool(prefix + "ssl.enable"),

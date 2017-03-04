@@ -173,6 +173,10 @@ public class RequestContext {
     return request.method().name();
   }
 
+  public Set<String> getExpandedIndices() {
+    return new MatcherWithWildcards(getIndices()).filter(getAvailableIndicesAndAliases());
+  }
+
   public Set<String> getIndices() {
     if (indices != null) {
       return indices;
@@ -361,6 +365,13 @@ public class RequestContext {
     return action;
   }
 
+  public String getLoggedInUser() {
+    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
+    if (user == null)
+        user = ProxyAuthSyncRule.getUser(getHeaders());
+    return user;
+  }
+
 
   @Override
   public String toString() {
@@ -376,9 +387,7 @@ public class RequestContext {
       theIndices = Joiner.on(",").skipNulls().join(getIndices());
     }
 
-    String loggedInAs = BasicAuthUtils.getBasicAuthUser(getHeaders());
-    if (loggedInAs == null)
-      loggedInAs = ProxyAuthSyncRule.getUser(getHeaders());
+    String loggedInAs = getLoggedInUser();
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
