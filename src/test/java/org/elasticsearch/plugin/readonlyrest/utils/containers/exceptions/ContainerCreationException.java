@@ -14,18 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.utils.containers;
+package org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions;
 
-public class ContainerException {
-    private ContainerException() {}
-
-    public static class CreationException extends RuntimeException {
-        CreationException(String msg) { super(msg); }
-        CreationException(String msg, Throwable t) { super(msg, t); }
-    }
-
-    public static class StartupTimeoutException extends RuntimeException {
-        StartupTimeoutException(String msg) { super(msg); }
-        StartupTimeoutException(String msg, Throwable t) { super(msg, t); }
-    }
+public class ContainerCreationException extends RuntimeException {
+    public ContainerCreationException(String msg) { super(msg); }
+    public ContainerCreationException(String msg, Throwable t) { super(msg, t); }
 }

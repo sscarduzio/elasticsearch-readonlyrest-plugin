@@ -17,6 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import com.google.common.collect.ImmutableList;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -46,7 +47,7 @@ public class ESWithReadonlyRestContainerUtils {
             newEsConfigFile.deleteOnExit();
             return newEsConfigFile;
         } catch (IOException e) {
-            throw new ContainerException.CreationException("Cannot create elasticsearch config", e);
+            throw new ContainerCreationException("Cannot create elasticsearch config", e);
         }
     }
 
@@ -70,7 +71,7 @@ public class ESWithReadonlyRestContainerUtils {
                 }
             }
         } catch (Exception e) {
-            throw new ContainerException.CreationException("Cannot create elasticsearch config", e);
+            throw new ContainerCreationException("Cannot create elasticsearch config", e);
         }
         return destConfig;
     }

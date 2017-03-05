@@ -22,6 +22,7 @@ import org.apache.http.message.BasicHeader;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProjectUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProperties;
 import org.testcontainers.containers.GenericContainer;
@@ -52,7 +53,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     private static String ADMIN_PASSWORD = "container";
 
     private static GradleProperties properties = GradleProperties.create().orElseThrow(() ->
-        new ContainerException.CreationException("Cannot load gradle properties")
+        new ContainerCreationException("Cannot load gradle properties")
     );
 
     private ESWithReadonlyRestContainer(ImageFromDockerfile imageFromDockerfile) {
@@ -63,7 +64,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         File config = ContainerUtils.getResourceFile(elasticsearchConfig);
         Optional<File> pluginFileOpt = GradleProjectUtils.assemble();
         if(!pluginFileOpt.isPresent()) {
-            throw new ContainerException.CreationException("Plugin file assembly failed");
+            throw new ContainerCreationException("Plugin file assembly failed");
         }
         File pluginFile = pluginFileOpt.get();
         logger.info("Creating ES container ...");

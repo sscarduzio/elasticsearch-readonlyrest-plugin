@@ -26,6 +26,7 @@ import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldif.LDIFReader;
 import org.elasticsearch.plugin.readonlyrest.ldap.UnboundidLdapClient;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -143,7 +144,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
                 UnboundidLdapClient.BindDnPassword bindDNAndPassword = getBindDNAndPassword();
                 BindResult bindResult = connection.bind(bindDNAndPassword.getDn(), bindDNAndPassword.getPassword());
                 if (!ResultCode.SUCCESS.equals(bindResult.getResultCode())) {
-                    throw new ContainerException.CreationException("Cannot init LDAP due to bind problem");
+                    throw new ContainerCreationException("Cannot init LDAP due to bind problem");
                 }
                 return connection;
             }

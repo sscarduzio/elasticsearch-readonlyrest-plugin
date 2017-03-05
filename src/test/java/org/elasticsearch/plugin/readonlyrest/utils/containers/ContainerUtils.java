@@ -16,6 +16,9 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
+import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerStartupTimeoutException;
+
 import java.io.File;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
@@ -29,13 +32,13 @@ public class ContainerUtils {
         try {
             return Paths.get(ContainerUtils.class.getResource(path).toURI()).toFile();
         } catch (URISyntaxException e) {
-            throw new ContainerException.CreationException("Cannot find resource file", e);
+            throw new ContainerCreationException("Cannot find resource file", e);
         }
     }
 
     public static boolean checkTimeout(Instant startTime, Duration startupTimeout) {
         if(startupTimeout.minus(Duration.between(startTime, Instant.now())).isNegative()) {
-            throw new ContainerException.StartupTimeoutException("Container was not started within " + startupTimeout.toString());
+            throw new ContainerStartupTimeoutException("Container was not started within " + startupTimeout.toString());
         }
         return false;
     }
