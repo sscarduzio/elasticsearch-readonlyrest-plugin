@@ -143,7 +143,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
                 UnboundidLdapClient.BindDnPassword bindDNAndPassword = getBindDNAndPassword();
                 BindResult bindResult = connection.bind(bindDNAndPassword.getDn(), bindDNAndPassword.getPassword());
                 if (!ResultCode.SUCCESS.equals(bindResult.getResultCode())) {
-                    throw new Exception("Cannot init LDAP due to bind problem");
+                    throw new ContainerException.CreationException("Cannot init LDAP due to bind problem");
                 }
                 return connection;
             }

@@ -90,13 +90,12 @@
 #
 #action.destructive_requires_name: true
 http.type: ssl_netty4
-transport.type: local
 readonlyrest:
     # (De)activate plugin
     enable: true
 
     ssl:
-      enable: false
+      enable: true
       keystore_file: "/me/tmp/elasticsearch-5.0.1/plugins/readonlyrest/keystore.jks"
       keystore_pass: readonlyrest
       key_pass: readonlyrest
@@ -116,19 +115,3 @@ readonlyrest:
     - name: "::SETTER::"
       type: allow
       api_keys: 123
-
-    ldaps:
-    - name: ldap1
-      host: "ldap.touk.pl"
-      port: 636                                                 # default 389
-      ssl_enabled: false                                        # default true
-      ssl_trust_all_certs: true                                 # default false
-#      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
-#      bind_password: "password"                                 # skip for anonymous bind
-      search_user_base_DN: "ou=People,dc=example,dc=com"
-      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      connection_pool_size: 10                                  # default 30
-      connection_timeout_in_sec: 10                             # default 1
-      request_timeout_in_sec: 10                                # default 1
-      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
-
