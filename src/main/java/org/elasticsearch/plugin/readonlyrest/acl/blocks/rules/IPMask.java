@@ -1,21 +1,19 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
@@ -53,7 +51,7 @@ public class IPMask {
    *                              InetAddress
    */
   public static IPMask getIPMask(String addrSlashMask)
-      throws UnknownHostException {
+    throws UnknownHostException {
     int pos = addrSlashMask.indexOf('/');
     String addr;
     byte maskCtr;
@@ -74,9 +72,9 @@ public class IPMask {
   private static int addrToInt(Inet4Address i4addr) {
     byte[] ba = i4addr.getAddress();
     return (ba[0] << 24)
-        | ((ba[1] & 0xFF) << 16)
-        | ((ba[2] & 0xFF) << 8)
-        | (ba[3] & 0xFF);
+      | ((ba[1] & 0xFF) << 16)
+      | ((ba[2] & 0xFF) << 8)
+      | (ba[3] & 0xFF);
   }
 
   /**
@@ -102,7 +100,7 @@ public class IPMask {
    * @throws UnknownHostException if the string cannot be decoded.
    */
   public boolean matches(String addr)
-      throws UnknownHostException {
+    throws UnknownHostException {
     return matches((Inet4Address) InetAddress.getByName(addr));
   }
 

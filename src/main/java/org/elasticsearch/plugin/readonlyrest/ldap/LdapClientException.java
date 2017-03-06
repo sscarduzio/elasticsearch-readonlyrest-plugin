@@ -15,31 +15,23 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.ldap;
 
-/**
- * Created by sscarduzio on 13/02/2016.
- */
-public class RuleExitResult {
-  private final Rule condition;
-  private final Boolean match;
+public class LdapClientException {
+    private LdapClientException() {}
 
-  public RuleExitResult(Boolean match, Rule condition) {
-    this.match = match;
-    this.condition = condition;
-  }
+    public static class InitializationException extends RuntimeException {
+        public InitializationException(String message, Throwable inner) {
+            super(message, inner);
+        }
+        public InitializationException(String message) {
+            super(message);
+        }
+    }
 
-  public Boolean isMatch() {
-    return match;
-  }
-
-  public Rule getCondition() {
-    return condition;
-  }
-
-  @Override
-  public String toString() {
-    String condString = condition != null ? condition.getKey() : "none";
-    return "{ matched: " + match + ", condition: " + condString + " }";
-  }
+    public static class SearchException extends RuntimeException {
+        public SearchException(Throwable inner) {
+            super(inner);
+        }
+    }
 }

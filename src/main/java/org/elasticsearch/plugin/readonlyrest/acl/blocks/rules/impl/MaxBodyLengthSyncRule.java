@@ -15,35 +15,30 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.Maps;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-
-import java.util.Map;
-import java.util.Set;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
 /**
- * Created by sscarduzio on 20/01/2017.
+ * Created by sscarduzio on 14/02/2016.
  */
+public class MaxBodyLengthSyncRule extends SyncRule {
+  private Integer maxBodyLength;
 
-class BlockHistory {
-  private final Set<RuleExitResult> results;
-  private final String name;
-
-  BlockHistory(String name, Set<RuleExitResult> results) {
-    this.results = results;
-    this.name = name;
+  public MaxBodyLengthSyncRule(Settings s) throws RuleNotConfiguredException {
+    super();
+    maxBodyLength = s.getAsInt("maxBodyLength", null);
+    if (maxBodyLength == null) {
+      throw new RuleNotConfiguredException();
+    }
   }
 
   @Override
-  public String toString() {
-    Map<String, Boolean> rule2result = Maps.newHashMap();
-    for (RuleExitResult rer : results) {
-      rule2result.put(rer.getCondition().getKey(), rer.isMatch());
-    }
-    Joiner.MapJoiner j = Joiner.on(", ").withKeyValueSeparator("->");
-    return "[" + name + "->[" + j.join(rule2result) + "]]";
+  public RuleExitResult match(RequestContext rc) {
+    return (rc.getContent().length() > maxBodyLength) ? NO_MATCH : MATCH;
   }
 }

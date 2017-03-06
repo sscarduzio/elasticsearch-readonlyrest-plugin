@@ -21,10 +21,10 @@ import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -33,17 +33,17 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class ApiKeysRuleTests extends TestCase {
+public class ProxyAuthRuleTests extends TestCase {
 
   private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
+    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
 
-    SyncRule r = new ApiKeysSyncRule(Settings.builder()
-                               .put("api_keys", configured)
+    SyncRule r = new ProxyAuthSyncRule(Settings.builder()
+                               .put("proxy_auth", configured)
                                .build());
 
     RuleExitResult res = r.match(rc);
@@ -57,7 +57,12 @@ public class ApiKeysRuleTests extends TestCase {
   }
 
   public void testKO() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "x");
+    RuleExitResult res = match("1234567890", "123");
+    assertFalse(res.isMatch());
+  }
+
+  public void testEmpty() throws RuleNotConfiguredException {
+    RuleExitResult res = match("1234567890", "");
     assertFalse(res.isMatch());
   }
 }

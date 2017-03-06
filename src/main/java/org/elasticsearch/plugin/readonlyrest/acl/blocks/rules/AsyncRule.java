@@ -17,29 +17,12 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-/**
- * Created by sscarduzio on 13/02/2016.
- */
-public class RuleExitResult {
-  private final Rule condition;
-  private final Boolean match;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 
-  public RuleExitResult(Boolean match, Rule condition) {
-    this.match = match;
-    this.condition = condition;
-  }
+import java.util.concurrent.CompletableFuture;
 
-  public Boolean isMatch() {
-    return match;
-  }
+public abstract class AsyncRule extends Rule {
 
-  public Rule getCondition() {
-    return condition;
-  }
+    public abstract CompletableFuture<RuleExitResult> match(RequestContext rc);
 
-  @Override
-  public String toString() {
-    String condString = condition != null ? condition.getKey() : "none";
-    return "{ matched: " + match + ", condition: " + condString + " }";
-  }
 }

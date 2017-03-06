@@ -14,36 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-package org.elasticsearch.plugin.readonlyrest.acl;
-
-import com.google.common.base.Joiner;
-import com.google.common.collect.Maps;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 
-import java.util.Map;
-import java.util.Set;
-
-/**
- * Created by sscarduzio on 20/01/2017.
- */
-
-class BlockHistory {
-  private final Set<RuleExitResult> results;
-  private final String name;
-
-  BlockHistory(String name, Set<RuleExitResult> results) {
-    this.results = results;
-    this.name = name;
-  }
-
-  @Override
-  public String toString() {
-    Map<String, Boolean> rule2result = Maps.newHashMap();
-    for (RuleExitResult rer : results) {
-      rule2result.put(rer.getCondition().getKey(), rer.isMatch());
-    }
-    Joiner.MapJoiner j = Joiner.on(", ").withKeyValueSeparator("->");
-    return "[" + name + "->[" + j.join(rule2result) + "]]";
-  }
+public interface UserRule {
+  RuleExitResult match(RequestContext rc);
 }

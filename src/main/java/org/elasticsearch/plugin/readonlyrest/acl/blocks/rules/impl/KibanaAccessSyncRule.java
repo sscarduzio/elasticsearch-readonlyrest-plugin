@@ -1,32 +1,30 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Sets;
-import org.elasticsearch.common.Strings;
+import com.google.common.collect.Sets;import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -34,41 +32,37 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 /**
  * Created by sscarduzio on 26/03/2016.
  */
-public class KibanaAccessRule extends Rule {
+public class KibanaAccessSyncRule extends SyncRule {
 
-  private final static ESLogger logger = Loggers.getLogger(KibanaAccessRule.class);
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/exists",
-      "indices:admin/mappings/fields/get",
-      "indices:admin/validate/query",
-      "indices:data/read/field_stats",
-      "indices:data/read/search",
-      "indices:data/read/msearch",
-      "indices:admin/get",
-      "indices:admin/refresh",
-      "indices:data/read/get",
-      "indices:data/read/mget",
-      "indices:data/read/mget[shard]",
-      "indices:admin/mappings/fields/get[index]",
-      "indices:admin/refresh[s]"
+    "indices:admin/exists",
+    "indices:admin/mappings/fields/get*",
+    "indices:admin/validate/query",
+    "indices:data/read/field_stats",
+    "indices:data/read/search",
+    "indices:data/read/msearch",
+    "indices:admin/get",
+    "indices:admin/refresh*",
+    "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/create",
-      "indices:admin/mapping/put",
-      "indices:data/write/delete",
-      "indices:data/write/index",
-      "indices:data/write/update"
+    "indices:admin/create",
+    "indices:admin/mapping/put",
+    "indices:data/write/delete",
+    "indices:data/write/index",
+    "indices:data/write/update"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/nodes/info",
-      "cluster:monitor/health"
+    "cluster:monitor/nodes/info",
+    "cluster:monitor/health"
   ));
-  private String kibanaIndex;
-  private boolean canModifyKibana;
+  private final ESLogger logger = Loggers.getLogger(this.getClass());
+  private String kibanaIndex = ".kibana";
+  private Boolean canModifyKibana;
 
 
-  public KibanaAccessRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+  public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
+    super();
 
     String tmp = s.get(getKey());
     if (Strings.isNullOrEmpty(tmp)) {
@@ -121,5 +115,4 @@ public class KibanaAccessRule extends Rule {
     logger.debug("KIBANA ACCESS DENIED " + rc.getId());
     return NO_MATCH;
   }
-
 }

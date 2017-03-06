@@ -50,8 +50,8 @@ public class SSLContextProvider {
   private SslContext context = null;
 
   @Inject
-  public SSLContextProvider(Settings s) {
-    this.conf = ConfigurationHelper.parse(s);
+  public SSLContextProvider(ConfigurationHelper conf) {
+    this.conf = conf;
     if (conf.sslEnabled) {
       if (!Strings.isNullOrEmpty(conf.sslCertChainPem) && !Strings.isNullOrEmpty(conf.sslPrivKeyPem)) {
         AccessController.doPrivileged(

@@ -1,36 +1,52 @@
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
 /**
  * Created by sscarduzio on 03/01/2017.
  */
-public class SessionMaxIdleRule extends Rule {
-  private static final ESLogger logger = Loggers.getLogger(SessionMaxIdleRule.class);
+public class SessionMaxIdleSyncRule extends SyncRule {
+  private static final ESLogger logger = Loggers.getLogger(SessionMaxIdleSyncRule.class);
   private final long maxIdleMillis;
 
-  public SessionMaxIdleRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+  public SessionMaxIdleSyncRule(Settings s) throws RuleNotConfiguredException {
+    super();
 
     boolean isThisRuleConfigured = !Strings.isNullOrEmpty(s.get(getKey()));
     if (!isThisRuleConfigured) {
       throw new RuleNotConfiguredException();
     }
 
-    boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeyRule.class)))
-        || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1Rule.class)));
+    boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySyncRule.class)))
+      || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1SyncRule.class)));
 
     if (isThisRuleConfigured && !isLoginConfigured) {
       logger.error(getKey() + " rule does not mean anything if you don't also set either "
-          + mkKey(AuthKeySha1Rule.class) + " or " + mkKey(AuthKeyRule.class));
+                     + mkKey(AuthKeySha1SyncRule.class) + " or " + mkKey(AuthKeySyncRule.class));
       throw new RuleNotConfiguredException();
     }
 

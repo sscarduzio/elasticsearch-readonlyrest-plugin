@@ -15,31 +15,25 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
+
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class RuleExitResult {
-  private final Rule condition;
-  private final Boolean match;
+public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
 
-  public RuleExitResult(Boolean match, Rule condition) {
-    this.match = match;
-    this.condition = condition;
-  }
-
-  public Boolean isMatch() {
-    return match;
-  }
-
-  public Rule getCondition() {
-    return condition;
+  public AuthKeySha1SyncRule(Settings s) throws RuleNotConfiguredException {
+    super(s);
   }
 
   @Override
-  public String toString() {
-    String condString = condition != null ? condition.getKey() : "none";
-    return "{ matched: " + match + ", condition: " + condString + " }";
+  protected HashFunction getHashFunction() {
+    return Hashing.sha1();
   }
+
 }

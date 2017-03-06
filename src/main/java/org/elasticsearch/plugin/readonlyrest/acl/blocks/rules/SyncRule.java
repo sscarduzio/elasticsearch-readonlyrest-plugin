@@ -17,29 +17,33 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
+import com.google.common.base.CaseFormat;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class RuleExitResult {
-  private final Rule condition;
-  private final Boolean match;
+public abstract class SyncRule extends Rule {
 
-  public RuleExitResult(Boolean match, Rule condition) {
-    this.match = match;
-    this.condition = condition;
+  private final String KEY;
+
+  public SyncRule() {
+    super();
+    KEY = mkKey(getClass());
   }
 
-  public Boolean isMatch() {
-    return match;
-  }
+  public abstract RuleExitResult match(RequestContext rc);
 
-  public Rule getCondition() {
-    return condition;
+  protected String mkKey(Class<? extends Rule> c) {
+    return CaseFormat.LOWER_CAMEL.to(
+            CaseFormat.LOWER_UNDERSCORE,
+            c.getSimpleName().replace("SyncRule", "")
+    );
   }
 
   @Override
-  public String toString() {
-    String condString = condition != null ? condition.getKey() : "none";
-    return "{ matched: " + match + ", condition: " + condString + " }";
+  public String getKey() {
+    return KEY;
   }
+
 }

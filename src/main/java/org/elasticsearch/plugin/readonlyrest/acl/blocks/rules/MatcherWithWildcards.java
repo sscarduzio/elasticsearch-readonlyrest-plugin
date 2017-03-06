@@ -1,25 +1,23 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
-
-import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -34,10 +32,10 @@ import java.util.regex.Pattern;
  */
 public class MatcherWithWildcards {
 
-  private final static ESLogger logger = Loggers.getLogger(MatcherWithWildcards.class);
+  private static final ESLogger logger = Loggers.getLogger(MatcherWithWildcards.class);
   private static Set<String> empty = new HashSet<>(0);
   protected Set<String> allMatchers = Sets.newHashSet();
-  ;
+
   protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
 
   public MatcherWithWildcards(Set<String> matchers) {
@@ -65,6 +63,7 @@ public class MatcherWithWildcards {
   }
 
   public static MatcherWithWildcards fromSettings(Settings s, String key) throws RuleNotConfiguredException {
+
     // Will work fine also with single strings (non array) values.
     String[] a = s.getAsArray(key);
 

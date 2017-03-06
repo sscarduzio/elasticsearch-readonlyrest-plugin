@@ -1,19 +1,18 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest.acl;
@@ -27,17 +26,26 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.get.MultiGetRequest;
+import org.elasticsearch.action.search.MultiSearchRequest;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
+import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.threadpool.ThreadPool;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -65,55 +73,61 @@ public class RequestContext {
     */
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static final String LOCALHOST = "127.0.0.1";
-  public static MatcherWithWildcards readActionsMatcher = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/*",
-      "cluster:*get*",
-      "indices:admin/aliases/exsists",
-      "indices:admin/aliases/get",
-      "indices:admin/exists*",
-      "indices:admin/get*",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
-      "indices:admin/refresh*",
-      "indices:admin/types/exists",
-      "indices:admin/validate/*",
-      "indices:data/read/*"
+  private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
+    "cluster:monitor/*",
+    "cluster:*get*",
+    "cluster:*search*",
+    "indices:admin/aliases/exsists",
+    "indices:admin/aliases/get",
+    "indices:admin/exists*",
+    "indices:admin/get*",
+    "indices:admin/mappings/fields/get*",
+    "indices:admin/mappings/get*",
+    "indices:admin/refresh*",
+    "indices:admin/types/exists",
+    "indices:admin/validate/*",
+    "indices:data/read/*"
   ));
+
   private final ESLogger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;
-  private final ActionRequest actionRequest;
+  private final ActionRequest<?> actionRequest;
   private final String id;
+  private final Map<String, String> headers;
+  private final ClusterService clusterService;
   private Set<String> indices = null;
   private String content = null;
-  private ClusterService clusterService = null;
-  private Map<String, String> headers;
+
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
 
-  public RequestContext(RestChannel channel, RestRequest request, String action, ActionRequest actionRequest, ClusterService clusterService) {
-    this.id = UUID.randomUUID().toString().replace("-", "");
-    this.sideEffects = new RequestSideEffects(this);
+
+  public RequestContext(RestChannel channel, RestRequest request, String action,
+                        ActionRequest<?> actionRequest, ClusterService clusterService) {
+    this.sideEffects = new RequestSideEffects();
     this.channel = channel;
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
-    final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    for (Map.Entry<String, String> e : request.headers()) {
-      h.put(e.getKey(), e.getValue());
-    }
-    this.headers = h;
-  }
 
-  public String getId() {
-    return id;
+    this.id = UUID.randomUUID().toString().replace("-", "");
+    final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    request.headers().forEach(e -> {
+      h.put(e.getKey(), e.getValue());
+    });
+    this.headers = h;
   }
 
   public void addToHistory(Block block, Set<RuleExitResult> results) {
     BlockHistory blockHistory = new BlockHistory(block.getName(), results);
     history.add(blockHistory);
+  }
+
+  public String getId() {
+    return id;
   }
 
   public void commit() {
@@ -129,7 +143,7 @@ public class RequestContext {
   }
 
   public boolean isReadRequest() {
-    return readActionsMatcher.match(getAction());
+    return readRequestMatcher.match(action);
   }
 
   public String getRemoteAddress() {
@@ -139,6 +153,9 @@ public class RequestContext {
       remoteHost = LOCALHOST;
     }
     return remoteHost;
+  }
+  public String getUri() {
+    return request.uri();
   }
 
   public String getContent() {
@@ -150,6 +167,9 @@ public class RequestContext {
       }
     }
     return content;
+  }
+  public Set<String> getExpandedIndices() {
+    return new MatcherWithWildcards(getIndices()).filter(getAvailableIndicesAndAliases());
   }
 
   public Set<String> getAvailableIndicesAndAliases() {
@@ -318,10 +338,22 @@ public class RequestContext {
     request.putInContext("response_headers", rh);
   }
 
+  public Map<String,String> getHeaders(){
+    return headers;
+  }
+
+  public String getLoggedInUser() {
+    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
+    if (user == null)
+      user = ProxyAuthSyncRule.getUser(getHeaders());
+    return user;
+  }
+
+
   @Override
   public String toString() {
     String theIndices = Joiner.on(",").skipNulls().join(getIndices());
-    String loggedInAs = AuthKeyRule.getBasicAuthUser(getHeaders());
+    String loggedInAs = getLoggedInUser();
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
@@ -337,35 +369,28 @@ public class RequestContext {
 
     String hist = Joiner.on(", ").join(history);
     return "{ ID:" + id +
-        ", TYP:" + actionRequest.getClass().getSimpleName() +
-        ", USR:" + loggedInAs +
-        ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
-        ", ACT:" + action +
-        ", OA:" + getRemoteAddress() +
-        ", IDX:" + theIndices +
-        ", MET:" + request.method() +
-        ", PTH:" + request.path() +
-        ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-        ", HDR:" + theHeaders +
-        ", EFF:" + sideEffects.size() +
-        ", HIS:" + hist +
-        " }";
-  }
-
-  public Map<String, String> getHeaders() {
-    return headers;
-  }
-
-  public String getUri() {
-    return request.uri();
+      ", TYP:" + actionRequest.getClass().getSimpleName() +
+      ", USR:" + loggedInAs +
+      ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
+      ", ACT:" + action +
+      ", OA:" + getRemoteAddress() +
+      ", IDX:" + theIndices +
+      ", MET:" + request.method() +
+      ", PTH:" + request.path() +
+      ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+      ", HDR:" + theHeaders +
+      ", EFF:" + sideEffects.size() +
+      ", HIS:" + hist +
+      " }";
   }
 
   class SetIndexException extends Exception {
     SetIndexException(Class<?> c, String id, Throwable e) {
       super(" Could not set indices to class " + c.getSimpleName() +
-          "for req id: " + id + " because: "
-          + e.getClass().getSimpleName() + " : " + e.getMessage() +
-          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+              "for req id: " + id + " because: "
+              + e.getClass().getSimpleName() + " : " + e.getMessage() +
+              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
     }
   }
+
 }

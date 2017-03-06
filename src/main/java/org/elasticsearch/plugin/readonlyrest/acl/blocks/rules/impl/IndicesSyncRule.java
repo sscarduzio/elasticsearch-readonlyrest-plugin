@@ -1,30 +1,27 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
-
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
@@ -34,16 +31,15 @@ import java.util.Set;
 /**
  * Created by sscarduzio on 20/02/2016.
  */
-public class IndicesRule extends Rule {
+public class IndicesSyncRule extends SyncRule {
 
-  private final static ESLogger logger = Loggers.getLogger(IndicesRule.class);
+  private final ESLogger logger = Loggers.getLogger(this.getClass());
 
-  protected MatcherWithWildcards configuredWildcards;
+  private MatcherWithWildcards configuredWildcards;
 
-  public IndicesRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+  public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
+    super();
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
-    logger.info("Setting up index rule as of settings: " + s);
   }
 
   @Override
@@ -98,7 +94,7 @@ public class IndicesRule extends Rule {
       // 3. indices match by reverse-wildcard?
       // Expand requested indices to a subset of indices available in ES
       logger.debug("Stage 3");
-      Set<String> expansion = new MatcherWithWildcards(rc.getIndices()).filter(rc.getAvailableIndicesAndAliases());
+      Set<String> expansion = rc.getExpandedIndices();
 
       // 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
       logger.debug("Stage 4");
