@@ -8,8 +8,8 @@ rm -rf docker || true
 mkdir docker || true
 
 # Obtain the version to compose the zip file name
-PLUGIN_VERSION=`grep 'pluginVersion ='  build.gradle | awk {'print $3'} |tr -d "\'"`
-ES_VERSION=`grep 'esVersion ='  build.gradle | awk {'print $3'} |tr -d "\'"`
+PLUGIN_VERSION=`grep 'pluginVersion'  gradle.properties | awk -F'=' {'print $2'}`
+ES_VERSION=`grep 'esVersion'  gradle.properties | awk -F'=' {'print $2'}`
 VERSION=`echo "$PLUGIN_VERSION es$ES_VERSION" |tr " " "_"`
 
 # Dynamically generate docker file from template
