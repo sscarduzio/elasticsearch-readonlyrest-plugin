@@ -14,11 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions;
 
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-
-public interface UserRule {
-  RuleExitResult match(RequestContext rc);
+public class ContainerCreationException extends RuntimeException {
+    public ContainerCreationException(String msg) { super(msg); }
+    public ContainerCreationException(String msg, Throwable t) { super(msg, t); }
 }

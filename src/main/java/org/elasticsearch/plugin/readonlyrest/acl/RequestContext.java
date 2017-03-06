@@ -364,7 +364,7 @@ public class RequestContext {
   public String getAction() {
     return action;
   }
-  
+
   public String getLoggedInUser() {
     String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
     if (user == null)

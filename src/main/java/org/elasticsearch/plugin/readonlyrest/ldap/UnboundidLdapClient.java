@@ -37,7 +37,9 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 
 import javax.net.ssl.SSLSocketFactory;
+import java.security.AccessController;
 import java.security.GeneralSecurityException;
+import java.security.PrivilegedAction;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +61,7 @@ public class UnboundidLdapClient implements LdapClient {
 
     private final String searchUserBaseDN;
     private final String searchGroupBaseDN;
-    private final LDAPConnectionPool connectionPool;
+    private LDAPConnectionPool connectionPool;
     private final Long timeout;
 
     private UnboundidLdapClient(String host,
@@ -76,34 +78,37 @@ public class UnboundidLdapClient implements LdapClient {
         this.searchGroupBaseDN = searchGroupBaseDN;
         this.timeout = requestTimeout.toMillis();
 
-        try {
-            LDAPConnectionOptions options = new LDAPConnectionOptions();
-            options.setConnectTimeoutMillis((int) connectionTimeout.toMillis());
-            options.setResponseTimeoutMillis(requestTimeout.toMillis());
-            LDAPConnection connection;
-            if (sslEnabled) {
-                SSLUtil sslUtil = trustAllCerts ? new SSLUtil(new TrustAllTrustManager()) : new SSLUtil();
-                SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
-                connection = new LDAPConnection(sslSocketFactory, options);
-            } else {
-                connection = new LDAPConnection(options);
-            }
-            connection.connect(host, port, (int) connectionTimeout.toMillis());
-
-            if (bindDnPassword.isPresent()) {
-                BindDnPassword dnPassword = bindDnPassword.get();
-                BindResult result = connection.bind(dnPassword.getDn(), dnPassword.getPassword());
-                if (!ResultCode.SUCCESS.equals(result.getResultCode())) {
-                    throw new LdapClientException.InitializationException("LDAP binding problem - returned [" +
-                            result.getResultString() + "]");
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            try {
+                LDAPConnectionOptions options = new LDAPConnectionOptions();
+                options.setConnectTimeoutMillis((int) connectionTimeout.toMillis());
+                options.setResponseTimeoutMillis(requestTimeout.toMillis());
+                LDAPConnection connection;
+                if (sslEnabled) {
+                    SSLUtil sslUtil = trustAllCerts ? new SSLUtil(new TrustAllTrustManager()) : new SSLUtil();
+                    SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
+                    connection = new LDAPConnection(sslSocketFactory, options);
+                } else {
+                    connection = new LDAPConnection(options);
                 }
+                connection.connect(host, port, (int) connectionTimeout.toMillis());
+
+                if (bindDnPassword.isPresent()) {
+                    BindDnPassword dnPassword = bindDnPassword.get();
+                    BindResult result = connection.bind(dnPassword.getDn(), dnPassword.getPassword());
+                    if (!ResultCode.SUCCESS.equals(result.getResultCode())) {
+                        throw new LdapClientException.InitializationException("LDAP binding problem - returned [" +
+                                result.getResultString() + "]");
+                    }
+                }
+                connectionPool = new LDAPConnectionPool(connection, poolSize);
+            } catch (GeneralSecurityException e) {
+                throw new LdapClientException.InitializationException("SSL Factory creation problem", e);
+            } catch (LDAPException e) {
+                throw new LdapClientException.InitializationException("LDAP connection problem", e);
             }
-            connectionPool = new LDAPConnectionPool(connection, poolSize);
-        } catch (GeneralSecurityException e) {
-            throw new LdapClientException.InitializationException("SSL Factory creation problem", e);
-        } catch (LDAPException e) {
-            throw new LdapClientException.InitializationException("LDAP connection problem", e);
-        }
+            return null;
+        });
     }
 
     @Override

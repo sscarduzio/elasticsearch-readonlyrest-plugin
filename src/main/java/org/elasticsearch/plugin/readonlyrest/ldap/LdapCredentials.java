@@ -17,6 +17,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
+import com.google.common.hash.Hashing;
+
+import java.nio.charset.Charset;
 import java.util.Objects;
 
 public class LdapCredentials {
@@ -35,6 +38,10 @@ public class LdapCredentials {
 
     public String getPassword() {
         return password;
+    }
+
+    public String getHashedPassword() {
+        return Hashing.sha256().hashString(password, Charset.defaultCharset()).toString();
     }
 
     @Override
