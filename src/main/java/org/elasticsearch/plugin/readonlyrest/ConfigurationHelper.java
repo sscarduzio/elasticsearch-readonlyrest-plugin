@@ -1,19 +1,18 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest;
@@ -55,6 +54,7 @@ public class ConfigurationHelper {
   public final String sslKeyStoreFile;
   public final String sslKeyPassword;
   public final String sslKeyStorePassword;
+  public final boolean searchLoggingEnabled;
   public final Settings settings;
   private final Logger logger;
   public String sslKeyAlias;
@@ -87,6 +87,7 @@ public class ConfigurationHelper {
     sslPrivKeyPem = s.get("ssl.privkey_pem");
     sslCertChainPem = s.get("ssl.certchain_pem");
 
+    searchLoggingEnabled = s.getAsBoolean("searchlog", false);
   }
 
   public static ConfigurationHelper parse(Settings s) {
@@ -120,23 +121,26 @@ public class ConfigurationHelper {
     String prefix = "readonlyrest.";
     String rule_prefix = prefix + "access_control_rules.";
     String users_prefix = prefix + "users.";
+    String ldaps_prefix = prefix + "ldaps.";
 
     return Arrays.asList(
-        bool(prefix + "enable"),
-        str(prefix + "response_if_req_forbidden"),
+      bool(prefix + "enable"),
+      str(prefix + "response_if_req_forbidden"),
+      bool(prefix + "searchlog"),
 
-        // SSL
-        bool(prefix + "ssl.enable"),
-        str(prefix + "ssl.keystore_file"),
-        str(prefix + "ssl.keystore_pass"),
-        str(prefix + "ssl.key_alias"),
-        str(prefix + "ssl.key_pass"),
-        str(prefix + "ssl.privkey_pem"),
-        str(prefix + "ssl.certchain_pem"),
+      // SSL
+      bool(prefix + "ssl.enable"),
+      str(prefix + "ssl.keystore_file"),
+      str(prefix + "ssl.keystore_pass"),
+      str(prefix + "ssl.key_alias"),
+      str(prefix + "ssl.key_pass"),
+      str(prefix + "ssl.privkey_pem"),
+      str(prefix + "ssl.certchain_pem"),
 
-        grp(rule_prefix),
-        grp(users_prefix)
-        // Rules
+      grp(rule_prefix),
+      grp(users_prefix),
+      grp(ldaps_prefix)
+      // Rules
 //        str(rule_prefix + "name"),
 //        str(rule_prefix + "accept_x-forwarded-for_header"),
 //        str(rule_prefix + "auth_key"),

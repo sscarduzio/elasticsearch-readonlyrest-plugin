@@ -61,10 +61,8 @@ readonlyrest:
     - name: Just certain indices, and read only
       type: allow
       actions: ["indices:data/read/*"]
-      indices: ["<no-index>", "product_catalogue-*"] # index aliases are taken in account!
+      indices: ["product_catalogue-*"] # index aliases are taken in account!
 ```
-
-> The `<no-index>` is for matching those generic requests that don't actually  involve an index (e.g. get cluster state). More about this in the [wiki](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#a-note-on-no-index).
 
 ### USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)
 ```yml
@@ -86,7 +84,7 @@ readonlyrest:
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*", "<no-index>"]
+      indices: ["logstash-*",]
 
     # We trust this server side component, full access granted via HTTP authentication
     - name: "::KIBANA-SRV::"
@@ -95,18 +93,18 @@ readonlyrest:
       type: allow
 
     # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
-    - name: "::RO+ DEVELOPER::"
-      auth_key: ro+:dev
+    - name: "::RW DEVELOPER::"
+      auth_key: rw:dev
       type: allow
-      kibana_access: ro+
-      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+      kibana_access: rw
+      indices: [".kibana", ".kibana-devnull", "logstash-*"]
 
     # Cannot configure or edit dashboards and visualizations.
     - name: "::RO DEVELOPER::"
       auth_key: ro:dev
       type: allow
       kibana_access: ro
-      indices: ["<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"]
+      indices: [".kibana", ".kibana-devnull", "logstash-*"]
 
     # No authentication required to read from this index
     - name: "::PUBLIC SEARCH::"
@@ -140,17 +138,17 @@ readonlyrest:
     - name: Accept requests from users in group team1 on index1
       type: allow
       groups: ["team1"]
-      uri_re: ^/index1/.*
+      indices: ["index1"]
 
     - name: Accept requests from users in group team2 on index2
       type: allow
       groups: ["team2"]
-      uri_re: ^/index2/.*
+      indices: ["index2"]
 
     - name: Accept requests from users in groups team1 or team2 on index3
       type: allow
       groups: ["team1", "team2"]
-      uri_re: ^/index3/.*
+      indices: ["index3"]
     
     users:
     
@@ -167,6 +165,59 @@ readonlyrest:
       groups: ["team1", "team5"]
 
 ```
+
+### USE CASE 4: LDAP authentication and group-based authorization
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    
+    access_control_rules:
+
+    - name: Accept requests from users in group team1 on index1
+      type: allow
+      ldap_auth:
+          - name: "ldap1"                                       # ldap name from 'ldaps' section
+            groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
+          - name: "ldap2"
+            groups: ["g3", "g4"]
+      indices: ["index1"]
+      
+    - name: Accept requests from users in group team2 on index2
+      type: allow
+      ldap_auth:
+          - name: "ldap2"
+            groups: ["g3"]
+      indices: ["index2"]
+
+    ldaps:
+    
+    - name: ldap1
+      host: "ldap1.example.com"
+      port: 389                                                 # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout_in_sec: 10                             # default 1
+      request_timeout_in_sec: 10                                # default 1
+      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+    
+    - name: ldap2
+      host: "ldap2.example2.com"
+      port: 636
+      search_user_base_DN: "ou=People,dc=example2,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example2,dc=com"
+```
+
+LDAP configuration requirements:
+- user from `search_user_base_DN` should have `uid` attribute
+- groups from `search_groups_base_DN` should have `uniqueMember` attribute
+
+(example LDAP config can be found in test /resources/test_example.ldif)
 
 ### 3. Restart Elasticsearch
 

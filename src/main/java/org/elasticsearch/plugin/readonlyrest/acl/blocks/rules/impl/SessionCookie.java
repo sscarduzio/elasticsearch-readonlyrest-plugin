@@ -1,3 +1,20 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
@@ -8,6 +25,7 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
@@ -19,8 +37,6 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeyRule.getBasicAuthUser;
 
 /**
  * Created by sscarduzio on 01/01/2017.
@@ -59,15 +75,15 @@ public class SessionCookie {
     this.cookiePresent = true;
 
     // ----- Check cookie validity
-    String user = getBasicAuthUser(rc.getHeaders());
+    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
     Iterator<String> cookiePartsIterator =
-        Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
+      Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
     // Check user is the same with basic auth header
     String cookieUser = cookiePartsIterator.next();
     if (!cookieUser.equals(user)) {
       logger.info("this cookie does not belong to the user logged in as. Found in Cookie: "
-          + cookieUser + " whilst in Authentication: " + user);
+                    + cookieUser + " whilst in Authentication: " + user);
       return;
     }
 
@@ -107,7 +123,7 @@ public class SessionCookie {
   }
 
   public void setCookie() {
-    String user = getBasicAuthUser(rc.getHeaders());
+    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
     Date expiryDateString = new Date(System.currentTimeMillis() + sessionMaxIdleMillis);
     String cookie = mkCookie(user, expiryDateString);
     rc.setResponseHeader("Set-Cookie", COOKIE_NAME + "=" + cookie);
@@ -115,12 +131,12 @@ public class SessionCookie {
 
   private String mkCookie(String user, Date expiry) {
     return new StringBuilder()
-        .append(user)
-        .append(COOKIE_STRING_SEPARATOR)
-        .append(expiry.toString())
-        .append(COOKIE_STRING_SEPARATOR)
-        .append(Hashing.sha1().hashString(SERVER_SECRET + user + expiry.getTime() / 1000, StandardCharsets.UTF_8))
-        .toString();
+      .append(user)
+      .append(COOKIE_STRING_SEPARATOR)
+      .append(expiry.toString())
+      .append(COOKIE_STRING_SEPARATOR)
+      .append(Hashing.sha1().hashString(SERVER_SECRET + user + expiry.getTime() / 1000, StandardCharsets.UTF_8))
+      .toString();
   }
 
   private String extractCookie(String cookieName) {
