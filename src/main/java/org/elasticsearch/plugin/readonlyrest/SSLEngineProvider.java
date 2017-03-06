@@ -1,19 +1,18 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest;
@@ -41,9 +40,8 @@ import java.util.Base64;
 
 @Singleton
 public class SSLEngineProvider {
-  private final Logger logger = Loggers.getLogger(this.getClass());
-
   public final ConfigurationHelper conf;
+  private final Logger logger = Loggers.getLogger(this.getClass());
   private SslContext context = null;
 
   @Inject
@@ -52,21 +50,24 @@ public class SSLEngineProvider {
     if (conf.sslEnabled) {
       if (!Strings.isNullOrEmpty(conf.sslCertChainPem) && !Strings.isNullOrEmpty(conf.sslPrivKeyPem)) {
         AccessController.doPrivileged(
-            new PrivilegedAction<Void>() {
-              @Override
-              public Void run() {
-                try {
-                  logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
-                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                  context = SslContextBuilder.forServer(new File(conf.sslCertChainPem),
-                      new File(conf.sslPrivKeyPem), null).build();
-                } catch (SSLException e) {
-                  logger.error("Failed to load SSL CertChain & private key!");
-                  e.printStackTrace();
-                }
-                return null;
+          new PrivilegedAction<Void>() {
+            @Override
+            public Void run() {
+              try {
+                logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
+                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                context = SslContextBuilder.forServer(
+                  new File(conf.sslCertChainPem),
+                  new File(conf.sslPrivKeyPem),
+                  null
+                ).build();
+              } catch (SSLException e) {
+                logger.error("Failed to load SSL CertChain & private key!");
+                e.printStackTrace();
               }
-            });
+              return null;
+            }
+          });
 
         // Everything is configured
         logger.info("SSL configured through cert_chain and privkey");
@@ -131,22 +132,23 @@ public class SSLEngineProvider {
 
 
         AccessController.doPrivileged(
-            new PrivilegedAction<Void>() {
-              @Override
-              public Void run() {
-                try {
-                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                  context = SslContextBuilder.forServer(
-                      new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-                      new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-                      null).build();
-                } catch (Exception e) {
-                  logger.error("Failed to load SSL CertChain & private key from Keystore!");
-                  e.printStackTrace();
-                }
-                return null;
+          new PrivilegedAction<Void>() {
+            @Override
+            public Void run() {
+              try {
+                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                context = SslContextBuilder.forServer(
+                  new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+                  new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+                  null
+                ).build();
+              } catch (Exception e) {
+                logger.error("Failed to load SSL CertChain & private key from Keystore!");
+                e.printStackTrace();
               }
-            });
+              return null;
+            }
+          });
 
       } catch (Throwable t) {
         logger.error("Failed to load SSL certs and keys from JKS Keystore!");
