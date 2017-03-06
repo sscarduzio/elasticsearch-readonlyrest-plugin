@@ -37,6 +37,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
@@ -260,6 +261,10 @@ public class Block {
         }
         try {
             syncConditionsToCheck.add(new IndicesRewriteSyncRule(s));
+        } catch (RuleNotConfiguredException ignored) {
+        }
+        try {
+            syncConditionsToCheck.add(new KibanaHideAppsSyncRule(s));
         } catch (RuleNotConfiguredException ignored) {
         }
     }
