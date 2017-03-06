@@ -92,7 +92,7 @@
 http.host: 0.0.0.0
 
 xpack:
-    monitoring.enabled: true
+    monitoring.enabled: false
     security.enabled: false
     graph.enabled: false
     watcher.enabled: false

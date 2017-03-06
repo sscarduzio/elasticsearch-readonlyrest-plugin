@@ -47,8 +47,8 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     private static Logger logger = Logger.getLogger(ESWithReadonlyRestContainer.class.getName());
 
     private static int ES_PORT = 9200;
-    private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
-    private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(60);
+    private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(3);
+    private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(180);
     private static String ADMIN_LOGIN = "admin";
     private static String ADMIN_PASSWORD = "container";
 
@@ -116,13 +116,16 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
     private WaitStrategy waitStrategy(ESInitalizer initalizer) {
         final ObjectMapper mapper = new ObjectMapper();
+        Duration _startupTimeout = Duration.ofSeconds(180);
+
         return new GenericContainer.AbstractWaitStrategy() {
+
             @Override
             protected void waitUntilReady() {
                 logger.info("Waiting for ES container ...");
                 final RestClient client = getAdminClient();
                 final Instant startTime = Instant.now();
-                while(!isReady(client) && !checkTimeout(startTime, startupTimeout)) {
+                while(!isReady(client) && !checkTimeout(startTime, _startupTimeout)) {
                     try {
                         Thread.sleep(WAIT_BETWEEN_RETRIES.toMillis());
                     } catch (InterruptedException e) {
@@ -135,7 +138,10 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
             private boolean isReady(RestClient client) {
                 try {
+                    logger.info("getting health..");
                     Response result = client.performRequest("GET", "_cluster/health");
+                    logger.info("health was: "+ result.getEntity());
+
                     if(result.getStatusLine().getStatusCode() != 200) return false;
                     Map<String,String> healthJson = mapper.readValue(
                             result.getEntity().getContent(),
