@@ -16,6 +16,7 @@
  */
 
 package org.elasticsearch.plugin.readonlyrest.acl;
+
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 

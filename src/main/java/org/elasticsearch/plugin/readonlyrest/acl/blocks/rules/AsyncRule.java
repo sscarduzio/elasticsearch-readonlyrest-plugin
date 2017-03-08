@@ -23,6 +23,6 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncRule extends Rule {
 
-    public abstract CompletableFuture<RuleExitResult> match(RequestContext rc);
+  public abstract CompletableFuture<RuleExitResult> match(RequestContext rc);
 
 }

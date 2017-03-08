@@ -36,8 +36,8 @@ public abstract class SyncRule extends Rule {
 
   protected String mkKey(Class<? extends Rule> c) {
     return CaseFormat.LOWER_CAMEL.to(
-            CaseFormat.LOWER_UNDERSCORE,
-            c.getSimpleName().replace("SyncRule", "")
+      CaseFormat.LOWER_UNDERSCORE,
+      c.getSimpleName().replace("SyncRule", "")
     );
   }
 

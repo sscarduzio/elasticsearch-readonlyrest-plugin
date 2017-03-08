@@ -18,9 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
-import java.util.List;
-import java.util.Map;
-
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -29,6 +26,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * Created by ah on 15/02/2016.
  */
@@ -36,7 +36,7 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule {
 
   private static final String HEADER = "X-Forwarded-User";
   private List<String> userList;
-  
+
   public ProxyAuthSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
     String[] users = s.getAsArray(getKey());
@@ -52,7 +52,7 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule {
       throw new RuleNotConfiguredException();
     }
   }
-  
+
   public static String getUser(Map<String, String> headers) {
     String h = headers.get(HEADER);
     if (h == null || h.trim().length() == 0)
@@ -63,16 +63,16 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     String h = getUser(rc.getHeaders());
-    
+
     if (h == null) {
       return NO_MATCH;
     }
-    
+
     if (h.length() == 0) {
       return NO_MATCH;
     }
 
-    for(String user: userList) {
+    for (String user : userList) {
       if ("*".equals(user)) {
         return MATCH;
       }
@@ -80,8 +80,8 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule {
         return MATCH;
       }
     }
-  
+
     return NO_MATCH;
   }
-  
+
 }

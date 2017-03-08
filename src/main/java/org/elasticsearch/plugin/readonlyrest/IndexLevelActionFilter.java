@@ -18,6 +18,7 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -32,7 +33,6 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -51,13 +51,13 @@ import java.util.Arrays;
  */
 @Singleton
 public class IndexLevelActionFilter implements ActionFilter {
+  ESLogger logger = Loggers.getLogger(this.getClass());
   private ClusterService clusterService;
   private ACL acl;
-  ESLogger logger =  Loggers.getLogger(this.getClass());
   private ConfigurationHelper conf;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf, ClusterService clusterService) {
+  public IndexLevelActionFilter(ACL acl, ConfigurationHelper conf, ClusterService clusterService) {
     this.conf = conf;
     this.clusterService = clusterService;
 
@@ -80,7 +80,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
   @Override
   public void apply(String action, ActionResponse actionResponse, ActionListener actionListener, ActionFilterChain actionFilterChain) {
-      actionFilterChain.proceed(action,actionResponse,actionListener);
+    actionFilterChain.proceed(action, actionResponse, actionListener);
   }
 
 
@@ -89,6 +89,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
     // Skip if disabled
     if (!conf.enabled) {
+      chain.proceed(task, action, actionRequest, actionListener);
       return;
     }
 
@@ -100,6 +101,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
     // This was not a REST message
     if (reqNull && chanNull) {
+      chain.proceed(task, action, actionRequest, actionListener);
       return;
     }
 
@@ -116,27 +118,30 @@ public class IndexLevelActionFilter implements ActionFilter {
       .exceptionally(throwable -> {
         logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
         sendNotAuthResponse(channel);
-        return null;
+        throw new ElasticsearchException(throwable);
       })
       .thenApply(result -> {
-        if (result == null) return null;
+        if (result == null) {
+          logger.error("result was null for: " + rc.getAction());
+          throw new ElasticsearchException("Block exit results should never be null");
+        }
         if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
           if (conf.searchLoggingEnabled && SearchAction.INSTANCE.name().equals(action)) {
-            @SuppressWarnings("unchecked")
-            ActionListener searchListener = (ActionListener)
-              new LoggerActionListener(action,req, actionRequest,(ActionListener<SearchResponse>)actionListener, rc);
+            ActionListener<SearchResponse> searchListener = new LoggerActionListener(action, req, actionRequest, (ActionListener<SearchResponse>) actionListener, rc);
             chain.proceed(task, action, actionRequest, searchListener);
           }
           else {
             chain.proceed(task, action, actionRequest, actionListener);
           }
-        } else {
+        }
+        else {
           logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
           sendNotAuthResponse(channel);
+          chain.proceed(task, action, actionRequest, actionListener);
         }
+        // will proceed with chain from the future handler above
         return null;
       });
-
   }
 
   private void sendNotAuthResponse(RestChannel channel) {
@@ -147,7 +152,8 @@ public class IndexLevelActionFilter implements ActionFilter {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
-    } else {
+    }
+    else {
       resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
     }
 
@@ -167,7 +173,7 @@ public class IndexLevelActionFilter implements ActionFilter {
                          RequestContext requestContext) {
       this.req = req;
       this.action = action;
-      this.searchRequest = (SearchRequest)searchRequest;
+      this.searchRequest = (SearchRequest) searchRequest;
       this.baseListener = baseListener;
       this.requestContext = requestContext;
     }
@@ -197,13 +203,11 @@ public class IndexLevelActionFilter implements ActionFilter {
       if (searchSource != null)
         try {
           return XContentHelper.convertToJson(searchSource, true);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
           logger.warn("Unable to convert searchSource to JSON", e);
         }
       return "";
     }
-
 
 
   }

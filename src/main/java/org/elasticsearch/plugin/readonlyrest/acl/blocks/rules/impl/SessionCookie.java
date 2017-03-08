@@ -19,7 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.common.hash.Hashing;import org.elasticsearch.ElasticsearchException;
+import com.google.common.hash.Hashing;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;

@@ -26,7 +26,6 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
 import org.jboss.netty.handler.ssl.SslContext;
 
 import javax.net.ssl.SSLException;
@@ -55,21 +54,22 @@ public class SSLContextProvider {
     if (conf.sslEnabled) {
       if (!Strings.isNullOrEmpty(conf.sslCertChainPem) && !Strings.isNullOrEmpty(conf.sslPrivKeyPem)) {
         AccessController.doPrivileged(
-            new PrivilegedAction<Void>() {
-              @Override
-              public Void run() {
-                try {
-                  logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
-                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                  context = SslContext.newServerContext(new File(conf.sslCertChainPem),
-                      new File(conf.sslPrivKeyPem), null);
-                } catch (SSLException e) {
-                  logger.error("Failed to load SSL CertChain & private key!");
-                  e.printStackTrace();
-                }
-                return null;
+          new PrivilegedAction<Void>() {
+            @Override
+            public Void run() {
+              try {
+                logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
+                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                context = SslContext.newServerContext(new File(conf.sslCertChainPem),
+                                                      new File(conf.sslPrivKeyPem), null
+                );
+              } catch (SSLException e) {
+                logger.error("Failed to load SSL CertChain & private key!");
+                e.printStackTrace();
               }
-            });
+              return null;
+            }
+          });
 
         // Everything is configured
         logger.info("SSL configured through cert_chain and privkey");
@@ -133,22 +133,22 @@ public class SSLContextProvider {
         logger.info("Discovered cert chain from JKS");
 
         AccessController.doPrivileged(
-            new PrivilegedAction<Void>() {
-              @Override
-              public Void run() {
-                try {
-                  // Netty3 does not take input streams, only files :(
-                  File chainFile = TempFile.newFile("fullchain", "pem", certChain);
-                  File privatekeyFile = TempFile.newFile("privkey", "pem", privateKey);
-                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                  context = SslContext.newServerContext(chainFile, privatekeyFile, null);
-                } catch (Exception e) {
-                  logger.error("Failed to load SSL CertChain & private key from Keystore!");
-                  e.printStackTrace();
-                }
-                return null;
+          new PrivilegedAction<Void>() {
+            @Override
+            public Void run() {
+              try {
+                // Netty3 does not take input streams, only files :(
+                File chainFile = TempFile.newFile("fullchain", "pem", certChain);
+                File privatekeyFile = TempFile.newFile("privkey", "pem", privateKey);
+                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                context = SslContext.newServerContext(chainFile, privatekeyFile, null);
+              } catch (Exception e) {
+                logger.error("Failed to load SSL CertChain & private key from Keystore!");
+                e.printStackTrace();
               }
-            });
+              return null;
+            }
+          });
 
       } catch (Throwable t) {
         logger.error("Failed to load SSL certs and keys from JKS Keystore!");

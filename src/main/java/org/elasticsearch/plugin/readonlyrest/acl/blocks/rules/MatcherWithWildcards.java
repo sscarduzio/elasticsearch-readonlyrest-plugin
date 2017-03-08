@@ -16,6 +16,7 @@
  */
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
+
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;

@@ -43,8 +43,8 @@ public class ProxyAuthRuleTests extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
 
     SyncRule r = new ProxyAuthSyncRule(Settings.builder()
-                               .put("proxy_auth", configured)
-                               .build());
+                                         .put("proxy_auth", configured)
+                                         .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

@@ -34,7 +34,6 @@ import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -150,12 +149,13 @@ public class IndicesRewriteRuleTests extends TestCase {
       Arrays.asList("replacement", "outlier")
     );
   }
+
   @Test
   public void testKibanaAndLogstash() throws RuleNotConfiguredException {
     match(
       Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
       Arrays.asList(".kibana", "logstash-2001-01-01"),
-      Arrays.asList(".kibana_user1","logstash-2001-01-01_user1")
+      Arrays.asList(".kibana_user1", "logstash-2001-01-01_user1")
     );
   }
 
@@ -164,7 +164,7 @@ public class IndicesRewriteRuleTests extends TestCase {
     match(
       Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@user"),
       Arrays.asList(".kibana", "logstash-2001-01-01"),
-      Arrays.asList(".kibana_simone","logstash-2001-01-01_simone")
+      Arrays.asList(".kibana_simone", "logstash-2001-01-01_simone")
     );
   }
 

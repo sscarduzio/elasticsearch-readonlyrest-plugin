@@ -26,26 +26,18 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.get.MultiGetRequest;
-import org.elasticsearch.action.search.MultiSearchRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
-import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.threadpool.ThreadPool;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -154,6 +146,7 @@ public class RequestContext {
     }
     return remoteHost;
   }
+
   public String getUri() {
     return request.uri();
   }
@@ -168,6 +161,7 @@ public class RequestContext {
     }
     return content;
   }
+
   public Set<String> getExpandedIndices() {
     return new MatcherWithWildcards(getIndices()).filter(getAvailableIndicesAndAliases());
   }
@@ -210,52 +204,52 @@ public class RequestContext {
 
     final String[][] out = {new String[1]};
     AccessController.doPrivileged(
-        new PrivilegedAction<Void>() {
-          @Override
-          public Void run() {
-            String[] indices = new String[0];
-            ActionRequest ar = actionRequest;
+      new PrivilegedAction<Void>() {
+        @Override
+        public Void run() {
+          String[] indices = new String[0];
+          ActionRequest<?> ar = actionRequest;
 
-            if (ar instanceof CompositeIndicesRequest) {
-              CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
-              for (IndicesRequest ir : cir.subRequests()) {
-                indices = ObjectArrays.concat(indices, ir.indices(), String.class);
-              }
+          if (ar instanceof CompositeIndicesRequest) {
+            CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
+            for (IndicesRequest ir : cir.subRequests()) {
+              indices = ObjectArrays.concat(indices, ir.indices(), String.class);
             }
-            else {
-              try {
-                Method m = ar.getClass().getMethod("indices");
-                if (m.getReturnType() != String[].class) {
-                  out[0] = new String[]{};
-                  return null;
-                }
-                m.setAccessible(true);
-                indices = (String[]) m.invoke(ar);
-              } catch (SecurityException e) {
-                logger.error("Can't get indices for request: " + toString());
-                throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
-              } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                logger.debug("Failed to discover indices associated to this request: " + this);
-              }
-            }
-
-            if (indices == null) {
-              indices = new String[0];
-            }
-
-            // De-dup
-            HashSet<String> tempSet = new HashSet<>(Arrays.asList(indices));
-            indices = tempSet.toArray(new String[tempSet.size()]);
-
-            if (logger.isDebugEnabled()) {
-              String idxs = Joiner.on(',').skipNulls().join(indices);
-              logger.debug("Discovered indices: " + idxs);
-            }
-
-            out[0] = indices;
-            return null;
           }
+          else {
+            try {
+              Method m = ar.getClass().getMethod("indices");
+              if (m.getReturnType() != String[].class) {
+                out[0] = new String[]{};
+                return null;
+              }
+              m.setAccessible(true);
+              indices = (String[]) m.invoke(ar);
+            } catch (SecurityException e) {
+              logger.error("Can't get indices for request: " + toString());
+              throw new SecurityPermissionException("Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
+            } catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+              logger.debug("Failed to discover indices associated to this request: " + this);
+            }
+          }
+
+          if (indices == null) {
+            indices = new String[0];
+          }
+
+          // De-dup
+          HashSet<String> tempSet = new HashSet<>(Arrays.asList(indices));
+          indices = tempSet.toArray(new String[tempSet.size()]);
+
+          if (logger.isDebugEnabled()) {
+            String idxs = Joiner.on(',').skipNulls().join(indices);
+            logger.debug("Discovered indices: " + idxs);
+          }
+
+          out[0] = indices;
+          return null;
         }
+      }
     );
 
     indices = Sets.newHashSet(out[0]);
@@ -288,31 +282,31 @@ public class RequestContext {
     logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
 
     AccessController.doPrivileged(
-        new PrivilegedAction<Void>() {
-          @Override
-          public Void run() {
-            Class<?> c = actionRequest.getClass();
-            final List<Throwable> results = Lists.newArrayList();
-            results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
-            if (!results.isEmpty() && actionRequest instanceof IndicesAliasesRequest) {
-              IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
-              List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
-              for (IndicesAliasesRequest.AliasActions a : actions) {
-                results.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
-              }
+      new PrivilegedAction<Void>() {
+        @Override
+        public Void run() {
+          Class<?> c = actionRequest.getClass();
+          final List<Throwable> results = Lists.newArrayList();
+          results.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
+          if (!results.isEmpty() && actionRequest instanceof IndicesAliasesRequest) {
+            IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
+            List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
+            for (IndicesAliasesRequest.AliasActions a : actions) {
+              results.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
             }
-            if (results.isEmpty()) {
-              indices.clear();
-              indices.addAll(newIndices);
-            }
-            else {
-              for (Throwable e : results) {
-                logger.error("Failed to set indices " + e.toString());
-              }
-            }
-            return null;
           }
-        });
+          if (results.isEmpty()) {
+            indices.clear();
+            indices.addAll(newIndices);
+          }
+          else {
+            for (Throwable e : results) {
+              logger.error("Failed to set indices " + e.toString());
+            }
+          }
+          return null;
+        }
+      });
   }
 
   public String getAction() {
@@ -338,7 +332,7 @@ public class RequestContext {
     request.putInContext("response_headers", rh);
   }
 
-  public Map<String,String> getHeaders(){
+  public Map<String, String> getHeaders() {
     return headers;
   }
 
