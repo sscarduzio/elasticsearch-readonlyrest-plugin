@@ -24,13 +24,12 @@ In other words... no more proxies! Yay Ponies!
 
 [Download](https://readonlyrest.com) the binary release for your Elasticsearch version from the official website.
 
-**Need a build for a specific ES version? Open an [issue](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/issues)!** 
 
 ### 2. Configuration
 
 Append either of these snippets to `conf/elasticsearch.yml`
 
-### USE CASE 0: Enable 
+### USE CASE 0: Enable HTTPS
 globally
 Remember to enable SSL whenever you use HTTP basic auth or API keys so your credentials can't be stolen.
 ```yml
@@ -45,7 +44,7 @@ readonlyrest:
       key_pass: readonlyrest
 ```
 
-### USE CASE 1: Full access from localhost + RO to catalogue-* indices from elsewhere
+### USE CASE 1: RW all indices from localhost, RO specific indices from elsewhere
 
 ```yml
 readonlyrest:
@@ -64,7 +63,7 @@ readonlyrest:
       indices: ["product_catalogue-*"] # index aliases are taken in account!
 ```
 
-### USE CASE 2: Multiuser Kibana + Authenticated Logstash (various permission levels)
+### USE CASE 2: Multi-tenant Kibana + Authenticated Logstash (various permission levels)
 ```yml
 
 readonlyrest:
@@ -84,29 +83,29 @@ readonlyrest:
       auth_key: logstash:logstash
       type: allow
       actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*",]
+      indices: ["logstash-*"]
 
-    # We trust this server side component, full access granted via HTTP authentication
+    # We trust Kibana's server side process, full access granted via HTTP authentication
     - name: "::KIBANA-SRV::"
-      # auth_key is good for testing, but replace it with `auth_key_sha1`!
+      # auth_key is good for testing, but replace it with `auth_key_sha256`!
       auth_key: kibana:kibana
       type: allow
 
-    # Logs in via HTTP Basic Authentication, has RW access to kibana but zero access to non-kibana actions.
+    # Using "Basic HTTP Auth" from browsers, can RW Kibana settings, RO on logstash indices from 2017 .
     - name: "::RW DEVELOPER::"
       auth_key: rw:dev
       type: allow
       kibana_access: rw
-      indices: [".kibana", ".kibana-devnull", "logstash-*"]
+      indices: [".kibana", ".kibana-devnull", "logstash-2017*"]
 
-    # Cannot configure or edit dashboards and visualizations.
+    # Same as above, but cannot change dashboards, visualizations or settings in Kibana
     - name: "::RO DEVELOPER::"
       auth_key: ro:dev
       type: allow
       kibana_access: ro
-      indices: [".kibana", ".kibana-devnull", "logstash-*"]
+      indices: [".kibana", ".kibana-devnull", "logstash-2017*"]
 
-    # No authentication required to read from this index
+    # No authentication required to read from "public" index
     - name: "::PUBLIC SEARCH::"
       type: allow
       indices: ["public"]
@@ -119,8 +118,8 @@ readonlyrest:
 * edit the kibana configuration file: `kibana.yml` and add the following:
 
 ```yml
-elasticsearch.username: "admin"
-elasticsearch.password: "passwd3"
+elasticsearch.username: "kibana"
+elasticsearch.password: "kibana"
 ```
 
 This is secure because the users connecting from their browsers will be asked to login separately anyways.
@@ -221,7 +220,7 @@ LDAP configuration requirements:
 
 ### 3. Restart Elasticsearch
 
-**For other use cases and finer access control** have a look at [the full list of supported rules](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
+**For other use cases and finer access control** have a look at the official documentation to see [the full list of supported rules](https://readonlyrest.com/documentation)
 
 ### Important!
 Before going to production, read this.
@@ -236,18 +235,18 @@ rest.action.multi.allow_explicit_index: false
 The default value is true, but when set to false, Elasticsearch will reject requests that have an explicit index specified in the request body.
 
 #### Use hashed credentials
-Plain text `auth_key` is is great for testing, but remember to replace it with [`auth_key_sha1`](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#list-of-supported-rules-in-acl-blocks)! 
+Plain text `auth_key` is is great for testing, but remember to replace it with [`auth_key_sha256`](https://readonlyrest.com/documentation)! 
 
 
 ## Key Features
 
-#### Zero external dependencies: tiny memory overhead, blazing fast networking :rocket:
+#### Tiny memory overhead, blazing fast networking :rocket:
 Other security plugins are replacing the high performance, Netty based, embedded REST API of Elasticsearch with Tomcat, Jetty or other cumbersome XML based JEE madness.
 
 This plugin instead is just a lightweight pure-Java filtering layer. Even the SSL layer is provided as an extra Netty transport handler.
 
 #### Less moving parts
-Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to prevent malicious access. This is a **bad idea** for two reasons:
+Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to filter out malicious access with regular expressions on HTTP methods and paths. This is a **bad idea** for two reasons:
 - You're introducing more complexity in your architecture.
 - Reasoning about security at HTTP level is risky, flaky and less granular than controlling access at the internal ElasticSearch protocol level.
 
