@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.rules;
+package org.elasticsearch.rest.action.readonlyrest.acl.rules;
 
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
