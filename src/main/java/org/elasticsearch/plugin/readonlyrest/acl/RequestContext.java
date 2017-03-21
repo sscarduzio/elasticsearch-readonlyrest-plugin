@@ -299,7 +299,11 @@ public class RequestContext {
           Class<?> c = actionRequest.getClass();
           final List<Throwable> errors = Lists.newArrayList();
           errors.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
-
+          // Take care of writes
+          if (!errors.isEmpty() && newIndices.size() == 1){
+            errors.clear();
+            errors.addAll(setStringInInstance(c, actionRequest, "index", newIndices.iterator().next()));
+          }
           if (!errors.isEmpty() && actionRequest instanceof IndicesRequest) {
             IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
             List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
