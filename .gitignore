@@ -31,3 +31,8 @@ docker/*
 src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
 src/main/resources/plugin-descriptor.properties
 src/test/eshome/*
+
+// Crypto
+*.pem
+*.pkcs8
+*.p12
