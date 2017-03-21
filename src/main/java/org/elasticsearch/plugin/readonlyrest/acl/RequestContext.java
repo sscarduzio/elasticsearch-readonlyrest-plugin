@@ -348,7 +348,30 @@ public class RequestContext {
     }
     return errors;
   }
+  
+  private List<Throwable> setStringInInstance(Class<?> theClass, Object instance, String fieldName, String injectedString) {
+    Class<?> c = theClass;
+    final List<Throwable> errors = new ArrayList<>();
+    try {
+      boolean useSuperClass = true;
+      for (Field f : c.getDeclaredFields()) {
+        if (fieldName.equals(f.getName())) {
+          useSuperClass = false;
+        }
+      }
+      if (useSuperClass) {
+        c = c.getSuperclass();
+      }
+      Field field = c.getDeclaredField(fieldName);
+      field.setAccessible(true);
 
+      field.set(instance, injectedString);
+    } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
+      errors.add(new SetIndexException(c, id, e));
+    }
+    return errors;
+  }
+  
   public void setResponseHeader(String name, String value) {
     sideEffects.appendEffect(() -> doSetResponseHeader(name, value));
   }
