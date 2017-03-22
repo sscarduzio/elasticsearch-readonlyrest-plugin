@@ -40,10 +40,12 @@ import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
+import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.lang.reflect.Field;
@@ -178,9 +180,9 @@ public class RequestContext {
   }
 
   public Set<String> getIndices() {
-    if (indices != null) {
-      return indices;
-    }
+//    if (indices != null) {
+//      return indices;
+//    }
     logger.debug("Finding indices for: " + toString(true));
 
     final String[][] out = {new String[1]};
@@ -299,7 +301,11 @@ public class RequestContext {
           Class<?> c = actionRequest.getClass();
           final List<Throwable> errors = Lists.newArrayList();
           errors.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
-
+          // Take care of writes
+          if (!errors.isEmpty() && newIndices.size() == 1){
+            errors.clear();
+            errors.addAll(setStringInInstance(c, actionRequest, "index", newIndices.iterator().next()));
+          }
           if (!errors.isEmpty() && actionRequest instanceof IndicesRequest) {
             IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
             List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
@@ -344,7 +350,28 @@ public class RequestContext {
     }
     return errors;
   }
+  private List<Throwable> setStringInInstance(Class<?> theClass, Object instance, String fieldName, String injectedString) {
+    Class<?> c = theClass;
+    final List<Throwable> errors = new ArrayList<>();
+    try {
+      boolean useSuperClass = true;
+      for (Field f : c.getDeclaredFields()) {
+        if (fieldName.equals(f.getName())) {
+          useSuperClass = false;
+        }
+      }
+      if (useSuperClass) {
+        c = c.getSuperclass();
+      }
+      Field field = c.getDeclaredField(fieldName);
+      field.setAccessible(true);
 
+      field.set(instance, injectedString);
+    } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
+      errors.add(new SetIndexException(c, id, e));
+    }
+    return errors;
+  }
   public void setResponseHeader(String name, String value) {
     sideEffects.appendEffect(() -> doSetResponseHeader(name, value));
   }
@@ -368,7 +395,7 @@ public class RequestContext {
   public String getLoggedInUser() {
     String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
     if (user == null)
-        user = ProxyAuthSyncRule.getUser(getHeaders());
+      user = ProxyAuthSyncRule.getUser(getHeaders());
     return user;
   }
 
