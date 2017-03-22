@@ -51,7 +51,7 @@ public class ConfigurationHelper {
   public static final String ANSI_CYAN = "\u001B[36m";
   public static final String ANSI_WHITE = "\u001B[37m";
 
-  static private final  Logger logger = Loggers.getLogger(ConfigurationHelper.class);
+  private static final Logger logger = Loggers.getLogger(ConfigurationHelper.class);
 
   private static ConfigurationHelper currentInstance;
   private final Client client;
