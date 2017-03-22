@@ -92,8 +92,13 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   }
 
   @Override
-  public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService, ScriptService scriptService, SearchRequestParsers searchRequestParsers, NamedXContentRegistry xContentRegistry) {
-    Collection<Object> fromSup = super.createComponents(client, clusterService, threadPool, resourceWatcherService, scriptService, searchRequestParsers, xContentRegistry);
+  public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
+                                             ResourceWatcherService resourceWatcherService, ScriptService scriptService,
+                                             SearchRequestParsers searchRequestParsers, NamedXContentRegistry xContentRegistry) {
+
+    Collection<Object> fromSup = super.createComponents(client, clusterService, threadPool, resourceWatcherService,
+                                                        scriptService, searchRequestParsers, xContentRegistry
+    );
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     Runnable task = new Runnable() {
       @Override
@@ -104,7 +109,8 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
           logger.info("Cluster-wide settings found, overriding elasticsearch.yml");
           executor.shutdown();
         } catch (ElasticsearchException ee) {
-          logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin. Will keep on using elasticearch.yml.");
+          logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin." +
+                        " Will keep on using elasticearch.yml.");
           executor.shutdown();
         } catch (Throwable t) {
           logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet..");
@@ -124,7 +130,8 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   @Override
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-    return Collections.singletonList(new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
+    return Collections.singletonList(
+      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
   }
 
   @Override

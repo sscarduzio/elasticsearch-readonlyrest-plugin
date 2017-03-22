@@ -119,15 +119,20 @@ public class LdapConfig {
 
   private static String searchUserBaseDnFrom(Settings settings, String name) {
     String searchUserBaseDn = settings.get(ATTRIBUTE_SEARCH_USER_BASE_DN);
-    if (searchUserBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
-                                                                       ATTRIBUTE_SEARCH_USER_BASE_DN + "] attribute defined for LDAP [" + name + "]");
+    if (searchUserBaseDn == null) {
+      throw new ConfigMalformedException(
+        "LDAP definition malformed - no [" + ATTRIBUTE_SEARCH_USER_BASE_DN +
+          "] attribute defined for LDAP [" + name + "]");
+    }
     return searchUserBaseDn;
   }
 
   private static String searchGroupsBaseDnFrom(Settings settings, String name) {
     String searchGroupsBaseDn = settings.get(ATTRIBUTE_SEARCH_GROUPS_BASE_DN);
-    if (searchGroupsBaseDn == null) throw new ConfigMalformedException("LDAP definition malformed - no [" +
-                                                                         ATTRIBUTE_SEARCH_GROUPS_BASE_DN + "] attribute defined for LDAP [" + name + "]");
+    if (searchGroupsBaseDn == null){
+      throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_SEARCH_GROUPS_BASE_DN +
+                                           "] attribute defined for LDAP [" + name + "]");
+    }
     return searchGroupsBaseDn;
   }
 
