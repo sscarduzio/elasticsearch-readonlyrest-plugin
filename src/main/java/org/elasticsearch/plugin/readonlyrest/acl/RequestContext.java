@@ -134,6 +134,7 @@ public class RequestContext {
   }
 
   public void reset() {
+    indices = null;
     sideEffects.clear();
   }
 
@@ -177,10 +178,15 @@ public class RequestContext {
     return new MatcherWithWildcards(getIndices()).filter(getAvailableIndicesAndAliases());
   }
 
-  public Set<String> getIndices() {
-//    if (indices != null) {
-//      return indices;
-//    }
+  public Set<String> getIndices(){
+    if (indices != null) {
+      return indices;
+    }
+    return getOriginalIndices();
+  }
+
+  public Set<String> getOriginalIndices() {
+
     logger.debug("Finding indices for: " + toString(true));
 
     final String[][] out = {new String[1]};
@@ -251,6 +257,7 @@ public class RequestContext {
   }
 
   public void setIndices(final Set<String> newIndices) {
+    indices = newIndices;
     sideEffects.appendEffect(() -> doSetIndices(newIndices));
   }
 
@@ -280,11 +287,11 @@ public class RequestContext {
     newIndices.remove("<no-index>");
     newIndices.remove("");
 
-    if (newIndices.equals(getIndices())) {
-      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getIndices() + " New:" + newIndices);
+    if (newIndices.equals(getOriginalIndices())) {
+      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getOriginalIndices() + " New:" + newIndices);
       return;
     }
-    logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
+    logger.info("id: " + id + " - Replacing indices. Old:" + getOriginalIndices() + " New:" + newIndices);
 
     if (newIndices.size() == 0) {
       throw new ElasticsearchException(

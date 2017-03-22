@@ -47,6 +47,8 @@ public class IndicesRuleTests extends TestCase {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);
+    // XXX mocks don't support the pre-commit read-after-write logic
+    when(rc.getOriginalIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new IndicesSyncRule(Settings.builder()
