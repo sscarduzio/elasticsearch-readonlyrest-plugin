@@ -18,12 +18,16 @@
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.ResourceNotFoundException;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,64 +51,56 @@ public class ConfigurationHelper {
   public static final String ANSI_CYAN = "\u001B[36m";
   public static final String ANSI_WHITE = "\u001B[37m";
 
-  public final boolean enabled;
-  public final String verbosity;
-  public final String forbiddenResponse;
-  public final boolean sslEnabled;
-  public final String sslKeyStoreFile;
-  public final String sslKeyPassword;
-  public final String sslKeyStorePassword;
-  public final boolean searchLoggingEnabled;
-  public final Settings settings;
-  private final Logger logger;
+  private final static Logger logger = Loggers.getLogger(ConfigurationHelper.class);
+
+  private static ConfigurationHelper currentInstance;
+  private final Client client;
+
+  public boolean enabled;
+  public String verbosity;
+  public String forbiddenResponse;
+  public boolean sslEnabled;
+  public String sslKeyStoreFile;
+  public String sslKeyPassword;
+  public String sslKeyStorePassword;
+  public boolean searchLoggingEnabled;
+  public Settings settings;
   public String sslKeyAlias;
   public String sslCertChainPem;
   public String sslPrivKeyPem;
+  public ACL acl;
 
   @Inject
-  public ConfigurationHelper(Settings settings) {
+  public ConfigurationHelper(Settings settings, Client client) {
+    this.client = client;
     this.settings = settings;
-    logger = Loggers.getLogger(getClass());
+    readSettings(settings);
 
-    Settings s = settings.getByPrefix("readonlyrest.");
-    verbosity = s.get("verbosity", "info");
-    enabled = s.getAsBoolean("enable", false);
-
-    forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
-
-    // -- SSL
-    sslEnabled = s.getAsBoolean("ssl.enable", false);
-    if (sslEnabled) {
-      logger.info("SSL: Enabled");
+    // Try to fetch from
+    if (client != null) {
+      try {
+        updateSettingsFromIndex(client);
+      } catch (IllegalStateException ise) {
+        // Not ready yet.
+        return;
+      } catch (Exception e) {
+        e.printStackTrace();
+        logger.info("No cluster-wide settings found.. You need RedonlyREST Kibana plugin to make this work :) ");
+      }
     }
-    else {
-      logger.info("SSL: Disabled");
-    }
-    sslKeyStoreFile = s.get("ssl.keystore_file");
-    sslKeyStorePassword = s.get("ssl.keystore_pass");
-    sslKeyPassword = s.get("ssl.key_pass"); // fallback
-    sslKeyAlias = s.get("ssl.key_alias");
-    sslPrivKeyPem = s.get("ssl.privkey_pem");
-    sslCertChainPem = s.get("ssl.certchain_pem");
 
-    searchLoggingEnabled = s.getAsBoolean("searchlog", false);
   }
 
-  public static ConfigurationHelper parse(Settings s) {
-    try {
-      return new ConfigurationHelper(s);
-    } catch (Exception e) {
-      throw new RuleConfigurationError("cannot parse settings", e);
+  public static ConfigurationHelper getInstance(Settings s, Client c) {
+    if (currentInstance == null) {
+      currentInstance = new ConfigurationHelper(s, c);
     }
+    return currentInstance;
   }
 
   private static Setting<String> str(String name) {
     return new Setting<>(name, "", (value) -> value, Setting.Property.NodeScope);
   }
-
-//  private static Setting<List<String>> strA(String name) {
-//    return Setting.listSetting(name, new ArrayList<>(), (s) -> s.toString(), Setting.Property.NodeScope);
-//  }
 
   private static Setting<Boolean> bool(String name) {
     return Setting.boolSetting(name, Boolean.FALSE, Setting.Property.NodeScope);
@@ -116,6 +112,10 @@ public class ConfigurationHelper {
   private static Setting<Settings> grp(String name) {
     return Setting.groupSetting(name, new Setting.Property[]{Setting.Property.Dynamic, Setting.Property.NodeScope});
   }
+
+//  private static Setting<List<String>> strA(String name) {
+//    return Setting.listSetting(name, new ArrayList<>(), (s) -> s.toString(), Setting.Property.NodeScope);
+//  }
 
   public static List<Setting<?>> allowedSettings() {
     String prefix = "readonlyrest.";
@@ -158,6 +158,46 @@ public class ConfigurationHelper {
 //        strA(users_prefix + "groups")
 
     );
+  }
+
+  public void updateSettingsFromIndex(Client client) throws ResourceNotFoundException {
+    GetResponse resp = client.prepareGet(".readonlyrest", "settings", "1").get();
+    if (!resp.isExists()) {
+      throw new ElasticsearchException("no settings found in index");
+    }
+    String yaml = (String) resp.getSource().get("settings");
+    Settings settings = Settings.builder().loadFromSource(yaml).build();
+    readSettings(settings);
+  }
+
+  private void readSettings(Settings settings) {
+    Settings s = settings.getByPrefix("readonlyrest.");
+    this.settings = settings;
+    verbosity = s.get("verbosity", "info");
+    enabled = s.getAsBoolean("enable", false);
+
+    forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
+
+    // -- SSL
+    sslEnabled = s.getAsBoolean("ssl.enable", false);
+    if (sslEnabled) {
+      logger.info("SSL: Enabled");
+    }
+    else {
+      logger.info("SSL: Disabled");
+    }
+
+    sslKeyStoreFile = s.get("ssl.keystore_file");
+    sslKeyStorePassword = s.get("ssl.keystore_pass");
+    sslKeyPassword = s.get("ssl.key_pass"); // fallback
+    sslKeyAlias = s.get("ssl.key_alias");
+    sslPrivKeyPem = s.get("ssl.privkey_pem");
+    sslCertChainPem = s.get("ssl.certchain_pem");
+
+    searchLoggingEnabled = s.getAsBoolean("searchlog", false);
+    acl = new ACL(client, this);
+
+    currentInstance = this;
   }
 
 }

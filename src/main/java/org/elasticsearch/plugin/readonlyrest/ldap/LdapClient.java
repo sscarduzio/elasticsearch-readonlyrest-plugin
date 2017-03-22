@@ -22,5 +22,5 @@ import java.util.concurrent.CompletableFuture;
 
 public interface LdapClient {
 
-    CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials);
+  CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials);
 }

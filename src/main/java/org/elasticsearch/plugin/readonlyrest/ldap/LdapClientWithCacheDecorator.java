@@ -28,42 +28,43 @@ import java.util.concurrent.TimeUnit;
 
 public class LdapClientWithCacheDecorator implements LdapClient {
 
-    private final LdapClient underlyingClient;
-    private final Cache<String, LdapUserWithHashedPassword> cache;
+  private final LdapClient underlyingClient;
+  private final Cache<String, LdapUserWithHashedPassword> cache;
 
-    public LdapClientWithCacheDecorator(LdapClient underlyingClient, Duration ttl) {
-        this.underlyingClient = underlyingClient;
-        this.cache = CacheBuilder.newBuilder()
-                .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-                .build();
+  public LdapClientWithCacheDecorator(LdapClient underlyingClient, Duration ttl) {
+    this.underlyingClient = underlyingClient;
+    this.cache = CacheBuilder.newBuilder()
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
+  }
+
+  @Override
+  public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
+    LdapUserWithHashedPassword cachedUser = cache.getIfPresent(credentials.getUserName());
+    if (cachedUser == null) {
+      return underlyingClient.authenticate(credentials)
+        .thenApply(newUser -> {
+          newUser.ifPresent(ldapUser -> cache.put(
+            credentials.getUserName(),
+            new LdapUserWithHashedPassword(ldapUser, credentials.getHashedPassword())
+          ));
+          return newUser;
+        });
     }
+    return CompletableFuture.completedFuture(
+      Objects.equals(cachedUser.hashedPassword, credentials.getHashedPassword())
+        ? Optional.of(cachedUser.ldapUser)
+        : Optional.empty()
+    );
+  }
 
-    @Override
-    public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
-        LdapUserWithHashedPassword cachedUser = cache.getIfPresent(credentials.getUserName());
-        if(cachedUser == null) {
-            return underlyingClient.authenticate(credentials)
-                    .thenApply(newUser -> {
-                        newUser.ifPresent(ldapUser -> cache.put(
-                                credentials.getUserName(),
-                                new LdapUserWithHashedPassword(ldapUser, credentials.getHashedPassword())));
-                        return newUser;
-                    });
-        }
-        return CompletableFuture.completedFuture(
-                Objects.equals(cachedUser.hashedPassword, credentials.getHashedPassword())
-                        ? Optional.of(cachedUser.ldapUser)
-                        : Optional.empty()
-        );
+  private static class LdapUserWithHashedPassword {
+    private final LdapUser ldapUser;
+    private final String hashedPassword;
+
+    LdapUserWithHashedPassword(LdapUser ldapUser, String hashedPassword) {
+      this.ldapUser = ldapUser;
+      this.hashedPassword = hashedPassword;
     }
-
-    private static class LdapUserWithHashedPassword {
-        private final LdapUser ldapUser;
-        private final String hashedPassword;
-
-        LdapUserWithHashedPassword(LdapUser ldapUser, String hashedPassword) {
-            this.ldapUser = ldapUser;
-            this.hashedPassword = hashedPassword;
-        }
-    }
+  }
 }

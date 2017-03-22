@@ -22,7 +22,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GeneralAuthKeySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 
 import java.util.List;
@@ -32,51 +31,55 @@ import java.util.List;
  */
 public class User {
 
-    private final String username;
-    private final List<String> groups;
-    private UserRule authKeyRule;
+  private final String username;
+  private final List<String> groups;
+  private UserRule authKeyRule;
 
-    private User(String username, List<String> pGroups, UserRule rule) {
-        this.username = username;
-        this.groups = pGroups;
-        this.authKeyRule = rule;
+  private User(String username, List<String> pGroups, UserRule rule) {
+    this.username = username;
+    this.groups = pGroups;
+    this.authKeyRule = rule;
+  }
+
+  public static User fromSettings(Settings s) throws ConfigMalformedException {
+    String username = s.get("username");
+    UserRule authKeyRule = getAuthKeyRuleFrom(s, username);
+    List<String> groups = Lists.newArrayList(s.getAsArray("groups"));
+    if (groups.isEmpty())
+      throw new ConfigMalformedException("No groups defined for user " + (username != null ? username : "<no name>"));
+    return new User(username, groups, authKeyRule);
+  }
+
+  private static UserRule getAuthKeyRuleFrom(Settings s, String username) {
+    try {
+      return new AuthKeySyncRule(s);
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      return new AuthKeySha1SyncRule(s);
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      return new AuthKeySha256SyncRule(s);
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      return new ProxyAuthSyncRule(s);
+    } catch (RuleNotConfiguredException ignored) {
     }
 
-    public String getUsername() {
-        return username;
-    }
+    throw new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"));
+  }
 
-    public UserRule getAuthKeyRule() {
-        return authKeyRule;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public List<String> getGroups() {
-        return groups;
-    }
+  public UserRule getAuthKeyRule() {
+    return authKeyRule;
+  }
 
-    public static User fromSettings(Settings s) throws ConfigMalformedException {
-        String username = s.get("username");
-        UserRule authKeyRule = getAuthKeyRuleFrom(s, username);
-        List<String> groups = Lists.newArrayList(s.getAsArray("groups"));
-        if (groups.isEmpty())
-            throw new ConfigMalformedException("No groups defined for user " + (username != null ? username : "<no name>"));
-        return new User(username, groups, authKeyRule);
-    }
-
-    private static UserRule getAuthKeyRuleFrom(Settings s, String username) {
-        try {
-            return new AuthKeySyncRule(s);
-        } catch (RuleNotConfiguredException ignored) {}
-        try {
-            return new AuthKeySha1SyncRule(s);
-        } catch (RuleNotConfiguredException ignored) {}
-        try {
-            return new AuthKeySha256SyncRule(s);
-        } catch (RuleNotConfiguredException ignored) {}
-        try {
-          return new ProxyAuthSyncRule(s);
-        } catch (RuleNotConfiguredException ignored) {}
-
-        throw new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"));
-    }
+  public List<String> getGroups() {
+    return groups;
+  }
 } 

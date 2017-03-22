@@ -42,10 +42,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcar
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.lang.reflect.Field;
@@ -302,7 +300,7 @@ public class RequestContext {
           final List<Throwable> errors = Lists.newArrayList();
           errors.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
           // Take care of writes
-          if (!errors.isEmpty() && newIndices.size() == 1){
+          if (!errors.isEmpty() && newIndices.size() == 1) {
             errors.clear();
             errors.addAll(setStringInInstance(c, actionRequest, "index", newIndices.iterator().next()));
           }
@@ -350,6 +348,7 @@ public class RequestContext {
     }
     return errors;
   }
+
   private List<Throwable> setStringInInstance(Class<?> theClass, Object instance, String fieldName, String injectedString) {
     Class<?> c = theClass;
     final List<Throwable> errors = new ArrayList<>();
@@ -372,6 +371,7 @@ public class RequestContext {
     }
     return errors;
   }
+
   public void setResponseHeader(String name, String value) {
     sideEffects.appendEffect(() -> doSetResponseHeader(name, value));
   }

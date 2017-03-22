@@ -63,11 +63,11 @@ public class IndicesRewriteSyncRule extends SyncRule {
     replacement = a[a.length - 1];
 
     targetPatterns = Arrays.stream(targets)
-                           .distinct()
-                           .filter(Objects::nonNull)
-                           .filter(Strings::isNotBlank)
-                           .map(str -> Pattern.compile(str))
-                           .toArray(Pattern[]::new);
+      .distinct()
+      .filter(Objects::nonNull)
+      .filter(Strings::isNotBlank)
+      .map(str -> Pattern.compile(str))
+      .toArray(Pattern[]::new);
   }
 
   @Override
@@ -78,7 +78,10 @@ public class IndicesRewriteSyncRule extends SyncRule {
     }
 
     // Expanded indices
-    Set<String> oldIndices = rc.getExpandedIndices();
+    Set<String> oldIndices = rc.getIndices();
+    if (rc.isReadRequest()) {
+      oldIndices = rc.getExpandedIndices();
+    }
     Set<String> newIndices = Sets.newHashSet();
 
     String currentReplacement = replacement;
