@@ -93,11 +93,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
 
-    if (rc.getAction().contains("creat")) {
-      logger.info(rc);
-      //return MATCH;
-    }
-
     if (!rc.involvesIndices()) {
       return MATCH;
     }
