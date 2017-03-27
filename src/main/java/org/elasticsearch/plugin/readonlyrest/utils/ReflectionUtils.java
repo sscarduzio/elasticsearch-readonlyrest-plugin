@@ -25,7 +25,9 @@ public class ReflectionUtils {
     return null;
   }
 
-  public static List<Throwable> fieldChanger(final Class<?> clazz, String fieldName, Logger logger, RequestContext rc, CheckedFunction<Field, Void> change) {
+  public static List<Throwable> fieldChanger(final Class<?> clazz, String fieldName, Logger logger, RequestContext rc,
+                                             CheckedFunction<Field, Void> change) {
+
     final List<Throwable> errors = new ArrayList<>();
 
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
