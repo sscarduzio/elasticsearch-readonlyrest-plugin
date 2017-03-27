@@ -41,7 +41,10 @@ public class KibanaAccessRuleTests extends TestCase {
   }
 
   private RuleExitResult match(Conf configured, Found found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.involvesIndices()).thenReturn(false);
+    return match(configured,found,rc,false);
+  }
+  private RuleExitResult match(Conf configured, Found found, RequestContext rc, boolean involvesIndices) throws RuleNotConfiguredException {
+    when(rc.involvesIndices()).thenReturn(involvesIndices);
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
 
@@ -62,11 +65,11 @@ public class KibanaAccessRuleTests extends TestCase {
   }
 
   public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices) throws RuleNotConfiguredException {
-    return matchRule(accessLevel, action, indices, ".kibana");
+    return matchRule(accessLevel, action, indices, ".kibana", false);
 
   }
 
-  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex)
+  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex, boolean involvesIndices)
     throws RuleNotConfiguredException {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
@@ -76,7 +79,7 @@ public class KibanaAccessRuleTests extends TestCase {
     found.action = action;
     found.indices = indices;
 
-    return match(conf, found);
+    return match(conf, found, Mockito.mock(RequestContext.class), true);
   }
 
   public void testCLUSTER() throws RuleNotConfiguredException {
@@ -104,9 +107,9 @@ public class KibanaAccessRuleTests extends TestCase {
         System.out.println("");
       }
       System.out.println("trying " + a + " as RO");
-      assertFalse(matchRule("ro", a).isMatch());
+      assertFalse(matchRule("ro", a, Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
       System.out.println("trying " + a + " as RW");
-      assertTrue(matchRule("rw", a).isMatch());
+      assertTrue(matchRule("rw", a, Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
     }
   }
 
@@ -144,9 +147,9 @@ public class KibanaAccessRuleTests extends TestCase {
 
     for (String action : KibanaAccessSyncRule.RW.getMatchers()) {
       System.out.println("trying " + action + " as RO");
-      assertFalse(matchRule("ro", action, indices, customKibanaIndex).isMatch());
+      assertFalse(matchRule("ro", action, indices, customKibanaIndex, false).isMatch());
       System.out.println("trying " + action + " as RW");
-      assertTrue(matchRule("rw", action, indices, customKibanaIndex).isMatch());
+      assertTrue(matchRule("rw", action, indices, customKibanaIndex, false).isMatch());
     }
   }
 
