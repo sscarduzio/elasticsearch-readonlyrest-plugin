@@ -52,9 +52,10 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 
-  private static GradleProperties properties = GradleProperties.create().orElseThrow(() ->
-                                                                                       new ContainerCreationException("Cannot load gradle properties")
-  );
+  private static GradleProperties properties =
+    GradleProperties
+      .create()
+      .orElseThrow(() -> new ContainerCreationException("Cannot load gradle properties"));
 
   private ESWithReadonlyRestContainer(ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
