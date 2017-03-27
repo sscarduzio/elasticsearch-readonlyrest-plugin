@@ -29,6 +29,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
+import java.util.Set;
+
 
 /**
  * Created by sscarduzio on 26/03/2016.
@@ -55,7 +57,8 @@ public class KibanaAccessSyncRule extends SyncRule {
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
     "cluster:monitor/nodes/info",
-    "cluster:monitor/health"
+    "cluster:monitor/health",
+    "cluster:monitor/main"
   ));
   private final Logger logger = Loggers.getLogger(this.getClass());
   private String kibanaIndex = ".kibana";
@@ -90,9 +93,10 @@ public class KibanaAccessSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
+    Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
 
     // Allow other actions if devnull is targeted to readers and writers
-    if (rc.getIndices().contains(".kibana-devnull")) {
+    if (indices.contains(".kibana-devnull")) {
       return MATCH;
     }
 
@@ -101,7 +105,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
-    boolean targetsKibana = rc.getIndices().size() == 1 && rc.getIndices().contains(kibanaIndex);
+    boolean targetsKibana = indices.size() == 1 && indices.contains(kibanaIndex);
 
     // Kibana index, write op
     if (targetsKibana && canModifyKibana) {

@@ -51,7 +51,7 @@ public class IndicesSyncRule extends SyncRule {
       return MATCH;
     }
 
-    Set<String> indices = rc.getOriginalIndices();
+    Set<String> indices = rc.getCurrentIndices();
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
     logger.debug("Stage 0");

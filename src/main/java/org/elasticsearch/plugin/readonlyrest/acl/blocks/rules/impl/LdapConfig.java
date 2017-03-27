@@ -129,7 +129,7 @@ public class LdapConfig {
 
   private static String searchGroupsBaseDnFrom(Settings settings, String name) {
     String searchGroupsBaseDn = settings.get(ATTRIBUTE_SEARCH_GROUPS_BASE_DN);
-    if (searchGroupsBaseDn == null){
+    if (searchGroupsBaseDn == null) {
       throw new ConfigMalformedException("LDAP definition malformed - no [" + ATTRIBUTE_SEARCH_GROUPS_BASE_DN +
                                            "] attribute defined for LDAP [" + name + "]");
     }

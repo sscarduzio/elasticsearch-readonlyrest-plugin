@@ -20,13 +20,25 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.util.Strings;
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.text.Text;
+import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.search.SearchShardTarget;
+import org.elasticsearch.search.internal.InternalSearchHit;
 
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
@@ -39,9 +51,9 @@ import java.util.regex.Pattern;
 public class IndicesRewriteSyncRule extends SyncRule {
 
   private final Logger logger = Loggers.getLogger(this.getClass());
+
   private final Pattern[] targetPatterns;
   private final String replacement;
-  private boolean isRegexReplacement = true;
 
 
   public IndicesRewriteSyncRule(Settings s) throws RuleNotConfiguredException {
@@ -70,18 +82,42 @@ public class IndicesRewriteSyncRule extends SyncRule {
       .toArray(Pattern[]::new);
   }
 
+  public Pattern[] getTargetPatterns() {
+    return targetPatterns;
+  }
+
+  public String getReplacement() {
+    return replacement;
+  }
+
   @Override
   public RuleExitResult match(RequestContext rc) {
+
+    if (rc.getAction().contains("creat")) {
+      logger.info(rc);
+      //return MATCH;
+    }
 
     if (!rc.involvesIndices()) {
       return MATCH;
     }
 
     // Expanded indices
-    Set<String> oldIndices = rc.getIndices();
+    final Set<String> oldIndices = Sets.newHashSet(rc.getIndices());
+
     if (rc.isReadRequest()) {
-      oldIndices = rc.getExpandedIndices();
+
+      // Translate all the wildcards
+      oldIndices.clear();
+      oldIndices.addAll(rc.getExpandedIndices());
+
+      // If asked for non-existent indices, let's show them to the rewriter
+      Set<String> available = rc.getAvailableIndicesAndAliases();
+      rc.getIndices().stream()
+        .filter(i -> !available.contains(i))
+        .forEach(i -> oldIndices.add(i));
     }
+
     Set<String> newIndices = Sets.newHashSet();
 
     String currentReplacement = replacement;
@@ -103,9 +139,54 @@ public class IndicesRewriteSyncRule extends SyncRule {
       }
     }
     oldIndices.addAll(newIndices);
+    if (oldIndices.isEmpty()) {
+      oldIndices.add("*");
+    }
     rc.setIndices(oldIndices);
 
     // This is a side-effect only rule, will always match
     return MATCH;
   }
+
+
+  @Override
+  public boolean onResponse(RequestContext rc, ActionRequest ar, ActionResponse response) {
+    if (response instanceof SearchResponse) {
+
+      // Translate the search results indices
+      SearchResponse sr = (SearchResponse) response;
+      String serResp = sr.toString();
+      logger.info(serResp);
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+
+        Arrays.stream(sr.getHits().getHits()).forEach(h -> {
+          try {
+            Field f = InternalSearchHit.class.getDeclaredField("shard");
+            f.setAccessible(true);
+
+            SearchShardTarget sst = (SearchShardTarget) f.get(h);
+            f = SearchShardTarget.class.getDeclaredField("index");
+            f.setAccessible(true);
+            f.set(sst, new Text(rc.getOriginalIndices().iterator().next()));
+          } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+          }
+        });
+
+        return null;
+      });
+    }
+    return true;
+  }
+
+  private String convertToJson(BytesReference searchSource) {
+    if (searchSource != null)
+      try {
+        return XContentHelper.convertToJson(searchSource, true);
+      } catch (IOException e) {
+        logger.warn("Unable to convert searchSource to JSON", e);
+      }
+    return "";
+  }
+
 }

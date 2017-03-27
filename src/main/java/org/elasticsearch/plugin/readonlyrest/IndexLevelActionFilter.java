@@ -20,18 +20,13 @@ package org.elasticsearch.plugin.readonlyrest;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.search.SearchAction;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
@@ -41,9 +36,6 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-
-import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -118,26 +110,31 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     conf.acl.check(rc)
       .exceptionally(throwable -> {
         logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+        throwable.printStackTrace();
         sendNotAuthResponse(channel);
         return null;
       })
       .thenApply(result -> {
         if (result == null) return null;
+
         if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
-          if (conf.searchLoggingEnabled && SearchAction.INSTANCE.name().equals(action)) {
+
+          try {
             @SuppressWarnings("unchecked")
-            ActionListener<Response> searchListener = (ActionListener<Response>)
-              new LoggerActionListener(action, request, (ActionListener<SearchResponse>) listener, rc);
-            chain.proceed(task, action, request, searchListener);
+            ActionListener<Response> aclActionListener =
+              (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+            chain.proceed(task, action, request, aclActionListener);
+            return null;
+          } catch (Throwable e) {
+            e.printStackTrace();
           }
-          else {
-            chain.proceed(task, action, request, listener);
-          }
+
+          chain.proceed(task, action, request, listener);
+          return null;
         }
-        else {
-          logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-          sendNotAuthResponse(channel);
-        }
+
+        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+        sendNotAuthResponse(channel);
         return null;
       });
   }
@@ -156,53 +153,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
 
     channel.sendResponse(resp);
-  }
-
-  class LoggerActionListener implements ActionListener<SearchResponse> {
-    private final String action;
-    private final ActionListener<SearchResponse> baseListener;
-    private final SearchRequest searchRequest;
-    private final RequestContext requestContext;
-
-    LoggerActionListener(String action, ActionRequest searchRequest,
-                         ActionListener<SearchResponse> baseListener,
-                         RequestContext requestContext) {
-      this.action = action;
-      this.searchRequest = (SearchRequest) searchRequest;
-      this.baseListener = baseListener;
-      this.requestContext = requestContext;
-    }
-
-    public void onResponse(SearchResponse searchResponse) {
-      logger.info(
-        "search: {" +
-          " ID:" + requestContext.getId() +
-          ", ACT:" + action +
-          ", USR:" + requestContext.getLoggedInUser() +
-          ", IDX:" + Arrays.toString(searchRequest.indices()) +
-          ", TYP:" + Arrays.toString(searchRequest.types()) +
-          ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
-          ", HIT:" + searchResponse.getHits().totalHits() +
-          ", RES:" + searchResponse.getHits().hits().length +
-          " }"
-      );
-
-      baseListener.onResponse(searchResponse);
-    }
-
-    public void onFailure(Exception e) {
-      baseListener.onFailure(e);
-    }
-
-    private String convertToJson(BytesReference searchSource) {
-      if (searchSource != null)
-        try {
-          return XContentHelper.convertToJson(searchSource, true);
-        } catch (IOException e) {
-          logger.warn("Unable to convert searchSource to JSON", e);
-        }
-      return "";
-    }
   }
 
 }

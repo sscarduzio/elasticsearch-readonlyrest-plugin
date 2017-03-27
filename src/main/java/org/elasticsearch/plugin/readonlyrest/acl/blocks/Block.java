@@ -45,6 +45,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
@@ -72,7 +73,6 @@ public class Block {
   private final Set<SyncRule> syncConditionsToCheck = Sets.newHashSet();
   private final Set<AsyncRule> asyncConditionsToCheck = Sets.newHashSet();
   private boolean authHeaderAccepted = false;
-
   public Block(Settings s, List<User> userList, List<LdapConfig> ldapList, Logger logger,
                Client client, ConfigurationHelper conf) {
     this.name = s.get("name");
@@ -90,6 +90,10 @@ public class Block {
 
     initSyncConditions(s, userList);
     initAsyncConditions(s, ldapList);
+  }
+
+  public Set<SyncRule> getSyncRules() {
+    return syncConditionsToCheck;
   }
 
   public String getName() {
@@ -259,6 +263,10 @@ public class Block {
     }
     try {
       syncConditionsToCheck.add(new KibanaHideAppsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new SearchlogSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
     }
   }

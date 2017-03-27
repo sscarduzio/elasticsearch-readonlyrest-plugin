@@ -17,6 +17,10 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+
 public abstract class Rule {
   protected final RuleExitResult MATCH;
   protected final RuleExitResult NO_MATCH;
@@ -27,4 +31,8 @@ public abstract class Rule {
   }
 
   public abstract String getKey();
+
+  public boolean onResponse(RequestContext rc, ActionRequest ar, ActionResponse response) {
+    return true;
+  }
 }

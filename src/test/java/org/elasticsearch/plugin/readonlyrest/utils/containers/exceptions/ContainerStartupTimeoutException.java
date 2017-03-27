@@ -17,6 +17,11 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions;
 
 public class ContainerStartupTimeoutException extends RuntimeException {
-    public ContainerStartupTimeoutException(String msg) { super(msg); }
-    public ContainerStartupTimeoutException(String msg, Throwable t) { super(msg, t); }
+  public ContainerStartupTimeoutException(String msg) {
+    super(msg);
+  }
+
+  public ContainerStartupTimeoutException(String msg, Throwable t) {
+    super(msg, t);
+  }
 }
