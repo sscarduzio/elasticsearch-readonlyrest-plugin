@@ -130,6 +130,9 @@ public class RequestContext {
 
   public void commit() {
     sideEffects.commit();
+    if (!Strings.isNullOrEmpty(getLoggedInUser())) {
+      doSetResponseHeader("X-RR-User", getLoggedInUser());
+    }
   }
 
   public void reset() {

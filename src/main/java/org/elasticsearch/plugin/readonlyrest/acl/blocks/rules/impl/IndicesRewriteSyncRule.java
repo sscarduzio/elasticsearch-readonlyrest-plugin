@@ -20,22 +20,22 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.util.Strings;
+import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.text.Text;
-import org.elasticsearch.common.xcontent.XContentHelper;
+import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.search.SearchShardTarget;
 import org.elasticsearch.search.internal.InternalSearchHit;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -80,14 +80,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
       .filter(Strings::isNotBlank)
       .map(str -> Pattern.compile(str))
       .toArray(Pattern[]::new);
-  }
-
-  public Pattern[] getTargetPatterns() {
-    return targetPatterns;
-  }
-
-  public String getReplacement() {
-    return replacement;
   }
 
   @Override
@@ -145,7 +137,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
 
   @Override
-  public boolean onResponse(RequestContext rc, ActionRequest ar, ActionResponse response) {
+  public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
     if (response instanceof SearchResponse) {
 
       // Translate the search results indices
@@ -174,14 +166,18 @@ public class IndicesRewriteSyncRule extends SyncRule {
     return true;
   }
 
-  private String convertToJson(BytesReference searchSource) {
-    if (searchSource != null)
-      try {
-        return XContentHelper.convertToJson(searchSource, true);
-      } catch (IOException e) {
-        logger.warn("Unable to convert searchSource to JSON", e);
-      }
-    return "";
+  /*
+   * Return the requested index name if the rewritten index or document was not found.
+   */
+  @Override
+  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
+    if (e instanceof IndexNotFoundException) {
+      ((IndexNotFoundException) e).setIndex(rc.getOriginalIndices().iterator().next());
+    }
+    if (e instanceof ResourceNotFoundException) {
+      ((ResourceNotFoundException) e).addHeader("es.resource.id", rc.getOriginalIndices().iterator().next());
+    }
+    return true;
   }
 
 }

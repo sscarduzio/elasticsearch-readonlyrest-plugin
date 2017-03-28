@@ -27,6 +27,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
@@ -57,7 +58,8 @@ public class SearchlogSyncRule extends SyncRule {
   }
 
   @Override
-  public boolean onResponse(RequestContext rc, ActionRequest ar, ActionResponse response) {
+  public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
+
     if (ar instanceof SearchRequest && response instanceof SearchResponse) {
       SearchRequest searchRequest = (SearchRequest) ar;
       SearchResponse searchResponse = (SearchResponse) response;
@@ -74,6 +76,11 @@ public class SearchlogSyncRule extends SyncRule {
           " }"
       );
     }
+    return true;
+  }
+
+  @Override
+  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
     return true;
   }
 

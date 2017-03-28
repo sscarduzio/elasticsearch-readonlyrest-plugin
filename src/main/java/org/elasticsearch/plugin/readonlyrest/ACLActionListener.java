@@ -53,7 +53,7 @@ class ACLActionListener implements ActionListener<ActionResponse> {
     for (Rule r : result.getBlock().getSyncRules()) {
       try {
         // Don't continue with further handlers if at least one says we should not continue
-        shouldContinue &= r.onResponse(rc, request, response);
+        shouldContinue &= r.onResponse(result, rc, request, response);
       } catch (Exception e) {
         logger.error(r.getKey() + " errored handling response: " + response);
         e.printStackTrace();
@@ -65,13 +65,20 @@ class ACLActionListener implements ActionListener<ActionResponse> {
   }
 
   public void onFailure(Exception e) {
-    logger.info("INTERCEPTED FAILURE: " + e.getMessage());
+    boolean shouldContinue = true;
 
-    if (e instanceof ResourceAlreadyExistsException) {
-      baseListener.onFailure(new ResourceAlreadyExistsException(".kibana"));
-      return;
+    for (Rule r : result.getBlock().getSyncRules()) {
+      try {
+        // Don't continue with further handlers if at least one says we should not continue
+        shouldContinue &= r.onFailure(result, rc, request, e);
+      } catch (Exception e1) {
+        logger.error(r.getKey() + " errored handling failure: " + e1);
+        e.printStackTrace();
+      }
     }
-    baseListener.onFailure(e);
+    if (shouldContinue) {
+      baseListener.onFailure(e);
+    }
 
   }
 }
