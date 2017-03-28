@@ -45,7 +45,7 @@ public abstract class GeneralAuthKeySyncRule extends SyncRule implements UserRul
 
     if (authHeader != null && logger.isDebugEnabled()) {
       try {
-        logger.info("Login as: " + BasicAuthUtils.getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
+        logger.info("Attempting Login as: " + BasicAuthUtils.getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
@@ -60,7 +60,11 @@ public abstract class GeneralAuthKeySyncRule extends SyncRule implements UserRul
       return NO_MATCH;
     }
 
-    return authenticate(authKey, authHeader) ? MATCH : NO_MATCH;
+    RuleExitResult res = authenticate(authKey, authHeader) ? MATCH : NO_MATCH;
+    if(res.isMatch()){
+      rc.setLoggedInUser(BasicAuthUtils.getBasicAuthUser(rc.getHeaders()));
+    }
+    return res;
   }
 
   private String getAuthKey(Settings s) throws RuleNotConfiguredException {

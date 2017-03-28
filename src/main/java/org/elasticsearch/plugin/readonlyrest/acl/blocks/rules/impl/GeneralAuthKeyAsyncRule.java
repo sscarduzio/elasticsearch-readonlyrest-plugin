@@ -39,7 +39,7 @@ public abstract class GeneralAuthKeyAsyncRule extends AsyncRule {
 
     if (authHeader != null && logger.isDebugEnabled()) {
       try {
-        logger.info("Login as: " + BasicAuthUtils.getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
+        logger.info("Attempting Login as: " + BasicAuthUtils.getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
@@ -61,7 +61,13 @@ public abstract class GeneralAuthKeyAsyncRule extends AsyncRule {
     }
 
     return authenticate(authData[0], authData[1])
-      .thenApply(result -> result != null && result ? MATCH : NO_MATCH);
+      .thenApply(result -> {
+        RuleExitResult r =  result != null && result ? MATCH : NO_MATCH;
+        if(r.isMatch()){
+          rc.setLoggedInUser(BasicAuthUtils.getBasicAuthUser(rc.getHeaders()));
+        }
+        return r;
+      });
   }
 
 }

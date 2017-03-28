@@ -101,6 +101,7 @@ public class RequestContext {
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
   private Set<String> originalIndices;
+  private String loggedInUser;
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {
@@ -136,6 +137,7 @@ public class RequestContext {
   }
 
   public void reset() {
+    loggedInUser = null;
     indices = null;
     sideEffects.clear();
   }
@@ -388,11 +390,16 @@ public class RequestContext {
     return action;
   }
 
+  public void setLoggedInUser(String user){
+    loggedInUser = user;
+  }
+
   public String getLoggedInUser() {
-    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
-    if (user == null)
-      user = ProxyAuthSyncRule.getUser(getHeaders());
-    return user;
+    return loggedInUser;
+//    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
+//    if (user == null)
+//      user = ProxyAuthSyncRule.getUser(getHeaders());
+//    return user;
   }
 
   @Override

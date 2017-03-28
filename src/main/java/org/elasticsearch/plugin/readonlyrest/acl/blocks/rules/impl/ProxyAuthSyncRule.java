@@ -71,7 +71,11 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule {
       return NO_MATCH;
     }
 
-    return userListMatcher.match(h) ? MATCH : NO_MATCH;
+    RuleExitResult res =  userListMatcher.match(h) ? MATCH : NO_MATCH;
+    if(res.isMatch()){
+      rc.setLoggedInUser(getUser(rc.getHeaders()));
+    }
+    return res;
   }
 
 }
