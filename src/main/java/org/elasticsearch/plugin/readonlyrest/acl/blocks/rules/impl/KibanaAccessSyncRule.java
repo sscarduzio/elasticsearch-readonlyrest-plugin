@@ -18,7 +18,9 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.Booleans;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -55,6 +57,10 @@ public class KibanaAccessSyncRule extends SyncRule {
     "indices:data/write/index",
     "indices:data/write/update"
   ));
+  public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
+    "cluster:admin/rradmin/*",
+    "indices:data/write/*"
+  ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
     "cluster:monitor/nodes/info",
     "cluster:monitor/health"
@@ -62,7 +68,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   private final Logger logger = Loggers.getLogger(this.getClass());
   private String kibanaIndex = ".kibana";
   private Boolean canModifyKibana;
-
+  private Boolean isAdmin = false;
 
   public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -79,8 +85,12 @@ public class KibanaAccessSyncRule extends SyncRule {
     else if ("rw".equals(tmp)) {
       canModifyKibana = true;
     }
+    else if("admin".equals(tmp)){
+      canModifyKibana = true;
+      isAdmin = true;
+    }
     else {
-      throw new RuleConfigurationError("invalid configuration: use either 'ro' or 'rw'. Found: + " + tmp, null);
+      throw new RuleConfigurationError("invalid configuration: use either 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
     }
 
     kibanaIndex = ".kibana";
@@ -114,6 +124,10 @@ public class KibanaAccessSyncRule extends SyncRule {
       }
       logger.info("RW access to Kibana, but unrecognized action " + rc.getAction() + " reqID: " + rc.getId());
       return NO_MATCH;
+    }
+
+    if(indices.contains(".readonlyrest") && isAdmin && ADMIN.match(rc.getAction())){
+      return MATCH;
     }
 
     logger.debug("KIBANA ACCESS DENIED " + rc.getId());
