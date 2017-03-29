@@ -18,9 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.Booleans;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -85,7 +83,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     else if ("rw".equals(tmp)) {
       canModifyKibana = true;
     }
-    else if("admin".equals(tmp)){
+    else if ("admin".equals(tmp)) {
       canModifyKibana = true;
       isAdmin = true;
     }
@@ -126,7 +124,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       return NO_MATCH;
     }
 
-    if(indices.contains(".readonlyrest") && isAdmin && ADMIN.match(rc.getAction())){
+    if (indices.contains(".readonlyrest") && isAdmin && ADMIN.match(rc.getAction())) {
       return MATCH;
     }
 
