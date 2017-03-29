@@ -24,6 +24,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -36,25 +37,16 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
-import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflectionUtils;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,8 +106,8 @@ public class RequestContext {
     this.threadPool = threadPool;
     this.id = UUID.randomUUID().toString().replace("-", "");
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    request.headers().forEach(e -> {
-      h.put(e.getKey(), e.getValue());
+    request.getHeaders().keySet().forEach(k -> {
+      h.put(k, request.header(k));
     });
     this.headers = h;
   }
@@ -222,90 +214,63 @@ public class RequestContext {
 
     logger.debug("Finding indices for: " + toString(true));
 
-    final String[][] out = {new String[1]};
-    AccessController.doPrivileged(
-      (PrivilegedAction<Void>) () -> {
-        String[] indices = new String[0];
-        ActionRequest ar = actionRequest;
-        // CompositeIndicesRequests
-        if (ar instanceof MultiGetRequest) {
-          MultiGetRequest cir = (MultiGetRequest) ar;
+    String[] indices = new String[0];
+    ActionRequest ar = actionRequest;
+    // CompositeIndicesRequests
+    if (ar instanceof MultiGetRequest) {
+      MultiGetRequest cir = (MultiGetRequest) ar;
 
-          for (MultiGetRequest.Item ir : cir.getItems()) {
-            indices = ArrayUtils.concat(indices, ir.indices(), String.class);
-          }
-        }
-        else if (ar instanceof MultiSearchRequest) {
-          MultiSearchRequest cir = (MultiSearchRequest) ar;
-
-          for (SearchRequest ir : cir.requests()) {
-            indices = ArrayUtils.concat(indices, ir.indices(), String.class);
-          }
-        }
-        else if (ar instanceof MultiTermVectorsRequest) {
-          MultiTermVectorsRequest cir = (MultiTermVectorsRequest) ar;
-
-          for (TermVectorsRequest ir : cir.getRequests()) {
-            indices = ArrayUtils.concat(indices, ir.indices(), String.class);
-          }
-        }
-        else if (ar instanceof BulkRequest) {
-          BulkRequest cir = (BulkRequest) ar;
-
-          for (ActionRequest ir : cir.requests()) {
-            indices = ArrayUtils.concat(indices, extractIndicesViaReflection(ir), String.class);
-          }
-        }
-        else if (ar instanceof CompositeIndicesRequest) {
-          logger.error("Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately!");
-        }
-        else {
-          indices = extractIndicesViaReflection(ar);
-        }
-
-        if (indices == null) {
-          indices = new String[0];
-        }
-
-        // De-dup
-        HashSet<String> tempSet = new HashSet<>(Arrays.asList(indices));
-        indices = tempSet.toArray(new String[tempSet.size()]);
-
-        if (logger.isDebugEnabled()) {
-          String idxs = String.join(",", indices);
-          logger.debug("Discovered indices: " + idxs);
-        }
-
-        out[0] = indices;
-        return null;
+      for (MultiGetRequest.Item ir : cir.getItems()) {
+        indices = ArrayUtils.concat(indices, ir.indices(), String.class);
       }
-    );
-
-    indices = org.elasticsearch.common.util.set.Sets.newHashSet(out[0]);
-
-    return indices;
-  }
-
-  private String[] extractIndicesViaReflection(ActionRequest ar) {
-    if (ar == null) {
-      throw new ElasticsearchException("cannot extract indices from null action request!");
     }
-    String[] result = new String[]{};
-    try {
-      Method m = ar.getClass().getMethod("indices");
-      if (m.getReturnType() != String[].class) {
-        return null;
+    else if (ar instanceof MultiSearchRequest) {
+      MultiSearchRequest cir = (MultiSearchRequest) ar;
+
+      for (SearchRequest ir : cir.requests()) {
+        indices = ArrayUtils.concat(indices, ir.indices(), String.class);
       }
-      m.setAccessible(true);
-      result = (String[]) m.invoke(ar);
-    } catch (SecurityException e) {
-      logger.error("Can't get indices for request: " + toString(true));
-      throw new SecurityPermissionException(
-        "Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
-    } catch (Exception e) {
-      logger.warn("Failed to discover indices associated to this request: " + toString(true));
     }
-    return result;
+    else if (ar instanceof MultiTermVectorsRequest) {
+      MultiTermVectorsRequest cir = (MultiTermVectorsRequest) ar;
+
+      for (TermVectorsRequest ir : cir.getRequests()) {
+        indices = ArrayUtils.concat(indices, ir.indices(), String.class);
+      }
+    }
+    else if (ar instanceof BulkRequest) {
+      BulkRequest cir = (BulkRequest) ar;
+
+      for (DocWriteRequest<?> ir : cir.requests()) {
+        String[] docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("indices", ir, logger);
+        if (docIndices.length == 0) {
+          docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("index", ir, logger);
+        }
+        indices = ArrayUtils.concat(indices, docIndices, String.class);
+      }
+    }
+    else if (ar instanceof CompositeIndicesRequest) {
+      logger.error("Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately!");
+    }
+    else {
+      indices = ReflectionUtils.extractStringArrayFromPrivateMethod("indices", ar, logger);
+      if (indices.length == 0) {
+        indices = ReflectionUtils.extractStringArrayFromPrivateMethod("index", ar, logger);
+      }
+    }
+
+    if (indices == null) {
+      indices = new String[0];
+    }
+
+    Set<String> indicesSet = org.elasticsearch.common.util.set.Sets.newHashSet(indices);
+
+    if (logger.isDebugEnabled()) {
+      String idxs = String.join(",", indicesSet);
+      logger.debug("Discovered indices: " + idxs);
+    }
+
+    return indicesSet;
   }
 
   public void doSetIndices(final Set<String> newIndices) {
@@ -390,16 +355,16 @@ public class RequestContext {
     return action;
   }
 
-  public void setLoggedInUser(String user){
-    loggedInUser = user;
-  }
-
   public String getLoggedInUser() {
     return loggedInUser;
 //    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
 //    if (user == null)
 //      user = ProxyAuthSyncRule.getUser(getHeaders());
 //    return user;
+  }
+
+  public void setLoggedInUser(String user) {
+    loggedInUser = user;
   }
 
   @Override
@@ -423,11 +388,10 @@ public class RequestContext {
     }
     String theHeaders;
     if (!logger.isDebugEnabled()) {
-      Map<String, String> hMap = new HashMap<>(getHeaders());
-      theHeaders = Joiner.on(",").join(hMap.keySet());
+      theHeaders = Joiner.on(",").join(getHeaders().keySet());
     }
     else {
-      theHeaders = request.headers().toString();
+      theHeaders = getHeaders().toString();
     }
 
     String hist = Joiner.on(", ").join(history);

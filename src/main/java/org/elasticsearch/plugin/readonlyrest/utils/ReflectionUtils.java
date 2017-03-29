@@ -18,9 +18,12 @@
 package org.elasticsearch.plugin.readonlyrest.utils;
 
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
@@ -31,8 +34,57 @@ import java.util.List;
  */
 public class ReflectionUtils {
 
-  private static Field exploreClass(Class<?> c, String fieldName) throws NoSuchFieldException {
-    // Explorative section..
+  public static String[] extractStringArrayFromPrivateMethod(String fieldName, Object o, Logger logger) {
+    final String[][] result = {new String[]{}};
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      if (o == null) {
+        throw new ElasticsearchException("cannot extract field from null!");
+      }
+      Class<?> clazz = o.getClass();
+      while (!clazz.equals(Object.class)) {
+
+        try {
+          Method m = exploreClassMethods(clazz, fieldName);
+          m.setAccessible(true);
+
+          if (m.getReturnType() == String[].class) {
+            result[0] = (String[]) m.invoke(o);
+            return null;
+          }
+          if (m.getReturnType() != String.class) {
+            result[0] = new String[]{(String) m.invoke(o)};
+            return null;
+          }
+        } catch (SecurityException e) {
+          logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
+          throw new SecurityPermissionException(
+            "Insufficient permissions to extract field " + fieldName + ". Abort! Cause: " + e.getMessage(), e);
+        } catch (Exception e) {
+          logger.debug("Cannot to discover field " + fieldName + " associated to this request: " + o.getClass());
+        }
+        clazz = clazz.getSuperclass();
+      }
+      return null;
+    });
+    return result[0];
+  }
+
+
+  private static Method exploreClassMethods(Class<?> c, String fieldName) throws NoSuchFieldException {
+    // Explore fields without the performance cost of throwing field not found exceptions..
+    // The native implementation is O(n), so we do likewise, but without the exception object creation.
+    for (Method f : c.getDeclaredMethods()) {
+      if (fieldName.equals(f.getName())) {
+        f.setAccessible(true);
+        return f;
+      }
+    }
+    return null;
+  }
+
+  private static Field exploreClassFields(Class<?> c, String fieldName) throws NoSuchFieldException {
+    // Explore fields without the performance cost of throwing field not found exceptions..
+    // The native implementation is O(n), so we do likewise, but without the exception object creation.
     for (Field f : c.getDeclaredFields()) {
       if (fieldName.equals(f.getName())) {
         f.setAccessible(true);
@@ -55,7 +107,7 @@ public class ReflectionUtils {
       while (!theClass.equals(Object.class)) {
         try {
           logger.debug(theClass.getSimpleName() + " < " + theClass.getSuperclass().getSimpleName() + rc);
-          Field f = exploreClass(theClass, fieldName);
+          Field f = exploreClassFields(theClass, fieldName);
           if (f != null) {
             logger.debug("found field " + fieldName + " in class " + theClass.getSimpleName());
             change.apply(f);
@@ -79,7 +131,7 @@ public class ReflectionUtils {
         theClass = originalClass.getInterfaces()[interfacesNum];
         try {
           logger.debug(theClass.getSimpleName() + " < " + rc);
-          Field f = exploreClass(theClass, fieldName);
+          Field f = exploreClassFields(theClass, fieldName);
           if (f != null) {
             logger.debug("found field " + fieldName + " in interface " + theClass.getSimpleName());
             change.apply(f);
