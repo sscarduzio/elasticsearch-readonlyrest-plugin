@@ -70,7 +70,7 @@ public class Block {
   private final Logger logger;
   private final ConfigurationHelper conf;
   private final Client client;
-  private final Set<SyncRule> syncConditionsToCheck = Sets.newHashSet();
+  private final Set<SyncRule> syncConditionsToCheck = Sets.newLinkedHashSet();
   private final Set<AsyncRule> asyncConditionsToCheck = Sets.newHashSet();
   private boolean authHeaderAccepted = false;
   public Block(Settings s, List<User> userList, List<LdapConfig> ldapList, Logger logger,
@@ -194,22 +194,9 @@ public class Block {
 
   private void initSyncConditions(Settings s, List<User> userList) {
     // Won't add the condition if its configuration is not found
-    try {
-      syncConditionsToCheck.add(new KibanaAccessSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      syncConditionsToCheck.add(new HostsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      syncConditionsToCheck.add(new XForwardedForSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      syncConditionsToCheck.add(new ApiKeysSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
+
+    // Authentication rules must come first because they set the user
+    // information which further rules might rely on.
     try {
       syncConditionsToCheck.add(new AuthKeySyncRule(s));
       authHeaderAccepted = true;
@@ -227,6 +214,25 @@ public class Block {
     }
     try {
       syncConditionsToCheck.add(new ProxyAuthSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+
+    // Inspection rules next; these act based on properties
+    // of the request.
+    try {
+      syncConditionsToCheck.add(new KibanaAccessSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new HostsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new XForwardedForSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new ApiKeysSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
     }
     try {
@@ -258,15 +264,18 @@ public class Block {
     } catch (RuleNotConfiguredException ignored) {
     }
     try {
-      syncConditionsToCheck.add(new IndicesRewriteSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
       syncConditionsToCheck.add(new KibanaHideAppsSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
     }
     try {
       syncConditionsToCheck.add(new SearchlogSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    
+    // At the end the sync rule chain are those that can mutate
+    // the client request.
+    try {
+        syncConditionsToCheck.add(new IndicesRewriteSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
     }
   }
