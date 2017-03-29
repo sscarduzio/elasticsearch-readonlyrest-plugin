@@ -51,7 +51,7 @@ public class ReflectionUtils {
             result[0] = (String[]) m.invoke(o);
             return null;
           }
-          if (m.getReturnType() != String.class) {
+          if (m.getReturnType() == String.class) {
             result[0] = new String[]{(String) m.invoke(o)};
             return null;
           }
@@ -70,13 +70,13 @@ public class ReflectionUtils {
   }
 
 
-  private static Method exploreClassMethods(Class<?> c, String fieldName) throws NoSuchFieldException {
-    // Explore fields without the performance cost of throwing field not found exceptions..
+  private static Method exploreClassMethods(Class<?> c, String methodName) throws NoSuchFieldException {
+    // Explore methods without the performance cost of throwing field not found exceptions..
     // The native implementation is O(n), so we do likewise, but without the exception object creation.
-    for (Method f : c.getDeclaredMethods()) {
-      if (fieldName.equals(f.getName())) {
-        f.setAccessible(true);
-        return f;
+    for (Method m : c.getDeclaredMethods()) {
+      if (methodName.equals(m.getName())) {
+        m.setAccessible(true);
+        return m;
       }
     }
     return null;
