@@ -39,6 +39,7 @@ import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflectionUtils;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -379,7 +380,6 @@ public class RequestContext {
       theIndices = Joiner.on(",").skipNulls().join(getIndices());
     }
 
-    String loggedInAs = getLoggedInUser();
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
@@ -395,7 +395,7 @@ public class RequestContext {
     String hist = Joiner.on(", ").join(history);
     return "{ ID:" + id +
       ", TYP:" + actionRequest.getClass().getSimpleName() +
-      ", USR:" + loggedInAs +
+      ", USR:" + (getLoggedInUser() == null ? (BasicAuthUtils.getBasicAuthUser(getHeaders()) + " (?)") : getLoggedInUser()) +
       ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
       ", ACT:" + action +
       ", OA:" + getRemoteAddress() +
