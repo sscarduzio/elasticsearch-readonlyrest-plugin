@@ -23,11 +23,12 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 import java.io.IOException;
 
-public class RRAdminResponse extends ActionResponse implements ToXContent {
+public class RRAdminResponse extends ActionResponse implements ToXContentObject {
 
   private final Exception exception;
 
@@ -48,12 +49,14 @@ public class RRAdminResponse extends ActionResponse implements ToXContent {
 
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+    builder.startObject();
     if (exception == null) {
       builder.field("status", "ok").field("message", "settings refreshed");
     }
     else {
       builder.field("status", "ko").field("message", exception.getMessage());
     }
+    builder.endObject();
     return builder;
   }
 }

@@ -24,12 +24,17 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
+import org.elasticsearch.common.settings.ClusterSettings;
+import org.elasticsearch.common.settings.IndexScopedSettings;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
@@ -47,10 +52,10 @@ import org.elasticsearch.plugins.NetworkPlugin;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestChannel;
+import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.script.ScriptService;
-import org.elasticsearch.search.SearchRequestParsers;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.watcher.ResourceWatcherService;
 
@@ -85,19 +90,21 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
     CircuitBreakerService circuitBreakerService,
     NamedWriteableRegistry namedWriteableRegistry,
     NamedXContentRegistry xContentRegistry,
-    NetworkService networkService
-  ) {
+    NetworkService networkService,
+    HttpServerTransport.Dispatcher dispatcher) {
+
     return Collections.singletonMap(
-      "ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, xContentRegistry));
+      "ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher));
   }
+
 
   @Override
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
                                              ResourceWatcherService resourceWatcherService, ScriptService scriptService,
-                                             SearchRequestParsers searchRequestParsers, NamedXContentRegistry xContentRegistry) {
+                                             NamedXContentRegistry xContentRegistry) {
 
     Collection<Object> fromSup = super.createComponents(client, clusterService, threadPool, resourceWatcherService,
-                                                        scriptService, searchRequestParsers, xContentRegistry
+                                                        scriptService, xContentRegistry
     );
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     Runnable task = new Runnable() {
@@ -134,9 +141,14 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
       new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
   }
 
+
   @Override
-  public List<Class<? extends RestHandler>> getRestHandlers() {
-    return Collections.singletonList(RestRRAdminAction.class);
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public List<RestHandler> getRestHandlers(
+    Settings settings, RestController restController, ClusterSettings clusterSettings,
+    IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
+    IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+    return Collections.singletonList(new RestRRAdminAction(settings, restController));
   }
 
   @Override

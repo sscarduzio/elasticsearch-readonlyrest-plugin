@@ -84,6 +84,7 @@ public class SearchlogSyncRule extends SyncRule {
     return true;
   }
 
+  @SuppressWarnings("deprecation")
   private String convertToJson(BytesReference searchSource) {
     if (searchSource != null)
       try {
