@@ -75,7 +75,7 @@ public class SessionCookie {
     this.cookiePresent = true;
 
     // ----- Check cookie validity
-    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
+    String user = rc.getLoggedInUser();
     Iterator<String> cookiePartsIterator =
       Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
@@ -123,7 +123,11 @@ public class SessionCookie {
   }
 
   public void setCookie() {
-    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
+    String user = rc.getLoggedInUser();
+    if(Strings.isNullOrEmpty(user)){
+      logger.warn("Cannot state the logged in user, put the authentication rule on top of the block!");
+      return;
+    }
     Date expiryDateString = new Date(System.currentTimeMillis() + sessionMaxIdleMillis);
     String cookie = mkCookie(user, expiryDateString);
     rc.setResponseHeader("Set-Cookie", COOKIE_NAME + "=" + cookie);

@@ -19,7 +19,9 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
@@ -43,6 +45,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
@@ -54,227 +57,239 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class Block {
-    private final String name;
-    private final Policy policy;
-    private final Logger logger;
-    private boolean authHeaderAccepted = false;
-
-    private final Set<SyncRule> syncConditionsToCheck = Sets.newHashSet();
-    private final Set<AsyncRule> asyncConditionsToCheck = Sets.newHashSet();
-
-    public Block(Settings s, List<User> userList, List<LdapConfig> ldapList, Logger logger) {
-        this.name = s.get("name");
-        String sPolicy = s.get("type");
-        this.logger = logger;
-        if (sPolicy == null) {
-            throw new RuleConfigurationError(
-                    "The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() +
-                            ". If this field is correct, check the YAML indentation is correct.", null);
-        }
-
-        policy = Block.Policy.valueOf(sPolicy.toUpperCase());
-
-        initSyncConditions(s, userList);
-        initAsyncConditions(s, ldapList);
+  private final String name;
+  private final Policy policy;
+  private final Logger logger;
+  private final ConfigurationHelper conf;
+  private final Client client;
+  private final Set<SyncRule> syncConditionsToCheck = Sets.newHashSet();
+  private final Set<AsyncRule> asyncConditionsToCheck = Sets.newHashSet();
+  private boolean authHeaderAccepted = false;
+  public Block(Settings s, List<User> userList, List<LdapConfig> ldapList, Logger logger,
+               Client client, ConfigurationHelper conf) {
+    this.name = s.get("name");
+    this.conf = conf;
+    this.client = client;
+    String sPolicy = s.get("type");
+    this.logger = logger;
+    if (sPolicy == null) {
+      throw new RuleConfigurationError(
+        "The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() +
+          ". If this field is correct, check the YAML indentation is correct.", null);
     }
 
-    public String getName() {
-        return name;
-    }
+    policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
-    public Policy getPolicy() {
-        return policy;
-    }
+    initSyncConditions(s, userList);
+    initAsyncConditions(s, ldapList);
+  }
 
-    public boolean isAuthHeaderAccepted() {
-        return authHeaderAccepted;
-    }
+  public Set<SyncRule> getSyncRules() {
+    return syncConditionsToCheck;
+  }
 
-    /*
-     * Check all the conditions of this rule and return a rule exit result
-     *
-     */
-    public CompletableFuture<BlockExitResult> check(RequestContext rc) {
-        boolean syncCheck = checkSyncRules(rc);
-        if (syncCheck) {
-            return checkAsyncRules(rc)
-                    .thenApply(asyncCheck -> {
-                        if (asyncCheck != null && asyncCheck) {
-                            return finishWithMatchResult(rc);
-                        } else {
-                            return finishWithNoMatchResult(rc);
-                        }
-                    });
-        } else {
-            return CompletableFuture.completedFuture(
-                    finishWithNoMatchResult(rc)
-            );
-        }
-    }
+  public String getName() {
+    return name;
+  }
 
-    private boolean checkSyncRules(RequestContext rc) {
-        boolean match = true;
-        Set<RuleExitResult> thisBlockHistory = new HashSet<>(syncConditionsToCheck.size());
+  public Policy getPolicy() {
+    return policy;
+  }
 
-        for (SyncRule condition : syncConditionsToCheck) {
-            // Exit at the first rule that matches the request
-            RuleExitResult condExitResult = condition.match(rc);
-            // Log history
-            thisBlockHistory.add(condExitResult);
-            // a block matches if ALL rules match
-            match &= condExitResult.isMatch();
-        }
+  public boolean isAuthHeaderAccepted() {
+    return authHeaderAccepted;
+  }
 
-        rc.addToHistory(this, thisBlockHistory);
-
-        return match;
-    }
-
-    private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
-        // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
-        Set<RuleExitResult> thisBlockHistory = new HashSet<>(asyncConditionsToCheck.size());
-        return checkAsyncRulesInSequence(rc, asyncConditionsToCheck.iterator(), thisBlockHistory)
-                .thenApply(result -> {
-                    rc.addToHistory(this, thisBlockHistory);
-                    return result;
-                });
-    }
-
-    private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
-                                                                 Iterator<AsyncRule> rules,
-                                                                 Set<RuleExitResult> thisBlockHistory) {
-        return FuturesSequencer.runInSeqUntilConditionIsUndone(
-                rules,
-                rule -> rule.match(rc),
-                condExitResult -> {
-                    thisBlockHistory.add(condExitResult);
-                    return !condExitResult.isMatch();
-                },
-                RuleExitResult::isMatch,
-                nothing -> true
-        );
-    }
-
-    private BlockExitResult finishWithMatchResult(RequestContext rc) {
-        logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
-        rc.commit();
-        return BlockExitResult.match(this);
-    }
-
-    private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
-        logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
-        rc.reset();
-        return BlockExitResult.noMatch();
-    }
-
-    @Override
-    public String toString() {
-        return "readonlyrest Rules Block :: { name: '" + name + "', policy: " + policy + "}";
-    }
-
-    public enum Policy {
-        ALLOW, FORBID;
-
-        public static String valuesString() {
-            StringBuilder sb = new StringBuilder();
-            for (Policy v : values()) {
-                sb.append(v.toString()).append(",");
-            }
-            sb.deleteCharAt(sb.length() - 1);
-            return sb.toString();
-        }
-    }
-
-    private void initSyncConditions(Settings s, List<User> userList) {
-        // Won't add the condition if its configuration is not found
-        try {
-            syncConditionsToCheck.add(new KibanaAccessSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new HostsSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new XForwardedForSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new ApiKeysSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new AuthKeySyncRule(s));
-            authHeaderAccepted = true;
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new AuthKeySha1SyncRule(s));
-            authHeaderAccepted = true;
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new AuthKeySha256SyncRule(s));
-            authHeaderAccepted = true;
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-          syncConditionsToCheck.add(new ProxyAuthSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new SessionMaxIdleSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new UriReSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new MaxBodyLengthSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new MethodsSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new IndicesSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new ActionsSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new GroupsSyncRule(s, userList));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new IndicesRewriteSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-        try {
-            syncConditionsToCheck.add(new KibanaHideAppsSyncRule(s));
-        } catch (RuleNotConfiguredException ignored) {
-        }
-    }
-
-    private void initAsyncConditions(Settings s, List<LdapConfig> ldapConfigs) {
-        LdapAuthAsyncRule.fromSettings(s, ldapConfigs).map(rule -> {
-            asyncConditionsToCheck.add(rule);
-            authHeaderAccepted = true;
-            return true;
+  /*
+   * Check all the conditions of this rule and return a rule exit result
+   *
+   */
+  public CompletableFuture<BlockExitResult> check(RequestContext rc) {
+    boolean syncCheck = checkSyncRules(rc);
+    if (syncCheck) {
+      return checkAsyncRules(rc)
+        .thenApply(asyncCheck -> {
+          if (asyncCheck != null && asyncCheck) {
+            return finishWithMatchResult(rc);
+          }
+          else {
+            return finishWithNoMatchResult(rc);
+          }
         });
     }
+    else {
+      return CompletableFuture.completedFuture(
+        finishWithNoMatchResult(rc)
+      );
+    }
+  }
+
+  private boolean checkSyncRules(RequestContext rc) {
+    boolean match = true;
+    Set<RuleExitResult> thisBlockHistory = new HashSet<>(syncConditionsToCheck.size());
+
+    for (SyncRule condition : syncConditionsToCheck) {
+      // Exit at the first rule that matches the request
+      RuleExitResult condExitResult = condition.match(rc);
+      // Log history
+      thisBlockHistory.add(condExitResult);
+      // a block matches if ALL rules match
+      match &= condExitResult.isMatch();
+    }
+
+    rc.addToHistory(this, thisBlockHistory);
+
+    return match;
+  }
+
+  private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
+    // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
+    Set<RuleExitResult> thisBlockHistory = new HashSet<>(asyncConditionsToCheck.size());
+    return checkAsyncRulesInSequence(rc, asyncConditionsToCheck.iterator(), thisBlockHistory)
+      .thenApply(result -> {
+        rc.addToHistory(this, thisBlockHistory);
+        return result;
+      });
+  }
+
+  private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
+                                                               Iterator<AsyncRule> rules,
+                                                               Set<RuleExitResult> thisBlockHistory) {
+    return FuturesSequencer.runInSeqUntilConditionIsUndone(
+      rules,
+      rule -> rule.match(rc),
+      condExitResult -> {
+        thisBlockHistory.add(condExitResult);
+        return !condExitResult.isMatch();
+      },
+      RuleExitResult::isMatch,
+      nothing -> true
+    );
+  }
+
+  private BlockExitResult finishWithMatchResult(RequestContext rc) {
+    logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
+    rc.commit();
+    return BlockExitResult.match(this);
+  }
+
+  private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
+    logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
+    rc.reset();
+    return BlockExitResult.noMatch();
+  }
+
+  @Override
+  public String toString() {
+    return "readonlyrest Rules Block :: { name: '" + name + "', policy: " + policy + "}";
+  }
+
+  private void initSyncConditions(Settings s, List<User> userList) {
+    // Won't add the condition if its configuration is not found
+    try {
+      syncConditionsToCheck.add(new KibanaAccessSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new HostsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new XForwardedForSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new ApiKeysSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new AuthKeySyncRule(s));
+      authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new AuthKeySha1SyncRule(s));
+      authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new AuthKeySha256SyncRule(s));
+      authHeaderAccepted = true;
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new ProxyAuthSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new SessionMaxIdleSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new UriReSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new MaxBodyLengthSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new MethodsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new IndicesSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new ActionsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new GroupsSyncRule(s, userList));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new IndicesRewriteSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new KibanaHideAppsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      syncConditionsToCheck.add(new SearchlogSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+  }
+
+  private void initAsyncConditions(Settings s, List<LdapConfig> ldapConfigs) {
+    LdapAuthAsyncRule.fromSettings(s, ldapConfigs).map(rule -> {
+      asyncConditionsToCheck.add(rule);
+      authHeaderAccepted = true;
+      return true;
+    });
+  }
+
+  public enum Policy {
+    ALLOW, FORBID;
+
+    public static String valuesString() {
+      StringBuilder sb = new StringBuilder();
+      for (Policy v : values()) {
+        sb.append(v.toString()).append(",");
+      }
+      sb.deleteCharAt(sb.length() - 1);
+      return sb.toString();
+    }
+  }
 
 }

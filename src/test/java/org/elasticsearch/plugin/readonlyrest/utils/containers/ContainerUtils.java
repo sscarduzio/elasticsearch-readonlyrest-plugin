@@ -26,20 +26,21 @@ import java.time.Duration;
 import java.time.Instant;
 
 public class ContainerUtils {
-    private ContainerUtils() {}
+  private ContainerUtils() {
+  }
 
-    public static File getResourceFile(String path) {
-        try {
-            return Paths.get(ContainerUtils.class.getResource(path).toURI()).toFile();
-        } catch (URISyntaxException e) {
-            throw new ContainerCreationException("Cannot find resource file", e);
-        }
+  public static File getResourceFile(String path) {
+    try {
+      return Paths.get(ContainerUtils.class.getResource(path).toURI()).toFile();
+    } catch (URISyntaxException e) {
+      throw new ContainerCreationException("Cannot find resource file", e);
     }
+  }
 
-    public static boolean checkTimeout(Instant startTime, Duration startupTimeout) {
-        if(startupTimeout.minus(Duration.between(startTime, Instant.now())).isNegative()) {
-            throw new ContainerStartupTimeoutException("Container was not started within " + startupTimeout.toString());
-        }
-        return false;
+  public static boolean checkTimeout(Instant startTime, Duration startupTimeout) {
+    if (startupTimeout.minus(Duration.between(startTime, Instant.now())).isNegative()) {
+      throw new ContainerStartupTimeoutException("Container was not started within " + startupTimeout.toString());
     }
+    return false;
+  }
 }

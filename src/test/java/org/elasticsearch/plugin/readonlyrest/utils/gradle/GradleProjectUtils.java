@@ -25,35 +25,37 @@ import java.nio.file.Paths;
 import java.util.Optional;
 
 public class GradleProjectUtils {
-    private static final GradleProperties properties = GradleProperties.create().get();
+  private static final GradleProperties properties = GradleProperties.create().get();
 
-    public static Optional<File> assemble() {
-        runTask(":assemble");
-        File plugin = new File(getProjectDir().toFile(), "build/distributions/" + pluginName());
-        if(!plugin.exists()) return Optional.empty();
-        return Optional.of(plugin);
-    }
+  public static Optional<File> assemble() {
+    runTask(":assemble");
+    File plugin = new File(getProjectDir().toFile(), "build/distributions/" + pluginName());
+    if (!plugin.exists()) return Optional.empty();
+    return Optional.of(plugin);
+  }
 
-    public static Path getProjectDir() {
-        String projectDir = System.getProperty("project.dir");
-        return projectDir != null ? Paths.get(projectDir) : new File(".").toPath();
-    }
+  public static Path getProjectDir() {
+    String projectDir = System.getProperty("project.dir");
+    return projectDir != null ? Paths.get(projectDir) : new File(".").toPath();
+  }
 
-    private static String pluginName() {
-        return String.format("%s-%s_es%s.zip",
-                properties.getProperty("pluginName"),
-                properties.getProperty("pluginVersion"),
-                properties.getProperty("esVersion"));
-    }
+  private static String pluginName() {
+    return String.format(
+      "%s-%s_es%s.zip",
+      properties.getProperty("pluginName"),
+      properties.getProperty("pluginVersion"),
+      properties.getProperty("esVersion")
+    );
+  }
 
-    private static void runTask(String task) {
-        GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(getProjectDir().toFile());
-        ProjectConnection connect = null;
-        try {
-            connect = connector.connect();
-            connect.newBuild().forTasks(task).run();
-        } finally {
-            if (connect != null) connect.close();
-        }
+  private static void runTask(String task) {
+    GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(getProjectDir().toFile());
+    ProjectConnection connect = null;
+    try {
+      connect = connector.connect();
+      connect.newBuild().forTasks(task).run();
+    } finally {
+      if (connect != null) connect.close();
     }
+  }
 }

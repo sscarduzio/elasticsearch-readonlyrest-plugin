@@ -29,51 +29,54 @@ import java.util.regex.Pattern;
 
 public class ESWithReadonlyRestContainerUtils {
 
-    public static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
-                                                     String elasticsearchConfig,
-                                                     ESWithReadonlyRestContainer.ESInitalizer initalizer) {
-        File adjustedEsConfig = copyAndAdjustConfig(
-                ContainerUtils.getResourceFile(elasticsearchConfig),
-                createTempFile(),
-                externalDependencies.containers());
-        ESWithReadonlyRestContainer esContainer = ESWithReadonlyRestContainer.create(adjustedEsConfig.getName(), initalizer);
-        esContainer.start();
-        return esContainer;
-    }
+  public static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
+                                                   String elasticsearchConfig,
+                                                   ESWithReadonlyRestContainer.ESInitalizer initalizer) {
+    File adjustedEsConfig = copyAndAdjustConfig(
+      ContainerUtils.getResourceFile(elasticsearchConfig),
+      createTempFile(),
+      externalDependencies.containers()
+    );
+    ESWithReadonlyRestContainer esContainer = ESWithReadonlyRestContainer.create(adjustedEsConfig.getName(), initalizer);
+    esContainer.start();
+    return esContainer;
+  }
 
-    private static File createTempFile() {
-        try {
-            File newEsConfigFile = Files.createTempFile(ContainerUtils.getResourceFile("").toPath(), "tmp", ".tmp").toFile();
-            newEsConfigFile.deleteOnExit();
-            return newEsConfigFile;
-        } catch (IOException e) {
-            throw new ContainerCreationException("Cannot create elasticsearch config", e);
-        }
+  private static File createTempFile() {
+    try {
+      File newEsConfigFile = Files.createTempFile(ContainerUtils.getResourceFile("").toPath(), "tmp", ".tmp").toFile();
+      newEsConfigFile.deleteOnExit();
+      return newEsConfigFile;
+    } catch (IOException e) {
+      throw new ContainerCreationException("Cannot create elasticsearch config", e);
     }
+  }
 
-    private static File copyAndAdjustConfig(File sourceConfig,
-                                            File destConfig,
-                                            ImmutableList<MultiContainer.NamedContainer> externalDependencyContainers) {
-        try {
-            try (BufferedReader br = new BufferedReader(new FileReader(sourceConfig))) {
-                try (FileWriter fw = new FileWriter(destConfig)) {
-                    String s;
-                    while ((s = br.readLine()) != null) {
-                        String replaced = s;
-                        for (MultiContainer.NamedContainer container : externalDependencyContainers) {
-                            if (container.getIpAddress().isPresent()) {
-                                replaced = replaced.replaceAll(Pattern.compile("\\{" + container.getName() + "\\}").pattern(),
-                                        "\"" + container.getIpAddress().get() + "\"");
-                            }
-                        }
-                        fw.write(replaced + "\n");
-                    }
-                }
+  private static File copyAndAdjustConfig(File sourceConfig,
+                                          File destConfig,
+                                          ImmutableList<MultiContainer.NamedContainer> externalDependencyContainers) {
+    try {
+      try (BufferedReader br = new BufferedReader(new FileReader(sourceConfig))) {
+        try (FileWriter fw = new FileWriter(destConfig)) {
+          String s;
+          while ((s = br.readLine()) != null) {
+            String replaced = s;
+            for (MultiContainer.NamedContainer container : externalDependencyContainers) {
+              if (container.getIpAddress().isPresent()) {
+                replaced = replaced.replaceAll(
+                  Pattern.compile("\\{" + container.getName() + "\\}").pattern(),
+                  "\"" + container.getIpAddress().get() + "\""
+                );
+              }
             }
-        } catch (Exception e) {
-            throw new ContainerCreationException("Cannot create elasticsearch config", e);
+            fw.write(replaced + "\n");
+          }
         }
-        return destConfig;
+      }
+    } catch (Exception e) {
+      throw new ContainerCreationException("Cannot create elasticsearch config", e);
     }
+    return destConfig;
+  }
 
 }

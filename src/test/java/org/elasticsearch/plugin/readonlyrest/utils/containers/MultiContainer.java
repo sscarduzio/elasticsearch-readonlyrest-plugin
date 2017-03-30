@@ -31,61 +31,61 @@ import java.util.stream.Collectors;
 
 public class MultiContainer extends FailureDetectingExternalResource {
 
-    private ImmutableMap<String, NamedContainer> containers;
+  private ImmutableMap<String, NamedContainer> containers;
 
-    public MultiContainer(Map<String, Supplier<GenericContainer<?>>> containerCreators) {
-        List<NamedContainer> namedContainers = containerCreators.entrySet().stream()
-                .map(entry -> new NamedContainer(entry.getKey(), entry.getValue().get()))
-                .collect(Collectors.toList());
-        this.containers = Maps.uniqueIndex(namedContainers, NamedContainer::getName);
-        namedContainers.forEach(c -> c.getContainer().start());
+  public MultiContainer(Map<String, Supplier<GenericContainer<?>>> containerCreators) {
+    List<NamedContainer> namedContainers = containerCreators.entrySet().stream()
+      .map(entry -> new NamedContainer(entry.getKey(), entry.getValue().get()))
+      .collect(Collectors.toList());
+    this.containers = Maps.uniqueIndex(namedContainers, NamedContainer::getName);
+    namedContainers.forEach(c -> c.getContainer().start());
+  }
+
+  public <T extends GenericContainer<?>> T get(String name, Class<T> clazz) {
+    return clazz.cast(containers.get(name).getContainer());
+  }
+
+  public ImmutableList<NamedContainer> containers() {
+    return containers.values().asList();
+  }
+
+  public static class Builder {
+    private final Map<String, Supplier<GenericContainer<?>>> containers = new HashMap<>();
+
+    public Builder add(String name, Supplier<GenericContainer<?>> containerCreator) {
+      containers.put(name, containerCreator);
+      return this;
     }
 
-    public static class Builder {
-        private final Map<String, Supplier<GenericContainer<?>>> containers = new HashMap<>();
+    public MultiContainer build() {
+      return new MultiContainer(containers);
+    }
+  }
 
-        public Builder add(String name, Supplier<GenericContainer<?>> containerCreator) {
-            containers.put(name, containerCreator);
-            return this;
-        }
+  public static class NamedContainer {
+    private final String name;
+    private final GenericContainer<?> container;
 
-        public MultiContainer build() {
-            return new MultiContainer(containers);
-        }
+    private NamedContainer(String name, GenericContainer<?> container) {
+      this.name = name;
+      this.container = container;
     }
 
-    public <T extends GenericContainer<?>> T get(String name, Class<T> clazz) {
-        return clazz.cast(containers.get(name).getContainer());
+    public String getName() {
+      return name;
     }
 
-    public ImmutableList<NamedContainer> containers() {
-        return containers.values().asList();
+    public GenericContainer<?> getContainer() {
+      return container;
     }
 
-    public static class NamedContainer {
-        private final String name;
-        private final GenericContainer<?> container;
-
-        private NamedContainer(String name, GenericContainer<?> container) {
-            this.name = name;
-            this.container = container;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public GenericContainer<?> getContainer() {
-            return container;
-        }
-
-        public Optional<String> getIpAddress() {
-            return Optional.ofNullable(container.getContainerInfo())
-                    .map(info -> info
-                            .getNetworkSettings()
-                            .getNetworks()
-                            .get("bridge")
-                            .getIpAddress());
-        }
+    public Optional<String> getIpAddress() {
+      return Optional.ofNullable(container.getContainerInfo())
+        .map(info -> info
+          .getNetworkSettings()
+          .getNetworks()
+          .get("bridge")
+          .getIpAddress());
     }
+  }
 }

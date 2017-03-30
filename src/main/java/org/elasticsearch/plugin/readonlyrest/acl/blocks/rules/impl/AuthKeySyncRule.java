@@ -38,8 +38,8 @@ public class AuthKeySyncRule extends GeneralAuthKeySyncRule {
   @Override
   protected boolean authenticate(String configured, String providedBase64) {
     try {
-    String decodedProvided = new String(Base64.getDecoder().decode(providedBase64), StandardCharsets.UTF_8);
-    return decodedProvided.equals(configured);
+      String decodedProvided = new String(Base64.getDecoder().decode(providedBase64), StandardCharsets.UTF_8);
+      return decodedProvided.equals(configured);
     } catch (Throwable e) {
       logger.warn("Exception while authentication", e);
       return false;

@@ -17,14 +17,49 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+
 public abstract class Rule {
-    protected final RuleExitResult MATCH;
-    protected final RuleExitResult NO_MATCH;
+  protected final RuleExitResult MATCH;
+  protected final RuleExitResult NO_MATCH;
 
-    Rule() {
-        MATCH = new RuleExitResult(true, this);
-        NO_MATCH = new RuleExitResult(false, this);
-    }
+  Rule() {
+    MATCH = new RuleExitResult(true, this);
+    NO_MATCH = new RuleExitResult(false, this);
+  }
 
-    public abstract String getKey();
+  public abstract String getKey();
+
+  /**
+   * This hook is only called if the result is a match.
+   *
+   * @param result BlockExitResult rules block exit result
+   * @param rc RequestContext
+   * @param ar ActionRequest
+   * @param response ActionResponse
+   * @return should continue to process the handlers' pipeline
+   */
+  public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
+    return true;
+  }
+
+  /**
+   * This hook is called before throwing the exception e.
+   *
+   * Either rethrow or throw a new exception.
+   * #XXX DANGER: if you return false without throwing or writing to the channel, the connection will hang!
+   *
+   * @param result BlockExitResult rules block exit result
+   * @param rc RequestContext
+   * @param ar ActionRequest
+   * @param e The occurred exception
+   * @return should continue to process the handlers' pipeline
+   */
+  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
+    return true;
+  }
+
 }

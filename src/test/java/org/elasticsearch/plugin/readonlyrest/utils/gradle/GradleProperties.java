@@ -24,25 +24,25 @@ import java.util.Optional;
 import java.util.Properties;
 
 public class GradleProperties {
-    private final Properties properties;
+  private final Properties properties;
 
-    private GradleProperties(Properties properties) {
-        this.properties = properties;
-    }
+  private GradleProperties(Properties properties) {
+    this.properties = properties;
+  }
 
-    public static Optional<GradleProperties> create() {
-        try {
-            Properties prop = new Properties();
-            File file = new File(GradleProjectUtils.getProjectDir().toFile(), "gradle.properties");
-            InputStream input = new FileInputStream(file);
-            prop.load(input);
-            return Optional.of(new GradleProperties(prop));
-        } catch (IOException ex) {
-            return Optional.empty();
-        }
+  public static Optional<GradleProperties> create() {
+    try {
+      Properties prop = new Properties();
+      File file = new File(GradleProjectUtils.getProjectDir().toFile(), "gradle.properties");
+      InputStream input = new FileInputStream(file);
+      prop.load(input);
+      return Optional.of(new GradleProperties(prop));
+    } catch (IOException ex) {
+      return Optional.empty();
     }
+  }
 
-    public String getProperty(String key) {
-        return properties.getProperty(key);
-    }
+  public String getProperty(String key) {
+    return properties.getProperty(key);
+  }
 }

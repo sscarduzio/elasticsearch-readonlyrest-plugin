@@ -45,8 +45,8 @@ public class AuthKeySha256RuleTests extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     SyncRule r = new AuthKeySha256SyncRule(Settings.builder()
-                                     .put("auth_key_sha256", configured)
-                                     .build());
+                                             .put("auth_key_sha256", configured)
+                                             .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

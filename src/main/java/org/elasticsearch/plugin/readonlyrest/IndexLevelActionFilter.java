@@ -17,25 +17,16 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
-import java.io.IOException;
-import java.util.Arrays;
-
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.search.SearchAction;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
@@ -51,168 +42,122 @@ import org.elasticsearch.threadpool.ThreadPool;
  */
 @Singleton
 public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
-    private final ThreadPool threadPool;
-    private ClusterService clusterService;
-    private ACL acl;
-    private ConfigurationHelper conf;
+  private final ThreadPool threadPool;
+  private ClusterService clusterService;
+  private ConfigurationHelper conf;
 
-    @Inject
-    public IndexLevelActionFilter(Settings settings, ACL acl, ConfigurationHelper conf,
-                                  ClusterService clusterService, ThreadPool threadPool) {
-        super(settings);
-        this.conf = conf;
-        this.clusterService = clusterService;
-        this.threadPool = threadPool;
+  @Inject
+  public IndexLevelActionFilter(Settings settings, ConfigurationHelper conf,
+                                ClusterService clusterService, ThreadPool threadPool) {
+    super(settings);
+    this.conf = conf;
+    this.clusterService = clusterService;
+    this.threadPool = threadPool;
 
-        logger.info("Readonly REST plugin was loaded...");
+    logger.info("Readonly REST plugin was loaded...");
 
-        if (!conf.enabled) {
-            logger.info("Readonly REST plugin is disabled!");
-            return;
-        }
-
-        logger.info("Readonly REST plugin is enabled. Yay, ponies!");
-        this.acl = acl;
+    if (!conf.enabled) {
+      logger.info("Readonly REST plugin is disabled!");
+      return;
     }
 
-    @Override
-    public int order() {
-        return 0;
-    }
-
-    @Override
-    public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
-                                                                                       String action,
-                                                                                       Request request,
-                                                                                       ActionListener<Response> listener,
-                                                                                       ActionFilterChain<Request, Response> chain) {
-        // Skip if disabled
-        if (!conf.enabled) {
-            chain.proceed(task, action, request, listener);
-            return;
-        }
-
-        RestChannel channel = ThreadRepo.channel.get();
-        boolean chanNull = channel == null;
-
-        RestRequest req = null;
-        if (!chanNull) {
-            req = channel.request();
-        }
-        boolean reqNull = req == null;
-
-        // This was not a REST message
-        if (reqNull && chanNull) {
-            chain.proceed(task, action, request, listener);
-            return;
-        }
-
-        // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
-        if (reqNull != chanNull) {
-            if (chanNull)
-                throw new SecurityPermissionException("Problems analyzing the channel object. " +
-                        "Have you checked the security permissions?", null);
-            if (reqNull)
-                throw new SecurityPermissionException("Problems analyzing the request object. " +
-                        "Have you checked the security permissions?", null);
-        }
-
-        RequestContext rc = new RequestContext(channel, req, action, request, clusterService, threadPool);
-        acl.check(rc)
-                .exceptionally(throwable -> {
-                    logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
-                    sendNotAuthResponse(channel);
-                    return null;
-                })
-                .thenApply(result -> {
-                    if (result == null) return null;
-                    if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
-                        if (conf.searchLoggingEnabled && SearchAction.INSTANCE.name().equals(action)) {
-                            @SuppressWarnings("unchecked")
-                            ActionListener<Response> searchListener = (ActionListener<Response>)
-                                    new LoggerActionListener(action, request,(ActionListener<SearchResponse>)listener, rc);
-                            chain.proceed(task, action, request, searchListener);
-                        }
-                        else {
-                            chain.proceed(task, action, request, listener);
-                        }
-                    } else {
-                        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-                        sendNotAuthResponse(channel);
-                    }
-                    return null;
-                });
-    }
-
-  @Override
-  public <Response extends ActionResponse> void apply(String action, Response response,
-                                                      ActionListener<Response> listener,
-                                                      ActionFilterChain<?, Response> chain) {
-   chain.proceed(action, response, listener);
+    logger.info("Readonly REST plugin is enabled. Yay, ponies!");
   }
 
+  @Override
+  public int order() {
+    return 0;
+  }
+
+  @Override
+  public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
+                                                                                     String action,
+                                                                                     Request request,
+                                                                                     ActionListener<Response> listener,
+                                                                                     ActionFilterChain<Request, Response> chain) {
+    // Skip if disabled
+    if (!conf.enabled) {
+      chain.proceed(task, action, request, listener);
+      return;
+    }
+
+    RestChannel channel = ThreadRepo.channel.get();
+    boolean chanNull = channel == null;
+
+    RestRequest req = null;
+    if (!chanNull) {
+      req = channel.request();
+    }
+    boolean reqNull = req == null;
+
+    // This was not a REST message
+    if (reqNull && chanNull) {
+      chain.proceed(task, action, request, listener);
+      return;
+    }
+
+    // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
+    if (reqNull != chanNull) {
+      if (chanNull)
+        throw new SecurityPermissionException("Problems analyzing the channel object. " +
+                                                "Have you checked the security permissions?", null);
+      if (reqNull)
+        throw new SecurityPermissionException("Problems analyzing the request object. " +
+                                                "Have you checked the security permissions?", null);
+    }
+
+    RequestContext rc = new RequestContext(channel, req, action, request, clusterService, threadPool);
+    conf.acl.check(rc)
+      .exceptionally(throwable -> {
+        logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+        throwable.printStackTrace();
+        sendNotAuthResponse(channel);
+        return null;
+      })
+      .thenApply(result -> {
+        if (result == null) return null;
+
+        if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
+
+          try {
+            @SuppressWarnings("unchecked")
+            ActionListener<Response> aclActionListener =
+              (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+            chain.proceed(task, action, request, aclActionListener);
+            return null;
+          } catch (Throwable e) {
+            e.printStackTrace();
+          }
+
+          chain.proceed(task, action, request, listener);
+          return null;
+        }
+
+        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+        sendNotAuthResponse(channel);
+        return null;
+      });
+  }
+
+  @Override
+  public <Response extends ActionResponse> void apply(String action, Response response, ActionListener<Response> listener, ActionFilterChain<?, Response> chain) {
+    chain.proceed(action, response, listener);
+  }
 
   private void sendNotAuthResponse(RestChannel channel) {
-        String reason = conf.forbiddenResponse;
+    String reason = conf.forbiddenResponse;
 
-        BytesRestResponse resp;
-        if (acl.isBasicAuthConfigured()) {
-            resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
-            logger.debug("Sending login prompt header...");
-            resp.addHeader("WWW-Authenticate", "Basic");
-        } else {
-            resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
-        }
-
-        channel.sendResponse(resp);
+    BytesRestResponse resp;
+    if (conf.acl.isBasicAuthConfigured()) {
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
+      logger.debug("Sending login prompt header...");
+      resp.addHeader("WWW-Authenticate", "Basic");
+    }
+    else {
+      resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
     }
 
-    class LoggerActionListener implements ActionListener<SearchResponse> {
-        private final String action;
-        private final ActionListener<SearchResponse> baseListener;
-        private final SearchRequest searchRequest;
-        private final RequestContext requestContext;
-
-        LoggerActionListener(String action, ActionRequest searchRequest,
-                ActionListener<SearchResponse> baseListener,
-                RequestContext requestContext) {
-            this.action = action;
-            this.searchRequest = (SearchRequest)searchRequest;
-            this.baseListener = baseListener;
-            this.requestContext = requestContext;
-        }
-
-        public void onResponse(SearchResponse searchResponse) {
-            logger.info(
-                    "search: {" +
-                    " ID:" + requestContext.getId() +
-                    ", ACT:" + action +
-                    ", USR:" + requestContext.getLoggedInUser() +
-                    ", IDX:" + Arrays.toString(searchRequest.indices()) +
-                    ", TYP:" + Arrays.toString(searchRequest.types()) +
-                    ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
-                    ", HIT:" + searchResponse.getHits().totalHits() +
-                    ", RES:" + searchResponse.getHits().hits().length +
-                    " }"
-                    );
-
-            baseListener.onResponse(searchResponse);
-        }
-
-        public void onFailure(Exception e) {
-            baseListener.onFailure(e);
-        }
-
-        private String convertToJson(BytesReference searchSource) {
-            if (searchSource != null)
-                try {
-                    return XContentHelper.convertToJson(searchSource, true);
-                }
-            catch (IOException e) {
-                logger.warn("Unable to convert searchSource to JSON", e);
-            }
-            return "";
-        }
-    }
+    channel.sendResponse(resp);
+  }
 
 }

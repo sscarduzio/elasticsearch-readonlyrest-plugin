@@ -30,6 +30,14 @@ public class BlockExitResult {
     this.match = match;
   }
 
+  public static BlockExitResult match(Block block) {
+    return new BlockExitResult(block, true);
+  }
+
+  public static BlockExitResult noMatch() {
+    return new BlockExitResult(null, false);
+  }
+
   public boolean isMatch() {
     // Cover the case of rule == null to allow the creation of a dummy NO_MATCH rule result
     return block != null && match;
@@ -42,13 +50,5 @@ public class BlockExitResult {
   @Override
   public String toString() {
     return "{ block: " + block == null ? "<none>" : block.getName() + " match: " + isMatch() + "}";
-  }
-
-  public static BlockExitResult match(Block block) {
-    return new BlockExitResult(block, true);
-  }
-
-  public static BlockExitResult noMatch() {
-    return new BlockExitResult(null, false);
   }
 }

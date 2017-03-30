@@ -17,6 +17,11 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions;
 
 public class ContainerCreationException extends RuntimeException {
-    public ContainerCreationException(String msg) { super(msg); }
-    public ContainerCreationException(String msg, Throwable t) { super(msg, t); }
+  public ContainerCreationException(String msg) {
+    super(msg);
+  }
+
+  public ContainerCreationException(String msg, Throwable t) {
+    super(msg, t);
+  }
 }

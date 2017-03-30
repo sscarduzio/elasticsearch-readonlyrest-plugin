@@ -36,25 +36,17 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
-import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflectionUtils;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,10 +90,10 @@ public class RequestContext {
   private final ClusterService clusterService;
   private Set<String> indices = null;
   private String content = null;
-
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
-
+  private Set<String> originalIndices;
+  private String loggedInUser;
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {
@@ -114,10 +106,9 @@ public class RequestContext {
     this.threadPool = threadPool;
     this.id = UUID.randomUUID().toString().replace("-", "");
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    request.headers().forEach(e -> {
-      h.put(e.getKey(), e.getValue());
-    });
+    request.headers().forEach(e -> h.put(e.getKey(), e.getValue()));
     this.headers = h;
+
   }
 
   public void addToHistory(Block block, Set<RuleExitResult> results) {
@@ -131,9 +122,14 @@ public class RequestContext {
 
   public void commit() {
     sideEffects.commit();
+    if (!Strings.isNullOrEmpty(getLoggedInUser())) {
+      doSetResponseHeader("X-RR-User", getLoggedInUser());
+    }
   }
 
   public void reset() {
+    loggedInUser = null;
+    indices = null;
     sideEffects.clear();
   }
 
@@ -177,114 +173,28 @@ public class RequestContext {
     return new MatcherWithWildcards(getIndices()).filter(getAvailableIndicesAndAliases());
   }
 
-  public Set<String> getIndices() {
-    if (indices != null) {
-      return indices;
+  public Set<String> getOriginalIndices() {
+    if (originalIndices == null) {
+      originalIndices = getCurrentIndices();
     }
-    logger.debug("Finding indices for: " + toString(true));
+    return originalIndices;
+  }
 
-    final String[][] out = {new String[1]};
-    AccessController.doPrivileged(
-      new PrivilegedAction<Void>() {
-        @Override
-        public Void run() {
-          String[] indices = new String[0];
-          ActionRequest ar = actionRequest;
-          // CompositeIndicesRequests
-          if (ar instanceof MultiGetRequest) {
-            MultiGetRequest cir = (MultiGetRequest) ar;
-
-            for (MultiGetRequest.Item ir : cir.getItems()) {
-              indices = ArrayUtils.concat(indices, ir.indices(), String.class);
-            }
-          }
-          else if (ar instanceof MultiSearchRequest) {
-            MultiSearchRequest cir = (MultiSearchRequest) ar;
-
-            for (SearchRequest ir : cir.requests()) {
-              indices = ArrayUtils.concat(indices, ir.indices(), String.class);
-            }
-          }
-          else if (ar instanceof MultiTermVectorsRequest) {
-            MultiTermVectorsRequest cir = (MultiTermVectorsRequest) ar;
-
-            for (TermVectorsRequest ir : cir.getRequests()) {
-              indices = ArrayUtils.concat(indices, ir.indices(), String.class);
-            }
-          }
-          else if (ar instanceof BulkRequest) {
-            BulkRequest cir = (BulkRequest) ar;
-
-            for (ActionRequest ir : cir.requests()) {
-              indices = ArrayUtils.concat(indices, extractIndicesViaReflection(ir), String.class);
-            }
-          }
-          else if (ar instanceof CompositeIndicesRequest) {
-            logger.error("Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately!");
-          }
-          else {
-            indices = extractIndicesViaReflection(ar);
-          }
-
-          if (indices == null) {
-            indices = new String[0];
-          }
-
-          // De-dup
-          HashSet<String> tempSet = new HashSet<>(Arrays.asList(indices));
-          indices = tempSet.toArray(new String[tempSet.size()]);
-
-          if (logger.isDebugEnabled()) {
-            String idxs = String.join(",", indices);
-            logger.debug("Discovered indices: " + idxs);
-          }
-
-          out[0] = indices;
-          return null;
-        }
-      }
-    );
-
-    indices = org.elasticsearch.common.util.set.Sets.newHashSet(out[0]);
-
+  public Set<String> getIndices() {
+    if (!involvesIndices()) {
+      throw new RRContextException("cannot get indices of a request that doesn't involve indices" + this);
+    }
+    if (indices == null) {
+      indices = getCurrentIndices();
+      originalIndices = indices;
+    }
     return indices;
   }
 
   public void setIndices(final Set<String> newIndices) {
-    sideEffects.appendEffect(() -> doSetIndices(newIndices));
-  }
-
-  private String[] extractIndicesViaReflection(ActionRequest ar) {
-    if (ar == null) {
-      throw new ElasticsearchException("cannot extract indices from null action request!");
+    if (!involvesIndices()) {
+      throw new RRContextException("cannot set indices of a request that doesn't involve indices: " + this);
     }
-    String[] result = new String[]{};
-    try {
-      Method m = ar.getClass().getMethod("indices");
-      if (m.getReturnType() != String[].class) {
-        return null;
-      }
-      m.setAccessible(true);
-      result = (String[]) m.invoke(ar);
-    } catch (SecurityException e) {
-      logger.error("Can't get indices for request: " + toString(true));
-      throw new SecurityPermissionException(
-        "Insufficient permissions to extract the indices. Abort! Cause: " + e.getMessage(), e);
-    } catch (Exception e) {
-      logger.debug("Failed to discover indices associated to this request: " + toString(true));
-    }
-    return result;
-  }
-
-  public void doSetIndices(final Set<String> newIndices) {
-    newIndices.remove("<no-index>");
-    newIndices.remove("");
-
-    if (newIndices.equals(getIndices())) {
-      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getIndices() + " New:" + newIndices);
-      return;
-    }
-    logger.info("id: " + id + " - Replacing indices. Old:" + getIndices() + " New:" + newIndices);
 
     if (newIndices.size() == 0) {
       throw new ElasticsearchException(
@@ -292,57 +202,136 @@ public class RequestContext {
           " If this was intended, set '*' as indices.");
     }
 
-    AccessController.doPrivileged(
-      new PrivilegedAction<Void>() {
-        @Override
-        public Void run() {
-          Class<?> c = actionRequest.getClass();
-          final List<Throwable> errors = Lists.newArrayList();
-          errors.addAll(setStringArrayInInstance(c, actionRequest, "indices", newIndices));
-
-          if (!errors.isEmpty() && actionRequest instanceof IndicesRequest) {
-            IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
-            List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
-            actions.forEach(a -> {
-              errors.addAll(setStringArrayInInstance(a.getClass(), a, "indices", newIndices));
-            });
-          }
-
-          if (errors.isEmpty()) {
-            indices.clear();
-            indices.addAll(newIndices);
-          }
-          else {
-            errors.forEach(e -> {
-              logger.error("Failed to set indices " + e.toString());
-            });
-          }
-          return null;
-        }
-      });
+    indices = newIndices;
+    sideEffects.appendEffect(() -> doSetIndices(newIndices));
   }
 
-  private List<Throwable> setStringArrayInInstance(Class<?> theClass, Object instance, String fieldName, Set<String> injectedStringArray) {
-    Class<?> c = theClass;
-    final List<Throwable> errors = new ArrayList<>();
-    try {
-      boolean useSuperClass = true;
-      for (Field f : c.getDeclaredFields()) {
-        if (fieldName.equals(f.getName())) {
-          useSuperClass = false;
-        }
-      }
-      if (useSuperClass) {
-        c = c.getSuperclass();
-      }
-      Field field = c.getDeclaredField(fieldName);
-      field.setAccessible(true);
-      String[] idxArray = injectedStringArray.toArray(new String[injectedStringArray.size()]);
-      field.set(instance, idxArray);
-    } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
-      errors.add(new SetIndexException(c, id, e));
+  public Set<String> getCurrentIndices() {
+    if (!involvesIndices()) {
+      throw new RRContextException("cannot get indices of a request that doesn't involve indices");
     }
-    return errors;
+
+    logger.debug("Finding indices for: " + toString(true));
+
+    String[] indices = new String[0];
+    ActionRequest ar = actionRequest;
+    // CompositeIndicesRequests
+    if (ar instanceof MultiGetRequest) {
+      MultiGetRequest cir = (MultiGetRequest) ar;
+
+      for (MultiGetRequest.Item ir : cir.getItems()) {
+        indices = ArrayUtils.concat(indices, ir.indices(), String.class);
+      }
+    }
+    else if (ar instanceof MultiSearchRequest) {
+      MultiSearchRequest cir = (MultiSearchRequest) ar;
+
+      for (SearchRequest ir : cir.requests()) {
+        indices = ArrayUtils.concat(indices, ir.indices(), String.class);
+      }
+    }
+    else if (ar instanceof MultiTermVectorsRequest) {
+      MultiTermVectorsRequest cir = (MultiTermVectorsRequest) ar;
+
+      for (TermVectorsRequest ir : cir.getRequests()) {
+        indices = ArrayUtils.concat(indices, ir.indices(), String.class);
+      }
+    }
+    else if (ar instanceof BulkRequest) {
+      BulkRequest cir = (BulkRequest) ar;
+
+      for (ActionRequest ir : cir.requests()) {
+        String[] docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("indices", ir, logger);
+        if (docIndices.length == 0) {
+          docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("index", ir, logger);
+        }
+        indices = ArrayUtils.concat(indices, docIndices, String.class);
+      }
+    }
+    else if (ar instanceof CompositeIndicesRequest) {
+      logger.error("Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately!");
+    }
+    else {
+      indices = ReflectionUtils.extractStringArrayFromPrivateMethod("indices", ar, logger);
+      if (indices.length == 0) {
+        indices = ReflectionUtils.extractStringArrayFromPrivateMethod("index", ar, logger);
+      }
+    }
+
+    if (indices == null) {
+      indices = new String[0];
+    }
+
+    Set<String> indicesSet = org.elasticsearch.common.util.set.Sets.newHashSet(indices);
+
+    if (logger.isDebugEnabled()) {
+      String idxs = String.join(",", indicesSet);
+      logger.debug("Discovered indices: " + idxs);
+    }
+
+    return indicesSet;
+  }
+
+  public void doSetIndices(final Set<String> newIndices) {
+    newIndices.remove("<no-index>");
+    newIndices.remove("");
+
+    if (newIndices.equals(getCurrentIndices())) {
+      logger.info("id: " + id + " - Not replacing. Indices are the same. Old:" + getCurrentIndices() + " New:" + newIndices);
+      return;
+    }
+    logger.info("id: " + id + " - Replacing indices. Old:" + getCurrentIndices() + " New:" + newIndices);
+
+    if (newIndices.size() == 0) {
+      throw new ElasticsearchException(
+        "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
+          " If this was intended, set '*' as indices.");
+    }
+
+    Class<?> c = actionRequest.getClass();
+    final List<Throwable> errors = Lists.newArrayList();
+
+    errors.addAll(ReflectionUtils.fieldChanger(c, "indices", logger, this,
+                                               (Field f) -> {
+                                                 String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
+                                                 f.set(actionRequest, idxArray);
+                                                 return null;
+                                               }
+    ));
+
+
+    // Take care of writes
+    if (!errors.isEmpty() && newIndices.size() == 1) {
+      errors.clear();
+      errors.addAll(ReflectionUtils.fieldChanger(c, "index", logger, this, (f) -> {
+        f.set(actionRequest, newIndices.iterator().next());
+        return null;
+      }));
+    }
+
+    if (!errors.isEmpty() && actionRequest instanceof IndicesAliasesRequest) {
+      IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
+      List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
+      actions.forEach(a -> {
+        errors.addAll(ReflectionUtils.fieldChanger(a.getClass(), "indices", logger, this, (f) -> {
+          String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
+          f.set(a, idxArray);
+          return null;
+        }));
+      });
+    }
+
+    if (errors.isEmpty()) {
+      indices.clear();
+      indices.addAll(newIndices);
+      logger.debug("success changing indices: " + newIndices + " correctly set as " + getCurrentIndices());
+    }
+    else {
+      errors.forEach(e -> {
+        logger.error("Failed to set indices " + e.toString());
+      });
+    }
+
   }
 
   public void setResponseHeader(String name, String value) {
@@ -366,12 +355,16 @@ public class RequestContext {
   }
 
   public String getLoggedInUser() {
-    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
-    if (user == null)
-        user = ProxyAuthSyncRule.getUser(getHeaders());
-    return user;
+    return loggedInUser;
+//    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
+//    if (user == null)
+//      user = ProxyAuthSyncRule.getUser(getHeaders());
+//    return user;
   }
 
+  public void setLoggedInUser(String user) {
+    loggedInUser = user;
+  }
 
   @Override
   public String toString() {
@@ -380,31 +373,29 @@ public class RequestContext {
 
   private String toString(boolean skipIndices) {
     String theIndices;
-    if (skipIndices) {
+    if (skipIndices || !involvesIndices()) {
       theIndices = "<N/A>";
     }
     else {
       theIndices = Joiner.on(",").skipNulls().join(getIndices());
     }
 
-    String loggedInAs = getLoggedInUser();
     String content = getContent();
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
     }
     String theHeaders;
     if (!logger.isDebugEnabled()) {
-      Map<String, String> hMap = new HashMap<>(getHeaders());
-      theHeaders = Joiner.on(",").join(hMap.keySet());
+      theHeaders = Joiner.on(",").join(getHeaders().keySet());
     }
     else {
-      theHeaders = request.headers().toString();
+      theHeaders = getHeaders().toString();
     }
 
     String hist = Joiner.on(", ").join(history);
     return "{ ID:" + id +
       ", TYP:" + actionRequest.getClass().getSimpleName() +
-      ", USR:" + loggedInAs +
+      ", USR:" + (getLoggedInUser() == null ? (BasicAuthUtils.getBasicAuthUser(getHeaders()) + " (?)") : getLoggedInUser()) +
       ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
       ", ACT:" + action +
       ", OA:" + getRemoteAddress() +
@@ -418,12 +409,10 @@ public class RequestContext {
       " }";
   }
 
-  class SetIndexException extends Exception {
-    SetIndexException(Class<?> c, String id, Throwable e) {
-      super(" Could not set indices to class " + c.getSimpleName() +
-              "for req id: " + id + " because: "
-              + e.getClass().getSimpleName() + " : " + e.getMessage() +
-              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+
+  public class RRContextException extends ElasticsearchException {
+    public RRContextException(String reason) {
+      super(reason);
     }
   }
 

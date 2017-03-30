@@ -22,9 +22,9 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -51,9 +51,11 @@ public class IndicesSyncRule extends SyncRule {
       return MATCH;
     }
 
+    Set<String> indices = rc.getCurrentIndices();
+
     // 1. Requesting none or all the indices means requesting allowed indices that exist..
     logger.debug("Stage 0");
-    if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
+    if (indices.size() == 0 || indices.contains("_all") || indices.contains("*")) {
       Set<String> allowedIdxs = configuredWildcards.filter(rc.getAvailableIndicesAndAliases());
       if (allowedIdxs.size() > 0) {
         rc.setIndices(allowedIdxs);
@@ -66,8 +68,8 @@ public class IndicesSyncRule extends SyncRule {
 
       // Handle simple case of single index
       logger.debug("Stage 1");
-      if (rc.getIndices().size() == 1) {
-        if (configuredWildcards.match(rc.getIndices().iterator().next())) {
+      if (indices.size() == 1) {
+        if (configuredWildcards.match(indices.iterator().next())) {
           return MATCH;
         }
       }
@@ -76,14 +78,14 @@ public class IndicesSyncRule extends SyncRule {
 
       // 2. All indices match by wildcard?
       logger.debug("Stage 2");
-      if (configuredWildcards.filter(rc.getIndices()).size() == rc.getIndices().size()) {
+      if (configuredWildcards.filter(indices).size() == indices.size()) {
         return MATCH;
       }
 
       logger.debug("Stage 2.1");
       // 2.1 Detect non-wildcard requested indices that do not exist and return 404 (compatibility with vanilla ES)
       Set<String> real = rc.getAvailableIndicesAndAliases();
-      for (final String idx : rc.getIndices()) {
+      for (final String idx : indices) {
         if (!idx.contains("*") && !real.contains(idx)) {
           Set<String> nonExistingIndex = new HashSet<>(1);
           nonExistingIndex.add(idx);
@@ -124,13 +126,13 @@ public class IndicesSyncRule extends SyncRule {
 
       // Handle <no-index> (#TODO LEGACY)
       logger.debug("Stage 7");
-      if (rc.getIndices().size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
+      if (indices.size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
         return MATCH;
       }
 
       // Reject write if at least one requested index is not allowed by the rule conf
       logger.debug("Stage 8");
-      for (String idx : rc.getIndices()) {
+      for (String idx : indices) {
         if (!configuredWildcards.match(idx)) {
           return NO_MATCH;
         }

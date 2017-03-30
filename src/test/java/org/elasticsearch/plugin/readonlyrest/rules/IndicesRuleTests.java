@@ -21,9 +21,9 @@ import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.mockito.Mockito;
 
@@ -47,11 +47,13 @@ public class IndicesRuleTests extends TestCase {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);
+    // XXX mocks don't support the pre-commit read-after-write logic
+    when(rc.getCurrentIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new IndicesSyncRule(Settings.builder()
-                               .putArray("indices", configured)
-                               .build());
+                                       .putArray("indices", configured)
+                                       .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
