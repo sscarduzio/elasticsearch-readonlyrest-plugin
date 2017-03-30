@@ -140,7 +140,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   }
 
   @Override
-  public <Response extends ActionResponse> void apply(String action, Response response, ActionListener<Response> listener, ActionFilterChain<?, Response> chain) {
+  public <Response extends ActionResponse> void apply(
+    String action, Response response, ActionListener<Response> listener, ActionFilterChain<?, Response> chain) {
     chain.proceed(action, response, listener);
   }
 
