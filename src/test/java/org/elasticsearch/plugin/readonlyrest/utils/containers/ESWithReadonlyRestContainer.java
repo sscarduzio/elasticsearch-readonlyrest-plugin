@@ -83,6 +83,9 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
           .build()));
     return container
       .withExposedPorts(ES_PORT)
+      .withLogConsumer((of) ->{
+        System.out.println("ES: " + of.getUtf8String().replace("\n\n","\n"));
+      })
       .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
   }
 
