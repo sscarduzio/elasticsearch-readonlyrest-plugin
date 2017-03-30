@@ -24,6 +24,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -106,7 +107,14 @@ public class RequestContext {
     this.threadPool = threadPool;
     this.id = UUID.randomUUID().toString().replace("-", "");
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    request.headers().forEach(e -> h.put(e.getKey(), e.getValue()));
+
+    request.getHeaders().keySet().stream().forEach(k -> {
+      if (request.getAllHeaderValues(k).isEmpty()) {
+        return;
+      }
+      h.put(k, request.getAllHeaderValues(k).iterator().next());
+    });
+
     this.headers = h;
 
   }
@@ -240,7 +248,7 @@ public class RequestContext {
     else if (ar instanceof BulkRequest) {
       BulkRequest cir = (BulkRequest) ar;
 
-      for (ActionRequest ir : cir.requests()) {
+      for (DocWriteRequest<?> ir : cir.requests()) {
         String[] docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("indices", ir, logger);
         if (docIndices.length == 0) {
           docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("index", ir, logger);

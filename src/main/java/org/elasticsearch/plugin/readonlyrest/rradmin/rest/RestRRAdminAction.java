@@ -27,6 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.rradmin.RRAdminRequest;
 import org.elasticsearch.plugin.readonlyrest.rradmin.RRAdminResponse;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestController;
+import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 
@@ -35,7 +36,7 @@ import java.io.IOException;
 /**
  * Created by sscarduzio on 21/03/2017.
  */
-public class RestRRAdminAction extends BaseRestHandler {
+public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
   @Inject
   public RestRRAdminAction(Settings settings, RestController controller) {
     super(settings);
