@@ -23,7 +23,6 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
@@ -43,9 +42,7 @@ import org.elasticsearch.plugins.IngestPlugin;
 import org.elasticsearch.plugins.NetworkPlugin;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
-import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestHandler;
-import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchRequestParsers;
 import org.elasticsearch.threadpool.ThreadPool;
@@ -129,19 +126,8 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
       new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
   }
 
-
   public List<Class<? extends RestHandler>> getRestHandlers() {
     return Collections.singletonList(RRRestHandler.class);
-  }
-
-  class RRRestHandler implements RestHandler {
-    @Override
-    public void handleRequest(RestRequest request, RestChannel channel, NodeClient client) throws Exception {
-      // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
-      ConfigurationHelper.getInstance(settings, client);
-      ThreadRepo.channel.set(channel);
-      handleRequest(request, channel, client);
-    }
   }
 
 }
