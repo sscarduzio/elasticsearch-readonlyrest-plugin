@@ -213,8 +213,8 @@ readonlyrest:
 ```
 
 LDAP configuration requirements:
-- user from `search_user_base_DN` should have `uid` attribute
-- groups from `search_groups_base_DN` should have `uniqueMember` attribute
+- user from `search_user_base_DN` should have `uid` attribute (can be overwritten using `user_id_attribute`)
+- groups from `search_groups_base_DN` should have `uniqueMember` attribute (can be overwritten using `unique_member_attribute`)
 
 (example LDAP config can be found in test /resources/test_example.ldif)
 
