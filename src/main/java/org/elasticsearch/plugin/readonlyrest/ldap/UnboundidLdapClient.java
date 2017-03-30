@@ -51,16 +51,6 @@ import java.util.stream.Collectors;
 public class UnboundidLdapClient implements LdapClient {
   private static final Logger logger = Loggers.getLogger(UnboundidLdapClient.class);
 
-  public static int DEFAULT_LDAP_PORT = 389;
-  public static int DEFAULT_LDAP_CONNECTION_POOL_SIZE = 30;
-  public static Duration DEFAULT_LDAP_REQUEST_TIMEOUT = Duration.ofSeconds(1);
-  public static Duration DEFAULT_LDAP_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
-  public static Duration DEFAULT_LDAP_CACHE_TTL = Duration.ZERO;
-  public static boolean DEFAULT_LDAP_SSL_ENABLED = true;
-  public static boolean DEFAULT_LDAP_SSL_TRUST_ALL_CERTS = false;
-  public static String DEFAULT_UID_ATTRIBUTE = "uid";
-  public static String DEFAULT_UNIQUE_MEMBER_ATTRIBUTE = "uniqueMember";
-
   private final String searchUserBaseDN;
   private final String searchGroupBaseDN;
   private final String uidAttribute;
@@ -306,18 +296,29 @@ public class UnboundidLdapClient implements LdapClient {
   }
 
   public static class Builder {
+
+    public static int DEFAULT_LDAP_PORT = 389;
+    public static int DEFAULT_LDAP_CONNECTION_POOL_SIZE = 30;
+    public static Duration DEFAULT_LDAP_REQUEST_TIMEOUT = Duration.ofSeconds(1);
+    public static Duration DEFAULT_LDAP_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
+    public static boolean DEFAULT_LDAP_SSL_ENABLED = true;
+    public static boolean DEFAULT_LDAP_SSL_TRUST_ALL_CERTS = false;
+    public static String DEFAULT_UID_ATTRIBUTE = "uid";
+    public static String DEFAULT_UNIQUE_MEMBER_ATTRIBUTE = "uniqueMember";
+    public static Duration DEFAULT_LDAP_CACHE_TTL = Duration.ZERO;
+
     private final String host;
     private final String searchUserBaseDN;
     private final String searchGroupBaseDN;
-    private String uidAttribute;
-    private String uniqueMemberAttribute;
-    private int port;
+    private int port = DEFAULT_LDAP_PORT;
     private Optional<BindDnPassword> bindDnPassword = Optional.empty();
-    private int poolSize;
-    private Duration connectionTimeout;
-    private Duration requestTimeout;
-    private boolean sslEnabled;
-    private boolean trustAllCerts;
+    private int poolSize = DEFAULT_LDAP_CONNECTION_POOL_SIZE;
+    private Duration requestTimeout = DEFAULT_LDAP_REQUEST_TIMEOUT;
+    private Duration connectionTimeout = DEFAULT_LDAP_CONNECTION_TIMEOUT;
+    private boolean sslEnabled = DEFAULT_LDAP_SSL_ENABLED;
+    private boolean trustAllCerts = DEFAULT_LDAP_SSL_TRUST_ALL_CERTS;
+    private String uidAttribute = DEFAULT_UID_ATTRIBUTE;
+    private String uniqueMemberAttribute = DEFAULT_UNIQUE_MEMBER_ATTRIBUTE;
 
     public Builder(String host, String searchUserBaseDN, String searchGroupBaseDN) {
       this.host = host;

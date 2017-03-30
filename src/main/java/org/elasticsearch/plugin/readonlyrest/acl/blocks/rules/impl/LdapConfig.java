@@ -97,11 +97,11 @@ public class LdapConfig {
   }
 
   private static boolean sslEnabledFrom(Settings settings) {
-    return settings.getAsBoolean(ATTRIBUTE_SSL_ENABLED, UnboundidLdapClient.DEFAULT_LDAP_SSL_ENABLED);
+    return settings.getAsBoolean(ATTRIBUTE_SSL_ENABLED, UnboundidLdapClient.Builder.DEFAULT_LDAP_SSL_ENABLED);
   }
 
   private static boolean trustAllCertsFrom(Settings settings) {
-    return settings.getAsBoolean(ATTRIBUTE_SSL_TRUST_ALL_CERTS, UnboundidLdapClient.DEFAULT_LDAP_SSL_TRUST_ALL_CERTS);
+    return settings.getAsBoolean(ATTRIBUTE_SSL_TRUST_ALL_CERTS, UnboundidLdapClient.Builder.DEFAULT_LDAP_SSL_TRUST_ALL_CERTS);
   }
 
   private static Optional<UnboundidLdapClient.BindDnPassword> bindDNPasswordFrom(Settings settings) {
@@ -141,42 +141,42 @@ public class LdapConfig {
   }
 
   private static String uidAttribute(Settings settings) {
-    return settings.get(ATTRIBUTE_UID_ATTRIBUTE, UnboundidLdapClient.DEFAULT_UID_ATTRIBUTE);
+    return settings.get(ATTRIBUTE_UID_ATTRIBUTE, UnboundidLdapClient.Builder.DEFAULT_UID_ATTRIBUTE);
   }
 
   private static String uniqueMemberAttribute(Settings settings) {
-    return settings.get(ATTRIBUTE_UNIQUE_MEMEBER_ATTRIBUTE, UnboundidLdapClient.DEFAULT_UNIQUE_MEMBER_ATTRIBUTE);
+    return settings.get(ATTRIBUTE_UNIQUE_MEMEBER_ATTRIBUTE, UnboundidLdapClient.Builder.DEFAULT_UNIQUE_MEMBER_ATTRIBUTE);
   }
 
   private static int portFrom(Settings settings) {
-    return settings.getAsInt(ATTRIBUTE_PORT, UnboundidLdapClient.DEFAULT_LDAP_PORT);
+    return settings.getAsInt(ATTRIBUTE_PORT, UnboundidLdapClient.Builder.DEFAULT_LDAP_PORT);
   }
 
   private static int poolSizeFrom(Settings settings) {
     return settings.getAsInt(
       ATTRIBUTE_CONNECTION_POOL_SIZE,
-      UnboundidLdapClient.DEFAULT_LDAP_CONNECTION_POOL_SIZE
+      UnboundidLdapClient.Builder.DEFAULT_LDAP_CONNECTION_POOL_SIZE
     );
   }
 
   private static Duration connectionTimeoutFrom(Settings settings) {
     return Duration.ofSeconds(settings.getAsLong(
       ATTRIBUTE_CONNECTION_TIMEOUT,
-      UnboundidLdapClient.DEFAULT_LDAP_CONNECTION_TIMEOUT.getSeconds()
+      UnboundidLdapClient.Builder.DEFAULT_LDAP_CONNECTION_TIMEOUT.getSeconds()
     ));
   }
 
   private static Duration requestTimeoutFrom(Settings settings) {
     return Duration.ofSeconds(settings.getAsLong(
       ATTRIBUTE_REQUEST_TIMEOUT,
-      UnboundidLdapClient.DEFAULT_LDAP_REQUEST_TIMEOUT.getSeconds()
+      UnboundidLdapClient.Builder.DEFAULT_LDAP_REQUEST_TIMEOUT.getSeconds()
     ));
   }
 
   private static Duration cacheTtlFrom(Settings settings) {
     return Duration.ofSeconds(settings.getAsLong(
       ATTRIBUTE_CACHE_TTL,
-      UnboundidLdapClient.DEFAULT_LDAP_CACHE_TTL.getSeconds()
+      UnboundidLdapClient.Builder.DEFAULT_LDAP_CACHE_TTL.getSeconds()
     ));
   }
 
