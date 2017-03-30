@@ -24,6 +24,7 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.inject.Module;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
@@ -66,24 +67,6 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   }
 
   @Override
-  public List<Class<? extends ActionFilter>> getActionFilters() {
-    return Collections.singletonList(IndexLevelActionFilter.class);
-  }
-
-  @Override
-  public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-    Settings settings,
-    ThreadPool threadPool,
-    BigArrays bigArrays,
-    CircuitBreakerService circuitBreakerService,
-    NamedWriteableRegistry namedWriteableRegistry,
-    NetworkService networkService
-  ) {
-    return Collections.singletonMap(
-      "ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool));
-  }
-
-  @Override
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
                                              ResourceWatcherService resourceWatcherService, ScriptService scriptService,
                                              SearchRequestParsers searchRequestParsers) {
@@ -113,21 +96,30 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
     executor.schedule(task, 200, TimeUnit.MILLISECONDS);
     return fromSup;
   }
+  @Override
+  public List<Class<? extends ActionFilter>> getActionFilters() {
+    return Collections.singletonList(IndexLevelActionFilter.class);
+  }
+
+  @Override
+  public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
+    Settings settings,
+    ThreadPool threadPool,
+    BigArrays bigArrays,
+    CircuitBreakerService circuitBreakerService,
+    NamedWriteableRegistry namedWriteableRegistry,
+    NetworkService networkService
+  ) {
+    return Collections.singletonMap("ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool));
+  }
+
+  @Override
+  public List<Class<? extends RestHandler>> getRestHandlers() {
+    return Collections.singletonList(ReadonlyRestRestAction.class);
+  }
 
   @Override
   public List<Setting<?>> getSettings() {
     return ConfigurationHelper.allowedSettings();
   }
-
-  @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-    return Collections.singletonList(
-      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
-  }
-
-  public List<Class<? extends RestHandler>> getRestHandlers() {
-    return Collections.singletonList(RRRestHandler.class);
-  }
-
 }
