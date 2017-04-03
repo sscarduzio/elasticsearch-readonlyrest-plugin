@@ -40,6 +40,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflectionUtils;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -49,6 +50,7 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -93,7 +95,7 @@ public class RequestContext {
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
   private Set<String> originalIndices;
-  private String loggedInUser;
+  private Optional<LoggedUser> loggedInUser;
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {
@@ -108,7 +110,6 @@ public class RequestContext {
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     request.headers().forEach(e -> h.put(e.getKey(), e.getValue()));
     this.headers = h;
-
   }
 
   public void addToHistory(Block block, Set<RuleExitResult> results) {
@@ -122,13 +123,11 @@ public class RequestContext {
 
   public void commit() {
     sideEffects.commit();
-    if (!Strings.isNullOrEmpty(getLoggedInUser())) {
-      doSetResponseHeader("X-RR-User", getLoggedInUser());
-    }
+    loggedInUser.ifPresent(loggedUser -> doSetResponseHeader("X-RR-User", loggedUser.getId()));
   }
 
   public void reset() {
-    loggedInUser = null;
+    loggedInUser = Optional.empty();
     indices = null;
     sideEffects.clear();
   }
@@ -354,16 +353,12 @@ public class RequestContext {
     return action;
   }
 
-  public String getLoggedInUser() {
+  public Optional<LoggedUser> getLoggedInUser() {
     return loggedInUser;
-//    String user = BasicAuthUtils.getBasicAuthUser(getHeaders());
-//    if (user == null)
-//      user = ProxyAuthSyncRule.getUser(getHeaders());
-//    return user;
   }
 
-  public void setLoggedInUser(String user) {
-    loggedInUser = user;
+  public void setLoggedInUser(LoggedUser user) {
+    loggedInUser = Optional.of(user);
   }
 
   @Override
@@ -393,9 +388,10 @@ public class RequestContext {
     }
 
     String hist = Joiner.on(", ").join(history);
+    Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
     return "{ ID:" + id +
       ", TYP:" + actionRequest.getClass().getSimpleName() +
-      ", USR:" + (getLoggedInUser() == null ? (BasicAuthUtils.getBasicAuthUser(getHeaders()) + " (?)") : getLoggedInUser()) +
+      ", USR:" + (loggedInUser.isPresent() ? loggedInUser.get() : (optBasicAuth.isPresent() ? optBasicAuth.get().getUserName() + "(?)" : "[no basic auth header]")) +
       ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
       ", ACT:" + action +
       ", OA:" + getRemoteAddress() +

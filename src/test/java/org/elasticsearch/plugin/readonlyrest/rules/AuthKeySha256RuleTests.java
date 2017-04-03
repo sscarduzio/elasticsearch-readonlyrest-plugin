@@ -42,7 +42,7 @@ public class AuthKeySha256RuleTests extends TestCase {
   }
 
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
+    when(rc.getHeaders()).thenReturn(ImmutableMap.of("AsyncAuthorization", found));
 
     SyncRule r = new AuthKeySha256SyncRule(Settings.builder()
                                              .put("auth_key_sha256", configured)

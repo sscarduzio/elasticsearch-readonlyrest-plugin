@@ -22,12 +22,14 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 20/02/2016.
@@ -51,11 +53,12 @@ public class KibanaHideAppsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (Strings.isEmpty(hiddenApps) && Strings.isEmpty(rc.getLoggedInUser())) {
+    Optional<LoggedUser> loggedInUser = rc.getLoggedInUser();
+    if (Strings.isEmpty(hiddenApps) || !loggedInUser.isPresent()) {
       return MATCH;
     }
 
-    logger.info("setting hidden apps for user " + rc.getLoggedInUser() + ": " + hiddenApps);
+    logger.info("setting hidden apps for user " + loggedInUser.get() + ": " + hiddenApps);
     rc.setResponseHeader(KIBANA_HIDE_APPS_HEADER, hiddenApps);
 
     // This is a side-effect only rule, will always match

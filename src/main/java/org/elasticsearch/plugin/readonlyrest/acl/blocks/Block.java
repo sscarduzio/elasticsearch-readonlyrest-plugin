@@ -19,36 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.Client;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.*;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.HashSet;
@@ -57,9 +32,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
+import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -68,17 +42,18 @@ public class Block {
   private final String name;
   private final Policy policy;
   private final Logger logger;
-  private final ConfigurationHelper conf;
-  private final Client client;
   private final Set<SyncRule> syncConditionsToCheck = Sets.newHashSet();
   private final Set<AsyncRule> asyncConditionsToCheck = Sets.newHashSet();
   private boolean authHeaderAccepted = false;
-  public Block(Settings s, List<User> userList, List<LdapConfig> ldapList, Logger logger,
-               Client client, ConfigurationHelper conf) {
-    this.name = s.get("name");
-    this.conf = conf;
-    this.client = client;
-    String sPolicy = s.get("type");
+
+  public Block(Settings settings,
+               List<User> userList,
+               List<LdapConfig> ldapList,
+               List<ProxyAuthConfig> proxyAuthConfigs,
+               List<UserRoleProviderConfig> roleProviderConfigs,
+               Logger logger) {
+    this.name = settings.get("name");
+    String sPolicy = settings.get("type");
     this.logger = logger;
     if (sPolicy == null) {
       throw new RuleConfigurationError(
@@ -88,8 +63,8 @@ public class Block {
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
-    initSyncConditions(s, userList);
-    initAsyncConditions(s, ldapList);
+    initSyncConditions(settings, userList, proxyAuthConfigs);
+    initAsyncConditions(settings, ldapList, roleProviderConfigs);
   }
 
   public Set<SyncRule> getSyncRules() {
@@ -192,7 +167,7 @@ public class Block {
     return "readonlyrest Rules Block :: { name: '" + name + "', policy: " + policy + "}";
   }
 
-  private void initSyncConditions(Settings s, List<User> userList) {
+  private void initSyncConditions(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs) {
     // Won't add the condition if its configuration is not found
     try {
       syncConditionsToCheck.add(new KibanaAccessSyncRule(s));
@@ -225,10 +200,10 @@ public class Block {
       authHeaderAccepted = true;
     } catch (RuleNotConfiguredException ignored) {
     }
-    try {
-      syncConditionsToCheck.add(new ProxyAuthSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
+    ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs).map(rule -> {
+      syncConditionsToCheck.add(rule);
+      return true;
+    });
     try {
       syncConditionsToCheck.add(new SessionMaxIdleSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
@@ -271,10 +246,14 @@ public class Block {
     }
   }
 
-  private void initAsyncConditions(Settings s, List<LdapConfig> ldapConfigs) {
+  private void initAsyncConditions(Settings s, List<LdapConfig> ldapConfigs, List<UserRoleProviderConfig> roleProviderConfigs) {
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).map(rule -> {
       asyncConditionsToCheck.add(rule);
       authHeaderAccepted = true;
+      return true;
+    });
+    RoleBasedAuthorizationAsyncRule.fromSettings(s, roleProviderConfigs).map(rule -> {
+      asyncConditionsToCheck.add(wrapInCacheIfCacheIsEnabled(rule, s));
       return true;
     });
   }

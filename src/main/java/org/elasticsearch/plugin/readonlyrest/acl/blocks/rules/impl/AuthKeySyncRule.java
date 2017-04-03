@@ -21,6 +21,8 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -36,10 +38,10 @@ public class AuthKeySyncRule extends GeneralAuthKeySyncRule {
   }
 
   @Override
-  protected boolean authenticate(String configured, String providedBase64) {
+  protected boolean authenticate(String configuredAuthKey, BasicAuth basicAuth) {
     try {
-      String decodedProvided = new String(Base64.getDecoder().decode(providedBase64), StandardCharsets.UTF_8);
-      return decodedProvided.equals(configured);
+      String decodedProvided = new String(Base64.getDecoder().decode(basicAuth.getBase64Value()), StandardCharsets.UTF_8);
+      return decodedProvided.equals(configuredAuthKey);
     } catch (Throwable e) {
       logger.warn("Exception while authentication", e);
       return false;

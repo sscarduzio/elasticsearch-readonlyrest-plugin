@@ -54,3 +54,25 @@ readonlyrest:
       type: allow
       indices: ["public"]
       actions: ["indices:data/read/*"]
+
+    - name: "external authorization"
+      indices: ["public"]
+      proxy_auth:
+        - proxy_auth_config: "proxy1"
+        - users: ["admin"]
+      role_based_authorization:
+        - user_role_provider: "RolesService"
+        - roles: ["r1", "r2"]
+
+    proxy_auth_configs:
+
+    - name: "proxy1"
+      user_id_header: "X-Auth-Token"
+
+    user_role_providers:
+
+    - name: RolesService
+      role_endpoint: "http://localhost:12000/roles_list"
+      auth_token_name: "token"
+      auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
+      response_roles_json_path: "$..roles[?(@.name)]"

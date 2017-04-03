@@ -18,51 +18,113 @@
 package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.collect.ImmutableMap;
-import junit.framework.TestCase;
+import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.List;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class ProxyAuthRuleTests extends TestCase {
+public class ProxyAuthRuleTests {
 
-  private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
-    return match(configured, found, Mockito.mock(RequestContext.class));
-  }
+    private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
+        return match(configured, found, Mockito.mock(RequestContext.class));
+    }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
+    private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+        when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
 
-    SyncRule r = new ProxyAuthSyncRule(Settings.builder()
-                                         .put("proxy_auth", configured)
-                                         .build());
+        ProxyAuthSyncRule r = ProxyAuthSyncRule.fromSettings(
+                Settings.builder()
+                        .putArray("proxy_auth", configured)
+                        .build(),
+                Lists.newArrayList()).get();
 
-    RuleExitResult res = r.match(rc);
-    rc.commit();
-    return res;
-  }
+        RuleExitResult res = r.match(rc);
+        rc.commit();
+        return res;
+    }
 
-  public void testOK() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "1234567890");
-    assertTrue(res.isMatch());
-  }
+    @Test
+    public void testOK() throws RuleNotConfiguredException {
+        RuleExitResult res = match("1234567890", "1234567890");
+        assertTrue(res.isMatch());
+    }
 
-  public void testKO() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "123");
-    assertFalse(res.isMatch());
-  }
+    @Test
+    public void testKO() throws RuleNotConfiguredException {
+        RuleExitResult res = match("1234567890", "123");
+        assertFalse(res.isMatch());
+    }
 
-  public void testEmpty() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "");
-    assertFalse(res.isMatch());
-  }
+    @Test
+    public void testEmpty() throws RuleNotConfiguredException {
+        RuleExitResult res = match("1234567890", "");
+        assertFalse(res.isMatch());
+    }
+
+    @Test
+    public void testBackCompatibilityOfProxyAuthLoadingFromSettings() {
+        Settings settings = Settings.builder()
+                .putArray("proxy_auth", Lists.newArrayList("user1", "user2"))
+                .build();
+        List<ProxyAuthConfig> configs = Lists.newArrayList(
+                ProxyAuthConfig.fromSettings(
+                        Settings.builder()
+                                .put("name", "proxy1")
+                                .put("user_id_header", "X-Forwarded-User")
+                                .build()
+                )
+        );
+        assertTrue(ProxyAuthSyncRule.fromSettings(settings, configs).isPresent());
+    }
+
+    @Test
+    public void testExtendedProxyAuthRuleLoadingFromSettings() {
+        Settings settings = Settings.builder()
+                .put("proxy_auth.0.name", "proxy1")
+                .putArray("proxy_auth.0.users", Lists.newArrayList("user1", "user2"))
+                .build();
+        List<ProxyAuthConfig> configs = Lists.newArrayList(
+                ProxyAuthConfig.fromSettings(
+                        Settings.builder()
+                                .put("name", "proxy1")
+                                .put("user_id_header", "X-Auth-Token")
+                                .build()
+                )
+        );
+        assertTrue(ProxyAuthSyncRule.fromSettings(settings, configs).isPresent());
+    }
+
+    @Test(expected = ConfigMalformedException.class)
+    public void testCannotLoadExtendedProxyAuthRuleFromSettingsWhenProxyWasNotDefined() {
+        Settings settings = Settings.builder()
+                .put("proxy_auth.0.name", "proxy1")
+                .putArray("proxy_auth.0.users", Lists.newArrayList("user1", "user2"))
+                .build();
+        List<ProxyAuthConfig> configs = Lists.newArrayList(
+                ProxyAuthConfig.fromSettings(
+                        Settings.builder()
+                                .put("name", "otherProxy")
+                                .put("user_id_header", "X-Forwarded-User")
+                                .build()
+                )
+        );
+        assertFalse(ProxyAuthSyncRule.fromSettings(settings, configs).isPresent());
+    }
+
 }

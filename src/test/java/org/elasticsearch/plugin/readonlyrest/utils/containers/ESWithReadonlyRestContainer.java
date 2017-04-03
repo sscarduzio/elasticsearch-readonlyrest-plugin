@@ -108,7 +108,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
   private Header authorizationHeader(String name, String password) {
     String base64userPass = Base64.getEncoder().encodeToString((name + ":" + password).getBytes());
-    return new BasicHeader("Authorization", "Basic " + base64userPass);
+    return new BasicHeader("AsyncAuthorization", "Basic " + base64userPass);
   }
 
   private RestClientBuilder clientBuilder() {

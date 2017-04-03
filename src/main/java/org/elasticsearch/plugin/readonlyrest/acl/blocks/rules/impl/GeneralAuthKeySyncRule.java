@@ -20,12 +20,16 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
+
+import java.util.Optional;
 
 public abstract class GeneralAuthKeySyncRule extends SyncRule implements UserRule {
   private static final Logger logger = Loggers.getLogger(GeneralAuthKeySyncRule.class);
@@ -37,32 +41,28 @@ public abstract class GeneralAuthKeySyncRule extends SyncRule implements UserRul
     authKey = getAuthKey(s);
   }
 
-  protected abstract boolean authenticate(String configured, String providedBase64);
+  protected abstract boolean authenticate(String configuredAuthKey, BasicAuth basicAuth);
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String authHeader = BasicAuthUtils.extractAuthFromHeader(rc.getHeaders().get("Authorization"));
+    Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(rc.getHeaders());
 
-    if (authHeader != null && logger.isDebugEnabled()) {
+    if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {
       try {
-        logger.info("Attempting Login as: " + BasicAuthUtils.getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
+        logger.info("Attempting Login as: " + optBasicAuth.get().getUserName() + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
     }
 
-    if (authKey == null || authHeader == null) {
+    if (authKey == null || !optBasicAuth.isPresent()) {
       return NO_MATCH;
     }
 
-    String val = authHeader.trim();
-    if (val.length() == 0) {
-      return NO_MATCH;
-    }
-
-    RuleExitResult res = authenticate(authKey, authHeader) ? MATCH : NO_MATCH;
+    BasicAuth basicAuth = optBasicAuth.get();
+    RuleExitResult res = authenticate(authKey, basicAuth) ? MATCH : NO_MATCH;
     if(res.isMatch()){
-      rc.setLoggedInUser(BasicAuthUtils.getBasicAuthUser(rc.getHeaders()));
+      rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
     }
     return res;
   }

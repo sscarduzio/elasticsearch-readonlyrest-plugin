@@ -22,6 +22,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
@@ -37,6 +38,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.mockito.Mockito.verify;
@@ -62,7 +64,7 @@ public class IndicesRewriteRuleTests extends TestCase {
     when(rc.involvesIndices()).thenReturn(true);
     when(rc.getExpandedIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
-    when(rc.getLoggedInUser()).thenReturn("simone");
+    when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
 
     SyncRule r = new IndicesRewriteSyncRule(Settings.builder()
                                               .putArray("indices_rewrite", configured).build());

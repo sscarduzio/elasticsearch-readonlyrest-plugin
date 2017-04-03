@@ -24,8 +24,8 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -75,7 +76,7 @@ public class SessionCookie {
     this.cookiePresent = true;
 
     // ----- Check cookie validity
-    String user = rc.getLoggedInUser();
+    String user = rc.getLoggedInUser().map(LoggedUser::getId).orElseGet(null);
     Iterator<String> cookiePartsIterator =
       Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
@@ -123,23 +124,23 @@ public class SessionCookie {
   }
 
   public void setCookie() {
-    String user = rc.getLoggedInUser();
-    if(Strings.isNullOrEmpty(user)){
+    Optional<LoggedUser> user = rc.getLoggedInUser();
+    if(!user.isPresent()){
       logger.warn("Cannot state the logged in user, put the authentication rule on top of the block!");
       return;
     }
     Date expiryDateString = new Date(System.currentTimeMillis() + sessionMaxIdleMillis);
-    String cookie = mkCookie(user, expiryDateString);
+    String cookie = mkCookie(user.get().getId(), expiryDateString);
     rc.setResponseHeader("Set-Cookie", COOKIE_NAME + "=" + cookie);
   }
 
-  private String mkCookie(String user, Date expiry) {
+  private String mkCookie(String userName, Date expiry) {
     return new StringBuilder()
-      .append(user)
+      .append(userName)
       .append(COOKIE_STRING_SEPARATOR)
       .append(expiry.toString())
       .append(COOKIE_STRING_SEPARATOR)
-      .append(Hashing.sha1().hashString(SERVER_SECRET + user + expiry.getTime() / 1000, StandardCharsets.UTF_8))
+      .append(Hashing.sha1().hashString(SERVER_SECRET + userName + expiry.getTime() / 1000, StandardCharsets.UTF_8))
       .toString();
   }
 

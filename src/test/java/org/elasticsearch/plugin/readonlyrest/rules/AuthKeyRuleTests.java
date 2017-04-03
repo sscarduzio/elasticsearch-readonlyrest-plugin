@@ -42,7 +42,7 @@ public class AuthKeyRuleTests extends TestCase {
   }
 
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
+    when(rc.getHeaders()).thenReturn(ImmutableMap.of("AsyncAuthorization", found));
 
     SyncRule r = new AuthKeySyncRule(Settings.builder()
                                        .put("auth_key", configured)
