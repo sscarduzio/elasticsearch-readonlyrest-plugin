@@ -57,7 +57,8 @@ public class KibanaAccessSyncRule extends SyncRule {
   ));
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
     "cluster:admin/rradmin/*",
-    "indices:data/write/*"
+    "indices:data/write/*",
+    "indices:admin/create"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
     "cluster:monitor/nodes/info",
