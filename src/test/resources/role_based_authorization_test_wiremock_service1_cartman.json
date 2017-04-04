@@ -3,7 +3,7 @@
     "method": "GET",
     "urlPath": "/roles",
     "queryParameters" : {
-      "token" : {
+      "user" : {
         "equalTo" : "cartman"
       }
     }

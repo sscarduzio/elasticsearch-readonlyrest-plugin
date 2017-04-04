@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class LdapAuthAsyncRule extends GeneralAuthKeyAsyncRule {
+public class LdapAuthAsyncRule extends GeneralBasicAuthAsyncRule {
 
   private static final String RULE_NAME = "ldap_auth";
   private static final String LDAP_NAME = "name";

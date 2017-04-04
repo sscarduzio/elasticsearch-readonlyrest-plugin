@@ -21,7 +21,6 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.StandardCharsets;
@@ -30,7 +29,7 @@ import java.util.Base64;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeySyncRule extends GeneralAuthKeySyncRule {
+public class AuthKeySyncRule extends GeneralBasicAuthSyncRule {
   private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
 
   public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {

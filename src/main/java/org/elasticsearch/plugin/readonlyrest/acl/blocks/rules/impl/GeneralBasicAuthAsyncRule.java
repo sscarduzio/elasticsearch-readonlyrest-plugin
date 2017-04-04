@@ -23,14 +23,15 @@ import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class GeneralAuthKeyAsyncRule extends AsyncRule {
-  private static final Logger logger = Loggers.getLogger(GeneralAuthKeyAsyncRule.class);
+public abstract class GeneralBasicAuthAsyncRule extends AsyncRule implements Authentication {
+  private static final Logger logger = Loggers.getLogger(GeneralBasicAuthAsyncRule.class);
 
   protected abstract CompletableFuture<Boolean> authenticate(String user, String password);
 

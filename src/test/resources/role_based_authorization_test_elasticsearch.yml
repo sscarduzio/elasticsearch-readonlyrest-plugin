@@ -30,7 +30,7 @@ readonlyrest:
         - proxy_auth_config: "proxy1"
           users: ["*"]
       role_based_authorization:
-        - user_role_provider: "RolesService"
+        - user_role_provider: "RolesService1"
           roles: ["role1"]
 
     - name: "::Facebook posts::"
@@ -41,8 +41,9 @@ readonlyrest:
         - proxy_auth_config: "proxy1"
           users: ["*"]
       role_based_authorization:
-        - user_role_provider: "RolesService"
+        - user_role_provider: "RolesService2"
           roles: ["role3"]
+          cache_ttl_in_sec: 60
 
     proxy_auth_configs:
 
@@ -51,8 +52,14 @@ readonlyrest:
 
     user_role_providers:
 
-    - name: RolesService
-      role_endpoint: "http://{ROLES}:8080/roles"
-      auth_token_name: "token"
-      auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
+    - name: RolesService1
+      role_endpoint: "http://{ROLES1}:8080/roles"
+      auth_token_name: "user"
+      auth_token_passed_as: QUERY_PARAM
+      response_roles_json_path: "$..roles[?(@.name)].name"
+
+    - name: RolesService2
+      role_endpoint: "http://{ROLES2}:8080/roles"
+      auth_token_name: "auth_token"
+      auth_token_passed_as: HEADER
       response_roles_json_path: "$..roles[?(@.name)].name"

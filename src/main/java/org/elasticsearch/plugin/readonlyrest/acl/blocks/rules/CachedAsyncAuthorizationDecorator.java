@@ -23,7 +23,9 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
 
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization, Settings settings) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> (AsyncAuthorization) new CachedAsyncAuthorizationDecorator(authorization, ttl))
+        .map(ttl -> ttl.isZero()
+            ? authorization
+            : new CachedAsyncAuthorizationDecorator(authorization, ttl))
         .orElse(authorization);
   }
 

@@ -36,6 +36,13 @@ public class CachedAsyncAuthorizationDecoratorTests {
   }
 
   @Test
+  public void testIfAsyncAuthorizationRuleIsNotWrappedInCacheIfTtlIsZero() {
+    Settings settings = Settings.builder().put("cache_ttl_in_sec", "0").build();
+    AsyncAuthorization authorization = wrapInCacheIfCacheIsEnabled(dummyAsyncRule, settings);
+    assertEquals(dummyAsyncRule, authorization);
+  }
+
+  @Test
   public void testIfAuthorizationIsCached() throws Exception {
     LoggedUser user = new LoggedUser("tester");
     Set<String> roles = Sets.newHashSet("role1", "role2");

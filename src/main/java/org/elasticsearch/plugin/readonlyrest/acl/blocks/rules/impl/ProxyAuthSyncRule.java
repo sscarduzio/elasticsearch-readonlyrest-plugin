@@ -28,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcar
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,7 @@ import java.util.stream.Collectors;
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthSyncRule extends SyncRule implements UserRule {
+public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authentication {
 
   private static final String RULE_NAME = "proxy_auth";
   private static final String NAME_ATTRIBUTE = "name";

@@ -1,16 +1,19 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
+import com.google.common.collect.Lists;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.HostPortWaitStrategy;
 import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
 
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class WireMockContainer extends GenericContainer<WireMockContainer> {
 
@@ -23,16 +26,19 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
     super(imageFromDockerfile);
   }
 
-  public static WireMockContainer create(String mappings) {
-    File mappingsFile = ContainerUtils.getResourceFile(mappings);
+  public static WireMockContainer create(String... mappings) {
+    ImageFromDockerfile dockerfile = new ImageFromDockerfile();
+    List<File> mappingFiles = Lists.newArrayList(mappings).stream()
+        .map(ContainerUtils::getResourceFile)
+        .collect(Collectors.toList());
+    mappingFiles.forEach(mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
     WireMockContainer container = new WireMockContainer(
-        new ImageFromDockerfile()
-            .withFileFromFile(mappingsFile.getName(), mappingsFile)
-            .withDockerfileFromBuilder(builder -> builder
-                .from("rodolpheche/wiremock:2.5.1")
-                .copy(mappingsFile.getName(), "/home/wiremock/mappings/")
-                .build()));
+        dockerfile.withDockerfileFromBuilder(builder -> {
+          DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
+          mappingFiles.forEach(mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
+          b.build();
+        }));
     return container
         .withExposedPorts(WIRE_MOCK_PORT)
         .waitingFor(

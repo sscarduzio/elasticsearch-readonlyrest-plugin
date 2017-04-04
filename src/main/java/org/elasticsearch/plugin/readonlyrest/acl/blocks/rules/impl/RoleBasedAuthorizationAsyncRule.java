@@ -113,7 +113,7 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
               response.getEntity().getContent(),
               roleBaseAuthDefinition.config.getResponseRolesJsonPath()
           );
-          logger.info("Roles returned by role provider '" + roleBaseAuthDefinition.config.getName() + "': "
+          logger.debug("Roles returned by role provider '" + roleBaseAuthDefinition.config.getName() + "': "
               + Joiner.on(",").join(roles));
 
           Sets.SetView<String> intersection = Sets.intersection(ruleRoles, Sets.newHashSet(roles));

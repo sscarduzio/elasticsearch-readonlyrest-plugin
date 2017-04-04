@@ -22,14 +22,13 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-public abstract class AuthKeyHashingRule extends GeneralAuthKeySyncRule {
+public abstract class AuthKeyHashingRule extends GeneralBasicAuthSyncRule {
   private static final Logger logger = Loggers.getLogger(AuthKeySha1SyncRule.class);
 
   public AuthKeyHashingRule(Settings s) throws RuleNotConfiguredException {

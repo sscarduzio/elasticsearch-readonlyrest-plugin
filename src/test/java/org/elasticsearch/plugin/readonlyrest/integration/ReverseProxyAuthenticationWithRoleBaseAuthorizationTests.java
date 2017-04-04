@@ -11,7 +11,11 @@ public class ReverseProxyAuthenticationWithRoleBaseAuthorizationTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container = ESWithReadonlyRestContainerUtils.create(
       new MultiContainer.Builder()
-          .add("ROLES", () -> WireMockContainer.create("/role_based_authorization_test_wiremock.json"))
+          .add("ROLES1", () -> WireMockContainer.create(
+              "/role_based_authorization_test_wiremock_service1_cartman.json",
+              "/role_based_authorization_test_wiremock_service1_morgan.json"
+          ))
+          .add("ROLES2", () -> WireMockContainer.create("/role_based_authorization_test_wiremock_service2.json"))
           .build(),
       "/role_based_authorization_test_elasticsearch.yml",
       new ElasticsearchTweetsInitializer()
@@ -20,7 +24,17 @@ public class ReverseProxyAuthenticationWithRoleBaseAuthorizationTests {
   private static ReadonlyRestedESAssertions assertions = new ReadonlyRestedESAssertions(container);
 
   @Test
-  public void test() throws Exception {
+  public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
     assertions.assertReverseProxyUserHasAccessToIndex("X-Auth-Token", "cartman", "twitter");
+  }
+
+  @Test
+  public void testAuthenticationAndAuthorizationErrorWithService1() throws Exception {
+    assertions.assertReverseProxyAccessToIndexForbidden("X-Auth-Token", "morgan", "twitter");
+  }
+
+  @Test
+  public void testAuthenticationAndAuthorizationSuccessWithService2() throws Exception {
+    assertions.assertReverseProxyUserHasAccessToIndex("X-Auth-Token", "29b3d166-1952-11e7-8b77-6c4008a76fc6", "facebook");
   }
 }

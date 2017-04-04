@@ -26,17 +26,18 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.util.Optional;
 
-public abstract class GeneralAuthKeySyncRule extends SyncRule implements UserRule {
-  private static final Logger logger = Loggers.getLogger(GeneralAuthKeySyncRule.class);
+public abstract class GeneralBasicAuthSyncRule extends SyncRule implements UserRule, Authentication {
+  private static final Logger logger = Loggers.getLogger(GeneralBasicAuthSyncRule.class);
 
   private final String authKey;
 
-  GeneralAuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
+  GeneralBasicAuthSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
     authKey = getAuthKey(s);
   }
