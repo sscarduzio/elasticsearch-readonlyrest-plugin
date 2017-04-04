@@ -15,29 +15,25 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.util.Optional;
 
-public abstract class GeneralBasicAuthSyncRule extends SyncRule implements UserRule, Authentication {
-  private static final Logger logger = Loggers.getLogger(GeneralBasicAuthSyncRule.class);
+public abstract class BasicAuthentication extends SyncRule implements UserRule, Authentication {
+  private static final Logger logger = Loggers.getLogger(BasicAuthentication.class);
 
   private final String authKey;
 
-  GeneralBasicAuthSyncRule(Settings s) throws RuleNotConfiguredException {
+  public BasicAuthentication(Settings s) throws RuleNotConfiguredException {
     super();
     authKey = getAuthKey(s);
   }
@@ -57,6 +53,7 @@ public abstract class GeneralBasicAuthSyncRule extends SyncRule implements UserR
     }
 
     if (authKey == null || !optBasicAuth.isPresent()) {
+      logger.warn("Basic auth header or auth key not present!");
       return NO_MATCH;
     }
 

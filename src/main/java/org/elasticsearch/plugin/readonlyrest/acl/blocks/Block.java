@@ -257,7 +257,7 @@ public class Block {
       rules.add(rule);
       authHeaderAccepted = true;
     });
-    RoleBasedAuthorizationAsyncRule.fromSettings(s, roleProviderConfigs)
+    ProviderRolesAuthorizationAsyncRule.fromSettings(s, roleProviderConfigs)
         .ifPresent(rule -> rules.add(wrapInCacheIfCacheIsEnabled(rule, s)));
 
     return rules;

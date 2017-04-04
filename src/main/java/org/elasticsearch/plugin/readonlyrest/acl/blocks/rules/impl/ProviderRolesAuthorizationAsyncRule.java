@@ -28,20 +28,20 @@ import java.util.stream.Collectors;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeArrayValue;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeValue;
 
-public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
+public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
 
-  private static final Logger logger = Loggers.getLogger(RoleBasedAuthorizationAsyncRule.class);
+  private static final Logger logger = Loggers.getLogger(ProviderRolesAuthorizationAsyncRule.class);
 
-  private static final String RULE_NAME = "role_based_authorization";
+  private static final String RULE_NAME = "provider_roles_authorization";
   private static final String ATTRIBUTE_USER_ROLE_PROVIDER = "user_role_provider";
   private static final String ATTRIBUTE_ROLES = "roles";
 
-  private final RoleBaseAuthDefinition roleBaseAuthDefinition;
+  private final ProviderRolesAuthDefinition providerRolesAuthDefinition;
   private final RestClient client;
 
-  private RoleBasedAuthorizationAsyncRule(RoleBaseAuthDefinition definition) {
-    this.roleBaseAuthDefinition = definition;
-    URI roleBasedAuthEndpoint = roleBaseAuthDefinition.config.getEndpoint();
+  private ProviderRolesAuthorizationAsyncRule(ProviderRolesAuthDefinition definition) {
+    this.providerRolesAuthDefinition = definition;
+    URI roleBasedAuthEndpoint = providerRolesAuthDefinition.config.getEndpoint();
     this.client = RestClient.builder(
         new HttpHost(
             roleBasedAuthEndpoint.getHost(),
@@ -50,8 +50,8 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
     ).build();
   }
 
-  public static Optional<RoleBasedAuthorizationAsyncRule> fromSettings(Settings s,
-                                                                       List<UserRoleProviderConfig> roleProviderConfigs)
+  public static Optional<ProviderRolesAuthorizationAsyncRule> fromSettings(Settings s,
+                                                                           List<UserRoleProviderConfig> roleProviderConfigs)
       throws ConfigMalformedException {
 
     Map<String, Settings> roleBaseAuthElements = s.getGroups(RULE_NAME);
@@ -70,7 +70,7 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
     }
     List<String> roles = requiredAttributeArrayValue(ATTRIBUTE_ROLES, roleBaseAuthSettings);
 
-    return Optional.of(new RoleBasedAuthorizationAsyncRule(new RoleBaseAuthDefinition(userRoleProviderConfigByName.get(name), roles)));
+    return Optional.of(new ProviderRolesAuthorizationAsyncRule(new ProviderRolesAuthDefinition(userRoleProviderConfigByName.get(name), roles)));
   }
 
   @Override
@@ -78,7 +78,7 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
     final CompletableFuture<Boolean> promise = new CompletableFuture<>();
     client.performRequestAsync(
         "GET",
-        roleBaseAuthDefinition.config.getEndpoint().getPath(),
+        providerRolesAuthDefinition.config.getEndpoint().getPath(),
         createParams(user),
         new RoleBasedAuthResponseListener<>(promise, isAuthorized(roles)),
         createHeaders(user).toArray(new Header[0])
@@ -88,20 +88,20 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
   protected Set<String> getRoles() {
-    return roleBaseAuthDefinition.roles;
+    return providerRolesAuthDefinition.roles;
   }
 
   private Map<String, String> createParams(LoggedUser user) {
     Map<String, String> params = new HashMap<>();
-    if(roleBaseAuthDefinition.config.getPassingMethod() == UserRoleProviderConfig.TokenPassingMethod.QUERY) {
-      params.put(roleBaseAuthDefinition.config.getAuthTokenName(), user.getId());
+    if(providerRolesAuthDefinition.config.getPassingMethod() == UserRoleProviderConfig.TokenPassingMethod.QUERY) {
+      params.put(providerRolesAuthDefinition.config.getAuthTokenName(), user.getId());
     }
     return params;
   }
 
   private List<Header> createHeaders(LoggedUser user) {
-    return roleBaseAuthDefinition.config.getPassingMethod() == UserRoleProviderConfig.TokenPassingMethod.HEADER
-        ? Lists.newArrayList(new BasicHeader(roleBaseAuthDefinition.config.getAuthTokenName(), user.getId()))
+    return providerRolesAuthDefinition.config.getPassingMethod() == UserRoleProviderConfig.TokenPassingMethod.HEADER
+        ? Lists.newArrayList(new BasicHeader(providerRolesAuthDefinition.config.getAuthTokenName(), user.getId()))
         : Lists.newArrayList();
   }
 
@@ -111,9 +111,9 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
         try {
           List<String> roles = JsonPath.read(
               response.getEntity().getContent(),
-              roleBaseAuthDefinition.config.getResponseRolesJsonPath()
+              providerRolesAuthDefinition.config.getResponseRolesJsonPath()
           );
-          logger.debug("Roles returned by role provider '" + roleBaseAuthDefinition.config.getName() + "': "
+          logger.debug("Roles returned by role provider '" + providerRolesAuthDefinition.config.getName() + "': "
               + Joiner.on(",").join(roles));
 
           Sets.SetView<String> intersection = Sets.intersection(ruleRoles, Sets.newHashSet(roles));
@@ -133,11 +133,11 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
     return RULE_NAME;
   }
 
-  private static class RoleBaseAuthDefinition {
+  private static class ProviderRolesAuthDefinition {
     private final UserRoleProviderConfig config;
     private final ImmutableSet<String> roles;
 
-    RoleBaseAuthDefinition(UserRoleProviderConfig config, List<String> roles) {
+    ProviderRolesAuthDefinition(UserRoleProviderConfig config, List<String> roles) {
       this.config = config;
       this.roles = ImmutableSet.copyOf(roles);
     }

@@ -55,6 +55,7 @@ readonlyrest:
       indices: ["public"]
       actions: ["indices:data/read/*"]
 
+# TODO: remove and document new features
 
     - name: "::Tweets::"
       type: allow
@@ -63,7 +64,7 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      role_based_authorization:
+      provider_roles_authorization:
         - user_role_provider: "RolesService"
           roles: ["role3"]
 
@@ -74,7 +75,7 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      role_based_authorization:
+      provider_roles_authorization:
         - user_role_provider: "RolesService"
           roles: ["role1"]
 

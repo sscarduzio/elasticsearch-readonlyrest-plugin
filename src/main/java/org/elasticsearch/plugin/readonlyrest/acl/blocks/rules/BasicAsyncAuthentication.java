@@ -15,14 +15,12 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
@@ -30,8 +28,8 @@ import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class GeneralBasicAuthAsyncRule extends AsyncRule implements Authentication {
-  private static final Logger logger = Loggers.getLogger(GeneralBasicAuthAsyncRule.class);
+public abstract class BasicAsyncAuthentication extends AsyncRule implements Authentication {
+  private static final Logger logger = Loggers.getLogger(BasicAsyncAuthentication.class);
 
   protected abstract CompletableFuture<Boolean> authenticate(String user, String password);
 
@@ -48,6 +46,7 @@ public abstract class GeneralBasicAuthAsyncRule extends AsyncRule implements Aut
     }
 
     if (!optBasicAuth.isPresent()) {
+      logger.warn("Basic auth header not present!");
       return CompletableFuture.completedFuture(NO_MATCH);
     }
 

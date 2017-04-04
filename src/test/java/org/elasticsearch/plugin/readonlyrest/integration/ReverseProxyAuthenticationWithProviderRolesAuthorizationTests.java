@@ -6,18 +6,18 @@ import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESA
 import org.junit.ClassRule;
 import org.junit.Test;
 
-public class ReverseProxyAuthenticationWithRoleBaseAuthorizationTests {
+public class ReverseProxyAuthenticationWithProviderRolesAuthorizationTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = ESWithReadonlyRestContainerUtils.create(
       new MultiContainer.Builder()
           .add("ROLES1", () -> WireMockContainer.create(
-              "/role_based_authorization_test_wiremock_service1_cartman.json",
-              "/role_based_authorization_test_wiremock_service1_morgan.json"
+              "/provider_roles_authorization_test_wiremock_service1_cartman.json",
+              "/provider_roles_authorization_test_wiremock_service1_morgan.json"
           ))
-          .add("ROLES2", () -> WireMockContainer.create("/role_based_authorization_test_wiremock_service2.json"))
+          .add("ROLES2", () -> WireMockContainer.create("/provider_roles_authorization_test_wiremock_service2.json"))
           .build(),
-      "/role_based_authorization_test_elasticsearch.yml",
+      "/provider_roles_authorization_test_elasticsearch.yml",
       new ElasticsearchTweetsInitializer()
   );
 

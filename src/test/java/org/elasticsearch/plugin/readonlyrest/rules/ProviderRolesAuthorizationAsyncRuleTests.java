@@ -5,7 +5,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.RoleBasedAuthorizationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProviderRolesAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserRoleProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.settings.UserRoleProviderConfigHelper;
@@ -22,10 +22,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
-public class RoleBasedAuthorizationAsyncRuleTests {
+public class ProviderRolesAuthorizationAsyncRuleTests {
 
   @ClassRule
-  public static WireMockContainer wireMockContainer = WireMockContainer.create("/role_based_authorization.json");
+  public static WireMockContainer wireMockContainer = WireMockContainer.create("/provider_roles_authorization.json");
 
   @Test
   public void testUserAuthorizationSuccess() throws Exception {
@@ -41,8 +41,8 @@ public class RoleBasedAuthorizationAsyncRuleTests {
 
   private RuleExitResult createRuleRunMatch(List<String> ruleRoles) throws Exception {
     Settings settings = Settings.builder()
-        .put("role_based_authorization.0.user_role_provider", "provider1")
-        .putArray("role_based_authorization.0.roles", ruleRoles)
+        .put("provider_roles_authorization.0.user_role_provider", "provider1")
+        .putArray("provider_roles_authorization.0.roles", ruleRoles)
         .build();
     UserRoleProviderConfig config = UserRoleProviderConfig.fromSettings(
         UserRoleProviderConfigHelper
@@ -50,7 +50,7 @@ public class RoleBasedAuthorizationAsyncRuleTests {
                 "userId", QUERY, "$..roles[?(@.name)].name")
             .getGroups("user_role_providers")
             .get("0"));
-    RoleBasedAuthorizationAsyncRule rule = RoleBasedAuthorizationAsyncRule.fromSettings(
+    ProviderRolesAuthorizationAsyncRule rule = ProviderRolesAuthorizationAsyncRule.fromSettings(
         settings, Lists.newArrayList(config)).get();
 
     LoggedUser user = new LoggedUser("example_user");

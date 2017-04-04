@@ -29,7 +29,7 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      role_based_authorization:
+      provider_roles_authorization:
         - user_role_provider: "RolesService1"
           roles: ["role1"]
 
@@ -40,7 +40,7 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      role_based_authorization:
+      provider_roles_authorization:
         - user_role_provider: "RolesService2"
           roles: ["role3"]
           cache_ttl_in_sec: 60

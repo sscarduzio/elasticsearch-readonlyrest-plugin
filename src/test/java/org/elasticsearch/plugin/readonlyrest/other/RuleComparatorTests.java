@@ -6,7 +6,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesComparator;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.RoleBasedAuthorizationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProviderRolesAuthorizationAsyncRule;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 
 public class RuleComparatorTests {
 
-  private Rule authorization = Mockito.mock(RoleBasedAuthorizationAsyncRule.class);
+  private Rule authorization = Mockito.mock(ProviderRolesAuthorizationAsyncRule.class);
   private Rule authentication = Mockito.mock(LdapAuthAsyncRule.class);
   private Rule other1 = indicesRule();
   private Rule other2 = kibanaAccessRule();

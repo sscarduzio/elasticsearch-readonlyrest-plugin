@@ -1,5 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
@@ -9,6 +11,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthorization extends AsyncRule implements Authorization {
+
+  private static final Logger logger = Loggers.getLogger(AsyncAuthorization.class);
 
   protected abstract CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles);
   protected abstract Set<String> getRoles();
@@ -20,7 +24,7 @@ public abstract class AsyncAuthorization extends AsyncRule implements Authorizat
       LoggedUser loggedUser = optLoggedInUser.get();
       return authorize(loggedUser, getRoles()).thenApply(result -> result ? MATCH : NO_MATCH);
     } else {
-      // todo: log
+      logger.warn("Cannot try to authorize user because non is logged now!");
       return CompletableFuture.completedFuture(NO_MATCH);
     }
   }
