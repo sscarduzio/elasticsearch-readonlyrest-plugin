@@ -131,7 +131,7 @@ readonlyrest:
 
     ldaps:
     - name: ldap1
-      host: {LDAP1}
+      host: "{LDAP1}"
       port: 389                                                 # default 389
       ssl_enabled: false                                        # default true
       ssl_trust_all_certs: true                                 # default false
@@ -147,7 +147,7 @@ readonlyrest:
       cache_ttl_in_sec: 60                                      # default 0 - cache disabled
 
     - name: ldap2
-      host: {LDAP2}
+      host: "{LDAP2}"
       port: 389                                                 # default 389
       ssl_enabled: false                                        # default true
       ssl_trust_all_certs: true                                 # default false

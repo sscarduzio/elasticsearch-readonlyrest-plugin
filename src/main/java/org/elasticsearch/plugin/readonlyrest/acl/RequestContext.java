@@ -95,7 +95,7 @@ public class RequestContext {
   private RequestSideEffects sideEffects;
   private Set<BlockHistory> history = Sets.newHashSet();
   private Set<String> originalIndices;
-  private Optional<LoggedUser> loggedInUser;
+  private Optional<LoggedUser> loggedInUser = Optional.empty();
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService, ThreadPool threadPool) {

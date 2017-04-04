@@ -197,7 +197,7 @@ public class LdapAuthAsyncRuleTests {
     RequestContext mock = mock(RequestContext.class);
     when(mock.getHeaders()).thenReturn(
       Maps.newHashMap(ImmutableMap.<String, String>builder()
-                        .put("AsyncAuthorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
+                        .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
                         .build()));
     return mock;
   }

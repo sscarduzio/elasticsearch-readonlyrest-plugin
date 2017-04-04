@@ -1,5 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -7,15 +8,15 @@ import com.jayway.jsonpath.JsonPath;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.message.BasicHeader;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.ResponseListener;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 
 import java.io.IOException;
 import java.net.URI;
@@ -28,6 +29,8 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.req
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeValue;
 
 public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
+
+  private static final Logger logger = Loggers.getLogger(RoleBasedAuthorizationAsyncRule.class);
 
   private static final String RULE_NAME = "role_based_authorization";
   private static final String ATTRIBUTE_USER_ROLE_PROVIDER = "user_role_provider";
@@ -71,19 +74,7 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
   }
 
   @Override
-  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
-    Optional<LoggedUser> optLoggedInUser = rc.getLoggedInUser();
-    if(optLoggedInUser.isPresent()) {
-      LoggedUser loggedUser = optLoggedInUser.get();
-      return authorize(loggedUser, roleBaseAuthDefinition.roles).thenApply(result -> result ? MATCH : NO_MATCH);
-    } else {
-      // todo: log
-      return CompletableFuture.completedFuture(NO_MATCH);
-    }
-  }
-
-  @Override
-  public CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
+  protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
     final CompletableFuture<Boolean> promise = new CompletableFuture<>();
     client.performRequestAsync(
         "GET",
@@ -93,6 +84,11 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
         createHeaders(user).toArray(new Header[0])
     );
     return promise;
+  }
+
+  @Override
+  protected Set<String> getRoles() {
+    return roleBaseAuthDefinition.roles;
   }
 
   private Map<String, String> createParams(LoggedUser user) {
@@ -117,11 +113,14 @@ public class RoleBasedAuthorizationAsyncRule extends AsyncAuthorization {
               response.getEntity().getContent(),
               roleBaseAuthDefinition.config.getResponseRolesJsonPath()
           );
+          logger.info("Roles returned by role provider '" + roleBaseAuthDefinition.config.getName() + "': "
+              + Joiner.on(",").join(roles));
+
           Sets.SetView<String> intersection = Sets.intersection(ruleRoles, Sets.newHashSet(roles));
           return !intersection.isEmpty();
         } catch (IOException e) {
-          // todo: log
-          e.printStackTrace();
+          logger.error("Role based authorization response exception", e);
+          return false;
         }
       }
 

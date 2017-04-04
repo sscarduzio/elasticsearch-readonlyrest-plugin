@@ -1,0 +1,58 @@
+http.host: 0.0.0.0
+
+xpack:
+    monitoring.enabled: true
+    security.enabled: false
+    graph.enabled: false
+    watcher.enabled: false
+
+readonlyrest:
+    # (De)activate plugin
+    enable: true
+
+    # HTTP response body in case of forbidden request.
+    # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
+    response_if_req_forbidden: <h1>Forbidden</h1>
+
+    # Default policy is to forbid everything, so let's define a whitelist
+    access_control_rules:
+
+    # ES container initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "::Tweets::"
+      type: allow
+      methods: GET
+      indices: ["twitter"]
+      proxy_auth:
+        - proxy_auth_config: "proxy1"
+          users: ["*"]
+      role_based_authorization:
+        - user_role_provider: "RolesService"
+          roles: ["role1"]
+
+    - name: "::Facebook posts::"
+      type: allow
+      methods: GET
+      indices: ["facebook"]
+      proxy_auth:
+        - proxy_auth_config: "proxy1"
+          users: ["*"]
+      role_based_authorization:
+        - user_role_provider: "RolesService"
+          roles: ["role3"]
+
+    proxy_auth_configs:
+
+    - name: "proxy1"
+      user_id_header: "X-Auth-Token"
+
+    user_role_providers:
+
+    - name: RolesService
+      role_endpoint: "http://{ROLES}:8080/roles"
+      auth_token_name: "token"
+      auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
+      response_roles_json_path: "$..roles[?(@.name)].name"

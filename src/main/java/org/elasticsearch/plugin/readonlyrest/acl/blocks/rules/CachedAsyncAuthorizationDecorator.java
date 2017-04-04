@@ -4,7 +4,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.time.Duration;
@@ -50,8 +49,8 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
-    return underlying.match(rc);
+  protected Set<String> getRoles() {
+    return underlying.getRoles();
   }
 
   @Override

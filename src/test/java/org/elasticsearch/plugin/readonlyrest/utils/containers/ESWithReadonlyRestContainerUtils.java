@@ -25,13 +25,25 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 public class ESWithReadonlyRestContainerUtils {
 
   public static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
+                                                   String elasticsearchConfig) {
+    return create(externalDependencies, elasticsearchConfig, Optional.empty());
+  }
+
+  public static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
                                                    String elasticsearchConfig,
                                                    ESWithReadonlyRestContainer.ESInitalizer initalizer) {
+    return create(externalDependencies, elasticsearchConfig, Optional.of(initalizer));
+  }
+
+  private static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
+                                                   String elasticsearchConfig,
+                                                   Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File adjustedEsConfig = copyAndAdjustConfig(
       ContainerUtils.getResourceFile(elasticsearchConfig),
       createTempFile(),
@@ -65,7 +77,7 @@ public class ESWithReadonlyRestContainerUtils {
               if (container.getIpAddress().isPresent()) {
                 replaced = replaced.replaceAll(
                   Pattern.compile("\\{" + container.getName() + "\\}").pattern(),
-                  "\"" + container.getIpAddress().get() + "\""
+                  container.getIpAddress().get()
                 );
               }
             }

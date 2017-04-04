@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/roles",
+    "queryParameters" : {
+      "userId" : {
+        "equalTo" : "example_user"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{ \"sth\": \"unknown\", \"roles\": [ { \"name\": \"role1\" }, { \"name\": \"role2\" } ] }"
+  }
+}
