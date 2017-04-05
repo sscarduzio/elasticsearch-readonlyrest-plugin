@@ -27,6 +27,7 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 
 import java.util.Arrays;
@@ -170,7 +171,7 @@ public class ConfigurationHelper {
       throw new ElasticsearchException("no settings found in index");
     }
     String yaml = (String) resp.getSource().get("settings");
-    Settings settings = Settings.builder().loadFromSource(yaml).build();
+    Settings settings = Settings.builder().loadFromSource(yaml, XContentType.YAML).build();
     readSettings(settings);
   }
 

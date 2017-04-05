@@ -43,6 +43,8 @@ public class Block {
   private final String name;
   private final Policy policy;
   private final Logger logger;
+  private final ConfigurationHelper conf;
+  private final Client client;
   private final Set<SyncRule> syncConditionsToCheck;
   private final Set<AsyncRule> asyncConditionsToCheck;
   private boolean authHeaderAccepted = false;
@@ -173,24 +175,11 @@ public class Block {
   }
 
   private Set<SyncRule> collectSyncRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs) {
-    Set<SyncRule> rules = Sets.newHashSet();
+    Set<SyncRule> rules = Sets.newLinkedHashSet();
     // Won't add the condition if its configuration is not found
-    try {
-      rules.add(new KibanaAccessSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new HostsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new XForwardedForSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new ApiKeysSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
+
+    // Authentication rules must come first because they set the user
+    // information which further rules might rely on.
     try {
       rules.add(new AuthKeySyncRule(s));
       authHeaderAccepted = true;
@@ -206,9 +195,28 @@ public class Block {
       authHeaderAccepted = true;
     } catch (RuleNotConfiguredException ignored) {
     }
+    try {
+      rules.add(new ProxyAuthSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+
+    // Inspection rules next; these act based on properties
+    // of the request.
+    try {
+      rules.add(new KibanaAccessSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      rules.add(new HostsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+    try {
+      rules.add(new XForwardedForSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
     ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs).ifPresent(rules::add);
     try {
-      rules.add(new SessionMaxIdleSyncRule(s));
+      rules.add(new ApiKeysSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
     }
     try {
@@ -240,18 +248,26 @@ public class Block {
     } catch (RuleNotConfiguredException ignored) {
     }
     try {
-      rules.add(new KibanaHideAppsSyncRule(s));
+      rules.add(new SearchlogSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
     }
     try {
       rules.add(new SearchlogSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
     }
+
+    // At the end the sync rule chain are those that can mutate
+    // the client request.
+    try {
+      rules.add(new IndicesRewriteSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+    }
+
     return rules;
   }
 
   private Set<AsyncRule> collectAsyncRules(Settings s, List<LdapConfig> ldapConfigs, List<UserRoleProviderConfig> roleProviderConfigs) {
-    Set<AsyncRule> rules = Sets.newHashSet();
+    Set<AsyncRule> rules = Sets.newLinkedHashSet();
 
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rule -> {
       rules.add(rule);
