@@ -16,7 +16,10 @@
  */
 package org.elasticsearch.plugin.readonlyrest.integration;
 
-import org.elasticsearch.plugin.readonlyrest.utils.containers.*;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainerUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
 import org.junit.ClassRule;

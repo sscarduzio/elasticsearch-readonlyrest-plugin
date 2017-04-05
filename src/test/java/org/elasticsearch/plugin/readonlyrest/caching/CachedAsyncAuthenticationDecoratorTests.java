@@ -30,7 +30,10 @@ import java.util.concurrent.CompletableFuture;
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class CachedAsyncAuthenticationDecoratorTests {
 
@@ -63,7 +66,9 @@ public class CachedAsyncAuthenticationDecoratorTests {
     MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
     when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
-    when(requestContext.getHeaders()).thenReturn(ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build());
+    when(requestContext.getHeaders()).thenReturn(
+        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
+    );
 
     Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
     BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule, settings);
@@ -84,7 +89,9 @@ public class CachedAsyncAuthenticationDecoratorTests {
     MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
     when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
-    when(requestContext.getHeaders()).thenReturn(ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build());
+    when(requestContext.getHeaders()).thenReturn(
+        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
+    );
 
     Settings settings = Settings.builder().put("cache_ttl_in_sec", ttl.getSeconds()).build();
     BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule, settings);
