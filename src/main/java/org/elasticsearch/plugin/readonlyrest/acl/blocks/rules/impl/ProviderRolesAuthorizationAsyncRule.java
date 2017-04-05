@@ -36,7 +36,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedExc
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -86,7 +90,9 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
     }
     List<String> roles = requiredAttributeArrayValue(ATTRIBUTE_ROLES, roleBaseAuthSettings);
 
-    return Optional.of(new ProviderRolesAuthorizationAsyncRule(new ProviderRolesAuthDefinition(userRoleProviderConfigByName.get(name), roles)));
+    return Optional.of(new ProviderRolesAuthorizationAsyncRule(
+        new ProviderRolesAuthDefinition(userRoleProviderConfigByName.get(name), roles)
+    ));
   }
 
   @Override

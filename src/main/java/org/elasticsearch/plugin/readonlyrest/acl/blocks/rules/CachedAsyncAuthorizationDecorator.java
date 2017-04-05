@@ -81,7 +81,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
     private final LoggedUser user;
     private final Set<String> roles;
 
-    public UserWithRoles(LoggedUser user, Set<String> roles) {
+    UserWithRoles(LoggedUser user, Set<String> roles) {
       this.user = user;
       this.roles = roles;
     }

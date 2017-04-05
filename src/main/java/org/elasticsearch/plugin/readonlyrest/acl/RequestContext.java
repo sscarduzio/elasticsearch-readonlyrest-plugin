@@ -399,7 +399,9 @@ public class RequestContext {
     Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
     return "{ ID:" + id +
       ", TYP:" + actionRequest.getClass().getSimpleName() +
-      ", USR:" + (loggedInUser.isPresent() ? loggedInUser.get() : (optBasicAuth.isPresent() ? optBasicAuth.get().getUserName() + "(?)" : "[no basic auth header]")) +
+      ", USR:" + (loggedInUser.isPresent()
+        ? loggedInUser.get()
+        : (optBasicAuth.isPresent() ? optBasicAuth.get().getUserName() + "(?)" : "[no basic auth header]")) +
       ", BRS:" + !Strings.isNullOrEmpty(headers.get("User-Agent")) +
       ", ACT:" + action +
       ", OA:" + getRemoteAddress() +
