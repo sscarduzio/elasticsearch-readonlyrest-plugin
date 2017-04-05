@@ -96,7 +96,7 @@ public class ProxyAuthRuleTests {
     @Test
     public void testExtendedProxyAuthRuleLoadingFromSettings() {
         Settings settings = Settings.builder()
-                .put("proxy_auth.0.name", "proxy1")
+                .put("proxy_auth.0.proxy_auth_config", "proxy1")
                 .putArray("proxy_auth.0.users", Lists.newArrayList("user1", "user2"))
                 .build();
         List<ProxyAuthConfig> configs = Lists.newArrayList(
@@ -113,7 +113,7 @@ public class ProxyAuthRuleTests {
     @Test(expected = ConfigMalformedException.class)
     public void testCannotLoadExtendedProxyAuthRuleFromSettingsWhenProxyWasNotDefined() {
         Settings settings = Settings.builder()
-                .put("proxy_auth.0.name", "proxy1")
+                .put("proxy_auth.0.proxy_auth_config", "proxy1")
                 .putArray("proxy_auth.0.users", Lists.newArrayList("user1", "user2"))
                 .build();
         List<ProxyAuthConfig> configs = Lists.newArrayList(

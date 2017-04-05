@@ -34,6 +34,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 27/03/2017.
@@ -42,6 +43,14 @@ public class SearchlogSyncRule extends SyncRule {
   private final Logger logger = Loggers.getLogger(getClass());
 
   private boolean shouldLog = false;
+
+  public static Optional<SearchlogSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new SearchlogSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public SearchlogSyncRule(Settings s) throws RuleNotConfiguredException {
     try {

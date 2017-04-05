@@ -27,6 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -37,6 +38,14 @@ public class IndicesSyncRule extends SyncRule {
   private final Logger logger = Loggers.getLogger(this.getClass());
 
   private MatcherWithWildcards configuredWildcards;
+
+  public static Optional<IndicesSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new IndicesSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
     super();

@@ -22,10 +22,20 @@ import com.google.common.hash.Hashing;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 
+import java.util.Optional;
+
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySha256SyncRule extends AuthKeyHashingRule {
+
+  public static Optional<AuthKeySha256SyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new AuthKeySha256SyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public AuthKeySha256SyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);

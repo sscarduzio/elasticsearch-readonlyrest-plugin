@@ -26,12 +26,21 @@ import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySyncRule extends BasicAuthentication {
   private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
+
+  public static Optional<AuthKeySyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new AuthKeySyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);

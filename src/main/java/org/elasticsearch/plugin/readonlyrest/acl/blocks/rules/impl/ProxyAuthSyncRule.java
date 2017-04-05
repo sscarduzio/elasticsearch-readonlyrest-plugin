@@ -69,14 +69,19 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
 
   private static Optional<ProxyAuthSettingsSchema> recognizeProxyAuthSettingsSchema(Settings s) {
     try {
-      s.getGroups(RULE_NAME);
-      return Optional.of(ProxyAuthSettingsSchema.EXTENDED);
+      return s.getGroups(RULE_NAME).size() > 0
+          ? Optional.of(ProxyAuthSettingsSchema.EXTENDED)
+          : checkIsSimpleSchema(s);
     } catch (SettingsException ex) {
-      if (s.getAsArray(RULE_NAME) != null) {
-        return Optional.of(ProxyAuthSettingsSchema.SIMPLE);
-      } else {
-        return Optional.empty();
-      }
+      return checkIsSimpleSchema(s);
+    }
+  }
+
+  private static Optional<ProxyAuthSettingsSchema> checkIsSimpleSchema(Settings s) {
+    if (s.getAsArray(RULE_NAME) != null) {
+      return Optional.of(ProxyAuthSettingsSchema.SIMPLE);
+    } else {
+      return Optional.empty();
     }
   }
 

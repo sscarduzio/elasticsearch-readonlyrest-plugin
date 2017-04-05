@@ -25,6 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -34,6 +35,14 @@ import java.util.regex.PatternSyntaxException;
 public class UriReSyncRule extends SyncRule {
 
   private Pattern uri_re = null;
+
+  public static Optional<UriReSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new UriReSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public UriReSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -46,8 +55,7 @@ public class UriReSyncRule extends SyncRule {
         throw new RuleConfigurationError("invalid 'uri_re' regexp", e);
       }
 
-    }
-    else {
+    } else {
       throw new RuleNotConfiguredException();
     }
   }

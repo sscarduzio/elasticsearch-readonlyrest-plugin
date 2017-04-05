@@ -24,6 +24,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.*;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.HashSet;
@@ -31,7 +32,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.*;
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
@@ -43,11 +43,8 @@ public class Block {
   private final String name;
   private final Policy policy;
   private final Logger logger;
-  private final ConfigurationHelper conf;
-  private final Client client;
-  private final Set<SyncRule> syncConditionsToCheck;
-  private final Set<AsyncRule> asyncConditionsToCheck;
-  private boolean authHeaderAccepted = false;
+  private final Set<AsyncRule> conditionsToCheck;
+  private boolean authHeaderAccepted;
 
   public Block(Settings settings,
                List<User> userList,
@@ -66,18 +63,12 @@ public class Block {
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
-    // now rules are sorted in two separate collections. This solution will case problem when we have sync authorization
-    // rule and async authentication. For now it's enough, but should be refactored in future.
-    syncConditionsToCheck = collectSyncRules(settings, userList, proxyAuthConfigs).stream()
-        .sorted(RulesComparator.INSTANCE)
-        .collect(Collectors.toSet());
-    asyncConditionsToCheck = collectAsyncRules(settings, ldapList, roleProviderConfigs).stream()
-        .sorted(RulesComparator.INSTANCE)
-        .collect(Collectors.toSet());
+    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapList, roleProviderConfigs);
+    authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationRule);
   }
 
-  public Set<SyncRule> getSyncRules() {
-    return syncConditionsToCheck;
+  public Set<AsyncRule> getRules() {
+    return conditionsToCheck;
   }
 
   public String getName() {
@@ -97,45 +88,20 @@ public class Block {
    *
    */
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
-    boolean syncCheck = checkSyncRules(rc);
-    if (syncCheck) {
-      return checkAsyncRules(rc)
-          .thenApply(asyncCheck -> {
-            if (asyncCheck != null && asyncCheck) {
-              return finishWithMatchResult(rc);
-            } else {
-              return finishWithNoMatchResult(rc);
-            }
-          });
-    } else {
-      return CompletableFuture.completedFuture(
-          finishWithNoMatchResult(rc)
-      );
-    }
-  }
-
-  private boolean checkSyncRules(RequestContext rc) {
-    boolean match = true;
-    Set<RuleExitResult> thisBlockHistory = new HashSet<>(syncConditionsToCheck.size());
-
-    for (SyncRule condition : syncConditionsToCheck) {
-      // Exit at the first rule that matches the request
-      RuleExitResult condExitResult = condition.match(rc);
-      // Log history
-      thisBlockHistory.add(condExitResult);
-      // a block matches if ALL rules match
-      match &= condExitResult.isMatch();
-    }
-
-    rc.addToHistory(this, thisBlockHistory);
-
-    return match;
+    return checkAsyncRules(rc)
+        .thenApply(asyncCheck -> {
+          if (asyncCheck != null && asyncCheck) {
+            return finishWithMatchResult(rc);
+          } else {
+            return finishWithNoMatchResult(rc);
+          }
+        });
   }
 
   private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
     // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
-    Set<RuleExitResult> thisBlockHistory = new HashSet<>(asyncConditionsToCheck.size());
-    return checkAsyncRulesInSequence(rc, asyncConditionsToCheck.iterator(), thisBlockHistory)
+    Set<RuleExitResult> thisBlockHistory = new HashSet<>(conditionsToCheck.size());
+    return checkAsyncRulesInSequence(rc, conditionsToCheck.iterator(), thisBlockHistory)
         .thenApply(result -> {
           rc.addToHistory(this, thisBlockHistory);
           return result;
@@ -174,109 +140,50 @@ public class Block {
     return "readonlyrest Rules Block :: { name: '" + name + "', policy: " + policy + "}";
   }
 
-  private Set<SyncRule> collectSyncRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs) {
-    Set<SyncRule> rules = Sets.newLinkedHashSet();
+  private Set<AsyncRule> collectRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs,
+                                      List<LdapConfig> ldapConfigs, List<UserRoleProviderConfig> roleProviderConfigs) {
+    Set<AsyncRule> rules = Sets.newLinkedHashSet();
     // Won't add the condition if its configuration is not found
 
     // Authentication rules must come first because they set the user
     // information which further rules might rely on.
-    try {
-      rules.add(new AuthKeySyncRule(s));
-      authHeaderAccepted = true;
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new AuthKeySha1SyncRule(s));
-      authHeaderAccepted = true;
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new AuthKeySha256SyncRule(s));
-      authHeaderAccepted = true;
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new ProxyAuthSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
+    AuthKeySyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    AuthKeySha1SyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    AuthKeySha256SyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
 
     // Inspection rules next; these act based on properties
     // of the request.
-    try {
-      rules.add(new KibanaAccessSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new HostsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new XForwardedForSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs).ifPresent(rules::add);
-    try {
-      rules.add(new ApiKeysSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new UriReSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new MaxBodyLengthSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new MethodsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new IndicesSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new ActionsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new GroupsSyncRule(s, userList));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new IndicesRewriteSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new SearchlogSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
-    try {
-      rules.add(new SearchlogSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
+    KibanaAccessSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    HostsSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    XForwardedForSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    ApiKeysSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    SessionMaxIdleSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    UriReSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    MaxBodyLengthSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    MethodsSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    IndicesSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    ActionsSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    GroupsSyncRule.fromSettings(s, userList).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    SearchlogSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+
+    // then we could check potentially slow async rules
+    LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
+
+    // all authorization rules should be placed before any authentication rule
+    ProviderRolesAuthorizationAsyncRule.fromSettings(s, roleProviderConfigs)
+        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // At the end the sync rule chain are those that can mutate
     // the client request.
-    try {
-      rules.add(new IndicesRewriteSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-    }
+    IndicesRewriteSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
 
     return rules;
   }
 
-  private Set<AsyncRule> collectAsyncRules(Settings s, List<LdapConfig> ldapConfigs, List<UserRoleProviderConfig> roleProviderConfigs) {
-    Set<AsyncRule> rules = Sets.newLinkedHashSet();
-
-    LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rule -> {
-      rules.add(rule);
-      authHeaderAccepted = true;
-    });
-    ProviderRolesAuthorizationAsyncRule.fromSettings(s, roleProviderConfigs)
-        .ifPresent(rule -> rules.add(wrapInCacheIfCacheIsEnabled(rule, s)));
-
-    return rules;
+  private boolean isAuthenticationRule(AsyncRule rule) {
+    return rule instanceof Authentication ||
+        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter)rule).getUnderlying() instanceof Authentication);
   }
 
   public enum Policy {

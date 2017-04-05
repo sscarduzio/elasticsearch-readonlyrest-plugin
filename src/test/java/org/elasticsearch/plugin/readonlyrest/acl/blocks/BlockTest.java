@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
 import com.google.common.collect.Lists;
@@ -41,11 +42,11 @@ public class BlockTest extends TestCase {
 		Block block = new Block(settings, Lists.newArrayList(), Lists.newArrayList(),
 		                        null, null, null);
 
-		Set<SyncRule> syncRules = block.getSyncRules();
-		Iterator<SyncRule> it = syncRules.iterator();
-		SyncRule auth = it.next();
-		SyncRule inspect = it.next();
-		SyncRule mutate = it.next();
+		Set<AsyncRule> rules = block.getRules();
+		Iterator<AsyncRule> it = rules.iterator();
+		AsyncRule auth = it.next();
+		AsyncRule inspect = it.next();
+		AsyncRule mutate = it.next();
 
 		Assert.assertEquals("proxy_auth", auth.getKey());
 		Assert.assertEquals("indices", inspect.getKey());

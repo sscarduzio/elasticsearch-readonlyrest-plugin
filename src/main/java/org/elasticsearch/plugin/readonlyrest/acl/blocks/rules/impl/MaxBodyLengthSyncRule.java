@@ -23,11 +23,21 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
+import java.util.Optional;
+
 /**
  * Created by sscarduzio on 14/02/2016.
  */
 public class MaxBodyLengthSyncRule extends SyncRule {
   private Integer maxBodyLength;
+
+  public static Optional<MaxBodyLengthSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new MaxBodyLengthSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public MaxBodyLengthSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
