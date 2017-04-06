@@ -27,14 +27,6 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.req
 
 public class UserRoleProviderConfig {
 
-  public String getName() {
-    return name;
-  }
-
-  public enum TokenPassingMethod {
-    QUERY, HEADER
-  }
-
   private static String ATTRIBUTE_NAME = "name";
   private static String ATTRIBUTE_ROLE_ENDPOINT = "role_endpoint";
   private static String ATTRIBUTE_AUTH_TOKEN_NAME = "auth_token_name";
@@ -46,6 +38,10 @@ public class UserRoleProviderConfig {
   private final String authTokenName;
   private final TokenPassingMethod passingMethod;
   private final String responseRolesJsonPath;
+
+  public enum TokenPassingMethod {
+    QUERY, HEADER
+  }
 
   private UserRoleProviderConfig(String name,
                                  URI endpoint,
@@ -69,6 +65,10 @@ public class UserRoleProviderConfig {
     );
   }
 
+  public String getName() {
+    return name;
+  }
+  
   public URI getEndpoint() {
     return endpoint;
   }

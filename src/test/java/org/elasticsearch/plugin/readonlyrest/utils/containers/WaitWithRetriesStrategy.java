@@ -51,7 +51,9 @@ public abstract class WaitWithRetriesStrategy extends GenericContainer.AbstractW
     onContainerStarted();
   }
 
-  protected void onContainerStarted() {}
+  protected void onContainerStarted() {
+    // empty implementation
+  }
 
   protected abstract boolean isReady();
 }
