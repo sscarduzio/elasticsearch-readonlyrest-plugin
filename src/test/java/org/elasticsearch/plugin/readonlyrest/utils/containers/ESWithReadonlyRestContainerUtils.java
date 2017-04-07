@@ -17,6 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import com.google.common.collect.ImmutableList;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer.ESInitalizer;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 
 import java.io.BufferedReader;
@@ -30,28 +31,31 @@ import java.util.regex.Pattern;
 
 public class ESWithReadonlyRestContainerUtils {
 
-  public static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
-                                                   String elasticsearchConfig) {
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
+                                                                            String elasticsearchConfig) {
     return create(externalDependencies, elasticsearchConfig, Optional.empty());
   }
 
-  public static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
-                                                   String elasticsearchConfig,
-                                                   ESWithReadonlyRestContainer.ESInitalizer initalizer) {
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
+                                                                            String elasticsearchConfig,
+                                                                            ESInitalizer initalizer) {
     return create(externalDependencies, elasticsearchConfig, Optional.of(initalizer));
   }
 
-  private static ESWithReadonlyRestContainer create(MultiContainer externalDependencies,
-                                                   String elasticsearchConfig,
-                                                   Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
-    File adjustedEsConfig = copyAndAdjustConfig(
-      ContainerUtils.getResourceFile(elasticsearchConfig),
-      createTempFile(),
-      externalDependencies.containers()
+  private static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
+                                                                             String elasticsearchConfig,
+                                                                             Optional<ESInitalizer> initalizer) {
+    return new MultiContainerDependent<>(
+        externalDependencies,
+        multiContainer -> {
+          File adjustedEsConfig = copyAndAdjustConfig(
+              ContainerUtils.getResourceFile(elasticsearchConfig),
+              createTempFile(),
+              multiContainer.containers()
+          );
+          return ESWithReadonlyRestContainer.create(adjustedEsConfig.getName(), initalizer);
+        }
     );
-    ESWithReadonlyRestContainer esContainer = ESWithReadonlyRestContainer.create(adjustedEsConfig.getName(), initalizer);
-    esContainer.start();
-    return esContainer;
   }
 
   private static File createTempFile() {
@@ -76,8 +80,8 @@ public class ESWithReadonlyRestContainerUtils {
             for (MultiContainer.NamedContainer container : externalDependencyContainers) {
               if (container.getIpAddress().isPresent()) {
                 replaced = replaced.replaceAll(
-                  Pattern.compile("\\{" + container.getName() + "\\}").pattern(),
-                  container.getIpAddress().get()
+                    Pattern.compile("\\{" + container.getName() + "\\}").pattern(),
+                    container.getIpAddress().get()
                 );
               }
             }

@@ -20,6 +20,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRest
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainerUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDependent;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
 import org.junit.ClassRule;
@@ -30,14 +31,15 @@ import java.io.IOException;
 public class LdapIntegrationTests {
 
   @ClassRule
-  public static ESWithReadonlyRestContainer container = ESWithReadonlyRestContainerUtils.create(
-    new MultiContainer.Builder()
-      .add("LDAP1", () -> LdapContainer.create("/test_example.ldif"))
-      .add("LDAP2", () -> LdapContainer.create("/test_example.ldif"))
-      .build(),
-    "/ldap_test_elasticsearch.yml",
-    new ElasticsearchTweetsInitializer()
-  );
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+      ESWithReadonlyRestContainerUtils.create(
+          new MultiContainer.Builder()
+              .add("LDAP1", () -> LdapContainer.create("/test_example.ldif"))
+              .add("LDAP2", () -> LdapContainer.create("/test_example.ldif"))
+              .build(),
+          "/ldap_test_elasticsearch.yml",
+          new ElasticsearchTweetsInitializer()
+      );
 
   private static ReadonlyRestedESAssertions assertions = new ReadonlyRestedESAssertions(container);
 

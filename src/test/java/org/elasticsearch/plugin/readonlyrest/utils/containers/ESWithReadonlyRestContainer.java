@@ -48,7 +48,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
   private static int ES_PORT = 9200;
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
-  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(120);
+  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 

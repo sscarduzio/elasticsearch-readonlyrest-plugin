@@ -68,7 +68,7 @@ public class UserRoleProviderConfig {
   public String getName() {
     return name;
   }
-  
+
   public URI getEndpoint() {
     return endpoint;
   }

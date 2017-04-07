@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.integration;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainerUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDependent;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
@@ -28,17 +29,18 @@ import org.junit.Test;
 public class ReverseProxyAuthenticationWithProviderRolesAuthorizationTests {
 
   @ClassRule
-  public static ESWithReadonlyRestContainer container = ESWithReadonlyRestContainerUtils.create(
-      new MultiContainer.Builder()
-          .add("ROLES1", () -> WireMockContainer.create(
-              "/provider_roles_authorization_test_wiremock_service1_cartman.json",
-              "/provider_roles_authorization_test_wiremock_service1_morgan.json"
-          ))
-          .add("ROLES2", () -> WireMockContainer.create("/provider_roles_authorization_test_wiremock_service2.json"))
-          .build(),
-      "/provider_roles_authorization_test_elasticsearch.yml",
-      new ElasticsearchTweetsInitializer()
-  );
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+      ESWithReadonlyRestContainerUtils.create(
+          new MultiContainer.Builder()
+              .add("ROLES1", () -> WireMockContainer.create(
+                  "/provider_roles_authorization_test_wiremock_service1_cartman.json",
+                  "/provider_roles_authorization_test_wiremock_service1_morgan.json"
+              ))
+              .add("ROLES2", () -> WireMockContainer.create("/provider_roles_authorization_test_wiremock_service2.json"))
+              .build(),
+          "/provider_roles_authorization_test_elasticsearch.yml",
+          new ElasticsearchTweetsInitializer()
+      );
 
   private static ReadonlyRestedESAssertions assertions = new ReadonlyRestedESAssertions(container);
 
