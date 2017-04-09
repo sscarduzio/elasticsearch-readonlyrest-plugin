@@ -23,6 +23,7 @@ import com.google.common.cache.CacheBuilder;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -56,6 +57,18 @@ public class LdapClientWithCacheDecorator implements LdapClient {
         ? Optional.of(cachedUser.ldapUser)
         : Optional.empty()
     );
+  }
+
+  @Override
+  public CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user) {
+    // todo: implement
+    return null;
+  }
+
+  @Override
+  public CompletableFuture<Optional<LdapUser>> userById(String userId) {
+    // todo: implement
+    return null;
   }
 
   private static class LdapUserWithHashedPassword {

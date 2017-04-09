@@ -28,12 +28,7 @@ import java.util.concurrent.CompletableFuture;
 public class ExternalRolesAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
-  protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  protected Set<String> getRoles() {
+  protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     throw new UnsupportedOperationException();
   }
 

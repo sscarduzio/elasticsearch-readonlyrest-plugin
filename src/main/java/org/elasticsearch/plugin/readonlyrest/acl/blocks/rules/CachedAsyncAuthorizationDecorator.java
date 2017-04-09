@@ -23,8 +23,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.time.Duration;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -35,7 +33,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final AsyncAuthorization underlying;
-  private final Cache<UserWithRoles, Boolean> cache;
+  private final Cache<String, Boolean> cache;
 
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization, Settings settings) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
@@ -53,13 +51,12 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  public CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
-    UserWithRoles userWithRoles = new UserWithRoles(user, roles);
-    Boolean authorizationResult = cache.getIfPresent(userWithRoles);
+  public CompletableFuture<Boolean> authorize(LoggedUser user) {
+    Boolean authorizationResult = cache.getIfPresent(user.getId());
     if (authorizationResult == null) {
-      return underlying.authorize(user, roles)
+      return underlying.authorize(user)
           .thenApply(result -> {
-            cache.put(userWithRoles, result);
+            cache.put(user.getId(), result);
             return result;
           });
     }
@@ -67,38 +64,8 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  protected Set<String> getRoles() {
-    return underlying.getRoles();
-  }
-
-  @Override
   public String getKey() {
     return underlying.getKey();
-  }
-
-  private static class UserWithRoles {
-
-    private final LoggedUser user;
-    private final Set<String> roles;
-
-    UserWithRoles(LoggedUser user, Set<String> roles) {
-      this.user = user;
-      this.roles = roles;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == null) return false;
-      if (getClass() != obj.getClass()) return false;
-      final UserWithRoles other = (UserWithRoles) obj;
-      return Objects.equals(user, other.user) &&
-          roles.equals(other.roles);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(this.user, this.roles);
-    }
   }
 
 }

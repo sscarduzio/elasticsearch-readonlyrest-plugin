@@ -18,9 +18,14 @@
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public interface LdapClient {
 
   CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials);
+
+  CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user);
+
+  CompletableFuture<Optional<LdapUser>> userById(String userId);
 }

@@ -30,15 +30,14 @@ public abstract class AsyncAuthorization extends AsyncRule implements Authorizat
 
   private static final Logger logger = Loggers.getLogger(AsyncAuthorization.class);
 
-  protected abstract CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles);
-  protected abstract Set<String> getRoles();
+  protected abstract CompletableFuture<Boolean> authorize(LoggedUser user);
 
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     Optional<LoggedUser> optLoggedInUser = rc.getLoggedInUser();
     if(optLoggedInUser.isPresent()) {
       LoggedUser loggedUser = optLoggedInUser.get();
-      return authorize(loggedUser, getRoles()).thenApply(result -> result ? MATCH : NO_MATCH);
+      return authorize(loggedUser).thenApply(result -> result ? MATCH : NO_MATCH);
     } else {
       logger.warn("Cannot try to authorize user because non is logged now!");
       return CompletableFuture.completedFuture(NO_MATCH);

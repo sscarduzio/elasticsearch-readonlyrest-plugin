@@ -40,7 +40,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -96,21 +95,16 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
   }
 
   @Override
-  protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
+  protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     final CompletableFuture<Boolean> promise = new CompletableFuture<>();
     client.performRequestAsync(
         "GET",
         providerRolesAuthDefinition.config.getEndpoint().getPath(),
         createParams(user),
-        new RoleBasedAuthResponseListener<>(promise, isAuthorized(roles)),
+        new RoleBasedAuthResponseListener<>(promise, isAuthorized()),
         createHeaders(user).toArray(new Header[0])
     );
     return promise;
-  }
-
-  @Override
-  protected Set<String> getRoles() {
-    return providerRolesAuthDefinition.roles;
   }
 
   private Map<String, String> createParams(LoggedUser user) {
@@ -127,7 +121,7 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
         : Lists.newArrayList();
   }
 
-  private Function<Response, Boolean> isAuthorized(Set<String> ruleRoles) {
+  private Function<Response, Boolean> isAuthorized() {
     return response -> {
       if (response.getStatusLine().getStatusCode() == 200) {
         try {
@@ -138,7 +132,7 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
           logger.debug("Roles returned by role provider '" + providerRolesAuthDefinition.config.getName() + "': "
               + Joiner.on(",").join(roles));
 
-          Sets.SetView<String> intersection = Sets.intersection(ruleRoles, Sets.newHashSet(roles));
+          Sets.SetView<String> intersection = Sets.intersection(providerRolesAuthDefinition.roles, Sets.newHashSet(roles));
           return !intersection.isEmpty();
         } catch (IOException e) {
           logger.error("Role based authorization response exception", e);

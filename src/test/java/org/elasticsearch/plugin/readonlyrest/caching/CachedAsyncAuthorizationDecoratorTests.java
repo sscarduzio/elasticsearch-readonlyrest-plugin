@@ -67,8 +67,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
     Set<String> roles = Sets.newHashSet("role1", "role2");
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
-    when(rule.authorize(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    when(rule.getRoles()).thenReturn(roles);
+    when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
@@ -79,7 +78,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     assertEquals(true, firstAttemptMatch.get().isMatch());
     assertEquals(true, secondAttemptMatch.get().isMatch());
-    verify(rule, times(1)).authorize(user, roles);
+    verify(rule, times(1)).authorize(user);
   }
 
   @Test
@@ -89,8 +88,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
     Duration ttl = Duration.ofSeconds(1);
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
-    when(rule.authorize(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    when(rule.getRoles()).thenReturn(roles);
+    when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
@@ -102,18 +100,13 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     assertEquals(true, firstAttemptMatch.get().isMatch());
     assertEquals(true, secondAttemptMatch.get().isMatch());
-    verify(rule, times(2)).authorize(user, roles);
+    verify(rule, times(2)).authorize(user);
   }
 
   private AsyncAuthorization dummyAsyncRule = new AsyncAuthorization() {
     @Override
-    protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
+    protected CompletableFuture<Boolean> authorize(LoggedUser user) {
       return CompletableFuture.completedFuture(true);
-    }
-
-    @Override
-    protected Set<String> getRoles() {
-      return Sets.newHashSet();
     }
 
     @Override
@@ -124,9 +117,6 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
   private abstract class MockedAsyncAuthorization extends AsyncAuthorization {
     @Override
-    public abstract CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles);
-
-    @Override
-    public abstract Set<String> getRoles();
+    public abstract CompletableFuture<Boolean> authorize(LoggedUser user);
   }
 }

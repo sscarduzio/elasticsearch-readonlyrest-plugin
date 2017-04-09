@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.unboundid.ldap.sdk.AsyncRequestID;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.LDAPConnection;
@@ -86,8 +87,7 @@ public class UnboundidLdapClient implements LdapClient {
           SSLUtil sslUtil = trustAllCerts ? new SSLUtil(new TrustAllTrustManager()) : new SSLUtil();
           SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
           connection = new LDAPConnection(sslSocketFactory, options);
-        }
-        else {
+        } else {
           connection = new LDAPConnection(options);
         }
         connection.connect(host, port, (int) connectionTimeout.toMillis());
@@ -97,7 +97,7 @@ public class UnboundidLdapClient implements LdapClient {
           BindResult result = connection.bind(dnPassword.getDn(), dnPassword.getPassword());
           if (!ResultCode.SUCCESS.equals(result.getResultCode())) {
             throw new LdapClientException.InitializationException("LDAP binding problem - returned [" +
-                                                                    result.getResultString() + "]");
+                result.getResultString() + "]");
           }
         }
         connectionPool = new LDAPConnectionPool(connection, poolSize);
@@ -113,100 +113,88 @@ public class UnboundidLdapClient implements LdapClient {
   @Override
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
     return getUser(credentials.getUserName())
-      .thenCompose(user -> {
-        if (user == null || !user.isPresent()) {
-          return CompletableFuture.completedFuture(Optional.empty());
-        }
-        else {
-          return getUserGroups(user.get());
-        }
-      })
-      .thenApply(userWithGroups -> {
-        if (userWithGroups != null && userWithGroups.isPresent() &&
-          authenticate(userWithGroups.get(), credentials.getPassword())) {
-          return userWithGroups;
-        }
-        else {
-          return Optional.empty();
-        }
-      });
+        .thenApply(user ->
+            user.map(u -> authenticate(u, credentials.getPassword()))
+                .flatMap(isAuthenticated -> isAuthenticated ? user : Optional.empty())
+        );
+  }
+
+  @Override
+  public CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user) {
+    return getUserGroups(user);
+  }
+
+  @Override
+  public CompletableFuture<Optional<LdapUser>> userById(String userId) {
+    return getUser(userId);
   }
 
   private CompletableFuture<Optional<LdapUser>> getUser(String uid) {
     try {
       CompletableFuture<List<SearchResultEntry>> searchUser = new CompletableFuture<>();
       connectionPool.processRequestsAsync(
-        Lists.newArrayList(
-          new SearchRequest(
-            new UnboundidSearchResultListener(searchUser),
-            searchUserBaseDN,
-            SearchScope.SUB,
-            String.format("(%s=%s)", uidAttribute, uid)
-          )),
-        timeout
+          Lists.newArrayList(
+              new SearchRequest(
+                  new UnboundidSearchResultListener(searchUser),
+                  searchUserBaseDN,
+                  SearchScope.SUB,
+                  String.format("(%s=%s)", uidAttribute, uid)
+              )),
+          timeout
       );
       return searchUser
-        .thenApply(userSearchResult -> {
-          if (userSearchResult != null && userSearchResult.size() > 0) {
-            return Optional.of(new LdapUser(uid, userSearchResult.get(0).getDN()));
-          }
-          else {
-            logger.debug("LDAP getting user CN returned no entries");
-            return Optional.<LdapUser>empty();
-          }
-        })
-        .exceptionally(t -> {
-          if (t.getCause() instanceof LdapSearchError) {
-            LdapSearchError error = (LdapSearchError) t.getCause();
-            logger.debug(String.format("LDAP getting user CN returned error [%s]", error.getResultString()));
-            return Optional.empty();
-          }
-          throw new LdapClientException.SearchException(t);
-        });
+          .thenApply(userSearchResult -> {
+            if (userSearchResult != null && userSearchResult.size() > 0) {
+              return Optional.of(new LdapUser(uid, userSearchResult.get(0).getDN()));
+            } else {
+              logger.debug("LDAP getting user CN returned no entries");
+              return Optional.<LdapUser>empty();
+            }
+          })
+          .exceptionally(t -> {
+            if (t.getCause() instanceof LdapSearchError) {
+              LdapSearchError error = (LdapSearchError) t.getCause();
+              logger.debug(String.format("LDAP getting user CN returned error [%s]", error.getResultString()));
+              return Optional.empty();
+            }
+            throw new LdapClientException.SearchException(t);
+          });
     } catch (LDAPException e) {
       logger.error("LDAP getting user operation failed", e);
       return CompletableFuture.completedFuture(Optional.empty());
     }
   }
 
-  private CompletableFuture<Optional<LdapUser>> getUserGroups(LdapUser user) {
+  private CompletableFuture<Set<LdapGroup>> getUserGroups(LdapUser user) {
     try {
       CompletableFuture<List<SearchResultEntry>> searchGroups = new CompletableFuture<>();
       connectionPool.processRequestsAsync(
-        Lists.newArrayList(
-          new SearchRequest(
-            new UnboundidSearchResultListener(searchGroups),
-            searchGroupBaseDN,
-            SearchScope.SUB,
-            String.format("(&(cn=*)(%s=%s))", uniqueMemberAttribute, user.getDN())
-          )),
-        timeout
+          Lists.newArrayList(
+              new SearchRequest(
+                  new UnboundidSearchResultListener(searchGroups),
+                  searchGroupBaseDN,
+                  SearchScope.SUB,
+                  String.format("(&(cn=*)(%s=%s))", uniqueMemberAttribute, user.getDN())
+              )),
+          timeout
       );
       return searchGroups
-        .thenApply(groupSearchResult -> {
-          Set<LdapGroup> groups = groupSearchResult.stream()
-            .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .map(LdapGroup::new)
-            .collect(Collectors.toSet());
-          if (groups.isEmpty()) {
-            return Optional.of(user);
-          }
-          else {
-            return Optional.of(user.withGroups(groups));
-          }
-        })
-        .exceptionally(t -> {
-          if (t instanceof LdapSearchError) {
-            LdapSearchError error = (LdapSearchError) t;
-            logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
-          }
-          return Optional.empty();
-        });
+          .thenApply(groupSearchResult -> groupSearchResult.stream()
+              .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .map(LdapGroup::new)
+              .collect(Collectors.toSet()))
+          .exceptionally(t -> {
+            if (t instanceof LdapSearchError) {
+              LdapSearchError error = (LdapSearchError) t;
+              logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
+            }
+            return Sets.newHashSet();
+          });
     } catch (LDAPException e) {
       logger.error("LDAP getting user groups operation failed", e);
-      return CompletableFuture.completedFuture(Optional.empty());
+      return CompletableFuture.completedFuture(Sets.newHashSet());
     }
   }
 
@@ -245,7 +233,7 @@ public class UnboundidLdapClient implements LdapClient {
   }
 
   private static class UnboundidSearchResultListener
-    implements com.unboundid.ldap.sdk.AsyncSearchResultListener {
+      implements com.unboundid.ldap.sdk.AsyncSearchResultListener {
 
     private final CompletableFuture<List<SearchResultEntry>> futureToComplete;
     private final ArrayList<SearchResultEntry> searchResultEntries = Lists.newArrayList();
@@ -258,10 +246,9 @@ public class UnboundidLdapClient implements LdapClient {
     public void searchResultReceived(AsyncRequestID requestID, SearchResult searchResult) {
       if (ResultCode.SUCCESS.equals(searchResult.getResultCode())) {
         futureToComplete.complete(searchResultEntries);
-      }
-      else {
+      } else {
         futureToComplete.completeExceptionally(
-          new LdapSearchError(searchResult.getResultCode(), searchResult.getResultString())
+            new LdapSearchError(searchResult.getResultCode(), searchResult.getResultString())
         );
       }
     }
@@ -373,8 +360,8 @@ public class UnboundidLdapClient implements LdapClient {
 
     public UnboundidLdapClient build() {
       return new UnboundidLdapClient(host, port, bindDnPassword, searchUserBaseDN, searchGroupBaseDN,
-                                     uidAttribute, uniqueMemberAttribute, poolSize, connectionTimeout,
-                                     requestTimeout, sslEnabled, trustAllCerts
+          uidAttribute, uniqueMemberAttribute, poolSize, connectionTimeout,
+          requestTimeout, sslEnabled, trustAllCerts
       );
     }
   }
