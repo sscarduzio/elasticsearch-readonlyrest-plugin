@@ -216,7 +216,62 @@ LDAP configuration requirements:
 - user from `search_user_base_DN` should have `uid` attribute (can be overwritten using `user_id_attribute`)
 - groups from `search_groups_base_DN` should have `uniqueMember` attribute (can be overwritten using `unique_member_attribute`)
 
-(example LDAP config can be found in test /resources/test_example.ldif)
+(example LDAP config can be found in test /src/test/resources/test_example.ldif)
+
+### USE CASE 5: External roles provider for group-based authorization
+
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    
+    access_control_rules:
+
+    - name: "::Tweets::"
+      type: allow
+      methods: GET
+      indices: ["twitter"]
+      proxy_auth:
+        - proxy_auth_config: "proxy1"
+          users: ["*"]
+      provider_roles_authorization:
+        - user_role_provider: "RolesService"
+          roles: ["role3"]
+
+    - name: "::Facebook posts::"
+      type: allow
+      methods: GET
+      indices: ["facebook"]
+      proxy_auth:
+        - proxy_auth_config: "proxy1"
+          users: ["*"]
+      provider_roles_authorization:
+        - user_role_provider: "RolesService"
+          roles: ["role1"]
+
+    proxy_auth_configs:
+
+    - name: "proxy1"
+      user_id_header: "X-Auth-Token"                           # default X-Forwarded-User
+
+    user_role_providers:
+
+    - name: RolesService
+      role_endpoint: "http://localhost:8080/roles"
+      auth_token_name: "token"
+      auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
+      response_roles_json_path: "$..roles[?(@.name)].name"     # see: https://github.com/json-path/JsonPath
+```
+
+In example above, a user is authenticated by reverse proxy and then external service is asked for roles for that user. 
+If roles returned by the service contain any role declared in `roles` list, user is authorized and rule matches. 
+
+To define user role provider you should provide:
+- `name` for service (then this name is used as id in `user_role_provider` attribute of `provider_roles_authorization` rule)
+- `role_endpoint` - service with roles endpoint (GET request)
+- `auth_token_name` - user identifier will be passed with this name
+- `auth_token_passed_as` - user identifier can be send using HEADER or QUERY_PARAM
+- `response_roles_json_path` - response can be unrestricted, but you have to specify JSON Path for roles name list (see example in tests)
 
 ### 3. Restart Elasticsearch
 

@@ -53,7 +53,7 @@ public abstract class BasicAuthentication extends SyncRule implements UserRule, 
     }
 
     if (authKey == null || !optBasicAuth.isPresent()) {
-      logger.warn("Basic auth header or auth key not present!");
+      logger.debug("Basic auth header or auth key not present!");
       return NO_MATCH;
     }
 
