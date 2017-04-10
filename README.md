@@ -218,7 +218,7 @@ LDAP configuration requirements:
 
 (example LDAP config can be found in test /src/test/resources/test_example.ldif)
 
-### USE CASE 5: External roles provider for group-based authorization
+### USE CASE 5: External groups provider for group-based authorization
 
 ```yml
 readonlyrest:
@@ -234,9 +234,9 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      provider_roles_authorization:
-        - user_role_provider: "RolesService"
-          roles: ["role3"]
+      groups_provider_authorization:
+        - user_groups_provider: "GroupsService"
+          groups: ["group3"]
 
     - name: "::Facebook posts::"
       type: allow
@@ -245,33 +245,34 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      provider_roles_authorization:
-        - user_role_provider: "RolesService"
-          roles: ["role1"]
+      groups_provider_authorization:
+        - user_groups_provider: "GroupsService"
+          groups: ["group1"]
+          cache_ttl_in_sec: 60
 
     proxy_auth_configs:
 
     - name: "proxy1"
       user_id_header: "X-Auth-Token"                           # default X-Forwarded-User
 
-    user_role_providers:
+    user_groups_providers:
 
-    - name: RolesService
-      role_endpoint: "http://localhost:8080/roles"
+    - name: GroupsService
+      groups_endpoint: "http://localhost:8080/groups"
       auth_token_name: "token"
       auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
-      response_roles_json_path: "$..roles[?(@.name)].name"     # see: https://github.com/json-path/JsonPath
+      response_groups_json_path: "$..groups[?(@.name)].name"   # see: https://github.com/json-path/JsonPath
 ```
 
-In example above, a user is authenticated by reverse proxy and then external service is asked for roles for that user. 
-If roles returned by the service contain any role declared in `roles` list, user is authorized and rule matches. 
+In example above, a user is authenticated by reverse proxy and then external service is asked for groups for that user. 
+If groups returned by the service contain any group declared in `groups` list, user is authorized and rule matches. 
 
-To define user role provider you should provide:
-- `name` for service (then this name is used as id in `user_role_provider` attribute of `provider_roles_authorization` rule)
-- `role_endpoint` - service with roles endpoint (GET request)
+To define user groups provider you should specify:
+- `name` for service (then this name is used as id in `user_groups_provider` attribute of `groups_provider_authorization` rule)
+- `groups_endpoint` - service with groups endpoint (GET request)
 - `auth_token_name` - user identifier will be passed with this name
 - `auth_token_passed_as` - user identifier can be send using HEADER or QUERY_PARAM
-- `response_roles_json_path` - response can be unrestricted, but you have to specify JSON Path for roles name list (see example in tests)
+- `response_groups_json_path` - response can be unrestricted, but you have to specify JSON Path for groups name list (see example in tests)
 
 ### 3. Restart Elasticsearch
 

@@ -24,16 +24,16 @@ import java.util.concurrent.CompletableFuture;
 
 // to implement in future
 // in authorize method request to external authorization system should be sent
-// with user identifier and serialized roles
-public class ExternalRolesAuthorizationAsyncRule extends AsyncAuthorization {
+// with user identifier and serialized groups
+public class ExternalGroupsAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
-  protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
+  protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  protected Set<String> getRoles() {
+  protected Set<String> getGroups() {
     throw new UnsupportedOperationException();
   }
 

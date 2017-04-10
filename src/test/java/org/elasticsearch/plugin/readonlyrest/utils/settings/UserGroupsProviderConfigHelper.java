@@ -17,24 +17,24 @@
 package org.elasticsearch.plugin.readonlyrest.utils.settings;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserRoleProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 
 import java.net.URI;
 
-public class UserRoleProviderConfigHelper {
+public class UserGroupsProviderConfigHelper {
 
-  public static Settings create(String name, URI roleEndpoint, String authTokenName,
-                                UserRoleProviderConfig.TokenPassingMethod method, String responseRoleJsonPath) {
+  public static Settings create(String name, URI groupsEndpoint, String authTokenName,
+                                UserGroupProviderConfig.TokenPassingMethod method, String responseGroupsJsonPath) {
     return Settings.builder()
-        .put("user_role_providers.0.name", name)
-        .put("user_role_providers.0.role_endpoint", roleEndpoint.toString())
-        .put("user_role_providers.0.auth_token_name", authTokenName)
-        .put("user_role_providers.0.auth_token_passed_as", tokenPassingMethodToString(method))
-        .put("user_role_providers.0.response_roles_json_path", responseRoleJsonPath)
+        .put("user_groups_providers.0.name", name)
+        .put("user_groups_providers.0.groups_endpoint", groupsEndpoint.toString())
+        .put("user_groups_providers.0.auth_token_name", authTokenName)
+        .put("user_groups_providers.0.auth_token_passed_as", tokenPassingMethodToString(method))
+        .put("user_groups_providers.0.response_groups_json_path", responseGroupsJsonPath)
         .build();
   }
 
-  private static String tokenPassingMethodToString(UserRoleProviderConfig.TokenPassingMethod method) {
+  private static String tokenPassingMethodToString(UserGroupProviderConfig.TokenPassingMethod method) {
     switch (method) {
       case QUERY:
         return "QUERY_PARAM";

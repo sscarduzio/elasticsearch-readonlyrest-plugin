@@ -35,7 +35,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final AsyncAuthorization underlying;
-  private final Cache<UserWithRoles, Boolean> cache;
+  private final Cache<UserWithGroups, Boolean> cache;
 
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization, Settings settings) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
@@ -53,13 +53,13 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  public CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> roles) {
-    UserWithRoles userWithRoles = new UserWithRoles(user, roles);
-    Boolean authorizationResult = cache.getIfPresent(userWithRoles);
+  public CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups) {
+    UserWithGroups userWithGroups = new UserWithGroups(user, groups);
+    Boolean authorizationResult = cache.getIfPresent(userWithGroups);
     if (authorizationResult == null) {
-      return underlying.authorize(user, roles)
+      return underlying.authorize(user, groups)
           .thenApply(result -> {
-            cache.put(userWithRoles, result);
+            cache.put(userWithGroups, result);
             return result;
           });
     }
@@ -67,8 +67,8 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  protected Set<String> getRoles() {
-    return underlying.getRoles();
+  protected Set<String> getGroups() {
+    return underlying.getGroups();
   }
 
   @Override
@@ -76,28 +76,28 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
     return underlying.getKey();
   }
 
-  private static class UserWithRoles {
+  private static class UserWithGroups {
 
     private final LoggedUser user;
-    private final Set<String> roles;
+    private final Set<String> groups;
 
-    UserWithRoles(LoggedUser user, Set<String> roles) {
+    UserWithGroups(LoggedUser user, Set<String> groups) {
       this.user = user;
-      this.roles = roles;
+      this.groups = groups;
     }
 
     @Override
     public boolean equals(Object obj) {
       if (obj == null) return false;
       if (getClass() != obj.getClass()) return false;
-      final UserWithRoles other = (UserWithRoles) obj;
+      final UserWithGroups other = (UserWithGroups) obj;
       return Objects.equals(user, other.user) &&
-          roles.equals(other.roles);
+          groups.equals(other.groups);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(this.user, this.roles);
+      return Objects.hash(this.user, this.groups);
     }
   }
 

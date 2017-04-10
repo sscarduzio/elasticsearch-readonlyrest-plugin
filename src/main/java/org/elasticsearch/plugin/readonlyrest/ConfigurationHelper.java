@@ -124,7 +124,7 @@ public class ConfigurationHelper {
     String users_prefix = prefix + "users.";
     String ldaps_prefix = prefix + "ldaps.";
     String proxy_auth_configs_prefix = prefix + "proxy_auth_configs.";
-    String user_role_providers_prefix = prefix + "user_role_providers.";
+    String user_groups_providers_prefix = prefix + "user_groups_providers.";
 
     return Arrays.asList(
         bool(prefix + "enable"),
@@ -144,7 +144,7 @@ public class ConfigurationHelper {
         grp(users_prefix),
         grp(ldaps_prefix),
         grp(proxy_auth_configs_prefix),
-        grp(user_role_providers_prefix)
+        grp(user_groups_providers_prefix)
         // Rules
 //        str(rule_prefix + "name"),
 //        str(rule_prefix + "accept_x-forwarded-for_header"),

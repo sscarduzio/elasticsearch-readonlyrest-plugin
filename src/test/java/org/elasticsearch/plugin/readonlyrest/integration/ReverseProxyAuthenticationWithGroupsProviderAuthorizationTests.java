@@ -26,19 +26,19 @@ import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESA
 import org.junit.ClassRule;
 import org.junit.Test;
 
-public class ReverseProxyAuthenticationWithProviderRolesAuthorizationTests {
+public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
       ESWithReadonlyRestContainerUtils.create(
           new MultiContainer.Builder()
-              .add("ROLES1", () -> WireMockContainer.create(
-                  "/provider_roles_authorization_test_wiremock_service1_cartman.json",
-                  "/provider_roles_authorization_test_wiremock_service1_morgan.json"
+              .add("GROUPS1", () -> WireMockContainer.create(
+                  "/groups_provider_authorization_test_wiremock_service1_cartman.json",
+                  "/groups_provider_authorization_test_wiremock_service1_morgan.json"
               ))
-              .add("ROLES2", () -> WireMockContainer.create("/provider_roles_authorization_test_wiremock_service2.json"))
+              .add("GROUPS2", () -> WireMockContainer.create("/groups_provider_authorization_test_wiremock_service2.json"))
               .build(),
-          "/provider_roles_authorization_test_elasticsearch.yml",
+          "/groups_provider_authorization_test_elasticsearch.yml",
           new ElasticsearchTweetsInitializer()
       );
 

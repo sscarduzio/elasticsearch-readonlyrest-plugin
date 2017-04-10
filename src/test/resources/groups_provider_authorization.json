@@ -1,7 +1,7 @@
 {
   "request": {
     "method": "GET",
-    "urlPath": "/roles",
+    "urlPath": "/groups",
     "queryParameters" : {
       "userId" : {
         "equalTo" : "example_user"
@@ -10,6 +10,6 @@
   },
   "response": {
     "status": 200,
-    "body": "{ \"sth\": \"unknown\", \"roles\": [ { \"name\": \"role1\" }, { \"name\": \"role2\" } ] }"
+    "body": "{ \"sth\": \"unknown\", \"groups\": [ { \"name\": \"group1\" }, { \"name\": \"group2\" } ] }"
   }
 }
