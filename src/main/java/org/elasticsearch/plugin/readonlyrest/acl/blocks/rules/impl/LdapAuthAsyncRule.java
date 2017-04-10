@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
@@ -34,7 +35,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class LdapAuthAsyncRule extends GeneralAuthKeyAsyncRule {
+public class LdapAuthAsyncRule extends BasicAsyncAuthentication {
 
   private static final String RULE_NAME = "ldap_auth";
   private static final String LDAP_NAME = "name";

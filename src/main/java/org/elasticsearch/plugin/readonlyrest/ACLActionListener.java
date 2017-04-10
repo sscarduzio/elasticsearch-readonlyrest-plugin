@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ResourceAlreadyExistsException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -50,7 +49,7 @@ class ACLActionListener implements ActionListener<ActionResponse> {
 
   public void onResponse(ActionResponse response) {
     boolean shouldContinue = true;
-    for (Rule r : result.getBlock().getSyncRules()) {
+    for (Rule r : result.getBlock().getRules()) {
       try {
         // Don't continue with further handlers if at least one says we should not continue
         shouldContinue &= r.onResponse(result, rc, request, response);
@@ -67,7 +66,7 @@ class ACLActionListener implements ActionListener<ActionResponse> {
   public void onFailure(Exception e) {
     boolean shouldContinue = true;
 
-    for (Rule r : result.getBlock().getSyncRules()) {
+    for (Rule r : result.getBlock().getRules()) {
       try {
         // Don't continue with further handlers if at least one says we should not continue
         shouldContinue &= r.onFailure(result, rc, request, e);

@@ -46,7 +46,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
 
   private static int LDAP_PORT = 389;
   private static Duration LDAP_CONNECT_TIMEOUT = Duration.ofSeconds(5);
-  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(60);
+  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
   private static String LDAP_DOMAIN = "example.com";
   private static String LDAP_ORGANISATION = "Example";
   private static String LDAP_ADMIN = "admin";

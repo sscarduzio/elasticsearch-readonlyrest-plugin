@@ -28,6 +28,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -42,6 +43,7 @@ import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -55,6 +57,13 @@ public class IndicesRewriteSyncRule extends SyncRule {
   private final Pattern[] targetPatterns;
   private final String replacement;
 
+  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new IndicesRewriteSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public IndicesRewriteSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -78,7 +87,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
       .distinct()
       .filter(Objects::nonNull)
       .filter(Strings::isNotBlank)
-      .map(str -> Pattern.compile(str))
+      .map(Pattern::compile)
       .toArray(Pattern[]::new);
   }
 
@@ -109,9 +118,9 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
     String currentReplacement = replacement;
 
-    String currentUser = rc.getLoggedInUser();
-    if (!Strings.isEmpty(currentUser)) {
-      currentReplacement = replacement.replaceAll("@user", rc.getLoggedInUser());
+    Optional<LoggedUser> currentUser = rc.getLoggedInUser();
+    if (currentUser.isPresent()) {
+      currentReplacement = replacement.replaceAll("@user", currentUser.get().getId());
     }
 
     for (Pattern p : targetPatterns) {

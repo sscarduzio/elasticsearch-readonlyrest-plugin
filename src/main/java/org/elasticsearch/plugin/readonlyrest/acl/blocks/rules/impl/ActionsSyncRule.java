@@ -26,6 +26,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
+import java.util.Optional;
+
 /**
  * Created by sscarduzio on 14/02/2016.
  */
@@ -34,6 +36,14 @@ public class ActionsSyncRule extends SyncRule {
   private static final Logger logger = Loggers.getLogger(ActionsSyncRule.class);
 
   protected MatcherWithWildcards m;
+
+  public static Optional<ActionsSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new ActionsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
     super();

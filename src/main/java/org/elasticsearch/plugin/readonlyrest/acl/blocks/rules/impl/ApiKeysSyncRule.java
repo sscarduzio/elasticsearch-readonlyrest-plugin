@@ -26,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -33,6 +34,14 @@ import java.util.List;
 public class ApiKeysSyncRule extends SyncRule {
 
   private List<String> validApiKeys;
+
+  public static Optional<ApiKeysSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new ApiKeysSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public ApiKeysSyncRule(Settings s) throws RuleNotConfiguredException {
     super();

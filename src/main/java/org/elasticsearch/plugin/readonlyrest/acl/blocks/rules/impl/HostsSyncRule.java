@@ -32,6 +32,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -40,6 +41,14 @@ public class HostsSyncRule extends SyncRule {
 
   private List<String> allowedAddresses;
   private Boolean acceptXForwardedForHeader;
+
+  public static Optional<HostsSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new HostsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public HostsSyncRule(Settings s) throws RuleNotConfiguredException {
     super();

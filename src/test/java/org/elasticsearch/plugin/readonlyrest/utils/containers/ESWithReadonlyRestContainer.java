@@ -48,7 +48,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
   private static int ES_PORT = 9200;
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
-  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(60);
+  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 
@@ -61,7 +61,8 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     super(imageFromDockerfile);
   }
 
-  public static ESWithReadonlyRestContainer create(String elasticsearchConfig, ESInitalizer initalizer) {
+  public static ESWithReadonlyRestContainer create(String elasticsearchConfig,
+                                                   Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File config = ContainerUtils.getResourceFile(elasticsearchConfig);
     Optional<File> pluginFileOpt = GradleProjectUtils.assemble();
     if (!pluginFileOpt.isPresent()) {
@@ -94,11 +95,11 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     return this.getMappedPort(ES_PORT);
   }
 
-  public RestClient getClient() {
-    return clientBuilder().build();
+  public RestClient getClient(Header... headers) {
+    return clientBuilder().setDefaultHeaders(headers).build();
   }
 
-  public RestClient getClient(String name, String password) {
+  public RestClient getBasicAuthClient(String name, String password) {
     return clientBuilder().setDefaultHeaders(new Header[]{authorizationHeader(name, password)}).build();
   }
 
@@ -115,7 +116,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     return RestClient.builder(new HttpHost(getESHost(), getESPort()));
   }
 
-  private WaitStrategy waitStrategy(ESInitalizer initalizer) {
+  private WaitStrategy waitStrategy(Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     final ObjectMapper mapper = new ObjectMapper();
     return new GenericContainer.AbstractWaitStrategy() {
       @Override
@@ -130,7 +131,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
             e.printStackTrace();
           }
         }
-        initalizer.initialize(getAdminClient());
+        initalizer.ifPresent(i -> i.initialize(getAdminClient()));
         logger.info("ES container stated");
       }
 

@@ -27,12 +27,23 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
+import java.util.Optional;
+
 /**
  * Created by sscarduzio on 03/01/2017.
  */
 public class SessionMaxIdleSyncRule extends SyncRule {
+
   private static final Logger logger = Loggers.getLogger(SessionMaxIdleSyncRule.class);
   private final long maxIdleMillis;
+
+  public static Optional<SessionMaxIdleSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new SessionMaxIdleSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public SessionMaxIdleSyncRule(Settings s) throws RuleNotConfiguredException {
     super();

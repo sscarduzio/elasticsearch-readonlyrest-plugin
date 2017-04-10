@@ -17,39 +17,37 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
+import com.google.common.collect.Lists;
+import junit.framework.TestCase;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.junit.Assert;
+
 import java.util.Iterator;
 import java.util.Set;
 
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-
-import com.google.common.collect.Lists;
-
-import org.junit.Assert;
-import junit.framework.TestCase;
-
 public class BlockTest extends TestCase {
 
-	public void testRulesShallFollowAuthInspectMutateOrder() {
-		Settings settings = Settings.builder()
-		                        .put("name", "Dummy block")
-		                        .put("type", "allow")
-		                        .put("proxy_auth", "*")
-		                        .putArray("indices_rewrite", "needle", "replacement")
-		                        .putArray("indices", "allowed-index")
-		                        .build();
-		Block block = new Block(settings, Lists.newArrayList(), Lists.newArrayList(),
-		                        null, null, null);
+  public void testRulesShallFollowAuthInspectMutateOrder() {
+    Settings settings = Settings.builder()
+        .put("name", "Dummy block")
+        .put("type", "allow")
+        .put("proxy_auth", "*")
+        .putArray("indices_rewrite", "needle", "replacement")
+        .putArray("indices", "allowed-index")
+        .build();
+    Block block = new Block(settings, Lists.newArrayList(), Lists.newArrayList(),
+        null, null, null);
 
-		Set<SyncRule> syncRules = block.getSyncRules();
-		Iterator<SyncRule> it = syncRules.iterator();
-		SyncRule auth = it.next();
-		SyncRule inspect = it.next();
-		SyncRule mutate = it.next();
+    Set<AsyncRule> rules = block.getRules();
+    Iterator<AsyncRule> it = rules.iterator();
+    AsyncRule auth = it.next();
+    AsyncRule inspect = it.next();
+    AsyncRule mutate = it.next();
 
-		Assert.assertEquals("proxy_auth", auth.getKey());
-		Assert.assertEquals("indices", inspect.getKey());
-		Assert.assertEquals("indices_rewrite", mutate.getKey());
-	}
+    Assert.assertEquals("proxy_auth", auth.getKey());
+    Assert.assertEquals("indices", inspect.getKey());
+    Assert.assertEquals("indices_rewrite", mutate.getKey());
+  }
 
 }

@@ -84,6 +84,11 @@ dependencies {
     compile 'com.google.guava:guava:21.0'
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
     compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
+    compile 'org.elasticsearch.client:rest:' + esVersion
+    compile 'com.jayway.jsonpath:json-path:2.2.0'
+    compile 'net.minidev:json-smart:2.3'
+    compile 'net.minidev:accessors-smart:1.2'
+    compile 'org.slf4j:slf4j-api:1.7.25'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
     testCompile 'org.gradle:gradle-tooling-api:2.13'

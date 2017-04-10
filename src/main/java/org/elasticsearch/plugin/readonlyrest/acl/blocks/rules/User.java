@@ -22,9 +22,11 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author Christian Henke (maitai@users.noreply.github.com)
@@ -41,16 +43,16 @@ public class User {
     this.authKeyRule = rule;
   }
 
-  public static User fromSettings(Settings s) throws ConfigMalformedException {
+  public static User fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs) throws ConfigMalformedException {
     String username = s.get("username");
-    UserRule authKeyRule = getAuthKeyRuleFrom(s, username);
+    UserRule authKeyRule = getAuthKeyRuleFrom(s, proxyAuthConfigs, username);
     List<String> groups = Lists.newArrayList(s.getAsArray("groups"));
     if (groups.isEmpty())
       throw new ConfigMalformedException("No groups defined for user " + (username != null ? username : "<no name>"));
     return new User(username, groups, authKeyRule);
   }
 
-  private static UserRule getAuthKeyRuleFrom(Settings s, String username) {
+  private static UserRule getAuthKeyRuleFrom(Settings s, List<ProxyAuthConfig> proxyAuthConfigs, String username) {
     try {
       return new AuthKeySyncRule(s);
     } catch (RuleNotConfiguredException ignored) {
@@ -63,9 +65,9 @@ public class User {
       return new AuthKeySha256SyncRule(s);
     } catch (RuleNotConfiguredException ignored) {
     }
-    try {
-      return new ProxyAuthSyncRule(s);
-    } catch (RuleNotConfiguredException ignored) {
+    Optional<ProxyAuthSyncRule> proxyAuthSyncRule = ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs);
+    if(proxyAuthSyncRule.isPresent()) {
+      return proxyAuthSyncRule.get();
     }
 
     throw new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"));

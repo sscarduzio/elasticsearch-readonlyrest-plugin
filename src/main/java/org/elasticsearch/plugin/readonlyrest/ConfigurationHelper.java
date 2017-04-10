@@ -123,25 +123,29 @@ public class ConfigurationHelper {
     String rule_prefix = prefix + "access_control_rules.";
     String users_prefix = prefix + "users.";
     String ldaps_prefix = prefix + "ldaps.";
+    String proxy_auth_configs_prefix = prefix + "proxy_auth_configs.";
+    String user_groups_providers_prefix = prefix + "user_groups_providers.";
 
     return Arrays.asList(
-      bool(prefix + "enable"),
-      str(prefix + "response_if_req_forbidden"),
-      bool(prefix + "searchlog"),
+        bool(prefix + "enable"),
+        str(prefix + "response_if_req_forbidden"),
+        bool(prefix + "searchlog"),
 
-      // SSL
-      bool(prefix + "ssl.enable"),
-      str(prefix + "ssl.keystore_file"),
-      str(prefix + "ssl.keystore_pass"),
-      str(prefix + "ssl.key_alias"),
-      str(prefix + "ssl.key_pass"),
-      str(prefix + "ssl.privkey_pem"),
-      str(prefix + "ssl.certchain_pem"),
+        // SSL
+        bool(prefix + "ssl.enable"),
+        str(prefix + "ssl.keystore_file"),
+        str(prefix + "ssl.keystore_pass"),
+        str(prefix + "ssl.key_alias"),
+        str(prefix + "ssl.key_pass"),
+        str(prefix + "ssl.privkey_pem"),
+        str(prefix + "ssl.certchain_pem"),
 
-      grp(rule_prefix),
-      grp(users_prefix),
-      grp(ldaps_prefix)
-      // Rules
+        grp(rule_prefix),
+        grp(users_prefix),
+        grp(ldaps_prefix),
+        grp(proxy_auth_configs_prefix),
+        grp(user_groups_providers_prefix)
+        // Rules
 //        str(rule_prefix + "name"),
 //        str(rule_prefix + "accept_x-forwarded-for_header"),
 //        str(rule_prefix + "auth_key"),
@@ -182,10 +186,9 @@ public class ConfigurationHelper {
     // -- SSL
     sslEnabled = s.getAsBoolean("ssl.enable", false);
     if (sslEnabled) {
-      logger.info("SSL: Enabled");
-    }
-    else {
-      logger.info("SSL: Disabled");
+      logger.debug("SSL: Enabled");
+    } else {
+      logger.debug("SSL: Disabled");
     }
 
     sslKeyStoreFile = s.get("ssl.keystore_file");

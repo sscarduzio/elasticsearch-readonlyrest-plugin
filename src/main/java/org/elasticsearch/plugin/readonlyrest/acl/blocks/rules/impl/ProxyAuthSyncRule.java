@@ -17,65 +17,139 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.collect.Lists;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.settings.SettingsException;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthSyncRule extends SyncRule implements UserRule {
+public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authentication {
 
-  private static final String HEADER = "X-Forwarded-User";
+  private static final String RULE_NAME = "proxy_auth";
+  private static final String NAME_ATTRIBUTE = "name";
+  private static final String USERS_ATTRIBUTE = "users";
+  private static final String PROXY_AUTH_CONFIG_ATTRIBUTE = "proxy_auth_config";
+
+  private enum ProxyAuthSettingsSchema {
+    SIMPLE, EXTENDED
+  }
+
+  private final ProxyAuthConfig config;
   private final MatcherWithWildcards userListMatcher;
 
-  public ProxyAuthSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    String[] users = s.getAsArray(getKey());
-    if (users != null && users.length > 0) {
-      userListMatcher = new MatcherWithWildcards(Arrays.stream(users)
-                                                   .filter(i -> !Strings.isNullOrEmpty(i))
-                                                   .distinct()
-                                                   .collect(Collectors.toSet()));
-    }
-    else {
-      throw new RuleNotConfiguredException();
+  public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
+      throws ConfigMalformedException {
+    Optional<ProxyAuthSettingsSchema> proxyAuthSettingsSchema = recognizeProxyAuthSettingsSchema(s);
+    if (!proxyAuthSettingsSchema.isPresent()) return Optional.empty();
+    switch (proxyAuthSettingsSchema.get()) {
+      case SIMPLE:
+        return parseSimpleSettings(s);
+      case EXTENDED:
+        return parseExtendedSettings(s, proxyAuthConfigs);
+      default:
+        throw new IllegalStateException("Unknown auth setting schema");
     }
   }
 
-  public static String getUser(Map<String, String> headers) {
-    String h = headers.get(HEADER);
-    if (h == null || h.trim().length() == 0)
-      return null;
-    return h;
+  private static Optional<ProxyAuthSettingsSchema> recognizeProxyAuthSettingsSchema(Settings s) {
+    try {
+      return s.getGroups(RULE_NAME).size() > 0
+          ? Optional.of(ProxyAuthSettingsSchema.EXTENDED)
+          : checkIsSimpleSchema(s);
+    } catch (SettingsException ex) {
+      return checkIsSimpleSchema(s);
+    }
+  }
+
+  private static Optional<ProxyAuthSettingsSchema> checkIsSimpleSchema(Settings s) {
+    if (s.getAsArray(RULE_NAME) != null) {
+      return Optional.of(ProxyAuthSettingsSchema.SIMPLE);
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  private static Optional<ProxyAuthSyncRule> parseExtendedSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
+      throws ConfigMalformedException {
+    Map<String, Settings> proxyAuths = s.getGroups(RULE_NAME);
+    if (proxyAuths.size() == 0) return Optional.empty();
+
+    if (proxyAuths.size() != 1)
+      throw new ConfigMalformedException(String.format("Only one '%s' is expected within rule's group", RULE_NAME));
+
+    Map<String, ProxyAuthConfig> proxyAuthConfigByName = proxyAuthConfigs.stream()
+        .collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
+
+    Settings proxyAuthSettings = Lists.newArrayList(proxyAuths.values()).get(0);
+    String proxyAuthConfigName = proxyAuthSettings.get(PROXY_AUTH_CONFIG_ATTRIBUTE);
+    if (proxyAuthConfigName == null)
+      throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", NAME_ATTRIBUTE, RULE_NAME));
+
+    ProxyAuthConfig proxyAuthConfig = proxyAuthConfigByName.get(proxyAuthConfigName);
+    if (proxyAuthConfig == null)
+      throw new ConfigMalformedException(String.format("There is no proxy auth config with name '%s'", proxyAuthConfigName));
+
+    List<String> users = Lists.newArrayList(proxyAuthSettings.getAsArray(USERS_ATTRIBUTE));
+    if (users.isEmpty())
+      throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", USERS_ATTRIBUTE, RULE_NAME));
+
+    return Optional.of(new ProxyAuthSyncRule(proxyAuthConfig, users));
+  }
+
+  private static Optional<ProxyAuthSyncRule> parseSimpleSettings(Settings s) {
+    List<String> users = Lists.newArrayList(s.getAsArray(RULE_NAME));
+    if (users.isEmpty()) return Optional.empty();
+
+    return Optional.of(new ProxyAuthSyncRule(ProxyAuthConfig.DEFAULT, users));
+  }
+
+  private ProxyAuthSyncRule(ProxyAuthConfig config, List<String> users) {
+    this.config = config;
+    userListMatcher = new MatcherWithWildcards(
+        users.stream()
+            .filter(i -> !Strings.isNullOrEmpty(i))
+            .distinct()
+            .collect(Collectors.toSet())
+    );
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String h = getUser(rc.getHeaders());
+    Optional<LoggedUser> optUser = getUser(rc.getHeaders());
 
-    if (h == null) {
+    if (!optUser.isPresent()) {
       return NO_MATCH;
     }
 
-    if (h.length() == 0) {
-      return NO_MATCH;
-    }
-
-    RuleExitResult res =  userListMatcher.match(h) ? MATCH : NO_MATCH;
-    if(res.isMatch()){
-      rc.setLoggedInUser(getUser(rc.getHeaders()));
+    LoggedUser user = optUser.get();
+    RuleExitResult res = userListMatcher.match(user.getId()) ? MATCH : NO_MATCH;
+    if (res.isMatch()) {
+      rc.setLoggedInUser(user);
     }
     return res;
+  }
+
+  private Optional<LoggedUser> getUser(Map<String, String> headers) {
+    String userId = headers.get(config.getUserIdHeader());
+    if (userId == null || userId.trim().length() == 0)
+      return Optional.empty();
+    return Optional.of(new LoggedUser(userId));
   }
 
 }

@@ -29,6 +29,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 
+import java.util.Optional;
 import java.util.Set;
 
 
@@ -68,6 +69,14 @@ public class KibanaAccessSyncRule extends SyncRule {
   private String kibanaIndex = ".kibana";
   private Boolean canModifyKibana;
   private Boolean isAdmin = false;
+
+  public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new KibanaAccessSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
     super();

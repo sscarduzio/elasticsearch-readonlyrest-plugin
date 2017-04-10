@@ -27,12 +27,21 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.rest.RestRequest;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 14/02/2016.
  */
 public class MethodsSyncRule extends SyncRule {
   private List<String> allowedMethods;
+
+  public static Optional<MethodsSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new MethodsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public MethodsSyncRule(Settings s) throws RuleNotConfiguredException {
     super();

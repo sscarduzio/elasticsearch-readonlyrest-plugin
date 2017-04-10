@@ -26,6 +26,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.ArrayList;
@@ -46,29 +48,32 @@ public class ACL {
   private static final String RULES_PREFIX = "readonlyrest.access_control_rules";
   private static final String USERS_PREFIX = "readonlyrest.users";
   private static final String LDAPS_PREFIX = "readonlyrest.ldaps";
+  private static final String PROXIES_PREFIX = "readonlyrest.proxy_auth_configs";
+  private static final String USER_GROUPS_PROVIDERS_PREFIX = "readonlyrest.user_groups_providers";
 
   private final Logger logger = Loggers.getLogger(getClass());
-  private final Client client;
-  private final ConfigurationHelper conf;
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
   private boolean basicAuthConfigured = false;
 
   public ACL(Client client, ConfigurationHelper conf) {
-    this.conf = conf;
-    this.client = client;
     Settings s = conf.settings;
     Map<String, Settings> blocksMap = s.getGroups(RULES_PREFIX);
-    List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values());
+    List<ProxyAuthConfig> proxyAuthConfigs = parseProxyAuthSettings(s.getGroups(PROXIES_PREFIX).values());
+    List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values(), proxyAuthConfigs);
     List<LdapConfig> ldaps = parseLdapSettings(s.getGroups(LDAPS_PREFIX).values());
-    for (Integer i = 0; i < blocksMap.size(); i++) {
-      Block block = new Block(blocksMap.get(i.toString()), users, ldaps, logger, client, conf);
-      blocks.add(block);
-      if (block.isAuthHeaderAccepted()) {
-        basicAuthConfigured = true;
-      }
-      logger.info("ADDING as #" + i + ":\t" + block.toString());
-    }
+    List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
+        s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
+    );
+    blocksMap.entrySet()
+        .forEach(entry -> {
+          Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs, logger);
+          blocks.add(block);
+          if (block.isAuthHeaderAccepted()) {
+            basicAuthConfigured = true;
+          }
+          logger.info("ADDING #" + entry.getKey() + ":\t" + block.toString());
+        });
   }
 
   public boolean isBasicAuthConfigured() {
@@ -78,33 +83,44 @@ public class ACL {
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
     logger.debug("checking request:" + rc);
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
-      blocks.iterator(),
-      block -> block.check(rc),
-      checkResult -> {
-        if (checkResult.isMatch()) {
-          logger.info("request: " + rc + " matched block: " + checkResult);
-          return true;
+        blocks.iterator(),
+        block -> block.check(rc),
+        checkResult -> {
+          if (checkResult.isMatch()) {
+            logger.info("request: " + rc + " matched block: " + checkResult);
+            return true;
+          } else {
+            return false;
+          }
+        },
+        nothing -> {
+          logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
+          return BlockExitResult.noMatch();
         }
-        else {
-          return false;
-        }
-      },
-      nothing -> {
-        logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
-        return BlockExitResult.noMatch();
-      }
     );
   }
 
-  private List<User> parseUserSettings(Collection<Settings> userSettings) {
+  private List<User> parseUserSettings(Collection<Settings> userSettings, List<ProxyAuthConfig> proxyAuthConfigs) {
     return userSettings.stream()
-      .map(User::fromSettings)
-      .collect(Collectors.toList());
+        .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
+        .collect(Collectors.toList());
   }
 
   private List<LdapConfig> parseLdapSettings(Collection<Settings> ldapSettings) {
     return ldapSettings.stream()
-      .map(LdapConfig::fromSettings)
-      .collect(Collectors.toList());
+        .map(LdapConfig::fromSettings)
+        .collect(Collectors.toList());
+  }
+
+  private List<ProxyAuthConfig> parseProxyAuthSettings(Collection<Settings> proxyAuthSettings) {
+    return proxyAuthSettings.stream()
+        .map(ProxyAuthConfig::fromSettings)
+        .collect(Collectors.toList());
+  }
+
+  private List<UserGroupProviderConfig> parseUserGroupsProviderSettings(Collection<Settings> groupProvidersSettings) {
+    return groupProvidersSettings.stream()
+        .map(UserGroupProviderConfig::fromSettings)
+        .collect(Collectors.toList());
   }
 }

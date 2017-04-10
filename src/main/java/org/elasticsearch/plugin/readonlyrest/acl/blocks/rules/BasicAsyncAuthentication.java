@@ -15,56 +15,47 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class GeneralAuthKeyAsyncRule extends AsyncRule {
-  private static final Logger logger = Loggers.getLogger(GeneralAuthKeyAsyncRule.class);
+public abstract class BasicAsyncAuthentication extends AsyncRule implements Authentication {
+  private static final Logger logger = Loggers.getLogger(BasicAsyncAuthentication.class);
 
   protected abstract CompletableFuture<Boolean> authenticate(String user, String password);
 
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
-    String authHeader = BasicAuthUtils.extractAuthFromHeader(rc.getHeaders().get("Authorization"));
+    Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(rc.getHeaders());
 
-    if (authHeader != null && logger.isDebugEnabled()) {
+    if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {
       try {
-        logger.info("Attempting Login as: " + BasicAuthUtils.getBasicAuthUser(rc.getHeaders()) + " rc: " + rc);
+        logger.info("Attempting Login as: " + optBasicAuth.get().getUserName() + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
     }
 
-    if (authHeader == null) {
+    if (!optBasicAuth.isPresent()) {
+      logger.warn("Basic auth header not present!");
       return CompletableFuture.completedFuture(NO_MATCH);
     }
 
-    String val = authHeader.trim();
-    if (val.length() == 0) {
-      return CompletableFuture.completedFuture(NO_MATCH);
-    }
-
-    String decodedProvided = new String(Base64.getDecoder().decode(authHeader), StandardCharsets.UTF_8);
-    String[] authData = decodedProvided.split(":");
-    if (authData.length != 2) {
-      return CompletableFuture.completedFuture(NO_MATCH);
-    }
-
-    return authenticate(authData[0], authData[1])
+    BasicAuth basicAuth = optBasicAuth.get();
+    return authenticate(basicAuth.getUserName(), basicAuth.getPassword())
       .thenApply(result -> {
         RuleExitResult r =  result != null && result ? MATCH : NO_MATCH;
         if(r.isMatch()){
-          rc.setLoggedInUser(BasicAuthUtils.getBasicAuthUser(rc.getHeaders()));
+          rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
         }
         return r;
       });

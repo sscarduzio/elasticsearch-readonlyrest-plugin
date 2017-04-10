@@ -27,6 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A GroupsSyncRule checks if a request containing Basic Authentication credentials
@@ -38,6 +39,14 @@ public class GroupsSyncRule extends SyncRule {
 
   private final List<User> users;
   private final List<String> groups;
+
+  public static Optional<GroupsSyncRule> fromSettings(Settings s, List<User> userList) {
+    try {
+      return Optional.of(new GroupsSyncRule(s, userList));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
 
   public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
     super();
