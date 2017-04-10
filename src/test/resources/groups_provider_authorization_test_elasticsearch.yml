@@ -29,9 +29,9 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      provider_roles_authorization:
-        - user_role_provider: "RolesService1"
-          roles: ["role1"]
+      groups_provider_authorization:
+        - user_groups_provider: "GroupsService1"
+          groups: ["group1"]
 
     - name: "::Facebook posts::"
       type: allow
@@ -40,9 +40,9 @@ readonlyrest:
       proxy_auth:
         - proxy_auth_config: "proxy1"
           users: ["*"]
-      provider_roles_authorization:
-        - user_role_provider: "RolesService2"
-          roles: ["role3"]
+      groups_provider_authorization:
+        - user_groups_provider: "GroupsService2"
+          groups: ["group3"]
           cache_ttl_in_sec: 60
 
     proxy_auth_configs:
@@ -50,16 +50,16 @@ readonlyrest:
     - name: "proxy1"
       user_id_header: "X-Auth-Token"
 
-    user_role_providers:
+    user_groups_providers:
 
-    - name: RolesService1
-      role_endpoint: "http://{ROLES1}:8080/roles"
+    - name: GroupsService1
+      groups_endpoint: "http://{GROUPS1}:8080/groups"
       auth_token_name: "user"
       auth_token_passed_as: QUERY_PARAM
-      response_roles_json_path: "$..roles[?(@.name)].name"
+      response_groups_json_path: "$..groups[?(@.name)].name"
 
-    - name: RolesService2
-      role_endpoint: "http://{ROLES2}:8080/roles"
+    - name: GroupsService2
+      groups_endpoint: "http://{GROUPS2}:8080/groups"
       auth_token_name: "auth_token"
       auth_token_passed_as: HEADER
-      response_roles_json_path: "$..roles[?(@.name)].name"
+      response_groups_json_path: "$..groups[?(@.name)].name"

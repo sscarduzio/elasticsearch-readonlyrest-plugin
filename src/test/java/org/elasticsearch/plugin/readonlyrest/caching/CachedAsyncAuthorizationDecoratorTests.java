@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.caching;
 
-import com.google.common.collect.Sets;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -27,7 +26,6 @@ import org.mockito.Mockito;
 
 import java.time.Duration;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
@@ -37,6 +35,8 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+et;
 
 public class CachedAsyncAuthorizationDecoratorTests {
 
@@ -64,7 +64,6 @@ public class CachedAsyncAuthorizationDecoratorTests {
   @Test
   public void testIfAuthorizationIsCached() throws Exception {
     LoggedUser user = new LoggedUser("tester");
-    Set<String> roles = Sets.newHashSet("role1", "role2");
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
     when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
@@ -84,7 +83,6 @@ public class CachedAsyncAuthorizationDecoratorTests {
   @Test
   public void testIfCachedResultExpires() throws Exception {
     LoggedUser user = new LoggedUser("tester");
-    Set<String> roles = Sets.newHashSet("role1", "role2");
     Duration ttl = Duration.ofSeconds(1);
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);

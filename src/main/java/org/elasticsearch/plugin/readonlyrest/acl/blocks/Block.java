@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
@@ -40,13 +41,12 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsync
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProviderRolesAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserRoleProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
@@ -76,7 +76,7 @@ public class Block {
                List<User> userList,
                List<LdapConfig> ldapList,
                List<ProxyAuthConfig> proxyAuthConfigs,
-               List<UserRoleProviderConfig> roleProviderConfigs,
+               List<UserGroupProviderConfig> groupsProviderConfigs,
                Logger logger) {
     this.name = settings.get("name");
     String sPolicy = settings.get("type");
@@ -89,7 +89,7 @@ public class Block {
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
-    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapList, roleProviderConfigs);
+    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapList, groupsProviderConfigs);
     authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationRule);
   }
 
@@ -167,7 +167,7 @@ public class Block {
   }
 
   private Set<AsyncRule> collectRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs,
-                                      List<LdapConfig> ldapConfigs, List<UserRoleProviderConfig> roleProviderConfigs) {
+                                      List<LdapConfig> ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs) {
     Set<AsyncRule> rules = Sets.newLinkedHashSet();
     // Won't add the condition if its configuration is not found
 
@@ -197,7 +197,7 @@ public class Block {
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
 
     // all authorization rules should be placed before any authentication rule
-    ProviderRolesAuthorizationAsyncRule.fromSettings(s, roleProviderConfigs)
+    GroupsProviderAuthorizationAsyncRule.fromSettings(s, groupsProviderConfigs)
         .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // At the end the sync rule chain are those that can mutate

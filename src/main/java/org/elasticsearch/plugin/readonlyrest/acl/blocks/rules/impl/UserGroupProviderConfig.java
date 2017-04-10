@@ -25,43 +25,43 @@ import java.util.function.Function;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeValue;
 
-public class UserRoleProviderConfig {
+public class UserGroupProviderConfig {
 
   private static String ATTRIBUTE_NAME = "name";
-  private static String ATTRIBUTE_ROLE_ENDPOINT = "role_endpoint";
+  private static String ATTRIBUTE_GROUP_ENDPOINT = "groups_endpoint";
   private static String ATTRIBUTE_AUTH_TOKEN_NAME = "auth_token_name";
   private static String ATTRIBUTE_AUTH_TOKEN_PASSED_AS = "auth_token_passed_as";
-  private static String ATTRIBUTE_RESPONSE_ROLES_JSON_PATH = "response_roles_json_path";
+  private static String ATTRIBUTE_RESPONSE_GROUPS_JSON_PATH = "response_groups_json_path";
 
   private final String name;
   private final URI endpoint;
   private final String authTokenName;
   private final TokenPassingMethod passingMethod;
-  private final String responseRolesJsonPath;
+  private final String responseGroupsJsonPath;
 
   public enum TokenPassingMethod {
     QUERY, HEADER
   }
 
-  private UserRoleProviderConfig(String name,
-                                 URI endpoint,
-                                 String authTokenName,
-                                 TokenPassingMethod passingMethod,
-                                 String responseRolesJsonPath) {
+  private UserGroupProviderConfig(String name,
+                                  URI endpoint,
+                                  String authTokenName,
+                                  TokenPassingMethod passingMethod,
+                                  String responseGroupsJsonPath) {
     this.name = name;
     this.endpoint = endpoint;
     this.authTokenName = authTokenName;
     this.passingMethod = passingMethod;
-    this.responseRolesJsonPath = responseRolesJsonPath;
+    this.responseGroupsJsonPath = responseGroupsJsonPath;
   }
 
-  public static UserRoleProviderConfig fromSettings(Settings settings) throws ConfigMalformedException {
-    return new UserRoleProviderConfig(
+  public static UserGroupProviderConfig fromSettings(Settings settings) throws ConfigMalformedException {
+    return new UserGroupProviderConfig(
         requiredAttributeValue(ATTRIBUTE_NAME, settings),
-        requiredAttributeValue(ATTRIBUTE_ROLE_ENDPOINT, settings, ConfigReaderHelper.toUri()),
+        requiredAttributeValue(ATTRIBUTE_GROUP_ENDPOINT, settings, ConfigReaderHelper.toUri()),
         requiredAttributeValue(ATTRIBUTE_AUTH_TOKEN_NAME, settings),
         requiredAttributeValue(ATTRIBUTE_AUTH_TOKEN_PASSED_AS, settings, fromStringToTokenPassingMethod()),
-        requiredAttributeValue(ATTRIBUTE_RESPONSE_ROLES_JSON_PATH, settings)
+        requiredAttributeValue(ATTRIBUTE_RESPONSE_GROUPS_JSON_PATH, settings)
     );
   }
 
@@ -81,8 +81,8 @@ public class UserRoleProviderConfig {
     return passingMethod;
   }
 
-  public String getResponseRolesJsonPath() {
-    return responseRolesJsonPath;
+  public String getResponseGroupsJsonPath() {
+    return responseGroupsJsonPath;
   }
 
   private static Function<String, TokenPassingMethod> fromStringToTokenPassingMethod() {

@@ -47,50 +47,50 @@ import java.util.stream.Collectors;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeArrayValue;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeValue;
 
-public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
+public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
-  private static final Logger logger = Loggers.getLogger(ProviderRolesAuthorizationAsyncRule.class);
+  private static final Logger logger = Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
 
-  private static final String RULE_NAME = "provider_roles_authorization";
-  private static final String ATTRIBUTE_USER_ROLE_PROVIDER = "user_role_provider";
-  private static final String ATTRIBUTE_ROLES = "roles";
+  private static final String RULE_NAME = "groups_provider_authorization";
+  private static final String ATTRIBUTE_USER_GROUPS_PROVIDER = "user_groups_provider";
+  private static final String ATTRIBUTE_GROUPS = "groups";
 
-  private final ProviderRolesAuthDefinition providerRolesAuthDefinition;
+  private final ProviderGroupsAuthDefinition providerGroupsAuthDefinition;
   private final RestClient client;
 
-  private ProviderRolesAuthorizationAsyncRule(ProviderRolesAuthDefinition definition) {
-    this.providerRolesAuthDefinition = definition;
-    URI roleBasedAuthEndpoint = providerRolesAuthDefinition.config.getEndpoint();
+  private GroupsProviderAuthorizationAsyncRule(ProviderGroupsAuthDefinition definition) {
+    this.providerGroupsAuthDefinition = definition;
+    URI groupBasedAuthEndpoint = providerGroupsAuthDefinition.config.getEndpoint();
     this.client = RestClient.builder(
         new HttpHost(
-            roleBasedAuthEndpoint.getHost(),
-            roleBasedAuthEndpoint.getPort()
+            groupBasedAuthEndpoint.getHost(),
+            groupBasedAuthEndpoint.getPort()
         )
     ).build();
   }
 
-  public static Optional<ProviderRolesAuthorizationAsyncRule> fromSettings(Settings s,
-                                                                           List<UserRoleProviderConfig> roleProviderConfigs)
+  public static Optional<GroupsProviderAuthorizationAsyncRule> fromSettings(Settings s,
+                                                                            List<UserGroupProviderConfig> groupProviderConfigs)
       throws ConfigMalformedException {
 
-    Map<String, Settings> roleBaseAuthElements = s.getGroups(RULE_NAME);
-    if (roleBaseAuthElements.isEmpty()) return Optional.empty();
-    if (roleBaseAuthElements.size() != 1) {
+    Map<String, Settings> groupBaseAuthElements = s.getGroups(RULE_NAME);
+    if (groupBaseAuthElements.isEmpty()) return Optional.empty();
+    if (groupBaseAuthElements.size() != 1) {
       throw new ConfigMalformedException("Malformed rule" + RULE_NAME);
     }
-    Settings roleBaseAuthSettings = Lists.newArrayList(roleBaseAuthElements.values()).get(0);
+    Settings groupBaseAuthSettings = Lists.newArrayList(groupBaseAuthElements.values()).get(0);
 
-    Map<String, UserRoleProviderConfig> userRoleProviderConfigByName = roleProviderConfigs.stream()
-        .collect(Collectors.toMap(UserRoleProviderConfig::getName, Function.identity()));
+    Map<String, UserGroupProviderConfig> userGroupProviderConfigByName = groupProviderConfigs.stream()
+        .collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));
 
-    String name = requiredAttributeValue(ATTRIBUTE_USER_ROLE_PROVIDER, roleBaseAuthSettings);
-    if (!userRoleProviderConfigByName.containsKey(name)) {
-      throw new ConfigMalformedException("User role provider with name [" + name + "] wasn't defined.");
+    String name = requiredAttributeValue(ATTRIBUTE_USER_GROUPS_PROVIDER, groupBaseAuthSettings);
+    if (!userGroupProviderConfigByName.containsKey(name)) {
+      throw new ConfigMalformedException("User groups provider with name [" + name + "] wasn't defined.");
     }
-    List<String> roles = requiredAttributeArrayValue(ATTRIBUTE_ROLES, roleBaseAuthSettings);
+    List<String> groups = requiredAttributeArrayValue(ATTRIBUTE_GROUPS, groupBaseAuthSettings);
 
-    return Optional.of(new ProviderRolesAuthorizationAsyncRule(
-        new ProviderRolesAuthDefinition(userRoleProviderConfigByName.get(name), roles)
+    return Optional.of(new GroupsProviderAuthorizationAsyncRule(
+        new ProviderGroupsAuthDefinition(userGroupProviderConfigByName.get(name), groups)
     ));
   }
 
@@ -99,9 +99,9 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
     final CompletableFuture<Boolean> promise = new CompletableFuture<>();
     client.performRequestAsync(
         "GET",
-        providerRolesAuthDefinition.config.getEndpoint().getPath(),
+        providerGroupsAuthDefinition.config.getEndpoint().getPath(),
         createParams(user),
-        new RoleBasedAuthResponseListener<>(promise, isAuthorized()),
+        new GroupBasedAuthResponseListener<>(promise, isAuthorized()),
         createHeaders(user).toArray(new Header[0])
     );
     return promise;
@@ -109,15 +109,15 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
 
   private Map<String, String> createParams(LoggedUser user) {
     Map<String, String> params = new HashMap<>();
-    if(providerRolesAuthDefinition.config.getPassingMethod() == UserRoleProviderConfig.TokenPassingMethod.QUERY) {
-      params.put(providerRolesAuthDefinition.config.getAuthTokenName(), user.getId());
+    if(providerGroupsAuthDefinition.config.getPassingMethod() == UserGroupProviderConfig.TokenPassingMethod.QUERY) {
+      params.put(providerGroupsAuthDefinition.config.getAuthTokenName(), user.getId());
     }
     return params;
   }
 
   private List<Header> createHeaders(LoggedUser user) {
-    return providerRolesAuthDefinition.config.getPassingMethod() == UserRoleProviderConfig.TokenPassingMethod.HEADER
-        ? Lists.newArrayList(new BasicHeader(providerRolesAuthDefinition.config.getAuthTokenName(), user.getId()))
+    return providerGroupsAuthDefinition.config.getPassingMethod() == UserGroupProviderConfig.TokenPassingMethod.HEADER
+        ? Lists.newArrayList(new BasicHeader(providerGroupsAuthDefinition.config.getAuthTokenName(), user.getId()))
         : Lists.newArrayList();
   }
 
@@ -125,17 +125,17 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
     return response -> {
       if (response.getStatusLine().getStatusCode() == 200) {
         try {
-          List<String> roles = JsonPath.read(
+          List<String> groups = JsonPath.read(
               response.getEntity().getContent(),
-              providerRolesAuthDefinition.config.getResponseRolesJsonPath()
+              providerGroupsAuthDefinition.config.getResponseGroupsJsonPath()
           );
-          logger.debug("Roles returned by role provider '" + providerRolesAuthDefinition.config.getName() + "': "
-              + Joiner.on(",").join(roles));
+          logger.debug("Groups returned by groups provider '" + providerGroupsAuthDefinition.config.getName() + "': "
+              + Joiner.on(",").join(groups));
 
-          Sets.SetView<String> intersection = Sets.intersection(providerRolesAuthDefinition.roles, Sets.newHashSet(roles));
+          Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(roles));
           return !intersection.isEmpty();
         } catch (IOException e) {
-          logger.error("Role based authorization response exception", e);
+          logger.error("Group based authorization response exception", e);
           return false;
         }
       }
@@ -149,23 +149,23 @@ public class ProviderRolesAuthorizationAsyncRule extends AsyncAuthorization {
     return RULE_NAME;
   }
 
-  private static class ProviderRolesAuthDefinition {
-    private final UserRoleProviderConfig config;
-    private final ImmutableSet<String> roles;
+  private static class ProviderGroupsAuthDefinition {
+    private final UserGroupProviderConfig config;
+    private final ImmutableSet<String> groups;
 
-    ProviderRolesAuthDefinition(UserRoleProviderConfig config, List<String> roles) {
+    ProviderGroupsAuthDefinition(UserGroupProviderConfig config, List<String> groups) {
       this.config = config;
-      this.roles = ImmutableSet.copyOf(roles);
+      this.groups = ImmutableSet.copyOf(groups);
     }
   }
 
-  private static class RoleBasedAuthResponseListener<T> implements ResponseListener {
+  private static class GroupBasedAuthResponseListener<T> implements ResponseListener {
 
     private final CompletableFuture<T> promise;
     private final Function<Response, T> converter;
 
-    RoleBasedAuthResponseListener(CompletableFuture<T> promise,
-                                  Function<Response, T> converter) {
+    GroupBasedAuthResponseListener(CompletableFuture<T> promise,
+                                   Function<Response, T> converter) {
       this.promise = promise;
       this.converter = converter;
     }
