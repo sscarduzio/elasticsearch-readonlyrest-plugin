@@ -132,7 +132,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
           logger.debug("Groups returned by groups provider '" + providerGroupsAuthDefinition.config.getName() + "': "
               + Joiner.on(",").join(groups));
 
-          Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(roles));
+          Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(groups));
           return !intersection.isEmpty();
         } catch (IOException e) {
           logger.error("Group based authorization response exception", e);

@@ -30,22 +30,30 @@ import java.util.concurrent.TimeUnit;
 public class LdapClientWithCacheDecorator implements LdapClient {
 
   private final LdapClient underlyingClient;
-  private final Cache<String, LdapUserWithHashedPassword> cache;
+  private final Cache<String, LdapUserWithHashedPassword> ldapUsersWithPasswordCache;
+  private final Cache<String, Optional<LdapUser>> ldapUsersCache;
+  private final Cache<String, Set<LdapGroup>> ldapUserGroupsCache;
 
   public LdapClientWithCacheDecorator(LdapClient underlyingClient, Duration ttl) {
     this.underlyingClient = underlyingClient;
-    this.cache = CacheBuilder.newBuilder()
+    this.ldapUsersWithPasswordCache = CacheBuilder.newBuilder()
       .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
       .build();
+    this.ldapUsersCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+        .build();
+    this.ldapUserGroupsCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+        .build();
   }
 
   @Override
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
-    LdapUserWithHashedPassword cachedUser = cache.getIfPresent(credentials.getUserName());
+    LdapUserWithHashedPassword cachedUser = ldapUsersWithPasswordCache.getIfPresent(credentials.getUserName());
     if (cachedUser == null) {
       return underlyingClient.authenticate(credentials)
         .thenApply(newUser -> {
-          newUser.ifPresent(ldapUser -> cache.put(
+          newUser.ifPresent(ldapUser -> ldapUsersWithPasswordCache.put(
             credentials.getUserName(),
             new LdapUserWithHashedPassword(ldapUser, credentials.getHashedPassword())
           ));
@@ -61,14 +69,28 @@ public class LdapClientWithCacheDecorator implements LdapClient {
 
   @Override
   public CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user) {
-    // todo: implement
-    return null;
+    Set<LdapGroup> ldapUserGroup = ldapUserGroupsCache.getIfPresent(user.getUid());
+    if(ldapUserGroup == null) {
+      return underlyingClient.userGroups(user)
+          .thenApply(groups -> {
+            ldapUserGroupsCache.put(user.getUid(), groups);
+            return groups;
+          });
+    }
+    return CompletableFuture.completedFuture(ldapUserGroup);
   }
 
   @Override
   public CompletableFuture<Optional<LdapUser>> userById(String userId) {
-    // todo: implement
-    return null;
+    Optional<LdapUser> ldapUser = ldapUsersCache.getIfPresent(userId);
+    if(ldapUser == null) {
+      return underlyingClient.userById(userId)
+          .thenApply(user -> {
+            ldapUsersCache.put(userId, user);
+            return user;
+          });
+    }
+    return CompletableFuture.completedFuture(ldapUser);
   }
 
   private static class LdapUserWithHashedPassword {
