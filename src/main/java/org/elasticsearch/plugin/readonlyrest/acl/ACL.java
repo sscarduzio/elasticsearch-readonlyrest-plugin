@@ -62,7 +62,9 @@ public class ACL {
     List<ProxyAuthConfig> proxyAuthConfigs = parseProxyAuthSettings(s.getGroups(PROXIES_PREFIX).values());
     List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values(), proxyAuthConfigs);
     List<LdapConfig> ldaps = parseLdapSettings(s.getGroups(LDAPS_PREFIX).values());
-    List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values());
+    List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
+        s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
+    );
     blocksMap.entrySet()
         .forEach(entry -> {
           Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs, logger);
