@@ -26,6 +26,8 @@ import org.elasticsearch.plugin.readonlyrest.ldap.UnboundidLdapClient;
 import java.time.Duration;
 import java.util.Optional;
 
+import static org.elasticsearch.plugin.readonlyrest.ldap.LdapClientWithLoggingDecorator.wrapInLoggingIfIsLoggingEnabled;
+
 public class LdapConfig {
 
   private static String ATTRIBUTE_NAME = "name";
@@ -77,8 +79,9 @@ public class LdapConfig {
       .orElseGet(builder::build);
 
     return new LdapConfig(
-      name,
-      cacheTtl.isZero() ? client : new LdapClientWithCacheDecorator(client, cacheTtl)
+        name,
+        wrapInLoggingIfIsLoggingEnabled(name,
+            cacheTtl.isZero() ? client : new LdapClientWithCacheDecorator(client, cacheTtl))
     );
   }
 
