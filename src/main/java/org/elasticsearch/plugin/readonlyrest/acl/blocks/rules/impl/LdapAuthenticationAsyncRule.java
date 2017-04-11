@@ -23,7 +23,10 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
         .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
 
     return Optional.ofNullable(s.get(RULE_NAME))
-        .flatMap(ldapName -> Optional.ofNullable(ldapClientsByName.get(ldapName)))
+        .map(ldapName ->
+            Optional.ofNullable(ldapClientsByName.get(ldapName)).<ConfigMalformedException>orElseThrow(() ->
+                new ConfigMalformedException("LDAP with name [" + ldapName + "] wasn't defined."))
+        )
         .map(LdapAuthenticationAsyncRule::new);
   }
 

@@ -38,6 +38,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewrit
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
@@ -61,6 +63,7 @@ import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYA
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -195,8 +198,12 @@ public class Block {
 
     // then we could check potentially slow async rules
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
+    LdapAuthenticationAsyncRule.fromSettings(s, ldapConfigs)
+        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // all authorization rules should be placed before any authentication rule
+    LdapAuthorizationAsyncRule.fromSettings(s, ldapConfigs)
+        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
     GroupsProviderAuthorizationAsyncRule.fromSettings(s, groupsProviderConfigs)
         .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
