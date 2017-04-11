@@ -19,7 +19,9 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
@@ -29,23 +31,28 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
+
 public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Authorization {
 
   private static final String RULE_NAME = "ldap_auth";
 
-  private final LdapAuthenticationAsyncRule authentication;
-  private final LdapAuthorizationAsyncRule authorization;
+  private final BasicAsyncAuthentication authentication;
+  private final AsyncAuthorization authorization;
 
-  private LdapAuthAsyncRule(LdapAuthenticationAsyncRule authentication, LdapAuthorizationAsyncRule authorization) {
+  private LdapAuthAsyncRule(BasicAsyncAuthentication authentication, AsyncAuthorization authorization) {
     this.authentication = authentication;
     this.authorization = authorization;
   }
 
-  public static Optional<LdapAuthAsyncRule> fromSettings(Settings s, List<LdapConfig> ldapConfigs) throws ConfigMalformedException {
+  public static Optional<LdapAuthAsyncRule> fromSettings(Settings s,
+                                                         List<LdapConfig> ldapConfigs) throws ConfigMalformedException {
     return LdapAuthorizationAsyncRule.fromSettings(RULE_NAME, s, ldapConfigs)
-        .map(authorization -> new LdapAuthAsyncRule(
-            new LdapAuthenticationAsyncRule(authorization.getClient()),
-            authorization));
+        .map(authorization ->  new LdapAuthAsyncRule(
+            wrapInCacheIfCacheIsEnabled(new LdapAuthenticationAsyncRule(authorization.getClient()), s),
+            wrapInCacheIfCacheIsEnabled(authorization, s)
+        ));
   }
 
   @Override

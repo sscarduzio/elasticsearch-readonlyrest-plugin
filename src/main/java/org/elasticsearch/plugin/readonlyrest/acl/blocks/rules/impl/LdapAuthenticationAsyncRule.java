@@ -1,5 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
@@ -15,19 +16,28 @@ import java.util.stream.Collectors;
 public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private static final String RULE_NAME = "ldap_authentication";
+  private static final String LDAP_NAME = "name";
+
   private final LdapClient client;
 
   public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s,
                                                                    List<LdapConfig> ldapConfigs) throws ConfigMalformedException {
+    Map<String, Settings> ldapAuths = s.getGroups(RULE_NAME);
+    if (ldapAuths.isEmpty()) return Optional.empty();
+    if (ldapAuths.size() != 1)
+      throw new ConfigMalformedException("Only one [" + RULE_NAME + "] in group could be defined");
+
     Map<String, LdapClient> ldapClientsByName = ldapConfigs.stream()
         .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
 
-    return Optional.ofNullable(s.get(RULE_NAME))
-        .map(ldapName ->
-            Optional.ofNullable(ldapClientsByName.get(ldapName)).<ConfigMalformedException>orElseThrow(() ->
-                new ConfigMalformedException("LDAP with name [" + ldapName + "] wasn't defined."))
-        )
-        .map(LdapAuthenticationAsyncRule::new);
+    Settings ldapSettings = Lists.newArrayList(ldapAuths.values()).get(0);
+    String name = ldapSettings.get(LDAP_NAME);
+    if (name == null)
+      throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");
+    if (!ldapClientsByName.containsKey(name)) {
+      throw new ConfigMalformedException("LDAP with name [" + name + "] wasn't defined.");
+    }
+    return Optional.of(new LdapAuthenticationAsyncRule(ldapClientsByName.get(name)));
   }
 
   LdapAuthenticationAsyncRule(LdapClient client) {

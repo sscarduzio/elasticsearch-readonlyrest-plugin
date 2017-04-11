@@ -116,7 +116,8 @@ readonlyrest:
     - name: "::Tweets::"
       type: allow
       methods: GET
-      ldap_authentication: "ldap1"
+      ldap_authentication:
+          - name: "ldap1"
       ldap_authorization:
           - name: "ldap1"
             groups: ["group1"]
@@ -125,7 +126,8 @@ readonlyrest:
     - name: "::Facebook posts::"
       type: allow
       methods: GET
-      ldap_authentication: "ldap2"
+      ldap_authentication:
+          - name: "ldap2"
       ldap_authorization:
           - name: "ldap2"
             groups: ["group3"]

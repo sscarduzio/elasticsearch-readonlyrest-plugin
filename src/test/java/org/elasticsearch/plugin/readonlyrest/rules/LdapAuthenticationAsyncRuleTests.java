@@ -1,13 +1,9 @@
 package org.elasticsearch.plugin.readonlyrest.rules;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
@@ -16,14 +12,12 @@ import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
 import org.junit.Test;
 
-import java.util.Base64;
 import java.util.Optional;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.mocks.RequestContextMock.mockedRequestContext;
 import static org.elasticsearch.plugin.readonlyrest.utils.settings.LdapConfigHelper.mockLdapConfig;
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+
 
 public class LdapAuthenticationAsyncRuleTests {
 
@@ -32,7 +26,7 @@ public class LdapAuthenticationAsyncRuleTests {
     LdapConfig config1 = mockLdapConfig("ldap1");
     LdapConfig config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
-        .put("ldap_authentication", "ldap1")
+        .put("ldap_authentication.0.name", "ldap1")
         .build();
 
     Optional<LdapAuthenticationAsyncRule> rule =
@@ -45,7 +39,7 @@ public class LdapAuthenticationAsyncRuleTests {
     LdapConfig config1 = mockLdapConfig("ldap1");
     LdapConfig config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
-        .put("ldap_authentication", "ldap3")
+        .put("ldap_authentication.0.name", "ldap3")
         .build();
 
     LdapAuthenticationAsyncRule.fromSettings(blockSettings, Lists.newArrayList(config1, config2));
@@ -56,7 +50,7 @@ public class LdapAuthenticationAsyncRuleTests {
     LdapConfig config1 = mockLdapConfig("ldap1", Optional.empty());
     LdapConfig config2 = mockLdapConfig("ldap2", Optional.empty());
     Settings blockSettings = Settings.builder()
-        .put("ldap_authentication", "ldap1")
+        .put("ldap_authentication.0.name", "ldap1")
         .build();
 
     LdapAuthenticationAsyncRule rule =
@@ -76,7 +70,7 @@ public class LdapAuthenticationAsyncRuleTests {
         Sets.newHashSet(new LdapGroup("group2"))
     )));
     Settings blockSettings = Settings.builder()
-        .put("ldap_authentication", "ldap2")
+        .put("ldap_authentication.0.name", "ldap2")
         .build();
 
     LdapAuthenticationAsyncRule rule =
