@@ -20,7 +20,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.settings.SettingsException;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
@@ -29,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.util.List;
 import java.util.Map;
@@ -46,77 +46,50 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
   private static final String USERS_ATTRIBUTE = "users";
   private static final String PROXY_AUTH_CONFIG_ATTRIBUTE = "proxy_auth_config";
 
-  private enum ProxyAuthSettingsSchema {
-    SIMPLE, EXTENDED
-  }
-
   private final ProxyAuthConfig config;
   private final MatcherWithWildcards userListMatcher;
 
   public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
       throws ConfigMalformedException {
-    Optional<ProxyAuthSettingsSchema> proxyAuthSettingsSchema = recognizeProxyAuthSettingsSchema(s);
-    if (!proxyAuthSettingsSchema.isPresent()) return Optional.empty();
-    switch (proxyAuthSettingsSchema.get()) {
-      case SIMPLE:
-        return parseSimpleSettings(s);
-      case EXTENDED:
-        return parseExtendedSettings(s, proxyAuthConfigs);
-      default:
-        throw new IllegalStateException("Unknown auth setting schema");
-    }
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(), parseExtendedSettings(proxyAuthConfigs));
   }
 
-  private static Optional<ProxyAuthSettingsSchema> recognizeProxyAuthSettingsSchema(Settings s) {
-    try {
-      return s.getGroups(RULE_NAME).size() > 0
-          ? Optional.of(ProxyAuthSettingsSchema.EXTENDED)
-          : checkIsSimpleSchema(s);
-    } catch (SettingsException ex) {
-      return checkIsSimpleSchema(s);
-    }
+  private static Function<Settings, Optional<ProxyAuthSyncRule>> parseSimpleSettings() {
+    return settings -> {
+      List<String> users = Lists.newArrayList(settings.getAsArray(RULE_NAME));
+      if (users.isEmpty()) return Optional.empty();
+
+      return Optional.of(new ProxyAuthSyncRule(ProxyAuthConfig.DEFAULT, users));
+    };
   }
 
-  private static Optional<ProxyAuthSettingsSchema> checkIsSimpleSchema(Settings s) {
-    if (s.getAsArray(RULE_NAME) != null) {
-      return Optional.of(ProxyAuthSettingsSchema.SIMPLE);
-    } else {
-      return Optional.empty();
-    }
-  }
+  private static Function<Settings, Optional<ProxyAuthSyncRule>> parseExtendedSettings(
+      List<ProxyAuthConfig> proxyAuthConfigs) {
+    return settings -> {
+      Map<String, Settings> proxyAuths = settings.getGroups(RULE_NAME);
+      if (proxyAuths.size() == 0) return Optional.empty();
 
-  private static Optional<ProxyAuthSyncRule> parseExtendedSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
-      throws ConfigMalformedException {
-    Map<String, Settings> proxyAuths = s.getGroups(RULE_NAME);
-    if (proxyAuths.size() == 0) return Optional.empty();
+      if (proxyAuths.size() != 1)
+        throw new ConfigMalformedException(String.format("Only one '%s' is expected within rule's group", RULE_NAME));
 
-    if (proxyAuths.size() != 1)
-      throw new ConfigMalformedException(String.format("Only one '%s' is expected within rule's group", RULE_NAME));
+      Map<String, ProxyAuthConfig> proxyAuthConfigByName = proxyAuthConfigs.stream()
+          .collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
 
-    Map<String, ProxyAuthConfig> proxyAuthConfigByName = proxyAuthConfigs.stream()
-        .collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
+      Settings proxyAuthSettings = Lists.newArrayList(proxyAuths.values()).get(0);
+      String proxyAuthConfigName = proxyAuthSettings.get(PROXY_AUTH_CONFIG_ATTRIBUTE);
+      if (proxyAuthConfigName == null)
+        throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", NAME_ATTRIBUTE, RULE_NAME));
 
-    Settings proxyAuthSettings = Lists.newArrayList(proxyAuths.values()).get(0);
-    String proxyAuthConfigName = proxyAuthSettings.get(PROXY_AUTH_CONFIG_ATTRIBUTE);
-    if (proxyAuthConfigName == null)
-      throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", NAME_ATTRIBUTE, RULE_NAME));
+      ProxyAuthConfig proxyAuthConfig = proxyAuthConfigByName.get(proxyAuthConfigName);
+      if (proxyAuthConfig == null)
+        throw new ConfigMalformedException(String.format("There is no proxy auth config with name '%s'", proxyAuthConfigName));
 
-    ProxyAuthConfig proxyAuthConfig = proxyAuthConfigByName.get(proxyAuthConfigName);
-    if (proxyAuthConfig == null)
-      throw new ConfigMalformedException(String.format("There is no proxy auth config with name '%s'", proxyAuthConfigName));
+      List<String> users = Lists.newArrayList(proxyAuthSettings.getAsArray(USERS_ATTRIBUTE));
+      if (users.isEmpty())
+        throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", USERS_ATTRIBUTE, RULE_NAME));
 
-    List<String> users = Lists.newArrayList(proxyAuthSettings.getAsArray(USERS_ATTRIBUTE));
-    if (users.isEmpty())
-      throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", USERS_ATTRIBUTE, RULE_NAME));
-
-    return Optional.of(new ProxyAuthSyncRule(proxyAuthConfig, users));
-  }
-
-  private static Optional<ProxyAuthSyncRule> parseSimpleSettings(Settings s) {
-    List<String> users = Lists.newArrayList(s.getAsArray(RULE_NAME));
-    if (users.isEmpty()) return Optional.empty();
-
-    return Optional.of(new ProxyAuthSyncRule(ProxyAuthConfig.DEFAULT, users));
+      return Optional.of(new ProxyAuthSyncRule(proxyAuthConfig, users));
+    };
   }
 
   private ProxyAuthSyncRule(ProxyAuthConfig config, List<String> users) {

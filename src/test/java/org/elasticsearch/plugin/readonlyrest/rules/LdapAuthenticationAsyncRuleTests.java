@@ -50,6 +50,19 @@ public class LdapAuthenticationAsyncRuleTests {
     assertEquals(true, rule.isPresent());
   }
 
+  @Test
+  public void testRuleSuccessfulCreationFromSettingsOfShortenedVersion() {
+    LdapConfig config1 = mockLdapConfig("ldap1");
+    LdapConfig config2 = mockLdapConfig("ldap2");
+    Settings blockSettings = Settings.builder()
+        .put("ldap_authentication", "ldap1")
+        .build();
+
+    Optional<LdapAuthenticationAsyncRule> rule =
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, Lists.newArrayList(config1, config2));
+    assertEquals(true, rule.isPresent());
+  }
+
   @Test(expected = ConfigMalformedException.class)
   public void testRuleCreationFromSettingsFailsDueToNotFoundLdapWithGivenName() {
     LdapConfig config1 = mockLdapConfig("ldap1");

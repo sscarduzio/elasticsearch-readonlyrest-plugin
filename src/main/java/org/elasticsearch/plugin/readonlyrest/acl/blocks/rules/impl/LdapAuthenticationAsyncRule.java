@@ -22,11 +22,13 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthenti
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
+import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
@@ -36,24 +38,45 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private final LdapClient client;
 
-  public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s,
-                                                                   List<LdapConfig> ldapConfigs) throws ConfigMalformedException {
-    Map<String, Settings> ldapAuths = s.getGroups(RULE_NAME);
-    if (ldapAuths.isEmpty()) return Optional.empty();
-    if (ldapAuths.size() != 1)
-      throw new ConfigMalformedException("Only one [" + RULE_NAME + "] in group could be defined");
+  public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s, List<LdapConfig> ldapConfigs)
+      throws ConfigMalformedException {
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, fromSimpleSettings(ldapConfigs), fromExtendedSettings(ldapConfigs));
+  }
 
+  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromSimpleSettings(List<LdapConfig> ldapConfigs) {
+    return settings -> {
+      String ldapName = settings.get(RULE_NAME);
+      if(ldapName == null)
+        throw new ConfigMalformedException("No [" + LDAP_NAME + "] value defined");
+
+      return tryCreateRule(ldapName, ldapConfigs);
+    };
+  }
+
+  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromExtendedSettings(List<LdapConfig> ldapConfigs) {
+    return settings -> {
+      Map<String, Settings> ldapAuths = settings.getGroups(RULE_NAME);
+      if (ldapAuths.isEmpty()) return Optional.empty();
+      if (ldapAuths.size() != 1)
+        throw new ConfigMalformedException("Only one [" + RULE_NAME + "] in group could be defined");
+
+      Settings ldapSettings = Lists.newArrayList(ldapAuths.values()).get(0);
+      String ldapName = ldapSettings.get(LDAP_NAME);
+      if (ldapName == null)
+        throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");
+
+      return tryCreateRule(ldapName, ldapConfigs);
+    };
+  }
+
+  private static Optional<LdapAuthenticationAsyncRule> tryCreateRule(String ldapName, List<LdapConfig> ldapConfigs) {
     Map<String, LdapClient> ldapClientsByName = ldapConfigs.stream()
         .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
 
-    Settings ldapSettings = Lists.newArrayList(ldapAuths.values()).get(0);
-    String name = ldapSettings.get(LDAP_NAME);
-    if (name == null)
-      throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");
-    if (!ldapClientsByName.containsKey(name)) {
-      throw new ConfigMalformedException("LDAP with name [" + name + "] wasn't defined.");
+    if (!ldapClientsByName.containsKey(ldapName)) {
+      throw new ConfigMalformedException("LDAP with name [" + ldapName + "] wasn't defined.");
     }
-    return Optional.of(new LdapAuthenticationAsyncRule(ldapClientsByName.get(name)));
+    return Optional.of(new LdapAuthenticationAsyncRule(ldapClientsByName.get(ldapName)));
   }
 
   LdapAuthenticationAsyncRule(LdapClient client) {

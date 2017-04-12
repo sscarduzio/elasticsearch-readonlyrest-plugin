@@ -225,8 +225,7 @@ readonlyrest:
 
     - name: Accept requests from users in group team1 on index1
       type: allow
-      ldap_authentication: 
-          - name: "ldap1"  
+      ldap_authentication: "ldap1"  
       ldap_authorization:
           - name: "ldap1"                                       # ldap name from 'ldaps' section
             groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
