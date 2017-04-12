@@ -25,7 +25,7 @@ import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldif.LDIFReader;
-import org.elasticsearch.plugin.readonlyrest.ldap.UnboundidLdapClient;
+import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.SearchingUserConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
@@ -84,12 +84,12 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
     return this.getMappedPort(LDAP_PORT);
   }
 
-  public UnboundidLdapClient.BindDnPassword getBindDNAndPassword() {
+  public SearchingUserConfig getSearchingUserConfig() {
     List<String> dnParts = Lists.newArrayList(LDAP_DOMAIN.split("\\."));
     if (dnParts.isEmpty()) throw new IllegalArgumentException("Wrong domain defined " + LDAP_DOMAIN);
     String dnString = dnParts.stream().map(part -> "dc=" + part).reduce("", (s, s2) -> s + "," + s2);
     String bindDN = String.format("cn=%s%s", LDAP_ADMIN, dnString);
-    return new UnboundidLdapClient.BindDnPassword(bindDN, LDAP_ADMIN_PASSWORD);
+    return new SearchingUserConfig(bindDN, LDAP_ADMIN_PASSWORD);
   }
 
   private WaitStrategy ldapWaitStrategy(File initialDataLdif) {
@@ -143,7 +143,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
       }
 
       private LDAPConnection bind(LDAPConnection connection) throws Exception {
-        UnboundidLdapClient.BindDnPassword bindDNAndPassword = getBindDNAndPassword();
+        SearchingUserConfig bindDNAndPassword = getSearchingUserConfig();
         BindResult bindResult = connection.bind(bindDNAndPassword.getDn(), bindDNAndPassword.getPassword());
         if (!ResultCode.SUCCESS.equals(bindResult.getResultCode())) {
           throw new ContainerCreationException("Cannot init LDAP due to bind problem");

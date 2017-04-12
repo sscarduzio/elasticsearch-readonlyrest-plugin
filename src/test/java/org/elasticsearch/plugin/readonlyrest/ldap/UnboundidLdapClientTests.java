@@ -17,6 +17,10 @@
 
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
+import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.ConnectionConfig;
+import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.UnboundidGroupsProviderLdapClient;
+import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.UserGroupsSearchFilterConfig;
+import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.UserSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -31,24 +35,24 @@ public class UnboundidLdapClientTests {
   @ClassRule
   public static LdapContainer ldapContainer = LdapContainer.create("/test_example.ldif");
 
-  private LdapClient client = new UnboundidLdapClient.Builder(
-    ldapContainer.getLdapHost(),
-    "ou=People,dc=example,dc=com",
-    "ou=Groups,dc=example,dc=com"
-  )
-    .setPort(ldapContainer.getLdapPort())
-    .setBindDnPassword(ldapContainer.getBindDNAndPassword())
-    .setPoolSize(10)
-    .setConnectionTimeout(Duration.ofSeconds(1))
-    .setRequestTimeout(Duration.ofSeconds(1))
-    .setSslEnabled(false)
-    .setTrustAllCerts(false)
-    .build();
+  private UnboundidGroupsProviderLdapClient client = new UnboundidGroupsProviderLdapClient(
+      new ConnectionConfig.Builder(ldapContainer.getLdapHost())
+          .setPort(ldapContainer.getLdapPort())
+          .setPoolSize(10)
+          .setConnectionTimeout(Duration.ofSeconds(1))
+          .setRequestTimeout(Duration.ofSeconds(1))
+          .setSslEnabled(false)
+          .setTrustAllCerts(false)
+          .build(),
+      new UserSearchFilterConfig.Builder("ou=People,dc=example,dc=com").build(),
+      new UserGroupsSearchFilterConfig.Builder("ou=Groups,dc=example,dc=com").build(),
+      Optional.of(ldapContainer.getSearchingUserConfig())
+  );
 
   @Test
   public void testAuthenticationSuccess() throws Exception {
     CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
-      new LdapCredentials("cartman", "user2")
+        new LdapCredentials("cartman", "user2")
     );
     Optional<LdapUser> user = userF.get();
     Assert.assertEquals(user.isPresent(), true);
@@ -57,7 +61,7 @@ public class UnboundidLdapClientTests {
   @Test
   public void testAuthenticationErrorDueToInvalidPassword() throws Exception {
     CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
-      new LdapCredentials("cartman", "wrongpassword")
+        new LdapCredentials("cartman", "wrongpassword")
     );
     Optional<LdapUser> user = userF.get();
     Assert.assertEquals(user.isPresent(), false);
@@ -66,7 +70,7 @@ public class UnboundidLdapClientTests {
   @Test
   public void testAuthenticationErrorDueToUnknownUser() throws Exception {
     CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
-      new LdapCredentials("nonexistent", "whatever")
+        new LdapCredentials("nonexistent", "whatever")
     );
     Optional<LdapUser> user = userF.get();
     Assert.assertEquals(user.isPresent(), false);

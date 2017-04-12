@@ -21,6 +21,7 @@ import com.google.common.collect.Sets;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
@@ -39,59 +40,59 @@ public class LdapAuthenticationAsyncRuleTests {
 
   @Test
   public void testRuleSuccessfulCreationFromSettings() {
-    LdapConfig config1 = mockLdapConfig("ldap1");
-    LdapConfig config2 = mockLdapConfig("ldap2");
+    LdapConfig<?> config1 = mockLdapConfig("ldap1");
+    LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
         .put("ldap_authentication.0.name", "ldap1")
         .build();
 
     Optional<LdapAuthenticationAsyncRule> rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, Lists.newArrayList(config1, config2));
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
     assertEquals(true, rule.isPresent());
   }
 
   @Test
   public void testRuleSuccessfulCreationFromSettingsOfShortenedVersion() {
-    LdapConfig config1 = mockLdapConfig("ldap1");
-    LdapConfig config2 = mockLdapConfig("ldap2");
+    LdapConfig<?> config1 = mockLdapConfig("ldap1");
+    LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
         .put("ldap_authentication", "ldap1")
         .build();
 
     Optional<LdapAuthenticationAsyncRule> rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, Lists.newArrayList(config1, config2));
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
     assertEquals(true, rule.isPresent());
   }
 
   @Test(expected = ConfigMalformedException.class)
   public void testRuleCreationFromSettingsFailsDueToNotFoundLdapWithGivenName() {
-    LdapConfig config1 = mockLdapConfig("ldap1");
-    LdapConfig config2 = mockLdapConfig("ldap2");
+    LdapConfig<?> config1 = mockLdapConfig("ldap1");
+    LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
         .put("ldap_authentication.0.name", "ldap3")
         .build();
 
-    LdapAuthenticationAsyncRule.fromSettings(blockSettings, Lists.newArrayList(config1, config2));
+    LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
   }
 
   @Test
   public void testUserShouldBeNotAuthenticatedIfLdapReturnError() throws Exception {
-    LdapConfig config1 = mockLdapConfig("ldap1", Optional.empty());
-    LdapConfig config2 = mockLdapConfig("ldap2", Optional.empty());
+    LdapConfig<?> config1 = mockLdapConfig("ldap1", Optional.empty());
+    LdapConfig<?> config2 = mockLdapConfig("ldap2", Optional.empty());
     Settings blockSettings = Settings.builder()
         .put("ldap_authentication.0.name", "ldap1")
         .build();
 
     LdapAuthenticationAsyncRule rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, Lists.newArrayList(config1, config2)).get();
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());
   }
 
   @Test
   public void testUserShouldBeAuthenticatedIfLdapReturnSuccess() throws Exception {
-    LdapConfig config1 = mockLdapConfig("ldap1", Optional.empty());
-    LdapConfig config2 = mockLdapConfig("ldap2", Optional.of(new Tuple<>(
+    LdapConfig<?> config1 = mockLdapConfig("ldap1", Optional.empty());
+    LdapConfig<?> config2 = mockLdapConfig("ldap2", Optional.of(new Tuple<>(
         new LdapUser(
             "user",
             "cn=Example user,ou=People,dc=example,dc=com"
@@ -103,7 +104,7 @@ public class LdapAuthenticationAsyncRuleTests {
         .build();
 
     LdapAuthenticationAsyncRule rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, Lists.newArrayList(config1, config2)).get();
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(true, match.isMatch());
   }

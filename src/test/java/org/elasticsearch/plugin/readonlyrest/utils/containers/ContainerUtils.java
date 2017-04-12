@@ -18,12 +18,14 @@ package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerStartupTimeoutException;
+import org.testcontainers.containers.GenericContainer;
 
 import java.io.File;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 
 public class ContainerUtils {
   private ContainerUtils() {
@@ -42,5 +44,14 @@ public class ContainerUtils {
       throw new ContainerStartupTimeoutException("Container was not started within " + startupTimeout.toString());
     }
     return false;
+  }
+
+  public static Optional<String> getIpAddress(GenericContainer<?> container) {
+    return Optional.ofNullable(container.getContainerInfo())
+        .map(info -> info
+            .getNetworkSettings()
+            .getNetworks()
+            .get("bridge")
+            .getIpAddress());
   }
 }

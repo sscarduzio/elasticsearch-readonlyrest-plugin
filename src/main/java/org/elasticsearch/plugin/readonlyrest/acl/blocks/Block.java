@@ -24,6 +24,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsSyncRule;
@@ -40,7 +41,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessS
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
@@ -62,8 +62,8 @@ import java.util.concurrent.CompletableFuture;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
 import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -77,7 +77,7 @@ public class Block {
 
   public Block(Settings settings,
                List<User> userList,
-               List<LdapConfig> ldapList,
+               LdapConfigs ldapConfigs,
                List<ProxyAuthConfig> proxyAuthConfigs,
                List<UserGroupProviderConfig> groupsProviderConfigs,
                Logger logger) {
@@ -92,7 +92,7 @@ public class Block {
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
-    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapList, groupsProviderConfigs);
+    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapConfigs, groupsProviderConfigs);
     authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationRule);
   }
 
@@ -170,7 +170,7 @@ public class Block {
   }
 
   private Set<AsyncRule> collectRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs,
-                                      List<LdapConfig> ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs) {
+                                      LdapConfigs ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs) {
     Set<AsyncRule> rules = Sets.newLinkedHashSet();
     // Won't add the condition if its configuration is not found
 

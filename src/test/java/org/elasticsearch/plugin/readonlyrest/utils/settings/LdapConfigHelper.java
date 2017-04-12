@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.utils.settings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapClient;
+import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
 
@@ -33,14 +33,14 @@ import static org.mockito.Mockito.when;
 
 public class LdapConfigHelper {
 
-  public static LdapConfig mockLdapConfig(String name) {
+  public static LdapConfig<?> mockLdapConfig(String name) {
     return mockLdapConfig(name, Optional.empty());
   }
 
-  public static LdapConfig mockLdapConfig(String name, Optional<Tuple<LdapUser, Set<LdapGroup>>> onAuthenticate) {
-    LdapConfig config = mock(LdapConfig.class);
+  public static LdapConfig<?> mockLdapConfig(String name, Optional<Tuple<LdapUser, Set<LdapGroup>>> onAuthenticate) {
+    LdapConfig<?> config = mock(LdapConfig.class);
     when(config.getName()).thenReturn(name);
-    LdapClient client = mock(LdapClient.class);
+    GroupsProviderLdapClient client = mock(GroupsProviderLdapClient.class);
     if(onAuthenticate.isPresent()) {
       LdapUser user = onAuthenticate.map(Tuple::v1).get();
       Set<LdapGroup> groups = onAuthenticate.map(Tuple::v2).get();

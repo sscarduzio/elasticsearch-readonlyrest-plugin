@@ -17,6 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.utils;
 
 import com.google.common.collect.Lists;
+import org.elasticsearch.common.Booleans;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
@@ -111,9 +112,36 @@ public class ConfigReaderHelper {
   }
 
   private static Optional<RuleSchema> checkIsSimpleSchema(Settings s, String ruleName) {
-    if (s.getAsArray(ruleName) != null) {
+    String[] array = s.getAsArray(ruleName);
+    if (array != null && array.length > 0) {
+      return Optional.of(RuleSchema.SIMPLE);
+    } else if (s.get(ruleName) != null) {
       return Optional.of(RuleSchema.SIMPLE);
     } else {
+      return Optional.empty();
+    }
+  }
+
+  public static Optional<Integer> toInteger(String value) {
+    try {
+      return Optional.ofNullable(Integer.valueOf(value));
+    } catch (NumberFormatException e) {
+      return Optional.empty();
+    }
+  }
+
+  public static Optional<Boolean> toBoolen(String value) {
+    try {
+      return Optional.ofNullable(Booleans.parseBooleanExact(value));
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
+  }
+
+  public static Optional<Duration> toDuration(String value) {
+    try {
+      return Optional.ofNullable(Long.valueOf(value)).map(Duration::ofSeconds);
+    } catch (NumberFormatException e) {
       return Optional.empty();
     }
   }

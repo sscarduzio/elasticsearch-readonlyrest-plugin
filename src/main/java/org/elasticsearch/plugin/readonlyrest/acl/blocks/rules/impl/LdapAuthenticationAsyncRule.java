@@ -20,30 +20,29 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
+import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private static final String RULE_NAME = "ldap_authentication";
   private static final String LDAP_NAME = "name";
 
-  private final LdapClient client;
+  private final AuthenticationLdapClient client;
 
-  public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s, List<LdapConfig> ldapConfigs)
+  public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s, LdapConfigs ldapConfigs)
       throws ConfigMalformedException {
     return ConfigReaderHelper.fromSettings(RULE_NAME, s, fromSimpleSettings(ldapConfigs), fromExtendedSettings(ldapConfigs));
   }
 
-  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromSimpleSettings(List<LdapConfig> ldapConfigs) {
+  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromSimpleSettings(LdapConfigs ldapConfigs) {
     return settings -> {
       String ldapName = settings.get(RULE_NAME);
       if(ldapName == null)
@@ -53,7 +52,7 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
     };
   }
 
-  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromExtendedSettings(List<LdapConfig> ldapConfigs) {
+  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromExtendedSettings(LdapConfigs ldapConfigs) {
     return settings -> {
       Map<String, Settings> ldapAuths = settings.getGroups(RULE_NAME);
       if (ldapAuths.isEmpty()) return Optional.empty();
@@ -69,17 +68,11 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
     };
   }
 
-  private static Optional<LdapAuthenticationAsyncRule> tryCreateRule(String ldapName, List<LdapConfig> ldapConfigs) {
-    Map<String, LdapClient> ldapClientsByName = ldapConfigs.stream()
-        .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
-
-    if (!ldapClientsByName.containsKey(ldapName)) {
-      throw new ConfigMalformedException("LDAP with name [" + ldapName + "] wasn't defined.");
-    }
-    return Optional.of(new LdapAuthenticationAsyncRule(ldapClientsByName.get(ldapName)));
+  private static Optional<LdapAuthenticationAsyncRule> tryCreateRule(String ldapName, LdapConfigs ldapConfigs) {
+    return Optional.of(new LdapAuthenticationAsyncRule(ldapConfigs.authenticationLdapClientForName(ldapName)));
   }
 
-  LdapAuthenticationAsyncRule(LdapClient client) {
+  LdapAuthenticationAsyncRule(AuthenticationLdapClient client) {
     this.client = client;
   }
 

@@ -23,11 +23,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -47,7 +47,7 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
   }
 
   public static Optional<LdapAuthAsyncRule> fromSettings(Settings s,
-                                                         List<LdapConfig> ldapConfigs) throws ConfigMalformedException {
+                                                         LdapConfigs ldapConfigs) throws ConfigMalformedException {
     return LdapAuthorizationAsyncRule.fromSettings(RULE_NAME, s, ldapConfigs)
         .map(authorization ->  new LdapAuthAsyncRule(
             wrapInCacheIfCacheIsEnabled(new LdapAuthenticationAsyncRule(authorization.getClient()), s),

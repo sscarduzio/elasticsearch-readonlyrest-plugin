@@ -14,44 +14,39 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.ldap;
+package org.elasticsearch.plugin.readonlyrest.ldap.logging;
 
 import com.google.common.base.Joiner;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
+import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
+import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
+import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
 
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-public class LdapClientWithLoggingDecorator implements LdapClient {
+public class GroupsProviderLdapClientLoggingDecorator implements GroupsProviderLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(LdapClientWithLoggingDecorator.class);
+  private static final Logger logger = Loggers.getLogger(GroupsProviderLdapClientLoggingDecorator.class);
 
-  private final LdapClient underlying;
+  private final GroupsProviderLdapClient underlying;
   private final String name;
+  private final AuthenticationLdapClientLoggingDecorator authenticationLdapClientLoggingDecorator;
 
-  public static LdapClient wrapInLoggingIfIsLoggingEnabled(String name, LdapClient client) {
+  public static GroupsProviderLdapClient wrapInLoggingIfIsLoggingEnabled(String name, GroupsProviderLdapClient client) {
     return logger.isDebugEnabled()
-        ? new LdapClientWithLoggingDecorator(name, client)
+        ? new GroupsProviderLdapClientLoggingDecorator(name, client)
         : client;
   }
 
-  public LdapClientWithLoggingDecorator(String name, LdapClient underlying) {
+  public GroupsProviderLdapClientLoggingDecorator(String name, GroupsProviderLdapClient underlying) {
     this.name = name;
     this.underlying = underlying;
-  }
-
-  @Override
-  public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
-    logger.debug("Trying to authenticate user [" + credentials.getUserName() + "] with LDAP [" + name + "]");
-    return underlying.authenticate(credentials)
-        .thenApply(user -> {
-          logger.debug("User [" + credentials.getUserName() + "] " + (user.isPresent() ? "" : "not") +
-              " authenticated by LDAP [" + name + "]");
-          return user;
-        });
+    authenticationLdapClientLoggingDecorator = new AuthenticationLdapClientLoggingDecorator(name, underlying);
   }
 
   @Override
@@ -67,14 +62,11 @@ public class LdapClientWithLoggingDecorator implements LdapClient {
 
   @Override
   public CompletableFuture<Optional<LdapUser>> userById(String userId) {
-    logger.debug("Trying to fetch user with identifier [" + userId + "] from LDAP [" + name + "]");
-    return underlying.userById(userId)
-        .thenApply(user -> {
-          logger.debug(user.isPresent()
-              ? "User with identifier [" + userId + "] found [dn = " + user.get().getDN() + "]"
-              : "User with  identifier [" + userId + "] not found"
-          );
-          return user;
-        });
+    return authenticationLdapClientLoggingDecorator.userById(userId);
+  }
+
+  @Override
+  public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
+    return authenticationLdapClientLoggingDecorator.authenticate(credentials);
   }
 }
