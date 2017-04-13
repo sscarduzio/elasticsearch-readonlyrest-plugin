@@ -37,8 +37,9 @@ public class LdapConfigHelper {
     return mockLdapConfig(name, Optional.empty());
   }
 
+  @SuppressWarnings("unchecked")
   public static LdapConfig<?> mockLdapConfig(String name, Optional<Tuple<LdapUser, Set<LdapGroup>>> onAuthenticate) {
-    LdapConfig<?> config = mock(LdapConfig.class);
+    LdapConfig<GroupsProviderLdapClient> config = (LdapConfig<GroupsProviderLdapClient>)mock(LdapConfig.class);
     when(config.getName()).thenReturn(name);
     GroupsProviderLdapClient client = mock(GroupsProviderLdapClient.class);
     if(onAuthenticate.isPresent()) {

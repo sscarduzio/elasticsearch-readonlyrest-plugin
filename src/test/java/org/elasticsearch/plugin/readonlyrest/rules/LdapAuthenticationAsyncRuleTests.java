@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.rules;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.settings.Settings;
