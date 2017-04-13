@@ -24,8 +24,8 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
@@ -61,7 +61,7 @@ public class ACL {
     Map<String, Settings> blocksMap = s.getGroups(RULES_PREFIX);
     List<ProxyAuthConfig> proxyAuthConfigs = parseProxyAuthSettings(s.getGroups(PROXIES_PREFIX).values());
     List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values(), proxyAuthConfigs);
-    List<LdapConfig> ldaps = parseLdapSettings(s.getGroups(LDAPS_PREFIX).values());
+    LdapConfigs ldaps = LdapConfigs.fromSettings(LDAPS_PREFIX, s);
     List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
         s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
     );
@@ -103,12 +103,6 @@ public class ACL {
   private List<User> parseUserSettings(Collection<Settings> userSettings, List<ProxyAuthConfig> proxyAuthConfigs) {
     return userSettings.stream()
         .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
-        .collect(Collectors.toList());
-  }
-
-  private List<LdapConfig> parseLdapSettings(Collection<Settings> ldapSettings) {
-    return ldapSettings.stream()
-        .map(LdapConfig::fromSettings)
         .collect(Collectors.toList());
   }
 

@@ -14,7 +14,6 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.collect.Lists;
@@ -24,7 +23,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
@@ -36,25 +35,27 @@ import static org.elasticsearch.plugin.readonlyrest.utils.mocks.RequestContextMo
 import static org.elasticsearch.plugin.readonlyrest.utils.settings.LdapConfigHelper.mockLdapConfig;
 import static org.junit.Assert.assertEquals;
 
-public class LdapAuthAsyncRuleTests {
+public class LdapAuthorizationAsyncRuleTests {
 
   @Test
   public void testRuleSuccessfulCreationFromSettings() {
     LdapConfig<?> config1 = mockLdapConfig("ldap1");
     LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = baseExampleBlockBuilder()
-        .put("ldap_auth.0.name", "ldap1")
-        .putArray("ldap_auth.0.groups", Lists.newArrayList("group1", "group2"))
+        .put("ldap_authorization.0.name", "ldap1")
+        .putArray("ldap_authorization.0.groups", Lists.newArrayList("group1", "group2"))
         .build();
 
-    Optional<LdapAuthAsyncRule> rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+    Optional<LdapAuthorizationAsyncRule> rule =
+        LdapAuthorizationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
     assertEquals(true, rule.isPresent());
   }
 
   @Test
   public void testRuleNotCreatedDueToNoLdapAuthSettingKey() {
     Settings blockSettings = baseExampleBlockBuilder().build();
-    Optional<LdapAuthAsyncRule> rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.empty());
+    Optional<LdapAuthorizationAsyncRule> rule =
+        LdapAuthorizationAsyncRule.fromSettings(blockSettings, LdapConfigs.empty());
     assertEquals(false, rule.isPresent());
   }
 
@@ -63,11 +64,11 @@ public class LdapAuthAsyncRuleTests {
     LdapConfig<?> config1 = mockLdapConfig("ldap1");
     LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = baseExampleBlockBuilder()
-        .put("ldap_auth.0.name", "ldap3")
-        .putArray("ldap_auth.0.groups", Lists.newArrayList("group2", "group3"))
+        .put("ldap_authorization.0.name", "ldap3")
+        .putArray("ldap_authorization.0.groups", Lists.newArrayList("group2", "group3"))
         .build();
 
-    LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+    LdapAuthorizationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
   }
 
   @Test(expected = ConfigMalformedException.class)
@@ -75,28 +76,14 @@ public class LdapAuthAsyncRuleTests {
     LdapConfig<?> config1 = mockLdapConfig("ldap1");
     LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = baseExampleBlockBuilder()
-        .putArray("ldap_auth.0.groups", Lists.newArrayList("group1", "group2"))
+        .putArray("ldap_authorization.0.groups", Lists.newArrayList("group1", "group2"))
         .build();
 
-    LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+    LdapAuthorizationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
   }
 
   @Test
-  public void testUserShouldBeNotAuthenticatedIfLdapReturnError() throws Exception {
-    LdapConfig<?> config1 = mockLdapConfig("ldap1", Optional.empty());
-    LdapConfig<?> config2 = mockLdapConfig("ldap2", Optional.empty());
-    Settings blockSettings = baseExampleBlockBuilder()
-        .put("ldap_auth.0.name", "ldap1")
-        .putArray("ldap_auth.0.groups", Lists.newArrayList("group1", "group2"))
-        .build();
-
-    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
-    RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
-    assertEquals(false, match.isMatch());
-  }
-
-  @Test
-  public void testUserShouldBeAuthenticatedIfLdapReturnSuccess() throws Exception {
+  public void testUserShouldBeAuthorizedIfLdapReturnSuccess() throws Exception {
     LdapConfig<?> config1 = mockLdapConfig("ldap1", Optional.empty());
     LdapConfig<?> config2 = mockLdapConfig("ldap2", Optional.of(new Tuple<>(
         new LdapUser(
@@ -106,11 +93,11 @@ public class LdapAuthAsyncRuleTests {
         Sets.newHashSet(new LdapGroup("group2"))
     )));
     Settings blockSettings = baseExampleBlockBuilder()
-        .put("ldap_auth.0.name", "ldap2")
-        .putArray("ldap_auth.0.groups", Lists.newArrayList("group1", "group2"))
+        .put("ldap_authorization.0.name", "ldap2")
+        .putArray("ldap_authorization.0.groups", Lists.newArrayList("group1", "group2"))
         .build();
 
-    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
+    LdapAuthorizationAsyncRule rule = LdapAuthorizationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(true, match.isMatch());
   }
@@ -125,11 +112,11 @@ public class LdapAuthAsyncRuleTests {
         Sets.newHashSet(new LdapGroup("group5"))
     )));
     Settings blockSettings = baseExampleBlockBuilder()
-        .put("ldap_auth.0.name", "ldap1")
-        .putArray("ldap_auth.0.groups", Lists.newArrayList("group2", "group3"))
+        .put("ldap_authorization.0.name", "ldap1")
+        .putArray("ldap_authorization.0.groups", Lists.newArrayList("group2", "group3"))
         .build();
 
-    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1)).get();
+    LdapAuthorizationAsyncRule rule = LdapAuthorizationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1)).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());
   }

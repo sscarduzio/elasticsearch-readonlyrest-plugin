@@ -23,22 +23,20 @@ import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthorization extends AsyncRule implements Authorization {
 
   private static final Logger logger = Loggers.getLogger(AsyncAuthorization.class);
 
-  protected abstract CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups);
-  protected abstract Set<String> getGroups();
+  protected abstract CompletableFuture<Boolean> authorize(LoggedUser user);
 
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     Optional<LoggedUser> optLoggedInUser = rc.getLoggedInUser();
     if(optLoggedInUser.isPresent()) {
       LoggedUser loggedUser = optLoggedInUser.get();
-      return authorize(loggedUser, getGroups()).thenApply(result -> result ? MATCH : NO_MATCH);
+      return authorize(loggedUser).thenApply(result -> result ? MATCH : NO_MATCH);
     } else {
       logger.warn("Cannot try to authorize user because non is logged now!");
       return CompletableFuture.completedFuture(NO_MATCH);

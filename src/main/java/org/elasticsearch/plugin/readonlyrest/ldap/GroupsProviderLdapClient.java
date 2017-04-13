@@ -14,23 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
-public class LdapUser {
-  private final String uid;
-  private final String dn;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
-  public LdapUser(String uid, String dn) {
-    this.uid = uid;
-    this.dn = dn;
-  }
+public interface GroupsProviderLdapClient extends AuthenticationLdapClient {
 
-  public String getDN() {
-    return dn;
-  }
-
-  public String getUid() {
-    return uid;
-  }
+  CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user);
 }

@@ -19,7 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 // to implement in future
@@ -28,12 +27,7 @@ import java.util.concurrent.CompletableFuture;
 public class ExternalGroupsAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
-  protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  protected Set<String> getGroups() {
+  protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     throw new UnsupportedOperationException();
   }
 

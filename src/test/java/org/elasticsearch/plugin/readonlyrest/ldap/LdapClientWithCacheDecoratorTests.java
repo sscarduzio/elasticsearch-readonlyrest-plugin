@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.ldap;
 
+import org.elasticsearch.plugin.readonlyrest.ldap.caching.GroupsProviderLdapClientCacheDecorator;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -34,7 +35,7 @@ public class LdapClientWithCacheDecoratorTests {
 
   @Test
   public void testIfAuthenticatedUserIsCachedByGivenDuration() throws Exception {
-    LdapClient client = Mockito.mock(LdapClient.class);
+    GroupsProviderLdapClient client = Mockito.mock(GroupsProviderLdapClient.class);
     String dn = "cn=Example user,ou=People,dc=example,dc=com";
     LdapCredentials credentials = new LdapCredentials("user", "password");
     when(client.authenticate(any(LdapCredentials.class)))
@@ -42,7 +43,7 @@ public class LdapClientWithCacheDecoratorTests {
         new LdapUser("user", dn)))
       );
     Duration ttl = Duration.ofSeconds(1);
-    LdapClientWithCacheDecorator clientWithCache = new LdapClientWithCacheDecorator(client, ttl);
+    GroupsProviderLdapClientCacheDecorator clientWithCache = new GroupsProviderLdapClientCacheDecorator(client, ttl);
     Optional<LdapUser> ldapUser = clientWithCache.authenticate(credentials).get();
     assertEquals(ldapUser.get().getDN(), dn);
     Optional<LdapUser> ldapUserSecondAttempt = clientWithCache.authenticate(credentials).get();

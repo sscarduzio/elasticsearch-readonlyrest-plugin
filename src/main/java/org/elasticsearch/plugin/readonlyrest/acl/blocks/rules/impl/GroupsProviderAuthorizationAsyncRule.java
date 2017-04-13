@@ -40,7 +40,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -96,21 +95,16 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
   }
 
   @Override
-  protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups) {
+  protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     final CompletableFuture<Boolean> promise = new CompletableFuture<>();
     client.performRequestAsync(
         "GET",
         providerGroupsAuthDefinition.config.getEndpoint().getPath(),
         createParams(user),
-        new GroupBasedAuthResponseListener<>(promise, isAuthorized(groups)),
+        new GroupBasedAuthResponseListener<>(promise, isAuthorized()),
         createHeaders(user).toArray(new Header[0])
     );
     return promise;
-  }
-
-  @Override
-  protected Set<String> getGroups() {
-    return providerGroupsAuthDefinition.groups;
   }
 
   private Map<String, String> createParams(LoggedUser user) {
@@ -127,7 +121,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
         : Lists.newArrayList();
   }
 
-  private Function<Response, Boolean> isAuthorized(Set<String> ruleGroups) {
+  private Function<Response, Boolean> isAuthorized() {
     return response -> {
       if (response.getStatusLine().getStatusCode() == 200) {
         try {
@@ -138,7 +132,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
           logger.debug("Groups returned by groups provider '" + providerGroupsAuthDefinition.config.getName() + "': "
               + Joiner.on(",").join(groups));
 
-          Sets.SetView<String> intersection = Sets.intersection(ruleGroups, Sets.newHashSet(groups));
+          Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(groups));
           return !intersection.isEmpty();
         } catch (IOException e) {
           logger.error("Group based authorization response exception", e);

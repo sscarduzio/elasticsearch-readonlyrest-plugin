@@ -14,13 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package org.elasticsearch.plugin.readonlyrest.ldap.unboundid;
 
-package org.elasticsearch.plugin.readonlyrest.ldap;
+public class SearchingUserConfig {
+  private final String dn;
+  private final String password;
 
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+  public SearchingUserConfig(String dn, String password) {
+    this.dn = dn;
+    this.password = password;
+  }
 
-public interface LdapClient {
+  public String getDn() {
+    return dn;
+  }
 
-  CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials);
+  public String getPassword() {
+    return password;
+  }
 }

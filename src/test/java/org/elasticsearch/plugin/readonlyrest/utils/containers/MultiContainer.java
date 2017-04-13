@@ -90,12 +90,7 @@ public class MultiContainer extends FailureDetectingExternalResource {
     }
 
     public Optional<String> getIpAddress() {
-      return Optional.ofNullable(container.getContainerInfo())
-        .map(info -> info
-          .getNetworkSettings()
-          .getNetworks()
-          .get("bridge")
-          .getIpAddress());
+      return ContainerUtils.getIpAddress(container);
     }
   }
 }

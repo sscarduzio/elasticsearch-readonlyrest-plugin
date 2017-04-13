@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.caching;
 
-import com.google.common.collect.Sets;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
@@ -27,7 +26,6 @@ import org.mockito.Mockito;
 
 import java.time.Duration;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
@@ -64,11 +62,9 @@ public class CachedAsyncAuthorizationDecoratorTests {
   @Test
   public void testIfAuthorizationIsCached() throws Exception {
     LoggedUser user = new LoggedUser("tester");
-    Set<String> groups = Sets.newHashSet("group1", "group2");
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
-    when(rule.authorize(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    when(rule.getGroups()).thenReturn(groups);
+    when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
@@ -79,18 +75,16 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     assertEquals(true, firstAttemptMatch.get().isMatch());
     assertEquals(true, secondAttemptMatch.get().isMatch());
-    verify(rule, times(1)).authorize(user, groups);
+    verify(rule, times(1)).authorize(user);
   }
 
   @Test
   public void testIfCachedResultExpires() throws Exception {
     LoggedUser user = new LoggedUser("tester");
-    Set<String> groups = Sets.newHashSet("group1", "group2");
     Duration ttl = Duration.ofSeconds(1);
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
-    when(rule.authorize(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    when(rule.getGroups()).thenReturn(groups);
+    when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
@@ -102,18 +96,13 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     assertEquals(true, firstAttemptMatch.get().isMatch());
     assertEquals(true, secondAttemptMatch.get().isMatch());
-    verify(rule, times(2)).authorize(user, groups);
+    verify(rule, times(2)).authorize(user);
   }
 
   private AsyncAuthorization dummyAsyncRule = new AsyncAuthorization() {
     @Override
-    protected CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups) {
+    protected CompletableFuture<Boolean> authorize(LoggedUser user) {
       return CompletableFuture.completedFuture(true);
-    }
-
-    @Override
-    protected Set<String> getGroups() {
-      return Sets.newHashSet();
     }
 
     @Override
@@ -124,9 +113,6 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
   private abstract class MockedAsyncAuthorization extends AsyncAuthorization {
     @Override
-    public abstract CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups);
-
-    @Override
-    public abstract Set<String> getGroups();
+    public abstract CompletableFuture<Boolean> authorize(LoggedUser user);
   }
 }

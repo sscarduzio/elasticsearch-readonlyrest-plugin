@@ -28,7 +28,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-public class LdapIntegrationTests {
+public class LdapIntegrationSecondOptionTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
@@ -37,7 +37,7 @@ public class LdapIntegrationTests {
               .add("LDAP1", () -> LdapContainer.create("/test_example.ldif"))
               .add("LDAP2", () -> LdapContainer.create("/test_example.ldif"))
               .build(),
-          "/ldap_test_elasticsearch.yml",
+          "/ldap_second_option_test_elasticsearch.yml",
           new ElasticsearchTweetsInitializer()
       );
 

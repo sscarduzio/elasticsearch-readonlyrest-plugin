@@ -166,6 +166,8 @@ readonlyrest:
 ```
 
 ### USE CASE 4: LDAP authentication and group-based authorization
+
+#### authentication and authorization in one rule
 ```yml
 readonlyrest:
     enable: true
@@ -178,8 +180,6 @@ readonlyrest:
       ldap_auth:
           - name: "ldap1"                                       # ldap name from 'ldaps' section
             groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
-          - name: "ldap2"
-            groups: ["g3", "g4"]
       indices: ["index1"]
       
     - name: Accept requests from users in group team2 on index2
@@ -187,6 +187,7 @@ readonlyrest:
       ldap_auth:
           - name: "ldap2"
             groups: ["g3"]
+            cache_ttl_in_sec: 60
       indices: ["index2"]
 
     ldaps:
@@ -199,7 +200,61 @@ readonlyrest:
       bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
       bind_password: "password"                                 # skip for anonymous bind
       search_user_base_DN: "ou=People,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
       search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout_in_sec: 10                             # default 1
+      request_timeout_in_sec: 10                                # default 1
+      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+    
+    - name: ldap2
+      host: "ldap2.example2.com"
+      port: 636
+      search_user_base_DN: "ou=People,dc=example2,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example2,dc=com"
+```
+
+#### authentication and authorization in separate rules
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    
+    access_control_rules:
+
+    - name: Accept requests from users in group team1 on index1
+      type: allow
+      ldap_authentication: "ldap1"  
+      ldap_authorization:
+          - name: "ldap1"                                       # ldap name from 'ldaps' section
+            groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
+      indices: ["index1"]
+      
+    - name: Accept requests from users in group team2 on index2
+      type: allow
+      ldap_authentication: 
+          - name: "ldap2"  
+            cache_ttl_in_sec: 60
+      ldap_authorization:
+          - name: "ldap2"
+            groups: ["g3"]
+            cache_ttl_in_sec: 60
+      indices: ["index2"]
+
+    ldaps:
+    
+    - name: ldap1
+      host: "ldap1.example.com"
+      port: 389                                                 # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
       connection_pool_size: 10                                  # default 30
       connection_timeout_in_sec: 10                             # default 1
       request_timeout_in_sec: 10                                # default 1
@@ -217,6 +272,8 @@ LDAP configuration requirements:
 - groups from `search_groups_base_DN` should have `uniqueMember` attribute (can be overwritten using `unique_member_attribute`)
 
 (example LDAP config can be found in test /src/test/resources/test_example.ldif)
+
+Caching can be configured per LDAP client (see `ldap1`) or per rule (see `Accept requests from users in group team2 on index2` rule)
 
 ### USE CASE 5: External groups provider for group-based authorization
 

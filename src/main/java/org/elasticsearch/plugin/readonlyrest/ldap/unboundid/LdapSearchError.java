@@ -14,23 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package org.elasticsearch.plugin.readonlyrest.ldap.unboundid;
 
-package org.elasticsearch.plugin.readonlyrest.ldap;
+import com.unboundid.ldap.sdk.ResultCode;
 
-public class LdapUser {
-  private final String uid;
-  private final String dn;
+class LdapSearchError extends RuntimeException {
+  private final ResultCode code;
+  private final String resultString;
 
-  public LdapUser(String uid, String dn) {
-    this.uid = uid;
-    this.dn = dn;
+  LdapSearchError(ResultCode code, String resultString) {
+    this.code = code;
+    this.resultString = resultString;
   }
 
-  public String getDN() {
-    return dn;
+  public ResultCode getCode() {
+    return code;
   }
 
-  public String getUid() {
-    return uid;
+  public String getResultString() {
+    return resultString;
   }
 }

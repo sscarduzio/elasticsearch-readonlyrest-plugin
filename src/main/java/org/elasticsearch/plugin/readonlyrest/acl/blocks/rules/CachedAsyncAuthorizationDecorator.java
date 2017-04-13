@@ -23,8 +23,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.time.Duration;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -35,7 +33,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final AsyncAuthorization underlying;
-  private final Cache<UserWithGroups, Boolean> cache;
+  private final Cache<String, Boolean> cache;
 
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization, Settings settings) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
@@ -53,13 +51,12 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  public CompletableFuture<Boolean> authorize(LoggedUser user, Set<String> groups) {
-    UserWithGroups userWithGroups = new UserWithGroups(user, groups);
-    Boolean authorizationResult = cache.getIfPresent(userWithGroups);
+  public CompletableFuture<Boolean> authorize(LoggedUser user) {
+    Boolean authorizationResult = cache.getIfPresent(user.getId());
     if (authorizationResult == null) {
-      return underlying.authorize(user, groups)
+      return underlying.authorize(user)
           .thenApply(result -> {
-            cache.put(userWithGroups, result);
+            cache.put(user.getId(), result);
             return result;
           });
     }
@@ -67,38 +64,8 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  protected Set<String> getGroups() {
-    return underlying.getGroups();
-  }
-
-  @Override
   public String getKey() {
     return underlying.getKey();
-  }
-
-  private static class UserWithGroups {
-
-    private final LoggedUser user;
-    private final Set<String> groups;
-
-    UserWithGroups(LoggedUser user, Set<String> groups) {
-      this.user = user;
-      this.groups = groups;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (obj == null) return false;
-      if (getClass() != obj.getClass()) return false;
-      final UserWithGroups other = (UserWithGroups) obj;
-      return Objects.equals(user, other.user) &&
-          groups.equals(other.groups);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(this.user, this.groups);
-    }
   }
 
 }

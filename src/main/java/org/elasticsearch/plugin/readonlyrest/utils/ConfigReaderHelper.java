@@ -17,8 +17,11 @@
 package org.elasticsearch.plugin.readonlyrest.utils;
 
 import com.google.common.collect.Lists;
+import org.elasticsearch.common.Booleans;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.settings.SettingsException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -29,6 +32,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ConfigReaderHelper {
+
+  public enum RuleSchema {
+    SIMPLE, EXTENDED
+  }
 
   private ConfigReaderHelper() {
   }
@@ -75,5 +82,67 @@ public class ConfigReaderHelper {
 
   public static Function<String, Duration> toDuration() {
     return value -> Duration.ofSeconds(Long.parseLong(value));
+  }
+
+  public static <R extends Rule> Optional<R> fromSettings(String ruleName,
+                                                          Settings settings,
+                                                          Function<Settings, Optional<R>> simpleRuleSchemaParser,
+                                                          Function<Settings, Optional<R>> extendedRuleSchemaParser)
+      throws ConfigMalformedException {
+    Optional<RuleSchema> proxyAuthSettingsSchema = recognizeRuleSettingsSchema(settings, ruleName);
+    if (!proxyAuthSettingsSchema.isPresent()) return Optional.empty();
+    switch (proxyAuthSettingsSchema.get()) {
+      case SIMPLE:
+        return simpleRuleSchemaParser.apply(settings);
+      case EXTENDED:
+        return extendedRuleSchemaParser.apply(settings);
+      default:
+        throw new IllegalStateException("Unknown auth setting schema");
+    }
+  }
+
+  public static Optional<RuleSchema> recognizeRuleSettingsSchema(Settings s, String ruleName) {
+    try {
+      return s.getGroups(ruleName).size() > 0
+          ? Optional.of(RuleSchema.EXTENDED)
+          : checkIsSimpleSchema(s, ruleName);
+    } catch (SettingsException ex) {
+      return checkIsSimpleSchema(s, ruleName);
+    }
+  }
+
+  private static Optional<RuleSchema> checkIsSimpleSchema(Settings s, String ruleName) {
+    String[] array = s.getAsArray(ruleName);
+    if (array != null && array.length > 0) {
+      return Optional.of(RuleSchema.SIMPLE);
+    } else if (s.get(ruleName) != null) {
+      return Optional.of(RuleSchema.SIMPLE);
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  public static Optional<Integer> toInteger(String value) {
+    try {
+      return Optional.ofNullable(Integer.valueOf(value));
+    } catch (NumberFormatException e) {
+      return Optional.empty();
+    }
+  }
+
+  public static Optional<Boolean> toBoolen(String value) {
+    try {
+      return Optional.ofNullable(Booleans.parseBooleanExact(value));
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
+  }
+
+  public static Optional<Duration> toDuration(String value) {
+    try {
+      return Optional.ofNullable(Long.valueOf(value)).map(Duration::ofSeconds);
+    } catch (NumberFormatException e) {
+      return Optional.empty();
+    }
   }
 }

@@ -21,6 +21,7 @@ import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.junit.Assert;
 
 import java.util.Iterator;
@@ -36,7 +37,7 @@ public class BlockTest extends TestCase {
         .putArray("indices_rewrite", "needle", "replacement")
         .putArray("indices", "allowed-index")
         .build();
-    Block block = new Block(settings, Lists.newArrayList(), Lists.newArrayList(),
+    Block block = new Block(settings, Lists.newArrayList(), LdapConfigs.empty(),
         null, null, null);
 
     Set<AsyncRule> rules = block.getRules();
