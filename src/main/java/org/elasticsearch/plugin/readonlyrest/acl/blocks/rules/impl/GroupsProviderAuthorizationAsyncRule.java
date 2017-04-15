@@ -80,8 +80,8 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
     }
     Settings groupBaseAuthSettings = Lists.newArrayList(groupBaseAuthElements.values()).get(0);
 
-    Map<String, UserGroupProviderConfig> userGroupProviderConfigByName = groupProviderConfigs.stream()
-                                                                                             .collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));
+    Map<String, UserGroupProviderConfig> userGroupProviderConfigByName =
+        groupProviderConfigs.stream().collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));
 
     String name = requiredAttributeValue(ATTRIBUTE_USER_GROUPS_PROVIDER, groupBaseAuthSettings);
     if (!userGroupProviderConfigByName.containsKey(name)) {

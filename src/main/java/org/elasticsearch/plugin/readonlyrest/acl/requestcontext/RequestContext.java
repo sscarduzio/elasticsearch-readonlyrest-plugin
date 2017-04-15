@@ -56,7 +56,7 @@ import java.util.UUID;
  */
 public class RequestContext extends Delayed implements IndicesRequestContext {
 
-  static private final ImmutableMap<String, String> EMPTY = ImmutableMap.<String, String>builder().build();
+  private static final ImmutableMap<String, String> EMPTY = ImmutableMap.<String, String>builder().build();
   private final Logger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
@@ -68,24 +68,25 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private final IndexNameExpressionResolver indexResolver;
   private final Transactional<Set<String>> indices;
   private ThreadPool threadPool;
-  private final Transactional<ImmutableMap<String, String>> responseHeaders = new Transactional<ImmutableMap<String, String>>("rc-resp-headers") {
-    @Override
-    public ImmutableMap<String, String> initialize() {
-      return EMPTY;
-    }
+  private final Transactional<ImmutableMap<String, String>> responseHeaders =
+      new Transactional<ImmutableMap<String, String>>("rc-resp-headers") {
+        @Override
+        public ImmutableMap<String, String> initialize() {
+          return EMPTY;
+        }
 
-    @Override
-    public ImmutableMap<String, String> copy(ImmutableMap<String, String> initial) {
-      return ImmutableMap.copyOf(initial);
-    }
+        @Override
+        public ImmutableMap<String, String> copy(ImmutableMap<String, String> initial) {
+          return ImmutableMap.copyOf(initial);
+        }
 
-    @Override
-    public void onCommit(ImmutableMap<String, String> hMap) {
-      hMap.keySet().forEach(k -> {
-        threadPool.getThreadContext().addResponseHeader(k, hMap.get(k));
-      });
-    }
-  };
+        @Override
+        public void onCommit(ImmutableMap<String, String> hMap) {
+          hMap.keySet().forEach(k -> {
+            threadPool.getThreadContext().addResponseHeader(k, hMap.get(k));
+          });
+        }
+      };
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;

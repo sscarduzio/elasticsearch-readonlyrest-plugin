@@ -1,3 +1,20 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General License for more details.
+ *
+ *    You should have received a copy of the GNU General License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
 package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
 
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
@@ -9,19 +26,19 @@ import java.util.Set;
  * Created by sscarduzio on 14/04/2017.
  */
 public interface IndicesRequestContext {
-  public Set<String> getAllIndicesAndAliases();
+  Set<String> getAllIndicesAndAliases();
 
-  public Set<String> getExpandedIndices();
+  Set<String> getExpandedIndices();
 
-  public Set<String> getOriginalIndices();
+  Set<String> getOriginalIndices();
 
-  public Set<String> getIndices();
+  Set<String> getIndices();
 
-  public void setIndices(Set<String> newIndices);
+  void setIndices(Set<String> newIndices);
 
-  public Optional<LoggedUser> getLoggedInUser();
+  Optional<LoggedUser> getLoggedInUser();
 
-  public void setLoggedInUser(LoggedUser user);
+  void setLoggedInUser(LoggedUser user);
 
-  public Boolean isReadRequest();
+  Boolean isReadRequest();
 }

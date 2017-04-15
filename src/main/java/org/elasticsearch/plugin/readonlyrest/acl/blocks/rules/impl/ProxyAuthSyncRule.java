@@ -82,8 +82,8 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
       if (proxyAuths.size() != 1)
         throw new ConfigMalformedException(String.format("Only one '%s' is expected within rule's group", RULE_NAME));
 
-      Map<String, ProxyAuthConfig> proxyAuthConfigByName = proxyAuthConfigs.stream()
-                                                                           .collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
+      Map<String, ProxyAuthConfig> proxyAuthConfigByName =
+          proxyAuthConfigs.stream().collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
 
       Settings proxyAuthSettings = Lists.newArrayList(proxyAuths.values()).get(0);
       String proxyAuthConfigName = proxyAuthSettings.get(PROXY_AUTH_CONFIG_ATTRIBUTE);
