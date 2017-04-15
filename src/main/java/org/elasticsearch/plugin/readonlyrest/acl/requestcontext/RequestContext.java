@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
@@ -43,6 +43,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +57,6 @@ import java.util.UUID;
  */
 public class RequestContext extends Delayed implements IndicesRequestContext {
 
-  private static final ImmutableMap<String, String> EMPTY = ImmutableMap.<String, String>builder().build();
   private final Logger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
@@ -68,25 +68,25 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private final IndexNameExpressionResolver indexResolver;
   private final Transactional<Set<String>> indices;
   private ThreadPool threadPool;
-  private final Transactional<ImmutableMap<String, String>> responseHeaders =
-      new Transactional<ImmutableMap<String, String>>("rc-resp-headers") {
+  private final Transactional<Map<String, String>> responseHeaders =
+      new Transactional<Map<String, String>>("rc-resp-headers") {
         @Override
-        public ImmutableMap<String, String> initialize() {
-          return EMPTY;
+        public Map<String, String> initialize() {
+          return Collections.emptyMap();
         }
 
         @Override
-        public ImmutableMap<String, String> copy(ImmutableMap<String, String> initial) {
-          return ImmutableMap.copyOf(initial);
+        public Map<String, String> copy(Map<String, String> initial) {
+          Map<String, String> newMap = Maps.newHashMap(initial);
+          return newMap;
         }
 
         @Override
-        public void onCommit(ImmutableMap<String, String> hMap) {
-          hMap.keySet().forEach(k -> {
-            threadPool.getThreadContext().addResponseHeader(k, hMap.get(k));
-          });
+        public void onCommit(Map<String, String> hMap) {
+          hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
         }
       };
+
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;
@@ -104,10 +104,9 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     @Override
     public void onCommit(Optional<LoggedUser> value) {
       value.ifPresent(loggedUser -> {
-        ImmutableMap<String, String> im =
-            ImmutableMap.<String, String>builder()
-                .putAll(responseHeaders.get()).put("X-RR-User", loggedUser.getId()).build();
-        responseHeaders.mutate(im);
+        Map<String, String> theMap = responseHeaders.get();
+        theMap.put("X-RR-User", loggedUser.getId());
+        responseHeaders.mutate(theMap);
       });
 
     }
@@ -299,10 +298,9 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   }
 
   public void setResponseHeader(String name, String value) {
-    ImmutableMap<String, String> oldMap = responseHeaders.get();
-
-    ImmutableMap<String, String> newMap = ImmutableMap.<String, String>builder().putAll(oldMap).put(name, value).build();
-    responseHeaders.mutate(newMap);
+    Map<String, String> oldMap = responseHeaders.get();
+    oldMap.put(name, value);
+    responseHeaders.mutate(oldMap);
   }
 
   public Map<String, String> getHeaders() {
