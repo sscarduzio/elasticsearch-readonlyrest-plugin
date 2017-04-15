@@ -102,7 +102,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
     if (rc.hasSubRequests()) {
       rc.scanSubRequests((src) -> {
         rewrite(src);
-        return null;
+        return Optional.of(src);
       });
     }
     else {

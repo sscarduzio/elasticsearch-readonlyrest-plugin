@@ -35,7 +35,7 @@ public abstract class Delayed {
   private Boolean committed = false;
   private Boolean delegated = false;
   Delayed(String name) {
-    this.name = name + "-" + ((int) Math.floor(Math.random() * 101));
+    this.name = name;
   }
 
   public void delay(Runnable r) {
@@ -60,7 +60,7 @@ public abstract class Delayed {
     if (commitSize == 0) {
       return;
     }
-    logger.info(name + " > Committing " + effects.size() + " effects");
+    logger.debug(name + " > Committing " + effects.size() + " effects");
     Iterator<Runnable> it = effects.iterator();
     while (it.hasNext()) {
       Runnable eff = it.next();
