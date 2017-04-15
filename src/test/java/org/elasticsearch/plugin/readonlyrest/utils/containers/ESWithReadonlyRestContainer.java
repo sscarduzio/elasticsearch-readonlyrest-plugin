@@ -83,8 +83,10 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                     "file:/tmp/" + pluginFile.getName())
                 .build()));
     return container
+        .withLogConsumer((l) -> System.out.print(l.getUtf8String()))
         .withExposedPorts(ES_PORT)
         .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
+
   }
 
   public String getESHost() {
