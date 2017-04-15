@@ -123,9 +123,9 @@ public class LdapAuthorizationAsyncRuleTests {
 
   private Settings.Builder baseExampleBlockBuilder() {
     return Settings.builder()
-        .put("name", "Accept requests from users in group team2 on blog2")
-        .put("type", "allow")
-        .putArray("indices", Lists.newArrayList("blog"));
+                   .put("name", "Accept requests from users in group team2 on blog2")
+                   .put("type", "allow")
+                   .putArray("indices", Lists.newArrayList("blog"));
   }
 
 }

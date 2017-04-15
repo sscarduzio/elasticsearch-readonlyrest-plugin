@@ -40,6 +40,16 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
   private final Cache<String, LdapUserWithHashedPassword> ldapUsersWithPasswordCache;
   private final Cache<String, Optional<LdapUser>> ldapUsersCache;
 
+  public AuthenticationLdapClientCacheDecorator(AuthenticationLdapClient underlyingClient, Duration ttl) {
+    this.underlyingClient = underlyingClient;
+    this.ldapUsersWithPasswordCache = CacheBuilder.newBuilder()
+                                                  .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+                                                  .build();
+    this.ldapUsersCache = CacheBuilder.newBuilder()
+                                      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+                                      .build();
+  }
+
   public static AuthenticationLdapClient wrapInCacheIfCacheIsEnabled(Settings settings, AuthenticationLdapClient client) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
         .map(ttl -> ttl.isZero()
@@ -48,25 +58,15 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
         .orElse(client);
   }
 
-  public AuthenticationLdapClientCacheDecorator(AuthenticationLdapClient underlyingClient, Duration ttl) {
-    this.underlyingClient = underlyingClient;
-    this.ldapUsersWithPasswordCache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
-    this.ldapUsersCache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
-  }
-
   @Override
   public CompletableFuture<Optional<LdapUser>> userById(String userId) {
     Optional<LdapUser> ldapUser = ldapUsersCache.getIfPresent(userId);
-    if(ldapUser == null) {
+    if (ldapUser == null) {
       return underlyingClient.userById(userId)
-          .thenApply(user -> {
-            ldapUsersCache.put(userId, user);
-            return user;
-          });
+                             .thenApply(user -> {
+                               ldapUsersCache.put(userId, user);
+                               return user;
+                             });
     }
     return CompletableFuture.completedFuture(ldapUser);
   }
@@ -76,13 +76,13 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
     LdapUserWithHashedPassword cachedUser = ldapUsersWithPasswordCache.getIfPresent(credentials.getUserName());
     if (cachedUser == null) {
       return underlyingClient.authenticate(credentials)
-          .thenApply(newUser -> {
-            newUser.ifPresent(ldapUser -> ldapUsersWithPasswordCache.put(
-                credentials.getUserName(),
-                new LdapUserWithHashedPassword(ldapUser, credentials.getHashedPassword())
-            ));
-            return newUser;
-          });
+                             .thenApply(newUser -> {
+                               newUser.ifPresent(ldapUser -> ldapUsersWithPasswordCache.put(
+                                   credentials.getUserName(),
+                                   new LdapUserWithHashedPassword(ldapUser, credentials.getHashedPassword())
+                               ));
+                               return newUser;
+                             });
     }
     return CompletableFuture.completedFuture(
         Objects.equals(cachedUser.hashedPassword, credentials.getHashedPassword())

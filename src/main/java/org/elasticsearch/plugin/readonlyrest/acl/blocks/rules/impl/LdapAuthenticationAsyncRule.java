@@ -37,6 +37,10 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private final AuthenticationLdapClient client;
 
+  LdapAuthenticationAsyncRule(AuthenticationLdapClient client) {
+    this.client = client;
+  }
+
   public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s, LdapConfigs ldapConfigs)
       throws ConfigMalformedException {
     return ConfigReaderHelper.fromSettings(RULE_NAME, s, fromSimpleSettings(ldapConfigs), fromExtendedSettings(ldapConfigs));
@@ -45,7 +49,7 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
   private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromSimpleSettings(LdapConfigs ldapConfigs) {
     return settings -> {
       String ldapName = settings.get(RULE_NAME);
-      if(ldapName == null)
+      if (ldapName == null)
         throw new ConfigMalformedException("No [" + LDAP_NAME + "] value defined");
 
       return tryCreateRule(ldapName, ldapConfigs);
@@ -70,10 +74,6 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private static Optional<LdapAuthenticationAsyncRule> tryCreateRule(String ldapName, LdapConfigs ldapConfigs) {
     return Optional.of(new LdapAuthenticationAsyncRule(ldapConfigs.authenticationLdapClientForName(ldapName)));
-  }
-
-  LdapAuthenticationAsyncRule(AuthenticationLdapClient client) {
-    this.client = client;
   }
 
   @Override

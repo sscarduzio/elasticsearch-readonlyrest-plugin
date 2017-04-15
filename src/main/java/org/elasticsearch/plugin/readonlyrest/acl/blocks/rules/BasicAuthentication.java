@@ -21,8 +21,8 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
@@ -59,7 +59,7 @@ public abstract class BasicAuthentication extends SyncRule implements UserRule, 
 
     BasicAuth basicAuth = optBasicAuth.get();
     RuleExitResult res = authenticate(authKey, basicAuth) ? MATCH : NO_MATCH;
-    if(res.isMatch()){
+    if (res.isMatch()) {
       rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
     }
     return res;

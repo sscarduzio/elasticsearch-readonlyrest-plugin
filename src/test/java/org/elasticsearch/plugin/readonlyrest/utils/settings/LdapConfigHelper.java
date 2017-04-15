@@ -39,16 +39,17 @@ public class LdapConfigHelper {
 
   @SuppressWarnings("unchecked")
   public static LdapConfig<?> mockLdapConfig(String name, Optional<Tuple<LdapUser, Set<LdapGroup>>> onAuthenticate) {
-    LdapConfig<GroupsProviderLdapClient> config = (LdapConfig<GroupsProviderLdapClient>)mock(LdapConfig.class);
+    LdapConfig<GroupsProviderLdapClient> config = (LdapConfig<GroupsProviderLdapClient>) mock(LdapConfig.class);
     when(config.getName()).thenReturn(name);
     GroupsProviderLdapClient client = mock(GroupsProviderLdapClient.class);
-    if(onAuthenticate.isPresent()) {
+    if (onAuthenticate.isPresent()) {
       LdapUser user = onAuthenticate.map(Tuple::v1).get();
       Set<LdapGroup> groups = onAuthenticate.map(Tuple::v2).get();
       when(client.authenticate(any())).thenReturn(CompletableFuture.completedFuture(Optional.of(user)));
       when(client.userGroups(user)).thenReturn(CompletableFuture.completedFuture(groups));
       when(client.userById(user.getUid())).thenReturn(CompletableFuture.completedFuture(Optional.of(user)));
-    } else {
+    }
+    else {
       when(client.authenticate(any())).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
       when(client.userGroups(any())).thenReturn(CompletableFuture.completedFuture(Sets.newHashSet()));
       when(client.userById(any())).thenReturn(CompletableFuture.completedFuture(Optional.empty()));

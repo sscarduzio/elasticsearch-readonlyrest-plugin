@@ -18,9 +18,9 @@ package org.elasticsearch.plugin.readonlyrest.caching;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -37,6 +37,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class CachedAsyncAuthorizationDecoratorTests {
+
+  private AsyncAuthorization dummyAsyncRule = new AsyncAuthorization() {
+    @Override
+    protected CompletableFuture<Boolean> authorize(LoggedUser user) {
+      return CompletableFuture.completedFuture(true);
+    }
+
+    @Override
+    public String getKey() {
+      return "";
+    }
+  };
 
   @Test
   public void testIfAsyncAuthorizationRuleIsWrappedInCacheIfOneIsEnabled() {
@@ -98,18 +110,6 @@ public class CachedAsyncAuthorizationDecoratorTests {
     assertEquals(true, secondAttemptMatch.get().isMatch());
     verify(rule, times(2)).authorize(user);
   }
-
-  private AsyncAuthorization dummyAsyncRule = new AsyncAuthorization() {
-    @Override
-    protected CompletableFuture<Boolean> authorize(LoggedUser user) {
-      return CompletableFuture.completedFuture(true);
-    }
-
-    @Override
-    public String getKey() {
-      return "";
-    }
-  };
 
   private abstract class MockedAsyncAuthorization extends AsyncAuthorization {
     @Override

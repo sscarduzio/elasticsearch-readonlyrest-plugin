@@ -19,11 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.rest.RestRequest;
 
 import java.util.List;
@@ -34,14 +34,6 @@ import java.util.Optional;
  */
 public class MethodsSyncRule extends SyncRule {
   private List<String> allowedMethods;
-
-  public static Optional<MethodsSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new MethodsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
 
   public MethodsSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -63,6 +55,14 @@ public class MethodsSyncRule extends SyncRule {
       throw new RuleNotConfiguredException();
     }
 
+  }
+
+  public static Optional<MethodsSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new MethodsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
   }
 
   /*

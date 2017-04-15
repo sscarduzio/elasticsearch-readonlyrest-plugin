@@ -28,19 +28,21 @@ public class BasicAuthUtils {
 
   public static Optional<BasicAuth> getBasicAuthFromHeaders(Map<String, String> headers) {
     return Optional.ofNullable(headers.get("Authorization"))
-            .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
-            .flatMap(BasicAuth::fromBase64Value);
+                   .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
+                   .flatMap(BasicAuth::fromBase64Value);
   }
 
   private static Optional<String> getInterestingPartOfBasicAuthValue(String basicAuthValue) {
     if (basicAuthValue == null || basicAuthValue.trim().length() == 0 || !basicAuthValue.contains("Basic ")) {
       return Optional.empty();
-    } else {
+    }
+    else {
       String[] parts = basicAuthValue.split("Basic");
-      if(parts.length == 2) {
+      if (parts.length == 2) {
         String interestingPart = parts[1].trim();
         return interestingPart.length() > 0 ? Optional.of(interestingPart) : Optional.empty();
-      } else {
+      }
+      else {
         return Optional.empty();
       }
     }
@@ -51,22 +53,22 @@ public class BasicAuthUtils {
     private final String userName;
     private final String password;
 
+    private BasicAuth(String base64Value) {
+      this.base64Value = base64Value;
+      String[] splitted = new String(Base64.getDecoder().decode(base64Value)).split(":");
+      if (splitted.length != 2) {
+        throw new IllegalArgumentException("Cannot extract user name from base auth header");
+      }
+      this.userName = splitted[0];
+      this.password = splitted[1];
+    }
+
     public static Optional<BasicAuth> fromBase64Value(String base64Value) {
       try {
         return Optional.of(new BasicAuth(base64Value));
       } catch (IllegalArgumentException ex) {
         return Optional.empty();
       }
-    }
-
-    private BasicAuth(String base64Value) {
-      this.base64Value = base64Value;
-      String[] splitted = new String(Base64.getDecoder().decode(base64Value)).split(":");
-      if(splitted.length != 2) {
-        throw new IllegalArgumentException("Cannot extract user name from base auth header");
-      }
-      this.userName = splitted[0];
-      this.password = splitted[1];
     }
 
     public String getBase64Value() {

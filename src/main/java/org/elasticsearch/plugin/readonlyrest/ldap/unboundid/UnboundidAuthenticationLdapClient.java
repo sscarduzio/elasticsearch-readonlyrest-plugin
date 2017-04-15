@@ -36,16 +36,16 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
   private static final Logger logger = Loggers.getLogger(UnboundidAuthenticationLdapClient.class);
 
   public UnboundidAuthenticationLdapClient(ConnectionConfig connectionConfig,
-                                           UserSearchFilterConfig userSearchFilterConfig,
-                                           Optional<SearchingUserConfig> searchingUserConfig) {
+      UserSearchFilterConfig userSearchFilterConfig,
+      Optional<SearchingUserConfig> searchingUserConfig) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
         connectionConfig.getRequestTimeout(),
         userSearchFilterConfig);
   }
 
   public UnboundidAuthenticationLdapClient(UnboundidConnection connection,
-                                           Duration requestTimeout,
-                                           UserSearchFilterConfig userSearchFilterConfig) {
+      Duration requestTimeout,
+      UserSearchFilterConfig userSearchFilterConfig) {
     super(connection, requestTimeout, userSearchFilterConfig);
   }
 

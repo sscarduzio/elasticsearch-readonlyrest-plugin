@@ -41,10 +41,10 @@ public class GradleProjectUtils {
 
   private static String pluginName() {
     return String.format(
-      "%s-%s_es%s.zip",
-      properties.getProperty("pluginName"),
-      properties.getProperty("pluginVersion"),
-      properties.getProperty("esVersion")
+        "%s-%s_es%s.zip",
+        properties.getProperty("pluginName"),
+        properties.getProperty("pluginVersion"),
+        properties.getProperty("esVersion")
     );
   }
 

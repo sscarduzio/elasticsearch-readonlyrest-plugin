@@ -187,7 +187,8 @@ public class ConfigurationHelper {
     sslEnabled = s.getAsBoolean("ssl.enable", false);
     if (sslEnabled) {
       logger.debug("SSL: Enabled");
-    } else {
+    }
+    else {
       logger.debug("SSL: Disabled");
     }
 

@@ -37,6 +37,13 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
   private final BasicAsyncAuthentication underlying;
   private final Cache<String, String> cache;
 
+  public CachedAsyncAuthenticationDecorator(BasicAsyncAuthentication underlying, Duration ttl) {
+    this.underlying = underlying;
+    this.cache = CacheBuilder.newBuilder()
+                             .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+                             .build();
+  }
+
   public static BasicAsyncAuthentication wrapInCacheIfCacheIsEnabled(BasicAsyncAuthentication authentication, Settings settings) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
         .map(ttl -> ttl.isZero()
@@ -45,11 +52,8 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
         .orElse(authentication);
   }
 
-  public CachedAsyncAuthenticationDecorator(BasicAsyncAuthentication underlying, Duration ttl) {
-    this.underlying = underlying;
-    this.cache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
+  private static String hashPassword(String password) {
+    return Hashing.sha256().hashString(password, Charset.defaultCharset()).toString();
   }
 
   @Override
@@ -58,12 +62,12 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
     String providedHashedPassword = hashPassword(password);
     if (hashedPassword == null) {
       return underlying.authenticate(user, password)
-          .thenApply(result -> {
-            if(result) {
-              cache.put(user, providedHashedPassword);
-            }
-            return result;
-          });
+                       .thenApply(result -> {
+                         if (result) {
+                           cache.put(user, providedHashedPassword);
+                         }
+                         return result;
+                       });
     }
     return CompletableFuture.completedFuture(Objects.equals(hashedPassword, providedHashedPassword));
   }
@@ -71,9 +75,5 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
   @Override
   public String getKey() {
     return underlying.getKey();
-  }
-
-  private static String hashPassword(String password) {
-    return Hashing.sha256().hashString(password, Charset.defaultCharset()).toString();
   }
 }

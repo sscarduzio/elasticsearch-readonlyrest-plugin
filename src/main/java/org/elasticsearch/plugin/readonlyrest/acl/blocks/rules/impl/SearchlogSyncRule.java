@@ -26,11 +26,11 @@ import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -44,20 +44,20 @@ public class SearchlogSyncRule extends SyncRule {
 
   private boolean shouldLog = false;
 
-  public static Optional<SearchlogSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new SearchlogSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
-
   public SearchlogSyncRule(Settings s) throws RuleNotConfiguredException {
     try {
       shouldLog = s.getAsBoolean(getKey(), false);
       if (!shouldLog) throw new RuleNotConfiguredException();
     } catch (Exception e) {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<SearchlogSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new SearchlogSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 
@@ -73,16 +73,16 @@ public class SearchlogSyncRule extends SyncRule {
       SearchRequest searchRequest = (SearchRequest) ar;
       SearchResponse searchResponse = (SearchResponse) response;
       logger.info(
-        "search: {" +
-          " ID:" + rc.getId() +
-          ", ACT:" + rc.getAction() +
-          ", USR:" + rc.getLoggedInUser() +
-          ", IDX:" + Arrays.toString(searchRequest.indices()) +
-          ", TYP:" + Arrays.toString(searchRequest.types()) +
-          ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
-          ", HIT:" + searchResponse.getHits().totalHits() +
-          ", RES:" + searchResponse.getHits().hits().length +
-          " }"
+          "search: {" +
+              " ID:" + rc.getId() +
+              ", ACT:" + rc.getAction() +
+              ", USR:" + rc.getLoggedInUser() +
+              ", IDX:" + Arrays.toString(searchRequest.indices()) +
+              ", TYP:" + Arrays.toString(searchRequest.types()) +
+              ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
+              ", HIT:" + searchResponse.getHits().totalHits() +
+              ", RES:" + searchResponse.getHits().hits().length +
+              " }"
       );
     }
     return true;

@@ -19,10 +19,10 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.settings.UserGroupsProviderConfigHelper;
 import org.junit.ClassRule;
@@ -57,9 +57,9 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
 
   private RuleExitResult createRuleRunMatch(List<String> ruleGroups) throws Exception {
     Settings settings = Settings.builder()
-        .put("groups_provider_authorization.0.user_groups_provider", "provider1")
-        .putArray("groups_provider_authorization.0.groups", ruleGroups)
-        .build();
+                                .put("groups_provider_authorization.0.user_groups_provider", "provider1")
+                                .putArray("groups_provider_authorization.0.groups", ruleGroups)
+                                .build();
     UserGroupProviderConfig config = UserGroupProviderConfig.fromSettings(
         UserGroupsProviderConfigHelper
             .create("provider1", new URI("http://localhost:" + wireMockContainer.getWireMockPort() + "/groups"),

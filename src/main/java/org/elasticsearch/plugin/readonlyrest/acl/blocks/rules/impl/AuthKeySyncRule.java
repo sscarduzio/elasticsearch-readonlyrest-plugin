@@ -34,16 +34,16 @@ import java.util.Optional;
 public class AuthKeySyncRule extends BasicAuthentication {
   private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
 
+  public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
+    super(s);
+  }
+
   public static Optional<AuthKeySyncRule> fromSettings(Settings s) {
     try {
       return Optional.of(new AuthKeySyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }
-  }
-
-  public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
   }
 
   @Override

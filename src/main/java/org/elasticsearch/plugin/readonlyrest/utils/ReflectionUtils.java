@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.utils;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -58,7 +58,7 @@ public class ReflectionUtils {
         } catch (SecurityException e) {
           logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
-            "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
+              "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
           logger.debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
         }
@@ -95,7 +95,7 @@ public class ReflectionUtils {
   }
 
   public static List<Throwable> fieldChanger(final Class<?> clazz, String fieldName, Logger logger, RequestContext rc,
-                                             CheckedFunction<Field, Void> change) {
+      CheckedFunction<Field, Void> change) {
 
     final List<Throwable> errors = new ArrayList<>();
 
@@ -116,7 +116,7 @@ public class ReflectionUtils {
           }
           else {
             theClass = theClass.getSuperclass();
-            throw new NoSuchFieldException("Cannot find field " + fieldName + "in class" + theClass.getSimpleName());
+            throw new NoSuchFieldException("Cannot find field " + fieldName + " in class" + theClass.getSimpleName());
           }
         } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
           errors.add(new SetFieldException(theClass, fieldName, rc.getId(), e));
@@ -156,9 +156,9 @@ public class ReflectionUtils {
   static class SetFieldException extends Exception {
     SetFieldException(Class<?> c, String id, String fieldName, Throwable e) {
       super(" Could not set " + fieldName + " to class " + c.getSimpleName() +
-              "for req id: " + id + " because: "
-              + e.getClass().getSimpleName() + " : " + e.getMessage() +
-              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+          "for req id: " + id + " because: "
+          + e.getClass().getSimpleName() + " : " + e.getMessage() +
+          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
     }
   }
 }

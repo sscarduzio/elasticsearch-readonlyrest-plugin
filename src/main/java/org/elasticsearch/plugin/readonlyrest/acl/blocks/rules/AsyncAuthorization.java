@@ -19,8 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -34,10 +34,11 @@ public abstract class AsyncAuthorization extends AsyncRule implements Authorizat
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     Optional<LoggedUser> optLoggedInUser = rc.getLoggedInUser();
-    if(optLoggedInUser.isPresent()) {
+    if (optLoggedInUser.isPresent()) {
       LoggedUser loggedUser = optLoggedInUser.get();
       return authorize(loggedUser).thenApply(result -> result ? MATCH : NO_MATCH);
-    } else {
+    }
+    else {
       logger.warn("Cannot try to authorize user because non is logged now!");
       return CompletableFuture.completedFuture(NO_MATCH);
     }

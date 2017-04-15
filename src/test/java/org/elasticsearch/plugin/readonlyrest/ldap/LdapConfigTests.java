@@ -34,101 +34,101 @@ public class LdapConfigTests {
   @Test
   public void testSuccessfulCreationFromRequiredSettings() {
     Settings settings = Settings.builder()
-        .put("name", "Ldap1")
-        .put("host", ldapContainer.getLdapHost())
-        .put("port", ldapContainer.getLdapPort())
-        .put("ssl_enabled", false)
-        .put("search_user_base_DN", "ou=People,dc=example,dc=com")
-        .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
-        .put("bind_dn", "cn=admin,dc=example,dc=com")
-        .put("bind_password", "password")
-        .build();
+                                .put("name", "Ldap1")
+                                .put("host", ldapContainer.getLdapHost())
+                                .put("port", ldapContainer.getLdapPort())
+                                .put("ssl_enabled", false)
+                                .put("search_user_base_DN", "ou=People,dc=example,dc=com")
+                                .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
+                                .put("bind_dn", "cn=admin,dc=example,dc=com")
+                                .put("bind_password", "password")
+                                .build();
     LdapConfig.fromSettings(settings);
   }
 
   @Test(expected = ConfigMalformedException.class)
   public void testCreationFailedWhenNameWasNotPresentInSettings() {
     Settings settings = Settings.builder()
-        .put("host", ldapContainer.getLdapHost())
-        .put("port", ldapContainer.getLdapPort())
-        .put("ssl_enabled", false)
-        .put("search_user_base_DN", "ou=People,dc=example,dc=com")
-        .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
-        .build();
+                                .put("host", ldapContainer.getLdapHost())
+                                .put("port", ldapContainer.getLdapPort())
+                                .put("ssl_enabled", false)
+                                .put("search_user_base_DN", "ou=People,dc=example,dc=com")
+                                .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
+                                .build();
     LdapConfig.fromSettings(settings);
   }
 
   @Test(expected = ConfigMalformedException.class)
   public void testCreationFailedWhenHostWasNotPresentInSettings() {
     Settings settings = Settings.builder()
-        .put("name", "Ldap1")
-        .put("search_user_base_DN", "ou=People,dc=example,dc=com")
-        .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
-        .build();
+                                .put("name", "Ldap1")
+                                .put("search_user_base_DN", "ou=People,dc=example,dc=com")
+                                .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
+                                .build();
     LdapConfig.fromSettings(settings);
   }
 
   @Test(expected = ConfigMalformedException.class)
   public void testCreationFailedWhenSearchUserBaseDNWasNotPresentInSettings() {
     Settings settings = Settings.builder()
-        .put("name", "Ldap1")
-        .put("host", ldapContainer.getLdapHost())
-        .put("port", ldapContainer.getLdapPort())
-        .put("ssl_enabled", false)
-        .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
-        .build();
+                                .put("name", "Ldap1")
+                                .put("host", ldapContainer.getLdapHost())
+                                .put("port", ldapContainer.getLdapPort())
+                                .put("ssl_enabled", false)
+                                .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
+                                .build();
     LdapConfig.fromSettings(settings);
   }
 
   @Test
   public void testWhenSearchGroupsBaseDNWasNotPresentAuthenticationLdapClientIsBeingCreated() {
     Settings settings = Settings.builder()
-        .put("name", "Ldap1")
-        .put("host", ldapContainer.getLdapHost())
-        .put("port", ldapContainer.getLdapPort())
-        .put("ssl_enabled", false)
-        .put("search_user_base_DN", "ou=People,dc=example,dc=com")
-        .build();
+                                .put("name", "Ldap1")
+                                .put("host", ldapContainer.getLdapHost())
+                                .put("port", ldapContainer.getLdapPort())
+                                .put("ssl_enabled", false)
+                                .put("search_user_base_DN", "ou=People,dc=example,dc=com")
+                                .build();
     assertTrue(LdapConfig.fromSettings(settings).getClient() instanceof AuthenticationLdapClient);
   }
 
   @Test
   public void testWhenSearchGroupsBaseDNWasPresentGroupProviderLdapClientIsBeingCreated() {
     Settings settings = Settings.builder()
-        .put("name", "Ldap1")
-        .put("host", ldapContainer.getLdapHost())
-        .put("port", ldapContainer.getLdapPort())
-        .put("ssl_enabled", false)
-        .put("search_user_base_DN", "ou=People,dc=example,dc=com")
-        .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
-        .build();
+                                .put("name", "Ldap1")
+                                .put("host", ldapContainer.getLdapHost())
+                                .put("port", ldapContainer.getLdapPort())
+                                .put("ssl_enabled", false)
+                                .put("search_user_base_DN", "ou=People,dc=example,dc=com")
+                                .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
+                                .build();
     assertTrue(LdapConfig.fromSettings(settings).getClient() instanceof GroupsProviderLdapClient);
   }
 
   @Test
   public void testBindDnAndPasswordAreNotRequiredParam() {
     Settings settings = Settings.builder()
-        .put("name", "Ldap1")
-        .put("host", ldapContainer.getLdapHost())
-        .put("port", ldapContainer.getLdapPort())
-        .put("ssl_enabled", false)
-        .put("search_user_base_DN", "ou=People,dc=example,dc=com")
-        .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
-        .build();
+                                .put("name", "Ldap1")
+                                .put("host", ldapContainer.getLdapHost())
+                                .put("port", ldapContainer.getLdapPort())
+                                .put("ssl_enabled", false)
+                                .put("search_user_base_DN", "ou=People,dc=example,dc=com")
+                                .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
+                                .build();
     LdapConfig.fromSettings(settings);
   }
 
   @Test(expected = ConfigMalformedException.class)
   public void testIfBindDnIsPresentBindPasswordMustBeProvided() {
     Settings settings = Settings.builder()
-        .put("name", "Ldap1")
-        .put("host", ldapContainer.getLdapHost())
-        .put("port", ldapContainer.getLdapPort())
-        .put("ssl_enabled", false)
-        .put("search_user_base_DN", "ou=People,dc=example,dc=com")
-        .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
-        .put("bind_dn", "cn=admin,dc=example,dc=com")
-        .build();
+                                .put("name", "Ldap1")
+                                .put("host", ldapContainer.getLdapHost())
+                                .put("port", ldapContainer.getLdapPort())
+                                .put("ssl_enabled", false)
+                                .put("search_user_base_DN", "ou=People,dc=example,dc=com")
+                                .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
+                                .put("bind_dn", "cn=admin,dc=example,dc=com")
+                                .build();
     LdapConfig.fromSettings(settings);
   }
 }

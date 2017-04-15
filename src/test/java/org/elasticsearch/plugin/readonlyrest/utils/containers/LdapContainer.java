@@ -61,19 +61,19 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
     File ldapInitScriptFile = ContainerUtils.getResourceFile(ldapInitScript);
     logger.info("Creating LDAP container ...");
     LdapContainer container = new LdapContainer(
-      new ImageFromDockerfile()
-        .withDockerfileFromBuilder(builder -> builder
-          .from("osixia/openldap:1.1.7")
-          .env("LDAP_ORGANISATION", LDAP_ORGANISATION)
-          .env("LDAP_DOMAIN", LDAP_DOMAIN)
-          .env("LDAP_ADMIN_PASSWORD", LDAP_ADMIN_PASSWORD)
-          .build()));
+        new ImageFromDockerfile()
+            .withDockerfileFromBuilder(builder -> builder
+                .from("osixia/openldap:1.1.7")
+                .env("LDAP_ORGANISATION", LDAP_ORGANISATION)
+                .env("LDAP_DOMAIN", LDAP_DOMAIN)
+                .env("LDAP_ADMIN_PASSWORD", LDAP_ADMIN_PASSWORD)
+                .build()));
     return container
-      .withExposedPorts(LDAP_PORT)
-      .waitingFor(
-        container.ldapWaitStrategy(ldapInitScriptFile)
-          .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
-      );
+        .withExposedPorts(LDAP_PORT)
+        .waitingFor(
+            container.ldapWaitStrategy(ldapInitScriptFile)
+                     .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
+        );
   }
 
   public String getLdapHost() {

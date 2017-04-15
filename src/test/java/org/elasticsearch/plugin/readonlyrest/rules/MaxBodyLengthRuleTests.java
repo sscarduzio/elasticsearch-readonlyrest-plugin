@@ -19,11 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -42,8 +42,8 @@ public class MaxBodyLengthRuleTests extends TestCase {
     when(rc.getContent()).thenReturn(found);
 
     SyncRule r = new MaxBodyLengthSyncRule(Settings.builder()
-                                             .put("maxBodyLength", configured)
-                                             .build());
+                                                   .put("maxBodyLength", configured)
+                                                   .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

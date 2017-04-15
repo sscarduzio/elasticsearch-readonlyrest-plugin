@@ -35,14 +35,13 @@ import java.util.concurrent.CompletableFuture;
 public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
 
   private static final Logger logger = Loggers.getLogger(UnboundidBaseLdapClient.class);
-
-  private final UserSearchFilterConfig userSearchFilterConfig;
   protected final Duration requestTimeout;
   protected final UnboundidConnection connection;
+  private final UserSearchFilterConfig userSearchFilterConfig;
 
   UnboundidBaseLdapClient(UnboundidConnection connection,
-                          Duration requestTimeout,
-                          UserSearchFilterConfig userSearchFilterConfig) {
+      Duration requestTimeout,
+      UserSearchFilterConfig userSearchFilterConfig) {
     this.connection = connection;
     this.requestTimeout = requestTimeout;
     this.userSearchFilterConfig = userSearchFilterConfig;
@@ -66,7 +65,8 @@ public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
           .thenApply(userSearchResult -> {
             if (userSearchResult != null && userSearchResult.size() > 0) {
               return Optional.of(new LdapUser(userId, userSearchResult.get(0).getDN()));
-            } else {
+            }
+            else {
               logger.debug("LDAP getting user CN returned no entries");
               return Optional.<LdapUser>empty();
             }

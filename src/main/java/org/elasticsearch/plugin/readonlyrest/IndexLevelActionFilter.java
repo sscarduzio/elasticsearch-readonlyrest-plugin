@@ -22,13 +22,14 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
@@ -43,16 +44,19 @@ import org.elasticsearch.threadpool.ThreadPool;
 @Singleton
 public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
   private final ThreadPool threadPool;
+  private final IndexNameExpressionResolver indexResolver;
   private ClusterService clusterService;
   private ConfigurationHelper conf;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ConfigurationHelper conf,
-                                ClusterService clusterService, ThreadPool threadPool) {
+      ClusterService clusterService, ThreadPool threadPool,
+      IndexNameExpressionResolver indexResolver) {
     super(settings);
     this.conf = conf;
     this.clusterService = clusterService;
     this.threadPool = threadPool;
+    this.indexResolver = indexResolver;
 
     logger.info("Readonly REST plugin was loaded...");
 
@@ -71,10 +75,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   @Override
   public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
-                                                                                     String action,
-                                                                                     Request request,
-                                                                                     ActionListener<Response> listener,
-                                                                                     ActionFilterChain<Request, Response> chain) {
+      String action,
+      Request request,
+      ActionListener<Response> listener,
+      ActionFilterChain<Request, Response> chain) {
     // Skip if disabled
     if (!conf.enabled) {
       chain.proceed(task, action, request, listener);
@@ -100,43 +104,43 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     if (reqNull != chanNull) {
       if (chanNull)
         throw new SecurityPermissionException("Problems analyzing the channel object. " +
-                                                "Have you checked the security permissions?", null);
+            "Have you checked the security permissions?", null);
       if (reqNull)
         throw new SecurityPermissionException("Problems analyzing the request object. " +
-                                                "Have you checked the security permissions?", null);
+            "Have you checked the security permissions?", null);
     }
 
-    RequestContext rc = new RequestContext(channel, req, action, request, clusterService, threadPool);
+    RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool);
     conf.acl.check(rc)
-      .exceptionally(throwable -> {
-        logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
-        throwable.printStackTrace();
-        sendNotAuthResponse(channel);
-        return null;
-      })
-      .thenApply(result -> {
-        if (result == null) return null;
+            .exceptionally(throwable -> {
+              logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+              throwable.printStackTrace();
+              sendNotAuthResponse(channel);
+              return null;
+            })
+            .thenApply(result -> {
+              if (result == null) return null;
 
-        if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
+              if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
 
-          try {
-            @SuppressWarnings("unchecked")
-            ActionListener<Response> aclActionListener =
-              (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
-            chain.proceed(task, action, request, aclActionListener);
-            return null;
-          } catch (Throwable e) {
-            e.printStackTrace();
-          }
+                try {
+                  @SuppressWarnings("unchecked")
+                  ActionListener<Response> aclActionListener =
+                      (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+                  chain.proceed(task, action, request, aclActionListener);
+                  return null;
+                } catch (Throwable e) {
+                  e.printStackTrace();
+                }
 
-          chain.proceed(task, action, request, listener);
-          return null;
-        }
+                chain.proceed(task, action, request, listener);
+                return null;
+              }
 
-        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-        sendNotAuthResponse(channel);
-        return null;
-      });
+              logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+              sendNotAuthResponse(channel);
+              return null;
+            });
   }
 
   private void sendNotAuthResponse(RestChannel channel) {

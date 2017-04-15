@@ -20,7 +20,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
@@ -51,6 +50,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.HashSet;
@@ -76,11 +76,11 @@ public class Block {
   private boolean authHeaderAccepted;
 
   public Block(Settings settings,
-               List<User> userList,
-               LdapConfigs ldapConfigs,
-               List<ProxyAuthConfig> proxyAuthConfigs,
-               List<UserGroupProviderConfig> groupsProviderConfigs,
-               Logger logger) {
+      List<User> userList,
+      LdapConfigs ldapConfigs,
+      List<ProxyAuthConfig> proxyAuthConfigs,
+      List<UserGroupProviderConfig> groupsProviderConfigs,
+      Logger logger) {
     this.name = settings.get("name");
     String sPolicy = settings.get("type");
     this.logger = logger;
@@ -121,7 +121,8 @@ public class Block {
         .thenApply(asyncCheck -> {
           if (asyncCheck != null && asyncCheck) {
             return finishWithMatchResult(rc);
-          } else {
+          }
+          else {
             return finishWithNoMatchResult(rc);
           }
         });
@@ -138,8 +139,8 @@ public class Block {
   }
 
   private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
-                                                               Iterator<AsyncRule> rules,
-                                                               Set<RuleExitResult> thisBlockHistory) {
+      Iterator<AsyncRule> rules,
+      Set<RuleExitResult> thisBlockHistory) {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
         rules,
         rule -> rule.match(rc),
@@ -154,13 +155,12 @@ public class Block {
 
   private BlockExitResult finishWithMatchResult(RequestContext rc) {
     logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
-    rc.commit();
+
     return BlockExitResult.match(this);
   }
 
   private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
     logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
-    rc.reset();
     return BlockExitResult.noMatch();
   }
 
@@ -170,7 +170,7 @@ public class Block {
   }
 
   private Set<AsyncRule> collectRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs,
-                                      LdapConfigs ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs) {
+      LdapConfigs ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs) {
     Set<AsyncRule> rules = Sets.newLinkedHashSet();
     // Won't add the condition if its configuration is not found
 
@@ -199,13 +199,13 @@ public class Block {
     // then we could check potentially slow async rules
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
     LdapAuthenticationAsyncRule.fromSettings(s, ldapConfigs)
-        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+                               .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // all authorization rules should be placed before any authentication rule
     LdapAuthorizationAsyncRule.fromSettings(s, ldapConfigs)
-        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+                              .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
     GroupsProviderAuthorizationAsyncRule.fromSettings(s, groupsProviderConfigs)
-        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+                                        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // At the end the sync rule chain are those that can mutate
     // the client request.

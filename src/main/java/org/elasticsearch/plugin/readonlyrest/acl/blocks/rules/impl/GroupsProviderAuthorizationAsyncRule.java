@@ -70,7 +70,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
   }
 
   public static Optional<GroupsProviderAuthorizationAsyncRule> fromSettings(Settings s,
-                                                                            List<UserGroupProviderConfig> groupProviderConfigs)
+      List<UserGroupProviderConfig> groupProviderConfigs)
       throws ConfigMalformedException {
 
     Map<String, Settings> groupBaseAuthElements = s.getGroups(RULE_NAME);
@@ -81,7 +81,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
     Settings groupBaseAuthSettings = Lists.newArrayList(groupBaseAuthElements.values()).get(0);
 
     Map<String, UserGroupProviderConfig> userGroupProviderConfigByName = groupProviderConfigs.stream()
-        .collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));
+                                                                                             .collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));
 
     String name = requiredAttributeValue(ATTRIBUTE_USER_GROUPS_PROVIDER, groupBaseAuthSettings);
     if (!userGroupProviderConfigByName.containsKey(name)) {
@@ -109,7 +109,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
   private Map<String, String> createParams(LoggedUser user) {
     Map<String, String> params = new HashMap<>();
-    if(providerGroupsAuthDefinition.config.getPassingMethod() == UserGroupProviderConfig.TokenPassingMethod.QUERY) {
+    if (providerGroupsAuthDefinition.config.getPassingMethod() == UserGroupProviderConfig.TokenPassingMethod.QUERY) {
       params.put(providerGroupsAuthDefinition.config.getAuthTokenName(), user.getId());
     }
     return params;
@@ -165,7 +165,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
     private final Function<Response, T> converter;
 
     GroupBasedAuthResponseListener(CompletableFuture<T> promise,
-                                   Function<Response, T> converter) {
+        Function<Response, T> converter) {
       this.promise = promise;
       this.converter = converter;
     }

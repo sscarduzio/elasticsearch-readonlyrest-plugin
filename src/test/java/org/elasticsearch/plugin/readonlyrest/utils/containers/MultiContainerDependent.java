@@ -30,7 +30,7 @@ public class MultiContainerDependent<T extends GenericContainer<T>>
   private T container;
 
   public MultiContainerDependent(MultiContainer multiContainer,
-                                 Function<MultiContainer, T> containerCreator) {
+      Function<MultiContainer, T> containerCreator) {
     this.multiContainer = multiContainer;
     this.containerCreator = containerCreator;
   }

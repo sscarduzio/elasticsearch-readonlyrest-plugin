@@ -20,11 +20,11 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.Optional;
 
@@ -37,17 +37,17 @@ public class ActionsSyncRule extends SyncRule {
 
   protected MatcherWithWildcards m;
 
+  public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
+    super();
+    m = MatcherWithWildcards.fromSettings(s, getKey());
+  }
+
   public static Optional<ActionsSyncRule> fromSettings(Settings s) {
     try {
       return Optional.of(new ActionsSyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }
-  }
-
-  public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    m = MatcherWithWildcards.fromSettings(s, getKey());
   }
 
   @Override

@@ -35,7 +35,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays, ThreadPool threadPool,
-                            NamedXContentRegistry xContentRegistry, Dispatcher dispatcher
+      NamedXContentRegistry xContentRegistry, Dispatcher dispatcher
   ) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     logger.info("creating SSL transport");

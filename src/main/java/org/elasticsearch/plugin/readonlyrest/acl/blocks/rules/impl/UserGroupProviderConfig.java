@@ -39,15 +39,11 @@ public class UserGroupProviderConfig {
   private final TokenPassingMethod passingMethod;
   private final String responseGroupsJsonPath;
 
-  public enum TokenPassingMethod {
-    QUERY, HEADER
-  }
-
   private UserGroupProviderConfig(String name,
-                                  URI endpoint,
-                                  String authTokenName,
-                                  TokenPassingMethod passingMethod,
-                                  String responseGroupsJsonPath) {
+      URI endpoint,
+      String authTokenName,
+      TokenPassingMethod passingMethod,
+      String responseGroupsJsonPath) {
     this.name = name;
     this.endpoint = endpoint;
     this.authTokenName = authTokenName;
@@ -63,6 +59,19 @@ public class UserGroupProviderConfig {
         requiredAttributeValue(ATTRIBUTE_AUTH_TOKEN_PASSED_AS, settings, fromStringToTokenPassingMethod()),
         requiredAttributeValue(ATTRIBUTE_RESPONSE_GROUPS_JSON_PATH, settings)
     );
+  }
+
+  private static Function<String, TokenPassingMethod> fromStringToTokenPassingMethod() {
+    return value -> {
+      switch (value) {
+        case "QUERY_PARAM":
+          return TokenPassingMethod.QUERY;
+        case "HEADER":
+          return TokenPassingMethod.HEADER;
+        default:
+          throw new ConfigMalformedException("Unknown token passing method: '" + value + "'");
+      }
+    };
   }
 
   public String getName() {
@@ -85,16 +94,7 @@ public class UserGroupProviderConfig {
     return responseGroupsJsonPath;
   }
 
-  private static Function<String, TokenPassingMethod> fromStringToTokenPassingMethod() {
-    return value -> {
-      switch (value) {
-        case "QUERY_PARAM":
-          return TokenPassingMethod.QUERY;
-        case "HEADER":
-          return TokenPassingMethod.HEADER;
-        default:
-          throw new ConfigMalformedException("Unknown token passing method: '" + value + "'");
-      }
-    };
+  public enum TokenPassingMethod {
+    QUERY, HEADER
   }
 }

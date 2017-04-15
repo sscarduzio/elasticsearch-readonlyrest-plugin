@@ -29,11 +29,12 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.search.SearchShardTarget;
 import org.elasticsearch.search.internal.InternalSearchHit;
 
@@ -57,14 +58,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
   private final Pattern[] targetPatterns;
   private final String replacement;
 
-  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new IndicesRewriteSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
-
   public IndicesRewriteSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
     // Will work fine also with single strings (non array) values.
@@ -84,11 +77,19 @@ public class IndicesRewriteSyncRule extends SyncRule {
     replacement = a[a.length - 1];
 
     targetPatterns = Arrays.stream(targets)
-      .distinct()
-      .filter(Objects::nonNull)
-      .filter(Strings::isNotBlank)
-      .map(Pattern::compile)
-      .toArray(Pattern[]::new);
+                           .distinct()
+                           .filter(Objects::nonNull)
+                           .filter(Strings::isNotBlank)
+                           .map(Pattern::compile)
+                           .toArray(Pattern[]::new);
+  }
+
+  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new IndicesRewriteSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
   }
 
   @Override
@@ -98,17 +99,32 @@ public class IndicesRewriteSyncRule extends SyncRule {
       return MATCH;
     }
 
+    if (rc.hasSubRequests()) {
+      rc.scanSubRequests((src) -> {
+        rewrite(src);
+        return null;
+      });
+    }
+    else {
+      rewrite(rc);
+    }
+
+
+    // This is a side-effect only rule, will always match
+    return MATCH;
+  }
+
+  private void rewrite(IndicesRequestContext rc) {
     // Expanded indices
     final Set<String> oldIndices = Sets.newHashSet(rc.getIndices());
 
     if (rc.isReadRequest()) {
-
       // Translate all the wildcards
       oldIndices.clear();
       oldIndices.addAll(rc.getExpandedIndices());
 
       // If asked for non-existent indices, let's show them to the rewriter
-      Set<String> available = rc.getAvailableIndicesAndAliases();
+      Set<String> available = rc.getAllIndicesAndAliases();
       rc.getIndices().stream()
         .filter(i -> !available.contains(i))
         .forEach(i -> oldIndices.add(i));
@@ -135,13 +151,11 @@ public class IndicesRewriteSyncRule extends SyncRule {
       }
     }
     oldIndices.addAll(newIndices);
+
     if (oldIndices.isEmpty()) {
       oldIndices.add("*");
     }
     rc.setIndices(oldIndices);
-
-    // This is a side-effect only rule, will always match
-    return MATCH;
   }
 
 

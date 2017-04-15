@@ -18,11 +18,11 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,14 +40,6 @@ public class GroupsSyncRule extends SyncRule {
   private final List<User> users;
   private final List<String> groups;
 
-  public static Optional<GroupsSyncRule> fromSettings(Settings s, List<User> userList) {
-    try {
-      return Optional.of(new GroupsSyncRule(s, userList));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
-
   public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
     super();
     users = userList;
@@ -57,6 +49,14 @@ public class GroupsSyncRule extends SyncRule {
     }
     else {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<GroupsSyncRule> fromSettings(Settings s, List<User> userList) {
+    try {
+      return Optional.of(new GroupsSyncRule(s, userList));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

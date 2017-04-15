@@ -20,11 +20,11 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import java.util.Base64;
@@ -45,8 +45,8 @@ public class AuthKeyRuleTests extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     SyncRule r = new AuthKeySyncRule(Settings.builder()
-                                       .put("auth_key", configured)
-                                       .build());
+                                             .put("auth_key", configured)
+                                             .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -55,16 +55,16 @@ public class AuthKeyRuleTests extends TestCase {
 
   public void testSimple() throws RuleNotConfiguredException {
     RuleExitResult res = match(
-      "logstash:logstash",
-      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+        "logstash:logstash",
+        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }
 
   public void testInvalid() throws RuleNotConfiguredException {
     RuleExitResult res = match(
-      "logstash:logstash",
-      "Basic " + Base64.getEncoder().encodeToString("logstash:".getBytes())
+        "logstash:logstash",
+        "Basic " + Base64.getEncoder().encodeToString("logstash:".getBytes())
     );
     assertFalse(res.isMatch());
   }

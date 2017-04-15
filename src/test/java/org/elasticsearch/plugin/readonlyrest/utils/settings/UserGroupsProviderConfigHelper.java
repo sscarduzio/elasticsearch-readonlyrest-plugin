@@ -24,14 +24,14 @@ import java.net.URI;
 public class UserGroupsProviderConfigHelper {
 
   public static Settings create(String name, URI groupsEndpoint, String authTokenName,
-                                UserGroupProviderConfig.TokenPassingMethod method, String responseGroupsJsonPath) {
+      UserGroupProviderConfig.TokenPassingMethod method, String responseGroupsJsonPath) {
     return Settings.builder()
-        .put("user_groups_providers.0.name", name)
-        .put("user_groups_providers.0.groups_endpoint", groupsEndpoint.toString())
-        .put("user_groups_providers.0.auth_token_name", authTokenName)
-        .put("user_groups_providers.0.auth_token_passed_as", tokenPassingMethodToString(method))
-        .put("user_groups_providers.0.response_groups_json_path", responseGroupsJsonPath)
-        .build();
+                   .put("user_groups_providers.0.name", name)
+                   .put("user_groups_providers.0.groups_endpoint", groupsEndpoint.toString())
+                   .put("user_groups_providers.0.auth_token_name", authTokenName)
+                   .put("user_groups_providers.0.auth_token_passed_as", tokenPassingMethodToString(method))
+                   .put("user_groups_providers.0.response_groups_json_path", responseGroupsJsonPath)
+                   .build();
   }
 
   private static String tokenPassingMethodToString(UserGroupProviderConfig.TokenPassingMethod method) {
