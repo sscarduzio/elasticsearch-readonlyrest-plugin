@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 20/02/2016.
@@ -41,8 +42,8 @@ public class IndicesSyncRule extends SyncRule {
 
   private MatcherWithWildcards configuredWildcards;
 
+
   public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
   }
 
@@ -57,11 +58,23 @@ public class IndicesSyncRule extends SyncRule {
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends IndicesRequestContext> boolean canPass(T src) {
 
+    MatcherWithWildcards matcher;
+
+    if (src.getLoggedInUser().isPresent()) {
+      matcher = new MatcherWithWildcards(
+          configuredWildcards.getMatchers().stream()
+                             .map(m -> m.replaceAll("@user", src.getLoggedInUser().get().getId()))
+                             .collect(Collectors.toSet()));
+    }
+    else {
+      matcher = configuredWildcards;
+    }
+
     Set<String> indices = Sets.newHashSet(src.getIndices());
     // 1. Requesting none or all the indices means requesting allowed indices that exist.
     logger.debug("Stage 0");
     if (indices.size() == 0 || indices.contains("_all") || indices.contains("*")) {
-      Set<String> allowedIdxs = configuredWildcards.filter(src.getAllIndicesAndAliases());
+      Set<String> allowedIdxs = matcher.filter(src.getAllIndicesAndAliases());
       if (allowedIdxs.size() > 0) {
         indices.clear();
         indices.addAll(allowedIdxs);
@@ -76,7 +89,7 @@ public class IndicesSyncRule extends SyncRule {
       // Handle simple case of single index
       logger.debug("Stage 1");
       if (indices.size() == 1) {
-        if (configuredWildcards.match(indices.iterator().next())) {
+        if (matcher.match(indices.iterator().next())) {
           src.setIndices(indices);
           return true;
         }
@@ -86,7 +99,7 @@ public class IndicesSyncRule extends SyncRule {
 
       // 2. All indices match by wildcard?
       logger.debug("Stage 2");
-      if (configuredWildcards.filter(indices).size() == indices.size()) {
+      if (matcher.filter(indices).size() == indices.size()) {
         return true;
       }
 
@@ -99,7 +112,6 @@ public class IndicesSyncRule extends SyncRule {
           nonExistingIndex.add(idx);
           src.setIndices(nonExistingIndex);
           return true;
-
         }
       }
 
@@ -115,7 +127,7 @@ public class IndicesSyncRule extends SyncRule {
       }
 
       // ------ Your request expands to one or many available indices, let's see which ones you are allowed to request..
-      Set<String> allowedExpansion = configuredWildcards.filter(expansion);
+      Set<String> allowedExpansion = matcher.filter(expansion);
 
       // 5. You requested some indices, but NONE were allowed
       logger.debug("Stage 5");
@@ -135,14 +147,14 @@ public class IndicesSyncRule extends SyncRule {
 
       // Handle <no-index> (#TODO LEGACY)
       logger.debug("Stage 7");
-      if (indices.size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
+      if (indices.size() == 0 && matcher.getMatchers().contains("<no-index>")) {
         return true;
       }
 
       // Reject write if at least one requested index is not allowed by the rule conf
       logger.debug("Stage 8");
       for (String idx : indices) {
-        if (!configuredWildcards.match(idx)) {
+        if (!matcher.match(idx)) {
           return false;
         }
       }

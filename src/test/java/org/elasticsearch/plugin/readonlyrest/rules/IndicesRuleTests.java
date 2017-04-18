@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
@@ -29,6 +30,7 @@ import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.mockito.Mockito.when;
@@ -43,7 +45,8 @@ public class IndicesRuleTests extends TestCase {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc)
+      throws RuleNotConfiguredException {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);
@@ -89,8 +92,10 @@ public class IndicesRuleTests extends TestCase {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.isReadRequest()).thenReturn(true);
     when(rc.involvesIndices()).thenReturn(true);
+    when(rc.getLoggedInUser()).thenReturn(Optional.empty());
     when(rc.getExpandedIndices()).thenReturn(Sets.newHashSet(Arrays.asList("another_index")));
-    when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("perfmon-bfarm", "another_index")));
+    when(rc.getAllIndicesAndAliases())
+        .thenReturn(Sets.newHashSet(Arrays.asList("perfmon-bfarm", "another_index")));
 
     RuleExitResult res = match(
         // Mocks:  indices: ["perfmon*"]
@@ -104,6 +109,59 @@ public class IndicesRuleTests extends TestCase {
 
     // Should be a NO_MATCH
     assertFalse(res.isMatch());
+  }
+
+
+  public void testVariables() throws RuleNotConfiguredException {
+    RequestContext rc = Mockito.mock(RequestContext.class);
+    when(rc.isReadRequest()).thenReturn(true);
+    when(rc.involvesIndices()).thenReturn(true);
+
+    LoggedUser u = Mockito.mock(LoggedUser.class);
+    when(u.getId()).thenReturn("simone");
+    when(rc.getLoggedInUser()).thenReturn(Optional.of(u));
+    when(rc.getExpandedIndices()).thenReturn(Sets.newHashSet(Arrays.asList(".kibana_simone")));
+    when(rc.getAllIndicesAndAliases())
+        .thenReturn(Sets.newHashSet(Arrays.asList(".kibana_simone", ".kibana", ".kibana_ponies")));
+
+    RuleExitResult res = match(
+        // Mocks:  indices: [".kibana_@user"]
+        Arrays.asList(".kibana_@user"),
+
+        // The incoming request
+        Arrays.asList(".kibana_simone"),
+
+        rc
+    );
+
+    // Should be a NO_MATCH
+    assertTrue(res.isMatch());
+  }
+
+  public void testVariablesWithWildcards() throws RuleNotConfiguredException {
+    RequestContext rc = Mockito.mock(RequestContext.class);
+    when(rc.isReadRequest()).thenReturn(true);
+    when(rc.involvesIndices()).thenReturn(true);
+
+    LoggedUser u = Mockito.mock(LoggedUser.class);
+    when(u.getId()).thenReturn("simone");
+    when(rc.getLoggedInUser()).thenReturn(Optional.of(u));
+    when(rc.getExpandedIndices()).thenReturn(Sets.newHashSet(Arrays.asList(".kibana_simone")));
+    when(rc.getAllIndicesAndAliases())
+        .thenReturn(Sets.newHashSet(Arrays.asList(".kibana_simone", ".kibana", ".kibana_ponies")));
+
+    RuleExitResult res = match(
+        // Mocks:  indices: [".kibana_@user*"]
+        Arrays.asList(".*@user"),
+
+        // The incoming request
+        Arrays.asList(".kibana_simone"),
+
+        rc
+    );
+
+    // Should be a NO_MATCH
+    assertTrue(res.isMatch());
   }
 
 
