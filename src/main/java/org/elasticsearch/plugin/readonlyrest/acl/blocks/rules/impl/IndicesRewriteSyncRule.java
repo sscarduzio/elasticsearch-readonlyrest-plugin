@@ -39,7 +39,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
-import org.elasticsearch.search.internal.InternalSearchHit;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
+import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Field;
 import java.security.AccessController;
@@ -80,11 +81,11 @@ public class IndicesRewriteSyncRule extends SyncRule {
     replacement = a[a.length - 1];
 
     targetPatterns = Arrays.stream(targets)
-                           .distinct()
-                           .filter(Objects::nonNull)
-                           .filter(Strings::isNotBlank)
-                           .map(Pattern::compile)
-                           .toArray(Pattern[]::new);
+      .distinct()
+      .filter(Objects::nonNull)
+      .filter(Strings::isNotBlank)
+      .map(Pattern::compile)
+      .toArray(Pattern[]::new);
   }
 
   public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
@@ -163,34 +164,13 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
   // Translate the search results indices
   private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
-    String serResp = sr.toString();
-    logger.info(serResp);
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
-      Arrays.stream(sr.getHits().getHits()).forEach(h -> {
-        try {
-//          Field f = InternalSearchHit.class.getDeclaredField("shard");
-//          f.setAccessible(true);
-
-//          SearchShardTarget sst = (SearchShardTarget) f.get(h);
-//          f = SearchShardTarget.class.getDeclaredField("index");
-
-          Field f = InternalSearchHit.class.getDeclaredField("index");
-          f.setAccessible(true);
-          f.set(h, rc.getOriginalIndices().iterator().next());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-          e.printStackTrace();
-        }
-      });
-
-      return null;
-    });
+    for(SearchHit h : sr.getHits().getHits()){
+      ReflecUtils.setIndices(h, Sets.newHashSet(rc.getOriginalIndices().iterator().next()), logger);
+    }
   }
 
   // Translate the get results indices
   private void handleGetResponse(GetResponse gr, RequestContext rc) {
-    String serResp = gr.toString();
-    logger.info(serResp);
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
         Field f = GetResponse.class.getDeclaredField("getResult");
@@ -216,20 +196,23 @@ public class IndicesRewriteSyncRule extends SyncRule {
     if (response instanceof SearchResponse) {
       handleSearchResponse((SearchResponse) response, rc);
     }
-    if(response instanceof MultiSearchResponse){
+    if (response instanceof MultiSearchResponse) {
       MultiSearchResponse msr = (MultiSearchResponse) response;
-      for( MultiSearchResponse.Item i : msr.getResponses()){
-        if(!i.isFailure()){
+      for (MultiSearchResponse.Item i : msr.getResponses()) {
+        if (!i.isFailure()) {
           handleSearchResponse(i.getResponse(), rc);
         }
         // #TODO Maybe do something with the failure message?
       }
     }
-    if(response instanceof MultiGetResponse){
+    if (response instanceof GetResponse) {
+      handleGetResponse((GetResponse) response, rc);
+    }
+    if (response instanceof MultiGetResponse) {
       MultiGetResponse mgr = (MultiGetResponse) response;
-      for(MultiGetItemResponse i: mgr.getResponses()){
-        if(!i.isFailed()){
-          handleGetResponse(i.getResponse(),rc);
+      for (MultiGetItemResponse i : mgr.getResponses()) {
+        if (!i.isFailed()) {
+          handleGetResponse(i.getResponse(), rc);
         }
       }
     }

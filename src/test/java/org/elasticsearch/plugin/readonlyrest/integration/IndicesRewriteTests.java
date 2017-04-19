@@ -20,20 +20,24 @@ import com.google.common.collect.Maps;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
+import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
-import java.io.IOException;
-import java.util.Map;
 import java.util.Optional;
 
+import static junit.framework.TestCase.assertFalse;
 import static org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class IndicesRewriteTests {
+
+  public static RestClient ro;
+  public static RestClient kibana;
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = create(
@@ -41,71 +45,90 @@ public class IndicesRewriteTests {
     Optional.of(new ESWithReadonlyRestContainer.ESInitalizer() {
       @Override
       public void initialize(RestClient client) {
+        ro = container.getBasicAuthClient("simone", "ro_pass");
+        kibana = container.getBasicAuthClient("kibana", "kibana");
+
         try {
-          assertEquals(
-            container
-              .getBasicAuthClient("simone", "rw_pass")
-              .performRequest("PUT", "/.kibana")
-              .getStatusLine().getStatusCode(),
-            200
-          );
-        } catch (IOException e) {
+          System.out.println(body(kibana.performRequest(
+            "PUT",
+            "/.kibana_simone/doc/1",
+            Maps.newHashMap(new ImmutableMap.Builder<String, String>()
+                              .put("refresh", "true")
+                              .put("timeout", "50s")
+                              .build()),
+            new StringEntity("{\"helloWorld\": true}")
+          )));
+
+        } catch (Exception e) {
           e.printStackTrace();
         }
       }
     })
   );
 
+  private static String body(Response r) throws Exception {
+    return EntityUtils.toString(r.getEntity());
+  }
 
   @Test
   public void testCreateIndex() throws Exception {
 
-    String indicesList = EntityUtils.toString(
-      container.getBasicAuthClient("kibana", "kibana")
-        .performRequest("GET", "/_cat/indices").getEntity());
 
+    String indicesList = body(kibana.performRequest("GET", "/_cat/indices"));
     assertTrue(indicesList.contains(".kibana_simone"));
   }
 
   @Test
-  public void testGetFromIndex() throws Exception {
-    assertEquals(
-      container
-        .getBasicAuthClient("simone", "ro_pass")
-        .performRequest("GET", "/.kibana/_search")
-        .getStatusLine().getStatusCode(),
-      200
-    );
-  }
-
-
-  @Test
   public void testSearch() throws Exception {
-    assertEquals(
-      container
-        .getBasicAuthClient("simone", "ro_pass")
-        .performRequest("GET",
-                        "/.kibana/_search"
-        )
-        .getStatusLine().getStatusCode(),
-      200
-    );
+    generalCheck(ro.performRequest("GET", "/.kibana/_search"));
   }
 
   @Test
-  public void testMultiSearchFromIndex() throws Exception {
-    assertEquals(
-      container
-        .getBasicAuthClient("simone", "ro_pass")
-        .performRequest("GET",
-                        "/_msearch",
-                        Maps.newHashMap(),
-                        new StringEntity("{\"index\" : \".kibana\"}\n" + "{}\n"),
-                        new BasicHeader("Content-Type", "application/x-ndjso")
-        )
-        .getStatusLine().getStatusCode(),
-      200
-    );
+  public void testMultiSearch() throws Exception {
+    generalCheck(ro.performRequest(
+      "GET",
+      "/_msearch",
+      Maps.newHashMap(),
+      new StringEntity("{\"index\" : \".kibana\"}\n" + "{}\n"),
+      new BasicHeader("Content-Type", "application/x-ndjso")
+    ));
   }
 
+  @Test
+  public void testGet() throws Exception {
+    generalCheck(ro.performRequest("GET", "/.kibana/doc/1"));
+  }
+
+  @Test
+  public void testMultiGetDocs() throws Exception {
+    generalCheck(ro.performRequest(
+      "GET",
+      "/_mget",
+      Maps.newHashMap(),
+      new StringEntity("{\"docs\":[{\"_index\":\".kibana\",\"_type\":\"doc\",\"_id\":\"1\"}]}"),
+      new BasicHeader("Content-Type", "application/json")
+    ));
+
+  }
+
+  @Test
+  public void testMultiGetIds() throws Exception {
+    generalCheck(ro.performRequest(
+      "GET",
+      "/.kibana/_mget",
+      Maps.newHashMap(),
+      new StringEntity("{\"ids\":[\"1\"]}"),
+      new BasicHeader("Content-Type", "application/json")
+    ));
+
+  }
+
+  private void generalCheck(Response resp) throws Exception {
+    String body = body(resp);
+    System.out.println(body);
+    assertEquals(200, resp.getStatusLine().getStatusCode());
+    assertFalse(body.contains(".kibana_simone"));
+    assertTrue(body.contains(".kibana"));
+    assertTrue(body.contains("helloWorld"));
+  }
 }
