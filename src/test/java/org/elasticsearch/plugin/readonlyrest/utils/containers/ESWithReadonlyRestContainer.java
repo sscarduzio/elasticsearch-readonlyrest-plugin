@@ -79,7 +79,6 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                 .from("docker.elastic.co/elasticsearch/elasticsearch:" + properties.getProperty("esVersion"))
                 .copy(pluginFile.getName(), "/tmp/")
                 .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
-                .run("sysctl -w vm.max_map_count=262145")
                 .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +
                     "file:/tmp/" + pluginFile.getName())
                 .build()));
