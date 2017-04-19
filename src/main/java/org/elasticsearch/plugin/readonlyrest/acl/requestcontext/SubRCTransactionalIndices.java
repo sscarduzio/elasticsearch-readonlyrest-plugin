@@ -24,9 +24,14 @@ import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflectionUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
+import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Set;
+
+import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Created by sscarduzio on 14/04/2017.
@@ -55,7 +60,7 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
     }
     else {
       throw new RCUtils.RRContextException(
-          "Cannot get indices from sub-request " + src.getClass().getSimpleName());
+        "Cannot get indices from sub-request " + src.getClass().getSimpleName());
     }
   }
 
@@ -66,27 +71,22 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
 
   @Override
   public void onCommit(Set<String> newIndices) {
+    logger.info("committing subrequest indices");
     Object originalSubReq = src.getOriginalSubRequest();
 
     if (originalSubReq instanceof MultiGetRequest.Item) {
-      ReflectionUtils.fieldChanger(MultiGetRequest.Item.class, "index", logger, src.getRequestContext(), (field) -> {
-        if (newIndices.isEmpty()) {
-          throw new ElasticsearchException(
-              "need to have one exactly one index to replace into a " + originalSubReq.getClass().getSimpleName());
-        }
-        field.set(originalSubReq, newIndices.iterator().next());
-        return null;
-      });
+      if (newIndices.isEmpty()) {
+        throw new ElasticsearchException(
+          "need to have one exactly one index to replace into a " + originalSubReq.getClass().getSimpleName());
+      }
+      ReflecUtils.setIndices(originalSubReq, newIndices, logger);
     }
     if (originalSubReq instanceof SearchRequest || originalSubReq instanceof DocWriteRequest<?>) {
-      ReflectionUtils.fieldChanger(originalSubReq.getClass(), "indices", logger, src.getRequestContext(), (field) -> {
-        if (newIndices.isEmpty()) {
-          throw new ElasticsearchException(
-              "need to have at least one index to replace into a " + originalSubReq.getClass().getSimpleName());
-        }
-        field.set(originalSubReq, newIndices.iterator().next());
-        return null;
-      });
+      if (newIndices.isEmpty()) {
+        throw new ElasticsearchException(
+          "need to have at least one index to replace into a " + originalSubReq.getClass().getSimpleName());
+      }
+      ReflecUtils.setIndices(originalSubReq, newIndices, logger);
     }
   }
 

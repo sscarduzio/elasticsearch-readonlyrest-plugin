@@ -107,6 +107,11 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     return indices.initialize();
   }
 
+  @Override
+  public String getId() {
+    return originalRC.getId() + "-sub";
+  }
+
   public Set<String> getAllIndicesAndAliases() {
     return originalRC.getAllIndicesAndAliases();
   }

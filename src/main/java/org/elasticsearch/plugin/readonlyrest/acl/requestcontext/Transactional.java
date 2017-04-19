@@ -42,18 +42,22 @@ public abstract class Transactional<T> extends Delayed {
 
   public Transactional(String name) {
     super(name);
+  }
 
-    delay(() -> {
-      if (!initialized) {
-        lazyLoad();
-      }
-      if (transientValue == null && initialValue == null || transientValue.equals(initialValue)) {
-        logger.debug(name + " > nothing to be committed..");
-        return;
-      }
-      logger.debug(name + " > committing final value " + transientValue);
-      onCommit(transientValue);
-    });
+  @Override
+  public void commit() {
+   delay( () -> {
+     if (!initialized) {
+       lazyLoad();
+     }
+     if (transientValue == null && initialValue == null || transientValue.equals(initialValue)) {
+       logger.info(name + " > nothing to be committed..");
+       return;
+     }
+     logger.debug(name + " > committing final value " + transientValue);
+     onCommit(transientValue);
+   });
+    super.commit();
   }
 
   private void lazyLoad() {

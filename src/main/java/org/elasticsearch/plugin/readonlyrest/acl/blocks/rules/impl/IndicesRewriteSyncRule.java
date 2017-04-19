@@ -23,11 +23,15 @@ import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.get.MultiGetItemResponse;
+import org.elasticsearch.action.get.MultiGetResponse;
+import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.text.Text;
 import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.index.get.GetResult;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -35,7 +39,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
-import org.elasticsearch.search.SearchShardTarget;
 import org.elasticsearch.search.internal.InternalSearchHit;
 
 import java.lang.reflect.Field;
@@ -158,33 +161,77 @@ public class IndicesRewriteSyncRule extends SyncRule {
     rc.setIndices(oldIndices);
   }
 
+  // Translate the search results indices
+  private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
+    String serResp = sr.toString();
+    logger.info(serResp);
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+
+      Arrays.stream(sr.getHits().getHits()).forEach(h -> {
+        try {
+//          Field f = InternalSearchHit.class.getDeclaredField("shard");
+//          f.setAccessible(true);
+
+//          SearchShardTarget sst = (SearchShardTarget) f.get(h);
+//          f = SearchShardTarget.class.getDeclaredField("index");
+
+          Field f = InternalSearchHit.class.getDeclaredField("index");
+          f.setAccessible(true);
+          f.set(h, rc.getOriginalIndices().iterator().next());
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+          e.printStackTrace();
+        }
+      });
+
+      return null;
+    });
+  }
+
+  // Translate the get results indices
+  private void handleGetResponse(GetResponse gr, RequestContext rc) {
+    String serResp = gr.toString();
+    logger.info(serResp);
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        Field f = GetResponse.class.getDeclaredField("getResult");
+        f.setAccessible(true);
+        GetResult getResult = (GetResult) f.get(gr);
+
+        f = GetResult.class.getDeclaredField("index");
+        f.setAccessible(true);
+        f.set(getResult, rc.getOriginalIndices().iterator().next());
+
+      } catch (NoSuchFieldException | IllegalAccessException e) {
+        e.printStackTrace();
+      }
+
+      return null;
+    });
+  }
+
 
   @Override
   public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
+    // #TODO rewrite response for MultiGet, MultiSearch, Bulk
     if (response instanceof SearchResponse) {
-
-      // Translate the search results indices
-      SearchResponse sr = (SearchResponse) response;
-      String serResp = sr.toString();
-      logger.info(serResp);
-      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
-        Arrays.stream(sr.getHits().getHits()).forEach(h -> {
-          try {
-            Field f = InternalSearchHit.class.getDeclaredField("shard");
-            f.setAccessible(true);
-
-            SearchShardTarget sst = (SearchShardTarget) f.get(h);
-            f = SearchShardTarget.class.getDeclaredField("index");
-            f.setAccessible(true);
-            f.set(sst, new Text(rc.getOriginalIndices().iterator().next()));
-          } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-          }
-        });
-
-        return null;
-      });
+      handleSearchResponse((SearchResponse) response, rc);
+    }
+    if(response instanceof MultiSearchResponse){
+      MultiSearchResponse msr = (MultiSearchResponse) response;
+      for( MultiSearchResponse.Item i : msr.getResponses()){
+        if(!i.isFailure()){
+          handleSearchResponse(i.getResponse(), rc);
+        }
+        // #TODO Maybe do something with the failure message?
+      }
+    }
+    if(response instanceof MultiGetResponse){
+      MultiGetResponse mgr = (MultiGetResponse) response;
+      for(MultiGetItemResponse i: mgr.getResponses()){
+        if(!i.isFailed()){
+          handleGetResponse(i.getResponse(),rc);
+        }
+      }
     }
     return true;
   }

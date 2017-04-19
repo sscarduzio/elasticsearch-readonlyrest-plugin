@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
@@ -27,15 +26,17 @@ import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
+import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflectionUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
-import java.lang.reflect.Field;
+import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+
 import java.util.List;
 import java.util.Set;
 
@@ -60,6 +61,7 @@ public class RCTransactionalIndices {
 
         String[] indices = new String[0];
         ActionRequest ar = rc.getUnderlyingRequest();
+
         // CompositeIndicesRequests
         if (ar instanceof MultiGetRequest) {
           MultiGetRequest cir = (MultiGetRequest) ar;
@@ -86,20 +88,26 @@ public class RCTransactionalIndices {
           BulkRequest cir = (BulkRequest) ar;
 
           for (DocWriteRequest<?> ir : cir.requests()) {
-            String[] docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("indices", ir, logger);
+            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, logger);
             if (docIndices.length == 0) {
-              docIndices = ReflectionUtils.extractStringArrayFromPrivateMethod("index", ir, logger);
+              docIndices = extractStringArrayFromPrivateMethod("index", ir, logger);
             }
             indices = ArrayUtils.concat(indices, docIndices, String.class);
           }
         }
+        else if ( ar instanceof IndexRequest){
+          IndexRequest ir = (IndexRequest) ar;
+          indices = ir.indices();
+        }
         else if (ar instanceof CompositeIndicesRequest) {
-          logger.error("Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately!");
+          logger.error(
+            "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
+              + ar.getClass().getSimpleName());
         }
         else {
-          indices = ReflectionUtils.extractStringArrayFromPrivateMethod("indices", ar, logger);
+          indices = extractStringArrayFromPrivateMethod("indices", ar, logger);
           if (indices.length == 0) {
-            indices = ReflectionUtils.extractStringArrayFromPrivateMethod("index", ar, logger);
+            indices = extractStringArrayFromPrivateMethod("index", ar, logger);
           }
         }
 
@@ -125,7 +133,6 @@ public class RCTransactionalIndices {
       @Override
       public void onCommit(Set<String> newIndices) {
         // Setting indices by reflection..
-
         newIndices.remove("<no-index>");
         newIndices.remove("");
         ActionRequest actionRequest = rc.getUnderlyingRequest();
@@ -142,46 +149,24 @@ public class RCTransactionalIndices {
                   " If this was intended, set '*' as indices.");
         }
 
-        Class<?> c = actionRequest.getClass();
-        final List<Throwable> errors = Lists.newArrayList();
-
-        errors.addAll(ReflectionUtils.fieldChanger(c, "indices", logger, rc,
-            (Field f) -> {
-              String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
-              f.set(actionRequest, idxArray);
-              return null;
-            }
-        ));
+        boolean okSetResult  = ReflecUtils.setIndices(rc.getUnderlyingRequest(), newIndices, logger);
 
 
-        // Take care of writes
-        if (!errors.isEmpty() && newIndices.size() == 1) {
-          errors.clear();
-          errors.addAll(ReflectionUtils.fieldChanger(c, "index", logger, rc, (f) -> {
-            f.set(actionRequest, newIndices.iterator().next());
-            return null;
-          }));
-        }
-
-        if (!errors.isEmpty() && actionRequest instanceof IndicesAliasesRequest) {
+        if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
           IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
+          final boolean[] okSubResult = {false};
           actions.forEach(a -> {
-            errors.addAll(ReflectionUtils.fieldChanger(a.getClass(), "indices", logger, rc, (f) -> {
-              String[] idxArray = newIndices.toArray(new String[newIndices.size()]);
-              f.set(a, idxArray);
-              return null;
-            }));
+            okSubResult[0] &= ReflecUtils.setIndices(a, newIndices, logger);
           });
+          okSetResult &= okSubResult[0];
         }
 
-        if (errors.isEmpty()) {
+        if (okSetResult) {
           logger.debug("success changing indices: " + newIndices + " correctly set as " + get());
         }
         else {
-          errors.forEach(e -> {
-            logger.error("Failed to set indices " + e.toString());
-          });
+            logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
         }
       }
 

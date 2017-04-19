@@ -85,7 +85,10 @@ public class ACL {
     logger.debug("checking request:" + rc);
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
         blocks.iterator(),
-        block -> block.check(rc),
+        block -> {
+          rc.reset();
+          return block.check(rc);
+        },
         checkResult -> {
           if (checkResult.isMatch()) {
             logger.info("request: " + rc + " matched block: " + checkResult);
@@ -93,7 +96,6 @@ public class ACL {
             return true;
           }
           else {
-            rc.reset();
             return false;
           }
         },

@@ -56,21 +56,25 @@ public abstract class Delayed {
     }
     committed = true;
 
-    int commitSize = effects.size();
-    if (commitSize == 0) {
-      return;
-    }
-    logger.debug(name + " > Committing " + effects.size() + " effects");
+    logger.info(name + " > Committing " + effects.size() + " effects");
     Iterator<Runnable> it = effects.iterator();
     while (it.hasNext()) {
       Runnable eff = it.next();
-      eff.run();
+      try {
+        eff.run();
+      }catch(Throwable t){
+        t.printStackTrace();
+      }
+      finally {
+        logger.info(name + " > DONE");
+      }
       it.remove();
     }
     delegates.forEach(d -> d.commit());
   }
 
   public void reset() {
+    logger.info(name + " > resetting!!! ");
     effects.clear();
     committed = false;
 

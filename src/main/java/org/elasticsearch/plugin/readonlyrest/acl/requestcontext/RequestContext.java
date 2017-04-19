@@ -37,7 +37,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcar
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflectionUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
@@ -247,11 +247,13 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
-  public Integer scanSubRequests(final ReflectionUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer) {
+  public Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer) {
 
     List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 
-    // Composite request
+    logger.info("found " + subRequests.size() + " subrequests");
+
+    // Composite request #TODO should we really prevent this?
     if (!doesInvolveIndices) {
       throw new RCUtils.RRContextException("cannot replace indices of a composite request that doesn't involve indices: " + this);
     }
@@ -260,22 +262,24 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     while (it.hasNext()) {
       SubRequestContext i = new SubRequestContext(this, it.next());
       final Set<String> oldIndices = Sets.newHashSet(i.getIndices());
-      final Optional<SubRequestContext> newSubRCopt;
+      final Optional<SubRequestContext> mutatedSubReqO;
 
       // Empty optional = remove sub-request from the native list
       try {
-        newSubRCopt = replacer.apply(i);
-        if (!newSubRCopt.isPresent()) {
+        mutatedSubReqO = replacer.apply(i);
+        if (!mutatedSubReqO.isPresent()) {
           it.remove();
+          continue;
         }
       } catch (IllegalAccessException e) {
         e.printStackTrace();
         throw new ElasticsearchSecurityException("error gathering indices to be replaced in sub-request " + i, e);
       }
-      i = newSubRCopt.get();
+      i = mutatedSubReqO.get();
 
       // We are letting this pass, so let's commit it when we commit the sub-request.
       i.delegateTo(this);
+
       final Set<String> newIndices = i.getIndices();
       newIndices.remove("<no-index>");
       newIndices.remove("");
@@ -292,8 +296,8 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
             "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
                 " If this was intended, set '*' as indices.");
       }
-
     }
+
     return subRequests.size();
   }
 

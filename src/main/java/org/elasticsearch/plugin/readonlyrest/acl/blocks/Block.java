@@ -144,9 +144,9 @@ public class Block {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
         rules,
         rule -> rule.match(rc),
-        condExitResult -> {
-          thisBlockHistory.add(condExitResult);
-          return !condExitResult.isMatch();
+        ruleExitResult -> {
+          thisBlockHistory.add(ruleExitResult);
+          return !ruleExitResult.isMatch();
         },
         RuleExitResult::isMatch,
         nothing -> true

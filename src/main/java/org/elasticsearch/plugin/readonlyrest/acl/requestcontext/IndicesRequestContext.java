@@ -26,6 +26,7 @@ import java.util.Set;
  * Created by sscarduzio on 14/04/2017.
  */
 public interface IndicesRequestContext {
+  String getId();
   Set<String> getAllIndicesAndAliases();
 
   Set<String> getExpandedIndices();
