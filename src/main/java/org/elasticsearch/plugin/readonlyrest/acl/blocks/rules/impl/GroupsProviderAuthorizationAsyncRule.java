@@ -33,6 +33,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.utils.CompletableFutureResponseListener;
 
 import java.io.IOException;
 import java.net.URI;
@@ -101,7 +102,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
         "GET",
         providerGroupsAuthDefinition.config.getEndpoint().getPath(),
         createParams(user),
-        new GroupBasedAuthResponseListener<>(promise, isAuthorized()),
+        new CompletableFutureResponseListener<>(promise, isAuthorized()),
         createHeaders(user).toArray(new Header[0])
     );
     return promise;
@@ -159,25 +160,4 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
     }
   }
 
-  private static class GroupBasedAuthResponseListener<T> implements ResponseListener {
-
-    private final CompletableFuture<T> promise;
-    private final Function<Response, T> converter;
-
-    GroupBasedAuthResponseListener(CompletableFuture<T> promise,
-                                   Function<Response, T> converter) {
-      this.promise = promise;
-      this.converter = converter;
-    }
-
-    @Override
-    public void onSuccess(Response response) {
-      promise.complete(converter.apply(response));
-    }
-
-    @Override
-    public void onFailure(Exception exception) {
-      promise.completeExceptionally(exception);
-    }
-  }
 }

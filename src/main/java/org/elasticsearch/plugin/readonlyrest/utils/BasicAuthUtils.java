@@ -17,6 +17,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.utils;
 
+import org.apache.http.Header;
+import org.apache.http.message.BasicHeader;
+
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
@@ -26,10 +29,16 @@ public class BasicAuthUtils {
   private BasicAuthUtils() {
   }
 
+  public static Header basicAuthHeader(String user, String password) {
+    return new BasicHeader(
+        "Authorization",
+        String.format("Basic %s", Base64.getEncoder().encodeToString(String.format("%s:%s", user, password).getBytes())));
+  }
+
   public static Optional<BasicAuth> getBasicAuthFromHeaders(Map<String, String> headers) {
     return Optional.ofNullable(headers.get("Authorization"))
-            .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
-            .flatMap(BasicAuth::fromBase64Value);
+        .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
+        .flatMap(BasicAuth::fromBase64Value);
   }
 
   private static Optional<String> getInterestingPartOfBasicAuthValue(String basicAuthValue) {
@@ -37,7 +46,7 @@ public class BasicAuthUtils {
       return Optional.empty();
     } else {
       String[] parts = basicAuthValue.split("Basic");
-      if(parts.length == 2) {
+      if (parts.length == 2) {
         String interestingPart = parts[1].trim();
         return interestingPart.length() > 0 ? Optional.of(interestingPart) : Optional.empty();
       } else {
@@ -62,7 +71,7 @@ public class BasicAuthUtils {
     private BasicAuth(String base64Value) {
       this.base64Value = base64Value;
       String[] splitted = new String(Base64.getDecoder().decode(base64Value)).split(":");
-      if(splitted.length != 2) {
+      if (splitted.length != 2) {
         throw new IllegalArgumentException("Cannot extract user name from base auth header");
       }
       this.userName = splitted[0];

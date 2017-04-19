@@ -32,6 +32,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
@@ -80,6 +82,7 @@ public class Block {
                LdapConfigs ldapConfigs,
                List<ProxyAuthConfig> proxyAuthConfigs,
                List<UserGroupProviderConfig> groupsProviderConfigs,
+               List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs,
                Logger logger) {
     this.name = settings.get("name");
     String sPolicy = settings.get("type");
@@ -92,7 +95,8 @@ public class Block {
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
-    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapConfigs, groupsProviderConfigs);
+    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapConfigs, groupsProviderConfigs,
+        externalAuthenticationServiceConfigs);
     authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationRule);
   }
 
@@ -170,7 +174,8 @@ public class Block {
   }
 
   private Set<AsyncRule> collectRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs,
-                                      LdapConfigs ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs) {
+                                      LdapConfigs ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs,
+                                      List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs) {
     Set<AsyncRule> rules = Sets.newLinkedHashSet();
     // Won't add the condition if its configuration is not found
 
@@ -199,6 +204,8 @@ public class Block {
     // then we could check potentially slow async rules
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
     LdapAuthenticationAsyncRule.fromSettings(s, ldapConfigs)
+        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+    ExternalAuthenticationAsyncRule.fromSettings(s, externalAuthenticationServiceConfigs)
         .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // all authorization rules should be placed before any authentication rule
