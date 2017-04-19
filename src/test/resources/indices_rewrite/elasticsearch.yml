@@ -1,0 +1,33 @@
+http.bind_host: _eth0:ipv4_
+network.host: _eth0:ipv4_
+xpack:
+    monitoring.enabled: false
+    security.enabled: false
+    graph.enabled: false
+    watcher.enabled: false
+
+readonlyrest:
+    enable: true
+    access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "Kibana RO user"
+      type: allow
+      auth_key: "simone:ro_pass"
+      kibana_access: ro
+#      indices: ["logstash*", ".kibana", ".kibana_devnull"]
+      indices_rewrite: ["^\\.kibana.*", ".kibana_@user"]
+
+    - name: "Kibana RW user"
+      type: allow
+      auth_key: "simone:rw_pass"
+      kibana_access: rw
+#      indices: ["logstash*", ".kibana", ".kibana_devnull"]
+      indices_rewrite: ["^\\.kibana.*", ".kibana_@user"]
+
+    - name: "Kibana Daemon"
+      type: allow
+      auth_key: kibana:kibana
