@@ -240,7 +240,8 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
-  public Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer, Logger logger) {
+  public Integer scanSubRequests(
+    final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer, Logger logger) {
 
     List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 
