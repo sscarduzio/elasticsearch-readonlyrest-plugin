@@ -35,29 +35,48 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
-
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+
+import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
 /**
  * Created by sscarduzio on 14/04/2017.
  */
 public class RCTransactionalIndices {
 
-   private static final Logger logger = Loggers.getLogger(RCTransactionalIndices.class);
+  private static final Transactional<Set<String>> dummy = new Transactional<Set<String>>("rc-indices-dummy") {
+    @Override
+    public Set<String> initialize() {
+      return Collections.emptySet();
+    }
 
+    @Override
+    public Set<String> copy(Set<String> initial) {
+      return initial;
+    }
+
+    @Override
+    public void onCommit(Set<String> value) {
+    }
+  };
+  private static final Logger logger = Loggers.getLogger(RCTransactionalIndices.class);
 
   public static Transactional<Set<String>> mkInstance(RequestContext rc) {
+    if(!rc.involvesIndices()){
+      return dummy;
+    }
     return new Transactional<Set<String>>("rc-indices") {
 
       @Override
       public Set<String> initialize() {
         if (!rc.involvesIndices()) {
-          throw new RCUtils.RRContextException("cannot get indices of a request that doesn't involve indices");
+          return Collections.emptySet();
         }
 
-        logger.info("Finding indices for: " + rc.getId());
+        logger.info("Finding indices for: " + rc.getId() + " " + rc.getUnderlyingRequest().getClass().getSimpleName());
 
         String[] indices = new String[0];
         ActionRequest ar = rc.getUnderlyingRequest();
@@ -95,7 +114,7 @@ public class RCTransactionalIndices {
             indices = ArrayUtils.concat(indices, docIndices, String.class);
           }
         }
-        else if ( ar instanceof IndexRequest){
+        else if (ar instanceof IndexRequest) {
           IndexRequest ir = (IndexRequest) ar;
           indices = ir.indices();
         }
@@ -115,7 +134,7 @@ public class RCTransactionalIndices {
           indices = new String[0];
         }
 
-        Set<String> indicesSet = org.elasticsearch.common.util.set.Sets.newHashSet(indices);
+        Set<String> indicesSet = Sets.newHashSet(indices);
 
         if (logger.isDebugEnabled()) {
           String idxs = String.join(",", indicesSet);
@@ -145,11 +164,11 @@ public class RCTransactionalIndices {
 
         if (newIndices.size() == 0) {
           throw new ElasticsearchException(
-              "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
-                  " If this was intended, set '*' as indices.");
+            "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
+              " If this was intended, set '*' as indices.");
         }
 
-        boolean okSetResult  = ReflecUtils.setIndices(rc.getUnderlyingRequest(), newIndices, logger);
+        boolean okSetResult = ReflecUtils.setIndices(rc.getUnderlyingRequest(), newIndices, logger);
 
 
         if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
@@ -166,7 +185,7 @@ public class RCTransactionalIndices {
           logger.debug("success changing indices: " + newIndices + " correctly set as " + get());
         }
         else {
-            logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
+          logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
         }
       }
 

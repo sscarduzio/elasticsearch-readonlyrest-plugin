@@ -38,6 +38,7 @@ public class IndicesRewriteTests {
 
   public static RestClient ro;
   public static RestClient kibana;
+  public static RestClient logstash;
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = create(
@@ -47,6 +48,7 @@ public class IndicesRewriteTests {
       public void initialize(RestClient client) {
         ro = container.getBasicAuthClient("simone", "ro_pass");
         kibana = container.getBasicAuthClient("kibana", "kibana");
+        logstash = container.getBasicAuthClient("simone", "logstash");
 
         try {
           System.out.println(body(kibana.performRequest(
@@ -108,7 +110,6 @@ public class IndicesRewriteTests {
       new StringEntity("{\"docs\":[{\"_index\":\".kibana\",\"_type\":\"doc\",\"_id\":\"1\"}]}"),
       new BasicHeader("Content-Type", "application/json")
     ));
-
   }
 
   @Test
@@ -120,7 +121,22 @@ public class IndicesRewriteTests {
       new StringEntity("{\"ids\":[\"1\"]}"),
       new BasicHeader("Content-Type", "application/json")
     ));
+  }
 
+  @Test
+  public void testBulkAll() throws Exception {
+    logstashCheck(logstash.performRequest(
+      "POST",
+      "/_bulk",
+      Maps.newHashMap(),
+      new StringEntity("{ \"index\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
+                         "{ \"helloWorld\" : false }\n" +
+                         "{ \"delete\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
+                         "{ \"create\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"3\" } }\n" +
+                         "{ \"helloWorld\" : false }\n" +
+                         "{ \"update\" : {\"_id\" : \"2\", \"_type\" : \"doc\", \"_index\" : \"logstash-2017-01-01\"} }\n"),
+      new BasicHeader("Content-Type", "application/json")
+    ));
   }
 
   private void generalCheck(Response resp) throws Exception {
@@ -130,5 +146,10 @@ public class IndicesRewriteTests {
     assertFalse(body.contains(".kibana_simone"));
     assertTrue(body.contains(".kibana"));
     assertTrue(body.contains("helloWorld"));
+  }
+  private void logstashCheck(Response resp) throws Exception {
+    String body = body(resp);
+    System.out.println(body);
+    assertEquals(200, resp.getStatusLine().getStatusCode());
   }
 }

@@ -66,7 +66,7 @@ public abstract class Delayed {
         t.printStackTrace();
       }
       finally {
-        logger.info(name + " > DONE");
+        logger.info(name + " > committed.");
       }
       it.remove();
     }
@@ -79,7 +79,7 @@ public abstract class Delayed {
     committed = false;
 
     delegates.forEach(d -> {
-      d.effects.clear();
+      d.reset();
       d.committed = false;
     });
   }

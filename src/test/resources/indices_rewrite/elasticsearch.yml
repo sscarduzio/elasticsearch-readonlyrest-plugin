@@ -28,6 +28,13 @@ readonlyrest:
 #      indices: ["logstash*", ".kibana", ".kibana_devnull"]
       indices_rewrite: ["^\\.kibana.*", ".kibana_@user"]
 
+    - name: "::LOGSTASH::"
+      auth_key: simone:logstash
+      type: allow
+      actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+      indices: ["logstash-*", "@user_logstash-*"]
+      indices_rewrite: ["^logstash-.*", "@user_$0"]
+
     - name: "Kibana Daemon"
       type: allow
       auth_key: kibana:kibana

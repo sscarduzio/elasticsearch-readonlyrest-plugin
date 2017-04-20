@@ -72,15 +72,27 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     return originalSubRequest;
   }
 
-  public RequestContext getRequestContext() {
-    return originalRC;
-  }
-
   public Set<String> getIndices() {
-    return indices.get();
+    return indices.getInitial();
   }
 
   public void setIndices(Set<String> newIndices) {
+    if (newIndices.size() == 0) {
+      throw new RCUtils.RRContextException(
+        "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
+          " If this was intended, set '*' as indices.");
+    }
+
+    newIndices.remove("<no-index>");
+    newIndices.remove("");
+
+    Set<String> oldIndices = indices.get();
+    if (newIndices.equals(oldIndices)) {
+      logger.info("id: " + getId() + " - Not replacing in sub-request. Indices are the same. Old:" + oldIndices + " New:" + newIndices);
+      return;
+    }
+    logger.info("id: " + getId() + " - Replacing indices in sub-request. Old:" + oldIndices + " New:" + newIndices);
+
     indices.mutate(newIndices);
   }
 
@@ -99,17 +111,12 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
   }
 
   public Set<String> getExpandedIndices() {
-    return originalRC.getExpandedIndices(indices.get());
-  }
-
-  @Override
-  public Set<String> getOriginalIndices() {
-    return indices.initialize();
+    return originalRC.getExpandedIndices(indices.getInitial());
   }
 
   @Override
   public String getId() {
-    return originalRC.getId() + "-sub";
+    return originalRC.getId() + "-sub-" + originalSubRequest.hashCode();
   }
 
   public Set<String> getAllIndicesAndAliases() {
@@ -126,14 +133,14 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     }
     else {
       throw new RCUtils.RRContextException(
-          "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
+        "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
     }
   }
 
 
   public String toString() {
     return "sub-request: { original:" + originalRC.getClass().getSimpleName() +
-        ", sub:" + originalSubRequest.getClass().getSimpleName() + "}";
+      ", sub:" + originalSubRequest.getClass().getSimpleName() + "}";
   }
 
 }

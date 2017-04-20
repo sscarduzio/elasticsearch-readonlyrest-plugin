@@ -97,10 +97,9 @@ public abstract class Transactional<T> extends Delayed {
 
   @Override
   public void reset() {
-    if (!initialized) {
-      lazyLoad();
+    if (initialized) {
+      transientValue = initialValue;
     }
     super.reset();
-    transientValue = initialValue;
   }
 }

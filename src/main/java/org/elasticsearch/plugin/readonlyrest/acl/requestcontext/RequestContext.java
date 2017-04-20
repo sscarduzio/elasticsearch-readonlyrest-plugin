@@ -43,14 +43,12 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.UUID;
 
 /**
  * Created by sscarduzio on 20/02/2016.
@@ -69,23 +67,23 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private final Transactional<Set<String>> indices;
   private ThreadPool threadPool;
   private final Transactional<Map<String, String>> responseHeaders =
-      new Transactional<Map<String, String>>("rc-resp-headers") {
-        @Override
-        public Map<String, String> initialize() {
-          return Collections.emptyMap();
-        }
+    new Transactional<Map<String, String>>("rc-resp-headers") {
+      @Override
+      public Map<String, String> initialize() {
+        return Maps.newHashMap();
+      }
 
-        @Override
-        public Map<String, String> copy(Map<String, String> initial) {
-          Map<String, String> newMap = Maps.newHashMap(initial);
-          return newMap;
-        }
+      @Override
+      public Map<String, String> copy(Map<String, String> initial) {
+        Map<String, String> newMap = Maps.newHashMap(initial);
+        return newMap;
+      }
 
-        @Override
-        public void onCommit(Map<String, String> hMap) {
-          hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
-        }
-      };
+      @Override
+      public void onCommit(Map<String, String> hMap) {
+        hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
+      }
+    };
 
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
@@ -113,8 +111,8 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   };
 
   public RequestContext(RestChannel channel, RestRequest request, String action,
-      ActionRequest actionRequest, ClusterService clusterService,
-      IndexNameExpressionResolver indexResolver, ThreadPool threadPool) {
+                        ActionRequest actionRequest, ClusterService clusterService,
+                        IndexNameExpressionResolver indexResolver, ThreadPool threadPool) {
     super("rc");
     this.channel = channel;
     this.request = request;
@@ -123,7 +121,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.indexResolver = indexResolver;
-    this.id = UUID.randomUUID().toString().replace("-", "");
+    this.id = request.hashCode() + "-" + actionRequest.hashCode();
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     request.getHeaders().keySet().stream().forEach(k -> {
@@ -135,17 +133,17 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
     this.requestHeaders = h;
 
-    indices = RCTransactionalIndices.mkInstance(this);
-
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
+
+    indices = RCTransactionalIndices.mkInstance(this);
 
     // If we get to commit this transaction, put this header.
     delay(() -> loggedInUser.get().ifPresent(loggedUser -> setResponseHeader("X-RR-User", loggedUser.getId())));
 
     // Register transactional values to the main queue
-    indices.delegateTo(this);
     responseHeaders.delegateTo(this);
     loggedInUser.delegateTo(this);
+    indices.delegateTo(this);
   }
 
   public void addToHistory(Block block, Set<RuleExitResult> results) {
@@ -160,7 +158,6 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   public String getId() {
     return id;
   }
-
 
   public boolean involvesIndices() {
     return doesInvolveIndices;
@@ -200,7 +197,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
 
   public Set<String> getExpandedIndices() {
-    return getExpandedIndices(getIndices());
+    return getExpandedIndices(indices.getInitial());
   }
 
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
@@ -218,15 +215,11 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
 
-  public Set<String> getOriginalIndices() {
-    return indices.getInitial();
-  }
-
   public Set<String> getIndices() {
     if (!doesInvolveIndices) {
       throw new RCUtils.RRContextException("cannot get indices of a request that doesn't involve indices" + this);
     }
-    return indices.get();
+    return indices.getInitial();
   }
 
   public void setIndices(final Set<String> newIndices) {
@@ -236,8 +229,8 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
     if (newIndices.size() == 0) {
       throw new ElasticsearchException(
-          "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
-              " If this was intended, set '*' as indices.");
+        "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
+          " If this was intended, set '*' as indices.");
     }
 
     indices.mutate(newIndices);
@@ -247,7 +240,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
-  public Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer) {
+  public Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer, Logger logger) {
 
     List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 
@@ -261,7 +254,6 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     Iterator<? extends IndicesRequest> it = subRequests.iterator();
     while (it.hasNext()) {
       SubRequestContext i = new SubRequestContext(this, it.next());
-      final Set<String> oldIndices = Sets.newHashSet(i.getIndices());
       final Optional<SubRequestContext> mutatedSubReqO;
 
       // Empty optional = remove sub-request from the native list
@@ -280,24 +272,10 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       // We are letting this pass, so let's commit it when we commit the sub-request.
       i.delegateTo(this);
 
-      final Set<String> newIndices = i.getIndices();
-      newIndices.remove("<no-index>");
-      newIndices.remove("");
-      i.setIndices(newIndices);
-
-      if (newIndices.equals(oldIndices)) {
-        logger.info("id: " + id + " - Not replacing in sub-request. Indices are the same. Old:" + oldIndices + " New:" + newIndices);
-        continue;
-      }
-      logger.info("id: " + id + " - Replacing indices in sub-request. Old:" + oldIndices + " New:" + newIndices);
-
-      if (newIndices.size() == 0) {
-        throw new RCUtils.RRContextException(
-            "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
-                " If this was intended, set '*' as indices.");
+      if (!i.getIndices().equals(i.getIndices())) {
+        i.setIndices(i.getIndices());
       }
     }
-
     return subRequests.size();
   }
 
@@ -356,21 +334,21 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     String hist = Joiner.on(", ").join(history);
     Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
     return "{ ID:" + id +
-        ", TYP:" + actionRequest.getClass().getSimpleName() +
-        ", USR:" + (loggedInUser.get().isPresent()
-        ? loggedInUser.get().get()
-        : (optBasicAuth.isPresent() ? optBasicAuth.get().getUserName() + "(?)" : "[no basic auth header]")) +
-        ", BRS:" + !Strings.isNullOrEmpty(requestHeaders.get("User-Agent")) +
-        ", ACT:" + action +
-        ", OA:" + getRemoteAddress() +
-        ", IDX:" + theIndices +
-        ", MET:" + request.method() +
-        ", PTH:" + request.path() +
-        ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-        ", HDR:" + theHeaders +
-        ", EFF:" + effectsSize() +
-        ", HIS:" + hist +
-        " }";
+      ", TYP:" + actionRequest.getClass().getSimpleName() +
+      ", USR:" + (loggedInUser.get().isPresent()
+      ? loggedInUser.get().get()
+      : (optBasicAuth.isPresent() ? optBasicAuth.get().getUserName() + "(?)" : "[no basic auth header]")) +
+      ", BRS:" + !Strings.isNullOrEmpty(requestHeaders.get("User-Agent")) +
+      ", ACT:" + action +
+      ", OA:" + getRemoteAddress() +
+      ", IDX:" + theIndices +
+      ", MET:" + request.method() +
+      ", PTH:" + request.path() +
+      ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+      ", HDR:" + theHeaders +
+      ", EFF:" + effectsSize() +
+      ", HIS:" + hist +
+      " }";
   }
 
 

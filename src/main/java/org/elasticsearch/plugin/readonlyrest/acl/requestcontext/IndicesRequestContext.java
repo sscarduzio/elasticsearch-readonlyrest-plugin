@@ -31,8 +31,6 @@ public interface IndicesRequestContext {
 
   Set<String> getExpandedIndices();
 
-  Set<String> getOriginalIndices();
-
   Set<String> getIndices();
 
   void setIndices(Set<String> newIndices);

@@ -60,17 +60,18 @@ public class IndicesSyncRule extends SyncRule {
 
     MatcherWithWildcards matcher;
 
-//    if (src.getLoggedInUser().isPresent()) {
-//      matcher = new MatcherWithWildcards(
-//          configuredWildcards.getMatchers().stream()
-//                             .map(m -> m.replaceAll("@user", src.getLoggedInUser().get().getId()))
-//                             .collect(Collectors.toSet()));
-//    }
-//    else {
+    if (src.getLoggedInUser().isPresent()) {
+      matcher = new MatcherWithWildcards(
+          configuredWildcards.getMatchers().stream()
+                             .map(m -> m.replaceAll("@user", src.getLoggedInUser().get().getId()))
+                             .collect(Collectors.toSet()));
+    }
+    else {
       matcher = configuredWildcards;
-//    }
+    }
 
     Set<String> indices = Sets.newHashSet(src.getIndices());
+
     // 1. Requesting none or all the indices means requesting allowed indices that exist.
     logger.debug("Stage 0");
     if (indices.size() == 0 || indices.contains("_all") || indices.contains("*")) {
@@ -179,7 +180,7 @@ public class IndicesSyncRule extends SyncRule {
           return Optional.of(subRc);
         }
         return Optional.empty();
-      });
+      }, logger);
       if (allowedSubRequests == 0) {
         return NO_MATCH;
       }

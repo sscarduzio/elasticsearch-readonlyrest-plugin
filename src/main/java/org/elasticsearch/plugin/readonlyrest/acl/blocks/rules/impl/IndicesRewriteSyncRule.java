@@ -23,6 +23,8 @@ import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.bulk.BulkItemResponse;
+import org.elasticsearch.action.bulk.BulkShardResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.get.MultiGetItemResponse;
 import org.elasticsearch.action.get.MultiGetResponse;
@@ -107,7 +109,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
       rc.scanSubRequests((src) -> {
         rewrite(src);
         return Optional.of(src);
-      });
+      }, logger);
     }
     else {
       rewrite(rc);
@@ -165,7 +167,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
   // Translate the search results indices
   private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
     for(SearchHit h : sr.getHits().getHits()){
-      ReflecUtils.setIndices(h, Sets.newHashSet(rc.getOriginalIndices().iterator().next()), logger);
+      ReflecUtils.setIndices(h, Sets.newHashSet(rc.getIndices().iterator().next()), logger);
     }
   }
 
@@ -179,7 +181,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
         f = GetResult.class.getDeclaredField("index");
         f.setAccessible(true);
-        f.set(getResult, rc.getOriginalIndices().iterator().next());
+        f.set(getResult, rc.getIndices().iterator().next());
 
       } catch (NoSuchFieldException | IllegalAccessException e) {
         e.printStackTrace();
@@ -216,6 +218,18 @@ public class IndicesRewriteSyncRule extends SyncRule {
         }
       }
     }
+
+    if(response instanceof BulkShardResponse){
+      BulkShardResponse bsr = (BulkShardResponse) response;
+      for(BulkItemResponse i : bsr.getResponses()){
+        if(!i.isFailed()){
+          ReflecUtils.setIndices(
+            i.getResponse().getShardId().getIndex(),
+            Sets.newHashSet( rc.getIndices().iterator().next()),
+            logger);
+        }
+      }
+    }
     return true;
   }
 
@@ -225,10 +239,10 @@ public class IndicesRewriteSyncRule extends SyncRule {
   @Override
   public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
     if (e instanceof IndexNotFoundException) {
-      ((IndexNotFoundException) e).setIndex(rc.getOriginalIndices().iterator().next());
+      ((IndexNotFoundException) e).setIndex(rc.getIndices().iterator().next());
     }
     if (e instanceof ResourceNotFoundException) {
-      ((ResourceNotFoundException) e).addHeader("es.resource.id", rc.getOriginalIndices().iterator().next());
+      ((ResourceNotFoundException) e).addHeader("es.resource.id", rc.getIndices().iterator().next());
     }
     return true;
   }
