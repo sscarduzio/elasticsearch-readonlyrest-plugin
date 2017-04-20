@@ -275,7 +275,52 @@ LDAP configuration requirements:
 
 Caching can be configured per LDAP client (see `ldap1`) or per rule (see `Accept requests from users in group team2 on index2` rule)
 
-### USE CASE 5: External groups provider for group-based authorization
+### USE CASE 5: External service authentication
+
+```yml
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    
+    access_control_rules:
+    
+    - name: "::Tweets::"
+      type: allow
+      methods: GET
+      indices: ["twitter"]
+      external_authentication: "ext1"
+
+    - name: "::Facebook posts::"
+      type: allow
+      methods: GET
+      indices: ["facebook"]
+      external_authentication:
+        - service: "ext2"
+          cache_ttl_in_sec: 60
+
+    external_authentication_service_configs:
+
+    - name: "ext1"
+      authentication_endpoint: "http://{EXT1}:8080/auth1"
+      success_status_code: 200
+      cache_ttl_in_sec: 60
+
+    - name: "ext2"
+      authentication_endpoint: "http://{EXT2}:8080/auth2"
+      success_status_code: 204
+      cache_ttl_in_sec: 60
+```
+
+Authentication process is delegated to external service. Credentials are passed with basic auth header.
+
+To define external authentication service user should specify: 
+- `name` for service (then this name is used as id in `service` attribute of `external_authentication` rule)
+- `authentication_endpoint` (GET request)
+- `success_status_code` - authentication response success status code
+
+Cache can be defined at service level or/and at rule level.
+
+### USE CASE 6: External groups provider for group-based authorization
 
 ```yml
 readonlyrest:
@@ -319,6 +364,7 @@ readonlyrest:
       auth_token_name: "token"
       auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
       response_groups_json_path: "$..groups[?(@.name)].name"   # see: https://github.com/json-path/JsonPath
+      cache_ttl_in_sec: 60
 ```
 
 In example above, a user is authenticated by reverse proxy and then external service is asked for groups for that user. 
@@ -330,6 +376,8 @@ To define user groups provider you should specify:
 - `auth_token_name` - user identifier will be passed with this name
 - `auth_token_passed_as` - user identifier can be send using HEADER or QUERY_PARAM
 - `response_groups_json_path` - response can be unrestricted, but you have to specify JSON Path for groups name list (see example in tests)
+
+Cache can be defined at service level or/and at rule level.
 
 ### 3. Restart Elasticsearch
 
