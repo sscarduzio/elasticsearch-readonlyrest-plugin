@@ -16,31 +16,18 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.jayway.jsonpath.JsonPath;
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.message.BasicHeader;
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.ResponseListener;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.utils.CompletableFutureResponseListener;
 
-import java.io.IOException;
-import java.net.URI;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -50,24 +37,14 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.req
 
 public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
-  private static final Logger logger = Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
-
   private static final String RULE_NAME = "groups_provider_authorization";
   private static final String ATTRIBUTE_USER_GROUPS_PROVIDER = "user_groups_provider";
   private static final String ATTRIBUTE_GROUPS = "groups";
 
   private final ProviderGroupsAuthDefinition providerGroupsAuthDefinition;
-  private final RestClient client;
 
   private GroupsProviderAuthorizationAsyncRule(ProviderGroupsAuthDefinition definition) {
     this.providerGroupsAuthDefinition = definition;
-    URI groupBasedAuthEndpoint = providerGroupsAuthDefinition.config.getEndpoint();
-    this.client = RestClient.builder(
-        new HttpHost(
-            groupBasedAuthEndpoint.getHost(),
-            groupBasedAuthEndpoint.getPort()
-        )
-    ).build();
   }
 
   public static Optional<GroupsProviderAuthorizationAsyncRule> fromSettings(Settings s,
@@ -97,52 +74,14 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
-    final CompletableFuture<Boolean> promise = new CompletableFuture<>();
-    client.performRequestAsync(
-        "GET",
-        providerGroupsAuthDefinition.config.getEndpoint().getPath(),
-        createParams(user),
-        new CompletableFutureResponseListener<>(promise, isAuthorized()),
-        createHeaders(user).toArray(new Header[0])
-    );
-    return promise;
+    return providerGroupsAuthDefinition.config.getClient()
+        .fetchGroupsFor(user)
+        .thenApply(this::checkUserGroups);
   }
 
-  private Map<String, String> createParams(LoggedUser user) {
-    Map<String, String> params = new HashMap<>();
-    if(providerGroupsAuthDefinition.config.getPassingMethod() == UserGroupProviderConfig.TokenPassingMethod.QUERY) {
-      params.put(providerGroupsAuthDefinition.config.getAuthTokenName(), user.getId());
-    }
-    return params;
-  }
-
-  private List<Header> createHeaders(LoggedUser user) {
-    return providerGroupsAuthDefinition.config.getPassingMethod() == UserGroupProviderConfig.TokenPassingMethod.HEADER
-        ? Lists.newArrayList(new BasicHeader(providerGroupsAuthDefinition.config.getAuthTokenName(), user.getId()))
-        : Lists.newArrayList();
-  }
-
-  private Function<Response, Boolean> isAuthorized() {
-    return response -> {
-      if (response.getStatusLine().getStatusCode() == 200) {
-        try {
-          List<String> groups = JsonPath.read(
-              response.getEntity().getContent(),
-              providerGroupsAuthDefinition.config.getResponseGroupsJsonPath()
-          );
-          logger.debug("Groups returned by groups provider '" + providerGroupsAuthDefinition.config.getName() + "': "
-              + Joiner.on(",").join(groups));
-
-          Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(groups));
-          return !intersection.isEmpty();
-        } catch (IOException e) {
-          logger.error("Group based authorization response exception", e);
-          return false;
-        }
-      }
-
-      return false;
-    };
+  private boolean checkUserGroups(Set<String> groups) {
+    Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(groups));
+    return !intersection.isEmpty();
   }
 
   @Override

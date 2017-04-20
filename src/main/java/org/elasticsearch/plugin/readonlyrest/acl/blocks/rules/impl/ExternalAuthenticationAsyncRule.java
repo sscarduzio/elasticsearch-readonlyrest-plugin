@@ -1,17 +1,11 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import org.apache.http.HttpHost;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.CompletableFutureResponseListener;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,7 +19,6 @@ public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
   private static final String ATTRIBUTE_SERVICE = "service";
 
   private final ExternalAuthenticationServiceConfig config;
-  private final RestClient client;
 
   public static Optional<ExternalAuthenticationAsyncRule> fromSettings(Settings s,
                                                                        List<ExternalAuthenticationServiceConfig> configs)
@@ -76,26 +69,11 @@ public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private ExternalAuthenticationAsyncRule(ExternalAuthenticationServiceConfig config) {
     this.config = config;
-    URI groupBasedAuthEndpoint = config.getEndpoint();
-    this.client = RestClient.builder(
-        new HttpHost(
-            groupBasedAuthEndpoint.getHost(),
-            groupBasedAuthEndpoint.getPort()
-        )
-    ).build();
   }
 
   @Override
   protected CompletableFuture<Boolean> authenticate(String user, String password) {
-    final CompletableFuture<Boolean> promise = new CompletableFuture<>();
-    client.performRequestAsync(
-        "GET",
-        config.getEndpoint().getPath(),
-        Maps.newHashMap(),
-        new CompletableFutureResponseListener<>(promise,
-            response -> response.getStatusLine().getStatusCode() == config.getSuccessStatusCode()),
-        BasicAuthUtils.basicAuthHeader(user, password));
-    return promise;
+    return config.getClient().authenticate(user, password);
   }
 
   @Override

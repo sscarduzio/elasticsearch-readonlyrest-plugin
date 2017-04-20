@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.configparsing;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient;
 import org.elasticsearch.plugin.readonlyrest.utils.settings.UserGroupsProviderConfigHelper;
 import org.junit.Test;
 
@@ -27,6 +28,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class UserGroupsProviderConfigTests {
 
@@ -37,14 +39,11 @@ public class UserGroupsProviderConfigTests {
     URI expectedGroupsEndpoint = new URI("http://localhost:12000/groups_list");
     String expectedResponseGroupsJsonPath = "$..groups[?(@.name)].name";
     Settings settings = UserGroupsProviderConfigHelper.create(expectedName, expectedGroupsEndpoint, expectedAuthTokenName,
-        UserGroupProviderConfig.TokenPassingMethod.QUERY, expectedResponseGroupsJsonPath);
+        GroupsProviderServiceHttpClient.TokenPassingMethod.QUERY, expectedResponseGroupsJsonPath);
     List<Settings> userGroupsProvidersSettings = Lists.newArrayList(settings.getGroups("user_groups_providers").values());
     UserGroupProviderConfig config = UserGroupProviderConfig.fromSettings(userGroupsProvidersSettings.get(0));
     assertEquals(expectedName, config.getName());
-    assertEquals(expectedGroupsEndpoint, config.getEndpoint());
-    assertEquals(expectedAuthTokenName, config.getAuthTokenName());
-    assertEquals(UserGroupProviderConfig.TokenPassingMethod.QUERY, config.getPassingMethod());
-    assertEquals(expectedResponseGroupsJsonPath, config.getResponseGroupsJsonPath());
+    assertNotNull(config.getClient());
   }
 
 }

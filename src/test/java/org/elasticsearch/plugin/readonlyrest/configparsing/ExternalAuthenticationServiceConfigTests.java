@@ -11,6 +11,7 @@ import java.net.URISyntaxException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class ExternalAuthenticationServiceConfigTests {
 
@@ -25,7 +26,6 @@ public class ExternalAuthenticationServiceConfigTests {
         Lists.newArrayList(settings.getGroups("external_authentication_service_configs").values());
     ExternalAuthenticationServiceConfig config = ExternalAuthenticationServiceConfig.fromSettings(servicesSettings.get(0));
     assertEquals(expectedName, config.getName());
-    assertEquals(expectedGroupsEndpoint, config.getEndpoint());
-    assertEquals(expectedSuccessStatusCode, config.getSuccessStatusCode());
+    assertNotNull(config.getClient());
   }
 }

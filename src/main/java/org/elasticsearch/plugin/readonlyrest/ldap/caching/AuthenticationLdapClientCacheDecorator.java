@@ -34,7 +34,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.opt
 
 public class AuthenticationLdapClientCacheDecorator implements AuthenticationLdapClient {
 
-  private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
+  private final static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final AuthenticationLdapClient underlyingClient;
   private final Cache<String, LdapUserWithHashedPassword> ldapUsersWithPasswordCache;
