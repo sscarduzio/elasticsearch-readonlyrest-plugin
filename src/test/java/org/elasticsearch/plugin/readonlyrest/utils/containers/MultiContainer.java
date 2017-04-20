@@ -36,8 +36,8 @@ public class MultiContainer extends FailureDetectingExternalResource {
 
   public MultiContainer(Map<String, Supplier<GenericContainer<?>>> containerCreators) {
     List<NamedContainer> namedContainers = containerCreators.entrySet().stream()
-      .map(entry -> new NamedContainer(entry.getKey(), entry.getValue().get()))
-      .collect(Collectors.toList());
+                                                            .map(entry -> new NamedContainer(entry.getKey(), entry.getValue().get()))
+                                                            .collect(Collectors.toList());
     this.containers = Maps.uniqueIndex(namedContainers, NamedContainer::getName);
   }
 

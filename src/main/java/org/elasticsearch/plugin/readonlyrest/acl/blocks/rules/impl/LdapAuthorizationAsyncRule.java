@@ -42,13 +42,18 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   private final GroupsProviderLdapClient client;
   private final Set<String> groups;
 
+  private LdapAuthorizationAsyncRule(GroupsProviderLdapClient client, Set<String> groups) {
+    this.client = client;
+    this.groups = groups;
+  }
+
   public static Optional<LdapAuthorizationAsyncRule> fromSettings(Settings s,
-                                                                  LdapConfigs ldapConfigs) throws ConfigMalformedException {
+      LdapConfigs ldapConfigs) throws ConfigMalformedException {
     return fromSettings(RULE_NAME, s, ldapConfigs);
   }
 
   static Optional<LdapAuthorizationAsyncRule> fromSettings(String ruleName, Settings s,
-                                                           LdapConfigs ldapConfigs) throws ConfigMalformedException {
+      LdapConfigs ldapConfigs) throws ConfigMalformedException {
     Map<String, Settings> ldapAuths = s.getGroups(ruleName);
     if (ldapAuths.isEmpty()) return Optional.empty();
     if (ldapAuths.size() != 1)
@@ -63,19 +68,14 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
     return Optional.of(new LdapAuthorizationAsyncRule(ldapConfigs.authorizationLdapClientForName(name), groups));
   }
 
-  private LdapAuthorizationAsyncRule(GroupsProviderLdapClient client, Set<String> groups) {
-    this.client = client;
-    this.groups = groups;
-  }
-
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     return client.userById(user.getId())
-        .thenCompose(ldapUser -> ldapUser.isPresent()
-            ? client.userGroups(ldapUser.get())
-            : CompletableFuture.completedFuture(Sets.newHashSet())
-        )
-        .thenApply(this::checkIfUserHasAccess);
+                 .thenCompose(ldapUser -> ldapUser.isPresent()
+                     ? client.userGroups(ldapUser.get())
+                     : CompletableFuture.completedFuture(Sets.newHashSet())
+                 )
+                 .thenApply(this::checkIfUserHasAccess);
   }
 
   private boolean checkIfUserHasAccess(Set<LdapGroup> ldapGroups) {

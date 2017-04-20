@@ -20,10 +20,10 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,14 +34,6 @@ import java.util.Optional;
 public class ApiKeysSyncRule extends SyncRule {
 
   private List<String> validApiKeys;
-
-  public static Optional<ApiKeysSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new ApiKeysSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
 
   public ApiKeysSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -56,6 +48,14 @@ public class ApiKeysSyncRule extends SyncRule {
     }
     else {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<ApiKeysSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new ApiKeysSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

@@ -22,10 +22,10 @@ import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.Optional;
 
@@ -37,14 +37,6 @@ public class SessionMaxIdleSyncRule extends SyncRule {
   private static final Logger logger = Loggers.getLogger(SessionMaxIdleSyncRule.class);
   private final long maxIdleMillis;
 
-  public static Optional<SessionMaxIdleSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new SessionMaxIdleSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
-
   public SessionMaxIdleSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
 
@@ -54,11 +46,11 @@ public class SessionMaxIdleSyncRule extends SyncRule {
     }
 
     boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySyncRule.class)))
-      || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1SyncRule.class)));
+        || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1SyncRule.class)));
 
     if (isThisRuleConfigured && !isLoginConfigured) {
       logger.error(getKey() + " rule does not mean anything if you don't also set either "
-                     + mkKey(AuthKeySha1SyncRule.class) + " or " + mkKey(AuthKeySyncRule.class));
+          + mkKey(AuthKeySha1SyncRule.class) + " or " + mkKey(AuthKeySyncRule.class));
       throw new RuleNotConfiguredException();
     }
 
@@ -70,6 +62,14 @@ public class SessionMaxIdleSyncRule extends SyncRule {
       throw new ElasticsearchParseException(getKey() + " value must be greater than zero");
     }
     maxIdleMillis = timeMill;
+  }
+
+  public static Optional<SessionMaxIdleSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new SessionMaxIdleSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
   }
 
   /*

@@ -50,24 +50,24 @@ public class SSLEngineProvider {
     if (conf.sslEnabled) {
       if (!Strings.isNullOrEmpty(conf.sslCertChainPem) && !Strings.isNullOrEmpty(conf.sslPrivKeyPem)) {
         AccessController.doPrivileged(
-          new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-              try {
-                logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
-                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                context = SslContextBuilder.forServer(
-                  new File(conf.sslCertChainPem),
-                  new File(conf.sslPrivKeyPem),
-                  null
-                ).build();
-              } catch (SSLException e) {
-                logger.error("Failed to load SSL CertChain & private key!");
-                e.printStackTrace();
+            new PrivilegedAction<Void>() {
+              @Override
+              public Void run() {
+                try {
+                  logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
+                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                  context = SslContextBuilder.forServer(
+                      new File(conf.sslCertChainPem),
+                      new File(conf.sslPrivKeyPem),
+                      null
+                  ).build();
+                } catch (SSLException e) {
+                  logger.error("Failed to load SSL CertChain & private key!");
+                  e.printStackTrace();
+                }
+                return null;
               }
-              return null;
-            }
-          });
+            });
 
         // Everything is configured
         logger.info("SSL configured through cert_chain and privkey");
@@ -132,23 +132,23 @@ public class SSLEngineProvider {
 
 
         AccessController.doPrivileged(
-          new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-              try {
-                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                context = SslContextBuilder.forServer(
-                  new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-                  new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-                  null
-                ).build();
-              } catch (Exception e) {
-                logger.error("Failed to load SSL CertChain & private key from Keystore!");
-                e.printStackTrace();
+            new PrivilegedAction<Void>() {
+              @Override
+              public Void run() {
+                try {
+                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                  context = SslContextBuilder.forServer(
+                      new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+                      new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+                      null
+                  ).build();
+                } catch (Exception e) {
+                  logger.error("Failed to load SSL CertChain & private key from Keystore!");
+                  e.printStackTrace();
+                }
+                return null;
               }
-              return null;
-            }
-          });
+            });
 
       } catch (Throwable t) {
         logger.error("Failed to load SSL certs and keys from JKS Keystore!");

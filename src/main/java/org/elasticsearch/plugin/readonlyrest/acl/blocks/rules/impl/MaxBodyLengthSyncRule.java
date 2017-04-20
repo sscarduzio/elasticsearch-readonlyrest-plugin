@@ -18,10 +18,10 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.Optional;
 
@@ -31,19 +31,19 @@ import java.util.Optional;
 public class MaxBodyLengthSyncRule extends SyncRule {
   private Integer maxBodyLength;
 
-  public static Optional<MaxBodyLengthSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new MaxBodyLengthSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
-
   public MaxBodyLengthSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
     maxBodyLength = s.getAsInt("maxBodyLength", null);
     if (maxBodyLength == null) {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<MaxBodyLengthSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new MaxBodyLengthSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

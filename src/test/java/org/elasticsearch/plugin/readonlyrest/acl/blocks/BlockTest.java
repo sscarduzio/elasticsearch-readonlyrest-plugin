@@ -31,12 +31,12 @@ public class BlockTest extends TestCase {
 
   public void testRulesShallFollowAuthInspectMutateOrder() {
     Settings settings = Settings.builder()
-        .put("name", "Dummy block")
-        .put("type", "allow")
-        .put("proxy_auth", "*")
-        .putArray("indices_rewrite", "needle", "replacement")
-        .putArray("indices", "allowed-index")
-        .build();
+                                .put("name", "Dummy block")
+                                .put("type", "allow")
+                                .put("proxy_auth", "*")
+                                .putArray("indices_rewrite", "needle", "replacement")
+                                .putArray("indices", "allowed-index")
+                                .build();
     Block block = new Block(settings, Lists.newArrayList(), LdapConfigs.empty(), Lists.newArrayList(),
         Lists.newArrayList(), Lists.newArrayList(), null);
 

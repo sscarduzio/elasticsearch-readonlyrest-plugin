@@ -20,19 +20,19 @@ package org.elasticsearch.plugin.readonlyrest.utils;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
+
+import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Created by sscarduzio on 24/03/2017.
  */
-public class ReflectionUtils {
+public class ReflecUtils {
 
   public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, Logger logger) {
     final String[][] result = {new String[]{}};
@@ -58,7 +58,7 @@ public class ReflectionUtils {
         } catch (SecurityException e) {
           logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
-            "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
+              "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
           logger.debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
         }
@@ -94,58 +94,37 @@ public class ReflectionUtils {
     return null;
   }
 
-  public static List<Throwable> fieldChanger(final Class<?> clazz, String fieldName, Logger logger, RequestContext rc,
-                                             CheckedFunction<Field, Void> change) {
-
-    final List<Throwable> errors = new ArrayList<>();
-
+  public static boolean setIndices(Object req,Set<String> newIndices, Logger logger) {
+    final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      Class<?> theClass = clazz;
-      final Class<?> originalClass = theClass;
-
-
-      while (!theClass.equals(Object.class)) {
+      @SuppressWarnings("unchecked")
+      Set<Field> indexFields = getAllFields(
+        req.getClass(),
+        (Field field) -> field != null &&
+          (
+            (field.getName().equals("index") || field.getName() == "indices")) &&
+          (field.getType().equals(String.class) || field.getType().equals(String[].class)
+          )
+      );
+      String firstIndex = newIndices.iterator().next();
+      for (Field f : indexFields) {
+        f.setAccessible(true);
         try {
-          logger.debug(theClass.getSimpleName() + " < " + theClass.getSuperclass().getSimpleName() + rc);
-          Field f = exploreClassFields(theClass, fieldName);
-          if (f != null) {
-            logger.debug("found field " + fieldName + " in class " + theClass.getSimpleName());
-            change.apply(f);
-            errors.clear();
-            return null;
+          f.set(req, firstIndex);
+        } catch (IllegalAccessException | IllegalArgumentException e) {
+          try {
+            f.set(req, newIndices.toArray(new String[newIndices.size()]));
+          } catch (IllegalAccessException e1) {
+              logger.error("could not find index or indices field to replace: " +
+                             e.getMessage() + " and then " + e1.getMessage());
           }
-          else {
-            theClass = theClass.getSuperclass();
-            throw new NoSuchFieldException("Cannot find field " + fieldName + "in class" + theClass.getSimpleName());
-          }
-        } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
-          errors.add(new SetFieldException(theClass, fieldName, rc.getId(), e));
         }
       }
-
-      logger.debug("moving on with interfaces...");
-      int interfacesLen = originalClass.getInterfaces().length;
-      int interfacesNum = 0;
-
-      while (interfacesNum < interfacesLen) {
-        theClass = originalClass.getInterfaces()[interfacesNum];
-        try {
-          logger.debug(theClass.getSimpleName() + " < " + rc);
-          Field f = exploreClassFields(theClass, fieldName);
-          if (f != null) {
-            logger.debug("found field " + fieldName + " in interface " + theClass.getSimpleName());
-            change.apply(f);
-            errors.clear();
-            return null;
-          }
-        } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
-          errors.add(new SetFieldException(theClass, fieldName, rc.getId(), e));
-        }
-        interfacesNum++;
-      }
+      res[0] = true;
       return null;
     });
-    return errors;
+
+    return res[0];
   }
 
   @FunctionalInterface
@@ -156,9 +135,9 @@ public class ReflectionUtils {
   static class SetFieldException extends Exception {
     SetFieldException(Class<?> c, String id, String fieldName, Throwable e) {
       super(" Could not set " + fieldName + " to class " + c.getSimpleName() +
-              "for req id: " + id + " because: "
-              + e.getClass().getSimpleName() + " : " + e.getMessage() +
-              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+          "for req id: " + id + " because: "
+          + e.getClass().getSimpleName() + " : " + e.getMessage() +
+          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
     }
   }
 }

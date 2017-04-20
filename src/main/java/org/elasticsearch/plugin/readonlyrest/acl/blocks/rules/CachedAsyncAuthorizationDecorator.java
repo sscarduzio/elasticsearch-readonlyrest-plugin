@@ -35,6 +35,13 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   private final AsyncAuthorization underlying;
   private final Cache<String, Boolean> cache;
 
+  public CachedAsyncAuthorizationDecorator(AsyncAuthorization underlying, Duration ttl) {
+    this.underlying = underlying;
+    this.cache = CacheBuilder.newBuilder()
+                             .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+                             .build();
+  }
+
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization, Settings settings) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
         .map(ttl -> ttl.isZero()
@@ -43,22 +50,15 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
         .orElse(authorization);
   }
 
-  public CachedAsyncAuthorizationDecorator(AsyncAuthorization underlying, Duration ttl) {
-    this.underlying = underlying;
-    this.cache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
-  }
-
   @Override
   public CompletableFuture<Boolean> authorize(LoggedUser user) {
     Boolean authorizationResult = cache.getIfPresent(user.getId());
     if (authorizationResult == null) {
       return underlying.authorize(user)
-          .thenApply(result -> {
-            cache.put(user.getId(), result);
-            return result;
-          });
+                       .thenApply(result -> {
+                         cache.put(user.getId(), result);
+                         return result;
+                       });
     }
     return CompletableFuture.completedFuture(authorizationResult);
   }

@@ -22,9 +22,9 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 /**
  * Created by sscarduzio on 24/03/2017.
@@ -39,8 +39,8 @@ class ACLActionListener implements ActionListener<ActionResponse> {
   private final BlockExitResult result;
 
   ACLActionListener(ActionRequest request,
-                    ActionListener<ActionResponse> baseListener,
-                    RequestContext rc, BlockExitResult result) {
+      ActionListener<ActionResponse> baseListener,
+      RequestContext rc, BlockExitResult result) {
     this.request = request;
     this.baseListener = baseListener;
     this.rc = rc;

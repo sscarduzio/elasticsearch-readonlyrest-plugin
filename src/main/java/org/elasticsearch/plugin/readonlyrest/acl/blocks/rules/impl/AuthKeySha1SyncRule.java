@@ -29,16 +29,16 @@ import java.util.Optional;
  */
 public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
 
+  public AuthKeySha1SyncRule(Settings s) throws RuleNotConfiguredException {
+    super(s);
+  }
+
   public static Optional<AuthKeySha1SyncRule> fromSettings(Settings s) {
     try {
       return Optional.of(new AuthKeySha1SyncRule(s));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }
-  }
-
-  public AuthKeySha1SyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
   }
 
   @Override

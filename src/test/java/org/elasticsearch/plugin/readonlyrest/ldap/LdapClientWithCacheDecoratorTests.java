@@ -39,9 +39,9 @@ public class LdapClientWithCacheDecoratorTests {
     String dn = "cn=Example user,ou=People,dc=example,dc=com";
     LdapCredentials credentials = new LdapCredentials("user", "password");
     when(client.authenticate(any(LdapCredentials.class)))
-      .thenReturn(CompletableFuture.completedFuture(Optional.of(
-        new LdapUser("user", dn)))
-      );
+        .thenReturn(CompletableFuture.completedFuture(Optional.of(
+            new LdapUser("user", dn)))
+        );
     Duration ttl = Duration.ofSeconds(1);
     GroupsProviderLdapClientCacheDecorator clientWithCache = new GroupsProviderLdapClientCacheDecorator(client, ttl);
     Optional<LdapUser> ldapUser = clientWithCache.authenticate(credentials).get();

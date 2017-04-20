@@ -37,7 +37,7 @@ public class UnboundidConnection {
   private LDAPConnectionPool connectionPool;
 
   public UnboundidConnection(ConnectionConfig connectionConfig,
-                             Optional<SearchingUserConfig> searchingUserConfig) {
+      Optional<SearchingUserConfig> searchingUserConfig) {
     connect(connectionConfig, searchingUserConfig);
   }
 
@@ -52,7 +52,8 @@ public class UnboundidConnection {
           SSLUtil sslUtil = connectionConfig.isTrustAllCerts() ? new SSLUtil(new TrustAllTrustManager()) : new SSLUtil();
           SSLSocketFactory sslSocketFactory = sslUtil.createSSLSocketFactory();
           connection = new LDAPConnection(sslSocketFactory, options);
-        } else {
+        }
+        else {
           connection = new LDAPConnection(options);
         }
         connection.connect(

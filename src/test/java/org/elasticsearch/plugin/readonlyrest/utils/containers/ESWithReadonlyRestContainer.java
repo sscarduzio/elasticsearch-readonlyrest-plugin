@@ -53,16 +53,16 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   private static String ADMIN_PASSWORD = "container";
 
   private static GradleProperties properties =
-    GradleProperties
-      .create()
-      .orElseThrow(() -> new ContainerCreationException("Cannot load gradle properties"));
+      GradleProperties
+          .create()
+          .orElseThrow(() -> new ContainerCreationException("Cannot load gradle properties"));
 
   private ESWithReadonlyRestContainer(ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
   }
 
   public static ESWithReadonlyRestContainer create(String elasticsearchConfig,
-                                                   Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
+      Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File config = ContainerUtils.getResourceFile(elasticsearchConfig);
     Optional<File> pluginFileOpt = GradleProjectUtils.assemble();
     if (!pluginFileOpt.isPresent()) {
@@ -72,19 +72,21 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     logger.info("Creating ES container ...");
     String elasticsearchConfigName = "elasticsearch.yml";
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
-      new ImageFromDockerfile()
-        .withFileFromFile(pluginFile.getName(), pluginFile)
-        .withFileFromFile(elasticsearchConfigName, config)
-        .withDockerfileFromBuilder(builder -> builder
-          .from("docker.elastic.co/elasticsearch/elasticsearch:" + properties.getProperty("esVersion"))
-          .copy(pluginFile.getName(), "/tmp/")
-          .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
-          .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +
-                 "file:/tmp/" + pluginFile.getName())
-          .build()));
+        new ImageFromDockerfile()
+            .withFileFromFile(pluginFile.getName(), pluginFile)
+            .withFileFromFile(elasticsearchConfigName, config)
+            .withDockerfileFromBuilder(builder -> builder
+                .from("docker.elastic.co/elasticsearch/elasticsearch:" + properties.getProperty("esVersion"))
+                .copy(pluginFile.getName(), "/tmp/")
+                .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
+                .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +
+                    "file:/tmp/" + pluginFile.getName())
+                .build()));
     return container
-      .withExposedPorts(ES_PORT)
-      .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
+        .withLogConsumer((l) -> System.out.print(l.getUtf8String()))
+        .withExposedPorts(ES_PORT)
+        .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
+
   }
 
   public String getESHost() {
@@ -140,9 +142,9 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
           Response result = client.performRequest("GET", "_cluster/health");
           if (result.getStatusLine().getStatusCode() != 200) return false;
           Map<String, String> healthJson = mapper.readValue(
-            result.getEntity().getContent(),
-            new TypeReference<Map<String, String>>() {
-            }
+              result.getEntity().getContent(),
+              new TypeReference<Map<String, String>>() {
+              }
           );
           return "green".equals(healthJson.get("status"));
         } catch (IOException e) {

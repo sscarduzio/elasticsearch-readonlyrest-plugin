@@ -25,13 +25,11 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.req
 
 public class ProxyAuthConfig {
 
+  public static ProxyAuthConfig DEFAULT = new ProxyAuthConfig("", "X-Forwarded-User");
   private static String ATTRIBUTE_NAME = "name";
   private static String ATTRIBUTE_USER_ID_HEADER = "user_id_header";
-
   private final String name;
   private final String userIdHeader;
-
-  public static ProxyAuthConfig DEFAULT = new ProxyAuthConfig("", "X-Forwarded-User");
 
   private ProxyAuthConfig(String name, String userIdHeader) {
     this.name = name;
@@ -40,7 +38,7 @@ public class ProxyAuthConfig {
 
   public static ProxyAuthConfig fromSettings(Settings settings) throws ConfigMalformedException {
     String name = requiredAttributeValue(ATTRIBUTE_NAME, settings);
-    if(Objects.equals(name, DEFAULT.getName()))
+    if (Objects.equals(name, DEFAULT.getName()))
       throw new ConfigMalformedException("Wrong Proxy Auth name");
 
     return new ProxyAuthConfig(name,

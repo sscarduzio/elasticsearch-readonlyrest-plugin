@@ -42,9 +42,9 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
   private final UserGroupsSearchFilterConfig userGroupsSearchFilterConfig;
 
   public UnboundidGroupsProviderLdapClient(ConnectionConfig connectionConfig,
-                                           UserSearchFilterConfig userSearchFilterConfig,
-                                           UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
-                                           Optional<SearchingUserConfig> searchingUserConfig) {
+      UserSearchFilterConfig userSearchFilterConfig,
+      UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
+      Optional<SearchingUserConfig> searchingUserConfig) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
         connectionConfig.getRequestTimeout(),
         userSearchFilterConfig);
@@ -52,9 +52,9 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
   }
 
   public UnboundidGroupsProviderLdapClient(UnboundidConnection connection,
-                                           Duration requestTimeout,
-                                           UserSearchFilterConfig userSearchFilterConfig,
-                                           UserGroupsSearchFilterConfig userGroupsSearchFilterConfig) {
+      Duration requestTimeout,
+      UserSearchFilterConfig userSearchFilterConfig,
+      UserGroupsSearchFilterConfig userGroupsSearchFilterConfig) {
     super(connection, requestTimeout, userSearchFilterConfig);
     this.userGroupsSearchFilterConfig = userGroupsSearchFilterConfig;
   }
@@ -75,11 +75,11 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
       );
       return searchGroups
           .thenApply(groupSearchResult -> groupSearchResult.stream()
-              .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
-              .filter(Optional::isPresent)
-              .map(Optional::get)
-              .map(LdapGroup::new)
-              .collect(Collectors.toSet()))
+                                                           .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
+                                                           .filter(Optional::isPresent)
+                                                           .map(Optional::get)
+                                                           .map(LdapGroup::new)
+                                                           .collect(Collectors.toSet()))
           .exceptionally(t -> {
             if (t instanceof LdapSearchError) {
               LdapSearchError error = (LdapSearchError) t;

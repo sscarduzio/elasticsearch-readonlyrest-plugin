@@ -19,8 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 public abstract class Rule {
   protected final RuleExitResult MATCH;
@@ -36,9 +36,9 @@ public abstract class Rule {
   /**
    * This hook is only called if the result is a match.
    *
-   * @param result BlockExitResult rules block exit result
-   * @param rc RequestContext
-   * @param ar ActionRequest
+   * @param result   BlockExitResult rules block exit result
+   * @param rc       RequestContext
+   * @param ar       ActionRequest
    * @param response ActionResponse
    * @return should continue to process the handlers' pipeline
    */
@@ -48,14 +48,14 @@ public abstract class Rule {
 
   /**
    * This hook is called before throwing the exception e.
-   *
+   * <p>
    * Either rethrow or throw a new exception.
    * #XXX DANGER: if you return false without throwing or writing to the channel, the connection will hang!
    *
    * @param result BlockExitResult rules block exit result
-   * @param rc RequestContext
-   * @param ar ActionRequest
-   * @param e The occurred exception
+   * @param rc     RequestContext
+   * @param ar     ActionRequest
+   * @param e      The occurred exception
    * @return should continue to process the handlers' pipeline
    */
   public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {

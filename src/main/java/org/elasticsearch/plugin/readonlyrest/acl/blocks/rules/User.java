@@ -66,7 +66,7 @@ public class User {
     } catch (RuleNotConfiguredException ignored) {
     }
     Optional<ProxyAuthSyncRule> proxyAuthSyncRule = ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs);
-    if(proxyAuthSyncRule.isPresent()) {
+    if (proxyAuthSyncRule.isPresent()) {
       return proxyAuthSyncRule.get();
     }
 

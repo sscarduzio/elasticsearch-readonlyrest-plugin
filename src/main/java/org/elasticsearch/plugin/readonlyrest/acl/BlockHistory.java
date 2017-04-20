@@ -28,11 +28,11 @@ import java.util.Set;
  * Created by sscarduzio on 20/01/2017.
  */
 
-class BlockHistory {
+public class BlockHistory {
   private final Set<RuleExitResult> results;
   private final String name;
 
-  BlockHistory(String name, Set<RuleExitResult> results) {
+  public BlockHistory(String name, Set<RuleExitResult> results) {
     this.results = results;
     this.name = name;
   }

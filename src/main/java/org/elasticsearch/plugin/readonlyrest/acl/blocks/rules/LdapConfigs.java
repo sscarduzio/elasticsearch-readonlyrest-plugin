@@ -31,12 +31,17 @@ public class LdapConfigs {
 
   private final Map<String, BaseLdapClient> configs;
 
+  private LdapConfigs(List<LdapConfig<?>> configs) {
+    this.configs = configs.stream()
+                          .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
+  }
+
   public static LdapConfigs fromSettings(String name, Settings settings) {
     return new LdapConfigs(
         settings.getGroups(name).values()
-            .stream()
-            .map(LdapConfig::fromSettings)
-            .collect(Collectors.toList())
+                .stream()
+                .map(LdapConfig::fromSettings)
+                .collect(Collectors.toList())
     );
   }
 
@@ -48,18 +53,13 @@ public class LdapConfigs {
     return new LdapConfigs(Lists.newArrayList(configsList));
   }
 
-  private LdapConfigs(List<LdapConfig<?>> configs) {
-    this.configs = configs.stream()
-        .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
-  }
-
   @SuppressWarnings("unchecked")
   public AuthenticationLdapClient authenticationLdapClientForName(String name) {
     if (!configs.containsKey(name)) {
       throw new ConfigMalformedException("LDAP with name [" + name + "] wasn't defined.");
     }
     BaseLdapClient client = configs.get(name);
-    if(client instanceof AuthenticationLdapClient) {
+    if (client instanceof AuthenticationLdapClient) {
       return (AuthenticationLdapClient) client;
     }
     throw new ConfigMalformedException("Cannot use LDAP with name [" + name + "] to authentication");
@@ -71,7 +71,7 @@ public class LdapConfigs {
       throw new ConfigMalformedException("LDAP with name [" + name + "] wasn't defined.");
     }
     BaseLdapClient client = configs.get(name);
-    if(client instanceof GroupsProviderLdapClient) {
+    if (client instanceof GroupsProviderLdapClient) {
       return (GroupsProviderLdapClient) client;
     }
     throw new ConfigMalformedException("Cannot use LDAP with name [" + name + "] to authorization");

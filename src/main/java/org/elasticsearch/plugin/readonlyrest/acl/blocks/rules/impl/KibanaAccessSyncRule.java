@@ -22,12 +22,12 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.Optional;
 import java.util.Set;
@@ -39,44 +39,36 @@ import java.util.Set;
 public class KibanaAccessSyncRule extends SyncRule {
 
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
-    "indices:admin/exists",
-    "indices:admin/mappings/fields/get*",
-    "indices:admin/validate/query",
-    "indices:data/read/field_stats",
-    "indices:data/read/search",
-    "indices:data/read/msearch",
-    "indices:admin/get",
-    "indices:admin/refresh*",
-    "indices:data/read/*"
+      "indices:admin/exists",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/validate/query",
+      "indices:data/read/field_stats",
+      "indices:data/read/search",
+      "indices:data/read/msearch",
+      "indices:admin/get",
+      "indices:admin/refresh*",
+      "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
-    "indices:admin/create",
-    "indices:admin/mapping/put",
-    "indices:data/write/delete",
-    "indices:data/write/index",
-    "indices:data/write/update"
+      "indices:admin/create",
+      "indices:admin/mapping/put",
+      "indices:data/write/delete",
+      "indices:data/write/index",
+      "indices:data/write/update"
   ));
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
-    "cluster:admin/rradmin/*",
-    "indices:data/write/*",
-    "indices:admin/create"
+      "cluster:admin/rradmin/*",
+      "indices:data/write/*",
+      "indices:admin/create"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
-    "cluster:monitor/nodes/info",
-    "cluster:monitor/health"
+      "cluster:monitor/nodes/info",
+      "cluster:monitor/health"
   ));
   private final Logger logger = Loggers.getLogger(this.getClass());
   private String kibanaIndex = ".kibana";
   private Boolean canModifyKibana;
   private Boolean isAdmin = false;
-
-  public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new KibanaAccessSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
 
   public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -105,6 +97,14 @@ public class KibanaAccessSyncRule extends SyncRule {
     tmp = s.get("kibana_index");
     if (!Strings.isNullOrEmpty(tmp)) {
       kibanaIndex = tmp;
+    }
+  }
+
+  public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new KibanaAccessSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

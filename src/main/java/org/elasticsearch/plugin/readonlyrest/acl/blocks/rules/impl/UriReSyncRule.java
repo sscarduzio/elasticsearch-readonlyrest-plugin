@@ -19,11 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -36,14 +36,6 @@ public class UriReSyncRule extends SyncRule {
 
   private Pattern uri_re = null;
 
-  public static Optional<UriReSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new UriReSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
-
   public UriReSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
 
@@ -55,8 +47,17 @@ public class UriReSyncRule extends SyncRule {
         throw new RuleConfigurationError("invalid 'uri_re' regexp", e);
       }
 
-    } else {
+    }
+    else {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<UriReSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new UriReSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

@@ -23,19 +23,24 @@ import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.action.get.MultiGetItemResponse;
+import org.elasticsearch.action.get.MultiGetResponse;
+import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.text.Text;
 import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.index.get.GetResult;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.search.SearchShardTarget;
-import org.elasticsearch.search.internal.InternalSearchHit;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
+import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Field;
 import java.security.AccessController;
@@ -56,14 +61,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
   private final Pattern[] targetPatterns;
   private final String replacement;
-
-  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new IndicesRewriteSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
 
   public IndicesRewriteSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -91,6 +88,14 @@ public class IndicesRewriteSyncRule extends SyncRule {
       .toArray(Pattern[]::new);
   }
 
+  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new IndicesRewriteSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
+
   @Override
   public RuleExitResult match(RequestContext rc) {
 
@@ -98,17 +103,32 @@ public class IndicesRewriteSyncRule extends SyncRule {
       return MATCH;
     }
 
+    if (rc.hasSubRequests()) {
+      rc.scanSubRequests((src) -> {
+        rewrite(src);
+        return Optional.of(src);
+      });
+    }
+    else {
+      rewrite(rc);
+    }
+
+
+    // This is a side-effect only rule, will always match
+    return MATCH;
+  }
+
+  private void rewrite(IndicesRequestContext rc) {
     // Expanded indices
     final Set<String> oldIndices = Sets.newHashSet(rc.getIndices());
 
     if (rc.isReadRequest()) {
-
       // Translate all the wildcards
       oldIndices.clear();
       oldIndices.addAll(rc.getExpandedIndices());
 
       // If asked for non-existent indices, let's show them to the rewriter
-      Set<String> available = rc.getAvailableIndicesAndAliases();
+      Set<String> available = rc.getAllIndicesAndAliases();
       rc.getIndices().stream()
         .filter(i -> !available.contains(i))
         .forEach(i -> oldIndices.add(i));
@@ -135,42 +155,66 @@ public class IndicesRewriteSyncRule extends SyncRule {
       }
     }
     oldIndices.addAll(newIndices);
+
     if (oldIndices.isEmpty()) {
       oldIndices.add("*");
     }
     rc.setIndices(oldIndices);
+  }
 
-    // This is a side-effect only rule, will always match
-    return MATCH;
+  // Translate the search results indices
+  private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
+    for(SearchHit h : sr.getHits().getHits()){
+      ReflecUtils.setIndices(h, Sets.newHashSet(rc.getOriginalIndices().iterator().next()), logger);
+    }
+  }
+
+  // Translate the get results indices
+  private void handleGetResponse(GetResponse gr, RequestContext rc) {
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        Field f = GetResponse.class.getDeclaredField("getResult");
+        f.setAccessible(true);
+        GetResult getResult = (GetResult) f.get(gr);
+
+        f = GetResult.class.getDeclaredField("index");
+        f.setAccessible(true);
+        f.set(getResult, rc.getOriginalIndices().iterator().next());
+
+      } catch (NoSuchFieldException | IllegalAccessException e) {
+        e.printStackTrace();
+      }
+
+      return null;
+    });
   }
 
 
   @Override
   public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
+    // #TODO rewrite response for MultiGet, MultiSearch, Bulk
     if (response instanceof SearchResponse) {
-
-      // Translate the search results indices
-      SearchResponse sr = (SearchResponse) response;
-      String serResp = sr.toString();
-      logger.info(serResp);
-      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
-        Arrays.stream(sr.getHits().getHits()).forEach(h -> {
-          try {
-            Field f = InternalSearchHit.class.getDeclaredField("shard");
-            f.setAccessible(true);
-
-            SearchShardTarget sst = (SearchShardTarget) f.get(h);
-            f = SearchShardTarget.class.getDeclaredField("index");
-            f.setAccessible(true);
-            f.set(sst, new Text(rc.getOriginalIndices().iterator().next()));
-          } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-          }
-        });
-
-        return null;
-      });
+      handleSearchResponse((SearchResponse) response, rc);
+    }
+    if (response instanceof MultiSearchResponse) {
+      MultiSearchResponse msr = (MultiSearchResponse) response;
+      for (MultiSearchResponse.Item i : msr.getResponses()) {
+        if (!i.isFailure()) {
+          handleSearchResponse(i.getResponse(), rc);
+        }
+        // #TODO Maybe do something with the failure message?
+      }
+    }
+    if (response instanceof GetResponse) {
+      handleGetResponse((GetResponse) response, rc);
+    }
+    if (response instanceof MultiGetResponse) {
+      MultiGetResponse mgr = (MultiGetResponse) response;
+      for (MultiGetItemResponse i : mgr.getResponses()) {
+        if (!i.isFailed()) {
+          handleGetResponse(i.getResponse(), rc);
+        }
+      }
     }
     return true;
   }

@@ -48,10 +48,10 @@ public class ContainerUtils {
 
   public static Optional<String> getIpAddress(GenericContainer<?> container) {
     return Optional.ofNullable(container.getContainerInfo())
-        .map(info -> info
-            .getNetworkSettings()
-            .getNetworks()
-            .get("bridge")
-            .getIpAddress());
+                   .map(info -> info
+                       .getNetworkSettings()
+                       .getNetworks()
+                       .get("bridge")
+                       .getIpAddress());
   }
 }

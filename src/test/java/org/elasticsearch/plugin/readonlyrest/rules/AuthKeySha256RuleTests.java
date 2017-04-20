@@ -20,11 +20,11 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import java.util.Base64;
@@ -45,8 +45,8 @@ public class AuthKeySha256RuleTests extends TestCase {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
     SyncRule r = new AuthKeySha256SyncRule(Settings.builder()
-                                             .put("auth_key_sha256", configured)
-                                             .build());
+                                                   .put("auth_key_sha256", configured)
+                                                   .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -55,8 +55,8 @@ public class AuthKeySha256RuleTests extends TestCase {
 
   public void testSimple() throws RuleNotConfiguredException {
     RuleExitResult res = match(
-      "280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9",
-      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+        "280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9",
+        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }

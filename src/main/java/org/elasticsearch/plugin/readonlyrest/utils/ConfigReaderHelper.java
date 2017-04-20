@@ -33,10 +33,6 @@ import java.util.stream.Collectors;
 
 public class ConfigReaderHelper {
 
-  public enum RuleSchema {
-    SIMPLE, EXTENDED
-  }
-
   private ConfigReaderHelper() {
   }
 
@@ -62,8 +58,8 @@ public class ConfigReaderHelper {
       throw new ConfigMalformedException("Config definition malformed - no array [" + attribute +
           "] attribute");
     return Lists.newArrayList(value).stream()
-        .map(converter)
-        .collect(Collectors.toList());
+                .map(converter)
+                .collect(Collectors.toList());
   }
 
   public static <T> Optional<T> optionalAttributeValue(String attribute, Settings settings, Function<String, T> converter) {
@@ -85,9 +81,9 @@ public class ConfigReaderHelper {
   }
 
   public static <R extends Rule> Optional<R> fromSettings(String ruleName,
-                                                          Settings settings,
-                                                          Function<Settings, Optional<R>> simpleRuleSchemaParser,
-                                                          Function<Settings, Optional<R>> extendedRuleSchemaParser)
+      Settings settings,
+      Function<Settings, Optional<R>> simpleRuleSchemaParser,
+      Function<Settings, Optional<R>> extendedRuleSchemaParser)
       throws ConfigMalformedException {
     Optional<RuleSchema> proxyAuthSettingsSchema = recognizeRuleSettingsSchema(settings, ruleName);
     if (!proxyAuthSettingsSchema.isPresent()) return Optional.empty();
@@ -115,9 +111,11 @@ public class ConfigReaderHelper {
     String[] array = s.getAsArray(ruleName);
     if (array != null && array.length > 0) {
       return Optional.of(RuleSchema.SIMPLE);
-    } else if (s.get(ruleName) != null) {
+    }
+    else if (s.get(ruleName) != null) {
       return Optional.of(RuleSchema.SIMPLE);
-    } else {
+    }
+    else {
       return Optional.empty();
     }
   }
@@ -144,5 +142,9 @@ public class ConfigReaderHelper {
     } catch (NumberFormatException e) {
       return Optional.empty();
     }
+  }
+
+  public enum RuleSchema {
+    SIMPLE, EXTENDED
   }
 }

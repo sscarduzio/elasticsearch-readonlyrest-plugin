@@ -22,35 +22,12 @@ readonlyrest:
     # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
 
-    - name: "::LOGSTASH::"
-      auth_key: logstash:logstash
-      type: allow
-      actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*"]
 
-    - name: "::KIBANA-SRV::"
-      auth_key: kibana:kibana
+    - name: "::GETTER::"
       type: allow
+      methods: [GET,POST]
+      indices: logstash-a-*
 
-    - name: "::RO DEVELOPER::"
-      auth_key: ro:dev
+    - name: "::SETTER::"
       type: allow
-      kibana_access: ro
-      indices: [ ".kibana", ".kibana-devnull", "logstash-*"]
-
-    - name: "::RW DEVELOPER::"
-      auth_key: rw:dev
-      type: allow
-      kibana_access: rw
-      indices: [".kibana", ".kibana-devnull", "logstash-*"]
-
-    - name: "::ADMIN::"
-      auth_key: admin:dev
-      type: allow
-      kibana_access: admin
-      indices: [ ".kibana", ".readonlyrest", ".kibana-devnull", "logstash-*"]
-
-    - name: "::PUBLIC SEARCH::"
-      type: allow
-      indices: ["public"]
-      actions: ["indices:data/read/*"]
+      api_keys: 123

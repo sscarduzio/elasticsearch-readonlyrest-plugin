@@ -39,7 +39,8 @@ public class UserGroupProviderConfig {
   private final String name;
   private final GroupsProviderServiceClient client;
 
-  private UserGroupProviderConfig(String name, GroupsProviderServiceClient client) {
+  private UserGroupProviderConfig(String name,
+                                  GroupsProviderServiceClient client) {
     this.name = name;
     this.client = client;
   }
@@ -55,14 +56,6 @@ public class UserGroupProviderConfig {
     return new UserGroupProviderConfig(name, wrapInCacheIfCacheIsEnabled(settings, client));
   }
 
-  public String getName() {
-    return name;
-  }
-
-  public GroupsProviderServiceClient getClient() {
-    return client;
-  }
-
   private static Function<String, TokenPassingMethod> fromStringToTokenPassingMethod() {
     return value -> {
       switch (value) {
@@ -75,4 +68,13 @@ public class UserGroupProviderConfig {
       }
     };
   }
+
+  public String getName() {
+    return name;
+  }
+
+  public GroupsProviderServiceClient getClient() {
+    return client;
+  }
+
 }

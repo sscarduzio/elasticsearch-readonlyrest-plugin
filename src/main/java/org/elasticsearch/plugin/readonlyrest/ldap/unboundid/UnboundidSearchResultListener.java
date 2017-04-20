@@ -41,7 +41,8 @@ class UnboundidSearchResultListener
   public void searchResultReceived(AsyncRequestID requestID, SearchResult searchResult) {
     if (ResultCode.SUCCESS.equals(searchResult.getResultCode())) {
       futureToComplete.complete(searchResultEntries);
-    } else {
+    }
+    else {
       futureToComplete.completeExceptionally(
           new LdapSearchError(searchResult.getResultCode(), searchResult.getResultString())
       );

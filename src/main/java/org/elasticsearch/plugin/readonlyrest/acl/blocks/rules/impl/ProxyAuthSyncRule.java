@@ -21,13 +21,13 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.util.List;
@@ -48,6 +48,16 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
 
   private final ProxyAuthConfig config;
   private final MatcherWithWildcards userListMatcher;
+
+  private ProxyAuthSyncRule(ProxyAuthConfig config, List<String> users) {
+    this.config = config;
+    userListMatcher = new MatcherWithWildcards(
+        users.stream()
+             .filter(i -> !Strings.isNullOrEmpty(i))
+             .distinct()
+             .collect(Collectors.toSet())
+    );
+  }
 
   public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
       throws ConfigMalformedException {
@@ -72,8 +82,8 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
       if (proxyAuths.size() != 1)
         throw new ConfigMalformedException(String.format("Only one '%s' is expected within rule's group", RULE_NAME));
 
-      Map<String, ProxyAuthConfig> proxyAuthConfigByName = proxyAuthConfigs.stream()
-          .collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
+      Map<String, ProxyAuthConfig> proxyAuthConfigByName =
+          proxyAuthConfigs.stream().collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
 
       Settings proxyAuthSettings = Lists.newArrayList(proxyAuths.values()).get(0);
       String proxyAuthConfigName = proxyAuthSettings.get(PROXY_AUTH_CONFIG_ATTRIBUTE);
@@ -90,16 +100,6 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
 
       return Optional.of(new ProxyAuthSyncRule(proxyAuthConfig, users));
     };
-  }
-
-  private ProxyAuthSyncRule(ProxyAuthConfig config, List<String> users) {
-    this.config = config;
-    userListMatcher = new MatcherWithWildcards(
-        users.stream()
-            .filter(i -> !Strings.isNullOrEmpty(i))
-            .distinct()
-            .collect(Collectors.toSet())
-    );
   }
 
   @Override

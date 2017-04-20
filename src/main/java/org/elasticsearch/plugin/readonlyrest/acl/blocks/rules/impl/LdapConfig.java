@@ -75,7 +75,8 @@ public class LdapConfig<T extends BaseLdapClient> {
           wrapInCacheIfCacheIsEnabled(settings,
               new UnboundidGroupsProviderLdapClient(
                   connectionConfig, userSearchFilterConfig, userGroupsSearchFilterConfig.get(), searchingUserConfig))));
-    } else {
+    }
+    else {
       return new LdapConfig<>(name,
           wrapInLoggingIfIsLoggingEnabled(name,
               wrapInCacheIfCacheIsEnabled(settings,
@@ -101,7 +102,7 @@ public class LdapConfig<T extends BaseLdapClient> {
     return builder.build();
   }
 
-  private static Optional<UserGroupsSearchFilterConfig> userGroupsSearchFilterConfigFrom( Settings settings) {
+  private static Optional<UserGroupsSearchFilterConfig> userGroupsSearchFilterConfigFrom(Settings settings) {
     return searchGroupsBaseDnFrom(settings).map(g -> {
           UserGroupsSearchFilterConfig.Builder builder = new UserGroupsSearchFilterConfig.Builder(g);
           uniqueMemberAttributeFrom(settings).map(builder::setUniqueMemberAttribute);
@@ -138,9 +139,11 @@ public class LdapConfig<T extends BaseLdapClient> {
     Optional<SearchingUserConfig> searchingUserConfig;
     if (bindDn.isPresent() && bindPassword.isPresent()) {
       searchingUserConfig = Optional.of(new SearchingUserConfig(bindDn.get(), bindPassword.get()));
-    } else if (!bindDn.isPresent() && !bindPassword.isPresent()) {
+    }
+    else if (!bindDn.isPresent() && !bindPassword.isPresent()) {
       searchingUserConfig = Optional.empty();
-    } else {
+    }
+    else {
       throw new ConfigMalformedException("LDAP definition malformed - must configure both params [" +
           ATTRIBUTE_BIND_DN + ", " + ATTRIBUTE_BIND_PASSWORD + "]");
     }

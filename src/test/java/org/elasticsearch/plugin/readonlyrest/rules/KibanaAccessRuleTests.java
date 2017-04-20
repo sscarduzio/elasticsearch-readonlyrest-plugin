@@ -20,11 +20,11 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import java.util.Set;
@@ -41,18 +41,19 @@ public class KibanaAccessRuleTests extends TestCase {
   }
 
   private RuleExitResult match(Conf configured, Found found, RequestContext rc) throws RuleNotConfiguredException {
-    return match(configured,found,rc,false);
+    return match(configured, found, rc, false);
   }
+
   private RuleExitResult match(Conf configured, Found found, RequestContext rc, boolean involvesIndices) throws RuleNotConfiguredException {
     when(rc.involvesIndices()).thenReturn(involvesIndices);
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
 
     SyncRule r = new KibanaAccessSyncRule(
-      Settings.builder()
-        .put("kibana_access", configured.accessLevel)
-        .put("kibana_index", configured.kibanaIndex)
-        .build()
+        Settings.builder()
+                .put("kibana_access", configured.accessLevel)
+                .put("kibana_index", configured.kibanaIndex)
+                .build()
     );
 
     RuleExitResult res = r.match(rc);
@@ -70,7 +71,7 @@ public class KibanaAccessRuleTests extends TestCase {
   }
 
   public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex, boolean involvesIndices)
-    throws RuleNotConfiguredException {
+      throws RuleNotConfiguredException {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
     conf.kibanaIndex = kibanaIndex;

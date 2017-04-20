@@ -21,6 +21,9 @@ env:
 - GH_USER_EMAIL=scarduzio+travisci@gmail.com
 - GH_USER_NAME=Travis CI
 
+before_script:
+  - sudo sysctl -w vm.max_map_count=262144
+  
 after_success:
 - |
 

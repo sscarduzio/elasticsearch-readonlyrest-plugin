@@ -21,12 +21,12 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.net.UnknownHostException;
 import java.util.List;
@@ -39,14 +39,6 @@ import java.util.Optional;
 public class XForwardedForSyncRule extends SyncRule {
 
   private List<String> allowedAddresses;
-
-  public static Optional<XForwardedForSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new XForwardedForSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
-  }
 
   public XForwardedForSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -68,6 +60,14 @@ public class XForwardedForSyncRule extends SyncRule {
     }
     else {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<XForwardedForSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new XForwardedForSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

@@ -32,19 +32,19 @@ import java.util.regex.Pattern;
 public class ESWithReadonlyRestContainerUtils {
 
   public static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
-                                                                            String elasticsearchConfig) {
+      String elasticsearchConfig) {
     return create(externalDependencies, elasticsearchConfig, Optional.empty());
   }
 
   public static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
-                                                                            String elasticsearchConfig,
-                                                                            ESInitalizer initalizer) {
+      String elasticsearchConfig,
+      ESInitalizer initalizer) {
     return create(externalDependencies, elasticsearchConfig, Optional.of(initalizer));
   }
 
   private static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
-                                                                             String elasticsearchConfig,
-                                                                             Optional<ESInitalizer> initalizer) {
+      String elasticsearchConfig,
+      Optional<ESInitalizer> initalizer) {
     return new MultiContainerDependent<>(
         externalDependencies,
         multiContainer -> {
@@ -69,8 +69,8 @@ public class ESWithReadonlyRestContainerUtils {
   }
 
   private static File copyAndAdjustConfig(File sourceConfig,
-                                          File destConfig,
-                                          ImmutableList<MultiContainer.NamedContainer> externalDependencyContainers) {
+      File destConfig,
+      ImmutableList<MultiContainer.NamedContainer> externalDependencyContainers) {
     try {
       try (BufferedReader br = new BufferedReader(new FileReader(sourceConfig))) {
         try (FileWriter fw = new FileWriter(destConfig)) {

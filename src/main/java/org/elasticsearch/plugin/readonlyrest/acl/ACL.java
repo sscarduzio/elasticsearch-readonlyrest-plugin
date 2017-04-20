@@ -27,8 +27,10 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.ArrayList;
@@ -69,15 +71,16 @@ public class ACL {
     );
     List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs =
         parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
-    blocksMap.forEach((key, value) -> {
-      Block block = new Block(value, users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
-          externalAuthenticationServiceConfigs, logger);
-      blocks.add(block);
-      if (block.isAuthHeaderAccepted()) {
-        basicAuthConfigured = true;
-      }
-      logger.info("ADDING #" + key + ":\t" + block.toString());
-    });
+    blocksMap.entrySet()
+             .forEach(entry -> {
+               Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
+                   externalAuthenticationServiceConfigs, logger);
+               blocks.add(block);
+               if (block.isAuthHeaderAccepted()) {
+                 basicAuthConfigured = true;
+               }
+               logger.info("ADDING #" + entry.getKey() + ":\t" + block.toString());
+             });
   }
 
   public boolean isBasicAuthConfigured() {
@@ -88,12 +91,17 @@ public class ACL {
     logger.debug("checking request:" + rc);
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
         blocks.iterator(),
-        block -> block.check(rc),
+        block -> {
+          rc.reset();
+          return block.check(rc);
+        },
         checkResult -> {
           if (checkResult.isMatch()) {
             logger.info("request: " + rc + " matched block: " + checkResult);
+            rc.commit();
             return true;
-          } else {
+          }
+          else {
             return false;
           }
         },
@@ -106,20 +114,20 @@ public class ACL {
 
   private List<User> parseUserSettings(Collection<Settings> userSettings, List<ProxyAuthConfig> proxyAuthConfigs) {
     return userSettings.stream()
-        .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
-        .collect(Collectors.toList());
+                       .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
+                       .collect(Collectors.toList());
   }
 
   private List<ProxyAuthConfig> parseProxyAuthSettings(Collection<Settings> proxyAuthSettings) {
     return proxyAuthSettings.stream()
-        .map(ProxyAuthConfig::fromSettings)
-        .collect(Collectors.toList());
+                            .map(ProxyAuthConfig::fromSettings)
+                            .collect(Collectors.toList());
   }
 
   private List<UserGroupProviderConfig> parseUserGroupsProviderSettings(Collection<Settings> groupProvidersSettings) {
     return groupProvidersSettings.stream()
-        .map(UserGroupProviderConfig::fromSettings)
-        .collect(Collectors.toList());
+                                 .map(UserGroupProviderConfig::fromSettings)
+                                 .collect(Collectors.toList());
   }
 
   private List<ExternalAuthenticationServiceConfig> parseExternalAuthenticationServiceSettings(
