@@ -20,16 +20,11 @@ package org.elasticsearch.plugin.readonlyrest.utils;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.IndicesRequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
-import org.reflections.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import static org.reflections.ReflectionUtils.getAllFields;
