@@ -178,7 +178,7 @@ readonlyrest:
     - name: Accept requests from users in group team1 on index1
       type: allow
       ldap_auth:
-          - name: "ldap1"                                       # ldap name from 'ldaps' section
+          name: "ldap1"                                       # ldap name from 'ldaps' section
             groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
       indices: ["index1"]
       
@@ -227,19 +227,19 @@ readonlyrest:
       type: allow
       ldap_authentication: "ldap1"  
       ldap_authorization:
-          - name: "ldap1"                                       # ldap name from 'ldaps' section
-            groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
+        name: "ldap1"                                       # ldap name from 'ldaps' section
+        groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
       indices: ["index1"]
       
     - name: Accept requests from users in group team2 on index2
       type: allow
-      ldap_authentication: 
-          - name: "ldap2"  
-            cache_ttl_in_sec: 60
+      ldap_authentication:
+        name: "ldap2"  
+        cache_ttl_in_sec: 60
       ldap_authorization:
-          - name: "ldap2"
-            groups: ["g3"]
-            cache_ttl_in_sec: 60
+        name: "ldap2"
+        groups: ["g3"]
+        cache_ttl_in_sec: 60
       indices: ["index2"]
 
     ldaps:
@@ -295,8 +295,8 @@ readonlyrest:
       methods: GET
       indices: ["facebook"]
       external_authentication:
-        - service: "ext2"
-          cache_ttl_in_sec: 60
+        service: "ext2"
+        cache_ttl_in_sec: 60
 
     external_authentication_service_configs:
 
@@ -334,23 +334,23 @@ readonlyrest:
       methods: GET
       indices: ["twitter"]
       proxy_auth:
-        - proxy_auth_config: "proxy1"
-          users: ["*"]
+        proxy_auth_config: "proxy1"
+        users: ["*"]
       groups_provider_authorization:
-        - user_groups_provider: "GroupsService"
-          groups: ["group3"]
+        user_groups_provider: "GroupsService"
+        groups: ["group3"]
 
     - name: "::Facebook posts::"
       type: allow
       methods: GET
       indices: ["facebook"]
       proxy_auth:
-        - proxy_auth_config: "proxy1"
-          users: ["*"]
+        proxy_auth_config: "proxy1"
+        users: ["*"]
       groups_provider_authorization:
-        - user_groups_provider: "GroupsService"
-          groups: ["group1"]
-          cache_ttl_in_sec: 60
+        user_groups_provider: "GroupsService"
+        groups: ["group1"]
+        cache_ttl_in_sec: 60
 
     proxy_auth_configs:
 

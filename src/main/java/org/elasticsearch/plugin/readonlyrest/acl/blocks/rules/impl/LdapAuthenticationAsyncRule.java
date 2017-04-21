@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
@@ -25,10 +24,11 @@ import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+
+import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.notSupported;
 
 public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
@@ -43,7 +43,8 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s, LdapConfigs ldapConfigs)
       throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s, fromSimpleSettings(ldapConfigs), fromExtendedSettings(ldapConfigs));
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, fromSimpleSettings(ldapConfigs),
+        notSupported(RULE_NAME), fromExtendedSettings(ldapConfigs));
   }
 
   private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromSimpleSettings(LdapConfigs ldapConfigs) {
@@ -58,12 +59,9 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromExtendedSettings(LdapConfigs ldapConfigs) {
     return settings -> {
-      Map<String, Settings> ldapAuths = settings.getGroups(RULE_NAME);
-      if (ldapAuths.isEmpty()) return Optional.empty();
-      if (ldapAuths.size() != 1)
-        throw new ConfigMalformedException("Only one [" + RULE_NAME + "] in group could be defined");
+      Settings ldapSettings = settings.getAsSettings(RULE_NAME);
+      if(ldapSettings.isEmpty()) return Optional.empty();
 
-      Settings ldapSettings = Lists.newArrayList(ldapAuths.values()).get(0);
       String ldapName = ldapSettings.get(LDAP_NAME);
       if (ldapName == null)
         throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");

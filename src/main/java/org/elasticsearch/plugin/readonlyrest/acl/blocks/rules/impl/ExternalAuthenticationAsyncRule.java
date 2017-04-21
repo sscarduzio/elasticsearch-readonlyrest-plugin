@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
@@ -29,6 +28,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.notSupported;
+
 public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   private static final String RULE_NAME = "external_authentication";
@@ -39,7 +40,8 @@ public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
   public static Optional<ExternalAuthenticationAsyncRule> fromSettings(Settings s,
                                                                        List<ExternalAuthenticationServiceConfig> configs)
       throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(configs), parseExtendedSettings(configs));
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(configs),
+        notSupported(RULE_NAME), parseExtendedSettings(configs));
   }
 
   private static Function<Settings, Optional<ExternalAuthenticationAsyncRule>> parseSimpleSettings(
@@ -56,13 +58,9 @@ public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
   private static Function<Settings, Optional<ExternalAuthenticationAsyncRule>> parseExtendedSettings(
       List<ExternalAuthenticationServiceConfig> configs) {
     return settings -> {
-      Map<String, Settings> externalAuths = settings.getGroups(RULE_NAME);
-      if (externalAuths.size() == 0) return Optional.empty();
+      Settings externalAuthSettings = settings.getAsSettings(RULE_NAME);
+      if(externalAuthSettings.isEmpty()) return Optional.empty();
 
-      if (externalAuths.size() != 1)
-        throw new ConfigMalformedException(String.format("Only one '%s' is expected within rule's group", RULE_NAME));
-
-      Settings externalAuthSettings = Lists.newArrayList(externalAuths.values()).get(0);
       String externalAuthConfigName = externalAuthSettings.get(ATTRIBUTE_SERVICE);
       if (externalAuthConfigName == null)
         throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", ATTRIBUTE_SERVICE, RULE_NAME));
