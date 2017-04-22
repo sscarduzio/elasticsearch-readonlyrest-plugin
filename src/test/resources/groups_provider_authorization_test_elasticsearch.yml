@@ -27,23 +27,23 @@ readonlyrest:
       methods: GET
       indices: ["twitter"]
       proxy_auth:
-        - proxy_auth_config: "proxy1"
-          users: ["*"]
+        proxy_auth_config: "proxy1"
+        users: ["*"]
       groups_provider_authorization:
-        - user_groups_provider: "GroupsService1"
-          groups: ["group1"]
+        user_groups_provider: "GroupsService1"
+        groups: ["group1"]
 
     - name: "::Facebook posts::"
       type: allow
       methods: GET
       indices: ["facebook"]
       proxy_auth:
-        - proxy_auth_config: "proxy1"
-          users: ["*"]
+        proxy_auth_config: "proxy1"
+        users: ["*"]
       groups_provider_authorization:
-        - user_groups_provider: "GroupsService2"
-          groups: ["group3"]
-          cache_ttl_in_sec: 60
+        user_groups_provider: "GroupsService2"
+        groups: ["group3"]
+        cache_ttl_in_sec: 60
 
     proxy_auth_configs:
 

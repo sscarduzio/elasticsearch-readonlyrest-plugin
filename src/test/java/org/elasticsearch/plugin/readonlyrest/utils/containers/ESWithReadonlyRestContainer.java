@@ -19,9 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.utils.containers;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.message.BasicHeader;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProjectUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProperties;
@@ -38,13 +40,12 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUtils.checkTimeout;
 
 public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonlyRestContainer> {
 
-  private static Logger logger = Logger.getLogger(ESWithReadonlyRestContainer.class.getName());
+  private static Logger logger = Loggers.getLogger(ESWithReadonlyRestContainer.class);
 
   private static int ES_PORT = 9200;
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);

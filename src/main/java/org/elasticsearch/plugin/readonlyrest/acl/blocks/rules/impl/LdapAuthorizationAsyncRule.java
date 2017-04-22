@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
@@ -26,7 +25,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -54,12 +52,9 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
 
   static Optional<LdapAuthorizationAsyncRule> fromSettings(String ruleName, Settings s,
       LdapConfigs ldapConfigs) throws ConfigMalformedException {
-    Map<String, Settings> ldapAuths = s.getGroups(ruleName);
-    if (ldapAuths.isEmpty()) return Optional.empty();
-    if (ldapAuths.size() != 1)
-      throw new ConfigMalformedException("Only one [" + ruleName + "] in group could be defined");
+    Settings ldapSettings = s.getAsSettings(ruleName);
+    if(ldapSettings.isEmpty()) return Optional.empty();
 
-    Settings ldapSettings = Lists.newArrayList(ldapAuths.values()).get(0);
     String name = ldapSettings.get(LDAP_NAME);
     if (name == null)
       throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");
@@ -71,11 +66,11 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     return client.userById(user.getId())
-                 .thenCompose(ldapUser -> ldapUser.isPresent()
-                     ? client.userGroups(ldapUser.get())
-                     : CompletableFuture.completedFuture(Sets.newHashSet())
-                 )
-                 .thenApply(this::checkIfUserHasAccess);
+        .thenCompose(ldapUser -> ldapUser
+            .map(client::userGroups)
+            .orElseGet(() -> CompletableFuture.completedFuture(Sets.newHashSet()))
+        )
+        .thenApply(this::checkIfUserHasAccess);
   }
 
   private boolean checkIfUserHasAccess(Set<LdapGroup> ldapGroups) {

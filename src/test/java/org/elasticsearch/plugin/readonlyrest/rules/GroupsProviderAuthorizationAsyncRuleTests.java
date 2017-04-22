@@ -57,8 +57,8 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
 
   private RuleExitResult createRuleRunMatch(List<String> ruleGroups) throws Exception {
     Settings settings = Settings.builder()
-                                .put("groups_provider_authorization.0.user_groups_provider", "provider1")
-                                .putArray("groups_provider_authorization.0.groups", ruleGroups)
+                                .put("groups_provider_authorization.user_groups_provider", "provider1")
+                                .putArray("groups_provider_authorization.groups", ruleGroups)
                                 .build();
     UserGroupProviderConfig config = UserGroupProviderConfig.fromSettings(
         UserGroupsProviderConfigHelper

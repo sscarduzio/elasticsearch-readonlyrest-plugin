@@ -17,9 +17,10 @@
 package org.elasticsearch.plugin.readonlyrest.utils;
 
 import com.google.common.collect.Lists;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Booleans;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.settings.SettingsException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 
@@ -32,6 +33,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ConfigReaderHelper {
+
+  private static final Logger logger = Loggers.getLogger(ConfigReaderHelper.class);
 
   private ConfigReaderHelper() {
   }
@@ -58,8 +61,8 @@ public class ConfigReaderHelper {
       throw new ConfigMalformedException("Config definition malformed - no array [" + attribute +
           "] attribute");
     return Lists.newArrayList(value).stream()
-                .map(converter)
-                .collect(Collectors.toList());
+        .map(converter)
+        .collect(Collectors.toList());
   }
 
   public static <T> Optional<T> optionalAttributeValue(String attribute, Settings settings, Function<String, T> converter) {
@@ -81,42 +84,46 @@ public class ConfigReaderHelper {
   }
 
   public static <R extends Rule> Optional<R> fromSettings(String ruleName,
-      Settings settings,
-      Function<Settings, Optional<R>> simpleRuleSchemaParser,
-      Function<Settings, Optional<R>> extendedRuleSchemaParser)
+                                                          Settings settings,
+                                                          Function<Settings, Optional<R>> simpleRuleSchemaParser,
+                                                          Function<Settings, Optional<R>> simpleArrayRuleSchemaParser,
+                                                          Function<Settings, Optional<R>> extendedRuleSchemaParser)
       throws ConfigMalformedException {
     Optional<RuleSchema> proxyAuthSettingsSchema = recognizeRuleSettingsSchema(settings, ruleName);
     if (!proxyAuthSettingsSchema.isPresent()) return Optional.empty();
     switch (proxyAuthSettingsSchema.get()) {
       case SIMPLE:
         return simpleRuleSchemaParser.apply(settings);
+      case SIMPLE_ARRAY:
+        return simpleArrayRuleSchemaParser.apply(settings);
       case EXTENDED:
         return extendedRuleSchemaParser.apply(settings);
       default:
-        throw new IllegalStateException("Unknown auth setting schema");
+        throw new IllegalStateException("Unknown " + ruleName + " setting schema");
     }
+  }
+
+  public static <R extends Rule> Function<Settings, Optional<R>> notSupported(String ruleName) {
+    return settings -> {
+      throw new ConfigMalformedException("Unknown " + ruleName + " setting schema");
+    };
   }
 
   public static Optional<RuleSchema> recognizeRuleSettingsSchema(Settings s, String ruleName) {
-    try {
-      return s.getGroups(ruleName).size() > 0
+    Settings innerSettings = s.getAsSettings(ruleName);
+    String simpleValue = s.get(ruleName);
+    String[] simpleArray = s.getAsArray(ruleName);
+    if (innerSettings.isEmpty()) {
+      return simpleValue != null
+          ? Optional.of(RuleSchema.SIMPLE)
+          : Optional.empty();
+    } else {
+      if (simpleValue != null) {
+        logger.warn("Value [" + simpleValue + "] from setting [" + ruleName + "] was being ignored!");
+      }
+      return Lists.newArrayList(simpleArray).isEmpty()
           ? Optional.of(RuleSchema.EXTENDED)
-          : checkIsSimpleSchema(s, ruleName);
-    } catch (SettingsException ex) {
-      return checkIsSimpleSchema(s, ruleName);
-    }
-  }
-
-  private static Optional<RuleSchema> checkIsSimpleSchema(Settings s, String ruleName) {
-    String[] array = s.getAsArray(ruleName);
-    if (array != null && array.length > 0) {
-      return Optional.of(RuleSchema.SIMPLE);
-    }
-    else if (s.get(ruleName) != null) {
-      return Optional.of(RuleSchema.SIMPLE);
-    }
-    else {
-      return Optional.empty();
+          : Optional.of(RuleSchema.SIMPLE_ARRAY);
     }
   }
 
@@ -145,6 +152,6 @@ public class ConfigReaderHelper {
   }
 
   public enum RuleSchema {
-    SIMPLE, EXTENDED
+    SIMPLE, SIMPLE_ARRAY, EXTENDED
   }
 }

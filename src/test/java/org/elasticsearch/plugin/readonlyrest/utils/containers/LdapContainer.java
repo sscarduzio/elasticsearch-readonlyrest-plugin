@@ -25,6 +25,8 @@ import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldif.LDIFReader;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.SearchingUserConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.testcontainers.containers.GenericContainer;
@@ -36,13 +38,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUtils.checkTimeout;
 
 public class LdapContainer extends GenericContainer<LdapContainer> {
 
-  private static Logger logger = Logger.getLogger(LdapContainer.class.getName());
+  private static Logger logger = Loggers.getLogger(LdapContainer.class);
 
   private static int LDAP_PORT = 389;
   private static Duration LDAP_CONNECT_TIMEOUT = Duration.ofSeconds(5);

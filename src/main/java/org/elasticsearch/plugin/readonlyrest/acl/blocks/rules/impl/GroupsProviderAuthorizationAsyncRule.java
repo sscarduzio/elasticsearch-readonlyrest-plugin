@@ -17,7 +17,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
@@ -50,13 +49,8 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
   public static Optional<GroupsProviderAuthorizationAsyncRule> fromSettings(Settings s,
       List<UserGroupProviderConfig> groupProviderConfigs)
       throws ConfigMalformedException {
-
-    Map<String, Settings> groupBaseAuthElements = s.getGroups(RULE_NAME);
-    if (groupBaseAuthElements.isEmpty()) return Optional.empty();
-    if (groupBaseAuthElements.size() != 1) {
-      throw new ConfigMalformedException("Malformed rule" + RULE_NAME);
-    }
-    Settings groupBaseAuthSettings = Lists.newArrayList(groupBaseAuthElements.values()).get(0);
+    Settings groupBaseAuthSettings = s.getAsSettings(RULE_NAME);
+    if(groupBaseAuthSettings.isEmpty()) return Optional.empty();
 
     Map<String, UserGroupProviderConfig> userGroupProviderConfigByName =
         groupProviderConfigs.stream().collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));

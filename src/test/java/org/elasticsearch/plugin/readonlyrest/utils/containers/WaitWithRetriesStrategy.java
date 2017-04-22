@@ -16,17 +16,18 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.Loggers;
 import org.testcontainers.containers.GenericContainer;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.logging.Logger;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUtils.checkTimeout;
 
 public abstract class WaitWithRetriesStrategy extends GenericContainer.AbstractWaitStrategy {
 
-  private static Logger logger = Logger.getLogger(WaitWithRetriesStrategy.class.getName());
+  private static Logger logger = Loggers.getLogger(WaitWithRetriesStrategy.class);
 
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
 

@@ -117,20 +117,20 @@ readonlyrest:
       type: allow
       methods: GET
       ldap_authentication:
-          - name: "ldap1"
+        name: "ldap1"
       ldap_authorization:
-          - name: "ldap1"
-            groups: ["group1"]
+        name: "ldap1"
+        groups: ["group1"]
       indices: ["twitter"]
 
     - name: "::Facebook posts::"
       type: allow
       methods: GET
       ldap_authentication:
-          - name: "ldap2"
+        name: "ldap2"
       ldap_authorization:
-          - name: "ldap2"
-            groups: ["group3"]
+        name: "ldap2"
+        groups: ["group3"]
       indices: ["facebook"]
 
     ldaps:

@@ -33,8 +33,8 @@ readonlyrest:
       methods: GET
       indices: ["facebook"]
       external_authentication:
-        - service: "ext2"
-          cache_ttl_in_sec: 60
+        service: "ext2"
+        cache_ttl_in_sec: 60
 
     external_authentication_service_configs:
 

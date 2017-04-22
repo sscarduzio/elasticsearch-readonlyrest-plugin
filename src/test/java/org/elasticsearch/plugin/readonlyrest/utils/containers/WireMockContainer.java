@@ -18,7 +18,9 @@ package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import com.google.common.collect.Lists;
 import org.apache.http.HttpHost;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.common.logging.Loggers;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -28,12 +30,11 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class WireMockContainer extends GenericContainer<WireMockContainer> {
 
-  private static Logger logger = Logger.getLogger(WireMockContainer.class.getName());
+  private static Logger logger = Loggers.getLogger(WireMockContainer.class);
 
   private static int WIRE_MOCK_PORT = 8080;
   private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
