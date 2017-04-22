@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.Booleans;
