@@ -42,9 +42,9 @@ public class ApiKeysRuleTests extends TestCase {
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
 
-    SyncRule r = new ApiKeysSyncRule(Settings.builder()
+    SyncRule r = ApiKeysSyncRule.fromSettings(Settings.builder()
                                              .put("api_keys", configured)
-                                             .build());
+                                             .build()).get();
 
     RuleExitResult res = r.match(rc);
     rc.commit();

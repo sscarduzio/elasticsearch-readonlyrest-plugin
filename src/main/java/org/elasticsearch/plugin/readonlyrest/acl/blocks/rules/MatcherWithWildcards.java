@@ -17,11 +17,10 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.Loggers;
+import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.util.set.Sets;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -33,11 +32,9 @@ import java.util.regex.Pattern;
  */
 public class MatcherWithWildcards {
 
-  private static final Logger logger = Loggers.getLogger(MatcherWithWildcards.class);
   private static Set<String> empty = new HashSet<>(0);
-  protected Set<String> allMatchers = Sets.newHashSet();
-
-  protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
+  private final Set<String> allMatchers = Sets.newHashSet();
+  private final Set<Pattern> wildcardMatchers = Sets.newHashSet();
 
   public MatcherWithWildcards(Set<String> matchers) {
     for (String a : matchers) {
@@ -63,7 +60,8 @@ public class MatcherWithWildcards {
     }
   }
 
-  public static MatcherWithWildcards fromSettings(Settings s, String key) throws RuleNotConfiguredException {
+  public static MatcherWithWildcards fromSettings(Settings s, String key, ESContext context)
+      throws RuleNotConfiguredException {
 
     // Will work fine also with single strings (non array) values.
     String[] a = s.getAsArray(key);
@@ -78,7 +76,7 @@ public class MatcherWithWildcards {
   /**
    * Returns null if the matchable is not worth processing because it's invalid or starts with "-"
    */
-  private static String normalizePlusAndMinusIndex(String s) {
+  private String normalizePlusAndMinusIndex(String s) {
     if (Strings.isNullOrEmpty(s)) {
       return null;
     }
@@ -89,7 +87,6 @@ public class MatcherWithWildcards {
     // Call included indices with their name
     if (s.startsWith("+")) {
       if (s.length() == 1) {
-        logger.warn("invalid matchable! " + s);
         return null;
       }
       return s.substring(1, s.length());

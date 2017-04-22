@@ -18,8 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -27,10 +25,10 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.ArrayList;
@@ -55,32 +53,34 @@ public class ACL {
   private static final String USER_GROUPS_PROVIDERS_PREFIX = "readonlyrest.user_groups_providers";
   private static final String EXTERNAL_AUTH_SERVICES_PREFIX = "readonlyrest.external_authentication_service_configs";
 
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final Logger logger;
+  private final ESContext context;
   // Array list because it preserves the insertion order
-  private ArrayList<Block> blocks = new ArrayList<>();
+  private final ArrayList<Block> blocks = new ArrayList<>();
   private boolean basicAuthConfigured = false;
 
-  public ACL(Client client, ConfigurationHelper conf) {
+  public ACL(ConfigurationHelper conf, ESContext context) {
+    this.context = context;
+    this.logger = context.logger(getClass());
     Settings s = conf.settings;
     Map<String, Settings> blocksMap = s.getGroups(RULES_PREFIX);
     List<ProxyAuthConfig> proxyAuthConfigs = parseProxyAuthSettings(s.getGroups(PROXIES_PREFIX).values());
     List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values(), proxyAuthConfigs);
-    LdapConfigs ldaps = LdapConfigs.fromSettings(LDAPS_PREFIX, s);
+    LdapConfigs ldaps = LdapConfigs.fromSettings(LDAPS_PREFIX, s, context);
     List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
         s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
     );
     List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs =
         parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
-    blocksMap.entrySet()
-             .forEach(entry -> {
-               Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
-                   externalAuthenticationServiceConfigs, logger);
-               blocks.add(block);
-               if (block.isAuthHeaderAccepted()) {
-                 basicAuthConfigured = true;
-               }
-               logger.info("ADDING #" + entry.getKey() + ":\t" + block.toString());
-             });
+    blocksMap.forEach((key, value) -> {
+      Block block = new Block(value, users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
+          externalAuthenticationServiceConfigs, context);
+      blocks.add(block);
+      if (block.isAuthHeaderAccepted()) {
+        basicAuthConfigured = true;
+      }
+      logger.info("ADDING #" + key + ":\t" + block.toString());
+    });
   }
 
   public boolean isBasicAuthConfigured() {
@@ -114,7 +114,7 @@ public class ACL {
 
   private List<User> parseUserSettings(Collection<Settings> userSettings, List<ProxyAuthConfig> proxyAuthConfigs) {
     return userSettings.stream()
-                       .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
+                       .map(settings -> User.fromSettings(settings, proxyAuthConfigs, context))
                        .collect(Collectors.toList());
   }
 

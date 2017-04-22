@@ -17,7 +17,9 @@
 package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.collect.Sets;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.collect.Tuple;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
@@ -26,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthentic
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -46,7 +49,7 @@ public class LdapAuthenticationAsyncRuleTests {
         .build();
 
     Optional<LdapAuthenticationAsyncRule> rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2), MockedESContext.INSTANCE);
     assertEquals(true, rule.isPresent());
   }
 
@@ -59,7 +62,7 @@ public class LdapAuthenticationAsyncRuleTests {
         .build();
 
     Optional<LdapAuthenticationAsyncRule> rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2), MockedESContext.INSTANCE);
     assertEquals(true, rule.isPresent());
   }
 
@@ -71,7 +74,7 @@ public class LdapAuthenticationAsyncRuleTests {
         .put("ldap_authentication.name", "ldap3")
         .build();
 
-    LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+    LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2), MockedESContext.INSTANCE);
   }
 
   @Test
@@ -83,7 +86,7 @@ public class LdapAuthenticationAsyncRuleTests {
         .build();
 
     LdapAuthenticationAsyncRule rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2), MockedESContext.INSTANCE).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());
   }
@@ -103,7 +106,7 @@ public class LdapAuthenticationAsyncRuleTests {
         .build();
 
     LdapAuthenticationAsyncRule rule =
-        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
+        LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2), MockedESContext.INSTANCE).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(true, match.isMatch());
   }

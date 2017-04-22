@@ -29,10 +29,9 @@ import java.util.Optional;
  * Created by sscarduzio on 14/02/2016.
  */
 public class MaxBodyLengthSyncRule extends SyncRule {
-  private Integer maxBodyLength;
+  private final Integer maxBodyLength;
 
-  public MaxBodyLengthSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
+  private MaxBodyLengthSyncRule(Settings s) throws RuleNotConfiguredException {
     maxBodyLength = s.getAsInt("maxBodyLength", null);
     if (maxBodyLength == null) {
       throw new RuleNotConfiguredException();

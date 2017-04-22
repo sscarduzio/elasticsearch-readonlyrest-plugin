@@ -17,8 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
@@ -28,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.util.List;
@@ -59,10 +60,13 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
     );
   }
 
-  public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
+  public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs, ESContext context)
       throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(),
-        parseSimpleArraySettings(), parseExtendedSettings(proxyAuthConfigs));
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s,
+        parseSimpleSettings(),
+        parseSimpleArraySettings(),
+        parseExtendedSettings(proxyAuthConfigs),
+        context);
   }
 
   private static Function<Settings, Optional<ProxyAuthSyncRule>> parseSimpleSettings() {

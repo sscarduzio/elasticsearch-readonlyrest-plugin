@@ -21,6 +21,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -43,7 +44,7 @@ public class LdapConfigTests {
                                 .put("bind_dn", "cn=admin,dc=example,dc=com")
                                 .put("bind_password", "password")
                                 .build();
-    LdapConfig.fromSettings(settings);
+    LdapConfig.fromSettings(settings, MockedESContext.INSTANCE);
   }
 
   @Test(expected = ConfigMalformedException.class)
@@ -55,7 +56,7 @@ public class LdapConfigTests {
                                 .put("search_user_base_DN", "ou=People,dc=example,dc=com")
                                 .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
                                 .build();
-    LdapConfig.fromSettings(settings);
+    LdapConfig.fromSettings(settings, MockedESContext.INSTANCE);
   }
 
   @Test(expected = ConfigMalformedException.class)
@@ -65,7 +66,7 @@ public class LdapConfigTests {
                                 .put("search_user_base_DN", "ou=People,dc=example,dc=com")
                                 .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
                                 .build();
-    LdapConfig.fromSettings(settings);
+    LdapConfig.fromSettings(settings, MockedESContext.INSTANCE);
   }
 
   @Test(expected = ConfigMalformedException.class)
@@ -77,7 +78,7 @@ public class LdapConfigTests {
                                 .put("ssl_enabled", false)
                                 .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
                                 .build();
-    LdapConfig.fromSettings(settings);
+    LdapConfig.fromSettings(settings, MockedESContext.INSTANCE);
   }
 
   @Test
@@ -89,7 +90,7 @@ public class LdapConfigTests {
                                 .put("ssl_enabled", false)
                                 .put("search_user_base_DN", "ou=People,dc=example,dc=com")
                                 .build();
-    assertTrue(LdapConfig.fromSettings(settings).getClient() instanceof AuthenticationLdapClient);
+    assertTrue(LdapConfig.fromSettings(settings, MockedESContext.INSTANCE).getClient() instanceof AuthenticationLdapClient);
   }
 
   @Test
@@ -102,7 +103,7 @@ public class LdapConfigTests {
                                 .put("search_user_base_DN", "ou=People,dc=example,dc=com")
                                 .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
                                 .build();
-    assertTrue(LdapConfig.fromSettings(settings).getClient() instanceof GroupsProviderLdapClient);
+    assertTrue(LdapConfig.fromSettings(settings, MockedESContext.INSTANCE).getClient() instanceof GroupsProviderLdapClient);
   }
 
   @Test
@@ -115,7 +116,7 @@ public class LdapConfigTests {
                                 .put("search_user_base_DN", "ou=People,dc=example,dc=com")
                                 .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
                                 .build();
-    LdapConfig.fromSettings(settings);
+    LdapConfig.fromSettings(settings, MockedESContext.INSTANCE);
   }
 
   @Test(expected = ConfigMalformedException.class)
@@ -129,6 +130,6 @@ public class LdapConfigTests {
                                 .put("search_groups_base_DN", "ou=Group,dc=example,dc=com")
                                 .put("bind_dn", "cn=admin,dc=example,dc=com")
                                 .build();
-    LdapConfig.fromSettings(settings);
+    LdapConfig.fromSettings(settings, MockedESContext.INSTANCE);
   }
 }

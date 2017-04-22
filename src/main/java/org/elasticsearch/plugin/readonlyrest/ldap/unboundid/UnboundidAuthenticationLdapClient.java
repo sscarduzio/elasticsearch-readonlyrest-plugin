@@ -33,7 +33,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient implements AuthenticationLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(UnboundidAuthenticationLdapClient.class);
+  private final Logger logger = Loggers.getLogger(UnboundidAuthenticationLdapClient.class);
 
   public UnboundidAuthenticationLdapClient(ConnectionConfig connectionConfig,
       UserSearchFilterConfig userSearchFilterConfig,

@@ -27,6 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -37,11 +38,12 @@ import java.util.Optional;
 public class KibanaHideAppsSyncRule extends SyncRule {
 
   private static final String KIBANA_HIDE_APPS_HEADER = "x-kibana-hide-apps";
-  private final Logger logger = Loggers.getLogger(this.getClass());
+
+  private final Logger logger;
   private final String hiddenApps;
 
-  public KibanaHideAppsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
+  public KibanaHideAppsSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    logger = context.logger(getClass());
     // Will work fine also with single strings (non array) values.
     String[] a = s.getAsArray(getKey());
 

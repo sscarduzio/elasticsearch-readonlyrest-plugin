@@ -18,10 +18,10 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.StandardCharsets;
@@ -32,15 +32,16 @@ import java.util.Optional;
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySyncRule extends BasicAuthentication {
-  private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
+  private final Logger logger;
 
-  public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+  private AuthKeySyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    super(s, context);
+    logger = context.logger(AuthKeySyncRule.class);
   }
 
-  public static Optional<AuthKeySyncRule> fromSettings(Settings s) {
+  public static Optional<AuthKeySyncRule> fromSettings(Settings s, ESContext context) {
     try {
-      return Optional.of(new AuthKeySyncRule(s));
+      return Optional.of(new AuthKeySyncRule(s, context));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }

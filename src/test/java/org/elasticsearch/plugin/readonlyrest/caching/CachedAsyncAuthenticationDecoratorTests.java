@@ -21,6 +21,8 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -37,7 +39,7 @@ import static org.mockito.Mockito.when;
 
 public class CachedAsyncAuthenticationDecoratorTests {
 
-  private BasicAsyncAuthentication dummyAsyncRule = new BasicAsyncAuthentication() {
+  private BasicAsyncAuthentication dummyAsyncRule = new BasicAsyncAuthentication(MockedESContext.INSTANCE) {
 
     @Override
     protected CompletableFuture<Boolean> authenticate(String user, String password) {
@@ -53,21 +55,21 @@ public class CachedAsyncAuthenticationDecoratorTests {
   @Test
   public void testIfAsyncAuthenticationRuleIsWrappedInCacheIfOneIsEnabled() {
     Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
-    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule, settings);
+    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
     assertNotEquals(dummyAsyncRule, authentication);
   }
 
   @Test
   public void testIfAsyncAuthenticationRuleIsNotWrappedInCacheIfOneIsNotEnabled() {
     Settings settings = Settings.builder().put("other_setting", "value").build();
-    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule, settings);
+    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
     assertEquals(dummyAsyncRule, authentication);
   }
 
   @Test
   public void testIfAsyncAuthenticationRuleIsNotWrappedInCacheIfTtlIsZero() {
     Settings settings = Settings.builder().put("cache_ttl_in_sec", "0").build();
-    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule, settings);
+    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
     assertEquals(dummyAsyncRule, authentication);
   }
 
@@ -84,7 +86,7 @@ public class CachedAsyncAuthenticationDecoratorTests {
     );
 
     Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
-    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule, settings);
+    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
     CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
     CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);
 
@@ -107,7 +109,7 @@ public class CachedAsyncAuthenticationDecoratorTests {
     );
 
     Settings settings = Settings.builder().put("cache_ttl_in_sec", ttl.getSeconds()).build();
-    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule, settings);
+    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
     CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
     Thread.sleep((long) (ttl.toMillis() * 1.5));
     CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);
@@ -118,6 +120,9 @@ public class CachedAsyncAuthenticationDecoratorTests {
   }
 
   private abstract class MockedBasicAsyncAuthentication extends BasicAsyncAuthentication {
+    protected MockedBasicAsyncAuthentication(ESContext context) {
+      super(context);
+    }
     public abstract CompletableFuture<Boolean> authenticate(String user, String password);
   }
 }

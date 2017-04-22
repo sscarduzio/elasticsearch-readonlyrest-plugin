@@ -16,14 +16,11 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.Booleans;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -35,9 +32,8 @@ import java.util.stream.Collectors;
 
 public class ConfigReaderHelper {
 
-  private static final Logger logger = Loggers.getLogger(ConfigReaderHelper.class);
-
   private ConfigReaderHelper() {
+    throw new IllegalStateException("Cannot create object of class " + ConfigReaderHelper.class.getName());
   }
 
   public static String requiredAttributeValue(String attribute, Settings settings) {
@@ -88,9 +84,10 @@ public class ConfigReaderHelper {
                                                           Settings settings,
                                                           Function<Settings, Optional<R>> simpleRuleSchemaParser,
                                                           Function<Settings, Optional<R>> simpleArrayRuleSchemaParser,
-                                                          Function<Settings, Optional<R>> extendedRuleSchemaParser)
+                                                          Function<Settings, Optional<R>> extendedRuleSchemaParser,
+                                                          ESContext context)
       throws ConfigMalformedException {
-    Optional<RuleSchema> proxyAuthSettingsSchema = recognizeRuleSettingsSchema(settings, ruleName);
+    Optional<RuleSchema> proxyAuthSettingsSchema = recognizeRuleSettingsSchema(settings, ruleName, context);
     if (!proxyAuthSettingsSchema.isPresent()) return Optional.empty();
     switch (proxyAuthSettingsSchema.get()) {
       case SIMPLE:
@@ -110,7 +107,7 @@ public class ConfigReaderHelper {
     };
   }
 
-  public static Optional<RuleSchema> recognizeRuleSettingsSchema(Settings s, String ruleName) {
+  public static Optional<RuleSchema> recognizeRuleSettingsSchema(Settings s, String ruleName, ESContext context) {
     Settings innerSettings = s.getAsSettings(ruleName);
     String simpleValue = s.get(ruleName);
     String[] simpleArray = s.getAsArray(ruleName);
@@ -120,7 +117,8 @@ public class ConfigReaderHelper {
           : Optional.empty();
     } else {
       if (simpleValue != null) {
-        logger.warn("Value [" + simpleValue + "] from setting [" + ruleName + "] was being ignored!");
+        context.logger(ConfigReaderHelper.class)
+            .warn("Value [" + simpleValue + "] from setting [" + ruleName + "] was being ignored!");
       }
       return Lists.newArrayList(simpleArray).isEmpty()
           ? Optional.of(RuleSchema.EXTENDED)
@@ -138,7 +136,7 @@ public class ConfigReaderHelper {
 
   public static Optional<Boolean> toBoolen(String value) {
     try {
-      return Optional.ofNullable(Booleans.parseBooleanExact(value));
+      return Optional.ofNullable(Boolean.valueOf(value));
     } catch (IllegalArgumentException e) {
       return Optional.empty();
     }

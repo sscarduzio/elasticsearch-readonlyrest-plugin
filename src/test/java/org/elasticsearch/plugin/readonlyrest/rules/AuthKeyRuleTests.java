@@ -25,6 +25,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
 import java.util.Base64;
@@ -44,9 +47,9 @@ public class AuthKeyRuleTests extends TestCase {
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new AuthKeySyncRule(Settings.builder()
+    SyncRule r = AuthKeySyncRule.fromSettings(Settings.builder()
                                              .put("auth_key", configured)
-                                             .build());
+                                             .build(), new MockedESContext()).get();
 
     RuleExitResult res = r.match(rc);
     rc.commit();

@@ -26,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -50,9 +51,11 @@ public class ProxyAuthRuleTests {
 
     ProxyAuthSyncRule r = ProxyAuthSyncRule.fromSettings(
         Settings.builder()
-                .putArray("proxy_auth", configured)
-                .build(),
-        Lists.newArrayList()).get();
+            .putArray("proxy_auth", configured)
+            .build(),
+        Lists.newArrayList(), 
+        MockedESContext.INSTANCE
+    ).get();
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -80,51 +83,51 @@ public class ProxyAuthRuleTests {
   @Test
   public void testBackCompatibilityOfProxyAuthLoadingFromSettings() {
     Settings settings = Settings.builder()
-                                .putArray("proxy_auth", Lists.newArrayList("user1", "user2"))
-                                .build();
+        .putArray("proxy_auth", Lists.newArrayList("user1", "user2"))
+        .build();
     List<ProxyAuthConfig> configs = Lists.newArrayList(
         ProxyAuthConfig.fromSettings(
             Settings.builder()
-                    .put("name", "proxy1")
-                    .put("user_id_header", "X-Forwarded-User")
-                    .build()
+                .put("name", "proxy1")
+                .put("user_id_header", "X-Forwarded-User")
+                .build()
         )
     );
-    assertTrue(ProxyAuthSyncRule.fromSettings(settings, configs).isPresent());
+    assertTrue(ProxyAuthSyncRule.fromSettings(settings, configs, MockedESContext.INSTANCE).isPresent());
   }
 
   @Test
   public void testExtendedProxyAuthRuleLoadingFromSettings() {
     Settings settings = Settings.builder()
-                                .put("proxy_auth.proxy_auth_config", "proxy1")
-                                .putArray("proxy_auth.users", Lists.newArrayList("user1", "user2"))
-                                .build();
+        .put("proxy_auth.proxy_auth_config", "proxy1")
+        .putArray("proxy_auth.users", Lists.newArrayList("user1", "user2"))
+        .build();
     List<ProxyAuthConfig> configs = Lists.newArrayList(
         ProxyAuthConfig.fromSettings(
             Settings.builder()
-                    .put("name", "proxy1")
-                    .put("user_id_header", "X-Auth-Token")
-                    .build()
+                .put("name", "proxy1")
+                .put("user_id_header", "X-Auth-Token")
+                .build()
         )
     );
-    assertTrue(ProxyAuthSyncRule.fromSettings(settings, configs).isPresent());
+    assertTrue(ProxyAuthSyncRule.fromSettings(settings, configs, MockedESContext.INSTANCE).isPresent());
   }
 
   @Test(expected = ConfigMalformedException.class)
   public void testCannotLoadExtendedProxyAuthRuleFromSettingsWhenProxyWasNotDefined() {
     Settings settings = Settings.builder()
-                                .put("proxy_auth.proxy_auth_config", "proxy1")
-                                .putArray("proxy_auth.users", Lists.newArrayList("user1", "user2"))
-                                .build();
+        .put("proxy_auth.proxy_auth_config", "proxy1")
+        .putArray("proxy_auth.users", Lists.newArrayList("user1", "user2"))
+        .build();
     List<ProxyAuthConfig> configs = Lists.newArrayList(
         ProxyAuthConfig.fromSettings(
             Settings.builder()
-                    .put("name", "otherProxy")
-                    .put("user_id_header", "X-Forwarded-User")
-                    .build()
+                .put("name", "otherProxy")
+                .put("user_id_header", "X-Forwarded-User")
+                .build()
         )
     );
-    assertFalse(ProxyAuthSyncRule.fromSettings(settings, configs).isPresent());
+    assertFalse(ProxyAuthSyncRule.fromSettings(settings, configs, MockedESContext.INSTANCE).isPresent());
   }
 
 }

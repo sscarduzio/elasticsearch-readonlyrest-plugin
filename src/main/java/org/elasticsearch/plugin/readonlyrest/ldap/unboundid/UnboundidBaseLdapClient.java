@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(UnboundidBaseLdapClient.class);
+  private final Logger logger = Loggers.getLogger(UnboundidBaseLdapClient.class);
   protected final Duration requestTimeout;
   protected final UnboundidConnection connection;
   private final UserSearchFilterConfig userSearchFilterConfig;

@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.ldap.logging;
 
 import com.google.common.base.Joiner;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
@@ -31,21 +31,22 @@ import java.util.stream.Collectors;
 
 public class GroupsProviderLdapClientLoggingDecorator implements GroupsProviderLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(GroupsProviderLdapClientLoggingDecorator.class);
-
+  private final Logger logger;
   private final GroupsProviderLdapClient underlying;
   private final String name;
   private final AuthenticationLdapClientLoggingDecorator authenticationLdapClientLoggingDecorator;
 
-  public GroupsProviderLdapClientLoggingDecorator(String name, GroupsProviderLdapClient underlying) {
+  public GroupsProviderLdapClientLoggingDecorator(String name, ESContext context, GroupsProviderLdapClient underlying) {
+    this.logger = context.logger(getClass());
     this.name = name;
     this.underlying = underlying;
-    authenticationLdapClientLoggingDecorator = new AuthenticationLdapClientLoggingDecorator(name, underlying);
+    authenticationLdapClientLoggingDecorator = new AuthenticationLdapClientLoggingDecorator(name, context, underlying);
   }
 
-  public static GroupsProviderLdapClient wrapInLoggingIfIsLoggingEnabled(String name, GroupsProviderLdapClient client) {
-    return logger.isDebugEnabled()
-        ? new GroupsProviderLdapClientLoggingDecorator(name, client)
+  public static GroupsProviderLdapClient wrapInLoggingIfIsLoggingEnabled(String name, ESContext context,
+                                                                         GroupsProviderLdapClient client) {
+    return context.logger(GroupsProviderLdapClientLoggingDecorator.class).isDebugEnabled()
+        ? new GroupsProviderLdapClientLoggingDecorator(name, context, client)
         : client;
   }
 
@@ -53,11 +54,11 @@ public class GroupsProviderLdapClientLoggingDecorator implements GroupsProviderL
   public CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user) {
     logger.debug("Trying to fetch user [id=" + user.getUid() + ", dn" + user.getDN() + "] groups from LDAP [" + name + "]");
     return underlying.userGroups(user)
-                     .thenApply(groups -> {
-                       logger.debug("LDAP [" + name + "] returned for user [" + user.getUid() + "] following groups: " +
-                           "[" + Joiner.on(", ").join(groups.stream().map(LdapGroup::getName).collect(Collectors.toSet())) + "]");
-                       return groups;
-                     });
+        .thenApply(groups -> {
+          logger.debug("LDAP [" + name + "] returned for user [" + user.getUid() + "] following groups: " +
+              "[" + Joiner.on(", ").join(groups.stream().map(LdapGroup::getName).collect(Collectors.toSet())) + "]");
+          return groups;
+        });
   }
 
   @Override

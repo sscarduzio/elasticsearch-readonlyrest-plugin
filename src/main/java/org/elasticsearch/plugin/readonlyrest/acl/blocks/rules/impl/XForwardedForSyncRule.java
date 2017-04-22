@@ -40,21 +40,21 @@ public class XForwardedForSyncRule extends SyncRule {
 
   private List<String> allowedAddresses;
 
-  public XForwardedForSyncRule(Settings s) throws RuleNotConfiguredException {
+  private XForwardedForSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
-    String[] a = s.getAsArray(getKey());
-    if (a != null && a.length > 0) {
+    String[] addressed = s.getAsArray(getKey());
+    if (addressed != null && addressed.length > 0) {
       allowedAddresses = Lists.newArrayList();
-      for (int i = 0; i < a.length; i++) {
-        if (!Strings.isNullOrEmpty(a[i])) {
+      for (String address : addressed) {
+        if (!Strings.isNullOrEmpty(address)) {
           try {
-            IPMask.getIPMask(a[i]);
+            IPMask.getIPMask(address);
           } catch (Exception e) {
-            if (!InternetDomainName.isValid(a[i])) {
+            if (!InternetDomainName.isValid(address)) {
               throw new RuleConfigurationError("invalid address", e);
             }
           }
-          allowedAddresses.add(a[i].trim());
+          allowedAddresses.add(address.trim());
         }
       }
     }

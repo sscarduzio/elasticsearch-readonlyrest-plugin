@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.utils.requestcontext;
 
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RCUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.Transactional;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -29,7 +30,7 @@ import static org.junit.Assert.assertEquals;
 public class TransactionalTest {
   @Test
   public void testTransactional() {
-    Transactional<String> tv = new Transactional<String>("tv") {
+    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -58,7 +59,7 @@ public class TransactionalTest {
 
   @Test(expected = RCUtils.RRContextException.class)
   public void testThrowOnDoubleCommit() {
-    Transactional<String> tv = new Transactional<String>("tv") {
+    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -81,7 +82,7 @@ public class TransactionalTest {
 
   @Test
   public void testReset() {
-    Transactional<String> tv = new Transactional<String>("tv") {
+    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -109,7 +110,7 @@ public class TransactionalTest {
 
   @Test(expected = RCUtils.RRContextException.class)
   public void testDelegate() {
-    Transactional<String> tv = new Transactional<String>("tv") {
+    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -126,7 +127,7 @@ public class TransactionalTest {
       }
     };
 
-    Transactional<Integer> tvi = new Transactional<Integer>("tvi") {
+    Transactional<Integer> tvi = new Transactional<Integer>("tvi", MockedESContext.INSTANCE) {
 
       @Override
       public Integer initialize() {
@@ -154,7 +155,7 @@ public class TransactionalTest {
 
   @Test
   public void testDelegateReset() {
-    Transactional<String> tv = new Transactional<String>("tv") {
+    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -171,7 +172,7 @@ public class TransactionalTest {
       }
     };
 
-    Transactional<Integer> tvi = new Transactional<Integer>("tvi") {
+    Transactional<Integer> tvi = new Transactional<Integer>("tvi", MockedESContext.INSTANCE) {
 
       @Override
       public Integer initialize() {

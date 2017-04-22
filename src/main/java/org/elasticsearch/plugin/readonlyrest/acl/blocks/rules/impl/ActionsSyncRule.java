@@ -18,13 +18,13 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Optional;
 
@@ -33,18 +33,17 @@ import java.util.Optional;
  */
 public class ActionsSyncRule extends SyncRule {
 
-  private static final Logger logger = Loggers.getLogger(ActionsSyncRule.class);
+  private final Logger logger;
+  private MatcherWithWildcards matcher;
 
-  protected MatcherWithWildcards m;
-
-  public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    m = MatcherWithWildcards.fromSettings(s, getKey());
+  private ActionsSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    logger = context.logger(getClass());
+    matcher = MatcherWithWildcards.fromSettings(s, getKey(), context);
   }
 
-  public static Optional<ActionsSyncRule> fromSettings(Settings s) {
+  public static Optional<ActionsSyncRule> fromSettings(Settings s, ESContext context) {
     try {
-      return Optional.of(new ActionsSyncRule(s));
+      return Optional.of(new ActionsSyncRule(s, context));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }
@@ -52,7 +51,7 @@ public class ActionsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (m.match(rc.getAction())) {
+    if (matcher.match(rc.getAction())) {
       return MATCH;
     }
     logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");

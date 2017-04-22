@@ -17,9 +17,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
-import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
@@ -42,22 +42,22 @@ public class HostsSyncRule extends SyncRule {
   private List<String> allowedAddresses;
   private Boolean acceptXForwardedForHeader;
 
-  public HostsSyncRule(Settings s) throws RuleNotConfiguredException {
+  private HostsSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
     acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
-    String[] a = s.getAsArray("hosts");
-    if (a != null && a.length > 0) {
+    String[] hosts = s.getAsArray("hosts");
+    if (hosts != null && hosts.length > 0) {
       allowedAddresses = Lists.newArrayList();
-      for (int i = 0; i < a.length; i++) {
-        if (!Strings.isNullOrEmpty(a[i])) {
+      for (String host : hosts) {
+        if (!Strings.isNullOrEmpty(host)) {
           try {
-            IPMask.getIPMask(a[i]);
+            IPMask.getIPMask(host);
           } catch (Exception e) {
-            if (!InternetDomainName.isValid(a[i])) {
+            if (!InternetDomainName.isValid(host)) {
               throw new RuleConfigurationError("invalid address", e);
             }
           }
-          allowedAddresses.add(a[i].trim());
+          allowedAddresses.add(host.trim());
         }
       }
     }

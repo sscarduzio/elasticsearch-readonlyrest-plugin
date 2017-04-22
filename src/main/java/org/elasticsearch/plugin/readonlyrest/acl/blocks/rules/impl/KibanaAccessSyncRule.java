@@ -17,10 +17,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
@@ -28,10 +27,10 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Optional;
 import java.util.Set;
-
 
 /**
  * Created by sscarduzio on 26/03/2016.
@@ -65,13 +64,14 @@ public class KibanaAccessSyncRule extends SyncRule {
       "cluster:monitor/nodes/info",
       "cluster:monitor/health"
   ));
-  private final Logger logger = Loggers.getLogger(this.getClass());
+
+  private final Logger logger;
   private String kibanaIndex = ".kibana";
-  private Boolean canModifyKibana;
+  private final Boolean canModifyKibana;
   private Boolean isAdmin = false;
 
-  public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
+  private KibanaAccessSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    logger = context.logger(getClass());
 
     String tmp = s.get(getKey());
     if (Strings.isNullOrEmpty(tmp)) {
@@ -100,9 +100,9 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
   }
 
-  public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
+  public static Optional<KibanaAccessSyncRule> fromSettings(Settings s, ESContext context) {
     try {
-      return Optional.of(new KibanaAccessSyncRule(s));
+      return Optional.of(new KibanaAccessSyncRule(s, context));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }

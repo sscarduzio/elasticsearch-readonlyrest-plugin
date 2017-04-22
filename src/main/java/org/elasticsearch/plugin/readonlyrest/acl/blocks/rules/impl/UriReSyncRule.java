@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.Strings;
+import com.google.common.base.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -36,9 +36,7 @@ public class UriReSyncRule extends SyncRule {
 
   private Pattern uri_re = null;
 
-  public UriReSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-
+  private UriReSyncRule(Settings s) throws RuleNotConfiguredException {
     String tmp = s.get(getKey());
     if (!Strings.isNullOrEmpty(tmp)) {
       try {

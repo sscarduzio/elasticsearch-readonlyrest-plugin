@@ -23,26 +23,22 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
-import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Set;
-
-import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Created by sscarduzio on 14/04/2017.
  */
 public class SubRCTransactionalIndices extends Transactional<Set<String>> {
 
-  private static Logger logger = Loggers.getLogger(SubRCTransactionalIndices.class);
+  private final Logger logger;
   private final SubRequestContext src;
 
-  SubRCTransactionalIndices(SubRequestContext src) {
-    super("src-indices");
+  SubRCTransactionalIndices(SubRequestContext src, ESContext context) {
+    super("src-indices", context);
+    this.logger = context.logger(getClass());
     this.src = src;
   }
 

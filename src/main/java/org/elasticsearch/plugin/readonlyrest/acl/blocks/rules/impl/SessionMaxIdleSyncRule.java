@@ -17,15 +17,15 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchParseException;
-import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Optional;
 
@@ -34,11 +34,13 @@ import java.util.Optional;
  */
 public class SessionMaxIdleSyncRule extends SyncRule {
 
-  private static final Logger logger = Loggers.getLogger(SessionMaxIdleSyncRule.class);
+  private final Logger logger;
+  private final ESContext context;
   private final long maxIdleMillis;
 
-  public SessionMaxIdleSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
+  private SessionMaxIdleSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    logger = context.logger(getClass());
+    this.context = context;
 
     boolean isThisRuleConfigured = !Strings.isNullOrEmpty(s.get(getKey()));
     if (!isThisRuleConfigured) {
@@ -64,9 +66,9 @@ public class SessionMaxIdleSyncRule extends SyncRule {
     maxIdleMillis = timeMill;
   }
 
-  public static Optional<SessionMaxIdleSyncRule> fromSettings(Settings s) {
+  public static Optional<SessionMaxIdleSyncRule> fromSettings(Settings s, ESContext context) {
     try {
-      return Optional.of(new SessionMaxIdleSyncRule(s));
+      return Optional.of(new SessionMaxIdleSyncRule(s, context));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }
@@ -112,7 +114,7 @@ public class SessionMaxIdleSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    SessionCookie c = new SessionCookie(rc, maxIdleMillis);
+    SessionCookie c = new SessionCookie(rc, maxIdleMillis, context);
 
     // 1 no cookie
     if (!c.isCookiePresent()) {

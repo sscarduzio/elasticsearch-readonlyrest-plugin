@@ -22,6 +22,7 @@ import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Assert;
 
 import java.util.Iterator;
@@ -38,7 +39,7 @@ public class BlockTest extends TestCase {
                                 .putArray("indices", "allowed-index")
                                 .build();
     Block block = new Block(settings, Lists.newArrayList(), LdapConfigs.empty(), Lists.newArrayList(),
-        Lists.newArrayList(), Lists.newArrayList(), null);
+        Lists.newArrayList(), Lists.newArrayList(), MockedESContext.INSTANCE);
 
     Set<AsyncRule> rules = block.getRules();
     Iterator<AsyncRule> it = rules.iterator();

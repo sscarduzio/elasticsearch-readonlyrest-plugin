@@ -30,7 +30,6 @@ import org.elasticsearch.action.get.MultiGetItemResponse;
 import org.elasticsearch.action.get.MultiGetResponse;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
@@ -41,6 +40,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.search.SearchHit;
 
@@ -59,13 +59,12 @@ import java.util.regex.Pattern;
  */
 public class IndicesRewriteSyncRule extends SyncRule {
 
-  private final Logger logger = Loggers.getLogger(this.getClass());
-
+  private final Logger logger;
   private final Pattern[] targetPatterns;
   private final String replacement;
 
-  public IndicesRewriteSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
+  private IndicesRewriteSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    logger = context.logger(getClass());
     // Will work fine also with single strings (non array) values.
     String[] a = s.getAsArray(getKey());
 
@@ -90,9 +89,9 @@ public class IndicesRewriteSyncRule extends SyncRule {
       .toArray(Pattern[]::new);
   }
 
-  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
+  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s, ESContext context) {
     try {
-      return Optional.of(new IndicesRewriteSyncRule(s));
+      return Optional.of(new IndicesRewriteSyncRule(s, context));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }
@@ -133,7 +132,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
       Set<String> available = rc.getAllIndicesAndAliases();
       rc.getIndices().stream()
         .filter(i -> !available.contains(i))
-        .forEach(i -> oldIndices.add(i));
+        .forEach(oldIndices::add);
     }
 
     Set<String> newIndices = Sets.newHashSet();

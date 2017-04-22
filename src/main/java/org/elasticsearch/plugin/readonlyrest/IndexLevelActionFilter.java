@@ -30,6 +30,8 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
@@ -110,7 +112,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             "Have you checked the security permissions?", null);
     }
 
-    RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool);
+    RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool,
+        new ESContextImpl());
     conf.acl.check(rc)
             .exceptionally(throwable -> {
               logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());

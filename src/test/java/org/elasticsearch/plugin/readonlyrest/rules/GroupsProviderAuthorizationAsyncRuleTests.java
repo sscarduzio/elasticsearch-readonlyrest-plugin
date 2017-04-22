@@ -24,6 +24,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProvide
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.settings.UserGroupsProviderConfigHelper;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -67,7 +68,7 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
             .getGroups("user_groups_providers")
             .get("0"));
     GroupsProviderAuthorizationAsyncRule rule = GroupsProviderAuthorizationAsyncRule.fromSettings(
-        settings, Lists.newArrayList(config)).get();
+        settings, Lists.newArrayList(config), MockedESContext.INSTANCE).get();
 
     LoggedUser user = new LoggedUser("example_user");
     RequestContext requestContext = Mockito.mock(RequestContext.class);

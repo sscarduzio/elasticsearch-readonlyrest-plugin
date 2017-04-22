@@ -22,6 +22,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
 
@@ -40,17 +41,18 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   private final GroupsProviderLdapClient client;
   private final Set<String> groups;
 
-  private LdapAuthorizationAsyncRule(GroupsProviderLdapClient client, Set<String> groups) {
+  private LdapAuthorizationAsyncRule(GroupsProviderLdapClient client, Set<String> groups, ESContext context) {
+    super(context);
     this.client = client;
     this.groups = groups;
   }
 
-  public static Optional<LdapAuthorizationAsyncRule> fromSettings(Settings s,
-      LdapConfigs ldapConfigs) throws ConfigMalformedException {
-    return fromSettings(RULE_NAME, s, ldapConfigs);
+  public static Optional<LdapAuthorizationAsyncRule> fromSettings(Settings s, LdapConfigs ldapConfigs, ESContext context)
+      throws ConfigMalformedException {
+    return fromSettings(RULE_NAME, s, context, ldapConfigs);
   }
 
-  static Optional<LdapAuthorizationAsyncRule> fromSettings(String ruleName, Settings s,
+  static Optional<LdapAuthorizationAsyncRule> fromSettings(String ruleName, Settings s, ESContext context,
       LdapConfigs ldapConfigs) throws ConfigMalformedException {
     Settings ldapSettings = s.getAsSettings(ruleName);
     if(ldapSettings.isEmpty()) return Optional.empty();
@@ -60,7 +62,7 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
       throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");
     Set<String> groups = Sets.newHashSet(ldapSettings.getAsArray(LDAP_GROUP_NAMES));
 
-    return Optional.of(new LdapAuthorizationAsyncRule(ldapConfigs.authorizationLdapClientForName(name), groups));
+    return Optional.of(new LdapAuthorizationAsyncRule(ldapConfigs.authorizationLdapClientForName(name), groups, context));
   }
 
   @Override

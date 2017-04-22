@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.ldap.logging;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
@@ -27,19 +27,21 @@ import java.util.concurrent.CompletableFuture;
 
 public class AuthenticationLdapClientLoggingDecorator implements AuthenticationLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(AuthenticationLdapClientLoggingDecorator.class);
-
+  private final Logger logger;
   private final AuthenticationLdapClient underlying;
   private final String name;
 
-  public AuthenticationLdapClientLoggingDecorator(String name, AuthenticationLdapClient underlying) {
+  public AuthenticationLdapClientLoggingDecorator(String name, ESContext context, AuthenticationLdapClient underlying) {
+    this.logger = context.logger(getClass());
     this.name = name;
     this.underlying = underlying;
   }
 
-  public static AuthenticationLdapClient wrapInLoggingIfIsLoggingEnabled(String name, AuthenticationLdapClient client) {
+  public static AuthenticationLdapClient wrapInLoggingIfIsLoggingEnabled(String name, ESContext context,
+                                                                         AuthenticationLdapClient client) {
+    Logger logger = context.logger(AuthenticationLdapClientLoggingDecorator.class);
     return logger.isDebugEnabled()
-        ? new AuthenticationLdapClientLoggingDecorator(name, client)
+        ? new AuthenticationLdapClientLoggingDecorator(name, context, client)
         : client;
   }
 
@@ -47,23 +49,23 @@ public class AuthenticationLdapClientLoggingDecorator implements AuthenticationL
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
     logger.debug("Trying to authenticate user [" + credentials.getUserName() + "] with LDAP [" + name + "]");
     return underlying.authenticate(credentials)
-                     .thenApply(user -> {
-                       logger.debug("User [" + credentials.getUserName() + "] " + (user.isPresent() ? "" : "not") +
-                           " authenticated by LDAP [" + name + "]");
-                       return user;
-                     });
+        .thenApply(user -> {
+          logger.debug("User [" + credentials.getUserName() + "] " + (user.isPresent() ? "" : "not") +
+              " authenticated by LDAP [" + name + "]");
+          return user;
+        });
   }
 
   @Override
   public CompletableFuture<Optional<LdapUser>> userById(String userId) {
     logger.debug("Trying to fetch user with identifier [" + userId + "] from LDAP [" + name + "]");
     return underlying.userById(userId)
-                     .thenApply(user -> {
-                       logger.debug(user.isPresent()
-                           ? "User with identifier [" + userId + "] found [dn = " + user.get().getDN() + "]"
-                           : "User with  identifier [" + userId + "] not found"
-                       );
-                       return user;
-                     });
+        .thenApply(user -> {
+          logger.debug(
+              user.map(ldapUser -> "User with identifier [" + userId + "] found [dn = " + ldapUser.getDN() + "]")
+                  .orElseGet(() -> "User with  identifier [" + userId + "] not found")
+          );
+          return user;
+        });
   }
 }

@@ -18,7 +18,9 @@
 package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+
+import java.util.Objects;
 
 /**
  * The representation of a Transient object that has:
@@ -34,14 +36,15 @@ import org.elasticsearch.common.logging.Loggers;
 
 public abstract class Transactional<T> extends Delayed {
 
-  private static Logger logger = Loggers.getLogger(Transactional.class);
+  private final Logger logger;
 
-  Boolean initialized = false;
+  private Boolean initialized = false;
   private T initialValue;
   private T transientValue;
 
-  public Transactional(String name) {
-    super(name);
+  public Transactional(String name, ESContext context) {
+    super(name, context);
+    this.logger = context.logger(getClass());
   }
 
   @Override
@@ -50,7 +53,7 @@ public abstract class Transactional<T> extends Delayed {
      if (!initialized) {
        lazyLoad();
      }
-     if (transientValue == null && initialValue == null || transientValue.equals(initialValue)) {
+     if (transientValue == null && initialValue == null || Objects.equals(transientValue, initialValue)) {
        logger.info(name + " > nothing to be committed..");
        return;
      }

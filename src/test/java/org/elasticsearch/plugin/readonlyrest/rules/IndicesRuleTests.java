@@ -25,6 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
@@ -51,9 +52,12 @@ public class IndicesRuleTests extends TestCase {
     when(rc.getIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
-    SyncRule r = new IndicesSyncRule(Settings.builder()
-                                             .putArray("indices", configured)
-                                             .build());
+    SyncRule r = IndicesSyncRule.fromSettings(
+        Settings.builder()
+            .putArray("indices", configured)
+            .build(),
+        MockedESContext.INSTANCE
+    ).get();
 
     RuleExitResult res = r.match(rc);
     rc.commit();

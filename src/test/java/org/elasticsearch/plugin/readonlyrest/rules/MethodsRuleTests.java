@@ -45,9 +45,9 @@ public class MethodsRuleTests extends TestCase {
     when(rc.getMethod()).thenReturn(found);
     when(rc.isReadRequest()).thenReturn(true);
 
-    SyncRule r = new MethodsSyncRule(Settings.builder()
-                                             .putArray("methods", configured)
-                                             .build());
+    SyncRule r = MethodsSyncRule.fromSettings(Settings.builder()
+        .putArray("methods", configured)
+        .build()).get();
 
     RuleExitResult res = r.match(rc);
     rc.commit();

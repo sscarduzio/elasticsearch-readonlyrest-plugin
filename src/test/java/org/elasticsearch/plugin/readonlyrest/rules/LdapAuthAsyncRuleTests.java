@@ -28,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsync
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -47,14 +48,16 @@ public class LdapAuthAsyncRuleTests {
         .putArray("ldap_auth.groups", Lists.newArrayList("group1", "group2"))
         .build();
 
-    Optional<LdapAuthAsyncRule> rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+    Optional<LdapAuthAsyncRule> rule = LdapAuthAsyncRule.fromSettings(blockSettings,
+        LdapConfigs.from(config1, config2), MockedESContext.INSTANCE);
     assertEquals(true, rule.isPresent());
   }
 
   @Test
   public void testRuleNotCreatedDueToNoLdapAuthSettingKey() {
     Settings blockSettings = baseExampleBlockBuilder().build();
-    Optional<LdapAuthAsyncRule> rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.empty());
+    Optional<LdapAuthAsyncRule> rule = LdapAuthAsyncRule.fromSettings(blockSettings,
+        LdapConfigs.empty(), MockedESContext.INSTANCE);
     assertEquals(false, rule.isPresent());
   }
 
@@ -67,7 +70,7 @@ public class LdapAuthAsyncRuleTests {
         .putArray("ldap_auth.groups", Lists.newArrayList("group2", "group3"))
         .build();
 
-    LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+    LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2), MockedESContext.INSTANCE);
   }
 
   @Test(expected = ConfigMalformedException.class)
@@ -78,7 +81,7 @@ public class LdapAuthAsyncRuleTests {
         .putArray("ldap_auth.groups", Lists.newArrayList("group1", "group2"))
         .build();
 
-    LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
+    LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2), MockedESContext.INSTANCE);
   }
 
   @Test
@@ -90,7 +93,8 @@ public class LdapAuthAsyncRuleTests {
         .putArray("ldap_auth.groups", Lists.newArrayList("group1", "group2"))
         .build();
 
-    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
+    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings,
+        LdapConfigs.from(config1, config2), MockedESContext.INSTANCE).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());
   }
@@ -110,7 +114,8 @@ public class LdapAuthAsyncRuleTests {
         .putArray("ldap_auth.groups", Lists.newArrayList("group1", "group2"))
         .build();
 
-    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
+    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings,
+        LdapConfigs.from(config1, config2), MockedESContext.INSTANCE).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(true, match.isMatch());
   }
@@ -129,7 +134,8 @@ public class LdapAuthAsyncRuleTests {
         .putArray("ldap_auth.groups", Lists.newArrayList("group2", "group3"))
         .build();
 
-    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1)).get();
+    LdapAuthAsyncRule rule = LdapAuthAsyncRule.fromSettings(blockSettings,
+        LdapConfigs.from(config1), MockedESContext.INSTANCE).get();
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());
   }

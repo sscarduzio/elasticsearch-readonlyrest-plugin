@@ -41,9 +41,11 @@ public class MaxBodyLengthRuleTests extends TestCase {
   private RuleExitResult match(Integer configured, String found, RequestContext rc) throws RuleNotConfiguredException {
     when(rc.getContent()).thenReturn(found);
 
-    SyncRule r = new MaxBodyLengthSyncRule(Settings.builder()
-                                                   .put("maxBodyLength", configured)
-                                                   .build());
+    SyncRule r = MaxBodyLengthSyncRule.fromSettings(
+        Settings.builder()
+            .put("maxBodyLength", configured)
+            .build()
+    ).get();
 
     RuleExitResult res = r.match(rc);
     rc.commit();

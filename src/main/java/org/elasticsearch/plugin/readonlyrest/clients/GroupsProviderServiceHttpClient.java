@@ -46,7 +46,7 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
     QUERY, HEADER
   }
 
-  private static final Logger logger = Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
+  private final Logger logger = Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
 
   private final RestClient client;
   private final String name;

@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.BaseLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
@@ -36,11 +37,11 @@ public class LdapConfigs {
                           .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
   }
 
-  public static LdapConfigs fromSettings(String name, Settings settings) {
+  public static LdapConfigs fromSettings(String name, Settings settings, ESContext context) {
     return new LdapConfigs(
         settings.getGroups(name).values()
                 .stream()
-                .map(LdapConfig::fromSettings)
+                .map(s -> LdapConfig.fromSettings(s, context))
                 .collect(Collectors.toList())
     );
   }

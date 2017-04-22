@@ -25,6 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
 import java.util.Set;
@@ -49,12 +50,13 @@ public class KibanaAccessRuleTests extends TestCase {
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
 
-    SyncRule r = new KibanaAccessSyncRule(
+    SyncRule r = KibanaAccessSyncRule.fromSettings(
         Settings.builder()
-                .put("kibana_access", configured.accessLevel)
-                .put("kibana_index", configured.kibanaIndex)
-                .build()
-    );
+            .put("kibana_access", configured.accessLevel)
+            .put("kibana_index", configured.kibanaIndex)
+            .build(),
+        new MockedESContext()
+    ).get();
 
     RuleExitResult res = r.match(rc);
     rc.commit();

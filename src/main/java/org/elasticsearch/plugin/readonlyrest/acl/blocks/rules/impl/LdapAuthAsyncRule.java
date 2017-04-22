@@ -27,6 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -46,12 +47,13 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
     this.authorization = authorization;
   }
 
-  public static Optional<LdapAuthAsyncRule> fromSettings(Settings s,
-      LdapConfigs ldapConfigs) throws ConfigMalformedException {
-    return LdapAuthorizationAsyncRule.fromSettings(RULE_NAME, s, ldapConfigs)
+  public static Optional<LdapAuthAsyncRule> fromSettings(Settings s, LdapConfigs ldapConfigs, ESContext context)
+      throws ConfigMalformedException {
+    return LdapAuthorizationAsyncRule.fromSettings(RULE_NAME, s, context, ldapConfigs)
                                      .map(authorization -> new LdapAuthAsyncRule(
-                                         wrapInCacheIfCacheIsEnabled(new LdapAuthenticationAsyncRule(authorization.getClient()), s),
-                                         wrapInCacheIfCacheIsEnabled(authorization, s)
+                                         wrapInCacheIfCacheIsEnabled(new LdapAuthenticationAsyncRule(
+                                             authorization.getClient(), context), s, context),
+                                         wrapInCacheIfCacheIsEnabled(authorization, s, context)
                                      ));
   }
 

@@ -53,6 +53,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProv
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.HashSet;
@@ -71,21 +72,25 @@ import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsync
  * Created by sscarduzio on 13/02/2016.
  */
 public class Block {
-  private final String name;
-  private final Policy policy;
+
   private final Logger logger;
+  private final String name;
+  private final ESContext context;
+  private final Policy policy;
   private final Set<AsyncRule> conditionsToCheck;
-  private boolean authHeaderAccepted;
+  private final boolean authHeaderAccepted;
 
   public Block(Settings settings,
                List<User> userList,
                LdapConfigs ldapConfigs,
                List<ProxyAuthConfig> proxyAuthConfigs,
                List<UserGroupProviderConfig> groupsProviderConfigs,
-               List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs,Logger logger) {
+               List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs,
+               ESContext context) {
+    this.logger = context.logger(getClass());
     this.name = settings.get("name");
+    this.context = context;
     String sPolicy = settings.get("type");
-    this.logger = logger;
     if (sPolicy == null) {
       throw new RuleConfigurationError(
           "The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() +
@@ -180,42 +185,42 @@ public class Block {
 
     // Authentication rules must come first because they set the user
     // information which further rules might rely on.
-    AuthKeySyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-    AuthKeySha1SyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-    AuthKeySha256SyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-    ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    AuthKeySyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    AuthKeySha1SyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    AuthKeySha256SyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
 
     // Inspection rules next; these act based on properties
     // of the request.
-    KibanaAccessSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    KibanaAccessSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     HostsSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     XForwardedForSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     ApiKeysSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-    SessionMaxIdleSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    SessionMaxIdleSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     UriReSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     MaxBodyLengthSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     MethodsSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-    IndicesSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-    ActionsSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    IndicesSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    ActionsSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     GroupsSyncRule.fromSettings(s, userList).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-    SearchlogSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    SearchlogSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
 
     // then we could check potentially slow async rules
-    LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
-    LdapAuthenticationAsyncRule.fromSettings(s, ldapConfigs)
-                               .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
-    ExternalAuthenticationAsyncRule.fromSettings(s, externalAuthenticationServiceConfigs)
-        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+    LdapAuthAsyncRule.fromSettings(s, ldapConfigs, context).ifPresent(rules::add);
+    LdapAuthenticationAsyncRule.fromSettings(s, ldapConfigs, context)
+                               .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s, context)).ifPresent(rules::add);
+    ExternalAuthenticationAsyncRule.fromSettings(s, externalAuthenticationServiceConfigs, context)
+        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s, context)).ifPresent(rules::add);
 
     // all authorization rules should be placed before any authentication rule
-    LdapAuthorizationAsyncRule.fromSettings(s, ldapConfigs)
-                              .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
-    GroupsProviderAuthorizationAsyncRule.fromSettings(s, groupsProviderConfigs)
-                                        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+    LdapAuthorizationAsyncRule.fromSettings(s, ldapConfigs, context)
+                              .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s, context)).ifPresent(rules::add);
+    GroupsProviderAuthorizationAsyncRule.fromSettings(s, groupsProviderConfigs, context)
+                                        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s, context)).ifPresent(rules::add);
 
     // At the end the sync rule chain are those that can mutate
     // the client request.
-    IndicesRewriteSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    IndicesRewriteSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
 
     return rules;
   }

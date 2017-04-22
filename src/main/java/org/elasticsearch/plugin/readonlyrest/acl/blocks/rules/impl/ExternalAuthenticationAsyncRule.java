@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.util.List;
@@ -38,34 +39,38 @@ public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
   private final ExternalAuthenticationServiceConfig config;
 
   public static Optional<ExternalAuthenticationAsyncRule> fromSettings(Settings s,
-                                                                       List<ExternalAuthenticationServiceConfig> configs)
+                                                                       List<ExternalAuthenticationServiceConfig> configs,
+                                                                       ESContext context)
       throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(configs),
-        notSupported(RULE_NAME), parseExtendedSettings(configs));
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s,
+        parseSimpleSettings(configs, context),
+        notSupported(RULE_NAME),
+        parseExtendedSettings(configs, context),
+        context);
   }
 
   private static Function<Settings, Optional<ExternalAuthenticationAsyncRule>> parseSimpleSettings(
-      List<ExternalAuthenticationServiceConfig> configs) {
+      List<ExternalAuthenticationServiceConfig> configs, ESContext context) {
     return settings -> {
       String name = settings.get(RULE_NAME);
-      if(name == null)
+      if (name == null)
         throw new ConfigMalformedException(String.format("No external authentication service name defined in rule %s", RULE_NAME));
 
-      return Optional.of(new ExternalAuthenticationAsyncRule(serviceConfigByName(name, configs)));
+      return Optional.of(new ExternalAuthenticationAsyncRule(serviceConfigByName(name, configs), context));
     };
   }
 
   private static Function<Settings, Optional<ExternalAuthenticationAsyncRule>> parseExtendedSettings(
-      List<ExternalAuthenticationServiceConfig> configs) {
+      List<ExternalAuthenticationServiceConfig> configs, ESContext context) {
     return settings -> {
       Settings externalAuthSettings = settings.getAsSettings(RULE_NAME);
-      if(externalAuthSettings.isEmpty()) return Optional.empty();
+      if (externalAuthSettings.isEmpty()) return Optional.empty();
 
       String externalAuthConfigName = externalAuthSettings.get(ATTRIBUTE_SERVICE);
       if (externalAuthConfigName == null)
         throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", ATTRIBUTE_SERVICE, RULE_NAME));
 
-      return Optional.of(new ExternalAuthenticationAsyncRule(serviceConfigByName(externalAuthConfigName, configs)));
+      return Optional.of(new ExternalAuthenticationAsyncRule(serviceConfigByName(externalAuthConfigName, configs), context));
     };
   }
 
@@ -81,7 +86,8 @@ public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
     return serviceConfig;
   }
 
-  private ExternalAuthenticationAsyncRule(ExternalAuthenticationServiceConfig config) {
+  private ExternalAuthenticationAsyncRule(ExternalAuthenticationServiceConfig config, ESContext context) {
+    super(context);
     this.config = config;
   }
 

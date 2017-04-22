@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
@@ -25,7 +26,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,16 +40,12 @@ public class GroupsSyncRule extends SyncRule {
   private final List<User> users;
   private final List<String> groups;
 
-  public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
+  private GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
     super();
     users = userList;
-    String[] pGroups = s.getAsArray(this.getKey());
-    if (pGroups != null && pGroups.length > 0) {
-      this.groups = Arrays.asList(pGroups);
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
+    List<String> pGroups = Lists.newArrayList(s.getAsArray(this.getKey()));
+    if(pGroups.isEmpty()) throw new RuleNotConfiguredException();
+    groups = pGroups;
   }
 
   public static Optional<GroupsSyncRule> fromSettings(Settings s, List<User> userList) {

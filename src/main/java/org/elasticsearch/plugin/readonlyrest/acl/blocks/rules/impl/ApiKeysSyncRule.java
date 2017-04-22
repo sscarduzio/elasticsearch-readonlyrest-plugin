@@ -17,38 +17,33 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
-import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class ApiKeysSyncRule extends SyncRule {
 
-  private List<String> validApiKeys;
+  private final List<String> validApiKeys;
 
-  public ApiKeysSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    String[] a = s.getAsArray(getKey());
-    if (a != null && a.length > 0) {
-      validApiKeys = Lists.newArrayList();
-      for (int i = 0; i < a.length; i++) {
-        if (!Strings.isNullOrEmpty(a[i])) {
-          validApiKeys.add(a[i].trim());
-        }
-      }
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
+  private ApiKeysSyncRule(Settings s) throws RuleNotConfiguredException {
+    ArrayList<String> keys = Lists.newArrayList(s.getAsArray(getKey()));
+    if(keys.isEmpty()) throw new RuleNotConfiguredException();
+
+    validApiKeys = keys.stream()
+        .filter(key -> !Strings.isNullOrEmpty(key))
+        .collect(Collectors.toList());
   }
 
   public static Optional<ApiKeysSyncRule> fromSettings(Settings s) {

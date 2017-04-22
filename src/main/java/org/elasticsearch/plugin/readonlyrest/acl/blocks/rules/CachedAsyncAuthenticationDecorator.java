@@ -20,6 +20,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.nio.charset.Charset;
@@ -37,18 +38,21 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
   private final BasicAsyncAuthentication underlying;
   private final Cache<String, String> cache;
 
-  public CachedAsyncAuthenticationDecorator(BasicAsyncAuthentication underlying, Duration ttl) {
+  public CachedAsyncAuthenticationDecorator(BasicAsyncAuthentication underlying, Duration ttl, ESContext context) {
+    super(context);
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
                              .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
                              .build();
   }
 
-  public static BasicAsyncAuthentication wrapInCacheIfCacheIsEnabled(BasicAsyncAuthentication authentication, Settings settings) {
+  public static BasicAsyncAuthentication wrapInCacheIfCacheIsEnabled(BasicAsyncAuthentication authentication,
+                                                                     Settings settings,
+                                                                     ESContext context) {
     return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
         .map(ttl -> ttl.isZero()
             ? authentication
-            : new CachedAsyncAuthenticationDecorator(authentication, ttl))
+            : new CachedAsyncAuthenticationDecorator(authentication, ttl, context))
         .orElse(authentication);
   }
 

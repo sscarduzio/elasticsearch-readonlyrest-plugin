@@ -19,7 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -27,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -38,18 +38,17 @@ import java.util.stream.Collectors;
  */
 public class IndicesSyncRule extends SyncRule {
 
-  private final Logger logger = Loggers.getLogger(this.getClass());
+  private final Logger logger;
+  private final MatcherWithWildcards configuredWildcards;
 
-  private MatcherWithWildcards configuredWildcards;
-
-
-  public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
-    configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
+  private IndicesSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    logger = context.logger(getClass());
+    configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey(), context);
   }
 
-  public static Optional<IndicesSyncRule> fromSettings(Settings s) {
+  public static Optional<IndicesSyncRule> fromSettings(Settings s, ESContext context) {
     try {
-      return Optional.of(new IndicesSyncRule(s));
+      return Optional.of(new IndicesSyncRule(s, context));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }

@@ -29,6 +29,7 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
 
 import java.util.Arrays;
 import java.util.List;
@@ -52,10 +53,9 @@ public class ConfigurationHelper {
   public static final String ANSI_CYAN = "\u001B[36m";
   public static final String ANSI_WHITE = "\u001B[37m";
 
-  private static final Logger logger = Loggers.getLogger(ConfigurationHelper.class);
+  private final Logger logger = Loggers.getLogger(ConfigurationHelper.class);
 
   private static ConfigurationHelper currentInstance;
-  private final Client client;
 
   public boolean enabled;
   public String verbosity;
@@ -73,7 +73,6 @@ public class ConfigurationHelper {
 
   @Inject
   public ConfigurationHelper(Settings settings, Client client) {
-    this.client = client;
     this.settings = settings;
     readSettings(settings);
 
@@ -202,7 +201,7 @@ public class ConfigurationHelper {
     sslCertChainPem = s.get("ssl.certchain_pem");
 
     searchLoggingEnabled = s.getAsBoolean("searchlog", false);
-    acl = new ACL(client, this);
+    acl = new ACL(this, new ESContextImpl());
 
     currentInstance = this;
   }

@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.BaseLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.ConnectionConfig;
 import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.SearchingUserConfig;
@@ -33,7 +34,6 @@ import java.util.Optional;
 import static org.elasticsearch.plugin.readonlyrest.ldap.caching.AuthenticationLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled;
 import static org.elasticsearch.plugin.readonlyrest.ldap.caching.GroupsProviderLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled;
 import static org.elasticsearch.plugin.readonlyrest.ldap.logging.AuthenticationLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled;
-import static org.elasticsearch.plugin.readonlyrest.ldap.logging.GroupsProviderLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.toBoolen;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.toDuration;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.toInteger;
@@ -63,26 +63,38 @@ public class LdapConfig<T extends BaseLdapClient> {
     this.client = client;
   }
 
-  public static LdapConfig<?> fromSettings(Settings settings) throws ConfigMalformedException {
+  public static LdapConfig<?> fromSettings(Settings settings, ESContext context) throws ConfigMalformedException {
     String name = nameFrom(settings);
     ConnectionConfig connectionConfig = connectionConfigFrom(name, settings);
     UserSearchFilterConfig userSearchFilterConfig = userSearchFilterConfigFrom(name, settings);
-    Optional<UserGroupsSearchFilterConfig> userGroupsSearchFilterConfig = userGroupsSearchFilterConfigFrom(settings);
+    Optional<UserGroupsSearchFilterConfig> userGroupsSearchFilterConfigOpt = userGroupsSearchFilterConfigFrom(settings);
     Optional<SearchingUserConfig> searchingUserConfig = searchingUserConfigFrom(settings);
 
-    if (userGroupsSearchFilterConfig.isPresent()) {
-      return new LdapConfig<>(name, wrapInLoggingIfIsLoggingEnabled(name,
-          wrapInCacheIfCacheIsEnabled(settings,
-              new UnboundidGroupsProviderLdapClient(
-                  connectionConfig, userSearchFilterConfig, userGroupsSearchFilterConfig.get(), searchingUserConfig))));
-    }
-    else {
-      return new LdapConfig<>(name,
-          wrapInLoggingIfIsLoggingEnabled(name,
-              wrapInCacheIfCacheIsEnabled(settings,
-                  new UnboundidAuthenticationLdapClient(
-                      connectionConfig, userSearchFilterConfig, searchingUserConfig))));
-    }
+    return userGroupsSearchFilterConfigOpt.<LdapConfig<?>>map(userGroupsSearchFilterConfig ->
+        new LdapConfig<>(name, wrapInLoggingIfIsLoggingEnabled(
+            name,
+            context,
+            wrapInCacheIfCacheIsEnabled(
+                settings,
+                new UnboundidGroupsProviderLdapClient(
+                    connectionConfig,
+                    userSearchFilterConfig,
+                    userGroupsSearchFilterConfig,
+                    searchingUserConfig)
+            )
+        ))
+    ).orElseGet(() ->
+        new LdapConfig<>(name, wrapInLoggingIfIsLoggingEnabled(
+            name,
+            context,
+            wrapInCacheIfCacheIsEnabled(
+                settings,
+                new UnboundidAuthenticationLdapClient(
+                    connectionConfig,
+                    userSearchFilterConfig,
+                    searchingUserConfig)
+            )
+        )));
   }
 
   private static ConnectionConfig connectionConfigFrom(String name, Settings settings) {
@@ -139,11 +151,9 @@ public class LdapConfig<T extends BaseLdapClient> {
     Optional<SearchingUserConfig> searchingUserConfig;
     if (bindDn.isPresent() && bindPassword.isPresent()) {
       searchingUserConfig = Optional.of(new SearchingUserConfig(bindDn.get(), bindPassword.get()));
-    }
-    else if (!bindDn.isPresent() && !bindPassword.isPresent()) {
+    } else if (!bindDn.isPresent() && !bindPassword.isPresent()) {
       searchingUserConfig = Optional.empty();
-    }
-    else {
+    } else {
       throw new ConfigMalformedException("LDAP definition malformed - must configure both params [" +
           ATTRIBUTE_BIND_DN + ", " + ATTRIBUTE_BIND_PASSWORD + "]");
     }

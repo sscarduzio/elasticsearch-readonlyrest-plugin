@@ -28,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredE
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -66,8 +67,12 @@ public class IndicesRewriteRuleTests extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
     when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
 
-    SyncRule r = new IndicesRewriteSyncRule(Settings.builder()
-                                                    .putArray("indices_rewrite", configured).build());
+    SyncRule r = IndicesRewriteSyncRule.fromSettings(
+        Settings.builder()
+            .putArray("indices_rewrite", configured).build(),
+        MockedESContext.INSTANCE
+    ).get();
+
     RuleExitResult res = r.match(rc);
     rc.commit();
     verify(rc).setIndices(argumentCaptor.capture());

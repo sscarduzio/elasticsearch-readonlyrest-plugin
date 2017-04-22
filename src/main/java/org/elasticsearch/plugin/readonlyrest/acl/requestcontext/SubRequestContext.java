@@ -25,8 +25,8 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,13 +37,15 @@ import java.util.Set;
  * Created by sscarduzio on 13/04/2017.
  */
 public class SubRequestContext extends Delayed implements IndicesRequestContext {
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final Logger logger;
   private final RequestContext originalRC;
   private final Object originalSubRequest;
-  private SubRCTransactionalIndices indices = new SubRCTransactionalIndices(this);
+  private final SubRCTransactionalIndices indices;
 
-  public SubRequestContext(RequestContext originalRequestContext, Object originalSubRequest) {
-    super("src");
+  public SubRequestContext(RequestContext originalRequestContext, Object originalSubRequest, ESContext context) {
+    super("src", context);
+    this.logger = context.logger(getClass());
+    this.indices = new SubRCTransactionalIndices(this, context);
     this.originalRC = originalRequestContext;
     this.originalSubRequest = originalSubRequest;
 
@@ -56,16 +58,12 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     if (r instanceof MultiSearchRequest) {
       return ((MultiSearchRequest) r).requests();
 
-    }
-    else if (r instanceof MultiGetRequest) {
+    } else if (r instanceof MultiGetRequest) {
       return ((MultiGetRequest) r).getItems();
 
-    }
-    else if (r instanceof BulkRequest) {
+    } else if (r instanceof BulkRequest) {
       return ((BulkRequest) r).requests();
-    }
-
-    else return new ArrayList<>(0);
+    } else return new ArrayList<>(0);
   }
 
   public Object getOriginalSubRequest() {
@@ -79,8 +77,8 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
   public void setIndices(Set<String> newIndices) {
     if (newIndices.size() == 0) {
       throw new RCUtils.RRContextException(
-        "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
-          " If this was intended, set '*' as indices.");
+          "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
+              " If this was intended, set '*' as indices.");
     }
 
     newIndices.remove("<no-index>");
@@ -123,24 +121,20 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     return originalRC.getAllIndicesAndAliases();
   }
 
-
   public Boolean isReadRequest() {
     if (originalSubRequest instanceof SearchRequest || originalSubRequest instanceof MultiGetRequest.Item) {
       return true;
-    }
-    else if (originalSubRequest instanceof DocWriteRequest<?>) {
+    } else if (originalSubRequest instanceof DocWriteRequest<?>) {
       return false;
-    }
-    else {
+    } else {
       throw new RCUtils.RRContextException(
-        "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
+          "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
     }
   }
 
-
   public String toString() {
     return "sub-request: { original:" + originalRC.getClass().getSimpleName() +
-      ", sub:" + originalSubRequest.getClass().getSimpleName() + "}";
+        ", sub:" + originalSubRequest.getClass().getSimpleName() + "}";
   }
 
 }

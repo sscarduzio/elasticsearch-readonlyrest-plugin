@@ -21,6 +21,7 @@ import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Optional;
 
@@ -29,13 +30,13 @@ import java.util.Optional;
  */
 public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
 
-  public AuthKeySha1SyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
+  private AuthKeySha1SyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+    super(s, context);
   }
 
-  public static Optional<AuthKeySha1SyncRule> fromSettings(Settings s) {
+  public static Optional<AuthKeySha1SyncRule> fromSettings(Settings s, ESContext context) {
     try {
-      return Optional.of(new AuthKeySha1SyncRule(s));
+      return Optional.of(new AuthKeySha1SyncRule(s, context));
     } catch (RuleNotConfiguredException ignored) {
       return Optional.empty();
     }

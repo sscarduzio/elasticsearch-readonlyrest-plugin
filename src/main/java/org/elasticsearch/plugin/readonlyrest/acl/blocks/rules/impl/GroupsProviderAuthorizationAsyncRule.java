@@ -22,6 +22,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.List;
 import java.util.Map;
@@ -42,15 +43,17 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
   private final ProviderGroupsAuthDefinition providerGroupsAuthDefinition;
 
-  private GroupsProviderAuthorizationAsyncRule(ProviderGroupsAuthDefinition definition) {
+  private GroupsProviderAuthorizationAsyncRule(ProviderGroupsAuthDefinition definition, ESContext context) {
+    super(context);
     this.providerGroupsAuthDefinition = definition;
   }
 
   public static Optional<GroupsProviderAuthorizationAsyncRule> fromSettings(Settings s,
-      List<UserGroupProviderConfig> groupProviderConfigs)
+                                                                            List<UserGroupProviderConfig> groupProviderConfigs,
+                                                                            ESContext context)
       throws ConfigMalformedException {
     Settings groupBaseAuthSettings = s.getAsSettings(RULE_NAME);
-    if(groupBaseAuthSettings.isEmpty()) return Optional.empty();
+    if (groupBaseAuthSettings.isEmpty()) return Optional.empty();
 
     Map<String, UserGroupProviderConfig> userGroupProviderConfigByName =
         groupProviderConfigs.stream().collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));
@@ -62,7 +65,8 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
     List<String> groups = requiredAttributeArrayValue(ATTRIBUTE_GROUPS, groupBaseAuthSettings);
 
     return Optional.of(new GroupsProviderAuthorizationAsyncRule(
-        new ProviderGroupsAuthDefinition(userGroupProviderConfigByName.get(name), groups)
+        new ProviderGroupsAuthDefinition(userGroupProviderConfigByName.get(name), groups),
+        context
     ));
   }
 
@@ -73,10 +77,10 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
         .thenApply(this::checkUserGroups);
   }
 
-  private boolean checkUserGroups(Set<String> groups ) {
+  private boolean checkUserGroups(Set<String> groups) {
 
-          Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(groups));
-          return !intersection.isEmpty();
+    Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(groups));
+    return !intersection.isEmpty();
 
   }
 

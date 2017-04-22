@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 
 public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLdapClient implements GroupsProviderLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(UnboundidGroupsProviderLdapClient.class);
+  private final Logger logger = Loggers.getLogger(UnboundidGroupsProviderLdapClient.class);
 
   private final UserGroupsSearchFilterConfig userGroupsSearchFilterConfig;
 

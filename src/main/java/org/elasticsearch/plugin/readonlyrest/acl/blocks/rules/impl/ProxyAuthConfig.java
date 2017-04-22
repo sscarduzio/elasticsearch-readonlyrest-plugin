@@ -25,9 +25,10 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.req
 
 public class ProxyAuthConfig {
 
-  public static ProxyAuthConfig DEFAULT = new ProxyAuthConfig("", "X-Forwarded-User");
-  private static String ATTRIBUTE_NAME = "name";
-  private static String ATTRIBUTE_USER_ID_HEADER = "user_id_header";
+  public static final ProxyAuthConfig DEFAULT = new ProxyAuthConfig("", "X-Forwarded-User");
+  private static final String ATTRIBUTE_NAME = "name";
+  private static final String ATTRIBUTE_USER_ID_HEADER = "user_id_header";
+
   private final String name;
   private final String userIdHeader;
 

@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -28,13 +28,15 @@ import java.util.List;
  * Created by sscarduzio on 14/04/2017.
  */
 public abstract class Delayed {
-  private static Logger logger = Loggers.getLogger(Delayed.class);
+  private final Logger logger;
   protected final String name;
-  private List<Runnable> effects = new LinkedList<>();
-  private List<Delayed> delegates = new LinkedList<>();
+  private final List<Runnable> effects = new LinkedList<>();
+  private final List<Delayed> delegates = new LinkedList<>();
   private Boolean committed = false;
   private Boolean delegated = false;
-  Delayed(String name) {
+
+  Delayed(String name, ESContext context) {
+    this.logger = context.logger(getClass());
     this.name = name;
   }
 
@@ -70,7 +72,7 @@ public abstract class Delayed {
       }
       it.remove();
     }
-    delegates.forEach(d -> d.commit());
+    delegates.forEach(Delayed::commit);
   }
 
   public void reset() {
