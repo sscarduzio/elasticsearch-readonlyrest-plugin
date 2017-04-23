@@ -23,7 +23,6 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -51,10 +50,8 @@ import org.elasticsearch.plugins.IngestPlugin;
 import org.elasticsearch.plugins.NetworkPlugin;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
-import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
-import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.watcher.ResourceWatcherService;
@@ -94,9 +91,9 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
       HttpServerTransport.Dispatcher dispatcher) {
 
     return Collections.singletonMap(
-        "ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher));
+        "ssl_netty4", () -> new SSLTransportNetty4(
+            settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher));
   }
-
 
   @Override
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
@@ -141,7 +138,6 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
         new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
   }
 
-
   @Override
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<RestHandler> getRestHandlers(
@@ -153,14 +149,11 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
 
   @Override
   public UnaryOperator<RestHandler> getRestHandlerWrapper(ThreadContext threadContext) {
-    return restHandler -> new RestHandler() {
-      @Override
-      public void handleRequest(RestRequest request, RestChannel channel, NodeClient client) throws Exception {
-        // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
-        ConfigurationHelper.getInstance(settings, client);
-        ThreadRepo.channel.set(channel);
-        restHandler.handleRequest(request, channel, client);
-      }
+    return restHandler -> (RestHandler) (request, channel, client) -> {
+      // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
+      ConfigurationHelper.getInstance(settings, client);
+      ThreadRepo.channel.set(channel);
+      restHandler.handleRequest(request, channel, client);
     };
   }
 
