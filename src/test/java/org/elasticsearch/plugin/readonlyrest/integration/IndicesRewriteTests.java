@@ -155,7 +155,7 @@ public class IndicesRewriteTests {
       new BasicHeader("Content-Type", "application/json")
     );
     checkForErrors(resp);
-    assertTrue(body(resp).contains("\"_index\":\"rw_.kibana\""));
+    assertTrue(body(resp).contains("\"_index\":\".kibana\""));
   }
 
   private void checkKibanaResponse(Response resp) throws Exception {
