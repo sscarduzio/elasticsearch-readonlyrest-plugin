@@ -17,6 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
@@ -25,6 +27,7 @@ import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
@@ -33,11 +36,16 @@ import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
+import org.reflections.ReflectionUtils;
 
-import java.util.Arrays;
+import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
@@ -47,26 +55,14 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStr
  */
 public class RCTransactionalIndices {
 
-  private static final Transactional<Set<String>> dummy = new Transactional<Set<String>>("rc-indices-dummy") {
-    @Override
-    public Set<String> initialize() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public Set<String> copy(Set<String> initial) {
-      return initial;
-    }
-
-    @Override
-    public void onCommit(Set<String> value) {
-    }
-  };
   private static final Logger logger = Loggers.getLogger(RCTransactionalIndices.class);
 
+  // #XXX hacky as hell - needed for bulk request
+  private static final Map<String, Set<String>> restLevelIndicesCache = Maps.newHashMap();
+
   public static Transactional<Set<String>> mkInstance(RequestContext rc) {
-    if(!rc.involvesIndices()){
-      return dummy;
+    if (!rc.involvesIndices()) {
+      return new DummyTXIndices();
     }
     return new Transactional<Set<String>>("rc-indices") {
 
@@ -76,7 +72,25 @@ public class RCTransactionalIndices {
           return Collections.emptySet();
         }
 
-        logger.info("Finding indices for: " + rc.getId() + " " + rc.getUnderlyingRequest().getClass().getSimpleName());
+        String restRequestId = rc.getId().split("-")[0];
+        Set<String> initialIndices = restLevelIndicesCache.get(restRequestId);
+        if (initialIndices != null && !initialIndices.isEmpty()) {
+          logger.info("Finding cached indices for: " + rc.getId() + " "
+                        + rc.getUnderlyingRequest().getClass().getSimpleName()
+                        + ": " + Joiner.on(",").join(initialIndices)
+          );
+          return initialIndices;
+        }
+        else {
+          restLevelIndicesCache.clear();
+          logger.info("Finding indices for: " + rc.getId() + " " + rc.getUnderlyingRequest().getClass().getSimpleName());
+          Set<String> indices = findIndices(rc);
+          restLevelIndicesCache.put(restRequestId, indices);
+          return indices;
+        }
+      }
+
+      private Set<String> findIndices(RequestContext rc) {
 
         String[] indices = new String[0];
         ActionRequest ar = rc.getUnderlyingRequest();
@@ -168,7 +182,26 @@ public class RCTransactionalIndices {
               " If this was intended, set '*' as indices.");
         }
 
-        boolean okSetResult = ReflecUtils.setIndices(rc.getUnderlyingRequest(), newIndices, logger);
+
+        if (actionRequest instanceof BulkShardRequest) {
+          BulkShardRequest bsr = (BulkShardRequest) actionRequest;
+          String singleIndex = newIndices.iterator().next();
+          String uuid = rc.getIndexMetadata(singleIndex).iterator().next();
+          AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            @SuppressWarnings("unchecked")
+            Set<Field> fields = ReflectionUtils.getAllFields(bsr.shardId().getClass(), ReflectionUtils.withName("index"));
+            fields.stream().forEach(f -> {
+              f.setAccessible(true);
+              try {
+                f.set(bsr.shardId(), new Index(singleIndex, uuid));
+              } catch (Throwable e) {
+                e.printStackTrace();
+              }
+            });
+            return null;
+          });
+        }
+        boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
 
 
         if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
@@ -176,7 +209,7 @@ public class RCTransactionalIndices {
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
           final boolean[] okSubResult = {false};
           actions.forEach(a -> {
-            okSubResult[0] &= ReflecUtils.setIndices(a, newIndices, logger);
+            okSubResult[0] &= ReflecUtils.setIndices(a, Sets.newHashSet("index"), newIndices, logger);
           });
           okSetResult &= okSubResult[0];
         }
@@ -191,5 +224,25 @@ public class RCTransactionalIndices {
 
 
     };
+  }
+
+  static class DummyTXIndices extends Transactional<Set<String>> {
+    DummyTXIndices() {
+      super("rc-indices-dummy");
+    }
+
+    @Override
+    public Set<String> initialize() {
+      return Collections.emptySet();
+    }
+
+    @Override
+    public Set<String> copy(Set<String> initial) {
+      return initial;
+    }
+
+    @Override
+    public void onCommit(Set<String> value) {
+    }
   }
 }

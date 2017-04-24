@@ -82,7 +82,7 @@ public class ACL {
   }
 
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
-    logger.debug("checking request:" + rc);
+    logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
         blocks.iterator(),
         block -> {

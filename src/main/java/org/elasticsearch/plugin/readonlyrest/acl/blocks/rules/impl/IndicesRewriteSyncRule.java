@@ -161,13 +161,14 @@ public class IndicesRewriteSyncRule extends SyncRule {
     if (oldIndices.isEmpty()) {
       oldIndices.add("*");
     }
+
     rc.setIndices(oldIndices);
   }
 
   // Translate the search results indices
   private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
     for(SearchHit h : sr.getHits().getHits()){
-      ReflecUtils.setIndices(h, Sets.newHashSet(rc.getIndices().iterator().next()), logger);
+      ReflecUtils.setIndices(h, Sets.newHashSet("index"), Sets.newHashSet(rc.getIndices().iterator().next()), logger);
     }
   }
 
@@ -221,11 +222,14 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
     if(response instanceof BulkShardResponse){
       BulkShardResponse bsr = (BulkShardResponse) response;
+      final Set<String> originalIndex = Sets.newHashSet(rc.getIndices().iterator().next());
+      ReflecUtils.setIndices(bsr.getShardId().getIndex(),Sets.newHashSet("name"), originalIndex,logger);
       for(BulkItemResponse i : bsr.getResponses()){
         if(!i.isFailed()){
           ReflecUtils.setIndices(
             i.getResponse().getShardId().getIndex(),
-            Sets.newHashSet( rc.getIndices().iterator().next()),
+            Sets.newHashSet("name"),
+            originalIndex,
             logger);
         }
       }

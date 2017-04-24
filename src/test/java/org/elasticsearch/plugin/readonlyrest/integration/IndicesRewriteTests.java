@@ -37,6 +37,7 @@ import static org.junit.Assert.assertTrue;
 public class IndicesRewriteTests {
 
   public static RestClient ro;
+  public static RestClient rw;
   public static RestClient kibana;
   public static RestClient logstash;
 
@@ -47,6 +48,7 @@ public class IndicesRewriteTests {
       @Override
       public void initialize(RestClient client) {
         ro = container.getBasicAuthClient("simone", "ro_pass");
+        rw = container.getBasicAuthClient("simone", "rw_pass");
         kibana = container.getBasicAuthClient("kibana", "kibana");
         logstash = container.getBasicAuthClient("simone", "logstash");
 
@@ -73,21 +75,25 @@ public class IndicesRewriteTests {
   }
 
   @Test
+  public void testNonIndexRequest() throws Exception {
+    checkForErrors(kibana.performRequest("GET", "/"));
+    checkForErrors(kibana.performRequest("GET", "/_cluster/health"));
+  }
+
+  @Test
   public void testCreateIndex() throws Exception {
-
-
     String indicesList = body(kibana.performRequest("GET", "/_cat/indices"));
     assertTrue(indicesList.contains(".kibana_simone"));
   }
 
   @Test
   public void testSearch() throws Exception {
-    generalCheck(ro.performRequest("GET", "/.kibana/_search"));
+    checkKibanaResponse(ro.performRequest("GET", "/.kibana/_search"));
   }
 
   @Test
   public void testMultiSearch() throws Exception {
-    generalCheck(ro.performRequest(
+    checkKibanaResponse(ro.performRequest(
       "GET",
       "/_msearch",
       Maps.newHashMap(),
@@ -98,12 +104,12 @@ public class IndicesRewriteTests {
 
   @Test
   public void testGet() throws Exception {
-    generalCheck(ro.performRequest("GET", "/.kibana/doc/1"));
+    checkKibanaResponse(ro.performRequest("GET", "/.kibana/doc/1"));
   }
 
   @Test
   public void testMultiGetDocs() throws Exception {
-    generalCheck(ro.performRequest(
+    checkKibanaResponse(ro.performRequest(
       "GET",
       "/_mget",
       Maps.newHashMap(),
@@ -114,7 +120,7 @@ public class IndicesRewriteTests {
 
   @Test
   public void testMultiGetIds() throws Exception {
-    generalCheck(ro.performRequest(
+    checkKibanaResponse(ro.performRequest(
       "GET",
       "/.kibana/_mget",
       Maps.newHashMap(),
@@ -125,7 +131,7 @@ public class IndicesRewriteTests {
 
   @Test
   public void testBulkAll() throws Exception {
-    logstashCheck(logstash.performRequest(
+    checkForErrors(logstash.performRequest(
       "POST",
       "/_bulk",
       Maps.newHashMap(),
@@ -139,7 +145,20 @@ public class IndicesRewriteTests {
     ));
   }
 
-  private void generalCheck(Response resp) throws Exception {
+  @Test
+  public void testCreateIndexPattern() throws Exception {
+    Response resp =  rw.performRequest(
+      "POST",
+      "/.kibana/index-pattern/logstash-*/_create",
+      Maps.newHashMap(),
+      new StringEntity("{\"title\":\"logstash-*\",\"timeFieldName\":\"@timestamp\"}\n"),
+      new BasicHeader("Content-Type", "application/json")
+    );
+    checkForErrors(resp);
+    assertTrue(body(resp).contains("\"_index\":\"rw_.kibana\""));
+  }
+
+  private void checkKibanaResponse(Response resp) throws Exception {
     String body = body(resp);
     System.out.println(body);
     assertEquals(200, resp.getStatusLine().getStatusCode());
@@ -147,9 +166,9 @@ public class IndicesRewriteTests {
     assertTrue(body.contains(".kibana"));
     assertTrue(body.contains("helloWorld"));
   }
-  private void logstashCheck(Response resp) throws Exception {
+  private void checkForErrors(Response resp) throws Exception {
     String body = body(resp);
     System.out.println(body);
-    assertEquals(200, resp.getStatusLine().getStatusCode());
+    assertTrue(resp.getStatusLine().getStatusCode() <= 201);
   }
 }
