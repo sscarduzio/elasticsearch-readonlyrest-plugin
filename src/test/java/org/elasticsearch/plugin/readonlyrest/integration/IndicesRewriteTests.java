@@ -167,8 +167,6 @@ public class IndicesRewriteTests {
     assertTrue(body.contains("helloWorld"));
   }
   private void checkForErrors(Response resp) throws Exception {
-    String body = body(resp);
-    System.out.println(body);
     assertTrue(resp.getStatusLine().getStatusCode() <= 201);
   }
 }
