@@ -147,7 +147,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     String reason = conf.forbiddenResponse;
 
     BytesRestResponse resp;
-    if (conf.acl.isBasicAuthConfigured()) {
+    if (ConfigurationHelper.doesRequirePassword()) {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");

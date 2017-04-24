@@ -77,14 +77,10 @@ public class ACL {
                    externalAuthenticationServiceConfigs, logger);
                blocks.add(block);
                if (block.isAuthHeaderAccepted()) {
-                 basicAuthConfigured = true;
+                 ConfigurationHelper.setRequirePassword(true);
                }
                logger.info("ADDING #" + entry.getKey() + ":\t" + block.toString());
              });
-  }
-
-  public boolean isBasicAuthConfigured() {
-    return basicAuthConfigured;
   }
 
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
