@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
@@ -75,14 +75,14 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
         throw new ElasticsearchException(
           "need to have one exactly one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq, newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
     }
     if (originalSubReq instanceof SearchRequest || originalSubReq instanceof DocWriteRequest<?>) {
       if (newIndices.isEmpty()) {
         throw new ElasticsearchException(
           "need to have at least one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq, newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
     }
   }
 

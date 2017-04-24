@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
@@ -58,7 +58,7 @@ public abstract class Delayed {
     }
     committed = true;
 
-    logger.info(name + " > Committing " + effects.size() + " effects");
+    logger.debug(name + " > Committing " + effects.size() + " effects");
     Iterator<Runnable> it = effects.iterator();
     while (it.hasNext()) {
       Runnable eff = it.next();
@@ -68,7 +68,7 @@ public abstract class Delayed {
         t.printStackTrace();
       }
       finally {
-        logger.info(name + " > committed.");
+        logger.debug(name + " > committed.");
       }
       it.remove();
     }
@@ -76,7 +76,7 @@ public abstract class Delayed {
   }
 
   public void reset() {
-    logger.info(name + " > resetting!!! ");
+    logger.debug(name + " > resetting!!! ");
     effects.clear();
     committed = false;
 

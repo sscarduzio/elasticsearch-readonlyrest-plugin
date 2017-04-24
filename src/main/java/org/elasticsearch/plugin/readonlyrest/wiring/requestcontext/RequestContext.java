@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -27,8 +27,11 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.support.IndicesOptions;
+import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -48,13 +51,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 20/02/2016.
  */
 public class RequestContext extends Delayed implements IndicesRequestContext {
 
+  private final IndexNameExpressionResolver indexResolver;
   private final Logger logger;
   private final RestRequest request;
   private final String action;
@@ -64,6 +70,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private final ClusterService clusterService;
   private final ESContext context;
   private final Transactional<Set<String>> indices;
+
   private final Transactional<Map<String, String>> responseHeaders;
 
   private String content = null;
@@ -76,6 +83,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
                         IndexNameExpressionResolver indexResolver, ThreadPool threadPool,
                         ESContext context) {
     super("rc", context);
+    this.indexResolver = indexResolver;
     this.logger = context.logger(getClass());
     this.request = request;
     this.action = action;
@@ -195,6 +203,11 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return clusterService.state().metaData().getAliasAndIndexLookup().keySet();
   }
 
+  public Set<String> getIndexMetadata(String s) {
+    SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
+    return lookup.get(s).getIndices().stream().map( e -> e.getIndexUUID()).collect(Collectors.toSet());
+  }
+
   public String getMethod() {
     return request.method().name();
   }
@@ -206,6 +219,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (doesInvolveIndices) {
+      Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(),"a");
 //
 //      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
 //      String[] concreteIdxNames = indexResolver.concreteIndexNames(
@@ -213,7 +227,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 //          IndicesOptions.lenientExpandOpen(), ixs
 //      );
 //      return Sets.newHashSet(concreteIdxNames);
-      return new MatcherWithWildcards(getIndices()).filter(getAllIndicesAndAliases());
+      return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
 
     }
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
@@ -237,6 +251,15 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
               " If this was intended, set '*' as indices.");
     }
 
+    if(isReadRequest()){
+      Set<String> expanded = getExpandedIndices(newIndices);
+      if(!expanded.isEmpty()){
+        indices.mutate(expanded);
+      }
+      else {
+        indices.mutate(newIndices);
+      }
+    }
     indices.mutate(newIndices);
   }
 

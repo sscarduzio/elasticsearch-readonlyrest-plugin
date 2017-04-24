@@ -58,7 +58,7 @@ public class ReflecUtils {
         } catch (SecurityException e) {
           logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
-              "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
+            "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
           logger.debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
         }
@@ -94,38 +94,37 @@ public class ReflecUtils {
     return null;
   }
 
-  public static boolean setIndices(Object req,Set<String> newIndices, Logger logger) {
+  public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, Logger logger) {
+
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")
       Set<Field> indexFields = getAllFields(
-        req.getClass(),
-        (Field field) -> field != null &&
-          (
-            (field.getName().equals("index") || field.getName() == "indices")) &&
-          (field.getType().equals(String.class) || field.getType().equals(String[].class)
-          )
+        o.getClass(),
+        (Field field) -> field != null && fieldNames.contains(field.getName()) &&
+          (field.getType().equals(String.class) || field.getType().equals(String[].class))
       );
       String firstIndex = newIndices.iterator().next();
       for (Field f : indexFields) {
         f.setAccessible(true);
         try {
-          f.set(req, firstIndex);
-        } catch (IllegalAccessException | IllegalArgumentException e) {
-          try {
-            f.set(req, newIndices.toArray(new String[newIndices.size()]));
-          } catch (IllegalAccessException e1) {
-              logger.error("could not find index or indices field to replace: " +
-                             e.getMessage() + " and then " + e1.getMessage());
+          if (f.getType().equals(String[].class)) {
+            f.set(o, new String[]{firstIndex});
           }
+          else {
+            f.set(o, firstIndex);
+          }
+          res[0] = true;
+        } catch (IllegalAccessException | IllegalArgumentException e) {
+          logger.error("could not find index or indices field to replace: " +
+                         e.getMessage() + " and then " + e.getMessage());
         }
       }
-      res[0] = true;
       return null;
     });
-
     return res[0];
   }
+
 
   @FunctionalInterface
   public interface CheckedFunction<T, R> {
@@ -135,9 +134,9 @@ public class ReflecUtils {
   static class SetFieldException extends Exception {
     SetFieldException(Class<?> c, String id, String fieldName, Throwable e) {
       super(" Could not set " + fieldName + " to class " + c.getSimpleName() +
-          "for req id: " + id + " because: "
-          + e.getClass().getSimpleName() + " : " + e.getMessage() +
-          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+              "for req id: " + id + " because: "
+              + e.getClass().getSimpleName() + " : " + e.getMessage() +
+              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
     }
   }
 }

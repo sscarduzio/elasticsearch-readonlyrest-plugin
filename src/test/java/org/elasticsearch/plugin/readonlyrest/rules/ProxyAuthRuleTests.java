@@ -25,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -53,7 +53,7 @@ public class ProxyAuthRuleTests {
         Settings.builder()
             .putArray("proxy_auth", configured)
             .build(),
-        Lists.newArrayList(), 
+        Lists.newArrayList(),
         MockedESContext.INSTANCE
     ).get();
 

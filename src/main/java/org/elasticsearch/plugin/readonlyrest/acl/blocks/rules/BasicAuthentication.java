@@ -19,9 +19,10 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
@@ -35,6 +36,7 @@ public abstract class BasicAuthentication extends SyncRule implements UserRule, 
 
   public BasicAuthentication(Settings s, ESContext context) throws RuleNotConfiguredException {
     logger = context.logger(getClass());
+    ConfigurationHelper.setRequirePassword(true);
     authKey = getAuthKey(s);
   }
 

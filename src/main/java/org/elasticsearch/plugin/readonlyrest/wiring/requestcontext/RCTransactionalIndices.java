@@ -15,27 +15,38 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
+import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
+import org.reflections.ReflectionUtils;
 
+import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
@@ -45,11 +56,16 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStr
  */
 public class RCTransactionalIndices {
 
-  public static Transactional<Set<String>> mkInstance(RequestContext rc, ESContext context) {
-    if(!rc.involvesIndices()){
-      return dummy(context);
+  private static final Logger logger = Loggers.getLogger(RCTransactionalIndices.class);
+
+  // #XXX hacky as hell - needed for bulk request
+  private static final Map<String, Set<String>> restLevelIndicesCache = Maps.newHashMap();
+
+  public static Transactional<Set<String>> mkInstance(RequestContext rc, ESContext es) {
+    if (!rc.involvesIndices()) {
+      return new DummyTXIndices(es);
     }
-    return new Transactional<Set<String>>("rc-indices", context) {
+    return new Transactional<Set<String>>("rc-indices", es) {
 
       @Override
       public Set<String> initialize() {
@@ -57,7 +73,25 @@ public class RCTransactionalIndices {
           return Collections.emptySet();
         }
 
-        rc.getLogger().info("Finding indices for: " + rc.getId() + " " + rc.getUnderlyingRequest().getClass().getSimpleName());
+        String restRequestId = rc.getId().split("-")[0];
+        Set<String> initialIndices = restLevelIndicesCache.get(restRequestId);
+        if (initialIndices != null && !initialIndices.isEmpty()) {
+          logger.debug("Finding cached indices for: " + rc.getId() + " "
+                        + rc.getUnderlyingRequest().getClass().getSimpleName()
+                        + ": " + Joiner.on(",").join(initialIndices)
+          );
+          return initialIndices;
+        }
+        else {
+          restLevelIndicesCache.clear();
+          logger.debug("Finding indices for: " + rc.getId() + " " + rc.getUnderlyingRequest().getClass().getSimpleName());
+          Set<String> indices = findIndices(rc);
+          restLevelIndicesCache.put(restRequestId, indices);
+          return indices;
+        }
+      }
+
+      private Set<String> findIndices(RequestContext rc) {
 
         String[] indices = new String[0];
         ActionRequest ar = rc.getUnderlyingRequest();
@@ -88,9 +122,9 @@ public class RCTransactionalIndices {
           BulkRequest cir = (BulkRequest) ar;
 
           for (DocWriteRequest<?> ir : cir.requests()) {
-            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, rc.getLogger());
+            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, logger);
             if (docIndices.length == 0) {
-              docIndices = extractStringArrayFromPrivateMethod("index", ir, rc.getLogger());
+              docIndices = extractStringArrayFromPrivateMethod("index", ir, logger);
             }
             indices = ArrayUtils.concat(indices, docIndices, String.class);
           }
@@ -100,14 +134,14 @@ public class RCTransactionalIndices {
           indices = ir.indices();
         }
         else if (ar instanceof CompositeIndicesRequest) {
-          rc.getLogger().error(
+          logger.error(
             "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
               + ar.getClass().getSimpleName());
         }
         else {
-          indices = extractStringArrayFromPrivateMethod("indices", ar, rc.getLogger());
+          indices = extractStringArrayFromPrivateMethod("indices", ar, logger);
           if (indices.length == 0) {
-            indices = extractStringArrayFromPrivateMethod("index", ar, rc.getLogger());
+            indices = extractStringArrayFromPrivateMethod("index", ar, logger);
           }
         }
 
@@ -117,9 +151,9 @@ public class RCTransactionalIndices {
 
         Set<String> indicesSet = Sets.newHashSet(indices);
 
-        if (rc.getLogger().isDebugEnabled()) {
+        if (logger.isDebugEnabled()) {
           String idxs = String.join(",", indicesSet);
-          rc.getLogger().debug("Discovered indices: " + idxs);
+          logger.debug("Discovered indices: " + idxs);
         }
 
         return indicesSet;
@@ -138,10 +172,10 @@ public class RCTransactionalIndices {
         ActionRequest actionRequest = rc.getUnderlyingRequest();
 
         if (newIndices.equals(getInitial())) {
-          rc.getLogger().info("id: " + rc.getId() + " - Not replacing. Indices are the same. Old:" + get() + " New:" + newIndices);
+          logger.info("id: " + rc.getId() + " - Not replacing. Indices are the same. Old:" + get() + " New:" + newIndices);
           return;
         }
-        rc.getLogger().info("id: " + rc.getId() + " - Replacing indices. Old:" + getInitial() + " New:" + newIndices);
+        logger.info("id: " + rc.getId() + " - Replacing indices. Old:" + getInitial() + " New:" + newIndices);
 
         if (newIndices.size() == 0) {
           throw new ElasticsearchException(
@@ -149,7 +183,26 @@ public class RCTransactionalIndices {
               " If this was intended, set '*' as indices.");
         }
 
-        boolean okSetResult = ReflecUtils.setIndices(rc.getUnderlyingRequest(), newIndices, rc.getLogger());
+
+        if (actionRequest instanceof BulkShardRequest) {
+          BulkShardRequest bsr = (BulkShardRequest) actionRequest;
+          String singleIndex = newIndices.iterator().next();
+          String uuid = rc.getIndexMetadata(singleIndex).iterator().next();
+          AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            @SuppressWarnings("unchecked")
+            Set<Field> fields = ReflectionUtils.getAllFields(bsr.shardId().getClass(), ReflectionUtils.withName("index"));
+            fields.stream().forEach(f -> {
+              f.setAccessible(true);
+              try {
+                f.set(bsr.shardId(), new Index(singleIndex, uuid));
+              } catch (Throwable e) {
+                e.printStackTrace();
+              }
+            });
+            return null;
+          });
+        }
+        boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
 
 
         if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
@@ -157,16 +210,16 @@ public class RCTransactionalIndices {
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
           final boolean[] okSubResult = {false};
           actions.forEach(a -> {
-            okSubResult[0] &= ReflecUtils.setIndices(a, newIndices, rc.getLogger());
+            okSubResult[0] &= ReflecUtils.setIndices(a, Sets.newHashSet("index"), newIndices, logger);
           });
           okSetResult &= okSubResult[0];
         }
 
         if (okSetResult) {
-          rc.getLogger().debug("success changing indices: " + newIndices + " correctly set as " + get());
+          logger.debug("success changing indices: " + newIndices + " correctly set as " + get());
         }
         else {
-          rc.getLogger().error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
+          logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
         }
       }
 
@@ -174,22 +227,23 @@ public class RCTransactionalIndices {
     };
   }
 
-  private static Transactional<Set<String>> dummy(ESContext context) {
-    return new Transactional<Set<String>>("rc-indices-dummy", context) {
-      @Override
-      public Set<String> initialize() {
-        return Collections.emptySet();
-      }
+  static class DummyTXIndices extends Transactional<Set<String>> {
+    DummyTXIndices(ESContext es) {
+      super("rc-indices-dummy", es);
+    }
 
-      @Override
-      public Set<String> copy(Set<String> initial) {
-        return initial;
-      }
+    @Override
+    public Set<String> initialize() {
+      return Collections.emptySet();
+    }
 
-      @Override
-      public void onCommit(Set<String> value) {
-      }
-    };
+    @Override
+    public Set<String> copy(Set<String> initial) {
+      return initial;
+    }
+
+    @Override
+    public void onCommit(Set<String> value) {
+    }
   }
-
 }

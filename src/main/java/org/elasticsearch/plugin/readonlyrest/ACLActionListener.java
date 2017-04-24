@@ -24,7 +24,7 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 /**
  * Created by sscarduzio on 24/03/2017.

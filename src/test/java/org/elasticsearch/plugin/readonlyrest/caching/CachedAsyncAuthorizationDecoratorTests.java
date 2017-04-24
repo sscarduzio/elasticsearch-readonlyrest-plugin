@@ -20,7 +20,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;

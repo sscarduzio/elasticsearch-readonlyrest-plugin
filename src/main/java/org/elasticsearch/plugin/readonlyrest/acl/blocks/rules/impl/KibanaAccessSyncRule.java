@@ -26,7 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcar
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.Optional;
@@ -53,7 +53,8 @@ public class KibanaAccessSyncRule extends SyncRule {
       "indices:admin/mapping/put",
       "indices:data/write/delete",
       "indices:data/write/index",
-      "indices:data/write/update"
+      "indices:data/write/update",
+      "indices:data/write/bulk*"
   ));
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:admin/rradmin/*",

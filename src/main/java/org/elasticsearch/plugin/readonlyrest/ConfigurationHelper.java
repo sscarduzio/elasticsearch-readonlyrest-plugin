@@ -56,6 +56,7 @@ public class ConfigurationHelper {
   private final Logger logger = Loggers.getLogger(ConfigurationHelper.class);
 
   private static ConfigurationHelper currentInstance;
+  private static boolean requirePassword;
 
   public boolean enabled;
   public String verbosity;
@@ -156,6 +157,14 @@ public class ConfigurationHelper {
 //        strA(users_prefix + "groups")
 
     );
+  }
+
+  public static void setRequirePassword(boolean requirePass) {
+    requirePassword = requirePass;
+  }
+
+  public static boolean doesRequirePassword(){
+    return requirePassword;
   }
 
   public void updateSettingsFromIndex(Client client) throws ResourceNotFoundException {

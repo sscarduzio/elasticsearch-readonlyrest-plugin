@@ -27,7 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
@@ -62,10 +62,7 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
 
   public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs, ESContext context)
       throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s,
-        parseSimpleSettings(),
-        parseSimpleArraySettings(),
-        parseExtendedSettings(proxyAuthConfigs),
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(),parseSimpleArraySettings(), parseExtendedSettings(proxyAuthConfigs),
         context);
   }
 

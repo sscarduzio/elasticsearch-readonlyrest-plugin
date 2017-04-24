@@ -27,7 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
@@ -73,22 +73,18 @@ public class ACL {
     List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs =
         parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
     blocksMap.forEach((key, value) -> {
-      Block block = new Block(value, users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
-          externalAuthenticationServiceConfigs, context);
-      blocks.add(block);
-      if (block.isAuthHeaderAccepted()) {
-        basicAuthConfigured = true;
-      }
-      logger.info("ADDING #" + key + ":\t" + block.toString());
-    });
-  }
-
-  public boolean isBasicAuthConfigured() {
-    return basicAuthConfigured;
+               Block block = new Block(value, users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
+                   externalAuthenticationServiceConfigs, context);
+               blocks.add(block);
+               if (block.isAuthHeaderAccepted()) {
+                 ConfigurationHelper.setRequirePassword( true);
+               }
+               logger.info("ADDING #" + key + ":\t" + block.toString());
+             });
   }
 
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
-    logger.debug("checking request:" + rc);
+    logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
         blocks.iterator(),
         block -> {

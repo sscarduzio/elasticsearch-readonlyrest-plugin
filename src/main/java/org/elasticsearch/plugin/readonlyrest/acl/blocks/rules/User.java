@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
@@ -48,8 +49,10 @@ public class User {
     String username = s.get("username");
     UserRule authKeyRule = getAuthKeyRuleFrom(s, proxyAuthConfigs, username, context);
     List<String> groups = Lists.newArrayList(s.getAsArray("groups"));
-    if (groups.isEmpty())
+    if (groups.isEmpty()) {
       throw new ConfigMalformedException("No groups defined for user " + (username != null ? username : "<no name>"));
+    }
+    ConfigurationHelper.setRequirePassword(true);
     return new User(username, groups, authKeyRule);
   }
 

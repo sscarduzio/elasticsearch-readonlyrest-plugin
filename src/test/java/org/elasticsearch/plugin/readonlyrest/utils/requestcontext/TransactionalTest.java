@@ -17,8 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.utils.requestcontext;
 
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RCUtils;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.Transactional;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RCUtils;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 

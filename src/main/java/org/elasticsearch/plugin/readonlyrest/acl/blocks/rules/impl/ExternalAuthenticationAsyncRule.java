@@ -64,7 +64,7 @@ public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
       List<ExternalAuthenticationServiceConfig> configs, ESContext context) {
     return settings -> {
       Settings externalAuthSettings = settings.getAsSettings(RULE_NAME);
-      if (externalAuthSettings.isEmpty()) return Optional.empty();
+      if(externalAuthSettings.isEmpty()) return Optional.empty();
 
       String externalAuthConfigName = externalAuthSettings.get(ATTRIBUTE_SERVICE);
       if (externalAuthConfigName == null)
