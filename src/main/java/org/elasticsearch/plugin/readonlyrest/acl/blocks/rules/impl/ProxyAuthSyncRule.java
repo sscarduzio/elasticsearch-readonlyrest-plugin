@@ -61,10 +61,20 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
 
   public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
       throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(), parseExtendedSettings(proxyAuthConfigs));
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(),
+        parseSimpleArraySettings(), parseExtendedSettings(proxyAuthConfigs));
   }
 
   private static Function<Settings, Optional<ProxyAuthSyncRule>> parseSimpleSettings() {
+    return settings -> {
+      List<String> users = Lists.newArrayList(settings.get(RULE_NAME));
+      if (users.isEmpty()) return Optional.empty();
+
+      return Optional.of(new ProxyAuthSyncRule(ProxyAuthConfig.DEFAULT, users));
+    };
+  }
+
+  private static Function<Settings, Optional<ProxyAuthSyncRule>> parseSimpleArraySettings() {
     return settings -> {
       List<String> users = Lists.newArrayList(settings.getAsArray(RULE_NAME));
       if (users.isEmpty()) return Optional.empty();
@@ -76,16 +86,12 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
   private static Function<Settings, Optional<ProxyAuthSyncRule>> parseExtendedSettings(
       List<ProxyAuthConfig> proxyAuthConfigs) {
     return settings -> {
-      Map<String, Settings> proxyAuths = settings.getGroups(RULE_NAME);
-      if (proxyAuths.size() == 0) return Optional.empty();
-
-      if (proxyAuths.size() != 1)
-        throw new ConfigMalformedException(String.format("Only one '%s' is expected within rule's group", RULE_NAME));
+      Settings proxyAuthSettings = settings.getAsSettings(RULE_NAME);
+      if(proxyAuthSettings.isEmpty()) return Optional.empty();
 
       Map<String, ProxyAuthConfig> proxyAuthConfigByName =
           proxyAuthConfigs.stream().collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
 
-      Settings proxyAuthSettings = Lists.newArrayList(proxyAuths.values()).get(0);
       String proxyAuthConfigName = proxyAuthSettings.get(PROXY_AUTH_CONFIG_ATTRIBUTE);
       if (proxyAuthConfigName == null)
         throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", NAME_ATTRIBUTE, RULE_NAME));

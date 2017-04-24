@@ -18,9 +18,8 @@ package org.elasticsearch.plugin.readonlyrest.configparsing;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
-import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient;
-import org.elasticsearch.plugin.readonlyrest.utils.settings.UserGroupsProviderConfigHelper;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
+import org.elasticsearch.plugin.readonlyrest.utils.settings.ExternalAuthenticationServiceConfigHelper;
 import org.junit.Test;
 
 import java.net.URI;
@@ -30,20 +29,19 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-public class UserGroupsProviderConfigTests {
+public class ExternalAuthenticationServiceConfigTests {
 
   @Test
   public void testParsingCorrectConfiguration() throws URISyntaxException {
-    String expectedName = "groupprovider1";
-    String expectedAuthTokenName = "token";
-    URI expectedGroupsEndpoint = new URI("http://localhost:12000/groups_list");
-    String expectedResponseGroupsJsonPath = "$..groups[?(@.name)].name";
-    Settings settings = UserGroupsProviderConfigHelper.create(expectedName, expectedGroupsEndpoint, expectedAuthTokenName,
-        GroupsProviderServiceHttpClient.TokenPassingMethod.QUERY, expectedResponseGroupsJsonPath);
-    List<Settings> userGroupsProvidersSettings = Lists.newArrayList(settings.getGroups("user_groups_providers").values());
-    UserGroupProviderConfig config = UserGroupProviderConfig.fromSettings(userGroupsProvidersSettings.get(0));
+    String expectedName = "ext1";
+    URI expectedGroupsEndpoint = new URI("http://localhost:12000/ext1");
+    int expectedSuccessStatusCode = 200;
+    Settings settings = ExternalAuthenticationServiceConfigHelper.create(expectedName, expectedGroupsEndpoint,
+        expectedSuccessStatusCode);
+    List<Settings> servicesSettings =
+        Lists.newArrayList(settings.getGroups("external_authentication_service_configs").values());
+    ExternalAuthenticationServiceConfig config = ExternalAuthenticationServiceConfig.fromSettings(servicesSettings.get(0));
     assertEquals(expectedName, config.getName());
     assertNotNull(config.getClient());
   }
-
 }

@@ -33,7 +33,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig.TokenPassingMethod.QUERY;
+import static org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient.TokenPassingMethod.QUERY;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -57,8 +57,8 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
 
   private RuleExitResult createRuleRunMatch(List<String> ruleGroups) throws Exception {
     Settings settings = Settings.builder()
-                                .put("groups_provider_authorization.0.user_groups_provider", "provider1")
-                                .putArray("groups_provider_authorization.0.groups", ruleGroups)
+                                .put("groups_provider_authorization.user_groups_provider", "provider1")
+                                .putArray("groups_provider_authorization.groups", ruleGroups)
                                 .build();
     UserGroupProviderConfig config = UserGroupProviderConfig.fromSettings(
         UserGroupsProviderConfigHelper

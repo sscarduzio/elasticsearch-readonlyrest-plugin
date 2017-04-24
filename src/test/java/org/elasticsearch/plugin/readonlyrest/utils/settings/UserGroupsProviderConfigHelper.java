@@ -17,14 +17,14 @@
 package org.elasticsearch.plugin.readonlyrest.utils.settings;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient;
 
 import java.net.URI;
 
 public class UserGroupsProviderConfigHelper {
 
   public static Settings create(String name, URI groupsEndpoint, String authTokenName,
-      UserGroupProviderConfig.TokenPassingMethod method, String responseGroupsJsonPath) {
+                                GroupsProviderServiceHttpClient.TokenPassingMethod method, String responseGroupsJsonPath) {
     return Settings.builder()
                    .put("user_groups_providers.0.name", name)
                    .put("user_groups_providers.0.groups_endpoint", groupsEndpoint.toString())
@@ -34,7 +34,7 @@ public class UserGroupsProviderConfigHelper {
                    .build();
   }
 
-  private static String tokenPassingMethodToString(UserGroupProviderConfig.TokenPassingMethod method) {
+  private static String tokenPassingMethodToString(GroupsProviderServiceHttpClient.TokenPassingMethod method) {
     switch (method) {
       case QUERY:
         return "QUERY_PARAM";

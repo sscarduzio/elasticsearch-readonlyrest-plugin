@@ -42,8 +42,8 @@ public class LdapAuthenticationAsyncRuleTests {
     LdapConfig<?> config1 = mockLdapConfig("ldap1");
     LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
-                                     .put("ldap_authentication.0.name", "ldap1")
-                                     .build();
+        .put("ldap_authentication.name", "ldap1")
+        .build();
 
     Optional<LdapAuthenticationAsyncRule> rule =
         LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
@@ -55,8 +55,8 @@ public class LdapAuthenticationAsyncRuleTests {
     LdapConfig<?> config1 = mockLdapConfig("ldap1");
     LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
-                                     .put("ldap_authentication", "ldap1")
-                                     .build();
+        .put("ldap_authentication", "ldap1")
+        .build();
 
     Optional<LdapAuthenticationAsyncRule> rule =
         LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
@@ -68,8 +68,8 @@ public class LdapAuthenticationAsyncRuleTests {
     LdapConfig<?> config1 = mockLdapConfig("ldap1");
     LdapConfig<?> config2 = mockLdapConfig("ldap2");
     Settings blockSettings = Settings.builder()
-                                     .put("ldap_authentication.0.name", "ldap3")
-                                     .build();
+        .put("ldap_authentication.name", "ldap3")
+        .build();
 
     LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2));
   }
@@ -79,8 +79,8 @@ public class LdapAuthenticationAsyncRuleTests {
     LdapConfig<?> config1 = mockLdapConfig("ldap1", Optional.empty());
     LdapConfig<?> config2 = mockLdapConfig("ldap2", Optional.empty());
     Settings blockSettings = Settings.builder()
-                                     .put("ldap_authentication.0.name", "ldap1")
-                                     .build();
+        .put("ldap_authentication.name", "ldap1")
+        .build();
 
     LdapAuthenticationAsyncRule rule =
         LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();
@@ -99,8 +99,8 @@ public class LdapAuthenticationAsyncRuleTests {
         Sets.newHashSet(new LdapGroup("group2"))
     )));
     Settings blockSettings = Settings.builder()
-                                     .put("ldap_authentication.0.name", "ldap2")
-                                     .build();
+        .put("ldap_authentication.name", "ldap2")
+        .build();
 
     LdapAuthenticationAsyncRule rule =
         LdapAuthenticationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1, config2)).get();

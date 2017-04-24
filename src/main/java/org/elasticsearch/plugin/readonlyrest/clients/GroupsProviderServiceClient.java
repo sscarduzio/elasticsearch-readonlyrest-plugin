@@ -14,25 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
+package org.elasticsearch.plugin.readonlyrest.clients;
 
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-// to implement in future
-// in authorize method request to external authorization system should be sent
-// with user identifier and serialized groups
-public class ExternalGroupsAuthorizationAsyncRule extends AsyncAuthorization {
+public interface GroupsProviderServiceClient {
 
-  @Override
-  protected CompletableFuture<Boolean> authorize(LoggedUser user) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public String getKey() {
-    throw new UnsupportedOperationException();
-  }
+  CompletableFuture<Set<String>> fetchGroupsFor(LoggedUser user);
 }
