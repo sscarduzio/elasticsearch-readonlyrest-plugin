@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
@@ -26,12 +26,7 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
-import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Set;
-
-import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Created by sscarduzio on 14/04/2017.

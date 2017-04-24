@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
@@ -75,7 +75,7 @@ public class RCTransactionalIndices {
         String restRequestId = rc.getId().split("-")[0];
         Set<String> initialIndices = restLevelIndicesCache.get(restRequestId);
         if (initialIndices != null && !initialIndices.isEmpty()) {
-          logger.info("Finding cached indices for: " + rc.getId() + " "
+          logger.debug("Finding cached indices for: " + rc.getId() + " "
                         + rc.getUnderlyingRequest().getClass().getSimpleName()
                         + ": " + Joiner.on(",").join(initialIndices)
           );
@@ -83,7 +83,7 @@ public class RCTransactionalIndices {
         }
         else {
           restLevelIndicesCache.clear();
-          logger.info("Finding indices for: " + rc.getId() + " " + rc.getUnderlyingRequest().getClass().getSimpleName());
+          logger.debug("Finding indices for: " + rc.getId() + " " + rc.getUnderlyingRequest().getClass().getSimpleName());
           Set<String> indices = findIndices(rc);
           restLevelIndicesCache.put(restRequestId, indices);
           return indices;

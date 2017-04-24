@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 public abstract class Rule {
   protected final RuleExitResult MATCH;
