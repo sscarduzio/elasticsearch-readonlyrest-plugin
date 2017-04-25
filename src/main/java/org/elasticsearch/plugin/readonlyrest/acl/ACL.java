@@ -58,7 +58,6 @@ public class ACL {
   private final Logger logger = Loggers.getLogger(getClass());
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
-  private boolean basicAuthConfigured = false;
 
   public ACL(Client client, ConfigurationHelper conf) {
     Settings s = conf.settings;

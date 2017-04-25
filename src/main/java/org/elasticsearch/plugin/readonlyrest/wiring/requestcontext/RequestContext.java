@@ -33,6 +33,7 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.index.Index;
+import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -251,7 +252,9 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
         indices.mutate(expanded);
       }
       else {
-        indices.mutate(newIndices);
+        throw new IndexNotFoundException(
+          "rewritten indices not found: " + Joiner.on(",").join(newIndices)
+          , getIndices().iterator().next());
       }
     }
     indices.mutate(newIndices);
@@ -368,7 +371,6 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       ", PTH:" + request.path() +
       ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
       ", HDR:" + theHeaders +
-      ", EFF:" + effectsSize() +
       ", HIS:" + hist +
       " }";
   }

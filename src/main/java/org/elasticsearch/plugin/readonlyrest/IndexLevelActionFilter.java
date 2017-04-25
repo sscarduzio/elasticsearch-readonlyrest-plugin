@@ -17,6 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -28,9 +30,12 @@ import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -50,8 +55,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ConfigurationHelper conf,
-      ClusterService clusterService, ThreadPool threadPool,
-      IndexNameExpressionResolver indexResolver) {
+                                ClusterService clusterService, ThreadPool threadPool,
+                                IndexNameExpressionResolver indexResolver) {
     super(settings);
     this.conf = conf;
     this.clusterService = clusterService;
@@ -104,43 +109,47 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     if (reqNull != chanNull) {
       if (chanNull)
         throw new SecurityPermissionException("Problems analyzing the channel object. " +
-            "Have you checked the security permissions?", null);
+                                                "Have you checked the security permissions?", null);
       if (reqNull)
         throw new SecurityPermissionException("Problems analyzing the request object. " +
-            "Have you checked the security permissions?", null);
+                                                "Have you checked the security permissions?", null);
     }
 
     RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool);
     conf.acl.check(rc)
-            .exceptionally(throwable -> {
-              logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
-              throwable.printStackTrace();
-              sendNotAuthResponse(channel);
-              return null;
-            })
-            .thenApply(result -> {
-              if (result == null) return null;
+      .exceptionally(throwable -> {
+        logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+        if (throwable.getCause() instanceof ResourceNotFoundException) {
+          logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
+          sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
+          return null;
+        }
+        throwable.printStackTrace();
+        sendNotAuthResponse(channel);
+        return null;
+      })
+      .thenApply(result -> {
+        if (result == null) return null;
 
-              if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
+        if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
+          try {
+            @SuppressWarnings("unchecked")
+            ActionListener<Response> aclActionListener =
+              (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+            chain.proceed(task, action, request, aclActionListener);
+            return null;
+          } catch (Throwable e) {
+            e.printStackTrace();
+          }
 
-                try {
-                  @SuppressWarnings("unchecked")
-                  ActionListener<Response> aclActionListener =
-                      (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
-                  chain.proceed(task, action, request, aclActionListener);
-                  return null;
-                } catch (Throwable e) {
-                  e.printStackTrace();
-                }
+          chain.proceed(task, action, request, listener);
+          return null;
+        }
 
-                chain.proceed(task, action, request, listener);
-                return null;
-              }
-
-              logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-              sendNotAuthResponse(channel);
-              return null;
-            });
+        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+        sendNotAuthResponse(channel);
+        return null;
+      });
   }
 
   private void sendNotAuthResponse(RestChannel channel) {
@@ -157,6 +166,21 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
 
     channel.sendResponse(resp);
+  }
+
+  private void sendNotFound(ResourceNotFoundException e, RestChannel channel) {
+    try {
+      XContentBuilder b = JsonXContent.contentBuilder();
+      b.startObject();
+      ElasticsearchException.generateFailureXContent(b, ToXContent.EMPTY_PARAMS, e, true);
+      b.endObject();
+      BytesRestResponse resp;
+      resp = new BytesRestResponse(RestStatus.NOT_FOUND, b.string());
+      channel.sendResponse(resp);
+    } catch (Exception e1) {
+      e1.printStackTrace();
+    }
+
   }
 
 }
