@@ -32,6 +32,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConf
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.Verbosity;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,8 +92,11 @@ public class ACL {
           return block.check(rc);
         },
         checkResult -> {
+          Verbosity v = rc.getVerbosity();
           if (checkResult.isMatch()) {
-            logger.info("request: " + rc + " matched block: " + checkResult);
+            if(v.equals(Verbosity.INFO)){
+              logger.info("request: " + rc + " matched block: " + checkResult);
+            }
             rc.commit();
             return true;
           }
@@ -101,7 +105,10 @@ public class ACL {
           }
         },
         nothing -> {
-          logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
+          Verbosity v = rc.getVerbosity();
+          if(v.equals(Verbosity.INFO) || v.equals(Verbosity.ERROR)){
+            logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
+          }
           return BlockExitResult.noMatch();
         }
     );

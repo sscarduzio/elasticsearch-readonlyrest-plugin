@@ -71,6 +71,23 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private final ClusterService clusterService;
   private final IndexNameExpressionResolver indexResolver;
   private final Transactional<Set<String>> indices;
+  private final Transactional<Verbosity> logLevel = new Transactional<Verbosity>("rc-verbosity") {
+    @Override
+    public Verbosity initialize() {
+      return Verbosity.INFO;
+    }
+
+    @Override
+    public Verbosity copy(Verbosity initial) {
+      return initial;
+    }
+
+    @Override
+    public void onCommit(Verbosity value) {
+        return;
+    }
+  };
+
 
   private ThreadPool threadPool;
   private final Transactional<Map<String, String>> responseHeaders =
@@ -151,6 +168,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     responseHeaders.delegateTo(this);
     loggedInUser.delegateTo(this);
     indices.delegateTo(this);
+    logLevel.delegateTo(this);
   }
 
   public void addToHistory(Block block, Set<RuleExitResult> results) {
@@ -192,6 +210,14 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       }
     }
     return content;
+  }
+
+  public void setVerbosity(Verbosity v){
+    logLevel.mutate(v);
+  }
+
+  public Verbosity getVerbosity(){
+    return logLevel.get();
   }
 
   public Set<String> getAllIndicesAndAliases() {
