@@ -29,8 +29,23 @@ In other words... no more proxies! Yay Ponies!
 
 Append either of these snippets to `conf/elasticsearch.yml`
 
-### USE CASE 0: Enable HTTPS
-globally
+### USE CASE: Secure public searchbox from [ransomware](http://code972.com/blog/2017/01/107-dont-be-ransacked-securing-your-elasticsearch-cluster-properly)
+```yml
+readonlyrest:
+    enable: true
+    access_control_rules: 
+    
+    - name: "Accept all requests from localhost"
+      type: allow
+      hosts: [127.0.0.1]
+
+    - name: "::PUBLIC SEARCHBOX::"
+      type: allow
+      indices: ["public"]
+      actions: ["indices:data/read/*"]
+```
+
+### USE CASE: Enable HTTPS globally
 Remember to enable SSL whenever you use HTTP basic auth or API keys so your credentials can't be stolen.
 ```yml
 http.type: ssl_netty4
@@ -44,7 +59,7 @@ readonlyrest:
       key_pass: readonlyrest
 ```
 
-### USE CASE 1: RW all indices from localhost, RO specific indices from elsewhere
+### USE CASE: Full access for localhost, RO some indices from elsewhere
 
 ```yml
 readonlyrest:
@@ -63,7 +78,7 @@ readonlyrest:
       indices: ["product_catalogue-*"] # index aliases are taken in account!
 ```
 
-### USE CASE 2: Multi-tenant Kibana + Authenticated Logstash (various permission levels)
+###  USE CASE: Multi-user Kibana + Authenticated Logstash
 ```yml
 
 readonlyrest:
@@ -82,7 +97,7 @@ readonlyrest:
       # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: logstash:logstash
       type: allow
-      actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+      actions: ["cluster:monitor/main","indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
       indices: ["logstash-*"]
 
     # We trust Kibana's server side process, full access granted via HTTP authentication
@@ -105,13 +120,6 @@ readonlyrest:
       kibana_access: ro
       indices: [".kibana", ".kibana-devnull", "logstash-2017*"]
 
-    # No authentication required to read from "public" index
-    - name: "::PUBLIC SEARCH::"
-      type: allow
-      indices: ["public"]
-      actions: ["indices:data/read/*"]
-
-
 ```
 **Now activate authentication in Kibana server**: let the Kibana daemon connect to ElasticSearch in privileged mode.
 
@@ -126,7 +134,7 @@ This is secure because the users connecting from their browsers will be asked to
 
 **Now activate authenticatoin in Logstash**: [(follow the docs, it's very similar to Kibana!)](https://www.elastic.co/guide/en/shield/current/logstash.html#ls-http-auth-basic)
 
-### USE CASE 3: Group-based access control
+### USE CASE: Group-based access control
 ```yml
 readonlyrest:
     enable: true
@@ -165,9 +173,9 @@ readonlyrest:
 
 ```
 
-### USE CASE 4: LDAP authentication and group-based authorization
+### USE CASE: Authentication via LDAP + Authorization via groups
 
-#### authentication and authorization in one rule
+#### Simpler: authentication and authorization in one rule
 ```yml
 readonlyrest:
     enable: true
@@ -178,8 +186,8 @@ readonlyrest:
     - name: Accept requests from users in group team1 on index1
       type: allow
       ldap_auth:
-          name: "ldap1"                                       # ldap name from 'ldaps' section
-            groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
+          name: "ldap1"                                       # ldap name from below 'ldaps' section
+            groups: ["g1", "g2"]                              # group within 'ou=Groups,dc=example,dc=com'
       indices: ["index1"]
       
     - name: Accept requests from users in group team2 on index2
@@ -194,19 +202,19 @@ readonlyrest:
     
     - name: ldap1
       host: "ldap1.example.com"
-      port: 389                                                 # default 389
-      ssl_enabled: false                                        # default true
-      ssl_trust_all_certs: true                                 # default false
-      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
-      bind_password: "password"                                 # skip for anonymous bind
+      port: 389                                                 # optional, default 389
+      ssl_enabled: false                                        # optional, default true
+      ssl_trust_all_certs: true                                 # optional, default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # optional, skip for anonymous bind
+      bind_password: "password"                                 # optional, skip for anonymous bind
       search_user_base_DN: "ou=People,dc=example,dc=com"
-      user_id_attribute: "uid"                                  # default "uid"
+      user_id_attribute: "uid"                                  # optional, default "uid"
       search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
-      connection_pool_size: 10                                  # default 30
-      connection_timeout_in_sec: 10                             # default 1
-      request_timeout_in_sec: 10                                # default 1
-      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+      unique_member_attribute: "uniqueMember"                   # optional, default "uniqueMember"
+      connection_pool_size: 10                                  # optional, default 30
+      connection_timeout_in_sec: 10                             # optional, default 1
+      request_timeout_in_sec: 10                                # optional, default 1
+      cache_ttl_in_sec: 60                                      # optional, default 0 - cache disabled
     
     - name: ldap2
       host: "ldap2.example2.com"
@@ -215,7 +223,7 @@ readonlyrest:
       search_groups_base_DN: "ou=Groups,dc=example2,dc=com"
 ```
 
-#### authentication and authorization in separate rules
+#### Advanced: authentication and authorization in separate rules
 ```yml
 readonlyrest:
     enable: true
@@ -271,11 +279,13 @@ LDAP configuration requirements:
 - user from `search_user_base_DN` should have `uid` attribute (can be overwritten using `user_id_attribute`)
 - groups from `search_groups_base_DN` should have `uniqueMember` attribute (can be overwritten using `unique_member_attribute`)
 
-(example LDAP config can be found in test /src/test/resources/test_example.ldif)
+(An example OpenLDAP configuration file can be found in our tests: /src/test/resources/test_example.ldif)
 
 Caching can be configured per LDAP client (see `ldap1`) or per rule (see `Accept requests from users in group team2 on index2` rule)
 
-### USE CASE 5: External service authentication
+### USE CASE: External Basic HTTP Authentication
+ReadonlyREST will forward the received `Authorization` header to a website of choice and evaluate the returned HTTP status code to verify the provided credentials.
+This is useful if you already have a web server with all the credentials configured and the credentials are passed over the `Authorization` header.
 
 ```yml
 readonlyrest:
@@ -301,26 +311,25 @@ readonlyrest:
     external_authentication_service_configs:
 
     - name: "ext1"
-      authentication_endpoint: "http://{EXT1}:8080/auth1"
+      authentication_endpoint: "http://external-website1:8080/auth1"
       success_status_code: 200
       cache_ttl_in_sec: 60
 
     - name: "ext2"
-      authentication_endpoint: "http://{EXT2}:8080/auth2"
+      authentication_endpoint: "http://external-website2:8080/auth2"
       success_status_code: 204
       cache_ttl_in_sec: 60
 ```
 
-Authentication process is delegated to external service. Credentials are passed with basic auth header.
-
-To define external authentication service user should specify: 
+To define an external authentication service the user should specify: 
 - `name` for service (then this name is used as id in `service` attribute of `external_authentication` rule)
 - `authentication_endpoint` (GET request)
 - `success_status_code` - authentication response success status code
 
-Cache can be defined at service level or/and at rule level.
+Cache can be defined at the service level or/and at the rule level. In the example, both are shown, but you might opt for setting up either.
 
-### USE CASE 6: External groups provider for group-based authorization
+### USE CASE: External groups provider: XML/JSON service (external authorization) 
+This external authorization connector makes it possible to resolve to what groups a users belong, using an external JSON or XML service.
 
 ```yml
 readonlyrest:
@@ -377,7 +386,7 @@ To define user groups provider you should specify:
 - `auth_token_passed_as` - user identifier can be send using HEADER or QUERY_PARAM
 - `response_groups_json_path` - response can be unrestricted, but you have to specify JSON Path for groups name list (see example in tests)
 
-Cache can be defined at service level or/and at rule level.
+As usual, the cache behaviour can be defined at service level or/and at rule level.
 
 ### 3. Restart Elasticsearch
 
@@ -436,8 +445,7 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```kibana_access``` captures the read-only, read-only + new visualizations/dashboards, read-write use cases of Kibana.
 
 ## All the available rules in detail
-* [List of ACL block rules supported](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules)
-* [List of Actions and their meaning](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#actions-and-apis)
+* [Official website detailed documentation](https://readonlyrest.com/documentation)
 
 ## History
 This project was incepted in [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow").
