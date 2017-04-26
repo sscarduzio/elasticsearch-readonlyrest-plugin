@@ -188,7 +188,7 @@ readonlyrest:
       type: allow
       ldap_auth:
           name: "ldap1"                                       # ldap name from below 'ldaps' section
-            groups: ["g1", "g2"]                              # group within 'ou=Groups,dc=example,dc=com'
+          groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
       indices: ["index1"]
       
     - name: Accept requests from users in group team2 on index2
