@@ -54,7 +54,7 @@ class ACLActionListener implements ActionListener<ActionResponse> {
         // Don't continue with further handlers if at least one says we should not continue
         shouldContinue &= r.onResponse(result, rc, request, response);
       } catch (Exception e) {
-        logger.error(r.getKey() + " errored handling response: " + response);
+        logger.error(r.getKey() + " error handling response: " + response);
         e.printStackTrace();
       }
     }

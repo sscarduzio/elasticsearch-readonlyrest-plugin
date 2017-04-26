@@ -38,6 +38,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
@@ -166,7 +167,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
   // Translate the search results indices
   private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
-    for(SearchHit h : sr.getHits().getHits()){
+    for (SearchHit h : sr.getHits().getHits()) {
       ReflecUtils.setIndices(h, Sets.newHashSet("index"), Sets.newHashSet(rc.getIndices().iterator().next()), logger);
     }
   }
@@ -190,7 +191,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
       return null;
     });
   }
-
 
   @Override
   public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
@@ -219,20 +219,22 @@ public class IndicesRewriteSyncRule extends SyncRule {
       }
     }
 
-    if(response instanceof BulkShardResponse){
+    if (response instanceof BulkShardResponse) {
       BulkShardResponse bsr = (BulkShardResponse) response;
       final Set<String> originalIndex = Sets.newHashSet(rc.getIndices().iterator().next());
-      ReflecUtils.setIndices(bsr.getShardId().getIndex(),Sets.newHashSet("name"), originalIndex,logger);
-      for(BulkItemResponse i : bsr.getResponses()){
-        if(!i.isFailed()){
+      ReflecUtils.setIndices(bsr.getShardId().getIndex(), Sets.newHashSet("name"), originalIndex, logger);
+      for (BulkItemResponse i : bsr.getResponses()) {
+        if (!i.isFailed()) {
           ReflecUtils.setIndices(
             i.getResponse().getShardId().getIndex(),
             Sets.newHashSet("name"),
             originalIndex,
-            logger);
+            logger
+          );
         }
       }
     }
+
     return true;
   }
 

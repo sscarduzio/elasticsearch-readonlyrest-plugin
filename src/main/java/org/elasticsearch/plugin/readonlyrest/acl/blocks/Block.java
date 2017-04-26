@@ -50,6 +50,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSync
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
@@ -204,6 +205,7 @@ public class Block {
     ActionsSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     GroupsSyncRule.fromSettings(s, userList).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     SearchlogSyncRule.fromSettings(s, context).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
+    VerbositySyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
 
     // then we could check potentially slow async rules
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs, context).ifPresent(rules::add);

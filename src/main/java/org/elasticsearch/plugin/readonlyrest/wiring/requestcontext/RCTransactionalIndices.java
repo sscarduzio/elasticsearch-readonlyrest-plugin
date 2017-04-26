@@ -140,7 +140,7 @@ public class RCTransactionalIndices {
         }
         else {
           indices = extractStringArrayFromPrivateMethod("indices", ar, logger);
-          if (indices.length == 0) {
+          if (indices == null || indices.length == 0) {
             indices = extractStringArrayFromPrivateMethod("index", ar, logger);
           }
         }

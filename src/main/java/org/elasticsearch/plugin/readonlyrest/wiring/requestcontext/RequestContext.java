@@ -32,6 +32,7 @@ import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.index.Index;
+import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -70,7 +71,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private final ClusterService clusterService;
   private final ESContext context;
   private final Transactional<Set<String>> indices;
-
+  private final Transactional<Verbosity> logLevel;
   private final Transactional<Map<String, String>> responseHeaders;
 
   private String content = null;
@@ -141,6 +142,23 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       }
     };
 
+    this.logLevel = new Transactional<Verbosity>("rc-verbosity", context) {
+      @Override
+      public Verbosity initialize() {
+        return Verbosity.INFO;
+      }
+
+      @Override
+      public Verbosity copy(Verbosity initial) {
+        return initial;
+      }
+
+      @Override
+      public void onCommit(Verbosity value) {
+        return;
+      }
+    };
+
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
     indices = RCTransactionalIndices.mkInstance(this, context);
@@ -152,6 +170,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     responseHeaders.delegateTo(this);
     loggedInUser.delegateTo(this);
     indices.delegateTo(this);
+    logLevel.delegateTo(this);
   }
 
   public Logger getLogger() {
@@ -199,13 +218,21 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return content;
   }
 
+  public void setVerbosity(Verbosity v) {
+    logLevel.mutate(v);
+  }
+
+  public Verbosity getVerbosity() {
+    return logLevel.get();
+  }
+
   public Set<String> getAllIndicesAndAliases() {
     return clusterService.state().metaData().getAliasAndIndexLookup().keySet();
   }
 
   public Set<String> getIndexMetadata(String s) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
-    return lookup.get(s).getIndices().stream().map( e -> e.getIndexUUID()).collect(Collectors.toSet());
+    return lookup.get(s).getIndices().stream().map(e -> e.getIndexUUID()).collect(Collectors.toSet());
   }
 
   public String getMethod() {
@@ -219,7 +246,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (doesInvolveIndices) {
-      Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(),"a");
+      Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(), "a");
 //
 //      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
 //      String[] concreteIdxNames = indexResolver.concreteIndexNames(
@@ -251,13 +278,14 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
               " If this was intended, set '*' as indices.");
     }
 
-    if(isReadRequest()){
+    if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
-      if(!expanded.isEmpty()){
+      if (!expanded.isEmpty()) {
         indices.mutate(expanded);
-      }
-      else {
-        indices.mutate(newIndices);
+      } else {
+        throw new IndexNotFoundException(
+            "rewritten indices not found: " + Joiner.on(",").join(newIndices)
+            , getIndices().iterator().next());
       }
     }
     indices.mutate(newIndices);
@@ -372,8 +400,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
         ", PTH:" + request.path() +
         ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
         ", HDR:" + theHeaders +
-        ", EFF:" + effectsSize() +
-        ", HIS:" + hist +
+        ",  HIS:" + hist +
         " }";
   }
 

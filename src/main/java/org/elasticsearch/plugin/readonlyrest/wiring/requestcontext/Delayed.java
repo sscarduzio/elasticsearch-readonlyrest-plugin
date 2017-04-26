@@ -44,10 +44,6 @@ public abstract class Delayed {
     effects.add(r);
   }
 
-  public int effectsSize() {
-    return effects.size();
-  }
-
   public int size() {
     return effects.size();
   }
