@@ -1,7 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 
 public class ProxyAuthSettings extends Settings {
 

@@ -3,7 +3,6 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 
 import java.time.Duration;
 import java.util.List;

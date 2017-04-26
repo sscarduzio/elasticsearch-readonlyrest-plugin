@@ -21,7 +21,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;

@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.utils;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
@@ -45,7 +45,7 @@ public class ConfigReaderHelper {
   public static <T> T requiredAttributeValue(String attribute, Settings settings, Function<String, T> converter) {
     String value = settings.get(attribute);
     if (value == null)
-      throw new ConfigMalformedException("Config definition malformed - no value [" + attribute +
+      throw new ConfigMalformedException("Config definition malformed - no req [" + attribute +
           "] attribute");
     return converter.apply(value);
   }

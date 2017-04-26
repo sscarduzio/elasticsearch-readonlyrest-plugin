@@ -24,12 +24,12 @@ import java.util.Objects;
 
 /**
  * The representation of a Transient object that has:
- * - an immutable initial value,
- * - a mutable tranient value
- * - an immutable final value
- * - a custom function that is executed when the final value is being frozen.
+ * - an immutable initial req,
+ * - a mutable tranient req
+ * - an immutable final req
+ * - a custom function that is executed when the final req is being frozen.
  * <p>
- * NB: If a Delayed.reset() is executed, the tranisent value returns to the initial value.
+ * NB: If a Delayed.reset() is executed, the tranisent req returns to the initial req.
  * <p>
  * Created by sscarduzio on 14/04/2017.
  */
@@ -57,7 +57,7 @@ public abstract class Transactional<T> extends Delayed {
        logger.debug(name + " > nothing to be committed..");
        return;
      }
-     logger.debug(name + " > committing final value " + transientValue);
+     logger.debug(name + " > committing final req " + transientValue);
      onCommit(transientValue);
    });
     super.commit();
@@ -68,7 +68,7 @@ public abstract class Transactional<T> extends Delayed {
     initialized = true;
     initialValue = initialize();
     transientValue = copy(this.initialValue);
-    logger.debug(name + " > lazy loading initial value to " + initialValue);
+    logger.debug(name + " > lazy loading initial req to " + initialValue);
   }
 
   public abstract T initialize();

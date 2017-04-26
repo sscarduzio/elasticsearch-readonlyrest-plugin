@@ -12,10 +12,9 @@ import org.elasticsearch.plugin.readonlyrest.settings.LdapAuthenticationRuleSett
 
 import java.io.IOException;
 
+// todo: check ResolvableDeserializer
 public class LdapAuthenticationRuleSettingsDeserializer
     extends StdDeserializer<LdapAuthenticationRuleSettings> implements ResolvableDeserializer {
-
-  private static final long serialVersionUID = 7923585097068641765L;
 
   private final JsonDeserializer<?> defaultDeserializer;
 

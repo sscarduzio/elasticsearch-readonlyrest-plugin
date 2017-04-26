@@ -23,6 +23,7 @@ import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.BaseLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 
 import java.util.List;
 import java.util.Map;

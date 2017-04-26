@@ -1,34 +1,40 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class RorSettings extends Settings {
+public class RorSettings {
 
-  @JsonProperty("enable")
-  private boolean enable = true;
+  private static final String ATTRIBUTE_NAME = "readonlyrest";
 
-  @JsonProperty("response_if_req_forbidden")
-  private String forbiddenMessage;
+  private static final boolean DEFAULT_ENABLE = true;
+  private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
+  private static final List<BlockSettings> DEFAULT_BLOCK_SETTINGS = Lists.newArrayList();  
 
-  @JsonProperty(value = "access_control_rules")
-  private List<BlockSettings> blocksSettings = Lists.newArrayList();
+  private final boolean enable;
+  private final String forbiddenMessage;
+  private final List<BlockSettings> blocksSettings;
 
-  @JsonProperty("ldaps")
-  private List<LdapSettings> ldapsSettings = Lists.newArrayList();
+  static RorSettings from(LinkedHashMap<?, ?> data) {
+    Object ror = data.get(ATTRIBUTE_NAME);
+    if(ror == null) throw new ConfigMalformedException("Not found required '" + ATTRIBUTE_NAME + "' attribute");
+    return new RorSettings(new RawSettings((LinkedHashMap<?, ?>) ror));
+  }
 
-  @JsonProperty("proxy_auth_configs")
-  private List<ProxyAuthSettings> proxyAuthsSettings = Lists.newArrayList();
+  private RorSettings(RawSettings raw) {
+    this.enable = raw.booleanOtp("enable").orElse(DEFAULT_ENABLE);
+    this.forbiddenMessage = raw.stringOpt("response_if_req_forbidden").orElse(DEFAULT_FORBIDDEN_MESSAGE);
+    this.blocksSettings = DEFAULT_BLOCK_SETTINGS;
 
-  @JsonProperty("user_groups_providers")
-  private List<UserGroupsProviderSettings> userGroupsProviderSettings = Lists.newArrayList();
+    LdapsSettings.from(raw);
+  }
+
+  public boolean isEnabled() {
+    return enable;
+  }
 
   public String getForbiddenMessage() {
     return forbiddenMessage;
@@ -36,38 +42,5 @@ public class RorSettings extends Settings {
 
   public ImmutableList<BlockSettings> getBlocksSettings() {
     return ImmutableList.copyOf(blocksSettings);
-  }
-
-  @Override
-  public void configure() {
-    blocksSettings.forEach(b -> {
-      b.updateWithLdapSettings(ldapsSettings);
-    });
-  }
-
-  @Override
-  protected void validate() {
-    blocksSettings.forEach(BlockSettings::validate);
-
-    ldapsSettings.forEach(LdapSettings::validate);
-    proxyAuthsSettings.forEach(ProxyAuthSettings::validate);
-    userGroupsProviderSettings.forEach(UserGroupsProviderSettings::validate);
-
-    validateNoDuplicates("ldaps",
-        ldapsSettings.stream().map(LdapSettings::getName).collect(Collectors.toList()));
-    validateNoDuplicates("proxy_auth_configs",
-        proxyAuthsSettings.stream().map(ProxyAuthSettings::getName).collect(Collectors.toList()));
-    validateNoDuplicates("user_groups_providers",
-        userGroupsProviderSettings.stream().map(UserGroupsProviderSettings::getName).collect(Collectors.toList()));
-  }
-
-  private void validateNoDuplicates(String section, List<String> names) {
-    List<String> duplicates = names.stream()
-        .filter(name -> Collections.frequency(names, name) > 1)
-        .collect(Collectors.toList());
-    if(!duplicates.isEmpty()) {
-      throw new ConfigMalformedException("Duplicates found in '" + section + "' definitions: " +
-          Joiner.on(",").join(duplicates));
-    }
   }
 }

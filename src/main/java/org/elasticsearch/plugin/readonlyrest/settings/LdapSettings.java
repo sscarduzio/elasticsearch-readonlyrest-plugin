@@ -1,7 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -52,6 +51,10 @@ public class LdapSettings extends Settings {
 
   @JsonProperty("cache_ttl_in_sec")
   private int cacheTtlInSec = 0;
+
+  static LdapSettings from(RawSettings data) {
+    return null;
+  }
 
   public String getName() {
     return name;

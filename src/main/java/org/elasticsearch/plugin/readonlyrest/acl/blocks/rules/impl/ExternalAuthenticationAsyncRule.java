@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 

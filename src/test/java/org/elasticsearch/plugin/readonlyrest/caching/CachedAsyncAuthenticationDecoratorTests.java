@@ -61,7 +61,7 @@ public class CachedAsyncAuthenticationDecoratorTests {
 
   @Test
   public void testIfAsyncAuthenticationRuleIsNotWrappedInCacheIfOneIsNotEnabled() {
-    Settings settings = Settings.builder().put("other_setting", "value").build();
+    Settings settings = Settings.builder().put("other_setting", "req").build();
     BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
     assertEquals(dummyAsyncRule, authentication);
   }

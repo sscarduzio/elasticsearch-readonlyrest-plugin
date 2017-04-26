@@ -61,7 +61,7 @@ public class SessionMaxIdleSyncRule extends SyncRule {
     Long timeMill = timeIntervalStringToMillis(tmp);
 
     if (timeMill <= 0) {
-      throw new ElasticsearchParseException(getKey() + " value must be greater than zero");
+      throw new ElasticsearchParseException(getKey() + " req must be greater than zero");
     }
     maxIdleMillis = timeMill;
   }

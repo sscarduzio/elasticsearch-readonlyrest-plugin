@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceClient;
 import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient;
 import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient.TokenPassingMethod;

@@ -26,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 
 import java.util.List;
 
