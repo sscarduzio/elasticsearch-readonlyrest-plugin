@@ -131,7 +131,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       .thenApply(result -> {
         if (result == null) return null;
 
-        if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
+        if (result.isMatch() && Block.Policy.ALLOW.equals(result.getBlock().getPolicy())) {
           try {
             @SuppressWarnings("unchecked")
             ActionListener<Response> aclActionListener =
@@ -148,6 +148,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
         logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
         sendNotAuthResponse(channel);
+
         return null;
       });
   }

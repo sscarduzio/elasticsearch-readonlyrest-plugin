@@ -19,7 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
@@ -30,8 +29,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.Verbosity;
 
 import java.util.ArrayList;
@@ -67,75 +66,78 @@ public class ACL {
     List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values(), proxyAuthConfigs);
     LdapConfigs ldaps = LdapConfigs.fromSettings(LDAPS_PREFIX, s);
     List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
-        s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
+      s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
     );
     List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs =
-        parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
+      parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
     blocksMap.entrySet()
-             .forEach(entry -> {
-               Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
-                   externalAuthenticationServiceConfigs, logger);
-               blocks.add(block);
-               if (block.isAuthHeaderAccepted()) {
-                 ConfigurationHelper.setRequirePassword(true);
-               }
-               logger.info("ADDING #" + entry.getKey() + ":\t" + block.toString());
-             });
+      .forEach(entry -> {
+        Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
+                                externalAuthenticationServiceConfigs, logger
+        );
+        blocks.add(block);
+        if (block.isAuthHeaderAccepted()) {
+          ConfigurationHelper.setRequirePassword(true);
+        }
+        logger.info("ADDING #" + entry.getKey() + ":\t" + block.toString());
+      });
   }
 
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
     logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
-        blocks.iterator(),
-        block -> {
-          rc.reset();
-          return block.check(rc);
-        },
-        checkResult -> {
-          Verbosity v = rc.getVerbosity();
-          if (checkResult.isMatch()) {
-            if(v.equals(Verbosity.INFO)){
-              logger.info("request: " + rc + " matched block: " + checkResult);
-            }
+      blocks.iterator(),
+      block -> {
+        rc.reset();
+        return block.check(rc);
+      },
+      checkResult -> {
+        Verbosity v = rc.getVerbosity();
+        if (checkResult.isMatch()) {
+          if (v.equals(Verbosity.INFO)) {
+            logger.info("request: " + rc + " matched block: " + checkResult);
+          }
+          if(checkResult.getBlock().getPolicy().equals(Block.Policy.ALLOW)){
             rc.commit();
-            return true;
           }
-          else {
-            return false;
-          }
-        },
-        nothing -> {
-          Verbosity v = rc.getVerbosity();
-          if(v.equals(Verbosity.INFO) || v.equals(Verbosity.ERROR)){
-            logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
-          }
-          return BlockExitResult.noMatch();
+          return true;
         }
+        else {
+          return false;
+        }
+      },
+      nothing -> {
+        Verbosity v = rc.getVerbosity();
+        if (v.equals(Verbosity.INFO) || v.equals(Verbosity.ERROR)) {
+          logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
+        }
+        return BlockExitResult.noMatch();
+      }
     );
   }
 
   private List<User> parseUserSettings(Collection<Settings> userSettings, List<ProxyAuthConfig> proxyAuthConfigs) {
     return userSettings.stream()
-                       .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
-                       .collect(Collectors.toList());
+      .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
+      .collect(Collectors.toList());
   }
 
   private List<ProxyAuthConfig> parseProxyAuthSettings(Collection<Settings> proxyAuthSettings) {
     return proxyAuthSettings.stream()
-                            .map(ProxyAuthConfig::fromSettings)
-                            .collect(Collectors.toList());
+      .map(ProxyAuthConfig::fromSettings)
+      .collect(Collectors.toList());
   }
 
   private List<UserGroupProviderConfig> parseUserGroupsProviderSettings(Collection<Settings> groupProvidersSettings) {
     return groupProvidersSettings.stream()
-                                 .map(UserGroupProviderConfig::fromSettings)
-                                 .collect(Collectors.toList());
+      .map(UserGroupProviderConfig::fromSettings)
+      .collect(Collectors.toList());
   }
 
   private List<ExternalAuthenticationServiceConfig> parseExternalAuthenticationServiceSettings(
-      Collection<Settings> ExternalAuthenticationServiceSettings) {
+    Collection<Settings> ExternalAuthenticationServiceSettings) {
     return ExternalAuthenticationServiceSettings.stream()
-        .map(ExternalAuthenticationServiceConfig::fromSettings)
-        .collect(Collectors.toList());
+      .map(ExternalAuthenticationServiceConfig::fromSettings)
+      .collect(Collectors.toList());
   }
 }
