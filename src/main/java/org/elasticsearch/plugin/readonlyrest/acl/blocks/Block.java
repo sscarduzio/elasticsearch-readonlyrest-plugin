@@ -85,11 +85,8 @@ public class Block {
                List<UserGroupProviderConfig> groupsProviderConfigs,
                List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs,Logger logger) {
     this.name = settings.get("name");
-    String sPolicy = settings.get("type");
+    String sPolicy = settings.get("type", Policy.ALLOW.name());
     this.logger = logger;
-    if (sPolicy == null) {
-      sPolicy = Policy.ALLOW.name();
-    }
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
