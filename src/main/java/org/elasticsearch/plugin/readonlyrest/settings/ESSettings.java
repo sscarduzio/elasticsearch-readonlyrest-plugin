@@ -7,7 +7,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Map;
 
-public class ESSettings extends Settings {
+public class ESSettings {
 
   private RorSettings rorSettings;
 

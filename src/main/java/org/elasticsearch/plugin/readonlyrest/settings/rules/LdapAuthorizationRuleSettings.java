@@ -1,16 +1,16 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 
 import java.time.Duration;
 import java.util.List;
 
-public class LdapAuthRuleSettings implements RuleSettings {
+public class LdapAuthorizationRuleSettings  implements RuleSettings {
 
-  public static final String ATTRIBUTE_NAME = "ldap_auth";
+  public static final String ATTRIBUTE_NAME = "ldap_authorization";
 
   private static final String LDAP_NAME = "name";
   private static final String GROUPS = "groups";
@@ -23,17 +23,17 @@ public class LdapAuthRuleSettings implements RuleSettings {
   private final LdapSettings ldapSettings;
 
   @SuppressWarnings("unchecked")
-  public static LdapAuthRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
+  public static LdapAuthorizationRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
     String ldapName = settings.stringReq(LDAP_NAME);
     List<String> groups = (List<String>) settings.notEmptyListReq(GROUPS);
-    return new LdapAuthRuleSettings(
+    return new LdapAuthorizationRuleSettings(
         ldapSettingsCollection.get(ldapName),
         groups,
         settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
   }
 
-  private LdapAuthRuleSettings(LdapSettings settings, List<String> groups, Duration cacheTtl) {
+  private LdapAuthorizationRuleSettings(LdapSettings settings, List<String> groups, Duration cacheTtl) {
     this.groups = groups;
     this.cacheTtl = cacheTtl;
     this.ldapSettings = settings;

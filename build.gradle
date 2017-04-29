@@ -83,11 +83,6 @@ configurations.all {
 
 dependencies {
 
-    // todo: remove jackson
-    compile 'com.fasterxml.jackson.core:jackson-annotations:2.8.6'
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
-    compile 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.8.6'
-    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.6'
     compile 'com.google.guava:guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'
     compile 'com.unboundid:unboundid-ldapsdk:3.2.0'

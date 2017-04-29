@@ -1,40 +1,38 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 
 import java.time.Duration;
-import java.util.List;
 
-public class LdapAuthRuleSettings implements RuleSettings {
+public class LdapAuthenticationRuleSettings implements RuleSettings {
 
-  public static final String ATTRIBUTE_NAME = "ldap_auth";
+  public static final String ATTRIBUTE_NAME = "ldap_authentication";
 
   private static final String LDAP_NAME = "name";
-  private static final String GROUPS = "groups";
   private static final String CACHE = "cache_ttl_in_sec";
 
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
 
-  private final List<String> groups;
   private final Duration cacheTtl;
   private final LdapSettings ldapSettings;
 
   @SuppressWarnings("unchecked")
-  public static LdapAuthRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
+  public static LdapAuthenticationRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
     String ldapName = settings.stringReq(LDAP_NAME);
-    List<String> groups = (List<String>) settings.notEmptyListReq(GROUPS);
-    return new LdapAuthRuleSettings(
+    return new LdapAuthenticationRuleSettings(
         ldapSettingsCollection.get(ldapName),
-        groups,
         settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
   }
 
-  private LdapAuthRuleSettings(LdapSettings settings, List<String> groups, Duration cacheTtl) {
-    this.groups = groups;
+  public static LdapAuthenticationRuleSettings from(String ldapName, LdapSettingsCollection ldapSettingsCollection) {
+    return new LdapAuthenticationRuleSettings(ldapSettingsCollection.get(ldapName), DEFAULT_CACHE_TTL);
+  }
+
+  private LdapAuthenticationRuleSettings(LdapSettings settings, Duration cacheTtl) {
     this.cacheTtl = cacheTtl;
     this.ldapSettings = settings;
   }
@@ -47,7 +45,4 @@ public class LdapAuthRuleSettings implements RuleSettings {
     return ldapSettings;
   }
 
-  public List<String> getGroups() {
-    return groups;
-  }
 }

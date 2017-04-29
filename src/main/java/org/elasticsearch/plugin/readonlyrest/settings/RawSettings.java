@@ -1,5 +1,8 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,11 +28,11 @@ public class RawSettings {
   @SuppressWarnings("unchecked")
   public <T> T req(String attr) {
     Object val = raw.get(attr);
-    if(val == null) throw new ConfigMalformedException("Not find required attribute '" + attr + "'");
+    if (val == null) throw new ConfigMalformedException("Not find required attribute '" + attr + "'");
     return (T) val;
   }
 
-  public Optional<Boolean> booleanOtp(String attr) {
+  public Optional<Boolean> booleanOpt(String attr) {
     return opt(attr);
   }
 
@@ -53,14 +56,44 @@ public class RawSettings {
     return req(attr);
   }
 
-  public Optional<List<?>> listOpt(String attr) {
-    return opt(attr);
+  public Optional<List<?>> notEmptyListOpt(String attr) {
+    return opt(attr).flatMap(obj -> ((List<?>) obj).isEmpty() ? Optional.empty() : Optional.of((List<?>) obj));
   }
 
-  public List<?> listReq(String attr) {
-    return req(attr);
+  public List<?> notEmptyListReq(String attr) {
+    List<?> nel = req(attr);
+    if (nel.isEmpty()) throw new ConfigMalformedException("List value of'" + attr + "' attribute cannot be empty");
+    return nel;
   }
-  
+
+  public Optional<Set<?>> notEmptySetOpt(String attr) {
+    return opt(attr).flatMap(obj -> ((Set<?>) obj).isEmpty() ? Optional.empty() : Optional.of((Set<?>) obj));
+  }
+
+  public Set<?> notEmptySetReq(String attr) {
+    HashSet<?> set = new HashSet<>(req(attr));
+    if (set.isEmpty()) throw new ConfigMalformedException("Set value of'" + attr + "' attribute cannot be empty");
+    return set;
+  }
+
+  public Optional<URI> uriOpt(String attr) {
+    return stringOpt(attr).flatMap(s -> {
+      try {
+        return Optional.of(new URI(s));
+      } catch (URISyntaxException e) {
+        return Optional.empty();
+      }
+    });
+  }
+
+  public URI uriReq(String attr) {
+    try {
+      return new URI(stringReq(attr));
+    } catch (URISyntaxException e) {
+      throw new ConfigMalformedException("Cannot convert '" + attr + "' to URI");
+    }
+  }
+
   public RawSettings inner(String attr) {
     return new RawSettings(req(attr));
   }

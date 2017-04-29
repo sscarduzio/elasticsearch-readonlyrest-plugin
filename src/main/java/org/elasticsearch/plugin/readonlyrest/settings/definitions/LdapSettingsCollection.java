@@ -1,7 +1,8 @@
-package org.elasticsearch.plugin.readonlyrest.settings;
+package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import com.google.common.collect.Lists;
-import org.jooq.lambda.Seq;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
 import java.util.List;
 import java.util.Map;
@@ -10,25 +11,25 @@ import java.util.stream.Collectors;
 
 import static org.jooq.lambda.Seq.seq;
 
-public class LdapsSettings {
+public class LdapSettingsCollection {
 
   private static final String ATTRIBUTE_NAME = "ldaps";
 
   private final Map<String, LdapSettings> ldapSettingsMap;
 
   @SuppressWarnings("unchecked")
-  static LdapsSettings from(RawSettings data) {
-    return data.listOpt(ATTRIBUTE_NAME)
+  public static LdapSettingsCollection from(RawSettings data) {
+    return data.notEmptyListOpt(ATTRIBUTE_NAME)
         .map(list ->
             list.stream()
-                .map(l -> LdapSettings.from(new RawSettings((Map<String, ?>) l)))
+                .map(l -> new LdapSettings(new RawSettings((Map<String, ?>) l)))
                 .collect(Collectors.toList())
         )
-        .map(LdapsSettings::new)
-        .orElse(new LdapsSettings(Lists.newArrayList()));
+        .map(LdapSettingsCollection::new)
+        .orElse(new LdapSettingsCollection(Lists.newArrayList()));
   }
 
-  private LdapsSettings(List<LdapSettings> ldapSettings) {
+  private LdapSettingsCollection(List<LdapSettings> ldapSettings) {
     validate(ldapSettings);
     this.ldapSettingsMap = seq(ldapSettings).toMap(LdapSettings::getName, Function.identity());
   }
