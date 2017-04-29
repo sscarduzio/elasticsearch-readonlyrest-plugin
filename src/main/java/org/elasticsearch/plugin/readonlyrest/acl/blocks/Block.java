@@ -88,9 +88,7 @@ public class Block {
     String sPolicy = settings.get("type");
     this.logger = logger;
     if (sPolicy == null) {
-      throw new RuleConfigurationError(
-          "The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() +
-              ". If this field is correct, check the YAML indentation is correct.", null);
+      sPolicy = Policy.ALLOW.name();
     }
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
