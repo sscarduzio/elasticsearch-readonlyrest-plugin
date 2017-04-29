@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.deser.ResolvableDeserializer;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import org.elasticsearch.plugin.readonlyrest.settings.LdapAuthRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
 
 import java.io.IOException;
 
@@ -26,7 +26,6 @@ public class LdapAuthRuleSettingsDeserializer
       throws IOException, JsonProcessingException {
 
     LdapAuthRuleSettings settings = defaultDeserializer.deserialize(jp, ctxt);
-    settings.getName();
 
     return settings;
   }

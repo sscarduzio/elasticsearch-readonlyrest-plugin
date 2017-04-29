@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.IndicesRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.LdapAuthRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.LdapAuthenticationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.UserGroupsProviderSettings;
 

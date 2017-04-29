@@ -5,22 +5,23 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class ESSettings extends Settings {
 
   private RorSettings rorSettings;
 
+  @SuppressWarnings("unchecked")
   public static ESSettings loadFrom(File file) throws IOException {
     Yaml yaml = new Yaml();
     try (FileInputStream stream = new FileInputStream(file)) {
-      LinkedHashMap<?, ?> parsedData = (LinkedHashMap<?, ?>) yaml.load(stream);
-      return new ESSettings(parsedData);
+      Map<String, ?> parsedData = (Map<String, ?>) yaml.load(stream);
+      return new ESSettings(new RawSettings(parsedData));
     }
   }
 
-  private ESSettings(LinkedHashMap<?, ?> data) {
-    this.rorSettings = RorSettings.from(data);
+  private ESSettings(RawSettings settings) {
+    this.rorSettings = RorSettings.from(settings);
   }
 
   public RorSettings getRorSettings() {

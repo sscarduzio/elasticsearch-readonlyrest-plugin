@@ -53,7 +53,9 @@ public class LdapSettings extends Settings {
   private int cacheTtlInSec = 0;
 
   static LdapSettings from(RawSettings data) {
-    return null;
+    LdapSettings l = new LdapSettings(); // todo: implement
+    l.name = "ldap2";
+    return l;
   }
 
   public String getName() {

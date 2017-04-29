@@ -17,16 +17,16 @@ readonlyrest:
     # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
 
-    - name: "::Facebook posts::"
-      ldap_auth:
-        name: "ldap2"
-        groups: ["group3"]
-      indices: ["twitter"]
-
-#    - name: "::Facebook posts::2"
+#    - name: "::Facebook posts::"
 #      ldap_auth:
 #        name: "ldap2"
 #        groups: ["group3"]
+#      indices: ["twitter"]
+
+    - name: "::Facebook posts::2"
+      ldap_auth:
+        name: "ldap2"
+        groups: ["group3"]
 
     ldaps:
 
