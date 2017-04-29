@@ -90,13 +90,8 @@ public class Block {
                ESContext context) {
     this.logger = context.logger(getClass());
     this.name = settings.get("name");
+    String sPolicy = settings.get("type", Policy.ALLOW.name());
     this.context = context;
-    String sPolicy = settings.get("type");
-    if (sPolicy == null) {
-      throw new RuleConfigurationError(
-          "The field \"type\" is mandatory and should be either of " + Block.Policy.valuesString() +
-              ". If this field is correct, check the YAML indentation is correct.", null);
-    }
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
