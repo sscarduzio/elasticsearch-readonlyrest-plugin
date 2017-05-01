@@ -18,8 +18,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
-import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
@@ -54,7 +54,7 @@ public class KibanaHideAppsSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     Optional<LoggedUser> loggedInUser = rc.getLoggedInUser();
-    if (Strings.isEmpty(hiddenApps) || !loggedInUser.isPresent()) {
+    if (Strings.isNullOrEmpty(hiddenApps) || !loggedInUser.isPresent()) {
       return MATCH;
     }
 

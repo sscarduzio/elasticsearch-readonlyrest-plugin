@@ -60,7 +60,7 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
   private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromExtendedSettings(LdapConfigs ldapConfigs) {
     return settings -> {
       Settings ldapSettings = settings.getAsSettings(RULE_NAME);
-      if(ldapSettings.isEmpty()) return Optional.empty();
+      if(ldapSettings.getAsStructuredMap().isEmpty()) return Optional.empty();
 
       String ldapName = ldapSettings.get(LDAP_NAME);
       if (ldapName == null)

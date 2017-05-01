@@ -28,12 +28,13 @@ import java.util.List;
  * Created by sscarduzio on 14/04/2017.
  */
 public abstract class Delayed {
-  private static Logger logger = Loggers.getLogger(Delayed.class);
+  private static ESLogger logger = Loggers.getLogger(Delayed.class);
   protected final String name;
   private List<Runnable> effects = new LinkedList<>();
   private List<Delayed> delegates = new LinkedList<>();
   private Boolean committed = false;
   private Boolean delegated = false;
+
   Delayed(String name) {
     this.name = name;
   }
@@ -58,10 +59,9 @@ public abstract class Delayed {
       Runnable eff = it.next();
       try {
         eff.run();
-      }catch(Throwable t){
+      } catch (Throwable t) {
         t.printStackTrace();
-      }
-      finally {
+      } finally {
         logger.debug(name + " > committed.");
       }
       it.remove();

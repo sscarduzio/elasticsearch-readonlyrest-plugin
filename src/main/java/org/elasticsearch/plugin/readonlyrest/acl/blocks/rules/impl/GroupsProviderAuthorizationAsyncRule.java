@@ -50,7 +50,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
       List<UserGroupProviderConfig> groupProviderConfigs)
       throws ConfigMalformedException {
     Settings groupBaseAuthSettings = s.getAsSettings(RULE_NAME);
-    if(groupBaseAuthSettings.isEmpty()) return Optional.empty();
+    if(groupBaseAuthSettings.getAsStructuredMap().isEmpty()) return Optional.empty();
 
     Map<String, UserGroupProviderConfig> userGroupProviderConfigByName =
         groupProviderConfigs.stream().collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));

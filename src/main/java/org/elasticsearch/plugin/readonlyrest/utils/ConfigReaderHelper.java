@@ -113,7 +113,7 @@ public class ConfigReaderHelper {
     Settings innerSettings = s.getAsSettings(ruleName);
     String simpleValue = s.get(ruleName);
     String[] simpleArray = s.getAsArray(ruleName);
-    if (innerSettings.isEmpty()) {
+    if (innerSettings.getAsStructuredMap().isEmpty()) {
       return simpleValue != null
           ? Optional.of(RuleSchema.SIMPLE)
           : Optional.empty();

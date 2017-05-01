@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchSecurityException;
@@ -29,7 +30,6 @@ import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.index.Index;
@@ -204,7 +204,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   public String getContent() {
     if (content == null) {
       try {
-        content = request.content().utf8ToString();
+        content = new String(request.content().toBytes());
       } catch (Exception e) {
         content = "";
       }
@@ -279,8 +279,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       }
       else {
         throw new IndexNotFoundException(
-          "rewritten indices not found: " + Joiner.on(",").join(newIndices)
-          , getIndices().iterator().next());
+          "rewritten indices not found: " + Joiner.on(",").join(newIndices));
       }
     }
     indices.mutate(newIndices);
@@ -291,7 +290,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   }
 
   public Integer scanSubRequests(
-    final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer, Logger logger) {
+    final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer, ESLogger logger) {
 
     List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 

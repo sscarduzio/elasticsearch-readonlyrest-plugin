@@ -34,7 +34,7 @@ import org.elasticsearch.common.logging.Loggers;
 
 public abstract class Transactional<T> extends Delayed {
 
-  private static Logger logger = Loggers.getLogger(Transactional.class);
+  private static ESLogger logger = Loggers.getLogger(Transactional.class);
 
   Boolean initialized = false;
   private T initialValue;
@@ -46,17 +46,17 @@ public abstract class Transactional<T> extends Delayed {
 
   @Override
   public void commit() {
-   delay( () -> {
-     if (!initialized) {
-       lazyLoad();
-     }
-     if (transientValue == null && initialValue == null || transientValue.equals(initialValue)) {
-       logger.debug(name + " > nothing to be committed..");
-       return;
-     }
-     logger.debug(name + " > committing final value " + transientValue);
-     onCommit(transientValue);
-   });
+    delay(() -> {
+      if (!initialized) {
+        lazyLoad();
+      }
+      if (transientValue == null && initialValue == null || transientValue.equals(initialValue)) {
+        logger.debug(name + " > nothing to be committed..");
+        return;
+      }
+      logger.debug(name + " > committing final value " + transientValue);
+      onCommit(transientValue);
+    });
     super.commit();
   }
 

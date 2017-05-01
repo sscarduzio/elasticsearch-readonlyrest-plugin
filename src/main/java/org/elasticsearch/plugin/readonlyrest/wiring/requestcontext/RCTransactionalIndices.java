@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
+import com.google.common.collect.ObjectArrays;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
@@ -100,21 +101,21 @@ public class RCTransactionalIndices {
           MultiGetRequest cir = (MultiGetRequest) ar;
 
           for (MultiGetRequest.Item ir : cir.getItems()) {
-            indices = ArrayUtils.concat(indices, ir.indices(), String.class);
+            indices = ObjectArrays.concat(indices, ir.indices(), String.class);
           }
         }
         else if (ar instanceof MultiSearchRequest) {
           MultiSearchRequest cir = (MultiSearchRequest) ar;
 
           for (SearchRequest ir : cir.requests()) {
-            indices = ArrayUtils.concat(indices, ir.indices(), String.class);
+            indices = ObjectArrays.concat(indices, ir.indices(), String.class);
           }
         }
         else if (ar instanceof MultiTermVectorsRequest) {
           MultiTermVectorsRequest cir = (MultiTermVectorsRequest) ar;
 
           for (TermVectorsRequest ir : cir.getRequests()) {
-            indices = ArrayUtils.concat(indices, ir.indices(), String.class);
+            indices = ObjectArrays.concat(indices, ir.indices(), String.class);
           }
         }
         else if (ar instanceof BulkRequest) {
@@ -125,7 +126,7 @@ public class RCTransactionalIndices {
             if (docIndices.length == 0) {
               docIndices = extractStringArrayFromPrivateMethod("index", ir, logger);
             }
-            indices = ArrayUtils.concat(indices, docIndices, String.class);
+            indices = ObjectArrays.concat(indices, docIndices, String.class);
           }
         }
         else if (ar instanceof IndexRequest) {
@@ -193,7 +194,7 @@ public class RCTransactionalIndices {
             fields.stream().forEach(f -> {
               f.setAccessible(true);
               try {
-                f.set(bsr.shardId(), new Index(singleIndex, uuid));
+                f.set(bsr.shardId(), new Index(singleIndex));
               } catch (Throwable e) {
                 e.printStackTrace();
               }

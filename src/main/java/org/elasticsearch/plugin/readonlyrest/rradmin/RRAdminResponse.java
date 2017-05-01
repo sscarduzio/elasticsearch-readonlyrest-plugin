@@ -22,12 +22,12 @@ package org.elasticsearch.plugin.readonlyrest.rradmin;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.common.xcontent.ToXContentObject;
+import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 import java.io.IOException;
 
-public class RRAdminResponse extends ActionResponse implements ToXContentObject {
+public class RRAdminResponse extends ActionResponse implements ToXContent {
 
   private final Exception exception;
 

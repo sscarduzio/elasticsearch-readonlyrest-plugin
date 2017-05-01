@@ -74,7 +74,7 @@ import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsync
 public class Block {
   private final String name;
   private final Policy policy;
-  private final Logger logger;
+  private final ESLogger logger;
   private final Set<AsyncRule> conditionsToCheck;
   private boolean authHeaderAccepted;
 
@@ -83,7 +83,7 @@ public class Block {
                LdapConfigs ldapConfigs,
                List<ProxyAuthConfig> proxyAuthConfigs,
                List<UserGroupProviderConfig> groupsProviderConfigs,
-               List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs,Logger logger) {
+               List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs, ESLogger logger) {
     this.name = settings.get("name");
     String sPolicy = settings.get("type", Policy.ALLOW.name());
     this.logger = logger;

@@ -87,7 +87,7 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
       List<ProxyAuthConfig> proxyAuthConfigs) {
     return settings -> {
       Settings proxyAuthSettings = settings.getAsSettings(RULE_NAME);
-      if(proxyAuthSettings.isEmpty()) return Optional.empty();
+      if(proxyAuthSettings.getAsStructuredMap().isEmpty()) return Optional.empty();
 
       Map<String, ProxyAuthConfig> proxyAuthConfigByName =
           proxyAuthConfigs.stream().collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));

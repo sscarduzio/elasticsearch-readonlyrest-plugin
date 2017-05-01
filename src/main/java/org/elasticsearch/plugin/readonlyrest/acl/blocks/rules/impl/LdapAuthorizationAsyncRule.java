@@ -53,7 +53,7 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   static Optional<LdapAuthorizationAsyncRule> fromSettings(String ruleName, Settings s,
       LdapConfigs ldapConfigs) throws ConfigMalformedException {
     Settings ldapSettings = s.getAsSettings(ruleName);
-    if(ldapSettings.isEmpty()) return Optional.empty();
+    if(ldapSettings.getAsStructuredMap().isEmpty()) return Optional.empty();
 
     String name = ldapSettings.get(LDAP_NAME);
     if (name == null)

@@ -18,11 +18,11 @@
 package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
@@ -33,7 +33,7 @@ import java.util.Set;
  */
 public class SubRCTransactionalIndices extends Transactional<Set<String>> {
 
-  private static Logger logger = Loggers.getLogger(SubRCTransactionalIndices.class);
+  private static ESLogger logger = Loggers.getLogger(SubRCTransactionalIndices.class);
   private final SubRequestContext src;
 
   SubRCTransactionalIndices(SubRequestContext src) {
@@ -74,14 +74,14 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
         throw new ElasticsearchException(
           "need to have one exactly one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
     if (originalSubReq instanceof SearchRequest || originalSubReq instanceof DocWriteRequest<?>) {
       if (newIndices.isEmpty()) {
         throw new ElasticsearchException(
           "need to have at least one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
   }
 

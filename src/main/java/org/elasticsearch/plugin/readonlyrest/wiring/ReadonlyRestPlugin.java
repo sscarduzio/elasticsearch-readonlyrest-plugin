@@ -26,7 +26,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
@@ -127,11 +126,6 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
     };
     executor.schedule(task, 200, TimeUnit.MILLISECONDS);
     return fromSup;
-  }
-
-  @Override
-  public List<Setting<?>> getSettings() {
-    return ConfigurationHelper.allowedSettings();
   }
 
   @Override

@@ -17,11 +17,11 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
+import com.google.common.collect.Sets;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.util.set.Sets;
 
 import java.util.HashSet;
 import java.util.Set;

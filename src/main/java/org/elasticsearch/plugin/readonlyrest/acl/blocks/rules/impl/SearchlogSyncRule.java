@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -79,7 +80,7 @@ public class SearchlogSyncRule extends SyncRule {
               ", USR:" + rc.getLoggedInUser() +
               ", IDX:" + Arrays.toString(searchRequest.indices()) +
               ", TYP:" + Arrays.toString(searchRequest.types()) +
-              ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
+              ", SRC:" + convertToJson(new BytesArray(searchRequest.source().toBytes())) +
               ", HIT:" + searchResponse.getHits().totalHits() +
               ", RES:" + searchResponse.getHits().hits().length +
               " }"

@@ -180,7 +180,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     try {
       XContentBuilder b = JsonXContent.contentBuilder();
       b.startObject();
-      ElasticsearchException.generateFailureXContent(b, ToXContent.EMPTY_PARAMS, e, true);
+      ElasticsearchException.renderThrowable(b, ToXContent.EMPTY_PARAMS, e);
       b.endObject();
       BytesRestResponse resp;
       resp = new BytesRestResponse(NOT_FOUND, "application/json", b.string());
