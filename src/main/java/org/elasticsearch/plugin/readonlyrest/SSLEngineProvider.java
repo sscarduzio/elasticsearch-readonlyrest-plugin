@@ -1,75 +1,73 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 
 package org.elasticsearch.plugin.readonlyrest;
 
-import com.google.common.base.Strings;
-import com.google.common.io.BaseEncoding;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.jboss.netty.handler.ssl.SslContext;
+import org.elasticsearch.common.settings.Settings;
 
 import javax.net.ssl.SSLException;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.Key;
 import java.security.PrivilegedAction;
 import java.security.cert.Certificate;
+import java.util.Base64;
 
-/**
- * @author <a href="mailto:scarduzio@gmail.com">Simone Scarduzio</a>
- * @see <a href="https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/">Github Project</a>
- * <p>
- * Created by sscarduzio on 23/09/2016.
- */
 
 @Singleton
-public class SSLContextProvider {
+public class SSLEngineProvider {
   public final ConfigurationHelper conf;
-  private final ESLogger logger = Loggers.getLogger(this.getClass());
+  private final Logger logger = Loggers.getLogger(this.getClass());
   private SslContext context = null;
 
   @Inject
-  public SSLContextProvider(ConfigurationHelper conf) {
-    this.conf = conf;
+  public SSLEngineProvider(Settings settings) {
+    this.conf = ConfigurationHelper.getInstance(settings, null);
     if (conf.sslEnabled) {
       if (!Strings.isNullOrEmpty(conf.sslCertChainPem) && !Strings.isNullOrEmpty(conf.sslPrivKeyPem)) {
         AccessController.doPrivileged(
-          new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-              try {
-                logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
-                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                context = SslContext.newServerContext(new File(conf.sslCertChainPem),
-                                                      new File(conf.sslPrivKeyPem), null
-                );
-              } catch (SSLException e) {
-                logger.error("Failed to load SSL CertChain & private key!");
-                e.printStackTrace();
+            new PrivilegedAction<Void>() {
+              @Override
+              public Void run() {
+                try {
+                  logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
+                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                  context = SslContextBuilder.forServer(
+                      new File(conf.sslCertChainPem),
+                      new File(conf.sslPrivKeyPem),
+                      null
+                  ).build();
+                } catch (SSLException e) {
+                  logger.error("Failed to load SSL CertChain & private key!");
+                  e.printStackTrace();
+                }
+                return null;
               }
-              return null;
-            }
-          });
+            });
 
         // Everything is configured
         logger.info("SSL configured through cert_chain and privkey");
@@ -112,43 +110,45 @@ public class SSLContextProvider {
         // Create a PEM of the private key
         StringBuilder sb = new StringBuilder();
         sb.append("---BEGIN PRIVATE KEY---\n");
-        sb.append(BaseEncoding.base64().encode(key.getEncoded()));
+        sb.append(Base64.getEncoder().encodeToString(key.getEncoded()));
         sb.append("\n");
         sb.append("---END PRIVATE KEY---");
-        final String privateKey = sb.toString();
+        String privateKey = sb.toString();
         logger.info("Discovered key from JKS");
 
         // Get CertChain from keystore
-        final Certificate[] cchain = ks.getCertificateChain(conf.sslKeyAlias);
+        Certificate[] cchain = ks.getCertificateChain(conf.sslKeyAlias);
 
         // Create a PEM of the certificate chain
         sb = new StringBuilder();
         for (Certificate c : cchain) {
           sb.append("-----BEGIN CERTIFICATE-----\n");
-          sb.append(BaseEncoding.base64().encode(c.getEncoded()));
+          sb.append(Base64.getEncoder().encodeToString(c.getEncoded()));
           sb.append("\n");
           sb.append("-----END CERTIFICATE-----\n");
         }
-        final String certChain = sb.toString();
+        String certChain = sb.toString();
         logger.info("Discovered cert chain from JKS");
 
+
         AccessController.doPrivileged(
-          new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-              try {
-                // Netty3 does not take input streams, only files :(
-                File chainFile = TempFile.newFile("fullchain", "pem", certChain);
-                File privatekeyFile = TempFile.newFile("privkey", "pem", privateKey);
-                // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                context = SslContext.newServerContext(chainFile, privatekeyFile, null);
-              } catch (Exception e) {
-                logger.error("Failed to load SSL CertChain & private key from Keystore!");
-                e.printStackTrace();
+            new PrivilegedAction<Void>() {
+              @Override
+              public Void run() {
+                try {
+                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+                  context = SslContextBuilder.forServer(
+                      new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+                      new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+                      null
+                  ).build();
+                } catch (Exception e) {
+                  logger.error("Failed to load SSL CertChain & private key from Keystore!");
+                  e.printStackTrace();
+                }
+                return null;
               }
-              return null;
-            }
-          });
+            });
 
       } catch (Throwable t) {
         logger.error("Failed to load SSL certs and keys from JKS Keystore!");

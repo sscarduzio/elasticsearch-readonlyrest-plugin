@@ -17,30 +17,152 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.logging.ESLogger;
+import com.google.common.collect.Sets;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 20/02/2016.
  */
 public class IndicesSyncRule extends SyncRule {
 
-  private final ESLogger logger = Loggers.getLogger(this.getClass());
+  private final Logger logger = Loggers.getLogger(this.getClass());
 
   private MatcherWithWildcards configuredWildcards;
 
+
   public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
+  }
+
+  public static Optional<IndicesSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new IndicesSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
+  }
+
+  // Is a request or sub-request free from references to any forbidden indices?
+  private <T extends IndicesRequestContext> boolean canPass(T src) {
+
+    MatcherWithWildcards matcher;
+
+    if (src.getLoggedInUser().isPresent()) {
+      matcher = new MatcherWithWildcards(
+          configuredWildcards.getMatchers().stream()
+                             .map(m -> m.replaceAll("@user", src.getLoggedInUser().get().getId()))
+                             .collect(Collectors.toSet()));
+    }
+    else {
+      matcher = configuredWildcards;
+    }
+
+    Set<String> indices = Sets.newHashSet(src.getIndices());
+
+    // 1. Requesting none or all the indices means requesting allowed indices that exist.
+    logger.debug("Stage 0");
+    if (indices.size() == 0 || indices.contains("_all") || indices.contains("*")) {
+      Set<String> allowedIdxs = matcher.filter(src.getAllIndicesAndAliases());
+      if (allowedIdxs.size() > 0) {
+        indices.clear();
+        indices.addAll(allowedIdxs);
+        src.setIndices(indices);
+        return true;
+      }
+      return false;
+    }
+
+    if (src.isReadRequest()) {
+
+      // Handle simple case of single index
+      logger.debug("Stage 1");
+      if (indices.size() == 1) {
+        if (matcher.match(indices.iterator().next())) {
+          src.setIndices(indices);
+          return true;
+        }
+      }
+
+      // ----- Now you requested SOME indices, let's see if and what we can allow in.
+
+      // 2. All indices match by wildcard?
+      logger.debug("Stage 2");
+      if (matcher.filter(indices).size() == indices.size()) {
+        return true;
+      }
+
+      logger.debug("Stage 2.1");
+      // 2.1 Detect non-wildcard requested indices that do not exist and return 404 (compatibility with vanilla ES)
+      Set<String> real = src.getAllIndicesAndAliases();
+      for (final String idx : indices) {
+        if (!idx.contains("*") && !real.contains(idx)) {
+          Set<String> nonExistingIndex = new HashSet<>(1);
+          nonExistingIndex.add(idx);
+          src.setIndices(nonExistingIndex);
+          return true;
+        }
+      }
+
+      // 3. indices match by reverse-wildcard?
+      // Expand requested indices to a subset of indices available in ES
+      logger.debug("Stage 3");
+      Set<String> expansion = src.getExpandedIndices();
+
+      // 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
+      logger.debug("Stage 4");
+      if (expansion.size() == 0) {
+        return true;
+      }
+
+      // ------ Your request expands to one or many available indices, let's see which ones you are allowed to request..
+      Set<String> allowedExpansion = matcher.filter(expansion);
+
+      // 5. You requested some indices, but NONE were allowed
+      logger.debug("Stage 5");
+      if (allowedExpansion.size() == 0) {
+        // #TODO should I set indices to rule wildcards?
+        return false;
+      }
+
+      // 6. You requested some indices, I can allow you only SOME (we made sure the allowed set is not empty!).
+      logger.debug("Stage 6");
+      src.setIndices(allowedExpansion);
+      return true;
+    }
+
+    // Write requests
+    else {
+
+      // Handle <no-index> (#TODO LEGACY)
+      logger.debug("Stage 7");
+      if (indices.size() == 0 && matcher.getMatchers().contains("<no-index>")) {
+        return true;
+      }
+
+      // Reject write if at least one requested index is not allowed by the rule conf
+      logger.debug("Stage 8");
+      for (String idx : indices) {
+        if (!matcher.match(idx)) {
+          return false;
+        }
+      }
+
+      // Conditions are satisfied
+      return true;
+    }
   }
 
   @Override
@@ -51,93 +173,24 @@ public class IndicesSyncRule extends SyncRule {
       return MATCH;
     }
 
-    // 1. Requesting none or all the indices means requesting allowed indices that exist..
-    logger.debug("Stage 0");
-    if (rc.getIndices().size() == 0 || rc.getIndices().contains("_all") || rc.getIndices().contains("*")) {
-      Set<String> allowedIdxs = configuredWildcards.filter(rc.getAvailableIndicesAndAliases());
-      if (allowedIdxs.size() > 0) {
-        rc.setIndices(allowedIdxs);
-        return MATCH;
-      }
-      return NO_MATCH;
-    }
-
-    if (rc.isReadRequest()) {
-
-      // Handle simple case of single index
-      logger.debug("Stage 1");
-      if (rc.getIndices().size() == 1) {
-        if (configuredWildcards.match(rc.getIndices().iterator().next())) {
-          return MATCH;
+    // Run through sub-requests potentially mutating or discarding them.
+    if (rc.hasSubRequests()) {
+      Integer allowedSubRequests = rc.scanSubRequests((subRc) -> {
+        if (canPass(subRc)) {
+          return Optional.of(subRc);
         }
-      }
-
-      // ----- Now you requested SOME indices, let's see if and what we can allow in..
-
-      // 2. All indices match by wildcard?
-      logger.debug("Stage 2");
-      if (configuredWildcards.filter(rc.getIndices()).size() == rc.getIndices().size()) {
-        return MATCH;
-      }
-
-      logger.debug("Stage 2.1");
-      // 2.1 Detect non-wildcard requested indices that do not exist and return 404 (compatibility with vanilla ES)
-      Set<String> real = rc.getAvailableIndicesAndAliases();
-      for (final String idx : rc.getIndices()) {
-        if (!idx.contains("*") && !real.contains(idx)) {
-          Set<String> nonExistingIndex = new HashSet<>(1);
-          nonExistingIndex.add(idx);
-          rc.setIndices(nonExistingIndex);
-          return MATCH;
-        }
-      }
-
-      // 3. indices match by reverse-wildcard?
-      // Expand requested indices to a subset of indices available in ES
-      logger.debug("Stage 3");
-      Set<String> expansion = rc.getExpandedIndices();
-
-      // 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
-      logger.debug("Stage 4");
-      if (expansion.size() == 0) {
-        return MATCH;
-      }
-
-      // ------ Your request expands to one or many available indices, let's see which ones you are allowed to request..
-      Set<String> allowedExpansion = configuredWildcards.filter(expansion);
-
-      // 5. You requested some indices, but NONE were allowed
-      logger.debug("Stage 5");
-      if (allowedExpansion.size() == 0) {
-        // #TODO should I set indices to rule wildcards?
+        return Optional.empty();
+      }, logger);
+      if (allowedSubRequests == 0) {
         return NO_MATCH;
       }
-
-      // 6. You requested some indices, I can allow you only SOME (we made sure the allowed set is not empty!).
-      logger.debug("Stage 6");
-      rc.setIndices(allowedExpansion);
+      // We policed the single sub-requests, should be OK to let the allowed ones through
       return MATCH;
     }
 
-    // Write requests
-    else {
+    // Regular non-composite request
+    return canPass(rc) ? MATCH : NO_MATCH;
 
-      // Handle <no-index> (#TODO LEGACY)
-      logger.debug("Stage 7");
-      if (rc.getIndices().size() == 0 && configuredWildcards.getMatchers().contains("<no-index>")) {
-        return MATCH;
-      }
 
-      // Reject write if at least one requested index is not allowed by the rule conf
-      logger.debug("Stage 8");
-      for (String idx : rc.getIndices()) {
-        if (!configuredWildcards.match(idx)) {
-          return NO_MATCH;
-        }
-      }
-
-      // Conditions are satisfied
-      return MATCH;
-    }
   }
 }

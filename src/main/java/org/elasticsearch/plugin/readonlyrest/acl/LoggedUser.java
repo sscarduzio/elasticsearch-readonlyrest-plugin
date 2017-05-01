@@ -14,45 +14,37 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 package org.elasticsearch.plugin.readonlyrest.acl;
 
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
+import java.util.Objects;
 
-import java.util.LinkedList;
-import java.util.List;
+public class LoggedUser {
 
-/**
- * Created by sscarduzio on 19/01/2017.
- */
-public class RequestSideEffects {
-  private final ESLogger logger = Loggers.getLogger(getClass());
+  private final String id;
 
-  private final List<Runnable> effects = new LinkedList<>();
-
-  public void appendEffect(Runnable eff) {
-    effects.add(eff);
+  public LoggedUser(String id) {
+    this.id = id;
   }
 
-  public int size() {
-    return effects.size();
+  public String getId() {
+    return id;
   }
 
-  public void commit() {
-    int commitSize = effects.size();
-    if (commitSize == 0) {
-      return;
-    }
-    logger.info("Committing " + effects.size() + " effects");
-    for (Runnable eff : effects) {
-      eff.run();
-      effects.remove(eff);
-    }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) return false;
+    if (getClass() != obj.getClass()) return false;
+    final LoggedUser other = (LoggedUser) obj;
+    return Objects.equals(id, other.id);
   }
 
-  public void clear() {
-    effects.clear();
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.id);
   }
 
+  @Override
+  public String toString() {
+    return id;
+  }
 }

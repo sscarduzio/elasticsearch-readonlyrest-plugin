@@ -17,37 +17,79 @@
 
 package org.elasticsearch.plugin.readonlyrest.utils;
 
-import com.google.common.base.Strings;
+import org.apache.http.Header;
+import org.apache.http.message.BasicHeader;
 
 import java.util.Base64;
 import java.util.Map;
+import java.util.Optional;
 
 public class BasicAuthUtils {
 
   private BasicAuthUtils() {
   }
 
-  // Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
-  public static String extractAuthFromHeader(String authorizationHeader) {
-    if (authorizationHeader == null || authorizationHeader.trim().length() == 0 || !authorizationHeader.contains("Basic "))
-      return null;
-    String interestingPart = authorizationHeader.split("Basic")[1].trim();
-    if (interestingPart.length() == 0) {
-      return null;
-    }
-    return interestingPart;
+  public static Header basicAuthHeader(String user, String password) {
+    return new BasicHeader(
+        "Authorization",
+        String.format("Basic %s", Base64.getEncoder().encodeToString(String.format("%s:%s", user, password).getBytes())));
   }
 
-  public static String getBasicAuthUser(Map<String, String> headers) {
-    String authHeader = extractAuthFromHeader(headers.get("Authorization"));
-    if (!Strings.isNullOrEmpty(authHeader)) {
-      try {
-        String[] splitted = new String(Base64.getDecoder().decode(authHeader)).split(":");
-        return splitted.length > 0 ? splitted[0] : null;
-      } catch (IllegalArgumentException e) {
-        e.printStackTrace();
+  public static Optional<BasicAuth> getBasicAuthFromHeaders(Map<String, String> headers) {
+    return Optional.ofNullable(headers.get("Authorization"))
+            .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
+            .flatMap(BasicAuth::fromBase64Value);
+  }
+
+  private static Optional<String> getInterestingPartOfBasicAuthValue(String basicAuthValue) {
+    if (basicAuthValue == null || basicAuthValue.trim().length() == 0 || !basicAuthValue.contains("Basic ")) {
+      return Optional.empty();
+    }
+    else {
+      String[] parts = basicAuthValue.split("Basic");
+      if (parts.length == 2) {
+        String interestingPart = parts[1].trim();
+        return interestingPart.length() > 0 ? Optional.of(interestingPart) : Optional.empty();
+      }
+      else {
+        return Optional.empty();
       }
     }
-    return null;
+  }
+
+  public static class BasicAuth {
+    private final String base64Value;
+    private final String userName;
+    private final String password;
+
+    private BasicAuth(String base64Value) {
+      this.base64Value = base64Value;
+      String[] splitted = new String(Base64.getDecoder().decode(base64Value)).split(":");
+      if (splitted.length != 2) {
+        throw new IllegalArgumentException("Cannot extract user name from base auth header");
+      }
+      this.userName = splitted[0];
+      this.password = splitted[1];
+    }
+
+    public static Optional<BasicAuth> fromBase64Value(String base64Value) {
+      try {
+        return Optional.of(new BasicAuth(base64Value));
+      } catch (IllegalArgumentException ex) {
+        return Optional.empty();
+      }
+    }
+
+    public String getBase64Value() {
+      return base64Value;
+    }
+
+    public String getUserName() {
+      return userName;
+    }
+
+    public String getPassword() {
+      return password;
+    }
   }
 }

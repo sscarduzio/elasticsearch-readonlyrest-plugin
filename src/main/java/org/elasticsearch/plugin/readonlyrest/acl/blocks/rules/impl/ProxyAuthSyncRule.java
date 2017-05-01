@@ -17,61 +17,118 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.collect.Lists;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthSyncRule extends SyncRule implements UserRule {
+public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authentication {
 
-  private static final String HEADER = "X-Forwarded-User";
+  private static final String RULE_NAME = "proxy_auth";
+  private static final String NAME_ATTRIBUTE = "name";
+  private static final String USERS_ATTRIBUTE = "users";
+  private static final String PROXY_AUTH_CONFIG_ATTRIBUTE = "proxy_auth_config";
+
+  private final ProxyAuthConfig config;
   private final MatcherWithWildcards userListMatcher;
 
-  public ProxyAuthSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    String[] users = s.getAsArray(getKey());
-    if (users != null && users.length > 0) {
-      userListMatcher = new MatcherWithWildcards(Arrays.stream(users)
-                                                   .filter(i -> !Strings.isNullOrEmpty(i))
-                                                   .distinct()
-                                                   .collect(Collectors.toSet()));
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
+  private ProxyAuthSyncRule(ProxyAuthConfig config, List<String> users) {
+    this.config = config;
+    userListMatcher = new MatcherWithWildcards(
+        users.stream()
+             .filter(i -> !Strings.isNullOrEmpty(i))
+             .distinct()
+             .collect(Collectors.toSet())
+    );
   }
 
-  public static String getUser(Map<String, String> headers) {
-    String h = headers.get(HEADER);
-    if (h == null || h.trim().length() == 0)
-      return null;
-    return h;
+  public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs)
+      throws ConfigMalformedException {
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(),
+        parseSimpleArraySettings(), parseExtendedSettings(proxyAuthConfigs));
+  }
+
+  private static Function<Settings, Optional<ProxyAuthSyncRule>> parseSimpleSettings() {
+    return settings -> {
+      List<String> users = Lists.newArrayList(settings.get(RULE_NAME));
+      if (users.isEmpty()) return Optional.empty();
+
+      return Optional.of(new ProxyAuthSyncRule(ProxyAuthConfig.DEFAULT, users));
+    };
+  }
+
+  private static Function<Settings, Optional<ProxyAuthSyncRule>> parseSimpleArraySettings() {
+    return settings -> {
+      List<String> users = Lists.newArrayList(settings.getAsArray(RULE_NAME));
+      if (users.isEmpty()) return Optional.empty();
+
+      return Optional.of(new ProxyAuthSyncRule(ProxyAuthConfig.DEFAULT, users));
+    };
+  }
+
+  private static Function<Settings, Optional<ProxyAuthSyncRule>> parseExtendedSettings(
+      List<ProxyAuthConfig> proxyAuthConfigs) {
+    return settings -> {
+      Settings proxyAuthSettings = settings.getAsSettings(RULE_NAME);
+      if(proxyAuthSettings.isEmpty()) return Optional.empty();
+
+      Map<String, ProxyAuthConfig> proxyAuthConfigByName =
+          proxyAuthConfigs.stream().collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));
+
+      String proxyAuthConfigName = proxyAuthSettings.get(PROXY_AUTH_CONFIG_ATTRIBUTE);
+      if (proxyAuthConfigName == null)
+        throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", NAME_ATTRIBUTE, RULE_NAME));
+
+      ProxyAuthConfig proxyAuthConfig = proxyAuthConfigByName.get(proxyAuthConfigName);
+      if (proxyAuthConfig == null)
+        throw new ConfigMalformedException(String.format("There is no proxy auth config with name '%s'", proxyAuthConfigName));
+
+      List<String> users = Lists.newArrayList(proxyAuthSettings.getAsArray(USERS_ATTRIBUTE));
+      if (users.isEmpty())
+        throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", USERS_ATTRIBUTE, RULE_NAME));
+
+      return Optional.of(new ProxyAuthSyncRule(proxyAuthConfig, users));
+    };
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    String h = getUser(rc.getHeaders());
+    Optional<LoggedUser> optUser = getUser(rc.getHeaders());
 
-    if (h == null) {
+    if (!optUser.isPresent()) {
       return NO_MATCH;
     }
 
-    if (h.length() == 0) {
-      return NO_MATCH;
+    LoggedUser user = optUser.get();
+    RuleExitResult res = userListMatcher.match(user.getId()) ? MATCH : NO_MATCH;
+    if (res.isMatch()) {
+      rc.setLoggedInUser(user);
     }
+    return res;
+  }
 
-    return userListMatcher.match(h) ? MATCH : NO_MATCH;
+  private Optional<LoggedUser> getUser(Map<String, String> headers) {
+    String userId = headers.get(config.getUserIdHeader());
+    if (userId == null || userId.trim().length() == 0)
+      return Optional.empty();
+    return Optional.of(new LoggedUser(userId));
   }
 
 }

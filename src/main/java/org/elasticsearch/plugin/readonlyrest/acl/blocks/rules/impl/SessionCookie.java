@@ -20,12 +20,12 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.hash.Hashing;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -43,7 +44,7 @@ import java.util.UUID;
  */
 public class SessionCookie {
 
-  private static final ESLogger logger = Loggers.getLogger(SessionCookie.class);
+  private static final Logger logger = Loggers.getLogger(SessionCookie.class);
 
   private static final String SERVER_SECRET = UUID.randomUUID().toString();
 
@@ -75,15 +76,15 @@ public class SessionCookie {
     this.cookiePresent = true;
 
     // ----- Check cookie validity
-    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
+    String user = rc.getLoggedInUser().map(LoggedUser::getId).orElseGet(null);
     Iterator<String> cookiePartsIterator =
-      Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
+        Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
     // Check user is the same with basic auth header
     String cookieUser = cookiePartsIterator.next();
     if (!cookieUser.equals(user)) {
       logger.info("this cookie does not belong to the user logged in as. Found in Cookie: "
-                    + cookieUser + " whilst in Authentication: " + user);
+          + cookieUser + " whilst in Authentication: " + user);
       return;
     }
 
@@ -123,20 +124,24 @@ public class SessionCookie {
   }
 
   public void setCookie() {
-    String user = BasicAuthUtils.getBasicAuthUser(rc.getHeaders());
+    Optional<LoggedUser> user = rc.getLoggedInUser();
+    if (!user.isPresent()) {
+      logger.warn("Cannot state the logged in user, put the authentication rule on top of the block!");
+      return;
+    }
     Date expiryDateString = new Date(System.currentTimeMillis() + sessionMaxIdleMillis);
-    String cookie = mkCookie(user, expiryDateString);
+    String cookie = mkCookie(user.get().getId(), expiryDateString);
     rc.setResponseHeader("Set-Cookie", COOKIE_NAME + "=" + cookie);
   }
 
-  private String mkCookie(String user, Date expiry) {
+  private String mkCookie(String userName, Date expiry) {
     return new StringBuilder()
-      .append(user)
-      .append(COOKIE_STRING_SEPARATOR)
-      .append(expiry.toString())
-      .append(COOKIE_STRING_SEPARATOR)
-      .append(Hashing.sha1().hashString(SERVER_SECRET + user + expiry.getTime() / 1000, StandardCharsets.UTF_8))
-      .toString();
+        .append(userName)
+        .append(COOKIE_STRING_SEPARATOR)
+        .append(expiry.toString())
+        .append(COOKIE_STRING_SEPARATOR)
+        .append(Hashing.sha1().hashString(SERVER_SECRET + userName + expiry.getTime() / 1000, StandardCharsets.UTF_8))
+        .toString();
   }
 
   private String extractCookie(String cookieName) {

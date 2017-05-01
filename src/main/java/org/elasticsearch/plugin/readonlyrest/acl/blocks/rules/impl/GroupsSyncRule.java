@@ -18,15 +18,16 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A GroupsSyncRule checks if a request containing Basic Authentication credentials
@@ -48,6 +49,14 @@ public class GroupsSyncRule extends SyncRule {
     }
     else {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<GroupsSyncRule> fromSettings(Settings s, List<User> userList) {
+    try {
+      return Optional.of(new GroupsSyncRule(s, userList));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

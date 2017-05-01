@@ -19,12 +19,13 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -49,6 +50,14 @@ public class UriReSyncRule extends SyncRule {
     }
     else {
       throw new RuleNotConfiguredException();
+    }
+  }
+
+  public static Optional<UriReSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new UriReSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
     }
   }
 

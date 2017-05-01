@@ -1,65 +1,70 @@
 /*
- * This file is part of ReadonlyREST.
+ *    This file is part of ReadonlyREST.
  *
- *     ReadonlyREST is free software: you can redistribute it and/or modify
- *     it under the terms of the GNU General Public License as published by
- *     the Free Software Foundation, either version 3 of the License, or
- *     (at your option) any later version.
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
  *
- *     ReadonlyREST is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
  *
- *     You should have received a copy of the GNU General Public License
- *     along with ReadonlyREST.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.search.SearchAction;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
-import org.elasticsearch.cluster.ClusterService;
-import org.elasticsearch.common.bytes.BytesReference;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.plugin.readonlyrest.acl.ACL;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
+import org.elasticsearch.threadpool.ThreadPool;
 
-import java.io.IOException;
-import java.util.Arrays;
+import static org.elasticsearch.rest.RestStatus.FORBIDDEN;
+import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
 
 /**
  * Created by sscarduzio on 19/12/2015.
  */
 @Singleton
-public class IndexLevelActionFilter implements ActionFilter {
-  ESLogger logger = Loggers.getLogger(this.getClass());
+public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
+  private final ThreadPool threadPool;
+  private final IndexNameExpressionResolver indexResolver;
   private ClusterService clusterService;
-  private ACL acl;
   private ConfigurationHelper conf;
 
   @Inject
-  public IndexLevelActionFilter(ACL acl, ConfigurationHelper conf, ClusterService clusterService) {
+  public IndexLevelActionFilter(Settings settings, ConfigurationHelper conf,
+                                ClusterService clusterService, ThreadPool threadPool,
+                                IndexNameExpressionResolver indexResolver) {
+    super(settings);
     this.conf = conf;
     this.clusterService = clusterService;
+    this.threadPool = threadPool;
+    this.indexResolver = indexResolver;
 
     logger.info("Readonly REST plugin was loaded...");
 
@@ -69,7 +74,6 @@ public class IndexLevelActionFilter implements ActionFilter {
     }
 
     logger.info("Readonly REST plugin is enabled. Yay, ponies!");
-    this.acl = acl;
   }
 
   @Override
@@ -77,69 +81,81 @@ public class IndexLevelActionFilter implements ActionFilter {
     return 0;
   }
 
-
   @Override
-  public void apply(String action, ActionResponse actionResponse, ActionListener actionListener, ActionFilterChain actionFilterChain) {
-    actionFilterChain.proceed(action, actionResponse, actionListener);
-  }
-
-
-  @Override
-  public void apply(Task task, String action, ActionRequest actionRequest, ActionListener actionListener, ActionFilterChain chain) {
-
+  public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
+      String action,
+      Request request,
+      ActionListener<Response> listener,
+      ActionFilterChain<Request, Response> chain) {
     // Skip if disabled
     if (!conf.enabled) {
-      chain.proceed(task, action, actionRequest, actionListener);
+      chain.proceed(task, action, request, listener);
       return;
     }
 
-    final RestRequest req = actionRequest.getFromContext("request");
-    final RestChannel channel = actionRequest.getFromContext("channel");
-
-    boolean reqNull = req == null;
+    RestChannel channel = ThreadRepo.channel.get();
     boolean chanNull = channel == null;
+
+    RestRequest req = null;
+    if (!chanNull) {
+      req = channel.request();
+    }
+    boolean reqNull = req == null;
 
     // This was not a REST message
     if (reqNull && chanNull) {
-      chain.proceed(task, action, actionRequest, actionListener);
+      chain.proceed(task, action, request, listener);
       return;
     }
 
     // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
     if (reqNull != chanNull) {
-      if (chanNull)
-        throw new SecurityPermissionException("Problems analyzing the channel object. Have you checked the security permissions?", null);
-      if (reqNull)
-        throw new SecurityPermissionException("Problems analyzing the request object. Have you checked the security permissions?", null);
+      if (chanNull) {
+        throw new SecurityPermissionException("Problems analyzing the channel object. " +
+                                                "Have you checked the security permissions?", null);
+      }
+      if (reqNull) {
+        throw new SecurityPermissionException("Problems analyzing the request object. " +
+                                                "Have you checked the security permissions?", null);
+      }
     }
 
-    RequestContext rc = new RequestContext(channel, req, action, actionRequest, clusterService);
-    acl.check(rc)
+
+    RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool);
+    conf.acl.check(rc)
+
       .exceptionally(throwable -> {
         logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+        if (throwable.getCause() instanceof ResourceNotFoundException) {
+          logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
+          sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
+          return null;
+        }
+        throwable.printStackTrace();
         sendNotAuthResponse(channel);
-        throw new ElasticsearchException(throwable);
+        return null;
       })
+
       .thenApply(result -> {
-        if (result == null) {
-          logger.error("result was null for: " + rc.getAction());
-          throw new ElasticsearchException("Block exit results should never be null");
-        }
-        if (result.isMatch() && result.getBlock().getPolicy() == Block.Policy.ALLOW) {
-          if (conf.searchLoggingEnabled && SearchAction.INSTANCE.name().equals(action)) {
-            ActionListener<SearchResponse> searchListener = new LoggerActionListener(action, req, actionRequest, (ActionListener<SearchResponse>) actionListener, rc);
-            chain.proceed(task, action, actionRequest, searchListener);
+        assert result != null;
+
+        if (result.isMatch() && Block.Policy.ALLOW.equals(result.getBlock().getPolicy())) {
+          try {
+            @SuppressWarnings("unchecked")
+            ActionListener<Response> aclActionListener =
+              (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+            chain.proceed(task, action, request, aclActionListener);
+            return null;
+          } catch (Throwable e) {
+            e.printStackTrace();
           }
-          else {
-            chain.proceed(task, action, actionRequest, actionListener);
-          }
+
+          chain.proceed(task, action, request, listener);
+          return null;
         }
-        else {
-          logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-          sendNotAuthResponse(channel);
-          chain.proceed(task, action, actionRequest, actionListener);
-        }
-        // will proceed with chain from the future handler above
+
+        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+        sendNotAuthResponse(channel);
         return null;
       });
   }
@@ -148,67 +164,31 @@ public class IndexLevelActionFilter implements ActionFilter {
     String reason = conf.forbiddenResponse;
 
     BytesRestResponse resp;
-    if (acl.isBasicAuthConfigured()) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
+    if (ConfigurationHelper.doesRequirePassword()) {
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
     }
     else {
-      resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
+      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
     }
 
     channel.sendResponse(resp);
   }
 
-
-  class LoggerActionListener implements ActionListener<SearchResponse> {
-    private final String action;
-    private final ActionListener<SearchResponse> baseListener;
-    private final SearchRequest searchRequest;
-    private final RequestContext requestContext;
-    private final RestRequest req;
-
-    LoggerActionListener(String action, RestRequest req, ActionRequest<?> searchRequest,
-                         ActionListener<SearchResponse> baseListener,
-                         RequestContext requestContext) {
-      this.req = req;
-      this.action = action;
-      this.searchRequest = (SearchRequest) searchRequest;
-      this.baseListener = baseListener;
-      this.requestContext = requestContext;
+  private void sendNotFound(ResourceNotFoundException e, RestChannel channel) {
+    try {
+      XContentBuilder b = JsonXContent.contentBuilder();
+      b.startObject();
+      ElasticsearchException.generateFailureXContent(b, ToXContent.EMPTY_PARAMS, e, true);
+      b.endObject();
+      BytesRestResponse resp;
+      resp = new BytesRestResponse(NOT_FOUND, "application/json", b.string());
+      channel.sendResponse(resp);
+    } catch (Exception e1) {
+      e1.printStackTrace();
     }
-
-    public void onResponse(SearchResponse searchResponse) {
-      logger.info(
-        "search: {" +
-          " ID:" + requestContext.getId() +
-          ", ACT:" + action +
-          ", USR:" + requestContext.getLoggedInUser() +
-          ", IDX:" + Arrays.toString(searchRequest.indices()) +
-          ", TYP:" + Arrays.toString(searchRequest.types()) +
-          ", SRC:" + convertToJson(req.content()) +
-          ", HIT:" + searchResponse.getHits().totalHits() +
-          ", RES:" + searchResponse.getHits().hits().length +
-          " }"
-      );
-
-      baseListener.onResponse(searchResponse);
-    }
-
-    public void onFailure(Throwable e) {
-      baseListener.onFailure(e);
-    }
-
-    private String convertToJson(BytesReference searchSource) {
-      if (searchSource != null)
-        try {
-          return XContentHelper.convertToJson(searchSource, true);
-        } catch (IOException e) {
-          logger.warn("Unable to convert searchSource to JSON", e);
-        }
-      return "";
-    }
-
 
   }
+
 }

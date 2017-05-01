@@ -17,27 +17,37 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.logging.ESLogger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 14/02/2016.
  */
 public class ActionsSyncRule extends SyncRule {
 
-  private static final ESLogger logger = Loggers.getLogger(ActionsSyncRule.class);
+  private static final Logger logger = Loggers.getLogger(ActionsSyncRule.class);
 
   protected MatcherWithWildcards m;
 
   public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
     m = MatcherWithWildcards.fromSettings(s, getKey());
+  }
+
+  public static Optional<ActionsSyncRule> fromSettings(Settings s) {
+    try {
+      return Optional.of(new ActionsSyncRule(s));
+    } catch (RuleNotConfiguredException ignored) {
+      return Optional.empty();
+    }
   }
 
   @Override
