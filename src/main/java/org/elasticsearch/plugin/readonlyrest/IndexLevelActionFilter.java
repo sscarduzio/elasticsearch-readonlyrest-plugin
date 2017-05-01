@@ -24,8 +24,8 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
+import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
@@ -82,11 +82,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   }
 
   @Override
-  public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
-      String action,
-      Request request,
-      ActionListener<Response> listener,
-      ActionFilterChain<Request, Response> chain) {
+  public void apply(Task task,
+                    String action,
+                    ActionRequest request,
+                    ActionListener listener,
+                    ActionFilterChain chain) {
     // Skip if disabled
     if (!conf.enabled) {
       chain.proceed(task, action, request, listener);
@@ -141,9 +141,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
         if (result.isMatch() && Block.Policy.ALLOW.equals(result.getBlock().getPolicy())) {
           try {
-            @SuppressWarnings("unchecked")
-            ActionListener<Response> aclActionListener =
-              (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+            ActionListener aclActionListener =
+              new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
             chain.proceed(task, action, request, aclActionListener);
             return null;
           } catch (Throwable e) {
@@ -158,6 +157,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         sendNotAuthResponse(channel);
         return null;
       });
+  }
+
+  @Override
+  public void apply(String action, ActionResponse response, ActionListener listener, ActionFilterChain chain) {
+    chain.proceed(action, response, listener);
   }
 
   private void sendNotAuthResponse(RestChannel channel) {

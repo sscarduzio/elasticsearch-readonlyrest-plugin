@@ -242,7 +242,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
    * Return the requested index name if the rewritten index or document was not found.
    */
   @Override
-  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
+  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Throwable e) {
     if (e instanceof IndexNotFoundException) {
       ((IndexNotFoundException) e).setIndex(rc.getIndices().iterator().next());
     }

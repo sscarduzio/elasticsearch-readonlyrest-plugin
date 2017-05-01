@@ -26,11 +26,11 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ConfigurationHelper
@@ -90,6 +90,27 @@ public class ConfigurationHelper {
       }
     }
 
+    // Fetch clusterwide settings at startup.
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    Runnable task = new Runnable() {
+      @Override
+      public void run() {
+        try {
+          logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
+          ConfigurationHelper.getInstance(settings, client).updateSettingsFromIndex(client);
+          logger.info("Cluster-wide settings found, overriding elasticsearch.yml");
+          executor.shutdown();
+        } catch (ElasticsearchException ee) {
+          logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin." +
+                        " Will keep on using elasticearch.yml.");
+          executor.shutdown();
+        } catch (Throwable t) {
+          logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet..");
+          executor.schedule(this, 200, TimeUnit.MILLISECONDS);
+        }
+      }
+    };
+    executor.schedule(task, 200, TimeUnit.MILLISECONDS);
   }
 
   public static ConfigurationHelper getInstance(Settings s, Client c) {

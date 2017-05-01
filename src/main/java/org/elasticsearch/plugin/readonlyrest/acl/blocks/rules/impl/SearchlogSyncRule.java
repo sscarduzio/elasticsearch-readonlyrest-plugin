@@ -90,7 +90,7 @@ public class SearchlogSyncRule extends SyncRule {
   }
 
   @Override
-  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
+  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Throwable e) {
     return true;
   }
 
