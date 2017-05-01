@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.wiring;
 
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -27,7 +28,6 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
@@ -71,7 +71,6 @@ import java.util.function.UnaryOperator;
 
 public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
   private final Settings settings;
-
   private final ESLogger logger = Loggers.getLogger(this.getClass());
 
   public ReadonlyRestPlugin(Settings s) {
@@ -85,27 +84,27 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-    Settings settings,
-    ThreadPool threadPool,
-    BigArrays bigArrays,
-    CircuitBreakerService circuitBreakerService,
-    NamedWriteableRegistry namedWriteableRegistry,
-    NamedXContentRegistry xContentRegistry,
-    NetworkService networkService,
-    HttpServerTransport.Dispatcher dispatcher) {
+      Settings settings,
+      ThreadPool threadPool,
+      BigArrays bigArrays,
+      CircuitBreakerService circuitBreakerService,
+      NamedWriteableRegistry namedWriteableRegistry,
+      NamedXContentRegistry xContentRegistry,
+      NetworkService networkService,
+      HttpServerTransport.Dispatcher dispatcher) {
 
     return Collections.singletonMap(
-      "ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher));
+        "ssl_netty4", () -> new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher));
   }
 
 
   @Override
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
-                                             ResourceWatcherService resourceWatcherService, ScriptService scriptService,
-                                             NamedXContentRegistry xContentRegistry) {
+      ResourceWatcherService resourceWatcherService, ScriptService scriptService,
+      NamedXContentRegistry xContentRegistry) {
 
     Collection<Object> fromSup = super.createComponents(client, clusterService, threadPool, resourceWatcherService,
-                                                        scriptService, xContentRegistry
+        scriptService, xContentRegistry
     );
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
     Runnable task = new Runnable() {
@@ -118,7 +117,7 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
           executor.shutdown();
         } catch (ElasticsearchException ee) {
           logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin." +
-                        " Will keep on using elasticearch.yml.");
+              " Will keep on using elasticearch.yml.");
           executor.shutdown();
         } catch (Throwable t) {
           logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet..");
@@ -139,16 +138,16 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
+        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
   }
 
 
   @Override
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<RestHandler> getRestHandlers(
-    Settings settings, RestController restController, ClusterSettings clusterSettings,
-    IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
-    IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+      Settings settings, RestController restController, ClusterSettings clusterSettings,
+      IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
+      IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
     return Collections.singletonList(new RestRRAdminAction(settings, restController));
   }
 

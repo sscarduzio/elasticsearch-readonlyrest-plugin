@@ -16,7 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthorization extends AsyncRule implements Authorization {
 
-  private static final Logger logger = Loggers.getLogger(AsyncAuthorization.class);
+  private static final ESLogger logger =  Loggers.getLogger(AsyncAuthorization.class);
 
   protected abstract CompletableFuture<Boolean> authorize(LoggedUser user);
 

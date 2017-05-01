@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAuthentication;
@@ -32,7 +32,7 @@ import java.util.Optional;
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySyncRule extends BasicAuthentication {
-  private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
+  private static final ESLogger logger =  Loggers.getLogger(AuthKeySyncRule.class);
 
   public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
     super(s);

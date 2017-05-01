@@ -16,7 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.ldap.logging;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class AuthenticationLdapClientLoggingDecorator implements AuthenticationLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(AuthenticationLdapClientLoggingDecorator.class);
+  private static final ESLogger logger =  Loggers.getLogger(AuthenticationLdapClientLoggingDecorator.class);
 
   private final AuthenticationLdapClient underlying;
   private final String name;

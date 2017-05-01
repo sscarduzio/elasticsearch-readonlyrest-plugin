@@ -17,8 +17,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
@@ -59,7 +60,7 @@ import java.util.regex.Pattern;
  */
 public class IndicesRewriteSyncRule extends SyncRule {
 
-  private final Logger logger = Loggers.getLogger(this.getClass());
+  private final ESLogger logger = Loggers.getLogger(this.getClass());
 
   private final Pattern[] targetPatterns;
   private final String replacement;
@@ -84,8 +85,8 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
     targetPatterns = Arrays.stream(targets)
       .distinct()
+      .map(Strings::emptyToNull)
       .filter(Objects::nonNull)
-      .filter(Strings::isNotBlank)
       .map(Pattern::compile)
       .toArray(Pattern[]::new);
   }

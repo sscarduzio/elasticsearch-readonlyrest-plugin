@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
@@ -55,7 +55,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStr
  */
 public class RCTransactionalIndices {
 
-  private static final Logger logger = Loggers.getLogger(RCTransactionalIndices.class);
+  private static final ESLogger logger =  Loggers.getLogger(RCTransactionalIndices.class);
 
   // #XXX hacky as hell - needed for bulk request
   private static final Map<String, Set<String>> restLevelIndicesCache = Maps.newHashMap();

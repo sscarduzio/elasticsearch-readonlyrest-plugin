@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -31,7 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContex
  */
 
 class ACLActionListener implements ActionListener<ActionResponse> {
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final ESLogger logger = Loggers.getLogger(getClass());
 
   private final ActionListener<ActionResponse> baseListener;
   private final ActionRequest request;

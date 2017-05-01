@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchParseException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
@@ -34,7 +34,7 @@ import java.util.Optional;
  */
 public class SessionMaxIdleSyncRule extends SyncRule {
 
-  private static final Logger logger = Loggers.getLogger(SessionMaxIdleSyncRule.class);
+  private static final ESLogger logger =  Loggers.getLogger(SessionMaxIdleSyncRule.class);
   private final long maxIdleMillis;
 
   public SessionMaxIdleSyncRule(Settings s) throws RuleNotConfiguredException {

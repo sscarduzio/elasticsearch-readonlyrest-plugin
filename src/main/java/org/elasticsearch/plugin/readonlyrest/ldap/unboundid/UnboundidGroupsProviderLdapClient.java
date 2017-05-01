@@ -22,7 +22,7 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 
 public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLdapClient implements GroupsProviderLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(UnboundidGroupsProviderLdapClient.class);
+  private static final ESLogger logger =  Loggers.getLogger(UnboundidGroupsProviderLdapClient.class);
 
   private final UserGroupsSearchFilterConfig userGroupsSearchFilterConfig;
 

@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.IndicesRequest;
@@ -37,7 +37,7 @@ import java.util.Set;
  * Created by sscarduzio on 13/04/2017.
  */
 public class SubRequestContext extends Delayed implements IndicesRequestContext {
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final ESLogger logger = Loggers.getLogger(getClass());
   private final RequestContext originalRC;
   private final Object originalSubRequest;
   private SubRCTransactionalIndices indices = new SubRCTransactionalIndices(this);

@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;

@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.ldap.logging;
 
 import com.google.common.base.Joiner;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 public class GroupsProviderLdapClientLoggingDecorator implements GroupsProviderLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(GroupsProviderLdapClientLoggingDecorator.class);
+  private static final ESLogger logger =  Loggers.getLogger(GroupsProviderLdapClientLoggingDecorator.class);
 
   private final GroupsProviderLdapClient underlying;
   private final String name;

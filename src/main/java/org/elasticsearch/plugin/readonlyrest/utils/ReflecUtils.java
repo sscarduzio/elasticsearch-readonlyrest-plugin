@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.utils;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 
@@ -34,7 +34,7 @@ import static org.reflections.ReflectionUtils.getAllFields;
  */
 public class ReflecUtils {
 
-  public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, Logger logger) {
+  public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, ESLogger logger) {
     final String[][] result = {new String[]{}};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       if (o == null) {
@@ -94,7 +94,7 @@ public class ReflecUtils {
     return null;
   }
 
-  public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, Logger logger) {
+  public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, ESLogger logger) {
 
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {

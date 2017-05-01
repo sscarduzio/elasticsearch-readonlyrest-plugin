@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.search.SearchRequest;
@@ -40,7 +40,7 @@ import java.util.Optional;
  * Created by sscarduzio on 27/03/2017.
  */
 public class SearchlogSyncRule extends SyncRule {
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final ESLogger logger = Loggers.getLogger(getClass());
 
   private boolean shouldLog = false;
 

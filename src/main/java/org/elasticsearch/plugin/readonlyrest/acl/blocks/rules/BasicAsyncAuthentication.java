@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
@@ -29,7 +29,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class BasicAsyncAuthentication extends AsyncRule implements Authentication {
-  private static final Logger logger = Loggers.getLogger(BasicAsyncAuthentication.class);
+  private static final ESLogger logger =  Loggers.getLogger(BasicAsyncAuthentication.class);
 
   protected abstract CompletableFuture<Boolean> authenticate(String user, String password);
 

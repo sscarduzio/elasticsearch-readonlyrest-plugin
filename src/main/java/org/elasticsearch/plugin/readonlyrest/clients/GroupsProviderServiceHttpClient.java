@@ -23,7 +23,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.message.BasicHeader;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.common.logging.Loggers;
@@ -46,7 +46,7 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
     QUERY, HEADER
   }
 
-  private static final Logger logger = Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
+  private static final ESLogger logger =  Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
 
   private final RestClient client;
   private final String name;

@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
@@ -33,7 +33,7 @@ import java.util.Optional;
  */
 public class ActionsSyncRule extends SyncRule {
 
-  private static final Logger logger = Loggers.getLogger(ActionsSyncRule.class);
+  private static final ESLogger logger =  Loggers.getLogger(ActionsSyncRule.class);
 
   protected MatcherWithWildcards m;
 

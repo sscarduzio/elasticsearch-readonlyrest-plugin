@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
@@ -30,7 +30,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import java.util.Optional;
 
 public abstract class BasicAuthentication extends SyncRule implements UserRule, Authentication {
-  private static final Logger logger = Loggers.getLogger(BasicAuthentication.class);
+  private static final ESLogger logger =  Loggers.getLogger(BasicAuthentication.class);
 
   private final String authKey;
 

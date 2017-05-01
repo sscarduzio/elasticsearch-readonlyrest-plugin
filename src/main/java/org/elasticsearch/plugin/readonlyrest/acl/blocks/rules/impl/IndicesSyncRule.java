@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  */
 public class IndicesSyncRule extends SyncRule {
 
-  private final Logger logger = Loggers.getLogger(this.getClass());
+  private final ESLogger logger = Loggers.getLogger(this.getClass());
 
   private MatcherWithWildcards configuredWildcards;
 

@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl;
 
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -55,7 +55,7 @@ public class ACL {
   private static final String USER_GROUPS_PROVIDERS_PREFIX = "readonlyrest.user_groups_providers";
   private static final String EXTERNAL_AUTH_SERVICES_PREFIX = "readonlyrest.external_authentication_service_configs";
 
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final ESLogger logger = Loggers.getLogger(getClass());
   // Array list because it preserves the insertion order
   private ArrayList<Block> blocks = new ArrayList<>();
 

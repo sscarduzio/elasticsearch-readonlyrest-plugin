@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
  */
 public class RequestContext extends Delayed implements IndicesRequestContext {
 
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final ESLogger logger = Loggers.getLogger(getClass());
   private final RestChannel channel;
   private final RestRequest request;
   private final String action;

@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.hash.Hashing;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
@@ -44,7 +44,7 @@ import java.util.UUID;
  */
 public class SessionCookie {
 
-  private static final Logger logger = Loggers.getLogger(SessionCookie.class);
+  private static final ESLogger logger =  Loggers.getLogger(SessionCookie.class);
 
   private static final String SERVER_SECRET = UUID.randomUUID().toString();
 

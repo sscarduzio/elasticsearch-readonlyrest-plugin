@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest;
 
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.inject.Inject;
@@ -41,7 +41,7 @@ import java.util.Base64;
 @Singleton
 public class SSLEngineProvider {
   public final ConfigurationHelper conf;
-  private final Logger logger = Loggers.getLogger(this.getClass());
+  private final ESLogger logger = Loggers.getLogger(this.getClass());
   private SslContext context = null;
 
   @Inject

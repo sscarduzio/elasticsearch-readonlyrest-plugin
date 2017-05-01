@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.utils;
 
 import com.google.common.collect.Lists;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.Booleans;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 
 public class ConfigReaderHelper {
 
-  private static final Logger logger = Loggers.getLogger(ConfigReaderHelper.class);
+  private static final ESLogger logger =  Loggers.getLogger(ConfigReaderHelper.class);
 
   private ConfigReaderHelper() {
   }

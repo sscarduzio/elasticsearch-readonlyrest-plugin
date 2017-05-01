@@ -21,7 +21,7 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ldap.BaseLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapClientException;
@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
 
-  private static final Logger logger = Loggers.getLogger(UnboundidBaseLdapClient.class);
+  private static final ESLogger logger =  Loggers.getLogger(UnboundidBaseLdapClient.class);
   protected final Duration requestTimeout;
   protected final UnboundidConnection connection;
   private final UserSearchFilterConfig userSearchFilterConfig;

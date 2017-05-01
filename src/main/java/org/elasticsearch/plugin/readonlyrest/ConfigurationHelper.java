@@ -17,15 +17,14 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
@@ -52,7 +51,7 @@ public class ConfigurationHelper {
   public static final String ANSI_CYAN = "\u001B[36m";
   public static final String ANSI_WHITE = "\u001B[37m";
 
-  private static final Logger logger = Loggers.getLogger(ConfigurationHelper.class);
+  private static final ESLogger logger = Loggers.getLogger(ConfigurationHelper.class);
 
   private static ConfigurationHelper currentInstance;
   private static boolean requirePassword;
@@ -100,79 +99,11 @@ public class ConfigurationHelper {
     return currentInstance;
   }
 
-  private static Setting<String> str(String name) {
-    return new Setting<>(name, "", (value) -> value, Setting.Property.NodeScope);
-  }
-
-  private static Setting<Boolean> bool(String name) {
-    return Setting.boolSetting(name, Boolean.FALSE, Setting.Property.NodeScope);
-  }
-
-  //  private static Setting<Integer> integ(String name) {
-//    return Setting.intSetting(name, 0, Integer.MAX_VALUE, Setting.Property.NodeScope);
-//  }
-  private static Setting<Settings> grp(String name) {
-    return Setting.groupSetting(name, new Setting.Property[]{Setting.Property.Dynamic, Setting.Property.NodeScope});
-  }
-
-//  private static Setting<List<String>> strA(String name) {
-//    return Setting.listSetting(name, new ArrayList<>(), (s) -> s.toString(), Setting.Property.NodeScope);
-//  }
-
-  public static List<Setting<?>> allowedSettings() {
-    String prefix = "readonlyrest.";
-    String rule_prefix = prefix + "access_control_rules.";
-    String users_prefix = prefix + "users.";
-    String ldaps_prefix = prefix + "ldaps.";
-    String proxy_auth_configs_prefix = prefix + "proxy_auth_configs.";
-    String user_groups_providers_prefix = prefix + "user_groups_providers.";
-    String external_authentication_service_configs_prefix = prefix + "external_authentication_service_configs.";
-
-    return Arrays.asList(
-        bool(prefix + "enable"),
-        str(prefix + "response_if_req_forbidden"),
-        bool(prefix + "searchlog"),
-
-        // SSL
-        bool(prefix + "ssl.enable"),
-        str(prefix + "ssl.keystore_file"),
-        str(prefix + "ssl.keystore_pass"),
-        str(prefix + "ssl.key_alias"),
-        str(prefix + "ssl.key_pass"),
-        str(prefix + "ssl.privkey_pem"),
-        str(prefix + "ssl.certchain_pem"),
-
-        grp(rule_prefix),
-        grp(users_prefix),
-        grp(ldaps_prefix),
-        grp(proxy_auth_configs_prefix),
-        grp(user_groups_providers_prefix),
-        grp(external_authentication_service_configs_prefix)
-        // Rules
-//        str(rule_prefix + "name"),
-//        str(rule_prefix + "accept_x-forwarded-for_header"),
-//        str(rule_prefix + "auth_key"),
-//        str(rule_prefix + "auth_key_sha1"),
-//        str(rule_prefix + "uri_re"),
-//        str(rule_prefix + "methods"),
-//        integ(rule_prefix + "maxBodyLength"),
-//        strA(rule_prefix + "indices"),
-//        strA(rule_prefix + "hosts"),
-//        strA(rule_prefix + "groups"),
-//
-//        // Users
-//        str(users_prefix + "username"),
-//        str(users_prefix + "auth_key"),
-//        strA(users_prefix + "groups")
-
-    );
-  }
-
   public static void setRequirePassword(boolean requirePass) {
     requirePassword = requirePass;
   }
 
-  public static boolean doesRequirePassword(){
+  public static boolean doesRequirePassword() {
     return requirePassword;
   }
 
@@ -182,7 +113,7 @@ public class ConfigurationHelper {
       throw new ElasticsearchException("no settings found in index");
     }
     String yaml = (String) resp.getSource().get("settings");
-    Settings settings = Settings.builder().loadFromSource(yaml, XContentType.YAML).build();
+    Settings settings = Settings.builder().loadFromSource(yaml).build();
     readSettings(settings);
   }
 

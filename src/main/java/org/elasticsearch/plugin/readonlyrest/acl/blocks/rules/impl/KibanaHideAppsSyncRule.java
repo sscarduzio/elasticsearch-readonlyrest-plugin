@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.ESLogger;
 import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
@@ -37,7 +37,7 @@ import java.util.Optional;
 public class KibanaHideAppsSyncRule extends SyncRule {
 
   private static final String KIBANA_HIDE_APPS_HEADER = "x-kibana-hide-apps";
-  private final Logger logger = Loggers.getLogger(this.getClass());
+  private final ESLogger logger = Loggers.getLogger(this.getClass());
   private final String hiddenApps;
 
   public KibanaHideAppsSyncRule(Settings s) throws RuleNotConfiguredException {
