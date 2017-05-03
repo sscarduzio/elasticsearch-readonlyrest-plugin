@@ -46,6 +46,9 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 
+import static org.elasticsearch.rest.RestStatus.FORBIDDEN;
+import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
+
 /**
  * Created by sscarduzio on 19/12/2015.
  */
@@ -110,17 +113,21 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
     if (reqNull != chanNull) {
-      if (chanNull)
+      if (chanNull) {
         throw new SecurityPermissionException("Problems analyzing the channel object. " +
                                                 "Have you checked the security permissions?", null);
-      if (reqNull)
+      }
+      if (reqNull) {
         throw new SecurityPermissionException("Problems analyzing the request object. " +
                                                 "Have you checked the security permissions?", null);
+      }
     }
+
 
     RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool,
         new ESContextImpl());
     conf.acl.check(rc)
+
       .exceptionally(throwable -> {
         logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
         if (throwable.getCause() instanceof ResourceNotFoundException) {
@@ -132,8 +139,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         sendNotAuthResponse(channel);
         return null;
       })
+
       .thenApply(result -> {
-        if (result == null) return null;
+        assert result != null;
 
         if (result.isMatch() && Block.Policy.ALLOW.equals(result.getBlock().getPolicy())) {
           try {
@@ -152,7 +160,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
         logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
         sendNotAuthResponse(channel);
-
         return null;
       });
   }
@@ -162,12 +169,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     BytesRestResponse resp;
     if (ConfigurationHelper.doesRequirePassword()) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, reason);
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
     }
     else {
-      resp = new BytesRestResponse(RestStatus.FORBIDDEN, reason);
+      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
     }
 
     channel.sendResponse(resp);
@@ -180,7 +187,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       ElasticsearchException.generateFailureXContent(b, ToXContent.EMPTY_PARAMS, e, true);
       b.endObject();
       BytesRestResponse resp;
-      resp = new BytesRestResponse(RestStatus.NOT_FOUND, b.string());
+      resp = new BytesRestResponse(NOT_FOUND, "application/json", b.string());
       channel.sendResponse(resp);
     } catch (Exception e1) {
       e1.printStackTrace();
