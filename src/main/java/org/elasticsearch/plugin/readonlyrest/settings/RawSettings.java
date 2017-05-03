@@ -71,7 +71,13 @@ public class RawSettings {
   }
 
   public Set<?> notEmptySetReq(String attr) {
-    HashSet<?> set = new HashSet<>(req(attr));
+    Object value = req(attr);
+    HashSet<Object> set = new HashSet<>();
+    if(value instanceof List<?>) {
+      set.addAll((List<?>)value);
+    } else if(value instanceof String) {
+      set.add(value);
+    }
     if (set.isEmpty()) throw new ConfigMalformedException("Set value of'" + attr + "' attribute cannot be empty");
     return set;
   }

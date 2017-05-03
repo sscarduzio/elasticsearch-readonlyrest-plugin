@@ -10,6 +10,12 @@ readonlyrest:
     # (De)activate plugin
     enable: true
 
+    ssl:
+      enable: true
+      keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
+      key_pass: readonlyrest
+
     # HTTP response body in case of forbidden request.
     # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
     response_if_req_forbidden: <h1>Forbidden</h1>
@@ -29,9 +35,16 @@ readonlyrest:
 #        groups: ["group3"]
 
     - name: "::Facebook posts::2222"
-#      type: allow
-#      methods: GET
+      type: allow
+      auth_key_sha1: 2bc37a406bd743e2b7a4cb33efc0c52bc2cb03f0 #claire:p455key
+      kibana_access: rw
+      auth_key: logstash:logstash
+      actions: ["indices:data/read/*"]
+      methods: GET
+      accept_x-forwarded-for_header: true
+      hosts: [127.0.0.1]
       indices: ["facebook"]
+      indices_rewrite: [target1, target2, replacement]
       proxy_auth:
         proxy_auth_config: "proxy1"
         users: ["*"]
@@ -40,6 +53,36 @@ readonlyrest:
         groups: ["group3"]
         cache_ttl_in_sec: 60
       external_authentication: "ext2"
+      max_body_length: 100
+
+    - name: Accept requests from users in group team1 on index1
+      type: allow
+      groups: ["team1"]
+      indices: ["index1"]
+
+    - name: Accept requests from users in group team2 on index2
+      type: allow
+      groups: ["team2"]
+      indices: ["index2"]
+
+    - name: Accept requests from users in groups team1 or team2 on index3
+      type: allow
+      groups: ["team1", "team2"]
+      indices: ["index3"]
+
+    users:
+
+    - username: alice
+      auth_key: alice:p455phrase
+      groups: ["team1"]
+
+    - username: bob
+      auth_key: bob:s3cr37
+      groups: ["team2", "team4"]
+
+    - username: claire
+      auth_key_sha1: 2bc37a406bd743e2b7a4cb33efc0c52bc2cb03f0 #claire:p455key
+      groups: ["team1", "team5"]
 
     proxy_auth_configs:
 

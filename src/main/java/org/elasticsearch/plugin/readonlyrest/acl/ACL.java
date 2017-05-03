@@ -22,6 +22,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
@@ -30,8 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProv
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.Verbosity;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -99,7 +99,7 @@ public class ACL {
           if (v.equals(Verbosity.INFO)) {
             logger.info("request: " + rc + " matched block: " + checkResult);
           }
-          if(checkResult.getBlock().getPolicy().equals(Block.Policy.ALLOW)){
+          if(checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW)){
             rc.commit();
           }
           return true;

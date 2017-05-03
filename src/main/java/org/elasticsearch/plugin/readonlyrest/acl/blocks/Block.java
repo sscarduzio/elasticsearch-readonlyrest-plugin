@@ -20,9 +20,9 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
@@ -53,9 +53,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProv
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -77,7 +77,7 @@ public class Block {
   private final Logger logger;
   private final String name;
   private final ESContext context;
-  private final Policy policy;
+  private final BlockPolicy policy;
   private final Set<AsyncRule> conditionsToCheck;
   private final boolean authHeaderAccepted;
 
@@ -90,10 +90,10 @@ public class Block {
                ESContext context) {
     this.logger = context.logger(getClass());
     this.name = settings.get("name");
-    String sPolicy = settings.get("type", Policy.ALLOW.name());
+    String sPolicy = settings.get("type", BlockPolicy.ALLOW.name());
     this.context = context;
 
-    policy = Block.Policy.valueOf(sPolicy.toUpperCase());
+    policy = BlockPolicy.valueOf(sPolicy.toUpperCase());
 
     conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapConfigs, groupsProviderConfigs,
         externalAuthenticationServiceConfigs);
@@ -108,7 +108,7 @@ public class Block {
     return name;
   }
 
-  public Policy getPolicy() {
+  public BlockPolicy getPolicy() {
     return policy;
   }
 
@@ -227,16 +227,4 @@ public class Block {
         (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication);
   }
 
-  public enum Policy {
-    ALLOW, FORBID;
-
-    public static String valuesString() {
-      StringBuilder sb = new StringBuilder();
-      for (Policy v : values()) {
-        sb.append(v.toString()).append(",");
-      }
-      sb.deleteCharAt(sb.length() - 1);
-      return sb.toString();
-    }
-  }
 }

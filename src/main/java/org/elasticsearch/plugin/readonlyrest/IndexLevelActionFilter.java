@@ -33,9 +33,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
@@ -143,7 +141,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       .thenApply(result -> {
         assert result != null;
 
-        if (result.isMatch() && Block.Policy.ALLOW.equals(result.getBlock().getPolicy())) {
+        if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
           try {
             @SuppressWarnings("unchecked")
             ActionListener<Response> aclActionListener =

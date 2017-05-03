@@ -6,6 +6,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthen
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ public class RorSettings {
 
   private final boolean enable;
   private final String forbiddenMessage;
+  private final SSLSettings sslSettings;
   private final List<BlockSettings> blocksSettings;
 
   static RorSettings from(RawSettings settings) {
@@ -34,16 +36,19 @@ public class RorSettings {
     ProxyAuthConfigSettingsCollection proxyAuthConfigSettingsCollection = ProxyAuthConfigSettingsCollection.from(raw);
     ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection =
         ExternalAuthenticationServiceSettingsCollection.from(raw);
+    AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(proxyAuthConfigSettingsCollection);
 
     this.enable = raw.booleanOpt("enable").orElse(DEFAULT_ENABLE);
     this.forbiddenMessage = raw.stringOpt("response_if_req_forbidden").orElse(DEFAULT_FORBIDDEN_MESSAGE);
+    this.sslSettings = SSLSettings.from(raw.inner("ssl"));
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
         .map(block -> BlockSettings.from(
             new RawSettings((Map<String, ?>) block),
+            authMethodCreatorsRegistry,
             ldapSettingsCollection,
             userGroupsProviderSettingsCollection,
-            proxyAuthConfigSettingsCollection,
-            externalAuthenticationServiceSettingsCollection
+            externalAuthenticationServiceSettingsCollection,
+            UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
         ))
         .collect(Collectors.toList());
   }
@@ -54,6 +59,10 @@ public class RorSettings {
 
   public String getForbiddenMessage() {
     return forbiddenMessage;
+  }
+
+  public SSLSettings getSslSettings() {
+    return sslSettings;
   }
 
   public ImmutableList<BlockSettings> getBlocksSettings() {

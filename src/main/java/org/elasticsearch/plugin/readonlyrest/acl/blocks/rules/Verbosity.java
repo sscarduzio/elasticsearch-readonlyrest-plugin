@@ -15,11 +15,24 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
+
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 25/04/2017.
  */
 public enum Verbosity {
-  INFO,ERROR
+  INFO, ERROR;
+
+  public static Optional<Verbosity> fromString(String value) {
+    switch (value.toLowerCase()) {
+      case "info":
+        return Optional.of(INFO);
+      case "error":
+        return Optional.of(ERROR);
+      default:
+        return Optional.empty();
+    }
+  }
 }

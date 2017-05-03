@@ -54,16 +54,18 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
     this.config = config;
     userListMatcher = new MatcherWithWildcards(
         users.stream()
-             .filter(i -> !Strings.isNullOrEmpty(i))
-             .distinct()
-             .collect(Collectors.toSet())
+            .filter(i -> !Strings.isNullOrEmpty(i))
+            .distinct()
+            .collect(Collectors.toSet())
     );
   }
 
-  public static Optional<ProxyAuthSyncRule> fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs, ESContext context)
+  public static Optional<ProxyAuthSyncRule> fromSettings(Settings s,
+                                                         List<ProxyAuthConfig> proxyAuthConfigs,
+                                                         ESContext context)
       throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(),parseSimpleArraySettings(), parseExtendedSettings(proxyAuthConfigs),
-        context);
+    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(), parseSimpleArraySettings(),
+        parseExtendedSettings(proxyAuthConfigs), context);
   }
 
   private static Function<Settings, Optional<ProxyAuthSyncRule>> parseSimpleSettings() {
@@ -88,7 +90,7 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
       List<ProxyAuthConfig> proxyAuthConfigs) {
     return settings -> {
       Settings proxyAuthSettings = settings.getAsSettings(RULE_NAME);
-      if(proxyAuthSettings.isEmpty()) return Optional.empty();
+      if (proxyAuthSettings.isEmpty()) return Optional.empty();
 
       Map<String, ProxyAuthConfig> proxyAuthConfigByName =
           proxyAuthConfigs.stream().collect(Collectors.toMap(ProxyAuthConfig::getName, Function.identity()));

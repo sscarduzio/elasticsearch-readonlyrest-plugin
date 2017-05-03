@@ -42,7 +42,6 @@ import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Field;
