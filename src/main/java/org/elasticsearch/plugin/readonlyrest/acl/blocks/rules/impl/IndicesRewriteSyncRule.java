@@ -33,15 +33,15 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.IndicesRequestContext;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Field;
@@ -108,7 +108,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
       rc.scanSubRequests((src) -> {
         rewrite(src);
         return Optional.of(src);
-      }, logger);
+      });
     }
     else {
       rewrite(rc);

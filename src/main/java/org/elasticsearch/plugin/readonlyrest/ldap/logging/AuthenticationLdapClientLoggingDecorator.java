@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.ldap.logging;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;

@@ -37,7 +37,7 @@ import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.reflections.ReflectionUtils;
 
@@ -61,7 +61,7 @@ public class RCTransactionalIndices {
   // #XXX hacky as hell - needed for bulk request
   private static final Map<String, Set<String>> restLevelIndicesCache = Maps.newHashMap();
 
-  public static Transactional<Set<String>> mkInstance(RequestContext rc, ESContext es) {
+  public static Transactional<Set<String>> mkInstance(RequestContextImpl rc, ESContext es) {
     if (!rc.involvesIndices()) {
       return new DummyTXIndices(es);
     }
@@ -91,7 +91,7 @@ public class RCTransactionalIndices {
         }
       }
 
-      private Set<String> findIndices(RequestContext rc) {
+      private Set<String> findIndices(RequestContextImpl rc) {
 
         String[] indices = new String[0];
         ActionRequest ar = rc.getUnderlyingRequest();

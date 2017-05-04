@@ -27,7 +27,6 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
@@ -42,9 +41,13 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.IndexLevelActionFilter;
 import org.elasticsearch.plugin.readonlyrest.SSLTransportNetty4;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
 import org.elasticsearch.plugin.readonlyrest.rradmin.RRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.rradmin.TransportRRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.rradmin.rest.RestRRAdminAction;
+import org.elasticsearch.plugin.readonlyrest.settings.ESSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
 import org.elasticsearch.plugins.NetworkPlugin;
@@ -56,6 +59,8 @@ import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.watcher.ResourceWatcherService;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -67,11 +72,17 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
-  private final Settings settings;
-  private final Logger logger = Loggers.getLogger(this.getClass());
 
-  public ReadonlyRestPlugin(Settings s) {
+  private final Logger logger;
+  private final Settings settings;
+  private final RorSettings rorSettings;
+  private final ESContext context;
+
+  public ReadonlyRestPlugin(Settings s) throws IOException {
     this.settings = s;
+    this.rorSettings = ESSettings.loadFrom(new File("/config/elasticsearch.yml")).getRorSettings();
+    this.context = new ESContextImpl();
+    this.logger = this.context.logger(getClass());
   }
 
   @Override
@@ -92,7 +103,8 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
 
     return Collections.singletonMap(
         "ssl_netty4", () -> new SSLTransportNetty4(
-            settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher));
+            rorSettings, context, settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+        ));
   }
 
   @Override
@@ -135,7 +147,7 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class, new Class[0]));
+        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override

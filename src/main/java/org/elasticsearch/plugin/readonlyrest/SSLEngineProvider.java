@@ -20,91 +20,94 @@ package org.elasticsearch.plugin.readonlyrest;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SSLSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSSLSettings;
 
 import javax.net.ssl.SSLException;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.Key;
 import java.security.PrivilegedAction;
 import java.security.cert.Certificate;
 import java.util.Base64;
+import java.util.Optional;
 
 
-@Singleton
 public class SSLEngineProvider {
-  public final ConfigurationHelper conf;
-  private final Logger logger = Loggers.getLogger(this.getClass());
-  private SslContext context = null;
 
-  @Inject
-  public SSLEngineProvider(Settings settings) {
-    this.conf = ConfigurationHelper.getInstance(settings, null);
-    if (conf.sslEnabled) {
-      if (!Strings.isNullOrEmpty(conf.sslCertChainPem) && !Strings.isNullOrEmpty(conf.sslPrivKeyPem)) {
-        AccessController.doPrivileged(
-            new PrivilegedAction<Void>() {
-              @Override
-              public Void run() {
-                try {
-                  logger.info("Loading SSL context with certChain=" + conf.sslCertChainPem + ", privKey=" + conf.sslPrivKeyPem);
-                  // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-                  context = SslContextBuilder.forServer(
-                      new File(conf.sslCertChainPem),
-                      new File(conf.sslPrivKeyPem),
-                      null
-                  ).build();
-                } catch (SSLException e) {
-                  logger.error("Failed to load SSL CertChain & private key!");
-                  e.printStackTrace();
-                }
-                return null;
-              }
-            });
+  private final Logger logger;
+  private SslContext context;
 
-        // Everything is configured
-        logger.info("SSL configured through cert_chain and privkey");
-        return;
-      }
+  public SSLEngineProvider(SSLSettings settings, ESContext esContext) {
+    this.logger = esContext.logger(getClass());
+    if (settings instanceof EnabledSSLSettings) {
+      createContext((EnabledSSLSettings) settings);
+    }
+  }
 
+  public Optional<SslContext> getContext() {
+    return Optional.ofNullable(context);
+  }
+
+  private void createContext(EnabledSSLSettings settings) {
+    if (settings.getCertchainPem().isPresent() && settings.getPrivkeyPem().isPresent()) {
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+        try {
+          logger.info("Loading SSL context with certChain=" + settings.getCertchainPem().get().getName() +
+              ", privKey=" + settings.getPrivkeyPem().get().getName());
+          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+          context = SslContextBuilder.forServer(
+              settings.getCertchainPem().get(),
+              settings.getPrivkeyPem().get(),
+              null
+          ).build();
+        } catch (SSLException e) {
+          logger.error("Failed to load SSL CertChain & private key!");
+          e.printStackTrace();
+        }
+        return null;
+      });
+
+      // Everything is configured
+      logger.info("SSL configured through cert_chain and privkey");
+      return;
+
+    } else {
       logger.info("SSL cert_chain and privkey not configured, attempting with JKS keystore..");
 
       try {
         char[] keyStorePassBa = null;
-        if (!Strings.isNullOrEmpty(conf.sslKeyStorePassword)) {
-          keyStorePassBa = conf.sslKeyStorePassword.toCharArray();
+        if (settings.getKeystorePass().isPresent()) {
+          keyStorePassBa = settings.getKeystorePass().get().toCharArray();
         }
 
         // Load the JKS keystore
         java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
-        ks.load(new java.io.FileInputStream(conf.sslKeyStoreFile), keyStorePassBa);
+        ks.load(new java.io.FileInputStream(settings.getKeystoreFile()), keyStorePassBa);
 
         char[] keyPassBa = null;
-        if (!Strings.isNullOrEmpty(conf.sslKeyPassword)) {
-          keyPassBa = conf.sslKeyPassword.toCharArray();
+        if (settings.getKeyPass().isPresent()) {
+          keyPassBa = settings.getKeyPass().get().toCharArray();
         }
 
         // Get PrivKey from keystore
-        if (Strings.isNullOrEmpty(conf.sslKeyAlias)) {
+        String sslKeyAlias;
+        if (!settings.getKeyAlias().isPresent()) {
           if (ks.aliases().hasMoreElements()) {
             String inferredAlias = ks.aliases().nextElement();
             logger.info("SSL ssl.key_alias not configured, took first alias in keystore: " + inferredAlias);
-            conf.sslKeyAlias = inferredAlias;
+            sslKeyAlias = inferredAlias;
+          } else {
+            throw new ConfigMalformedException("No alias found, therefore key found in keystore!");
           }
-          else {
-            throw new ElasticsearchException("No alias found, therefore key found in keystore!");
-          }
+        } else {
+          sslKeyAlias = settings.getKeyAlias().get();
         }
-        Key key = ks.getKey(conf.sslKeyAlias, keyPassBa);
+        Key key = ks.getKey(sslKeyAlias, keyPassBa);
         if (key == null) {
-          throw new ElasticsearchException("Private key not found in keystore for alias: " + conf.sslKeyAlias);
+          throw new ConfigMalformedException("Private key not found in keystore for alias: " + sslKeyAlias);
         }
 
         // Create a PEM of the private key
@@ -117,7 +120,7 @@ public class SSLEngineProvider {
         logger.info("Discovered key from JKS");
 
         // Get CertChain from keystore
-        Certificate[] cchain = ks.getCertificateChain(conf.sslKeyAlias);
+        Certificate[] cchain = ks.getCertificateChain(sslKeyAlias);
 
         // Create a PEM of the certificate chain
         sb = new StringBuilder();
@@ -156,12 +159,5 @@ public class SSLEngineProvider {
       }
 
     }
-  }
-
-  public SslContext getContext() throws Exception {
-    if (conf.sslEnabled) {
-      return context;
-    }
-    else throw new IllegalAccessException("SSL not enabled, cannot make a SSL engine");
   }
 }

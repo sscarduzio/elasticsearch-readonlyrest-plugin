@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
@@ -26,8 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;

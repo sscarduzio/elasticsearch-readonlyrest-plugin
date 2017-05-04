@@ -23,7 +23,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -35,10 +35,10 @@ import static org.mockito.Mockito.when;
 public class MaxBodyLengthRuleTests extends TestCase {
 
   private RuleExitResult match(Integer configured, String found) throws RuleNotConfiguredException {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(RequestContextImpl.class));
   }
 
-  private RuleExitResult match(Integer configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(Integer configured, String found, RequestContextImpl rc) throws RuleNotConfiguredException {
     when(rc.getContent()).thenReturn(found);
 
     SyncRule r = MaxBodyLengthSyncRule.fromSettings(

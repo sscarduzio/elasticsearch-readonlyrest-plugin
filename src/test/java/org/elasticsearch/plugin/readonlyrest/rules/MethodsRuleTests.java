@@ -23,7 +23,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
@@ -38,10 +38,10 @@ import static org.mockito.Mockito.when;
 public class MethodsRuleTests extends TestCase {
 
   private RuleExitResult match(List<String> configured, String found) throws RuleNotConfiguredException {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(RequestContextImpl.class));
   }
 
-  private RuleExitResult match(List<String> configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(List<String> configured, String found, RequestContextImpl rc) throws RuleNotConfiguredException {
     when(rc.getMethod()).thenReturn(found);
     when(rc.isReadRequest()).thenReturn(true);
 

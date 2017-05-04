@@ -20,8 +20,8 @@ import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -80,7 +80,7 @@ public class CachedAsyncAuthenticationDecoratorTests {
 
     MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
     when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContext requestContext = Mockito.mock(RequestContext.class);
+    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
     when(requestContext.getHeaders()).thenReturn(
         ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
     );
@@ -103,7 +103,7 @@ public class CachedAsyncAuthenticationDecoratorTests {
 
     MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
     when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContext requestContext = Mockito.mock(RequestContext.class);
+    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
     when(requestContext.getHeaders()).thenReturn(
         ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
     );

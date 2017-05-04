@@ -14,7 +14,7 @@ public class ApiKeysRuleSettings implements RuleSettings {
     return new ApiKeysRuleSettings(indices);
   }
 
-  private ApiKeysRuleSettings(Set<String> apiKeys) {
+  public ApiKeysRuleSettings(Set<String> apiKeys) {
     this.apiKeys = apiKeys;
   }
 

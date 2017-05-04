@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.BaseLdapClient;
 import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// todo: remove
 public class LdapConfigs {
 
   private final Map<String, BaseLdapClient> configs;

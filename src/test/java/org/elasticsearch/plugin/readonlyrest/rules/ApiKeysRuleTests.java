@@ -18,13 +18,13 @@
 package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import junit.framework.TestCase;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.ApiKeysRuleSettings;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -35,28 +35,23 @@ import static org.mockito.Mockito.when;
 
 public class ApiKeysRuleTests extends TestCase {
 
-  private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
+  private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(String configured, String found, RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
 
-    SyncRule r = ApiKeysSyncRule.fromSettings(Settings.builder()
-                                             .put("api_keys", configured)
-                                             .build()).get();
-
-    RuleExitResult res = r.match(rc);
-    rc.commit();
-    return res;
+    SyncRule r = new ApiKeysSyncRule(new ApiKeysRuleSettings(Sets.newHashSet(configured)));
+    return r.match(rc);
   }
 
-  public void testOK() throws RuleNotConfiguredException {
+  public void testOK() {
     RuleExitResult res = match("1234567890", "1234567890");
     assertTrue(res.isMatch());
   }
 
-  public void testKO() throws RuleNotConfiguredException {
+  public void testKO() {
     RuleExitResult res = match("1234567890", "x");
     assertFalse(res.isMatch());
   }

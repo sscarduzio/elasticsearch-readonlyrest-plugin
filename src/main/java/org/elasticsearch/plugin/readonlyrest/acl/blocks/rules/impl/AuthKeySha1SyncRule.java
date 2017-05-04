@@ -19,27 +19,16 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
-
-import java.util.Optional;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
 
-  private AuthKeySha1SyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+  public AuthKeySha1SyncRule(AuthKeySha1RuleSettings s, ESContext context) {
     super(s, context);
-  }
-
-  public static Optional<AuthKeySha1SyncRule> fromSettings(Settings s, ESContext context) {
-    try {
-      return Optional.of(new AuthKeySha1SyncRule(s, context));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
   }
 
   @Override

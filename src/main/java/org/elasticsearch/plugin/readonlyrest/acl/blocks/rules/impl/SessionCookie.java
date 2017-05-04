@@ -23,9 +23,9 @@ import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;

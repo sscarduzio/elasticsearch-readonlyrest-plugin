@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.util.Objects;
 

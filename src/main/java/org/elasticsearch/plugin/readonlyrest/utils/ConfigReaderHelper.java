@@ -20,7 +20,7 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.net.URI;
 import java.net.URISyntaxException;

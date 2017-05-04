@@ -17,41 +17,22 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.ApiKeysRuleSettings;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class ApiKeysSyncRule extends SyncRule {
 
-  private final List<String> validApiKeys;
+  private final Set<String> validApiKeys;
 
-  private ApiKeysSyncRule(Settings s) throws RuleNotConfiguredException {
-    ArrayList<String> keys = Lists.newArrayList(s.getAsArray(getKey()));
-    if(keys.isEmpty()) throw new RuleNotConfiguredException();
-
-    validApiKeys = keys.stream()
-        .filter(key -> !Strings.isNullOrEmpty(key))
-        .collect(Collectors.toList());
-  }
-
-  public static Optional<ApiKeysSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new ApiKeysSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public ApiKeysSyncRule(ApiKeysRuleSettings s) {
+    this.validApiKeys = s.getApiKeys();
   }
 
   @Override

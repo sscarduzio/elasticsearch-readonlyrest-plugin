@@ -27,7 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,7 +58,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   private void match(List<String> configured, List<String> foundInRequest, List<String> expected) throws RuleNotConfiguredException {
     Collections.sort(foundInRequest);
     Collections.sort(expected);
-    RequestContext rc = Mockito.mock(RequestContext.class);
+    RequestContextImpl rc = Mockito.mock(RequestContextImpl.class);
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(foundInRequest);
     when(rc.getIndices()).thenReturn(foundSet);

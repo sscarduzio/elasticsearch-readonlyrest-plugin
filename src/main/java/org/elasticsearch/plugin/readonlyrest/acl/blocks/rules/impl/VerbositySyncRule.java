@@ -19,14 +19,12 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
 
 import java.util.Optional;
@@ -35,8 +33,6 @@ import java.util.Optional;
  * Created by sscarduzio on 14/02/2016.
  */
 public class VerbositySyncRule extends SyncRule {
-
-  private static final Logger logger = Loggers.getLogger(VerbositySyncRule.class);
 
   protected Verbosity level;
 

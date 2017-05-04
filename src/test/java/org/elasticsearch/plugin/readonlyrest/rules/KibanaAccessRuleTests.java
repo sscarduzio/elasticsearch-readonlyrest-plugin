@@ -24,7 +24,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
@@ -38,14 +38,14 @@ import static org.mockito.Mockito.when;
 
 public class KibanaAccessRuleTests extends TestCase {
   private RuleExitResult match(Conf configured, Found found) throws RuleNotConfiguredException {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(RequestContextImpl.class));
   }
 
-  private RuleExitResult match(Conf configured, Found found, RequestContext rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(Conf configured, Found found, RequestContextImpl rc) throws RuleNotConfiguredException {
     return match(configured, found, rc, false);
   }
 
-  private RuleExitResult match(Conf configured, Found found, RequestContext rc, boolean involvesIndices) throws RuleNotConfiguredException {
+  private RuleExitResult match(Conf configured, Found found, RequestContextImpl rc, boolean involvesIndices) throws RuleNotConfiguredException {
     when(rc.involvesIndices()).thenReturn(involvesIndices);
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
@@ -82,7 +82,7 @@ public class KibanaAccessRuleTests extends TestCase {
     found.action = action;
     found.indices = indices;
 
-    return match(conf, found, Mockito.mock(RequestContext.class), true);
+    return match(conf, found, Mockito.mock(RequestContextImpl.class), true);
   }
 
   public void testCLUSTER() throws RuleNotConfiguredException {

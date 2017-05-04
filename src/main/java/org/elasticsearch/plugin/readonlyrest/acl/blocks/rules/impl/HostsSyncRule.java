@@ -21,13 +21,14 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.net.InternetDomainName;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 
 import java.net.UnknownHostException;
 import java.util.List;
@@ -60,8 +61,7 @@ public class HostsSyncRule extends SyncRule {
           allowedAddresses.add(host.trim());
         }
       }
-    }
-    else {
+    } else {
       throw new RuleNotConfiguredException();
     }
   }

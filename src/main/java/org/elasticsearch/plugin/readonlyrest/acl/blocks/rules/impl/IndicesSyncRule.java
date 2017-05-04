@@ -19,14 +19,13 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.IndicesRequestContext;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -41,17 +40,9 @@ public class IndicesSyncRule extends SyncRule {
   private final Logger logger;
   private final MatcherWithWildcards configuredWildcards;
 
-  private IndicesSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+  public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
     logger = context.logger(getClass());
-    configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey(), context);
-  }
-
-  public static Optional<IndicesSyncRule> fromSettings(Settings s, ESContext context) {
-    try {
-      return Optional.of(new IndicesSyncRule(s, context));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+    configuredWildcards = new MatcherWithWildcards(s.getIndices());
   }
 
   // Is a request or sub-request free from references to any forbidden indices?
@@ -179,7 +170,7 @@ public class IndicesSyncRule extends SyncRule {
           return Optional.of(subRc);
         }
         return Optional.empty();
-      }, logger);
+      });
       if (allowedSubRequests == 0) {
         return NO_MATCH;
       }

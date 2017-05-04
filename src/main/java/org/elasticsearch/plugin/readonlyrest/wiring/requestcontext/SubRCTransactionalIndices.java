@@ -23,7 +23,7 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
 import java.util.Set;

@@ -8,7 +8,7 @@ public class AuthKeySha256RuleSettings extends AuthKeyRuleSettings {
     return new AuthKeySha256RuleSettings(authKey);
   }
 
-  private AuthKeySha256RuleSettings(String authKey) {
+  public AuthKeySha256RuleSettings(String authKey) {
     super(authKey);
   }
 }

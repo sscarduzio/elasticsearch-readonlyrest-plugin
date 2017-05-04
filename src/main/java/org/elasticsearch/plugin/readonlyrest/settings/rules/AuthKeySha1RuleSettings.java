@@ -8,7 +8,7 @@ public class AuthKeySha1RuleSettings extends AuthKeyRuleSettings {
     return new AuthKeySha1RuleSettings(authKey);
   }
 
-  private AuthKeySha1RuleSettings(String authKey) {
+  public AuthKeySha1RuleSettings(String authKey) {
     super(authKey);
   }
 }

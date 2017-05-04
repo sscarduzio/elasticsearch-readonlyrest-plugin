@@ -8,7 +8,7 @@ public class AuthKeyPlainTextRuleSettings extends AuthKeyRuleSettings {
     return new AuthKeyPlainTextRuleSettings(authKey);
   }
 
-  private AuthKeyPlainTextRuleSettings(String authKey) {
+  public AuthKeyPlainTextRuleSettings(String authKey) {
     super(authKey);
   }
 }

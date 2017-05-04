@@ -25,8 +25,9 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +39,11 @@ import java.util.Set;
  */
 public class SubRequestContext extends Delayed implements IndicesRequestContext {
   private final Logger logger;
-  private final RequestContext originalRC;
+  private final RequestContextImpl originalRC;
   private final Object originalSubRequest;
   private final SubRCTransactionalIndices indices;
 
-  public SubRequestContext(RequestContext originalRequestContext, Object originalSubRequest, ESContext context) {
+  public SubRequestContext(RequestContextImpl originalRequestContext, Object originalSubRequest, ESContext context) {
     super("src", context);
     this.logger = context.logger(getClass());
     this.indices = new SubRCTransactionalIndices(this, context);

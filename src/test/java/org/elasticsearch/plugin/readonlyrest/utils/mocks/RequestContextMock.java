@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.utils.mocks;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 
 import java.util.Base64;
 import java.util.Optional;
@@ -29,8 +29,8 @@ import static org.mockito.Mockito.when;
 
 public class RequestContextMock {
 
-  public static RequestContext mockedRequestContext(String user, String pass) {
-    RequestContext mock = mock(RequestContext.class);
+  public static RequestContextImpl mockedRequestContext(String user, String pass) {
+    RequestContextImpl mock = mock(RequestContextImpl.class);
     when(mock.getHeaders()).thenReturn(
         Maps.newHashMap(ImmutableMap.<String, String>builder()
             .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))

@@ -33,13 +33,15 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
@@ -60,7 +62,7 @@ import java.util.stream.Collectors;
 /**
  * Created by sscarduzio on 20/02/2016.
  */
-public class RequestContext extends Delayed implements IndicesRequestContext {
+public class RequestContextImpl extends Delayed implements RequestContext, IndicesRequestContext {
 
   private final IndexNameExpressionResolver indexResolver;
   private final Logger logger;
@@ -80,10 +82,10 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private boolean doesInvolveIndices = false;
   private Transactional<Optional<LoggedUser>> loggedInUser;
 
-  public RequestContext(RestChannel channel, RestRequest request, String action,
-                        ActionRequest actionRequest, ClusterService clusterService,
-                        IndexNameExpressionResolver indexResolver, ThreadPool threadPool,
-                        ESContext context) {
+  public RequestContextImpl(RestChannel channel, RestRequest request, String action,
+                            ActionRequest actionRequest, ClusterService clusterService,
+                            IndexNameExpressionResolver indexResolver, ThreadPool threadPool,
+                            ESContext context) {
     super("rc", context);
     this.indexResolver = indexResolver;
     this.logger = context.logger(getClass());
@@ -296,8 +298,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
-  public Integer scanSubRequests(
-      final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer, Logger logger) {
+  public Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer) {
 
     List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 

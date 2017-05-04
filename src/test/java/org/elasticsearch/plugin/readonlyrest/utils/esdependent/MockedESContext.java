@@ -2,7 +2,7 @@ package org.elasticsearch.plugin.readonlyrest.utils.esdependent;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 public class MockedESContext implements ESContext {
 
@@ -11,5 +11,10 @@ public class MockedESContext implements ESContext {
   @Override
   public Logger logger(Class<?> clazz) {
     return Loggers.getLogger(clazz);
+  }
+
+  @Override
+  public RuntimeException rorException(String message) {
+    return new RuntimeException(message);
   }
 }

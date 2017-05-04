@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 

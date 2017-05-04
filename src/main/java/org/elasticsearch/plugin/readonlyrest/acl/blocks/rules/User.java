@@ -25,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 
 import java.util.List;
@@ -59,15 +59,16 @@ public class User {
 
   private static UserRule getAuthKeyRuleFrom(Settings s, List<ProxyAuthConfig> proxyAuthConfigs,
                                              String username, ESContext context) {
-    return AuthKeySyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
-        AuthKeySha1SyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
-            AuthKeySha256SyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
-                ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs, context).orElseThrow(() ->
-                    new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"))
-                )
-            )
-        )
-    );
+    throw new RuntimeException("not implemented"); // todo:
+//    return AuthKeySyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
+//        AuthKeySha1SyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
+//            AuthKeySha256SyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
+//                ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs, context).orElseThrow(() ->
+//                    new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"))
+//                )
+//            )
+//        )
+//    );
   }
 
   public String getUsername() {

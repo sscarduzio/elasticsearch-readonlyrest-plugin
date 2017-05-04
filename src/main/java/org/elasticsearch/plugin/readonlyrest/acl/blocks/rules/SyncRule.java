@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.base.CaseFormat;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 
 /**
  * Created by sscarduzio on 13/02/2016.

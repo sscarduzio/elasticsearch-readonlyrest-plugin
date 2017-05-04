@@ -20,8 +20,8 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -79,7 +79,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
     when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContext requestContext = Mockito.mock(RequestContext.class);
+    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
     Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
@@ -99,7 +99,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
     when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContext requestContext = Mockito.mock(RequestContext.class);
+    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
     Settings settings = Settings.builder().put("cache_ttl_in_sec", ttl.getSeconds()).build();

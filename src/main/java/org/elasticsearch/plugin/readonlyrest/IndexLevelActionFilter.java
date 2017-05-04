@@ -33,16 +33,22 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
+
+import java.io.IOException;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.elasticsearch.rest.RestStatus.FORBIDDEN;
 import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
@@ -52,29 +58,36 @@ import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
  */
 @Singleton
 public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
+
   private final ThreadPool threadPool;
   private final IndexNameExpressionResolver indexResolver;
-  private ClusterService clusterService;
-  private ConfigurationHelper conf;
+  private final ClusterService clusterService;
+
+  private final ReloadableConfiguration configuration;
+  private final AtomicReference<Optional<ACL>> acl;
+  private final RulesFactory rulesFactory;
+  private final ESContext context;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ConfigurationHelper conf,
-                                ClusterService clusterService, ThreadPool threadPool,
-                                IndexNameExpressionResolver indexResolver) {
+  public IndexLevelActionFilter(Settings settings, ClusterService clusterService, ThreadPool threadPool,
+                                IndexNameExpressionResolver indexResolver) throws IOException {
     super(settings);
-    this.conf = conf;
+    this.context = new ESContextImpl();
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.indexResolver = indexResolver;
-
+    this.acl = new AtomicReference<>(Optional.empty());
+    this.rulesFactory = new RulesFactory(context);
+    this.configuration = new ReloadableConfiguration(rorSettings -> {
+      if (rorSettings.isEnabled()) {
+        this.acl.set(Optional.of(new ACL(rorSettings, rulesFactory, this.context)));
+        logger.info("Configuration reloaded - ReadonlyREST enabled");
+      } else {
+        this.acl.set(Optional.empty());
+        logger.info("Configuration reloaded - ReadonlyREST disabled");
+      }
+    });
     logger.info("Readonly REST plugin was loaded...");
-
-    if (!conf.enabled) {
-      logger.info("Readonly REST plugin is disabled!");
-      return;
-    }
-
-    logger.info("Readonly REST plugin is enabled. Yay, ponies!");
   }
 
   @Override
@@ -84,16 +97,24 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   @Override
   public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
-      String action,
-      Request request,
-      ActionListener<Response> listener,
-      ActionFilterChain<Request, Response> chain) {
-    // Skip if disabled
-    if (!conf.enabled) {
+                                                                                     String action,
+                                                                                     Request request,
+                                                                                     ActionListener<Response> listener,
+                                                                                     ActionFilterChain<Request, Response> chain) {
+    Optional<ACL> acl = this.acl.get();
+    if(acl.isPresent()) {
+      handleRequest(acl.get(), task, action, request, listener, chain);
+    } else {
       chain.proceed(task, action, request, listener);
-      return;
     }
+  }
 
+  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,
+                                                                                              Task task,
+                                                                                              String action,
+                                                                                              Request request,
+                                                                                              ActionListener<Response> listener,
+                                                                                              ActionFilterChain<Request, Response> chain) {
     RestChannel channel = ThreadRepo.channel.get();
     boolean chanNull = channel == null;
 
@@ -113,66 +134,61 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     if (reqNull != chanNull) {
       if (chanNull) {
         throw new SecurityPermissionException("Problems analyzing the channel object. " +
-                                                "Have you checked the security permissions?", null);
+            "Have you checked the security permissions?", null);
       }
       if (reqNull) {
         throw new SecurityPermissionException("Problems analyzing the request object. " +
-                                                "Have you checked the security permissions?", null);
+            "Have you checked the security permissions?", null);
       }
     }
 
+    RequestContextImpl rc = new RequestContextImpl(channel, req, action, request, clusterService, indexResolver, threadPool, context);
 
-    RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool,
-        new ESContextImpl());
-    conf.acl.check(rc)
-
-      .exceptionally(throwable -> {
-        logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
-        if (throwable.getCause() instanceof ResourceNotFoundException) {
-          logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
-          sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
-          return null;
-        }
-        throwable.printStackTrace();
-        sendNotAuthResponse(channel);
-        return null;
-      })
-
-      .thenApply(result -> {
-        assert result != null;
-
-        if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
-          try {
-            @SuppressWarnings("unchecked")
-            ActionListener<Response> aclActionListener =
-              (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
-            chain.proceed(task, action, request, aclActionListener);
+    acl.check(rc)
+        .exceptionally(throwable -> {
+          logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+          if (throwable.getCause() instanceof ResourceNotFoundException) {
+            logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
+            sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
             return null;
-          } catch (Throwable e) {
-            e.printStackTrace();
+          }
+          throwable.printStackTrace();
+          sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
+          return null;
+        })
+
+        .thenApply(result -> {
+          assert result != null;
+
+          if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
+            try {
+              @SuppressWarnings("unchecked")
+              ActionListener<Response> aclActionListener =
+                  (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+              chain.proceed(task, action, request, aclActionListener);
+              return null;
+            } catch (Throwable e) {
+              e.printStackTrace();
+            }
+
+            chain.proceed(task, action, request, listener);
+            return null;
           }
 
-          chain.proceed(task, action, request, listener);
+          logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+          sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
           return null;
-        }
-
-        logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-        sendNotAuthResponse(channel);
-        return null;
-      });
+        });
   }
 
-  private void sendNotAuthResponse(RestChannel channel) {
-    String reason = conf.forbiddenResponse;
-
+  private void sendNotAuthResponse(RestChannel channel, String forbiddenResponse) {
     BytesRestResponse resp;
     if (ConfigurationHelper.doesRequirePassword()) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, forbiddenResponse);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
-    }
-    else {
-      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
+    } else {
+      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, forbiddenResponse);
     }
 
     channel.sendResponse(resp);
@@ -190,7 +206,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     } catch (Exception e1) {
       e1.printStackTrace();
     }
-
   }
 
 }

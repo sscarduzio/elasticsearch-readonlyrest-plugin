@@ -19,12 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
@@ -38,32 +37,23 @@ import static org.mockito.Mockito.when;
 
 public class AuthKeySha1RuleTests extends TestCase {
 
-  private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
+  private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(String configured, String found, RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = AuthKeySha1SyncRule.fromSettings(
-        Settings.builder()
-            .put("auth_key_sha1", configured)
-            .build(),
-        MockedESContext.INSTANCE
-    ).get();
+    SyncRule r = new AuthKeySha1SyncRule(new AuthKeySha1RuleSettings(configured), MockedESContext.INSTANCE);
 
-    RuleExitResult res = r.match(rc);
-    rc.commit();
-    return res;
+    return r.match(rc);
   }
 
-  public void testSimple() throws RuleNotConfiguredException {
+  public void testSimple() {
     RuleExitResult res = match(
         "4338fa3ea95532196849ae27615e14dda95c77b1",
         "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }
-
-
 }

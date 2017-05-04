@@ -19,8 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -58,19 +56,6 @@ public class MatcherWithWildcards {
         allMatchers.add(a.trim());
       }
     }
-  }
-
-  public static MatcherWithWildcards fromSettings(Settings s, String key, ESContext context)
-      throws RuleNotConfiguredException {
-
-    // Will work fine also with single strings (non array) values.
-    String[] a = s.getAsArray(key);
-
-    if (a == null || a.length == 0) {
-      throw new RuleNotConfiguredException();
-    }
-
-    return new MatcherWithWildcards(Sets.newHashSet(a));
   }
 
   /**

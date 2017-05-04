@@ -24,22 +24,25 @@ package org.elasticsearch.plugin.readonlyrest;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.ssl.SslContext;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
+import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.threadpool.ThreadPool;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
-  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays, ThreadPool threadPool,
-      NamedXContentRegistry xContentRegistry, Dispatcher dispatcher
-  ) {
-    super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    logger.info("creating SSL transport");
+  private final RorSettings rorSettings;
+  private final ESContext esContext;
 
+  public SSLTransportNetty4(RorSettings rorSettings, ESContext esContext, Settings settings, NetworkService networkService,
+                            BigArrays bigArrays, ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
+    super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
+    this.rorSettings = rorSettings;
+    this.esContext = esContext;
+    logger.info("creating SSL transport");
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -62,12 +65,10 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      SSLEngineProvider engineProvider = new SSLEngineProvider(settings);
-      if (engineProvider.conf.sslEnabled) {
-        logger.debug("Initializing SSL channel...");
-        SslContext sslCtx = engineProvider.getContext();
+      SSLEngineProvider engineProvider = new SSLEngineProvider(rorSettings.getSslSettings(), esContext);
+      engineProvider.getContext().ifPresent(sslCtx -> {
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
-      }
+      });
     }
   }
 }

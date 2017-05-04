@@ -22,7 +22,8 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.Charset;
@@ -32,7 +33,7 @@ import java.util.Base64;
 public abstract class AuthKeyHashingRule extends BasicAuthentication {
   private final Logger logger ;
 
-  public AuthKeyHashingRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+  public AuthKeyHashingRule(AuthKeyRuleSettings s, ESContext context) {
     super(s, context);
     logger = context.logger(AuthKeySha1SyncRule.class);
   }

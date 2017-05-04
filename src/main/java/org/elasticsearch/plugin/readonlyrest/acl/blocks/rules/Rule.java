@@ -19,8 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 public abstract class Rule {
   protected final RuleExitResult MATCH;
@@ -33,6 +33,7 @@ public abstract class Rule {
 
   public abstract String getKey();
 
+  // todo: move somewhere
   /**
    * This hook is only called if the result is a match.
    *
@@ -46,6 +47,7 @@ public abstract class Rule {
     return true;
   }
 
+  // todo: move somewhere
   /**
    * This hook is called before throwing the exception e.
    * <p>

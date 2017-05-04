@@ -9,8 +9,8 @@ import java.util.Optional;
 public class EnabledSSLSettings implements SSLSettings {
 
   private final File keystoreFile;
-  private final String keystorePass;
-  private final String keyPass;
+  private final Optional<String> keystorePass;
+  private final Optional<String>  keyPass;
   private final Optional<String> keyAlias;
   private final Optional<File> privkeyPem;
   private final Optional<File> certchainPem;
@@ -18,16 +18,16 @@ public class EnabledSSLSettings implements SSLSettings {
   public static EnabledSSLSettings from(RawSettings settings) {
     return new EnabledSSLSettings(
         new File(settings.stringReq("keystore_file")),
-        settings.stringReq("keystore_pass"),
-        settings.stringReq("key_pass"),
+        settings.stringOpt("keystore_pass"),
+        settings.stringOpt("key_pass"),
         settings.stringOpt("key_alias"),
         settings.stringOpt("privkey_pem").map(File::new),
         settings.stringOpt("certchain_pem").map(File::new)
     );
   }
 
-  private EnabledSSLSettings(File keystoreFile, String keystorePass, String keyPass, Optional<String> keyAlias,
-                             Optional<File> privkeyPem, Optional<File> certchainPem) {
+  private EnabledSSLSettings(File keystoreFile, Optional<String> keystorePass, Optional<String> keyPass,
+                             Optional<String> keyAlias, Optional<File> privkeyPem, Optional<File> certchainPem) {
     this.keystoreFile = keystoreFile;
     this.keystorePass = keystorePass;
     this.keyPass = keyPass;
@@ -40,11 +40,11 @@ public class EnabledSSLSettings implements SSLSettings {
     return keystoreFile;
   }
 
-  public String getKeystorePass() {
+  public Optional<String> getKeystorePass() {
     return keystorePass;
   }
 
-  public String getKeyPass() {
+  public Optional<String> getKeyPass() {
     return keyPass;
   }
 
