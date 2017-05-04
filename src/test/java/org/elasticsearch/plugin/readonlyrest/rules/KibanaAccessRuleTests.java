@@ -76,7 +76,8 @@ public class KibanaAccessRuleTests extends TestCase {
     return matchRule(accessLevel, action, indices, kibanaIndex, involvesIndices, "");
   }
 
-  public RuleExitResult matchRule(String accessLevel, String action, Set<String> indices, String kibanaIndex, boolean involvesIndices, String uri)
+  public RuleExitResult matchRule(String accessLevel, String action,
+                                  Set<String> indices, String kibanaIndex, boolean involvesIndices, String uri)
     throws RuleNotConfiguredException {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
@@ -115,13 +116,16 @@ public class KibanaAccessRuleTests extends TestCase {
       String a = action.replace("*", "_");
 
       System.out.println("trying " + a + " as RO_STRICT");
-      assertFalse(matchRule("ro_strict", a, Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
+      assertFalse(matchRule("ro_strict", a,
+                            Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
 
       System.out.println("trying " + a + " as RO");
-      assertFalse(matchRule("ro", a, Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
+      assertFalse(matchRule("ro", a,
+                            Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
 
       System.out.println("trying " + a + " as RW");
-      assertTrue(matchRule("rw", a, Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
+      assertTrue(matchRule("rw", a,
+                           Sets.newHashSet(".kibana"), ".kibana", true).isMatch());
     }
   }
 
