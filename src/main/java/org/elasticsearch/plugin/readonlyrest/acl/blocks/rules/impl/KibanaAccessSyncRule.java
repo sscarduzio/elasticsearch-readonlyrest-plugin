@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContex
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 
 /**
@@ -69,7 +70,9 @@ public class KibanaAccessSyncRule extends SyncRule {
   private final Logger logger = Loggers.getLogger(this.getClass());
   private String kibanaIndex = ".kibana";
   private Boolean canModifyKibana;
+  private Boolean roStrict = false;
   private Boolean isAdmin = false;
+  private Pattern nonStrictAllowedPaths;
 
   public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -80,7 +83,11 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
     tmp = tmp.toLowerCase();
 
-    if ("ro".equals(tmp)) {
+    if ("ro_strict".equals(tmp)) {
+      canModifyKibana = false;
+      roStrict = true;
+    }
+    else if ("ro".equals(tmp)) {
       canModifyKibana = false;
     }
     else if ("rw".equals(tmp)) {
@@ -91,7 +98,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       isAdmin = true;
     }
     else {
-      throw new RuleConfigurationError("invalid configuration: use either 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
+      throw new RuleConfigurationError("invalid configuration: use either 'ro_strict', 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
     }
 
     kibanaIndex = ".kibana";
@@ -99,6 +106,9 @@ public class KibanaAccessSyncRule extends SyncRule {
     if (!Strings.isNullOrEmpty(tmp)) {
       kibanaIndex = tmp;
     }
+
+    // Save UI state in discover & Short urls
+    nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url)/.*".replace("@kibana_index", kibanaIndex));
   }
 
   public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
@@ -124,6 +134,15 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(kibanaIndex);
+
+    // Ro non-strict cases to pass through
+    if (
+      targetsKibana && !roStrict && !canModifyKibana &&
+        nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
+        "indices:data/write/index".equals(rc.getAction())
+      ) {
+      return MATCH;
+    }
 
     // Kibana index, write op
     if (targetsKibana && canModifyKibana) {
