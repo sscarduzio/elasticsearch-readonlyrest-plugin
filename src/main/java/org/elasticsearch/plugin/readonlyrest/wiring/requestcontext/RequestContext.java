@@ -240,16 +240,14 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (doesInvolveIndices) {
-      Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(),"a");
-//
-//      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
-//      String[] concreteIdxNames = indexResolver.concreteIndexNames(
-//          clusterService.state(),
-//          IndicesOptions.lenientExpandOpen(), ixs
-//      );
-//      return Sets.newHashSet(concreteIdxNames);
+      //     Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(),"a");
+      //      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
+      //      String[] concreteIdxNames = indexResolver.concreteIndexNames(
+      //          clusterService.state(),
+      //          IndicesOptions.lenientExpandOpen(), ixs
+      //      );
+      //      return Sets.newHashSet(concreteIdxNames);
       return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
-
     }
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
