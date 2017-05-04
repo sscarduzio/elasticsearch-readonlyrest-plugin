@@ -47,6 +47,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -134,6 +135,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     }
   };
 
+  private final VariablesManager variablesManager;
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService,
                         IndexNameExpressionResolver indexResolver, ThreadPool threadPool) {
@@ -154,8 +156,9 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       }
       h.put(k, request.getAllHeaderValues(k).iterator().next());
     });
-
     this.requestHeaders = h;
+
+    variablesManager = new VariablesManager(h);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -210,6 +213,18 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       }
     }
     return content;
+  }
+
+  public String applyVariables(String original){
+
+    String res =  variablesManager.apply(original);
+
+    // Logged in user needs to be replaced at the last moment..
+    if(getLoggedInUser().isPresent()){
+      res = res.replace("@user", getLoggedInUser().get().getId());
+    }
+
+    return res;
   }
 
   public void setVerbosity(Verbosity v){

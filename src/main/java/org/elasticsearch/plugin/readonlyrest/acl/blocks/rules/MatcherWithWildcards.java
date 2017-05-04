@@ -38,6 +38,7 @@ public class MatcherWithWildcards {
   protected Set<String> allMatchers = Sets.newHashSet();
 
   protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
+  private boolean withReplacements;
 
   public MatcherWithWildcards(Set<String> matchers) {
     for (String a : matchers) {
@@ -60,6 +61,13 @@ public class MatcherWithWildcards {
         // A plain word can be matched as string
         allMatchers.add(a.trim());
       }
+
+      for (String m : allMatchers) {
+        if (m.contains("@")) {
+          withReplacements = true;
+          break;
+        }
+      }
     }
   }
 
@@ -71,6 +79,7 @@ public class MatcherWithWildcards {
     if (a == null || a.length == 0) {
       throw new RuleNotConfiguredException();
     }
+
 
     return new MatcherWithWildcards(Sets.newHashSet(a));
   }
@@ -95,6 +104,10 @@ public class MatcherWithWildcards {
       return s.substring(1, s.length());
     }
     return s;
+  }
+
+  public boolean containsReplacements() {
+    return withReplacements;
   }
 
   public Set<String> getMatchers() {
@@ -130,7 +143,6 @@ public class MatcherWithWildcards {
   public boolean match(String s) {
     return matchWithResult(s) != null;
   }
-
 
   public Set<String> filter(Set<String> haystack) {
     if (haystack.isEmpty()) return empty;

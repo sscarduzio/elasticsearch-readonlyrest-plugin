@@ -42,9 +42,9 @@ public class IndicesSyncRule extends SyncRule {
 
   private MatcherWithWildcards configuredWildcards;
 
-
   public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
+
   }
 
   public static Optional<IndicesSyncRule> fromSettings(Settings s) {
@@ -60,11 +60,11 @@ public class IndicesSyncRule extends SyncRule {
 
     MatcherWithWildcards matcher;
 
-    if (src.getLoggedInUser().isPresent()) {
+    if (configuredWildcards.containsReplacements()) {
       matcher = new MatcherWithWildcards(
-          configuredWildcards.getMatchers().stream()
-                             .map(m -> m.replaceAll("@user", src.getLoggedInUser().get().getId()))
-                             .collect(Collectors.toSet()));
+        configuredWildcards.getMatchers().stream()
+          .map(m -> src.applyVariables(m))
+          .collect(Collectors.toSet()));
     }
     else {
       matcher = configuredWildcards;
