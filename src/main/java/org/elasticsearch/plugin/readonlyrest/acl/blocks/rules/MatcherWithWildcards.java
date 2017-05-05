@@ -33,7 +33,6 @@ public class MatcherWithWildcards {
   private static Set<String> empty = new HashSet<>(0);
   private final Set<String> allMatchers = Sets.newHashSet();
   private final Set<Pattern> wildcardMatchers = Sets.newHashSet();
-  private boolean withReplacements;
 
   public MatcherWithWildcards(Set<String> matchers) {
     for (String a : matchers) {
@@ -55,13 +54,6 @@ public class MatcherWithWildcards {
       else {
         // A plain word can be matched as string
         allMatchers.add(a.trim());
-      }
-
-      for (String m : allMatchers) {
-        if (m.contains("@")) {
-          withReplacements = true;
-          break;
-        }
       }
     }
   }
@@ -85,10 +77,6 @@ public class MatcherWithWildcards {
       return s.substring(1, s.length());
     }
     return s;
-  }
-
-  public boolean containsReplacements() {
-    return withReplacements;
   }
 
   public Set<String> getMatchers() {

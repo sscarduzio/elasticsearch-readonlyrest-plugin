@@ -18,60 +18,66 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import com.google.common.net.InternetDomainName;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
 
 import java.net.UnknownHostException;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class HostsSyncRule extends SyncRule {
 
-  private List<String> allowedAddresses;
+  private Set<Value<IPMask>> allowedAddresses;
+  private final ESContext context;
   private Boolean acceptXForwardedForHeader;
 
-  private HostsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    acceptXForwardedForHeader = s.getAsBoolean("accept_x-forwarded-for_header", false);
-    String[] hosts = s.getAsArray("hosts");
-    if (hosts != null && hosts.length > 0) {
-      allowedAddresses = Lists.newArrayList();
-      for (String host : hosts) {
-        if (!Strings.isNullOrEmpty(host)) {
-          try {
-            IPMask.getIPMask(host);
-          } catch (Exception e) {
-            if (!InternetDomainName.isValid(host)) {
-              throw new RuleConfigurationError("invalid address", e);
-            }
-          }
-          allowedAddresses.add(host.trim());
-        }
-      }
-    } else {
-      throw new RuleNotConfiguredException();
-    }
+  public HostsSyncRule(HostsRuleSettings s, ESContext context) {
+    this.acceptXForwardedForHeader = s.isAcceptXForwardedForHeader();
+    this.allowedAddresses = s.getAllowedAddresses();
+    this.context = context;
   }
 
-  public static Optional<HostsSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new HostsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
+  public RuleExitResult match(RequestContext rc) {
+    boolean res = matchesAddress(rc, rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
+    return res ? MATCH : NO_MATCH;
+  }
+
+  /*
+   * All "matches" methods should return true if no explicit condition was configured
+   */
+  private boolean matchesAddress(RequestContext rc, String address, String xForwardedForHeader) {
+    if (address == null) {
+      throw context.rorException("For some reason the origin address of this call could not be determined. Abort!");
     }
+    if (allowedAddresses.isEmpty()) {
+      return true;
+    }
+
+    if (acceptXForwardedForHeader && xForwardedForHeader != null) {
+      // Give it a try with the header
+      boolean attemptXFwdFor = matchesAddress(rc, xForwardedForHeader, null);
+      if (attemptXFwdFor) {
+        return true;
+      }
+    }
+
+    return allowedAddresses.stream()
+        .anyMatch(value -> {
+          IPMask ip = value.getValue(rc);
+          try {
+            return ip.matches(address);
+          } catch (UnknownHostException e) {
+            return false;
+          }
+        });
   }
 
   private static String getXForwardedForHeader(Map<String, String> headers) {
@@ -85,51 +91,4 @@ public class HostsSyncRule extends SyncRule {
     return null;
   }
 
-
-  /*
-   * All "matches" methods should return true if no explicit condition was configured
-   */
-
-  private boolean matchesAddress(RequestContext rc, String address, String xForwardedForHeader) {
-
-    if (address == null) {
-      throw new SecurityPermissionException("For some reason the origin address of this call could not be determined. Abort!", null);
-    }
-    if (allowedAddresses == null) {
-      return true;
-    }
-
-    if (acceptXForwardedForHeader && xForwardedForHeader != null) {
-      // Give it a try with the header
-      boolean attemptXFwdFor = matchesAddress(rc, xForwardedForHeader, null);
-      if (attemptXFwdFor) {
-        return true;
-      }
-    }
-    for (String allowedAddress : allowedAddresses) {
-
-      if(allowedAddress.contains("@")){
-        allowedAddress = rc.applyVariables(allowedAddress);
-      }
-
-      if (allowedAddress.indexOf("/") > 0) {
-        try {
-          IPMask ipmask = IPMask.getIPMask(allowedAddress);
-          if (ipmask.matches(address)) {
-            return true;
-          }
-        } catch (UnknownHostException e) {
-        }
-      }
-      if (allowedAddress.equals(address)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public RuleExitResult match(RequestContext rc) {
-    boolean res = matchesAddress(rc, rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
-    return res ? MATCH : NO_MATCH;
-  }
 }

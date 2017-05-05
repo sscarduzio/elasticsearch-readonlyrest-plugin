@@ -23,18 +23,16 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.bytes.BytesReference;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentHelper;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.SearchlogRuleSettings;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Optional;
 
 /**
  * Created by sscarduzio on 27/03/2017.
@@ -42,23 +40,11 @@ import java.util.Optional;
 public class SearchlogSyncRule extends SyncRule {
 
   private final Logger logger;
+  private final boolean shouldLog;
 
-  private SearchlogSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
+  public SearchlogSyncRule(SearchlogRuleSettings s, ESContext context) {
     logger = context.logger(getClass());
-    try {
-      boolean shouldLog = s.getAsBoolean(getKey(), false);
-      if (!shouldLog) throw new RuleNotConfiguredException();
-    } catch (Exception e) {
-      throw new RuleNotConfiguredException();
-    }
-  }
-
-  public static Optional<SearchlogSyncRule> fromSettings(Settings s, ESContext context) {
-    try {
-      return Optional.of(new SearchlogSyncRule(s, context));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+    shouldLog = s.isEnabled();
   }
 
   @Override
@@ -69,7 +55,7 @@ public class SearchlogSyncRule extends SyncRule {
   @Override
   public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
 
-    if (ar instanceof SearchRequest && response instanceof SearchResponse) {
+    if (shouldLog && ar instanceof SearchRequest && response instanceof SearchResponse) {
       SearchRequest searchRequest = (SearchRequest) ar;
       SearchResponse searchResponse = (SearchResponse) response;
       logger.info(

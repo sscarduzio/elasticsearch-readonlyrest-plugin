@@ -78,7 +78,7 @@ public class GroupsSyncRule extends SyncRule {
         if(hasReplacements){
           groupsInThisRule = new ArrayList<>(this.groups.size());
           for(String g : this.groups){
-            groupsInThisRule.add(rc.applyVariables(g));
+            groupsInThisRule.add(rc.resolveVariable(g));
           }
         }
         else{

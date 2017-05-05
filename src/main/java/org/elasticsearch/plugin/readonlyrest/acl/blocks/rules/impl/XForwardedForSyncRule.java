@@ -18,57 +18,57 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import com.google.common.net.InternetDomainName;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.XForwardedForRuleSettings;
 
 import java.net.UnknownHostException;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class XForwardedForSyncRule extends SyncRule {
 
-  private List<String> allowedAddresses;
+  private final Set<Value<IPMask>> allowedAddresses;
 
-  private XForwardedForSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    String[] addressed = s.getAsArray(getKey());
-    if (addressed != null && addressed.length > 0) {
-      allowedAddresses = Lists.newArrayList();
-      for (String address : addressed) {
-        if (!Strings.isNullOrEmpty(address)) {
-          try {
-            IPMask.getIPMask(address);
-          } catch (Exception e) {
-            if (!InternetDomainName.isValid(address)) {
-              throw new RuleConfigurationError("invalid address", e);
-            }
-          }
-          allowedAddresses.add(address.trim());
-        }
-      }
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
+  public XForwardedForSyncRule(XForwardedForRuleSettings s) {
+    this.allowedAddresses = s.getAllowedAddresses();
   }
 
-  public static Optional<XForwardedForSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new XForwardedForSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
+  @Override
+  public RuleExitResult match(RequestContext rc) {
+    String header = getXForwardedForHeader(rc.getHeaders());
+
+    if (header == null) {
+      return NO_MATCH;
     }
+
+    boolean res = matchesAddress(rc, header);
+    return res ? MATCH : NO_MATCH;
+  }
+
+  /*
+   * All "matches" methods should return true if no explicit condition was configured
+   */
+  private boolean matchesAddress(RequestContext rc, String address) {
+    if (allowedAddresses == null) {
+      return true;
+    }
+
+    return allowedAddresses.stream()
+        .anyMatch(value -> {
+          IPMask ip = value.getValue(rc);
+          try {
+            return ip.matches(address);
+          } catch (UnknownHostException e) {
+            return false;
+          }
+        });
   }
 
   private static String getXForwardedForHeader(Map<String, String> headers) {
@@ -80,43 +80,5 @@ public class XForwardedForSyncRule extends SyncRule {
       }
     }
     return null;
-  }
-
-
-  /*
-   * All "matches" methods should return true if no explicit condition was configured
-   */
-
-  private boolean matchesAddress(String address) {
-    if (allowedAddresses == null) {
-      return true;
-    }
-
-    for (String allowedAddress : allowedAddresses) {
-      if (allowedAddress.indexOf("/") > 0) {
-        try {
-          IPMask ipmask = IPMask.getIPMask(allowedAddress);
-          if (ipmask.matches(address)) {
-            return true;
-          }
-        } catch (UnknownHostException e) {
-        }
-      }
-      if (allowedAddress.equals(address)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public RuleExitResult match(RequestContext rc) {
-    String header = getXForwardedForHeader(rc.getHeaders());
-
-    if (header == null) {
-      return NO_MATCH;
-    }
-
-    boolean res = matchesAddress(header);
-    return res ? MATCH : NO_MATCH;
   }
 }

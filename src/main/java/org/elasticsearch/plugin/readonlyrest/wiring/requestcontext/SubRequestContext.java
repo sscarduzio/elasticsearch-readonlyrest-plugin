@@ -134,13 +134,12 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
   }
 
   @Override
-  public String applyVariables(String original) {
-    return originalRC.applyVariables(original);
+  public String resolveVariable(String original) {
+    return originalRC.resolveVariable(original);
   }
 
   public String toString() {
     return "sub-request: { original:" + originalRC.getClass().getSimpleName() +
         ", sub:" + originalSubRequest.getClass().getSimpleName() + "}";
   }
-
 }

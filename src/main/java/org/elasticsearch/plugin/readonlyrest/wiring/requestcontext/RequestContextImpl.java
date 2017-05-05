@@ -37,6 +37,7 @@ import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
@@ -159,7 +160,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       public void onCommit(Verbosity value) {
         return;
       }
-      };
+    };
 
     variablesManager = new VariablesManager(h);
 
@@ -222,12 +223,12 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return content;
   }
 
-  public String applyVariables(String original){
-
-    String res =  variablesManager.apply(original);
+  @Override
+  public String resolveVariable(String original) {
+    String res = variablesManager.apply(original);
 
     // Logged in user needs to be replaced at the last moment..
-    if(getLoggedInUser().isPresent()){
+    if (getLoggedInUser().isPresent()) {
       res = res.replace("@user", getLoggedInUser().get().getId());
     }
 
@@ -251,10 +252,24 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return lookup.get(s).getIndices().stream().map(e -> e.getIndexUUID()).collect(Collectors.toSet());
   }
 
-  public String getMethod() {
-    return request.method().name();
+  public HttpMethod getMethod() {
+    switch (request.method()) {
+      case GET:
+        return HttpMethod.GET;
+      case POST:
+        return HttpMethod.POST;
+      case PUT:
+        return HttpMethod.PUT;
+      case DELETE:
+        return HttpMethod.DELETE;
+      case OPTIONS:
+        return HttpMethod.OPTIONS;
+      case HEAD:
+        return HttpMethod.HEAD;
+      default:
+        throw context.rorException("Unknown/unsupported http method");
+    }
   }
-
 
   public Set<String> getExpandedIndices() {
     return getExpandedIndices(indices.getInitial());

@@ -1,9 +1,12 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.KibanaAccess;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+
+import java.util.function.Function;
 
 public class KibanaAccessRuleSettings implements RuleSettings {
 
@@ -13,7 +16,7 @@ public class KibanaAccessRuleSettings implements RuleSettings {
   private static final String DEFAULT_KIBANA_INDEX = ".kibana";
 
   private final KibanaAccess kibanaAccess;
-  private final String kibanaIndex;
+  private final Value<String> kibanaIndex;
 
   public static KibanaAccessRuleSettings fromBlockSettings(RawSettings blockSettings) {
     String value = blockSettings.stringReq(ATTRIBUTE_NAME);
@@ -24,16 +27,16 @@ public class KibanaAccessRuleSettings implements RuleSettings {
     );
   }
 
-  private KibanaAccessRuleSettings(KibanaAccess kibanaAccess, String kibanaIndex) {
+  public KibanaAccessRuleSettings(KibanaAccess kibanaAccess, String kibanaIndex) {
     this.kibanaAccess = kibanaAccess;
-    this.kibanaIndex = kibanaIndex;
+    this.kibanaIndex = Value.fromString(kibanaIndex, Function.identity());
   }
 
   public KibanaAccess getKibanaAccess() {
     return kibanaAccess;
   }
 
-  public String getKibanaIndex() {
+  public Value<String> getKibanaIndex() {
     return kibanaIndex;
   }
 }

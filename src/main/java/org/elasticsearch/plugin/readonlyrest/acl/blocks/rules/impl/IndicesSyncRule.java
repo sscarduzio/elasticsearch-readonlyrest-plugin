@@ -37,27 +37,48 @@ import java.util.stream.Collectors;
  */
 public class IndicesSyncRule extends SyncRule {
 
+  private final IndicesRuleSettings settings;
   private final Logger logger;
-  private final MatcherWithWildcards configuredWildcards;
 
   public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
-    logger = context.logger(getClass());
-    configuredWildcards = new MatcherWithWildcards(s.getIndices());
+    this.logger = context.logger(getClass());
+    this.settings = s;
+  }
+
+  @Override
+  public RuleExitResult match(RequestContext rc) {
+
+    logger.debug("Stage -1");
+    if (!rc.involvesIndices()) {
+      return MATCH;
+    }
+
+    // Run through sub-requests potentially mutating or discarding them.
+    if (rc.hasSubRequests()) {
+      Integer allowedSubRequests = rc.scanSubRequests((subRc) -> {
+        if (canPass(subRc)) {
+          return Optional.of(subRc);
+        }
+        return Optional.empty();
+      });
+      if (allowedSubRequests == 0) {
+        return NO_MATCH;
+      }
+      // We policed the single sub-requests, should be OK to let the allowed ones through
+      return MATCH;
+    }
+
+    // Regular non-composite request
+    return canPass(rc) ? MATCH : NO_MATCH;
   }
 
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends IndicesRequestContext> boolean canPass(T src) {
-
-    MatcherWithWildcards matcher;
-
-    if (configuredWildcards.containsReplacements()) {
-      matcher = new MatcherWithWildcards(
-          configuredWildcards.getMatchers().stream()
-              .map(src::applyVariables)
-              .collect(Collectors.toSet()));
-    } else {
-      matcher = configuredWildcards;
-    }
+    MatcherWithWildcards matcher = new MatcherWithWildcards(
+        settings.getIndices().stream()
+        .map(v -> v.getValue(src))
+        .collect(Collectors.toSet())
+    );
 
     Set<String> indices = Sets.newHashSet(src.getIndices());
 
@@ -152,32 +173,5 @@ public class IndicesSyncRule extends SyncRule {
       // Conditions are satisfied
       return true;
     }
-  }
-
-  @Override
-  public RuleExitResult match(RequestContext rc) {
-
-    logger.debug("Stage -1");
-    if (!rc.involvesIndices()) {
-      return MATCH;
-    }
-
-    // Run through sub-requests potentially mutating or discarding them.
-    if (rc.hasSubRequests()) {
-      Integer allowedSubRequests = rc.scanSubRequests((subRc) -> {
-        if (canPass(subRc)) {
-          return Optional.of(subRc);
-        }
-        return Optional.empty();
-      });
-      if (allowedSubRequests == 0) {
-        return NO_MATCH;
-      }
-      // We policed the single sub-requests, should be OK to let the allowed ones through
-      return MATCH;
-    }
-
-    // Regular non-composite request
-    return canPass(rc) ? MATCH : NO_MATCH;
   }
 }

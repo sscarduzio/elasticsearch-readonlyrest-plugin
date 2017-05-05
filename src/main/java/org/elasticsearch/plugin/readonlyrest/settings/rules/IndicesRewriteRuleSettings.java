@@ -1,11 +1,13 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import com.google.common.base.Strings;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -14,7 +16,7 @@ public class IndicesRewriteRuleSettings implements RuleSettings {
   public static final String ATTRIBUTE_NAME = "indices_rewrite";
 
   private final Set<Pattern> targetPatterns;
-  private final String replacement;
+  private final Value<String> replacement;
 
   public static IndicesRewriteRuleSettings from(List<String> list) {
     if (list.size() < 2) throw new ConfigMalformedException("Minimum two arguments required for " + ATTRIBUTE_NAME +
@@ -31,14 +33,14 @@ public class IndicesRewriteRuleSettings implements RuleSettings {
 
   private IndicesRewriteRuleSettings(Set<Pattern> targetPatterns, String replacement) {
     this.targetPatterns = targetPatterns;
-    this.replacement = replacement;
+    this.replacement = Value.fromString(replacement, Function.identity());
   }
 
   public Set<Pattern> getTargetPatterns() {
     return targetPatterns;
   }
 
-  public String getReplacement() {
+  public Value<String> getReplacement() {
     return replacement;
   }
 }

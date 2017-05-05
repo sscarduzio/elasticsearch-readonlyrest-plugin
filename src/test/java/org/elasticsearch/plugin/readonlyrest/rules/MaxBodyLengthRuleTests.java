@@ -18,12 +18,11 @@
 package org.elasticsearch.plugin.readonlyrest.rules;
 
 import junit.framework.TestCase;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.MaxBodyLengthRuleSettings;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -31,39 +30,31 @@ import static org.mockito.Mockito.when;
 /**
  * Created by sscarduzio on 18/01/2017.
  */
-
 public class MaxBodyLengthRuleTests extends TestCase {
 
-  private RuleExitResult match(Integer configured, String found) throws RuleNotConfiguredException {
-    return match(configured, found, Mockito.mock(RequestContextImpl.class));
+  private RuleExitResult match(Integer configured, String found) {
+    return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(Integer configured, String found, RequestContextImpl rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(Integer configured, String found, RequestContext rc) {
     when(rc.getContent()).thenReturn(found);
 
-    SyncRule r = MaxBodyLengthSyncRule.fromSettings(
-        Settings.builder()
-            .put("maxBodyLength", configured)
-            .build()
-    ).get();
+    SyncRule r = new MaxBodyLengthSyncRule(MaxBodyLengthRuleSettings.from(configured));
 
-    RuleExitResult res = r.match(rc);
-    rc.commit();
-
-    return res;
+    return r.match(rc);
   }
 
-  public void testShortEnuf() throws RuleNotConfiguredException {
+  public void testShortEnuf() {
     RuleExitResult res = match(5, "xx");
     assertTrue(res.isMatch());
   }
 
-  public void testEmpty() throws RuleNotConfiguredException {
+  public void testEmpty() {
     RuleExitResult res = match(5, "");
     assertTrue(res.isMatch());
   }
 
-  public void testTooLong() throws RuleNotConfiguredException {
+  public void testTooLong() {
     RuleExitResult res = match(5, "hello123123");
     assertFalse(res.isMatch());
   }

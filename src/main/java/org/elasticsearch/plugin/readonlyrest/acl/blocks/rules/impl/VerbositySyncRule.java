@@ -17,47 +17,21 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
-
-import java.util.Optional;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.VerbosityRuleSettings;
 
 /**
  * Created by sscarduzio on 14/02/2016.
  */
 public class VerbositySyncRule extends SyncRule {
 
-  protected Verbosity level;
+  private final Verbosity level;
 
-  public VerbositySyncRule(Settings s) throws RuleNotConfiguredException, RuleConfigurationError {
-    super();
-    String tmp = s.get(getKey(), "info");
-    try {
-      level = Verbosity.valueOf(tmp.toUpperCase());
-    } catch (Exception e) {
-      throw new RuleConfigurationError(
-        tmp + " is not a valid verbosity level. Try one of " +
-          Joiner.on(",").join(
-            Lists.newArrayList(Verbosity.ERROR, Verbosity.INFO)
-          ),
-        e
-      );
-    }
-  }
-
-  public static Optional<VerbositySyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new VerbositySyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public VerbositySyncRule(VerbosityRuleSettings s)  {
+    this.level = s.getVerbosity();
   }
 
   @Override

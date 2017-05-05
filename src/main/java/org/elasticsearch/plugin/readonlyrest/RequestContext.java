@@ -2,6 +2,8 @@ package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
@@ -24,7 +26,7 @@ public interface RequestContext extends IndicesRequestContext {
   Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer);
   void setResponseHeader(String name, String value);
   String getContent();
-  String getMethod();
+  HttpMethod getMethod();
   String getUri();
   void setVerbosity(Verbosity v);
   void addToHistory(Block block, Set<RuleExitResult> results);

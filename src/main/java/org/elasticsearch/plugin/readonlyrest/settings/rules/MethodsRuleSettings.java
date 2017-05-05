@@ -20,7 +20,7 @@ public class MethodsRuleSettings implements RuleSettings {
         .collect(Collectors.toSet()));
   }
 
-  private MethodsRuleSettings(Set<HttpMethod> methods) {
+  public MethodsRuleSettings(Set<HttpMethod> methods) {
     this.methods = methods;
   }
 

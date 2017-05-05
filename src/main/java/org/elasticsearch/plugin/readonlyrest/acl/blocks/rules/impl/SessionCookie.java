@@ -22,7 +22,6 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
@@ -59,7 +58,7 @@ public class SessionCookie {
   SessionCookie(RequestContext rc, Long sessionMaxIdleMillis, ESContext context) {
     logger = context.logger(getClass());
     if (sessionMaxIdleMillis <= 0) {
-      throw new ElasticsearchException("session max idle interval cannot be negative");
+      throw context.rorException("session max idle interval cannot be negative");
     }
     this.sessionMaxIdleMillis = sessionMaxIdleMillis;
     this.rc = rc;

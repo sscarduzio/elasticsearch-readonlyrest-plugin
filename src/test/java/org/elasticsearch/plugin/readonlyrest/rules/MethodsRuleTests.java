@@ -17,18 +17,23 @@
 
 package org.elasticsearch.plugin.readonlyrest.rules;
 
+import com.google.common.collect.Sets;
 import junit.framework.TestCase;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.MethodsRuleSettings;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.List;
 
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.GET;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.POST;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.PUT;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.DELETE;
 import static org.mockito.Mockito.when;
 
 /**
@@ -37,35 +42,30 @@ import static org.mockito.Mockito.when;
 
 public class MethodsRuleTests extends TestCase {
 
-  private RuleExitResult match(List<String> configured, String found) throws RuleNotConfiguredException {
-    return match(configured, found, Mockito.mock(RequestContextImpl.class));
+  private RuleExitResult match(List<HttpMethod> configured, HttpMethod found) {
+    return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, String found, RequestContextImpl rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(List<HttpMethod> configured, HttpMethod found, RequestContext rc) {
     when(rc.getMethod()).thenReturn(found);
     when(rc.isReadRequest()).thenReturn(true);
 
-    SyncRule r = MethodsSyncRule.fromSettings(Settings.builder()
-        .putArray("methods", configured)
-        .build()).get();
-
-    RuleExitResult res = r.match(rc);
-    rc.commit();
-    return res;
+    SyncRule r = new MethodsSyncRule(new MethodsRuleSettings(Sets.newHashSet(configured)));
+    return r.match(rc);
   }
 
-  public void testSimpleGET() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("GET"), "GET");
+  public void testSimpleGET() {
+    RuleExitResult res = match(Arrays.asList(GET), GET);
     assertTrue(res.isMatch());
   }
 
-  public void testMultiple() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "GET");
+  public void testMultiple() {
+    RuleExitResult res = match(Arrays.asList(GET, POST, PUT), GET);
     assertTrue(res.isMatch());
   }
 
-  public void testDeny() throws RuleNotConfiguredException {
-    RuleExitResult res = match(Arrays.asList("GET", "POST", "PUT"), "DELETE");
+  public void testDeny() {
+    RuleExitResult res = match(Arrays.asList(GET, POST, PUT), DELETE);
     assertFalse(res.isMatch());
   }
 }

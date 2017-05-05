@@ -19,7 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.util.Strings;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -30,26 +29,23 @@ import org.elasticsearch.action.get.MultiGetItemResponse;
 import org.elasticsearch.action.get.MultiGetResponse;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
-import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
-import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -60,69 +56,31 @@ import java.util.regex.Pattern;
 public class IndicesRewriteSyncRule extends SyncRule {
 
   private final Logger logger;
-  private final Pattern[] targetPatterns;
-  private final String replacement;
+  private final Set<Pattern> targetPatterns;
+  private final Value<String> replacement;
 
-  private IndicesRewriteSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
-    logger = context.logger(getClass());
-    // Will work fine also with single strings (non array) values.
-    String[] a = s.getAsArray(getKey());
-
-    if (a == null || a.length == 0) {
-      throw new RuleNotConfiguredException();
-    }
-
-    if (a.length < 2) {
-      logger.error("Minimum two arguments required for " + getKey() + ". I.e. [target1, target2, replacement]");
-      throw new RuleNotConfiguredException();
-    }
-
-    String[] targets = new String[a.length - 1];
-    System.arraycopy(a, 0, targets, 0, a.length - 1);
-    replacement = a[a.length - 1];
-
-    targetPatterns = Arrays.stream(targets)
-      .distinct()
-      .filter(Objects::nonNull)
-      .filter(Strings::isNotBlank)
-      .map(Pattern::compile)
-      .toArray(Pattern[]::new);
-
-  }
-
-  public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s, ESContext context) {
-    try {
-      return Optional.of(new IndicesRewriteSyncRule(s, context));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public IndicesRewriteSyncRule(IndicesRewriteRuleSettings s, ESContext context) {
+    this.logger = context.logger(getClass());
+    this.replacement = s.getReplacement();
+    this.targetPatterns = s.getTargetPatterns();
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-
     if (!rc.involvesIndices()) {
       return MATCH;
     }
 
-    final String theReplacement;
-    if(replacement.contains("@")){
-      theReplacement = rc.applyVariables(replacement);
-    }
-    else {
-      theReplacement = replacement;
-    }
+    final String theReplacement = this.replacement.getValue(rc);
 
     if (rc.hasSubRequests()) {
       rc.scanSubRequests((src) -> {
         rewrite(src, theReplacement);
         return Optional.of(src);
       });
-    }
-    else {
+    } else {
       rewrite(rc, theReplacement);
     }
-
 
     // This is a side-effect only rule, will always match
     return MATCH;
@@ -140,8 +98,8 @@ public class IndicesRewriteSyncRule extends SyncRule {
       // If asked for non-existent indices, let's show them to the rewriter
       Set<String> available = rc.getAllIndicesAndAliases();
       rc.getIndices().stream()
-        .filter(i -> !available.contains(i))
-        .forEach(oldIndices::add);
+          .filter(i -> !available.contains(i))
+          .forEach(oldIndices::add);
     }
 
     Set<String> newIndices = Sets.newHashSet();
@@ -227,10 +185,10 @@ public class IndicesRewriteSyncRule extends SyncRule {
       for (BulkItemResponse i : bsr.getResponses()) {
         if (!i.isFailed()) {
           ReflecUtils.setIndices(
-            i.getResponse().getShardId().getIndex(),
-            Sets.newHashSet("name"),
-            originalIndex,
-            logger
+              i.getResponse().getShardId().getIndex(),
+              Sets.newHashSet("name"),
+              originalIndex,
+              logger
           );
         }
       }

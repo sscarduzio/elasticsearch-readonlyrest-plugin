@@ -224,7 +224,7 @@ public class RulesConfigCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> sessionMaxIdleSettingsCreator(RawSettings blockSettings) {
     return () -> SessionMaxIdleRuleSettings.from(
-        blockSettings.intReq(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
+        blockSettings.stringReq(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
     );
   }
 

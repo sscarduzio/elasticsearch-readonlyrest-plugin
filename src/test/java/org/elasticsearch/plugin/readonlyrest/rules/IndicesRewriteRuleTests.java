@@ -21,13 +21,12 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -42,7 +41,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,10 +55,10 @@ public class IndicesRewriteRuleTests extends TestCase {
   @Captor
   private ArgumentCaptor<Set<String>> argumentCaptor;
 
-  private void match(List<String> configured, List<String> foundInRequest, List<String> expected) throws RuleNotConfiguredException {
+  private void match(List<String> configured, List<String> foundInRequest, List<String> expected) {
     Collections.sort(foundInRequest);
     Collections.sort(expected);
-    RequestContextImpl rc = Mockito.mock(RequestContextImpl.class);
+    RequestContext rc = Mockito.mock(RequestContext.class);
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(foundInRequest);
     when(rc.getIndices()).thenReturn(foundSet);
@@ -69,20 +67,14 @@ public class IndicesRewriteRuleTests extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
 
     when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
-    when(rc.applyVariables(anyString())).thenAnswer(i -> {
+    when(rc.resolveVariable(anyString())).thenAnswer(i -> {
       String a = (String) i.getArguments()[0];
       return a.replaceAll("@user", "simone");
     });
 
-
-    SyncRule r = IndicesRewriteSyncRule.fromSettings(
-        Settings.builder()
-            .putArray("indices_rewrite", configured).build(),
-        MockedESContext.INSTANCE
-    ).get();
+    SyncRule r = new IndicesRewriteSyncRule(IndicesRewriteRuleSettings.from(configured), MockedESContext.INSTANCE);
 
     RuleExitResult res = r.match(rc);
-    rc.commit();
     verify(rc).setIndices(argumentCaptor.capture());
 
     String expectedJ = Joiner.on(",").join(expected);
@@ -94,7 +86,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testNOOP() throws RuleNotConfiguredException {
+  public void testNOOP() {
     match(
         Arrays.asList("public-asd", "replacement"),
         Arrays.asList("x"),
@@ -103,7 +95,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testSimpleIndex() throws RuleNotConfiguredException {
+  public void testSimpleIndex() {
     match(
         Arrays.asList("public-asd", "replacement"),
         Arrays.asList("public-asd"),
@@ -112,7 +104,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testRegexIndex() throws RuleNotConfiguredException {
+  public void testRegexIndex() {
     match(
         Arrays.asList("public-.*", "replacement"),
         Arrays.asList("public-asd"),
@@ -121,7 +113,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testBigRegexIndex() throws RuleNotConfiguredException {
+  public void testBigRegexIndex() {
     match(
         Arrays.asList("^public-.*$", "replacement"),
         Arrays.asList("public-asd"),
@@ -130,7 +122,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testBigRegexIndexMultiIndex() throws RuleNotConfiguredException {
+  public void testBigRegexIndexMultiIndex() {
     match(
         Arrays.asList("^public-.*$", "replacement"),
         Arrays.asList("public-asd", "quack"),
@@ -139,7 +131,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testBigRegexIndexMultiIndexMultiRule() throws RuleNotConfiguredException {
+  public void testBigRegexIndexMultiIndexMultiRule() {
     match(
         Arrays.asList("^public-.*$", ".*ack", "replacement"),
         Arrays.asList("public-asd", "quack", "ack"),
@@ -148,7 +140,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testNOOPBigRegexIndexMultiIndexMultiRule() throws RuleNotConfiguredException {
+  public void testNOOPBigRegexIndexMultiIndexMultiRule() {
     match(
         Arrays.asList("^public-.*$", ".*ack", "replacement"),
         Arrays.asList("x", "y", "z"),
@@ -157,7 +149,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testBigRegexIndexMultiIndexMultiRuleWithOutlier() throws RuleNotConfiguredException {
+  public void testBigRegexIndexMultiIndexMultiRuleWithOutlier() {
     match(
         Arrays.asList("^public-.*$", ".*ack", "replacement"),
         Arrays.asList("public-asd", "quack", "ack", "outlier"),
@@ -166,7 +158,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testKibanaAndLogstash() throws RuleNotConfiguredException {
+  public void testKibanaAndLogstash() {
     match(
         Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
         Arrays.asList(".kibana", "logstash-2001-01-01"),
@@ -175,7 +167,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   }
 
   @Test
-  public void testUserReplacement() throws RuleNotConfiguredException {
+  public void testUserReplacement() {
     match(
         Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@user"),
         Arrays.asList(".kibana", "logstash-2001-01-01"),

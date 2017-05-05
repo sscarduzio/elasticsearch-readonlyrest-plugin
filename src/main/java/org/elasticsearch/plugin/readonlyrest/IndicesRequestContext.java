@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
 
 import java.util.Optional;
 import java.util.Set;
@@ -25,7 +26,8 @@ import java.util.Set;
 /**
  * Created by sscarduzio on 14/04/2017.
  */
-public interface IndicesRequestContext {
+public interface IndicesRequestContext extends Value.VariableResolver {
+
   String getId();
 
   Set<String> getAllIndicesAndAliases();
@@ -41,7 +43,5 @@ public interface IndicesRequestContext {
   void setLoggedInUser(LoggedUser user);
 
   Boolean isReadRequest();
-
-  String applyVariables(String original);
 
 }
