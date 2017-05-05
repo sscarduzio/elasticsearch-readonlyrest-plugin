@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.mockito.AdditionalAnswers.returnsFirstArg;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,7 +66,13 @@ public class IndicesRewriteRuleTests extends TestCase {
     when(rc.involvesIndices()).thenReturn(true);
     when(rc.getExpandedIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
+
     when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
+    when(rc.applyVariables(anyString())).thenAnswer(i -> {
+      String a = (String) i.getArguments()[0];
+      return a.replaceAll("@user", "simone");
+    });
+
 
     SyncRule r = new IndicesRewriteSyncRule(Settings.builder()
                                                     .putArray("indices_rewrite", configured).build());
