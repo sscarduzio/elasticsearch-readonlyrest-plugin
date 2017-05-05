@@ -39,12 +39,20 @@ public class GroupsSyncRule extends SyncRule {
 
   private final List<User> users;
   private final List<String> groups;
+  private  boolean hasReplacements = false;
 
   public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
     super();
+
     users = userList;
     String[] pGroups = s.getAsArray(this.getKey());
     if (pGroups != null && pGroups.length > 0) {
+      for(int i = 0; i < pGroups.length; i++){
+        if(pGroups[i] != null && pGroups[i].contains("@")){
+          hasReplacements = true;
+          break;
+        }
+      }
       this.groups = Arrays.asList(pGroups);
     }
     else {
@@ -65,7 +73,19 @@ public class GroupsSyncRule extends SyncRule {
     for (User user : this.users) {
       if (user.getAuthKeyRule().match(rc).isMatch()) {
         List<String> commonGroups = new ArrayList<>(user.getGroups());
-        commonGroups.retainAll(this.groups);
+
+        List<String> groupsInThisRule;
+        if(hasReplacements){
+          groupsInThisRule = new ArrayList<>(this.groups.size());
+          for(String g : this.groups){
+            groupsInThisRule.add(rc.applyVariables(g));
+          }
+        }
+        else{
+          groupsInThisRule = this.groups;
+        }
+
+        commonGroups.retainAll(groupsInThisRule);
         if (!commonGroups.isEmpty()) {
           return MATCH;
         }

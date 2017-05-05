@@ -133,6 +133,11 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
+    // Apply variables replacements
+    if(kibanaIndex.contains("@")){
+      kibanaIndex = rc.applyVariables(kibanaIndex);
+    }
+
     boolean targetsKibana = indices.size() == 1 && indices.contains(kibanaIndex);
 
     // Ro non-strict cases to pass through

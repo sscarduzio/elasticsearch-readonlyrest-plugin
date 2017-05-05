@@ -63,6 +63,9 @@ public class UriReSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
+    if(uri_re.pattern().contains("@")){
+      uri_re = Pattern.compile(rc.applyVariables(uri_re.pattern()));
+    }
     if (uri_re == null) {
       return NO_MATCH;
     }
