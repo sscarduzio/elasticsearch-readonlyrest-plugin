@@ -145,7 +145,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     if (
       targetsKibana && !roStrict && !canModifyKibana &&
         nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
-        "indices:data/write/index".equals(rc.getAction())
+        rc.getAction().startsWith("indices:data/write/")
       ) {
       return MATCH;
     }
