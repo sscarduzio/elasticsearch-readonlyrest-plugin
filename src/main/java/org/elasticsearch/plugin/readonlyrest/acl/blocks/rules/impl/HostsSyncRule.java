@@ -90,7 +90,7 @@ public class HostsSyncRule extends SyncRule {
    * All "matches" methods should return true if no explicit condition was configured
    */
 
-  private boolean matchesAddress(String address, String xForwardedForHeader) {
+  private boolean matchesAddress(RequestContext rc, String address, String xForwardedForHeader) {
 
     if (address == null) {
       throw new SecurityPermissionException("For some reason the origin address of this call could not be determined. Abort!", null);
@@ -101,12 +101,17 @@ public class HostsSyncRule extends SyncRule {
 
     if (acceptXForwardedForHeader && xForwardedForHeader != null) {
       // Give it a try with the header
-      boolean attemptXFwdFor = matchesAddress(xForwardedForHeader, null);
+      boolean attemptXFwdFor = matchesAddress(rc, xForwardedForHeader, null);
       if (attemptXFwdFor) {
         return true;
       }
     }
     for (String allowedAddress : allowedAddresses) {
+
+      if(allowedAddress.contains("@")){
+        allowedAddress = rc.applyVariables(allowedAddress);
+      }
+
       if (allowedAddress.indexOf("/") > 0) {
         try {
           IPMask ipmask = IPMask.getIPMask(allowedAddress);
@@ -124,7 +129,7 @@ public class HostsSyncRule extends SyncRule {
   }
 
   public RuleExitResult match(RequestContext rc) {
-    boolean res = matchesAddress(rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
+    boolean res = matchesAddress(rc, rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
     return res ? MATCH : NO_MATCH;
   }
 }

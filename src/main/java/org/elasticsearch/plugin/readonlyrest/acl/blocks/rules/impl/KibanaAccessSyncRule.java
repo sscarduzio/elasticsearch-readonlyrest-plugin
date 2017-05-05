@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Created by sscarduzio on 26/03/2016.
@@ -63,13 +64,16 @@ public class KibanaAccessSyncRule extends SyncRule {
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/nodes/info",
+      "cluster:monitor/main",
       "cluster:monitor/health"
   ));
 
   private final Logger logger;
   private String kibanaIndex = ".kibana";
   private final Boolean canModifyKibana;
+  private Boolean roStrict = false;
   private Boolean isAdmin = false;
+  private Pattern nonStrictAllowedPaths;
 
   private KibanaAccessSyncRule(Settings s, ESContext context) throws RuleNotConfiguredException {
     logger = context.logger(getClass());
@@ -80,7 +84,11 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
     tmp = tmp.toLowerCase();
 
-    if ("ro".equals(tmp)) {
+    if ("ro_strict".equals(tmp)) {
+      canModifyKibana = false;
+      roStrict = true;
+    }
+    else if ("ro".equals(tmp)) {
       canModifyKibana = false;
     }
     else if ("rw".equals(tmp)) {
@@ -91,7 +99,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       isAdmin = true;
     }
     else {
-      throw new RuleConfigurationError("invalid configuration: use either 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
+      throw new RuleConfigurationError("invalid configuration: use either 'ro_strict', 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
     }
 
     kibanaIndex = ".kibana";
@@ -99,6 +107,9 @@ public class KibanaAccessSyncRule extends SyncRule {
     if (!Strings.isNullOrEmpty(tmp)) {
       kibanaIndex = tmp;
     }
+
+    // Save UI state in discover & Short urls
+    nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create)/.*".replace("@kibana_index", kibanaIndex));
   }
 
   public static Optional<KibanaAccessSyncRule> fromSettings(Settings s, ESContext context) {
@@ -123,7 +134,21 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
+    // Apply variables replacements
+    if(kibanaIndex.contains("@")){
+      kibanaIndex = rc.applyVariables(kibanaIndex);
+    }
+
     boolean targetsKibana = indices.size() == 1 && indices.contains(kibanaIndex);
+
+    // Ro non-strict cases to pass through
+    if (
+      targetsKibana && !roStrict && !canModifyKibana &&
+        nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
+        rc.getAction().startsWith("indices:data/write/")
+      ) {
+      return MATCH;
+    }
 
     // Kibana index, write op
     if (targetsKibana && canModifyKibana) {

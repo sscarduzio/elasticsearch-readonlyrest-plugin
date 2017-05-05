@@ -50,13 +50,12 @@ public class IndicesSyncRule extends SyncRule {
 
     MatcherWithWildcards matcher;
 
-    if (src.getLoggedInUser().isPresent()) {
+    if (configuredWildcards.containsReplacements()) {
       matcher = new MatcherWithWildcards(
           configuredWildcards.getMatchers().stream()
-                             .map(m -> m.replaceAll("@user", src.getLoggedInUser().get().getId()))
-                             .collect(Collectors.toSet()));
-    }
-    else {
+              .map(src::applyVariables)
+              .collect(Collectors.toSet()));
+    } else {
       matcher = configuredWildcards;
     }
 
@@ -180,7 +179,5 @@ public class IndicesSyncRule extends SyncRule {
 
     // Regular non-composite request
     return canPass(rc) ? MATCH : NO_MATCH;
-
-
   }
 }

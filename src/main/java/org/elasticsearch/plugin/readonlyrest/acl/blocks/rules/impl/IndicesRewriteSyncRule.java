@@ -87,6 +87,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
       .filter(Strings::isNotBlank)
       .map(Pattern::compile)
       .toArray(Pattern[]::new);
+
   }
 
   public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s, ESContext context) {
@@ -104,14 +105,22 @@ public class IndicesRewriteSyncRule extends SyncRule {
       return MATCH;
     }
 
+    final String theReplacement;
+    if(replacement.contains("@")){
+      theReplacement = rc.applyVariables(replacement);
+    }
+    else {
+      theReplacement = replacement;
+    }
+
     if (rc.hasSubRequests()) {
       rc.scanSubRequests((src) -> {
-        rewrite(src);
+        rewrite(src, theReplacement);
         return Optional.of(src);
       });
     }
     else {
-      rewrite(rc);
+      rewrite(rc, theReplacement);
     }
 
 
@@ -119,7 +128,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
     return MATCH;
   }
 
-  private void rewrite(IndicesRequestContext rc) {
+  private void rewrite(IndicesRequestContext rc, String currentReplacement) {
     // Expanded indices
     final Set<String> oldIndices = Sets.newHashSet(rc.getIndices());
 
@@ -136,13 +145,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
     }
 
     Set<String> newIndices = Sets.newHashSet();
-
-    String currentReplacement = replacement;
-
-    Optional<LoggedUser> currentUser = rc.getLoggedInUser();
-    if (currentUser.isPresent()) {
-      currentReplacement = replacement.replaceAll("@user", currentUser.get().getId());
-    }
 
     for (Pattern p : targetPatterns) {
       Iterator<String> it = oldIndices.iterator();

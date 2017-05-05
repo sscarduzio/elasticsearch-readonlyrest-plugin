@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -26,6 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,13 +39,25 @@ public class GroupsSyncRule extends SyncRule {
 
   private final List<User> users;
   private final List<String> groups;
+  private  boolean hasReplacements = false;
 
   private GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
     super();
+
     users = userList;
-    List<String> pGroups = Lists.newArrayList(s.getAsArray(this.getKey()));
-    if(pGroups.isEmpty()) throw new RuleNotConfiguredException();
-    groups = pGroups;
+    String[] pGroups = s.getAsArray(this.getKey());
+    if (pGroups != null && pGroups.length > 0) {
+      for(int i = 0; i < pGroups.length; i++){
+        if(pGroups[i] != null && pGroups[i].contains("@")){
+          hasReplacements = true;
+          break;
+        }
+      }
+      this.groups = Arrays.asList(pGroups);
+    }
+    else {
+      throw new RuleNotConfiguredException();
+    }
   }
 
   public static Optional<GroupsSyncRule> fromSettings(Settings s, List<User> userList) {
@@ -61,7 +73,19 @@ public class GroupsSyncRule extends SyncRule {
     for (User user : this.users) {
       if (user.getAuthKeyRule().match(rc).isMatch()) {
         List<String> commonGroups = new ArrayList<>(user.getGroups());
-        commonGroups.retainAll(this.groups);
+
+        List<String> groupsInThisRule;
+        if(hasReplacements){
+          groupsInThisRule = new ArrayList<>(this.groups.size());
+          for(String g : this.groups){
+            groupsInThisRule.add(rc.applyVariables(g));
+          }
+        }
+        else{
+          groupsInThisRule = this.groups;
+        }
+
+        commonGroups.retainAll(groupsInThisRule);
         if (!commonGroups.isEmpty()) {
           return MATCH;
         }

@@ -27,12 +27,11 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
@@ -41,7 +40,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
@@ -81,6 +79,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;
   private Transactional<Optional<LoggedUser>> loggedInUser;
+  private final VariablesManager variablesManager;
 
   public RequestContextImpl(RestChannel channel, RestRequest request, String action,
                             ActionRequest actionRequest, ClusterService clusterService,
@@ -160,7 +159,9 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       public void onCommit(Verbosity value) {
         return;
       }
-    };
+      };
+
+    variablesManager = new VariablesManager(h);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -221,6 +222,18 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return content;
   }
 
+  public String applyVariables(String original){
+
+    String res =  variablesManager.apply(original);
+
+    // Logged in user needs to be replaced at the last moment..
+    if(getLoggedInUser().isPresent()){
+      res = res.replace("@user", getLoggedInUser().get().getId());
+    }
+
+    return res;
+  }
+
   public void setVerbosity(Verbosity v) {
     logLevel.mutate(v);
   }
@@ -249,16 +262,14 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (doesInvolveIndices) {
-      Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(), "a");
-//
-//      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
-//      String[] concreteIdxNames = indexResolver.concreteIndexNames(
-//          clusterService.state(),
-//          IndicesOptions.lenientExpandOpen(), ixs
-//      );
-//      return Sets.newHashSet(concreteIdxNames);
+      //     Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(), "a");
+      //      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
+      //      String[] concreteIdxNames = indexResolver.concreteIndexNames(
+      //          clusterService.state(),
+      //          IndicesOptions.lenientExpandOpen(), ixs
+      //      );
+      //      return Sets.newHashSet(concreteIdxNames);
       return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
-
     }
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
