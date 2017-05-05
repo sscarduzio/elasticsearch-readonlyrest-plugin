@@ -109,7 +109,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
 
     // Save UI state in discover & Short urls
-    nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url)/.*".replace("@kibana_index", kibanaIndex));
+    nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create)/.*".replace("@kibana_index", kibanaIndex));
   }
 
   public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
