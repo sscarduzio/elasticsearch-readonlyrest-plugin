@@ -213,7 +213,6 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   }
 
   public Optional<String> applyVariables(String original){
-
     Optional<String> res =  variablesManager.apply(original);
     return res;
   }

@@ -68,10 +68,12 @@ public class IndicesRewriteRuleTests extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
 
     when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
-    when(rc.applyVariables(anyString())).thenAnswer(i -> {
-      String a = (String) i.getArguments()[0];
-      return a.replaceAll("@user", "simone");
-    });
+    when(rc.applyVariables(anyString())).thenAnswer(i ->
+       Optional.of(
+         ((String) i.getArguments()[0])
+                     .replaceAll("@\\{user}", "simone")
+       )
+    );
 
 
     SyncRule r = new IndicesRewriteSyncRule(Settings.builder()
@@ -172,7 +174,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   @Test
   public void testUserReplacement() throws RuleNotConfiguredException {
     match(
-        Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@user"),
+        Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@{user}"),
         Arrays.asList(".kibana", "logstash-2001-01-01"),
         Arrays.asList(".kibana_simone", "logstash-2001-01-01_simone")
     );
