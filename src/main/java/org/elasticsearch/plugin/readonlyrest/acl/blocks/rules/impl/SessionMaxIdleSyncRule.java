@@ -22,6 +22,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SessionMaxIdleRuleSettings;
 
 import java.time.Duration;
@@ -34,11 +35,13 @@ public class SessionMaxIdleSyncRule extends SyncRule {
   private final Logger logger;
   private final ESContext context;
   private final Duration maxIdle;
+  private final RuleSettings settings;
 
   public SessionMaxIdleSyncRule(SessionMaxIdleRuleSettings s, ESContext context) {
-    logger = context.logger(getClass());
+    this.logger = context.logger(getClass());
     this.context = context;
     this.maxIdle = s.getMaxIdle();
+    this.settings = s;
   }
 
   @Override
@@ -65,5 +68,10 @@ public class SessionMaxIdleSyncRule extends SyncRule {
     }
     logger.error("Session handling panic! " + c + " RC:" + rc);
     return NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

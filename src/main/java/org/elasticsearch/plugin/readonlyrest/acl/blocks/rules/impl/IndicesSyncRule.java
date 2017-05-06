@@ -72,6 +72,11 @@ public class IndicesSyncRule extends SyncRule {
     return canPass(rc) ? MATCH : NO_MATCH;
   }
 
+  @Override
+  public String getKey() {
+    return settings.getName();
+  }
+
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends IndicesRequestContext> boolean canPass(T src) {
     MatcherWithWildcards matcher = new MatcherWithWildcards(

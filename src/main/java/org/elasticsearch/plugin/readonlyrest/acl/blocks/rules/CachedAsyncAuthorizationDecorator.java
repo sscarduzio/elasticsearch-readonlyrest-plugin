@@ -18,20 +18,15 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
-
 public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
-
-  private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final AsyncAuthorization underlying;
   private final Cache<String, Boolean> cache;
@@ -45,13 +40,11 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization,
-                                                               Settings settings,
+                                                               LdapAuthorizationRuleSettings settings,
                                                                ESContext context) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? authorization
-            : new CachedAsyncAuthorizationDecorator(authorization, ttl, context))
-        .orElse(authorization);
+    return settings.getCacheTtl().isZero()
+        ? authorization
+        : new CachedAsyncAuthorizationDecorator(authorization, settings.getCacheTtl(), context);
   }
 
   @Override

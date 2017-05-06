@@ -21,4 +21,9 @@ public class KibanaHideAppsRuleSettings implements RuleSettings {
   public Set<String> getKibanaHideApps() {
     return kibanaHideApps;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

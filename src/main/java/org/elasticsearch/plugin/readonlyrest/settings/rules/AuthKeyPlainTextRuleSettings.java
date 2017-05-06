@@ -11,4 +11,9 @@ public class AuthKeyPlainTextRuleSettings extends AuthKeyRuleSettings {
   public AuthKeyPlainTextRuleSettings(String authKey) {
     super(authKey);
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

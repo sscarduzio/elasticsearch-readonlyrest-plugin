@@ -202,7 +202,7 @@ public class ConfigurationHelper {
     sslCertChainPem = s.get("ssl.certchain_pem");
 
     searchLoggingEnabled = s.getAsBoolean("searchlog", false);
-    acl = new ACL(null, null, new ESContextImpl());
+    acl = new ACL(null, new ESContextImpl());
 
     currentInstance = this;
   }

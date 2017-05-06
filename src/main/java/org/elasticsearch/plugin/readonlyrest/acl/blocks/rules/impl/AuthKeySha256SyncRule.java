@@ -27,12 +27,20 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSet
  */
 public class AuthKeySha256SyncRule extends AuthKeyHashingRule {
 
+  private final AuthKeySha256RuleSettings settings;
+
   public AuthKeySha256SyncRule(AuthKeySha256RuleSettings s, ESContext context) {
     super(s, context);
+    this.settings = s;
   }
 
   @Override
   protected HashFunction getHashFunction() {
     return Hashing.sha256();
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

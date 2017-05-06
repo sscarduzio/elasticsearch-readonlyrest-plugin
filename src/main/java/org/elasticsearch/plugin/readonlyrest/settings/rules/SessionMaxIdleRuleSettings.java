@@ -27,6 +27,11 @@ public class SessionMaxIdleRuleSettings implements RuleSettings {
     return maxIdle;
   }
 
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
+
   private static long timeIntervalStringToMillis(String input) {
     long result = 0;
     String number = "";

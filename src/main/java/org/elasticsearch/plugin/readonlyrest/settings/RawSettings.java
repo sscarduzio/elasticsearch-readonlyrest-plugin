@@ -1,5 +1,10 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import org.yaml.snakeyaml.Yaml;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashSet;
@@ -14,6 +19,22 @@ public class RawSettings {
 
   public RawSettings(Map<String, ?> raw) {
     this.raw = raw;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static RawSettings fromFile(File file) throws IOException {
+    Yaml yaml = new Yaml();
+    try (FileInputStream stream = new FileInputStream(file)) {
+      Map<String, ?> parsedData = (Map<String, ?>) yaml.load(stream);
+      return new RawSettings(parsedData);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public static RawSettings fromString(String yamlContent) {
+    Yaml yaml = new Yaml();
+    Map<String, ?> parsedData = (Map<String, ?>) yaml.load(yamlContent);
+    return new RawSettings(parsedData);
   }
 
   public Set<String> getKeys() {
@@ -73,9 +94,9 @@ public class RawSettings {
   public Set<?> notEmptySetReq(String attr) {
     Object value = req(attr);
     HashSet<Object> set = new HashSet<>();
-    if(value instanceof List<?>) {
-      set.addAll((List<?>)value);
-    } else if(value instanceof String) {
+    if (value instanceof List<?>) {
+      set.addAll((List<?>) value);
+    } else if (value instanceof String) {
       set.add(value);
     }
     if (set.isEmpty()) throw new ConfigMalformedException("Set value of'" + attr + "' attribute cannot be empty");

@@ -1,6 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.plugin.readonlyrest.settings.ESSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -16,7 +17,7 @@ public class YamlTest {
 
   @Test
   public void test() throws IOException, URISyntaxException {
-    ESSettings settings = ESSettings.loadFrom(file);
+    ESSettings settings = new ESSettings(RawSettings.fromFile(file));
     Assert.assertEquals("<h1>Forbidden</h1>", settings.getRorSettings().getForbiddenMessage());
   }
 }

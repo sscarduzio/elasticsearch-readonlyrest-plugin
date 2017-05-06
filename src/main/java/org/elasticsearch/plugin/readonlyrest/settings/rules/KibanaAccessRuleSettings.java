@@ -39,4 +39,9 @@ public class KibanaAccessRuleSettings implements RuleSettings {
   public Value<String> getKibanaIndex() {
     return kibanaIndex;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

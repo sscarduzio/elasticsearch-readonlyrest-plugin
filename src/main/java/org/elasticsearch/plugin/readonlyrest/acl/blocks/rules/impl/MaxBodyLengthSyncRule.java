@@ -26,14 +26,22 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.MaxBodyLengthRuleSet
  * Created by sscarduzio on 14/02/2016.
  */
 public class MaxBodyLengthSyncRule extends SyncRule {
+
   private final Integer maxBodyLength;
+  private final MaxBodyLengthRuleSettings settings;
 
   public MaxBodyLengthSyncRule(MaxBodyLengthRuleSettings s) {
     this.maxBodyLength = s.getMaxBodyLength();
+    this.settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
     return (rc.getContent().length() > maxBodyLength) ? NO_MATCH : MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

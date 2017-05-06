@@ -19,4 +19,9 @@ public class SearchlogRuleSettings implements RuleSettings {
   public boolean isEnabled() {
     return enabled;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

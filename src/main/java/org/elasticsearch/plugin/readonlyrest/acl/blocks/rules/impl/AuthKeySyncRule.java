@@ -30,11 +30,14 @@ import java.util.Base64;
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySyncRule extends BasicAuthentication {
+
   private final Logger logger;
+  private final AuthKeyPlainTextRuleSettings settings;
 
   public AuthKeySyncRule(AuthKeyPlainTextRuleSettings s, ESContext context) {
     super(s, context);
-    logger = context.logger(AuthKeySyncRule.class);
+    this.logger = context.logger(AuthKeySyncRule.class);
+    this.settings = s;
   }
 
   @Override
@@ -46,5 +49,10 @@ public class AuthKeySyncRule extends BasicAuthentication {
       logger.warn("Exception while authentication", e);
       return false;
     }
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

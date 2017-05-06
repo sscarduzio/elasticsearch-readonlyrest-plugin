@@ -43,6 +43,11 @@ public class HostsRuleSettings implements RuleSettings {
     return acceptXForwardedForHeader;
   }
 
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
+
   private static Function<String, IPMask> ipMaskFromString = value -> {
     try {
       return IPMask.getIPMask(value);

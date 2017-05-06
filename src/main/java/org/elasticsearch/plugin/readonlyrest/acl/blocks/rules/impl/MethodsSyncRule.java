@@ -29,10 +29,13 @@ import java.util.Set;
  * Created by sscarduzio on 14/02/2016.
  */
 public class MethodsSyncRule extends SyncRule {
+
   private final Set<HttpMethod> allowedMethods;
+  private final MethodsRuleSettings settings;
 
   public MethodsSyncRule(MethodsRuleSettings s) {
     this.allowedMethods = s.getMethods();
+    this.settings = s;
   }
 
   /*
@@ -45,5 +48,10 @@ public class MethodsSyncRule extends SyncRule {
     return allowedMethods.contains(rc.getMethod())
         ? MATCH
         : NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

@@ -94,4 +94,8 @@ public class GroupsSyncRule extends SyncRule {
     return NO_MATCH;
   }
 
+  @Override
+  public String getKey() {
+    return "groups"; //todo:
+  }
 }

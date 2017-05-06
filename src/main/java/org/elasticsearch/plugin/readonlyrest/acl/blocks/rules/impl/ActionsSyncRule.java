@@ -32,10 +32,12 @@ public class ActionsSyncRule extends SyncRule {
 
   private final Logger logger;
   private final MatcherWithWildcards matcher;
+  private final ActionsRuleSettings settings;
 
   public ActionsSyncRule(ActionsRuleSettings s, ESContext context) {
     logger = context.logger(getClass());
     matcher = new MatcherWithWildcards(s.getActions());
+    settings = s;
   }
 
   @Override
@@ -45,5 +47,10 @@ public class ActionsSyncRule extends SyncRule {
     }
     logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");
     return NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

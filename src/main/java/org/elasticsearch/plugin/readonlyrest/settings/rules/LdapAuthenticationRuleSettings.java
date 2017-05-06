@@ -32,6 +32,10 @@ public class LdapAuthenticationRuleSettings implements RuleSettings {
     return new LdapAuthenticationRuleSettings(ldapSettingsCollection.get(ldapName), DEFAULT_CACHE_TTL);
   }
 
+  public static LdapAuthenticationRuleSettings from(LdapAuthRuleSettings settings) {
+    return new LdapAuthenticationRuleSettings(settings.getLdapSettings(), settings.getCacheTtl());
+  }
+
   private LdapAuthenticationRuleSettings(LdapSettings settings, Duration cacheTtl) {
     this.cacheTtl = cacheTtl;
     this.ldapSettings = settings;
@@ -43,6 +47,11 @@ public class LdapAuthenticationRuleSettings implements RuleSettings {
 
   public LdapSettings getLdapSettings() {
     return ldapSettings;
+  }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
   }
 
 }

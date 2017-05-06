@@ -28,4 +28,9 @@ public class IndicesRuleSettings implements RuleSettings {
   public Set<Value<String>> getIndices() {
     return indices;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

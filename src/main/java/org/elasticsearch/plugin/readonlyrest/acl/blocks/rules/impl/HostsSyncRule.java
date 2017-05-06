@@ -35,19 +35,26 @@ import java.util.Set;
  */
 public class HostsSyncRule extends SyncRule {
 
-  private Set<Value<IPMask>> allowedAddresses;
+  private final HostsRuleSettings settings;
+  private final Set<Value<IPMask>> allowedAddresses;
   private final ESContext context;
-  private Boolean acceptXForwardedForHeader;
+  private final Boolean acceptXForwardedForHeader;
 
   public HostsSyncRule(HostsRuleSettings s, ESContext context) {
     this.acceptXForwardedForHeader = s.isAcceptXForwardedForHeader();
     this.allowedAddresses = s.getAllowedAddresses();
     this.context = context;
+    this.settings = s;
   }
 
   public RuleExitResult match(RequestContext rc) {
     boolean res = matchesAddress(rc, rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
     return res ? MATCH : NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 
   /*

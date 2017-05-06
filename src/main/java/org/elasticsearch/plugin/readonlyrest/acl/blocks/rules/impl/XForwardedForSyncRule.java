@@ -35,9 +35,11 @@ import java.util.Set;
 public class XForwardedForSyncRule extends SyncRule {
 
   private final Set<Value<IPMask>> allowedAddresses;
+  private final XForwardedForRuleSettings settings;
 
   public XForwardedForSyncRule(XForwardedForRuleSettings s) {
     this.allowedAddresses = s.getAllowedAddresses();
+    this.settings = s;
   }
 
   @Override
@@ -50,6 +52,11 @@ public class XForwardedForSyncRule extends SyncRule {
 
     boolean res = matchesAddress(rc, header);
     return res ? MATCH : NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 
   /*

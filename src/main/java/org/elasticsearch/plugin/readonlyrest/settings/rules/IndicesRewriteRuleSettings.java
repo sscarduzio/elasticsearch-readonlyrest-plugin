@@ -43,4 +43,9 @@ public class IndicesRewriteRuleSettings implements RuleSettings {
   public Value<String> getReplacement() {
     return replacement;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

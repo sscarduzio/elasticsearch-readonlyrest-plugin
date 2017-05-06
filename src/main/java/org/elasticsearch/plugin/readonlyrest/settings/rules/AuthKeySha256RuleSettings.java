@@ -11,4 +11,9 @@ public class AuthKeySha256RuleSettings extends AuthKeyRuleSettings {
   public AuthKeySha256RuleSettings(String authKey) {
     super(authKey);
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

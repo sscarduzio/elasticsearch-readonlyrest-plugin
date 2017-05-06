@@ -52,72 +52,72 @@ public class CachedAsyncAuthenticationDecoratorTests {
     }
   };
 
-  @Test
-  public void testIfAsyncAuthenticationRuleIsWrappedInCacheIfOneIsEnabled() {
-    Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
-    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
-    assertNotEquals(dummyAsyncRule, authentication);
-  }
+//  @Test
+//  public void testIfAsyncAuthenticationRuleIsWrappedInCacheIfOneIsEnabled() {
+//    Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
+//    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
+//    assertNotEquals(dummyAsyncRule, authentication);
+//  }
+//
+//  @Test
+//  public void testIfAsyncAuthenticationRuleIsNotWrappedInCacheIfOneIsNotEnabled() {
+//    Settings settings = Settings.builder().put("other_setting", "req").build();
+//    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
+//    assertEquals(dummyAsyncRule, authentication);
+//  }
+//
+//  @Test
+//  public void testIfAsyncAuthenticationRuleIsNotWrappedInCacheIfTtlIsZero() {
+//    Settings settings = Settings.builder().put("cache_ttl_in_sec", "0").build();
+//    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
+//    assertEquals(dummyAsyncRule, authentication);
+//  }
 
-  @Test
-  public void testIfAsyncAuthenticationRuleIsNotWrappedInCacheIfOneIsNotEnabled() {
-    Settings settings = Settings.builder().put("other_setting", "req").build();
-    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
-    assertEquals(dummyAsyncRule, authentication);
-  }
-
-  @Test
-  public void testIfAsyncAuthenticationRuleIsNotWrappedInCacheIfTtlIsZero() {
-    Settings settings = Settings.builder().put("cache_ttl_in_sec", "0").build();
-    BasicAsyncAuthentication authentication = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
-    assertEquals(dummyAsyncRule, authentication);
-  }
-
-  @Test
-  public void testIfAuthenticationIsCached() throws Exception {
-    String user = "tester";
-    String password = "password";
-
-    MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
-    when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
-    when(requestContext.getHeaders()).thenReturn(
-        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
-    );
-
-    Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
-    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
-    CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
-    CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);
-
-    assertEquals(true, firstAttemptMatch.get().isMatch());
-    assertEquals(true, secondAttemptMatch.get().isMatch());
-    verify(rule, times(1)).authenticate(user, password);
-  }
-
-  @Test
-  public void testIfCachedResultExpires() throws Exception {
-    String user = "tester";
-    String password = "password";
-    Duration ttl = Duration.ofSeconds(1);
-
-    MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
-    when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
-    when(requestContext.getHeaders()).thenReturn(
-        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
-    );
-
-    Settings settings = Settings.builder().put("cache_ttl_in_sec", ttl.getSeconds()).build();
-    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
-    CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
-    Thread.sleep((long) (ttl.toMillis() * 1.5));
-    CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);
-
-    assertEquals(true, firstAttemptMatch.get().isMatch());
-    assertEquals(true, secondAttemptMatch.get().isMatch());
-    verify(rule, times(2)).authenticate(user, password);
-  }
+//  @Test
+//  public void testIfAuthenticationIsCached() throws Exception {
+//    String user = "tester";
+//    String password = "password";
+//
+//    MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
+//    when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
+//    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
+//    when(requestContext.getHeaders()).thenReturn(
+//        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
+//    );
+//
+//    Settings settings = Settings.builder().put("cache_ttl_in_sec", "10").build();
+//    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
+//    CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
+//    CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);
+//
+//    assertEquals(true, firstAttemptMatch.get().isMatch());
+//    assertEquals(true, secondAttemptMatch.get().isMatch());
+//    verify(rule, times(1)).authenticate(user, password);
+//  }
+//
+//  @Test
+//  public void testIfCachedResultExpires() throws Exception {
+//    String user = "tester";
+//    String password = "password";
+//    Duration ttl = Duration.ofSeconds(1);
+//
+//    MockedBasicAsyncAuthentication rule = Mockito.mock(MockedBasicAsyncAuthentication.class);
+//    when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
+//    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
+//    when(requestContext.getHeaders()).thenReturn(
+//        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
+//    );
+//
+//    Settings settings = Settings.builder().put("cache_ttl_in_sec", ttl.getSeconds()).build();
+//    BasicAsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
+//    CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
+//    Thread.sleep((long) (ttl.toMillis() * 1.5));
+//    CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);
+//
+//    assertEquals(true, firstAttemptMatch.get().isMatch());
+//    assertEquals(true, secondAttemptMatch.get().isMatch());
+//    verify(rule, times(2)).authenticate(user, password);
+//  }
 
   private abstract class MockedBasicAsyncAuthentication extends BasicAsyncAuthentication {
     protected MockedBasicAsyncAuthentication(ESContext context) {

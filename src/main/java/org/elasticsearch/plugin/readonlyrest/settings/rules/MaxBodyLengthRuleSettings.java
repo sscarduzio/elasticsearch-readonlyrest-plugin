@@ -19,4 +19,9 @@ public class MaxBodyLengthRuleSettings implements RuleSettings {
   public Integer getMaxBodyLength() {
     return maxBodyLength;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

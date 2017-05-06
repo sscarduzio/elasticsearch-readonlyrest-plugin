@@ -22,4 +22,9 @@ public class VerbosityRuleSettings implements RuleSettings {
   public Verbosity getVerbosity() {
     return verbosity;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

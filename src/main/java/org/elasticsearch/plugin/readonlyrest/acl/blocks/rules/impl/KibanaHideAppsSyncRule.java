@@ -38,10 +38,12 @@ public class KibanaHideAppsSyncRule extends SyncRule {
 
   private final Logger logger;
   private final String hiddenApps;
+  private final KibanaHideAppsRuleSettings settings;
 
   public KibanaHideAppsSyncRule(KibanaHideAppsRuleSettings s, ESContext context) {
     logger = context.logger(getClass());
     hiddenApps = Joiner.on(",").join(s.getKibanaHideApps());
+    settings = s;
   }
 
   @Override
@@ -56,5 +58,10 @@ public class KibanaHideAppsSyncRule extends SyncRule {
 
     // This is a side-effect only rule, will always match
     return MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

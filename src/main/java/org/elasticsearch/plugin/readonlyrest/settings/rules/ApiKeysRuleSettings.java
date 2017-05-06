@@ -21,4 +21,9 @@ public class ApiKeysRuleSettings implements RuleSettings {
   public Set<String> getApiKeys() {
     return apiKeys;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

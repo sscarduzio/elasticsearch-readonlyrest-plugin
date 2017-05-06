@@ -19,9 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
 
 import java.nio.charset.Charset;
 import java.time.Duration;
@@ -29,11 +28,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
-
 public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication {
-
-  private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final BasicAsyncAuthentication underlying;
   private final Cache<String, String> cache;
@@ -47,13 +42,11 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
   }
 
   public static BasicAsyncAuthentication wrapInCacheIfCacheIsEnabled(BasicAsyncAuthentication authentication,
-                                                                     Settings settings,
+                                                                     LdapAuthenticationRuleSettings settings,
                                                                      ESContext context) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? authentication
-            : new CachedAsyncAuthenticationDecorator(authentication, ttl, context))
-        .orElse(authentication);
+    return settings.getCacheTtl().isZero()
+        ? authentication
+        : new CachedAsyncAuthenticationDecorator(authentication, settings.getCacheTtl(), context);
   }
 
   private static String hashPassword(String password) {

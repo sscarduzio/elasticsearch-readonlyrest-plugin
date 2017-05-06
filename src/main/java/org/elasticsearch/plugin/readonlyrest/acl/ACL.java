@@ -27,6 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
@@ -47,10 +48,10 @@ public class ACL {
   // list because it preserves the insertion order
   private final ImmutableList<Block> blocks;
 
-  public ACL(RorSettings settings, RulesFactory rulesFactory, ESContext context) {
+  public ACL(RorSettings settings, ESContext context) {
     this.settings = settings;
     this.logger = context.logger(getClass());
-
+    final RulesFactory rulesFactory = new RulesFactory(new DefinitionsFactory(), context);
     this.blocks = ImmutableList.copyOf(
         settings.getBlocksSettings().stream()
             .map(blockSettings -> {

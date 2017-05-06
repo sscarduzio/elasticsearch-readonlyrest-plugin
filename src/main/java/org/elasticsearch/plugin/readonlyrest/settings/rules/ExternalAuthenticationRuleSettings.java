@@ -48,4 +48,9 @@ public class ExternalAuthenticationRuleSettings implements RuleSettings {
   public Duration getCacheTtl() {
     return cacheTtl;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

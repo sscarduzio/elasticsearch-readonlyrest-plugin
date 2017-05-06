@@ -12,6 +12,9 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewrit
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
@@ -19,6 +22,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdl
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ActionsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ApiKeysRuleSettings;
@@ -30,6 +34,9 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSe
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaHideAppsRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.MaxBodyLengthRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.MethodsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SearchlogRuleSettings;
@@ -42,13 +49,15 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter.wrap;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled;
+import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
 
 public class RulesFactory {
 
   private final Map<Class<? extends RuleSettings>, Function<RuleSettings, AsyncRule>> creators;
   private final ESContext context;
 
-  public RulesFactory(ESContext context) {
+  public RulesFactory(DefinitionsFactory definitionsFactory, ESContext context) {
     this.context = context;
     this.creators = Maps.newHashMap();
     this.creators.put(ActionsRuleSettings.class,
@@ -85,6 +94,20 @@ public class RulesFactory {
         settings -> wrap(new VerbositySyncRule((VerbosityRuleSettings) settings)));
     this.creators.put(XForwardedForRuleSettings.class,
         settings -> wrap(new XForwardedForSyncRule((XForwardedForRuleSettings) settings)));
+    this.creators.put(LdapAuthenticationRuleSettings.class,
+        settings -> wrapInCacheIfCacheIsEnabled(
+            new LdapAuthenticationAsyncRule((LdapAuthenticationRuleSettings) settings, definitionsFactory, context),
+            (LdapAuthenticationRuleSettings) settings,
+            context)
+    );
+    this.creators.put(LdapAuthorizationRuleSettings.class,
+        settings -> wrapInCacheIfCacheIsEnabled(
+            new LdapAuthorizationAsyncRule((LdapAuthorizationRuleSettings) settings, definitionsFactory, context),
+            (LdapAuthorizationRuleSettings) settings,
+            context)
+    );
+    this.creators.put(LdapAuthRuleSettings.class,
+        settings -> new LdapAuthAsyncRule((LdapAuthRuleSettings) settings, definitionsFactory, context));
   }
 
   public AsyncRule create(RuleSettings settings) {

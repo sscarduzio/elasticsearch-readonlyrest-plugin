@@ -11,4 +11,9 @@ public class AuthKeySha1RuleSettings extends AuthKeyRuleSettings {
   public AuthKeySha1RuleSettings(String authKey) {
     super(authKey);
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

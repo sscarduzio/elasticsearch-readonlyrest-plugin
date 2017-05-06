@@ -127,6 +127,11 @@ public class ProxyAuthSyncRule extends SyncRule implements UserRule, Authenticat
     return res;
   }
 
+  @Override
+  public String getKey() {
+    return RULE_NAME;
+  }
+
   private Optional<LoggedUser> getUser(Map<String, String> headers) {
     String userId = headers.get(config.getUserIdHeader());
     if (userId == null || userId.trim().length() == 0)

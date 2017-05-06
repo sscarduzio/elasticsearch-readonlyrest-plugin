@@ -6,7 +6,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.time.Duration;
-import java.util.List;
+import java.util.Set;
 
 public class LdapAuthRuleSettings implements RuleSettings {
 
@@ -18,14 +18,14 @@ public class LdapAuthRuleSettings implements RuleSettings {
 
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
 
-  private final List<String> groups;
+  private final Set<String> groups;
   private final Duration cacheTtl;
   private final LdapSettings ldapSettings;
 
   @SuppressWarnings("unchecked")
   public static LdapAuthRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
     String ldapName = settings.stringReq(LDAP_NAME);
-    List<String> groups = (List<String>) settings.notEmptyListReq(GROUPS);
+    Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     return new LdapAuthRuleSettings(
         ldapSettingsCollection.get(ldapName),
         groups,
@@ -33,7 +33,7 @@ public class LdapAuthRuleSettings implements RuleSettings {
     );
   }
 
-  private LdapAuthRuleSettings(LdapSettings settings, List<String> groups, Duration cacheTtl) {
+  private LdapAuthRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
     this.groups = groups;
     this.cacheTtl = cacheTtl;
     this.ldapSettings = settings;
@@ -47,7 +47,12 @@ public class LdapAuthRuleSettings implements RuleSettings {
     return ldapSettings;
   }
 
-  public List<String> getGroups() {
+  public Set<String> getGroups() {
     return groups;
+  }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
   }
 }

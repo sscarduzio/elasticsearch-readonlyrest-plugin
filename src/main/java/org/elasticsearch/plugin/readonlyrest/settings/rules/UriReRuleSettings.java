@@ -26,6 +26,11 @@ public class UriReRuleSettings implements RuleSettings {
     return pattern;
   }
 
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
+
   private static Function<String, Pattern> patternFromString = value -> {
     try {
       return Pattern.compile(value);

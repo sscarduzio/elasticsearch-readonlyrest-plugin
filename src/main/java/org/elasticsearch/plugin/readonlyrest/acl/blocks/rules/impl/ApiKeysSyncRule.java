@@ -30,8 +30,10 @@ import java.util.Set;
 public class ApiKeysSyncRule extends SyncRule {
 
   private final Set<String> validApiKeys;
+  private final ApiKeysRuleSettings settings;
 
   public ApiKeysSyncRule(ApiKeysRuleSettings s) {
+    this.settings = s;
     this.validApiKeys = s.getApiKeys();
   }
 
@@ -45,5 +47,10 @@ public class ApiKeysSyncRule extends SyncRule {
       return MATCH;
     }
     return NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

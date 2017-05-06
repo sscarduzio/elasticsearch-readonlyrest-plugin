@@ -17,19 +17,19 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientFactory;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;
 
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled;
@@ -42,28 +42,28 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
   private final BasicAsyncAuthentication authentication;
   private final AsyncAuthorization authorization;
 
-  private LdapAuthAsyncRule(BasicAsyncAuthentication authentication, AsyncAuthorization authorization) {
-    this.authentication = authentication;
-    this.authorization = authorization;
-  }
-
-  public static Optional<LdapAuthAsyncRule> fromSettings(Settings s, LdapConfigs ldapConfigs, ESContext context)
-      throws ConfigMalformedException {
-    return LdapAuthorizationAsyncRule.fromSettings(RULE_NAME, s, context, ldapConfigs)
-                                     .map(authorization -> new LdapAuthAsyncRule(
-                                         wrapInCacheIfCacheIsEnabled(new LdapAuthenticationAsyncRule(
-                                             authorization.getClient(), context), s, context),
-                                         wrapInCacheIfCacheIsEnabled(authorization, s, context)
-                                     ));
+  public LdapAuthAsyncRule(LdapAuthRuleSettings settings, LdapClientFactory factory, ESContext context) {
+    LdapAuthenticationRuleSettings ldapAuthenticationRuleSettings = LdapAuthenticationRuleSettings.from(settings);
+    this.authentication = wrapInCacheIfCacheIsEnabled(
+        new LdapAuthenticationAsyncRule(ldapAuthenticationRuleSettings, factory, context),
+        ldapAuthenticationRuleSettings,
+        context
+    );
+    LdapAuthorizationRuleSettings ldapAuthorizationRuleSettings = LdapAuthorizationRuleSettings.from(settings);
+    this.authorization = wrapInCacheIfCacheIsEnabled(
+        new LdapAuthorizationAsyncRule(ldapAuthorizationRuleSettings, factory, context),
+        ldapAuthorizationRuleSettings,
+        context
+    );
   }
 
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     return authentication.match(rc)
-                         .thenCompose(result -> result.isMatch()
-                             ? authorization.match(rc)
-                             : CompletableFuture.completedFuture(result)
-                         );
+        .thenCompose(result -> result.isMatch()
+            ? authorization.match(rc)
+            : CompletableFuture.completedFuture(result)
+        );
   }
 
   @Override

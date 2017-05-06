@@ -30,4 +30,9 @@ public class GroupsRuleSettings implements RuleSettings {
   public List<UserSettings> getUserWithGivenGroups() {
     return userWithGivenGroups;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

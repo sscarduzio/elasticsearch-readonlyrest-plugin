@@ -27,4 +27,9 @@ public class MethodsRuleSettings implements RuleSettings {
   public Set<HttpMethod> getMethods() {
     return methods;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

@@ -21,4 +21,9 @@ public class ActionsRuleSettings implements RuleSettings {
   public Set<String> getActions() {
     return actions;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

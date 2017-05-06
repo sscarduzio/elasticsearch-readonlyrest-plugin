@@ -29,14 +29,21 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.VerbosityRuleSetting
 public class VerbositySyncRule extends SyncRule {
 
   private final Verbosity level;
+  private final VerbosityRuleSettings settings;
 
   public VerbositySyncRule(VerbosityRuleSettings s)  {
     this.level = s.getVerbosity();
+    this.settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
     rc.setVerbosity(level);
     return MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

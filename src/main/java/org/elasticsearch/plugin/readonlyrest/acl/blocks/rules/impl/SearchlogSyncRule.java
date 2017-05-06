@@ -41,15 +41,22 @@ public class SearchlogSyncRule extends SyncRule {
 
   private final Logger logger;
   private final boolean shouldLog;
+  private final SearchlogRuleSettings settings;
 
   public SearchlogSyncRule(SearchlogRuleSettings s, ESContext context) {
     logger = context.logger(getClass());
     shouldLog = s.isEnabled();
+    settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
     return MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 
   @Override

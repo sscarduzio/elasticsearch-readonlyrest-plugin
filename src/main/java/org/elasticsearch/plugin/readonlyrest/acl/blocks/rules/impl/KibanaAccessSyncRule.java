@@ -68,10 +68,12 @@ public class KibanaAccessSyncRule extends SyncRule {
   private final Logger logger;
   private final Value<String> kibanaIndex;
   private final Boolean canModifyKibana;
+  private final KibanaAccessRuleSettings settings;
   private Boolean roStrict = false;
   private Boolean isAdmin = false;
 
   public KibanaAccessSyncRule(KibanaAccessRuleSettings s, ESContext context) {
+    settings = s;
     logger = context.logger(getClass());
 
     switch (s.getKibanaAccess()) {
@@ -143,5 +145,10 @@ public class KibanaAccessSyncRule extends SyncRule {
 
     logger.debug("KIBANA ACCESS DENIED " + rc.getId());
     return NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

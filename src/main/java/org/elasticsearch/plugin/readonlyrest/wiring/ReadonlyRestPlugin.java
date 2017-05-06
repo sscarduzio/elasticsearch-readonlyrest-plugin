@@ -47,6 +47,7 @@ import org.elasticsearch.plugin.readonlyrest.rradmin.RRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.rradmin.TransportRRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.rradmin.rest.RestRRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.settings.ESSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
@@ -80,7 +81,8 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
 
   public ReadonlyRestPlugin(Settings s) throws IOException {
     this.settings = s;
-    this.rorSettings = ESSettings.loadFrom(new File("/config/elasticsearch.yml")).getRorSettings();
+    this.rorSettings = new ESSettings(RawSettings.fromFile(new File("/config/elasticsearch.yml")))
+        .getRorSettings();
     this.context = new ESContextImpl();
     this.logger = this.context.logger(getClass());
   }
@@ -109,8 +111,8 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
 
   @Override
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
-      ResourceWatcherService resourceWatcherService, ScriptService scriptService,
-      NamedXContentRegistry xContentRegistry) {
+                                             ResourceWatcherService resourceWatcherService, ScriptService scriptService,
+                                             NamedXContentRegistry xContentRegistry) {
 
     Collection<Object> fromSup = super.createComponents(client, clusterService, threadPool, resourceWatcherService,
         scriptService, xContentRegistry

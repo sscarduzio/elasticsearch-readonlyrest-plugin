@@ -27,8 +27,11 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSetti
  */
 public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
 
+  private final AuthKeySha1RuleSettings settings;
+
   public AuthKeySha1SyncRule(AuthKeySha1RuleSettings s, ESContext context) {
     super(s, context);
+    this.settings = s;
   }
 
   @Override
@@ -36,4 +39,8 @@ public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
     return Hashing.sha1();
   }
 
+  @Override
+  public String getKey() {
+    return settings.getName();
+  }
 }

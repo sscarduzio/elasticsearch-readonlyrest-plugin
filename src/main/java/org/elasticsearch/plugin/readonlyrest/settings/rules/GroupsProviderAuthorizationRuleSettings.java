@@ -51,4 +51,9 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings {
   public UserGroupsProviderSettings getUserGroupsProviderSettings() {
     return userGroupsProviderSettings;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

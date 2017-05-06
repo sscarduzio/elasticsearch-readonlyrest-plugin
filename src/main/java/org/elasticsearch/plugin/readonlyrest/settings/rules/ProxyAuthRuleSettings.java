@@ -45,4 +45,9 @@ public class ProxyAuthRuleSettings implements RuleSettings, AuthKeyProvider {
   public String getUserIdHeader() {
     return userIdHeader;
   }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

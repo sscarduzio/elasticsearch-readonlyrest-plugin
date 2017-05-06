@@ -16,70 +16,27 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.notSupported;
 
 public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
-  private static final String RULE_NAME = "ldap_authentication";
-  private static final String LDAP_NAME = "name";
-
   private final AuthenticationLdapClient client;
+  private final LdapAuthenticationRuleSettings settings;
 
-  LdapAuthenticationAsyncRule(AuthenticationLdapClient client, ESContext context) {
+  public LdapAuthenticationAsyncRule(LdapAuthenticationRuleSettings settings,
+                                     LdapClientFactory factory,
+                                     ESContext context) {
     super(context);
-    this.client = client;
-  }
-
-  public static Optional<LdapAuthenticationAsyncRule> fromSettings(Settings s, LdapConfigs ldapConfigs, ESContext context)
-      throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s,
-        fromSimpleSettings(ldapConfigs, context),
-        notSupported(RULE_NAME),
-        fromExtendedSettings(ldapConfigs, context),
-        context);
-  }
-
-  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromSimpleSettings(LdapConfigs ldapConfigs,
-                                                                                              ESContext context) {
-    return settings -> {
-      String ldapName = settings.get(RULE_NAME);
-      if (ldapName == null)
-        throw new ConfigMalformedException("No [" + LDAP_NAME + "] req defined");
-
-      return tryCreateRule(ldapName, context, ldapConfigs);
-    };
-  }
-
-  private static Function<Settings, Optional<LdapAuthenticationAsyncRule>> fromExtendedSettings(LdapConfigs ldapConfigs,
-                                                                                                ESContext context) {
-    return settings -> {
-      Settings ldapSettings = settings.getAsSettings(RULE_NAME);
-      if(ldapSettings.isEmpty()) return Optional.empty();
-
-      String ldapName = ldapSettings.get(LDAP_NAME);
-      if (ldapName == null)
-        throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");
-
-      return tryCreateRule(ldapName, context, ldapConfigs);
-    };
-  }
-
-  private static Optional<LdapAuthenticationAsyncRule> tryCreateRule(String ldapName, ESContext context,
-                                                                     LdapConfigs ldapConfigs) {
-    return Optional.of(new LdapAuthenticationAsyncRule(ldapConfigs.authenticationLdapClientForName(ldapName), context));
+    this.settings = settings;
+    this.client = factory.getClient(settings.getLdapSettings());
   }
 
   @Override
@@ -91,7 +48,7 @@ public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
 
   @Override
   public String getKey() {
-    return RULE_NAME;
+    return settings.getName();
   }
 
 }

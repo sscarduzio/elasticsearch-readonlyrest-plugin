@@ -31,14 +31,21 @@ import java.util.regex.Pattern;
 public class UriReSyncRule extends SyncRule {
 
   private final Value<Pattern> uri_re;
+  private final UriReRuleSettings settings;
 
   public UriReSyncRule(UriReRuleSettings s){
     this.uri_re = s.getPattern();
+    this.settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
     Pattern pattern = uri_re.getValue(rc);
     return pattern.matcher(rc.getUri()).find() ? MATCH : NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

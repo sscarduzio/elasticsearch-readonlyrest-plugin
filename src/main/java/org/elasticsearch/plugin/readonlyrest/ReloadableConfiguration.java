@@ -1,6 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.plugin.readonlyrest.settings.ESSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 
 import java.io.File;
@@ -15,7 +16,7 @@ public class ReloadableConfiguration {
 
   public ReloadableConfiguration(Consumer<RorSettings> onSettingsUpdate) throws IOException {
     this.rorSettings = new AtomicReference<>(
-        ESSettings.loadFrom(new File("/config/elasticsearch.yml")).getRorSettings()
+        new ESSettings(RawSettings.fromFile(new File("/config/elasticsearch.yml"))).getRorSettings()
     );
     this.onSettingsUpdate = onSettingsUpdate;
     this.onSettingsUpdate.accept(rorSettings.get());

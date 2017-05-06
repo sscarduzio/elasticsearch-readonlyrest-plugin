@@ -58,11 +58,13 @@ public class IndicesRewriteSyncRule extends SyncRule {
   private final Logger logger;
   private final Set<Pattern> targetPatterns;
   private final Value<String> replacement;
+  private final IndicesRewriteRuleSettings settings;
 
   public IndicesRewriteSyncRule(IndicesRewriteRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.replacement = s.getReplacement();
     this.targetPatterns = s.getTargetPatterns();
+    this.settings = s;
   }
 
   @Override
@@ -84,6 +86,11 @@ public class IndicesRewriteSyncRule extends SyncRule {
 
     // This is a side-effect only rule, will always match
     return MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 
   private void rewrite(IndicesRequestContext rc, String currentReplacement) {

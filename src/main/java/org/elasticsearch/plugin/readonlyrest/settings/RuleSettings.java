@@ -1,3 +1,5 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
-public interface RuleSettings {}
+public interface RuleSettings {
+  String getName();
+}
