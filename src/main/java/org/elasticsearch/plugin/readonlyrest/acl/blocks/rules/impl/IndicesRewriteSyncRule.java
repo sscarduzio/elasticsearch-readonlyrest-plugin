@@ -73,19 +73,23 @@ public class IndicesRewriteSyncRule extends SyncRule {
       return MATCH;
     }
 
-    final String theReplacement = this.replacement.getValue(rc);
+    final Optional<String> theReplacementOpt = this.replacement.getValue(rc);
+    if(theReplacementOpt.isPresent()) {
+      final String theReplacement = theReplacementOpt.get();
+      if (rc.hasSubRequests()) {
+        rc.scanSubRequests((src) -> {
+          rewrite(src, theReplacement);
+          return Optional.of(src);
+        });
+      } else {
+        rewrite(rc, theReplacement);
+      }
 
-    if (rc.hasSubRequests()) {
-      rc.scanSubRequests((src) -> {
-        rewrite(src, theReplacement);
-        return Optional.of(src);
-      });
+      // This is a side-effect only rule, will always match
+      return MATCH;
     } else {
-      rewrite(rc, theReplacement);
+      return NO_MATCH;
     }
-
-    // This is a side-effect only rule, will always match
-    return MATCH;
   }
 
   @Override

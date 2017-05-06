@@ -112,7 +112,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
-    String resolvedKibanaIndex = kibanaIndex.getValue(rc);
+    String resolvedKibanaIndex = kibanaIndex.getValue(rc).orElse(".kibana");
 
     // Save UI state in discover & Short urls
     Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create)/.*"

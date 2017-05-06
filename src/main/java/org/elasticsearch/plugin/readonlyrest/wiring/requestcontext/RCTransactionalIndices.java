@@ -172,10 +172,10 @@ public class RCTransactionalIndices {
         ActionRequest actionRequest = rc.getUnderlyingRequest();
 
         if (newIndices.equals(getInitial())) {
-          logger.info("id: " + rc.getId() + " - Not replacing. Indices are the same. Old:" + get() + " New:" + newIndices);
+          logger.debug("id: " + rc.getId() + " - Not replacing. Indices are the same. Old:" + get() + " New:" + newIndices);
           return;
         }
-        logger.info("id: " + rc.getId() + " - Replacing indices. Old:" + getInitial() + " New:" + newIndices);
+        logger.debug("id: " + rc.getId() + " - Replacing indices. Old:" + getInitial() + " New:" + newIndices);
 
         if (newIndices.size() == 0) {
           throw new ElasticsearchException(

@@ -77,14 +77,19 @@ public class HostsSyncRule extends SyncRule {
     }
 
     return allowedAddresses.stream()
-        .anyMatch(value -> {
-          IPMask ip = value.getValue(rc);
-          try {
-            return ip.matches(address);
-          } catch (UnknownHostException e) {
-            return false;
-          }
-        });
+        .anyMatch(value ->
+            value.getValue(rc)
+                .map(ip -> ipMatchesAddress(ip, address))
+                .orElse(false)
+        );
+  }
+
+  private boolean ipMatchesAddress(IPMask ip, String address) {
+    try {
+      return ip.matches(address);
+    } catch (UnknownHostException e) {
+      return false;
+    }
   }
 
   private static String getXForwardedForHeader(Map<String, String> headers) {

@@ -162,7 +162,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     };
 
-    variablesManager = new VariablesManager(h);
+    variablesManager = new VariablesManager(h,this);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -223,16 +223,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return content;
   }
 
-  @Override
-  public String resolveVariable(String original) {
-    String res = variablesManager.apply(original);
-
-    // Logged in user needs to be replaced at the last moment..
-    if (getLoggedInUser().isPresent()) {
-      res = res.replace("@user", getLoggedInUser().get().getId());
-    }
-
-    return res;
+  public Optional<String> resolveVariable(String original){
+    return variablesManager.apply(original);
   }
 
   public void setVerbosity(Verbosity v) {

@@ -40,8 +40,9 @@ public class UriReSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    Pattern pattern = uri_re.getValue(rc);
-    return pattern.matcher(rc.getUri()).find() ? MATCH : NO_MATCH;
+    return uri_re.getValue(rc)
+        .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
+        .orElse(NO_MATCH);
   }
 
   @Override

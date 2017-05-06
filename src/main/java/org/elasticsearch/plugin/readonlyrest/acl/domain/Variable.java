@@ -1,5 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.domain;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 public class Variable<T> implements Value<T> {
@@ -13,12 +14,12 @@ public class Variable<T> implements Value<T> {
   }
 
   @Override
-  public T getValue(VariableResolver resolver) {
-    String resolved = resolver.resolveVariable(value);
+  public Optional<T> getValue(VariableResolver resolver) {
+    Optional<String> resolved = resolver.resolveVariable(value);
     try {
-      return creator.apply(resolved);
+      return resolved.map(creator);
     } catch (Exception ex) {
-      throw new ResolvingException(resolved, value);
+      throw new ResolvingException(resolved.orElse("[unresolved]"), value);
     }
   }
 }

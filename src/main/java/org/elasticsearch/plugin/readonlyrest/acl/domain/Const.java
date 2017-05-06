@@ -1,5 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.domain;
 
+import java.util.Optional;
+
 public class Const<T> implements Value<T> {
 
   private final T value;
@@ -9,7 +11,7 @@ public class Const<T> implements Value<T> {
   }
 
   @Override
-  public T getValue(VariableResolver resolver) {
-    return value;
+  public Optional<T> getValue(VariableResolver resolver) {
+    return Optional.of(value);
   }
 }

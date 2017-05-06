@@ -1,10 +1,11 @@
 package org.elasticsearch.plugin.readonlyrest.acl.domain;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 public interface Value<T> {
 
-  T getValue(VariableResolver resolver);
+  Optional<T> getValue(VariableResolver resolver);
 
   static <T> Value<T> fromString(String value, Function<String, T> creator) {
     return value.contains("@")
@@ -13,11 +14,11 @@ public interface Value<T> {
   }
 
   interface VariableResolver {
-    String resolveVariable(String original);
+    Optional<String> resolveVariable(String original);
   }
 
   class ResolvingException extends RuntimeException {
-    public ResolvingException(String value, String variable) {
+    ResolvingException(String value, String variable) {
       super("'" + value + "' is not correct value for variable '" + variable + "'");
     }
   }

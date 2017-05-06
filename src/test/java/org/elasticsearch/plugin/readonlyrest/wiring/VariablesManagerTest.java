@@ -18,42 +18,66 @@ package org.elasticsearch.plugin.readonlyrest.wiring;
 
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.VariablesManager;
+import org.mockito.Mockito;
+
+import java.util.Optional;
+
+import static org.mockito.Mockito.when;
+
 
 /**
  * Created by sscarduzio on 04/05/2017.
  */
 public class VariablesManagerTest extends TestCase {
 
-   public void testSimple(){
-     VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                  .put("key1", "x")
-                                                  .build()
-     );
-     assertEquals("x", vm.apply("@key1"));
-  }
-  public void testNoReplacement(){
-     VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                  .put("key1", "x")
-                                                  .build()
-     );
-     assertEquals("@nonexistent", vm.apply("@nonexistent"));
-  }
-  public void testUpperHeadersLowerVar(){
-     VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                  .put("key1", "x")
-                                                  .build()
-     );
-     assertEquals("x", vm.apply("@key1"));
+
+  private RequestContextImpl getMock(Optional<String> userName) {
+    RequestContextImpl rc = Mockito.mock(RequestContextImpl.class);
+    when(rc.getLoggedInUser()).thenReturn(userName.map(LoggedUser::new));
+    return rc;
   }
 
-  public void testMessyOriginal(){
+  public void testSimple() {
     VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
                                                  .put("key1", "x")
-                                                 .build()
+                                                 .build(), getMock(Optional.of("simone"))
     );
-    assertEquals("@@@x", vm.apply("@@@@key1"));
-    assertEquals("@one@twox@three@@@", vm.apply("@one@two@key1@three@@@"));
-    assertEquals(".@one@two.x@three@@@", vm.apply(".@one@two.@key1@three@@@"));
+    assertEquals(Optional.of("x"), vm.apply("@{key1}"));
+  }
+
+  public void testSimpleWithUser() {
+    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
+                                                 .build(), getMock(Optional.of("simone"))
+    );
+    assertEquals(Optional.of("simone"), vm.apply("@{user}"));
+  }
+
+  public void testNoReplacement() {
+    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
+                                                 .put("key1", "x")
+                                                 .build(), getMock(Optional.of("simone"))
+    );
+    assertEquals(Optional.empty(), vm.apply("@{nonexistent}"));
+  }
+
+  public void testUpperHeadersLowerVar() {
+    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
+                                                 .put("KEY1", "x")
+                                                 .build(), getMock(Optional.of("simone"))
+    );
+    assertEquals(Optional.of("x"), vm.apply("@{key1}"));
+  }
+
+  public void testMessyOriginal() {
+    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
+                                                 .put("key1", "x")
+                                                 .build(), getMock(Optional.of("simone"))
+    );
+    assertEquals(Optional.of("@@@x"), vm.apply("@@@@{key1}"));
+    assertEquals(Optional.of("@one@twox@three@@@"), vm.apply("@one@two@{key1}@three@@@"));
+    assertEquals(Optional.of(".@one@two.x@three@@@"), vm.apply(".@one@two.@{key1}@three@@@"));
   }
 }

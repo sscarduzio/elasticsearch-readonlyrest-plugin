@@ -81,8 +81,10 @@ public class IndicesSyncRule extends SyncRule {
   private <T extends IndicesRequestContext> boolean canPass(T src) {
     MatcherWithWildcards matcher = new MatcherWithWildcards(
         settings.getIndices().stream()
-        .map(v -> v.getValue(src))
-        .collect(Collectors.toSet())
+            .map(v -> v.getValue(src))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .collect(Collectors.toSet())
     );
 
     Set<String> indices = Sets.newHashSet(src.getIndices());

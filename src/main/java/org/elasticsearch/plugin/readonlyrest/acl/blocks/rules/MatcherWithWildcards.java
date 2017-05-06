@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.VariablesManager;
 
 import java.util.HashSet;
 import java.util.Set;
