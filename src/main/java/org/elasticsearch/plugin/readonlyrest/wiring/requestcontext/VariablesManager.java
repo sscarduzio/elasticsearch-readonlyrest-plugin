@@ -81,9 +81,9 @@ public class VariablesManager {
   /**
    * Uber-fast regex-free template replacer
    *
-   * @param map
-   * @param str
-   * @return
+   * @param map replacements pool
+   * @param str haystack string
+   * @return replaced or unchanged string.
    */
   private String replace(Map<String, String> map, String str) {
     StringBuilder sb = new StringBuilder();
