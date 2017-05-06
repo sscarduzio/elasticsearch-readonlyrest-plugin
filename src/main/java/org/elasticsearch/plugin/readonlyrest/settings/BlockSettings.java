@@ -8,6 +8,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCo
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.SessionMaxIdleRuleSettings;
 
 import java.util.List;
 import java.util.Set;
@@ -59,6 +60,7 @@ public class BlockSettings {
   }
 
   private BlockSettings(String name, BlockPolicy policy, List<RuleSettings> rules) {
+    validate(rules);
     this.name = name;
     this.policy = policy;
     this.rules = rules;
@@ -74,5 +76,18 @@ public class BlockSettings {
 
   public ImmutableList<RuleSettings> getRules() {
     return ImmutableList.copyOf(rules);
+  }
+
+  private void validate(List<RuleSettings> rules) {
+    validateIfSessionMaxIdleRuleConfiguredWithUserRule(rules);
+  }
+
+  private void validateIfSessionMaxIdleRuleConfiguredWithUserRule(List<RuleSettings> rules) {
+    if(rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
+      if(rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
+        throw new ConfigMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
+            "' rule does not mean anything if you don't also set some authentication rule");
+      }
+    }
   }
 }

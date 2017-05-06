@@ -48,6 +48,6 @@ public class IndexLevelSecuritySyncRule extends SyncRule {
 
   @Override
   public String getKey() {
-    return "index_level_security"; // todo: from settings name
+    return "index_level_security";
   }
 }

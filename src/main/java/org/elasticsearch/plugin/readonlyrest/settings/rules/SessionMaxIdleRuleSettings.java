@@ -67,14 +67,4 @@ public class SessionMaxIdleRuleSettings implements RuleSettings {
     }
   }
 
-  // todo: move this vaodation into block
-//  boolean isLoginConfigured = !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySyncRule.class)))
-//      || !Strings.isNullOrEmpty(s.get(mkKey(AuthKeySha1SyncRule.class)));
-//
-//    if (isThisRuleConfigured && !isLoginConfigured) {
-//    logger.error(getKey() + " rule does not mean anything if you don't also set either "
-//        + mkKey(AuthKeySha1SyncRule.class) + " or " + mkKey(AuthKeySyncRule.class));
-//    throw new RuleNotConfiguredException();
-//  }
-
 }
