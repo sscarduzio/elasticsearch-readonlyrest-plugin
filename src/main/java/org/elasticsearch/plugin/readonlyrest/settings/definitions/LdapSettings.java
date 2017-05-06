@@ -2,11 +2,13 @@ package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.NamedSettings;
 
 import java.time.Duration;
 import java.util.Optional;
 
-public class LdapSettings {
+public abstract class LdapSettings implements CacheSettings, NamedSettings {
 
   private static final String NAME = "name";
   private static final String HOST = "host";
@@ -15,8 +17,6 @@ public class LdapSettings {
   private static final String TRUST_ALL_CERTS = "ssl_trust_all_certs";
   private static final String SEARCH_USER = "search_user_base_DN";
   private static final String USER_ID = "user_id_attribute";
-  private static final String SEARCH_GROUPS = "search_groups_base_DN";
-  private static final String UNIQUE_MEMBER = "unique_member_attribute";
   private static final String CONNECTION_POOL_SIZE = "connection_pool_size";
   private static final String CONNECTION_TIMEOUT = "connection_timeout_in_sec";
   private static final String REQUEST_TIMEOUT = "request_timeout_in_sec";
@@ -26,7 +26,6 @@ public class LdapSettings {
   private static final boolean DEFAULT_SSL_ENABLED = true;
   private static final boolean DEFAULT_TRUST_ALL_CERTS = false;
   private static final String DEFAULT_USER_ID_ATTRIBUTE = "uid";
-  private static final String DEFAULT_UNIQUE_MEMBER_ATTRIBUTE = "uniqueMember";
   private static final int DEFAULT_CONNECTION_POOL_SIZE = 30;
   private static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
   private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(1);
@@ -40,14 +39,12 @@ public class LdapSettings {
   private final Optional<SearchingUserSettings> searchingUserSettings;
   private final String searchUserBaseDn;
   private final String userIdAttribute;
-  private final String searchGroupBaseDn;
-  private final String uniqueMemberAttribute;
   private final int connectionPoolSize;
   private final Duration connectionTimeout;
   private final Duration requestTimeout;
   private final Duration cacheTtl;
 
-  public LdapSettings(RawSettings settings) {
+  protected LdapSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
     this.host = settings.stringReq(HOST);
     this.port = settings.intOpt(PORT).orElse(DEFAULT_PORT);
@@ -56,14 +53,13 @@ public class LdapSettings {
     this.searchingUserSettings = SearchingUserSettings.from(settings);
     this.searchUserBaseDn = settings.stringReq(SEARCH_USER);
     this.userIdAttribute = settings.stringOpt(USER_ID).orElse(DEFAULT_USER_ID_ATTRIBUTE);
-    this.searchGroupBaseDn = settings.stringReq(SEARCH_GROUPS);
-    this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse(DEFAULT_UNIQUE_MEMBER_ATTRIBUTE);
     this.connectionPoolSize = settings.intOpt(CONNECTION_POOL_SIZE).orElse(DEFAULT_CONNECTION_POOL_SIZE);
     this.connectionTimeout = settings.intOpt(CONNECTION_TIMEOUT).map(Duration::ofSeconds).orElse(DEFAULT_CONNECTION_TIMEOUT);
     this.requestTimeout = settings.intOpt(REQUEST_TIMEOUT).map(Duration::ofSeconds).orElse(DEFAULT_REQUEST_TIMEOUT);
     this.cacheTtl = settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL);
   }
 
+  @Override
   public String getName() {
     return name;
   }
@@ -96,14 +92,6 @@ public class LdapSettings {
     return userIdAttribute;
   }
 
-  public String getSearchGroupBaseDn() {
-    return searchGroupBaseDn;
-  }
-
-  public String getUniqueMemberAttribute() {
-    return uniqueMemberAttribute;
-  }
-
   public int getConnectionPoolSize() {
     return connectionPoolSize;
   }
@@ -116,6 +104,7 @@ public class LdapSettings {
     return requestTimeout;
   }
 
+  @Override
   public Duration getCacheTtl() {
     return cacheTtl;
   }

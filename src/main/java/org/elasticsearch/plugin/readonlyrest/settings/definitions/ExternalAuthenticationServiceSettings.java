@@ -1,11 +1,13 @@
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.NamedSettings;
 
 import java.net.URI;
 import java.time.Duration;
 
-public class ExternalAuthenticationServiceSettings {
+public class ExternalAuthenticationServiceSettings implements CacheSettings, NamedSettings {
 
   private static final String NAME = "name";
   private static final String ENDPOINT = "authentication_endpoint";
@@ -27,6 +29,7 @@ public class ExternalAuthenticationServiceSettings {
     this.cacheTtl = settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL);
   }
 
+  @Override
   public String getName() {
     return name;
   }
@@ -39,6 +42,7 @@ public class ExternalAuthenticationServiceSettings {
     return successStatusCode;
   }
 
+  @Override
   public Duration getCacheTtl() {
     return cacheTtl;
   }

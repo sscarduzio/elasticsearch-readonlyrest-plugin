@@ -29,6 +29,7 @@ import org.elasticsearch.client.RestClient;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.CompletableFutureResponseListener;
 
 import java.io.IOException;
@@ -42,23 +43,19 @@ import java.util.function.Function;
 
 public class GroupsProviderServiceHttpClient implements GroupsProviderServiceClient {
 
-  public enum TokenPassingMethod {
-    QUERY, HEADER
-  }
-
   private final Logger logger = Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
 
   private final RestClient client;
   private final String name;
   private final URI endpoint;
   private final String authTokenName;
-  private final TokenPassingMethod passingMethod;
+  private final UserGroupsProviderSettings.TokenPassingMethod passingMethod;
   private final String responseGroupsJsonPath;
 
   public GroupsProviderServiceHttpClient(String name,
                                          URI endpoint,
                                          String authTokenName,
-                                         TokenPassingMethod passingMethod,
+                                         UserGroupsProviderSettings.TokenPassingMethod passingMethod,
                                          String responseGroupsJsonPath) {
     this.name = name;
     this.endpoint = endpoint;
@@ -88,14 +85,14 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
 
   private Map<String, String> createParams(LoggedUser user) {
     Map<String, String> params = new HashMap<>();
-    if(passingMethod == TokenPassingMethod.QUERY) {
+    if(passingMethod == UserGroupsProviderSettings.TokenPassingMethod.QUERY) {
       params.put(authTokenName, user.getId());
     }
     return params;
   }
 
   private List<Header> createHeaders(LoggedUser user) {
-    return passingMethod == TokenPassingMethod.HEADER
+    return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.HEADER
         ? Lists.newArrayList(new BasicHeader(authTokenName, user.getId()))
         : Lists.newArrayList();
   }

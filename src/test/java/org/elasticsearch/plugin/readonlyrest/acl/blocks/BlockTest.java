@@ -17,10 +17,15 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
-import com.google.common.collect.Lists;
 import junit.framework.TestCase;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
+import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry;
+import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Assert;
 
@@ -29,27 +34,36 @@ import java.util.Set;
 
 public class BlockTest extends TestCase {
 
-  // todo: fix
   public void testRulesShallFollowAuthInspectMutateOrder() {
-//    Settings settings = Settings.builder()
-//                                .put("name", "Dummy block")
-//                                .put("type", "allow")
-//                                .put("proxy_auth", "*")
-//                                .putArray("indices_rewrite", "needle", "replacement")
-//                                .putArray("indices", "allowed-index")
-//                                .build();
-//    Block block = new Block(settings, Lists.newArrayList(), LdapConfigs.empty(), Lists.newArrayList(),
-//        Lists.newArrayList(), Lists.newArrayList(), MockedESContext.INSTANCE);
-//
-//    Set<AsyncRule> rules = block.getRules();
-//    Iterator<AsyncRule> it = rules.iterator();
-//    AsyncRule auth = it.next();
-//    AsyncRule inspect = it.next();
-//    AsyncRule mutate = it.next();
-//
-//    Assert.assertEquals("proxy_auth", auth.getKey());
-//    Assert.assertEquals("indices", inspect.getKey());
-//    Assert.assertEquals("indices_rewrite", mutate.getKey());
+    UserRuleFactory userRuleFactory = new UserRuleFactory(MockedESContext.INSTANCE);
+    DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory);
+    RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, MockedESContext.INSTANCE);
+    Block block = new Block(
+        BlockSettings.from(
+            RawSettings.fromString("" +
+                "name: Dummy block\n" +
+                "type: allow\n" +
+                "proxy_auth: \"*\"\n" +
+                "indices_rewrite: [\"needle\", \"replacement\"]\n" +
+                "indices: [\"allowed-index\"]"
+            ),
+            new AuthMethodCreatorsRegistry(ProxyAuthConfigSettingsCollection.from(RawSettings.empty())),
+            null, null,
+            null, null
+        ),
+        rulesFactory,
+        MockedESContext.INSTANCE
+    );
+
+    Set<AsyncRule> rules = block.getRules();
+    Iterator<AsyncRule> it = rules.iterator();
+    AsyncRule auth = it.next();
+    AsyncRule inspect = it.next();
+    AsyncRule mutate = it.next();
+
+    Assert.assertEquals("proxy_auth", auth.getKey());
+    Assert.assertEquals("indices", inspect.getKey());
+    Assert.assertEquals("indices_rewrite", mutate.getKey());
   }
 
 }

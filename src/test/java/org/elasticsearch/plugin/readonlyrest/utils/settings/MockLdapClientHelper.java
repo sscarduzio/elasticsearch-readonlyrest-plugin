@@ -17,11 +17,14 @@
 package org.elasticsearch.plugin.readonlyrest.utils.settings;
 
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.Tuple;
 
@@ -36,7 +39,16 @@ import static org.mockito.Mockito.when;
 public class MockLdapClientHelper {
 
   public static LdapClientFactory simpleFactory(GroupsProviderLdapClient client) {
-    return settings -> client;
+    return new LdapClientFactory() {
+      @Override
+      public GroupsProviderLdapClient getClient(GroupsProviderLdapSettings settings) {
+        return client;
+      }
+      @Override
+      public AuthenticationLdapClient getClient(AuthenticationLdapSettings settings) {
+        return client;
+      }
+    };
   }
 
   public static LdapSettings mockLdapSettings() {

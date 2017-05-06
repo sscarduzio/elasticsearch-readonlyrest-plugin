@@ -17,7 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.settings;
 
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -29,7 +30,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testSuccessfulCreationFromRequiredSettings() {
-    new LdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -43,7 +44,7 @@ public class LdapSettingsTests {
 
   @Test(expected = ConfigMalformedException.class)
   public void testCreationFailedWhenNameWasNotPresentInSettings() {
-    new LdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
         "ssl_enabled: false\n" +
@@ -53,8 +54,34 @@ public class LdapSettingsTests {
   }
 
   @Test(expected = ConfigMalformedException.class)
+  public void testCreationFailedWhenSearchGroupBaseDnIsNotPresent() {
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+        "name: ldap1\n" +
+        "host: " + ldapContainer.getLdapHost() + "\n" +
+        "port: " + ldapContainer.getLdapPort() + "\n" +
+        "ssl_enabled: false\n" +
+        "search_user_base_DN: ou=People,dc=example,dc=com\n" +
+        "bind_dn: cn=admin,dc=example,dc=com\n" +
+        "bind_password: password\n"
+    ));
+  }
+
+  @Test
+  public void testCreationOfAuthenticationLdapEvenIfSearchGroupBaseDnIsNotPresent() {
+    new AuthenticationLdapSettings(RawSettings.fromString("" +
+        "name: ldap1\n" +
+        "host: " + ldapContainer.getLdapHost() + "\n" +
+        "port: " + ldapContainer.getLdapPort() + "\n" +
+        "ssl_enabled: false\n" +
+        "search_user_base_DN: ou=People,dc=example,dc=com\n" +
+        "bind_dn: cn=admin,dc=example,dc=com\n" +
+        "bind_password: password\n"
+    ));
+  }
+
+  @Test(expected = ConfigMalformedException.class)
   public void testCreationFailedWhenHostWasNotPresentInSettings() {
-    new LdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
         "search_user_base_DN: ou=People,dc=example,dc=com\n" +
         "search_groups_base_DN: ou=Group,dc=example,dc=com\n"
@@ -63,7 +90,7 @@ public class LdapSettingsTests {
 
   @Test(expected = ConfigMalformedException.class)
   public void testCreationFailedWhenSearchUserBaseDNWasNotPresentInSettings() {
-    new LdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -74,7 +101,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testWhenSearchGroupsBaseDNWasPresentGroupProviderLdapClientIsBeingCreated() {
-    new LdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -86,7 +113,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testBindDnAndPasswordAreNotRequiredParam() {
-    new LdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -98,7 +125,7 @@ public class LdapSettingsTests {
 
   @Test(expected = ConfigMalformedException.class)
   public void testIfBindDnIsPresentBindPasswordMustBeProvided() {
-    new LdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +

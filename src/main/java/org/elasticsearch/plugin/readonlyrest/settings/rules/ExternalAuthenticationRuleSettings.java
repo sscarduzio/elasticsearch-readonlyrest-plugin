@@ -7,7 +7,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthen
 
 import java.time.Duration;
 
-public class ExternalAuthenticationRuleSettings implements RuleSettings {
+public class ExternalAuthenticationRuleSettings implements RuleSettings, CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "external_authentication";
 
@@ -45,6 +45,7 @@ public class ExternalAuthenticationRuleSettings implements RuleSettings {
     return externalAuthenticationServiceSettings;
   }
 
+  @Override
   public Duration getCacheTtl() {
     return cacheTtl;
   }

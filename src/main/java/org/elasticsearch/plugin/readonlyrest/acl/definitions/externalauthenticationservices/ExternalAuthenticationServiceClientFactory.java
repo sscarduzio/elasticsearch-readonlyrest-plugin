@@ -1,0 +1,8 @@
+package org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices;
+
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettings;
+
+public interface ExternalAuthenticationServiceClientFactory {
+
+  ExternalAuthenticationServiceClient getClient(ExternalAuthenticationServiceSettings settings);
+}

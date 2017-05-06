@@ -1,7 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProvider;
+import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
@@ -17,7 +17,7 @@ public class UserSettings {
 
   private final String username;
   private final Set<String> groups;
-  private final AuthKeyProvider authKeyProvider;
+  private final AuthKeyProviderSettings authKeyProviderSettings;
 
   @SuppressWarnings("unchecked")
   public UserSettings(RawSettings settings, AuthMethodCreatorsRegistry registry) {
@@ -31,7 +31,7 @@ public class UserSettings {
     } else if (attributes.size() > 1) {
       throw new ConfigMalformedException("Only one authentication should be defined for user ['" + username + "']" );
     }
-    this.authKeyProvider = registry.create(attributes.get(0), settings);
+    this.authKeyProviderSettings = registry.create(attributes.get(0), settings);
   }
 
   public String getUsername() {
@@ -42,7 +42,7 @@ public class UserSettings {
     return groups;
   }
 
-  public AuthKeyProvider getAuthKeyProvider() {
-    return authKeyProvider;
+  public AuthKeyProviderSettings getAuthKeyProviderSettings() {
+    return authKeyProviderSettings;
   }
 }

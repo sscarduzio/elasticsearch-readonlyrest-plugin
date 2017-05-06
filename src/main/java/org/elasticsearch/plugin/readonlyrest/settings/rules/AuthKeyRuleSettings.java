@@ -1,9 +1,9 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProvider;
+import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
-public abstract class AuthKeyRuleSettings implements RuleSettings, AuthKeyProvider {
+public abstract class AuthKeyRuleSettings implements AuthKeyProviderSettings {
 
   private final String authKey;
 

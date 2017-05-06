@@ -29,7 +29,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.util.Optional;
 
-public abstract class BasicAuthentication extends SyncRule implements UserRule, Authentication {
+public abstract class BasicAuthentication extends UserRule implements Authentication {
 
   private final Logger logger;
   private final String authKey;

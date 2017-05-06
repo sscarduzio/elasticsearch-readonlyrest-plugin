@@ -26,12 +26,12 @@ public class BlockSettings {
   private final BlockPolicy policy;
   private final List<RuleSettings> rules;
 
-  static BlockSettings from(RawSettings settings,
-                            AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
-                            LdapSettingsCollection ldapSettingsCollection,
-                            UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
-                            ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
-                            UserSettingsCollection userSettingsCollection) {
+  public static BlockSettings from(RawSettings settings,
+                                   AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
+                                   LdapSettingsCollection ldapSettingsCollection,
+                                   UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
+                                   ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
+                                   UserSettingsCollection userSettingsCollection) {
     RulesConfigCreatorsRegistry registry = new RulesConfigCreatorsRegistry(
         settings,
         authMethodCreatorsRegistry,

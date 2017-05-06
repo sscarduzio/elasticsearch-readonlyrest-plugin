@@ -18,31 +18,24 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
-
 public class CachedGroupsProviderServiceClient implements GroupsProviderServiceClient {
-
-  private static final String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final GroupsProviderServiceClient underlying;
   private final Cache<String, Set<String>> cache;
 
-  public static GroupsProviderServiceClient wrapInCacheIfCacheIsEnabled(Settings settings,
+  public static GroupsProviderServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
                                                                         GroupsProviderServiceClient client) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? client
-            : new CachedGroupsProviderServiceClient(client, ttl))
-        .orElse(client);
+    return settings.getCacheTtl().isZero()
+        ? client
+        : new CachedGroupsProviderServiceClient(client, settings.getCacheTtl());
   }
 
   private CachedGroupsProviderServiceClient(GroupsProviderServiceClient underlying,

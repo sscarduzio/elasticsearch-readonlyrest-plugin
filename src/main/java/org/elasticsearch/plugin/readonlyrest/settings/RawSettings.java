@@ -1,5 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import com.google.common.collect.Maps;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -19,6 +20,10 @@ public class RawSettings {
 
   public RawSettings(Map<String, ?> raw) {
     this.raw = raw;
+  }
+
+  public static RawSettings empty() {
+    return new RawSettings(Maps.newHashMap());
   }
 
   @SuppressWarnings("unchecked")

@@ -1,13 +1,13 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProvider;
+import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
 
 import java.util.List;
 
-public class ProxyAuthRuleSettings implements RuleSettings, AuthKeyProvider {
+public class ProxyAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
 
   public static final String ATTRIBUTE_NAME = "proxy_auth";
 

@@ -21,7 +21,7 @@ public class UserGroupsSearchFilterConfig {
   private final String searchGroupBaseDN;
   private final String uniqueMemberAttribute;
 
-  private UserGroupsSearchFilterConfig(String searchGroupBaseDN, String uniqueMemberAttribute) {
+  public UserGroupsSearchFilterConfig(String searchGroupBaseDN, String uniqueMemberAttribute) {
     this.searchGroupBaseDN = searchGroupBaseDN;
     this.uniqueMemberAttribute = uniqueMemberAttribute;
   }

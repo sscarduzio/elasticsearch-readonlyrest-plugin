@@ -4,9 +4,8 @@ import com.google.common.collect.Maps;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
@@ -23,12 +22,12 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
+import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ActionsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ApiKeysRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.ExternalAuthenticationRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
@@ -55,21 +54,17 @@ import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsync
 public class RulesFactory {
 
   private final Map<Class<? extends RuleSettings>, Function<RuleSettings, AsyncRule>> creators;
+  private final UserRuleFactory userRuleFactory;
   private final ESContext context;
 
-  public RulesFactory(DefinitionsFactory definitionsFactory, ESContext context) {
+  public RulesFactory(DefinitionsFactory definitionsFactory, UserRuleFactory userRuleFactory, ESContext context) {
+    this.userRuleFactory = userRuleFactory;
     this.context = context;
     this.creators = Maps.newHashMap();
     this.creators.put(ActionsRuleSettings.class,
         settings -> wrap(new ActionsSyncRule((ActionsRuleSettings) settings, context)));
     this.creators.put(ApiKeysRuleSettings.class,
         settings -> wrap(new ApiKeysSyncRule((ApiKeysRuleSettings) settings)));
-    this.creators.put(AuthKeySha1RuleSettings.class,
-        settings -> wrap(new AuthKeySha1SyncRule((AuthKeySha1RuleSettings) settings, context)));
-    this.creators.put(AuthKeySha256RuleSettings.class,
-        settings -> wrap(new AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context)));
-    this.creators.put(AuthKeyPlainTextRuleSettings.class,
-        settings -> wrap(new AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context)));
     this.creators.put(HostsRuleSettings.class,
         settings -> wrap(new HostsSyncRule((HostsRuleSettings) settings, context)));
     this.creators.put(IndicesRuleSettings.class,
@@ -108,11 +103,27 @@ public class RulesFactory {
     );
     this.creators.put(LdapAuthRuleSettings.class,
         settings -> new LdapAuthAsyncRule((LdapAuthRuleSettings) settings, definitionsFactory, context));
+    this.creators.put(ExternalAuthenticationRuleSettings.class,
+        settings -> wrapInCacheIfCacheIsEnabled(
+            new ExternalAuthenticationAsyncRule((ExternalAuthenticationRuleSettings) settings, definitionsFactory, context),
+            (ExternalAuthenticationRuleSettings) settings,
+            context
+        )
+    );
+    this.creators.put(GroupsProviderAuthorizationRuleSettings.class,
+        settings -> wrapInCacheIfCacheIsEnabled(
+            new GroupsProviderAuthorizationAsyncRule((GroupsProviderAuthorizationRuleSettings) settings, definitionsFactory, context),
+            (GroupsProviderAuthorizationRuleSettings) settings,
+            context
+        )
+    );
   }
 
   public AsyncRule create(RuleSettings settings) {
     Class<? extends RuleSettings> ruleSettingsClass = settings.getClass();
-    if (creators.containsKey(ruleSettingsClass)) {
+    if (settings instanceof AuthKeyProviderSettings) {
+      return wrap(userRuleFactory.create((AuthKeyProviderSettings) settings));
+    } else if (creators.containsKey(ruleSettingsClass)) {
       return creators.get(settings.getClass()).apply(settings);
     } else {
       throw context.rorException("Cannot find rule for config class [" + ruleSettingsClass.getName() + "]");

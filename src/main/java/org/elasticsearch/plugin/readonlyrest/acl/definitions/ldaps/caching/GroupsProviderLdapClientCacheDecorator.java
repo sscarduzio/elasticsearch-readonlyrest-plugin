@@ -18,12 +18,11 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.caching;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -31,11 +30,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
-
 public class GroupsProviderLdapClientCacheDecorator implements GroupsProviderLdapClient {
-
-  private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final GroupsProviderLdapClient underlyingClient;
   private final Cache<String, Set<LdapGroup>> ldapUserGroupsCache;
@@ -44,17 +39,16 @@ public class GroupsProviderLdapClientCacheDecorator implements GroupsProviderLda
   public GroupsProviderLdapClientCacheDecorator(GroupsProviderLdapClient underlyingClient, Duration ttl) {
     this.underlyingClient = underlyingClient;
     this.ldapUserGroupsCache = CacheBuilder.newBuilder()
-                                           .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-                                           .build();
+        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+        .build();
     authenticationLdapClientCacheDecorator = new AuthenticationLdapClientCacheDecorator(underlyingClient, ttl);
   }
 
-  public static GroupsProviderLdapClient wrapInCacheIfCacheIsEnabled(Settings settings, GroupsProviderLdapClient client) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? client
-            : new GroupsProviderLdapClientCacheDecorator(client, ttl))
-        .orElse(client);
+  public static GroupsProviderLdapClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
+                                                                     GroupsProviderLdapClient client) {
+    return settings.getCacheTtl().isZero()
+        ? client
+        : new GroupsProviderLdapClientCacheDecorator(client, settings.getCacheTtl());
   }
 
   @Override
@@ -62,10 +56,10 @@ public class GroupsProviderLdapClientCacheDecorator implements GroupsProviderLda
     Set<LdapGroup> ldapUserGroup = ldapUserGroupsCache.getIfPresent(user.getUid());
     if (ldapUserGroup == null) {
       return underlyingClient.userGroups(user)
-                             .thenApply(groups -> {
-                               ldapUserGroupsCache.put(user.getUid(), groups);
-                               return groups;
-                             });
+          .thenApply(groups -> {
+            ldapUserGroupsCache.put(user.getUid(), groups);
+            return groups;
+          });
     }
     return CompletableFuture.completedFuture(ldapUserGroup);
   }

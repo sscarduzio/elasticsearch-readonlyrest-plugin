@@ -124,9 +124,9 @@ public class RulesConfigCreatorsRegistry {
     return () -> {
       Object settings = blockSettings.req(ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String
-          ? ExternalAuthenticationRuleSettings.from((String) settings, externalAuthenticationServiceSettingsCollection)
-          : ExternalAuthenticationRuleSettings.from(
-          new RawSettings((Map<String, ?>) settings),
+          ? ExternalAuthenticationRuleSettings.from((String) settings,
+          externalAuthenticationServiceSettingsCollection)
+          : ExternalAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings),
           externalAuthenticationServiceSettingsCollection);
     };
   }
@@ -261,11 +261,11 @@ public class RulesConfigCreatorsRegistry {
   private Supplier<RuleSettings> authRuleFrom(String attribute, RawSettings settings,
                                               AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
     return () -> {
-      AuthKeyProvider authKeyProvider = authMethodCreatorsRegistry.create(attribute, settings);
-      if(!(authKeyProvider instanceof RuleSettings)) {
+      AuthKeyProviderSettings authKeyProviderSettings = authMethodCreatorsRegistry.create(attribute, settings);
+      if (!(authKeyProviderSettings instanceof RuleSettings)) {
         throw new ConfigMalformedException("No rule for auth method: " + attribute);
       }
-      return (RuleSettings) authKeyProvider;
+      return (RuleSettings) authKeyProviderSettings;
     };
   }
 

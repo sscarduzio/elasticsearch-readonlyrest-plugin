@@ -22,7 +22,12 @@ public class LdapSettingsCollection {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
         .map(list ->
             list.stream()
-                .map(l -> new LdapSettings(new RawSettings((Map<String, ?>) l)))
+                .map(l -> {
+                  RawSettings s = new RawSettings((Map<String, ?>) l);
+                  return GroupsProviderLdapSettings.canBeCreated(s)
+                      ? new GroupsProviderLdapSettings(s)
+                      : new AuthenticationLdapSettings(s);
+                })
                 .collect(Collectors.toList())
         )
         .map(LdapSettingsCollection::new)
@@ -42,7 +47,7 @@ public class LdapSettingsCollection {
 
   private void validate(List<LdapSettings> ldapSettings) {
     List<String> names = seq(ldapSettings).map(LdapSettings::getName).collect(Collectors.toList());
-    if(names.stream().distinct().count() != names.size()) {
+    if (names.stream().distinct().count() != names.size()) {
       throw new ConfigMalformedException("Duplicated LDAP name in '" + ATTRIBUTE_NAME + "' section");
     }
   }

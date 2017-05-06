@@ -21,7 +21,7 @@ public class UserSearchFilterConfig {
   private final String searchUserBaseDN;
   private final String uidAttribute;
 
-  private UserSearchFilterConfig(String searchUserBaseDN, String uidAttribute) {
+  public  UserSearchFilterConfig(String searchUserBaseDN, String uidAttribute) {
     this.searchUserBaseDN = searchUserBaseDN;
     this.uidAttribute = uidAttribute;
   }

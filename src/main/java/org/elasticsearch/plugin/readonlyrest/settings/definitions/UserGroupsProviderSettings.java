@@ -2,11 +2,13 @@ package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.NamedSettings;
 
 import java.net.URI;
 import java.time.Duration;
 
-public class UserGroupsProviderSettings {
+public class UserGroupsProviderSettings implements CacheSettings, NamedSettings {
 
   public enum TokenPassingMethod {
     QUERY, HEADER
@@ -37,6 +39,7 @@ public class UserGroupsProviderSettings {
     this.cacheTtl = settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL);
   }
 
+  @Override
   public String getName() {
     return name;
   }
@@ -57,6 +60,7 @@ public class UserGroupsProviderSettings {
     return responseGroupsJsonPath;
   }
 
+  @Override
   public Duration getCacheTtl() {
     return cacheTtl;
   }

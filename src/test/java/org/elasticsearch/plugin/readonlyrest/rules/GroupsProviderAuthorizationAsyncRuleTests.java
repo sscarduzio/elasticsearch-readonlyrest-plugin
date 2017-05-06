@@ -16,25 +16,27 @@
  */
 package org.elasticsearch.plugin.readonlyrest.rules;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
-import org.elasticsearch.plugin.readonlyrest.utils.settings.UserGroupsProviderConfigHelper;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.net.URI;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-import static org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceHttpClient.TokenPassingMethod.QUERY;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -57,21 +59,30 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
   }
 
   private RuleExitResult createRuleRunMatch(List<String> ruleGroups) throws Exception {
-    Settings settings = Settings.builder()
-                                .put("groups_provider_authorization.user_groups_provider", "provider1")
-                                .putArray("groups_provider_authorization.groups", ruleGroups)
-                                .build();
-    UserGroupProviderConfig config = UserGroupProviderConfig.fromSettings(
-        UserGroupsProviderConfigHelper
-            .create("provider1", new URI("http://localhost:" + wireMockContainer.getWireMockPort() + "/groups"),
-                "userId", QUERY, "$..groups[?(@.name)].name")
-            .getGroups("user_groups_providers")
-            .get("0"));
-    GroupsProviderAuthorizationAsyncRule rule = GroupsProviderAuthorizationAsyncRule.fromSettings(
-        settings, Lists.newArrayList(config), MockedESContext.INSTANCE).get();
+    GroupsProviderAuthorizationAsyncRule rule = new GroupsProviderAuthorizationAsyncRule(
+        GroupsProviderAuthorizationRuleSettings.from(
+            RawSettings.fromString("" +
+                "groups_provider_authorization:\n" +
+                "  user_groups_provider: \"provider1\"\n" +
+                "  groups: [" + Joiner.on(",").join(ruleGroups.stream().map(g -> "\"" + g + "\"").collect(Collectors.toSet())) + "]\n" +
+                "  cache_ttl_in_sec: 60").inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
+            UserGroupsProviderSettingsCollection.from(
+                RawSettings.fromString("" +
+                    "user_groups_providers:\n" +
+                    "  - name: provider1\n" +
+                    "    groups_endpoint: \"http://localhost:" + wireMockContainer.getWireMockPort() + "/groups\"\n" +
+                    "    auth_token_name: \"userId\"\n" +
+                    "    auth_token_passed_as: QUERY_PARAM\n" +
+                    "    response_groups_json_path: \"$..groups[?(@.name)].name\"\n"
+                )
+            )
+        ),
+        new DefinitionsFactory(new UserRuleFactory(MockedESContext.INSTANCE)),
+        MockedESContext.INSTANCE
+    );
 
     LoggedUser user = new LoggedUser("example_user");
-    RequestContextImpl requestContext = Mockito.mock(RequestContextImpl.class);
+    RequestContext requestContext = Mockito.mock(RequestContext.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
     return rule.match(requestContext).get();

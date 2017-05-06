@@ -21,7 +21,6 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
@@ -34,7 +33,6 @@ import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
@@ -56,12 +54,13 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStr
  */
 public class RCTransactionalIndices {
 
-  private static final Logger logger = Loggers.getLogger(RCTransactionalIndices.class);
+  //private static final Logger logger = Loggers.getLogger(RCTransactionalIndices.class);
 
   // #XXX hacky as hell - needed for bulk request
   private static final Map<String, Set<String>> restLevelIndicesCache = Maps.newHashMap();
 
   public static Transactional<Set<String>> mkInstance(RequestContextImpl rc, ESContext es) {
+    final Logger logger = es.logger(RCTransactionalIndices.class);
     if (!rc.involvesIndices()) {
       return new DummyTXIndices(es);
     }
@@ -122,9 +121,9 @@ public class RCTransactionalIndices {
           BulkRequest cir = (BulkRequest) ar;
 
           for (DocWriteRequest<?> ir : cir.requests()) {
-            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, logger);
+            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, es);
             if (docIndices.length == 0) {
-              docIndices = extractStringArrayFromPrivateMethod("index", ir, logger);
+              docIndices = extractStringArrayFromPrivateMethod("index", ir, es);
             }
             indices = ArrayUtils.concat(indices, docIndices, String.class);
           }
@@ -139,9 +138,9 @@ public class RCTransactionalIndices {
               + ar.getClass().getSimpleName());
         }
         else {
-          indices = extractStringArrayFromPrivateMethod("indices", ar, logger);
+          indices = extractStringArrayFromPrivateMethod("indices", ar, es);
           if (indices == null || indices.length == 0) {
-            indices = extractStringArrayFromPrivateMethod("index", ar, logger);
+            indices = extractStringArrayFromPrivateMethod("index", ar, es);
           }
         }
 
@@ -178,7 +177,7 @@ public class RCTransactionalIndices {
         logger.debug("id: " + rc.getId() + " - Replacing indices. Old:" + getInitial() + " New:" + newIndices);
 
         if (newIndices.size() == 0) {
-          throw new ElasticsearchException(
+          throw es.rorException(
             "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
               " If this was intended, set '*' as indices.");
         }

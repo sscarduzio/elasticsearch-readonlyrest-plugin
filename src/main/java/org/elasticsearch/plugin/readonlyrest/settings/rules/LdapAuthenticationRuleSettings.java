@@ -2,12 +2,13 @@ package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 
 import java.time.Duration;
 
-public class LdapAuthenticationRuleSettings implements RuleSettings {
+public class LdapAuthenticationRuleSettings implements RuleSettings, CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "ldap_authentication";
 
@@ -17,7 +18,7 @@ public class LdapAuthenticationRuleSettings implements RuleSettings {
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
 
   private final Duration cacheTtl;
-  private final LdapSettings ldapSettings;
+  private final AuthenticationLdapSettings ldapSettings;
 
   @SuppressWarnings("unchecked")
   public static LdapAuthenticationRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
@@ -38,14 +39,15 @@ public class LdapAuthenticationRuleSettings implements RuleSettings {
 
   private LdapAuthenticationRuleSettings(LdapSettings settings, Duration cacheTtl) {
     this.cacheTtl = cacheTtl;
-    this.ldapSettings = settings;
+    this.ldapSettings = (AuthenticationLdapSettings) settings;
   }
 
+  @Override
   public Duration getCacheTtl() {
     return cacheTtl;
   }
 
-  public LdapSettings getLdapSettings() {
+  public AuthenticationLdapSettings getLdapSettings() {
     return ldapSettings;
   }
 

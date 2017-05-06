@@ -11,6 +11,7 @@ import java.net.URISyntaxException;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUtils.getResourceFile;
 
+// todo: remove
 public class YamlTest {
 
   private static File file = getResourceFile("/test.yml");

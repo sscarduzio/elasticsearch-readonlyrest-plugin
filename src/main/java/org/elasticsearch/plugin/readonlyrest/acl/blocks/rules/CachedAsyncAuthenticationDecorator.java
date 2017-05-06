@@ -20,7 +20,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 
 import java.nio.charset.Charset;
 import java.time.Duration;
@@ -42,7 +42,7 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
   }
 
   public static BasicAsyncAuthentication wrapInCacheIfCacheIsEnabled(BasicAsyncAuthentication authentication,
-                                                                     LdapAuthenticationRuleSettings settings,
+                                                                     CacheSettings settings,
                                                                      ESContext context) {
     return settings.getCacheTtl().isZero()
         ? authentication

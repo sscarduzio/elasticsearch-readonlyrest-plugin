@@ -1,5 +1,8 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
@@ -8,7 +11,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import java.time.Duration;
 import java.util.Set;
 
-public class LdapAuthRuleSettings implements RuleSettings {
+public class LdapAuthRuleSettings implements RuleSettings, CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "ldap_auth";
 
@@ -20,7 +23,7 @@ public class LdapAuthRuleSettings implements RuleSettings {
 
   private final Set<String> groups;
   private final Duration cacheTtl;
-  private final LdapSettings ldapSettings;
+  private final GroupsProviderLdapSettings ldapSettings;
 
   @SuppressWarnings("unchecked")
   public static LdapAuthRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
@@ -34,11 +37,15 @@ public class LdapAuthRuleSettings implements RuleSettings {
   }
 
   private LdapAuthRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
+    if(!(settings instanceof GroupsProviderLdapSettings))
+      throw new ConfigMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
+          "(without '" + GroupsProviderLdapSettings.SEARCH_GROUPS +"' attribute defined)");
     this.groups = groups;
     this.cacheTtl = cacheTtl;
-    this.ldapSettings = settings;
+    this.ldapSettings = (GroupsProviderLdapSettings) settings;
   }
 
+  @Override
   public Duration getCacheTtl() {
     return cacheTtl;
   }

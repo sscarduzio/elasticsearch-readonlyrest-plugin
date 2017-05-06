@@ -24,6 +24,7 @@ import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
@@ -50,7 +51,9 @@ public class ACL {
   public ACL(RorSettings settings, ESContext context) {
     this.settings = settings;
     this.logger = context.logger(getClass());
-    final RulesFactory rulesFactory = new RulesFactory(new DefinitionsFactory(), context);
+    final UserRuleFactory userRuleFactory = new UserRuleFactory(context);
+    final DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory);
+    final RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, context);
     this.blocks = ImmutableList.copyOf(
         settings.getBlocksSettings().stream()
             .map(blockSettings -> {

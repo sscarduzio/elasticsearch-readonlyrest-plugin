@@ -6,9 +6,9 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProv
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 
 import java.time.Duration;
-import java.util.List;
+import java.util.Set;
 
-public class GroupsProviderAuthorizationRuleSettings implements RuleSettings {
+public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "groups_provider_authorization";
 
@@ -18,7 +18,7 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings {
 
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
 
-  private final List<String> groups;
+  private final Set<String> groups;
   private final Duration cacheTtl;
   private final UserGroupsProviderSettings userGroupsProviderSettings;
 
@@ -26,7 +26,7 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings {
   public static GroupsProviderAuthorizationRuleSettings from(RawSettings settings,
                                                              UserGroupsProviderSettingsCollection groupsProviderSettingsCollection) {
     String providerName = settings.stringReq(GROUPS_PROVIDER_NAME);
-    List<String> groups = (List<String>) settings.notEmptyListReq(GROUPS);
+    Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     return new GroupsProviderAuthorizationRuleSettings(
         groupsProviderSettingsCollection.get(providerName),
         groups,
@@ -34,17 +34,18 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings {
     );
   }
 
-  private GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, List<String> groups, Duration cacheTtl) {
+  private GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Duration cacheTtl) {
     this.groups = groups;
     this.cacheTtl = cacheTtl;
     this.userGroupsProviderSettings = settings;
   }
 
+  @Override
   public Duration getCacheTtl() {
     return cacheTtl;
   }
 
-  public List<String> getGroups() {
+  public Set<String> getGroups() {
     return groups;
   }
 

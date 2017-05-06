@@ -17,15 +17,9 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.users;
 
-import com.google.common.collect.Lists;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 
-import java.util.List;
+import java.util.Set;
 
 /**
  * @author Christian Henke (maitai@users.noreply.github.com)
@@ -33,50 +27,24 @@ import java.util.List;
 public class User {
 
   private final String username;
-  private final List<String> groups;
+  private final Set<String> groups;
   private final UserRule authKeyRule;
 
-  private User(String username, List<String> pGroups, UserRule rule) {
+  public User(String username, Set<String> groups, UserRule rule) {
     this.username = username;
-    this.groups = pGroups;
+    this.groups = groups;
     this.authKeyRule = rule;
-  }
-
-  public static User fromSettings(Settings s, List<ProxyAuthConfig> proxyAuthConfigs, ESContext context)
-      throws ConfigMalformedException {
-    String username = s.get("username");
-    UserRule authKeyRule = getAuthKeyRuleFrom(s, proxyAuthConfigs, username, context);
-    List<String> groups = Lists.newArrayList(s.getAsArray("groups"));
-    if (groups.isEmpty()) {
-      throw new ConfigMalformedException("No groups defined for user " + (username != null ? username : "<no name>"));
-    }
-    ConfigurationHelper.setRequirePassword(true);
-    return new User(username, groups, authKeyRule);
-  }
-
-  private static UserRule getAuthKeyRuleFrom(Settings s, List<ProxyAuthConfig> proxyAuthConfigs,
-                                             String username, ESContext context) {
-    throw new RuntimeException("not implemented"); // todo:
-//    return AuthKeySyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
-//        AuthKeySha1SyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
-//            AuthKeySha256SyncRule.fromSettings(s, context).map(r -> (UserRule) r).orElseGet(() ->
-//                ProxyAuthSyncRule.fromSettings(s, proxyAuthConfigs, context).orElseThrow(() ->
-//                    new ConfigMalformedException("No auth rule defined for user " + (username != null ? username : "<no name>"))
-//                )
-//            )
-//        )
-//    );
   }
 
   public String getUsername() {
     return username;
   }
 
+  public Set<String> getGroups() {
+    return groups;
+  }
+
   public UserRule getAuthKeyRule() {
     return authKeyRule;
   }
-
-  public List<String> getGroups() {
-    return groups;
-  }
-} 
+}

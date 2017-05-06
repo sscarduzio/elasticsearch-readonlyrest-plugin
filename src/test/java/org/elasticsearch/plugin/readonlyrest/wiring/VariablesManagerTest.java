@@ -18,9 +18,9 @@ package org.elasticsearch.plugin.readonlyrest.wiring;
 
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.VariablesManager;
+import org.elasticsearch.plugin.readonlyrest.VariablesManager;
 import org.mockito.Mockito;
 
 import java.util.Optional;
@@ -33,9 +33,8 @@ import static org.mockito.Mockito.when;
  */
 public class VariablesManagerTest extends TestCase {
 
-
-  private RequestContextImpl getMock(Optional<String> userName) {
-    RequestContextImpl rc = Mockito.mock(RequestContextImpl.class);
+  private RequestContext getMock(Optional<String> userName) {
+    RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.getLoggedInUser()).thenReturn(userName.map(LoggedUser::new));
     return rc;
   }

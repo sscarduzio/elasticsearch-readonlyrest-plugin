@@ -16,8 +16,5 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.elasticsearch.plugin.readonlyrest.RequestContext;
-
-public interface UserRule {
-  RuleExitResult match(RequestContext rc);
+public abstract class UserRule extends SyncRule {
 }

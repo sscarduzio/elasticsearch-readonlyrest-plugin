@@ -20,7 +20,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -40,7 +40,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization,
-                                                               LdapAuthorizationRuleSettings settings,
+                                                               CacheSettings settings,
                                                                ESContext context) {
     return settings.getCacheTtl().isZero()
         ? authorization

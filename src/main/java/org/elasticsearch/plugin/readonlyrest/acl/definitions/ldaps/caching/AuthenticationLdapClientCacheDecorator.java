@@ -18,11 +18,10 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.caching;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -30,11 +29,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
-
 public class AuthenticationLdapClientCacheDecorator implements AuthenticationLdapClient {
-
-  private static final String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final AuthenticationLdapClient underlyingClient;
   private final Cache<String, LdapUserWithHashedPassword> ldapUsersWithPasswordCache;
@@ -50,12 +45,10 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
                                       .build();
   }
 
-  public static AuthenticationLdapClient wrapInCacheIfCacheIsEnabled(Settings settings, AuthenticationLdapClient client) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? client
-            : new AuthenticationLdapClientCacheDecorator(client, ttl))
-        .orElse(client);
+  public static AuthenticationLdapClient wrapInCacheIfCacheIsEnabled(CacheSettings settings, AuthenticationLdapClient client) {
+    return settings.getCacheTtl().isZero()
+        ? client
+        : new AuthenticationLdapClientCacheDecorator(client, settings.getCacheTtl());
   }
 
   @Override

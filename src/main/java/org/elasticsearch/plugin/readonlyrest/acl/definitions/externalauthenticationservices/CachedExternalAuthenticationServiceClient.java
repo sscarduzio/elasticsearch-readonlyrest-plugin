@@ -19,8 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthentica
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.ExternalAuthenticationRuleSettings;
 
 import java.nio.charset.Charset;
 import java.time.Duration;
@@ -28,22 +28,16 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
-
 public class CachedExternalAuthenticationServiceClient implements ExternalAuthenticationServiceClient {
-
-  private static final String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final ExternalAuthenticationServiceClient underlying;
   private final Cache<String, String> cache;
 
-  public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(Settings settings,
+  public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
                                                                                 ExternalAuthenticationServiceClient client) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? client
-            : new CachedExternalAuthenticationServiceClient(client, ttl))
-        .orElse(client);
+    return settings.getCacheTtl().isZero()
+        ? client
+        : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
   }
 
   private CachedExternalAuthenticationServiceClient(ExternalAuthenticationServiceClient underlying,
@@ -60,7 +54,7 @@ public class CachedExternalAuthenticationServiceClient implements ExternalAuthen
     if (cachedUserHashedPass == null) {
       return underlying.authenticate(user, password)
           .thenApply(authenticated -> {
-            if(authenticated) {
+            if (authenticated) {
               cache.put(user, hashFrom(password));
             }
             return authenticated;
@@ -71,7 +65,7 @@ public class CachedExternalAuthenticationServiceClient implements ExternalAuthen
     );
   }
 
-  public static String hashFrom(String password) {
+  private static String hashFrom(String password) {
     return Hashing.sha256().hashString(password, Charset.defaultCharset()).toString();
   }
 }

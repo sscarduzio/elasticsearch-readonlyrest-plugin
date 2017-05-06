@@ -28,7 +28,7 @@ public class ConnectionConfig {
   private final boolean sslEnabled;
   private final boolean trustAllCerts;
 
-  private ConnectionConfig(String host,
+  public ConnectionConfig(String host,
       int port,
       int poolSize,
       Duration connectionTimeout,
