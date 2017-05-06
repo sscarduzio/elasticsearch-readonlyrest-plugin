@@ -20,9 +20,9 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
-import org.elasticsearch.plugin.readonlyrest.ldap.BaseLdapClient;
-import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.BaseLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 
 import java.util.List;

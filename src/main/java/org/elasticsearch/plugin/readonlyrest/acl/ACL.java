@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 import com.google.common.collect.ImmutableList;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
@@ -28,7 +29,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -65,7 +65,7 @@ public class ACL {
     );
   }
 
-  public CompletableFuture<BlockExitResult> check(RequestContextImpl rc) {
+  public CompletableFuture<BlockExitResult> check(RequestContext rc) {
     logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
         blocks.iterator(),

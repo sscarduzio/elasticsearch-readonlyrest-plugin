@@ -23,7 +23,7 @@ import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.net.HttpCookie;

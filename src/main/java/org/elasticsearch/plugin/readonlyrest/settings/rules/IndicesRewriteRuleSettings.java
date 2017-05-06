@@ -1,7 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import com.google.common.base.Strings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 

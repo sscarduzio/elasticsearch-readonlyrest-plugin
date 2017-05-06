@@ -26,8 +26,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 

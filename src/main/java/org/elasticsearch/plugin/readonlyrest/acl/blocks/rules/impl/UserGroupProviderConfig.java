@@ -18,14 +18,14 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceClient;
-import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient;
-import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient.TokenPassingMethod;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceHttpClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceHttpClient.TokenPassingMethod;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.util.function.Function;
 
-import static org.elasticsearch.plugin.readonlyrest.clients.CachedGroupsProviderServiceClient.wrapInCacheIfCacheIsEnabled;
+import static org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.CachedGroupsProviderServiceClient.wrapInCacheIfCacheIsEnabled;
 import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeValue;
 
 public class UserGroupProviderConfig {

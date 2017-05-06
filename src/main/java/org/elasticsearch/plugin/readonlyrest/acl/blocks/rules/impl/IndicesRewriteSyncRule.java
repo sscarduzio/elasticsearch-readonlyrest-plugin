@@ -35,7 +35,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSettings;

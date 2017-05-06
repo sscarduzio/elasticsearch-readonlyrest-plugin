@@ -21,8 +21,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthenti
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.ldap.AuthenticationLdapClient;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapCredentials;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 
 import java.util.Optional;

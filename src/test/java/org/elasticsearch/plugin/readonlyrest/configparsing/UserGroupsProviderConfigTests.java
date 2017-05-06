@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.configparsing;
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
-import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceHttpClient;
 import org.elasticsearch.plugin.readonlyrest.utils.settings.UserGroupsProviderConfigHelper;
 import org.junit.Test;
 

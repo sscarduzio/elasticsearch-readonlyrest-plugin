@@ -17,8 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 
 import java.util.Optional;
 import java.util.Set;

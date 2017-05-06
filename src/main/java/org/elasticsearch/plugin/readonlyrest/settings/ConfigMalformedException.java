@@ -21,4 +21,7 @@ public class ConfigMalformedException extends RuntimeException {
   public ConfigMalformedException(String msg) {
     super(msg);
   }
+  public ConfigMalformedException(String msg, Throwable t) {
+    super(msg, t);
+  }
 }

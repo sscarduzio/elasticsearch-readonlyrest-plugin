@@ -19,9 +19,9 @@ package org.elasticsearch.plugin.readonlyrest.utils.settings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapConfig;
-import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapUser;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
 
 import java.util.Optional;
 import java.util.Set;

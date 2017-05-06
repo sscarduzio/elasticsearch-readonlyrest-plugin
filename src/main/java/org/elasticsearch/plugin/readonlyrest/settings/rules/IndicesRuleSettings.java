@@ -1,6 +1,6 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.util.Set;

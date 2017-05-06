@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;

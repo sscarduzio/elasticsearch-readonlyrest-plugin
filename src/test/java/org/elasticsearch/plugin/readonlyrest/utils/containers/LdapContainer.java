@@ -27,7 +27,7 @@ import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldif.LDIFReader;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.ldap.unboundid.SearchingUserConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.SearchingUserConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;

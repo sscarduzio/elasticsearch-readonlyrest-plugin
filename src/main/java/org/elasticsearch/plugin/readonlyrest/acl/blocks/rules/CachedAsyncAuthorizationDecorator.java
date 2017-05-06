@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
 

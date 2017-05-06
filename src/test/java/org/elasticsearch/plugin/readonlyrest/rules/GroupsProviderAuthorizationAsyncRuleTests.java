@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
@@ -34,7 +34,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
-import static org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient.TokenPassingMethod.QUERY;
+import static org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceHttpClient.TokenPassingMethod.QUERY;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;

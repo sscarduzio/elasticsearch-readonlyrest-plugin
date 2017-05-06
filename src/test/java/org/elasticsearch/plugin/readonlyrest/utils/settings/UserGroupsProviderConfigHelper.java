@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.utils.settings;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.clients.GroupsProviderServiceHttpClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceHttpClient;
 
 import java.net.URI;
 

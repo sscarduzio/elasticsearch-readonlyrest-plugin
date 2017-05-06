@@ -1,7 +1,7 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.util.function.Function;
@@ -30,7 +30,7 @@ public class UriReRuleSettings implements RuleSettings {
     try {
       return Pattern.compile(value);
     } catch (PatternSyntaxException e) {
-      throw new RuleConfigurationError("invalid 'uri_re' regexp", e);
+      throw new ConfigMalformedException("invalid 'uri_re' regexp", e);
     }
   };
 }
