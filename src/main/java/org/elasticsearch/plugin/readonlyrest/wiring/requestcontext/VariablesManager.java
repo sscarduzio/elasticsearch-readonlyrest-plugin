@@ -53,6 +53,7 @@ public class VariablesManager {
   }
 
   public Optional<String> apply(String original) {
+
     if (!containsReplacements(original)) {
       return Optional.of(original);
     }

@@ -28,8 +28,10 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSett
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
+import java.util.Optional;
 import java.util.Set;
 
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
@@ -42,6 +44,7 @@ public class KibanaAccessRuleTests extends TestCase {
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
     when(rc.getUri()).thenReturn(found.uri);
+    when(rc.resolveVariable(anyString())).then(invocation -> Optional.of((String) invocation.getArguments()[0]));
 
     SyncRule r = new KibanaAccessSyncRule(
         new KibanaAccessRuleSettings(configured.accessLevel, configured.kibanaIndex),

@@ -224,7 +224,9 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   }
 
   public Optional<String> resolveVariable(String original){
-    return variablesManager.apply(original);
+
+    return  variablesManager.apply(original);
+
   }
 
   public void setVerbosity(Verbosity v) {
