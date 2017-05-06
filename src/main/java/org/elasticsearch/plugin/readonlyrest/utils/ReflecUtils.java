@@ -111,7 +111,7 @@ public class ReflecUtils {
         f.setAccessible(true);
         try {
           if (f.getType().equals(String[].class)) {
-            f.set(o, new String[]{firstIndex});
+            f.set(o, newIndices.toArray(new String[]{}));
           } else {
             f.set(o, firstIndex);
           }
