@@ -135,8 +135,9 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
 
     // Apply variables replacements
-    if(kibanaIndex.contains("@")){
-      kibanaIndex = rc.applyVariables(kibanaIndex);
+    Optional<String> kibanaIndexO =  rc.applyVariables(kibanaIndex);
+    if(kibanaIndexO.isPresent()){
+      kibanaIndex = kibanaIndexO.get();
     }
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(kibanaIndex);

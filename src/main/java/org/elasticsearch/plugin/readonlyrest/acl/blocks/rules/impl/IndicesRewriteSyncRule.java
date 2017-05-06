@@ -35,6 +35,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
@@ -82,6 +83,10 @@ public class IndicesRewriteSyncRule extends SyncRule {
     System.arraycopy(a, 0, targets, 0, a.length - 1);
     replacement = a[a.length - 1];
 
+    if(Arrays.stream(targets).filter(t -> t.contains("@user")).findFirst().isPresent()){
+      throw new RuleConfigurationError(
+        "Please use the new, safer syntax for variable replacements. I.e. use @{user} instead of @user", null);
+    }
     targetPatterns = Arrays.stream(targets)
       .distinct()
       .filter(Objects::nonNull)
@@ -106,13 +111,16 @@ public class IndicesRewriteSyncRule extends SyncRule {
       return MATCH;
     }
 
+    if(rc.getIndices() == null || rc.getIndices().size() == 0){
+      logger.error("request had no indices: " + rc);
+    }
     final String theReplacement;
-    if(replacement.contains("@")){
-      theReplacement = rc.applyVariables(replacement);
+
+    Optional<String> replO = rc.applyVariables(replacement);
+    if(!replO.isPresent()){
+      return NO_MATCH;
     }
-    else {
-      theReplacement = replacement;
-    }
+    theReplacement = replO.get();
 
     if (rc.hasSubRequests()) {
       rc.scanSubRequests((src) -> {
@@ -123,7 +131,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
     else {
       rewrite(rc, theReplacement);
     }
-
 
     // This is a side-effect only rule, will always match
     return MATCH;

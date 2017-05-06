@@ -22,6 +22,7 @@ import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.set.Sets;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.VariablesManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -63,7 +64,7 @@ public class MatcherWithWildcards {
       }
 
       for (String m : allMatchers) {
-        if (m.contains("@")) {
+        if (VariablesManager.containsReplacements(m)) {
           withReplacements = true;
           break;
         }

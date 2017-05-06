@@ -21,6 +21,7 @@ import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
@@ -44,7 +45,10 @@ public class IndicesSyncRule extends SyncRule {
 
   public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
     configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
-
+    if(configuredWildcards.getMatchers().stream().filter(m -> m.contains("@user")).findFirst().isPresent()){
+      throw new RuleConfigurationError(
+        "Please use the new, safer syntax for variable replacements. I.e. use @{user} instead of @user", null);
+    }
   }
 
   public static Optional<IndicesSyncRule> fromSettings(Settings s) {
@@ -64,6 +68,8 @@ public class IndicesSyncRule extends SyncRule {
       matcher = new MatcherWithWildcards(
         configuredWildcards.getMatchers().stream()
           .map(m -> src.applyVariables(m))
+          .filter(opt -> opt.isPresent())
+          .map(opt -> opt.get())
           .collect(Collectors.toSet()));
     }
     else {

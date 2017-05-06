@@ -26,13 +26,11 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
@@ -47,7 +45,6 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.net.InetSocketAddress;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -158,7 +155,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     });
     this.requestHeaders = h;
 
-    variablesManager = new VariablesManager(h);
+    variablesManager = new VariablesManager(h,this);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -215,15 +212,9 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return content;
   }
 
-  public String applyVariables(String original){
+  public Optional<String> applyVariables(String original){
 
-    String res =  variablesManager.apply(original);
-
-    // Logged in user needs to be replaced at the last moment..
-    if(getLoggedInUser().isPresent()){
-      res = res.replace("@user", getLoggedInUser().get().getId());
-    }
-
+    Optional<String> res =  variablesManager.apply(original);
     return res;
   }
 

@@ -41,6 +41,6 @@ public interface IndicesRequestContext {
 
   Boolean isReadRequest();
 
-  String applyVariables(String original);
+  Optional<String> applyVariables(String original);
 
 }

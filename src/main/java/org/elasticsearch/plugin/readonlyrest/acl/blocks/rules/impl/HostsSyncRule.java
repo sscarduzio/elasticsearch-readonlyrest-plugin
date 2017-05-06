@@ -108,9 +108,11 @@ public class HostsSyncRule extends SyncRule {
     }
     for (String allowedAddress : allowedAddresses) {
 
-      if(allowedAddress.contains("@")){
-        allowedAddress = rc.applyVariables(allowedAddress);
+      Optional<String> allowedAddressO = rc.applyVariables(allowedAddress);
+      if (!allowedAddressO.isPresent()) {
+        return false;
       }
+      allowedAddress = allowedAddressO.get();
 
       if (allowedAddress.indexOf("/") > 0) {
         try {
