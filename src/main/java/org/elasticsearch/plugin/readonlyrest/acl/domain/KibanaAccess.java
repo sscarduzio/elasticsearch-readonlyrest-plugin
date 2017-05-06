@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.acl.domain;
 
 import java.util.Optional;
 

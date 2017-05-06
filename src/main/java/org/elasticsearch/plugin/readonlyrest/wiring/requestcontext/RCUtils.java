@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 
 import java.util.regex.Pattern;
 

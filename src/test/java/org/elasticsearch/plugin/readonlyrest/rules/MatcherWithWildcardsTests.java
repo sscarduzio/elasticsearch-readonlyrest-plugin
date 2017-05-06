@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 
 /**
  * Created by sscarduzio on 12/12/2016.

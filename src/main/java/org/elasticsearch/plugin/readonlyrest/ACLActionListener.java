@@ -21,26 +21,27 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
 
 /**
  * Created by sscarduzio on 24/03/2017.
  */
 
 class ACLActionListener implements ActionListener<ActionResponse> {
-  private final Logger logger = Loggers.getLogger(getClass());
 
+  private final Logger logger;
   private final ActionListener<ActionResponse> baseListener;
   private final ActionRequest request;
-  private final RequestContextImpl rc;
+  private final RequestContext rc;
   private final BlockExitResult result;
 
   ACLActionListener(ActionRequest request,
                     ActionListener<ActionResponse> baseListener,
-                    RequestContextImpl rc, BlockExitResult result) {
+                    RequestContext rc,
+                    BlockExitResult result,
+                    ESContext context) {
+    this.logger = context.logger(getClass());
     this.request = request;
     this.baseListener = baseListener;
     this.rc = rc;

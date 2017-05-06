@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.KibanaAccess;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.KibanaAccess;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;

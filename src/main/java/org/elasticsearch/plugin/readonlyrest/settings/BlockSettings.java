@@ -2,7 +2,7 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;

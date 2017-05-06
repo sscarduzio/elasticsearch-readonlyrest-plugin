@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
+package org.elasticsearch.plugin.readonlyrest.acl.domain;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;

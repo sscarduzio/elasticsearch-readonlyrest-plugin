@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
@@ -30,10 +30,10 @@ import org.mockito.Mockito;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.GET;
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.POST;
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.PUT;
-import static org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod.DELETE;
+import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.GET;
+import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.POST;
+import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.PUT;
+import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.DELETE;
 import static org.mockito.Mockito.when;
 
 /**

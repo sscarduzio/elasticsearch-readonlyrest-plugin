@@ -34,7 +34,7 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
@@ -99,7 +99,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                                                                      ActionListener<Response> listener,
                                                                                      ActionFilterChain<Request, Response> chain) {
     Optional<ACL> acl = this.acl.get();
-    if(acl.isPresent()) {
+    if (acl.isPresent()) {
       handleRequest(acl.get(), task, action, request, listener, chain);
     } else {
       chain.proceed(task, action, request, listener);
@@ -160,8 +160,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
             try {
               @SuppressWarnings("unchecked")
-              ActionListener<Response> aclActionListener =
-                  (ActionListener<Response>) new ACLActionListener(request, (ActionListener<ActionResponse>) listener, rc, result);
+              ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
+                  request, (ActionListener<ActionResponse>) listener, rc, result, context
+              );
               chain.proceed(task, action, request, aclActionListener);
               return null;
             } catch (Throwable e) {

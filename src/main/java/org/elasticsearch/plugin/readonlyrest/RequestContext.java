@@ -2,9 +2,9 @@ package org.elasticsearch.plugin.readonlyrest;
 
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.HttpMethod;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Verbosity;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.SubRequestContext;
 
