@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
-import com.google.common.collect.Maps;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 
@@ -60,7 +59,7 @@ public class VariablesManager {
     // Replacing "user" is more frequent, take care of that first.
     String replaced = original;
     if (rc.getLoggedInUser().isPresent()) {
-      Map<String, String> m = new HashMap(1);
+      Map<String, String> m = new HashMap<>(1);
       m.put("user", rc.getLoggedInUser().get().getId());
       replaced = replace(m, replaced);
     }
