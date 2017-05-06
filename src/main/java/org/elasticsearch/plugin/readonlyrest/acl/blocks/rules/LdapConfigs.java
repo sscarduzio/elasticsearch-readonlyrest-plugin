@@ -33,15 +33,15 @@ public class LdapConfigs {
 
   private LdapConfigs(List<LdapConfig<?>> configs) {
     this.configs = configs.stream()
-                          .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
+      .collect(Collectors.toMap(LdapConfig::getName, LdapConfig::getClient));
   }
 
   public static LdapConfigs fromSettings(String name, Settings settings) {
     return new LdapConfigs(
-        settings.getGroups(name).values()
-                .stream()
-                .map(LdapConfig::fromSettings)
-                .collect(Collectors.toList())
+      settings.getGroups(name).values()
+        .stream()
+        .map(LdapConfig::fromSettings)
+        .collect(Collectors.toList())
     );
   }
 

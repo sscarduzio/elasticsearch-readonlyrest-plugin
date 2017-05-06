@@ -15,15 +15,15 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.rest.action.readonlyrest.acl.rules;
+package org.elasticsearch.plugin.readonlyrest.rules;
 
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
@@ -46,8 +46,8 @@ public class MethodsRuleTests extends TestCase {
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new MethodsSyncRule(Settings.builder()
-                                       .putArray("methods", (String[]) configured.toArray())
-                                       .build());
+                                             .putArray("methods", configured.toArray(new String[]{}))
+                                             .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();

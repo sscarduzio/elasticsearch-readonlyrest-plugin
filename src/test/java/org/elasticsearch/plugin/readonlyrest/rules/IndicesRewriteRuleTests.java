@@ -22,11 +22,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -37,8 +38,10 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,10 +65,21 @@ public class IndicesRewriteRuleTests extends TestCase {
     when(rc.involvesIndices()).thenReturn(true);
     when(rc.getExpandedIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
-    when(rc.getLoggedInUser()).thenReturn("simone");
+
+    when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
+    when(rc.applyVariables(anyString())).thenAnswer(i ->
+                                                      Optional.of(
+                                                        ((String) i.getArguments()[0])
+                                                          .replaceAll("@\\{user}", "simone")
+                                                      )
+    );
+
 
     SyncRule r = new IndicesRewriteSyncRule(Settings.builder()
-                                              .putArray("indices_rewrite", (String[]) configured.toArray()).build());
+                                              .putArray(
+                                                "indices_rewrite",
+                                                configured.toArray(new String[]{})
+                                              ).build());
     RuleExitResult res = r.match(rc);
     rc.commit();
     verify(rc).setIndices(argumentCaptor.capture());
@@ -162,7 +176,7 @@ public class IndicesRewriteRuleTests extends TestCase {
   @Test
   public void testUserReplacement() throws RuleNotConfiguredException {
     match(
-      Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@user"),
+      Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@{user}"),
       Arrays.asList(".kibana", "logstash-2001-01-01"),
       Arrays.asList(".kibana_simone", "logstash-2001-01-01_simone")
     );

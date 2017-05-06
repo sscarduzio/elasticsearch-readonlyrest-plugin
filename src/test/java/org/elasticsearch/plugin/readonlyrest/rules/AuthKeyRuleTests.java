@@ -20,12 +20,14 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.mockito.Mockito;
+
+import java.util.Base64;
 
 import static org.mockito.Mockito.when;
 
@@ -33,31 +35,39 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class ApiKeysRuleTests extends TestCase {
+public class AuthKeyRuleTests extends TestCase {
 
   private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
+    when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new ApiKeysSyncRule(Settings.builder()
-                                       .put("api_keys", configured)
-                                       .build());
+    SyncRule r = new AuthKeySyncRule(Settings.builder()
+                                             .put("auth_key", configured)
+                                             .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
     return res;
   }
 
-  public void testOK() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "1234567890");
+  public void testSimple() throws RuleNotConfiguredException {
+    RuleExitResult res = match(
+        "logstash:logstash",
+        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+    );
     assertTrue(res.isMatch());
   }
 
-  public void testKO() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "x");
+  public void testInvalid() throws RuleNotConfiguredException {
+    RuleExitResult res = match(
+        "logstash:logstash",
+        "Basic " + Base64.getEncoder().encodeToString("logstash:".getBytes())
+    );
     assertFalse(res.isMatch());
   }
+
+
 }

@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthorization extends AsyncRule implements Authorization {
 
-  private static final ESLogger logger =  Loggers.getLogger(AsyncAuthorization.class);
+  private static final ESLogger logger = Loggers.getLogger(AsyncAuthorization.class);
 
   protected abstract CompletableFuture<Boolean> authorize(LoggedUser user);
 

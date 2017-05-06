@@ -21,15 +21,15 @@ import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class BasicAsyncAuthentication extends AsyncRule implements Authentication {
-  private static final ESLogger logger =  Loggers.getLogger(BasicAsyncAuthentication.class);
+  private static final ESLogger logger = Loggers.getLogger(BasicAsyncAuthentication.class);
 
   protected abstract CompletableFuture<Boolean> authenticate(String user, String password);
 
@@ -52,13 +52,13 @@ public abstract class BasicAsyncAuthentication extends AsyncRule implements Auth
 
     BasicAuth basicAuth = optBasicAuth.get();
     return authenticate(basicAuth.getUserName(), basicAuth.getPassword())
-        .thenApply(result -> {
-          RuleExitResult r = result != null && result ? MATCH : NO_MATCH;
-          if (r.isMatch()) {
-            rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
-          }
-          return r;
-        });
+      .thenApply(result -> {
+        RuleExitResult r = result != null && result ? MATCH : NO_MATCH;
+        if (r.isMatch()) {
+          rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
+        }
+        return r;
+      });
   }
 
 }

@@ -21,13 +21,11 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.ObjectArrays;
 import com.google.common.collect.Sets;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
-import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
@@ -35,8 +33,8 @@ import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.reflections.ReflectionUtils;
@@ -56,7 +54,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStr
  */
 public class RCTransactionalIndices {
 
-  private static final ESLogger logger =  Loggers.getLogger(RCTransactionalIndices.class);
+  private static final ESLogger logger = Loggers.getLogger(RCTransactionalIndices.class);
 
   // #XXX hacky as hell - needed for bulk request
   private static final Map<String, Set<String>> restLevelIndicesCache = Maps.newHashMap();
@@ -77,8 +75,8 @@ public class RCTransactionalIndices {
         Set<String> initialIndices = restLevelIndicesCache.get(restRequestId);
         if (initialIndices != null && !initialIndices.isEmpty()) {
           logger.debug("Finding cached indices for: " + rc.getId() + " "
-                        + rc.getUnderlyingRequest().getClass().getSimpleName()
-                        + ": " + Joiner.on(",").join(initialIndices)
+                         + rc.getUnderlyingRequest().getClass().getSimpleName()
+                         + ": " + Joiner.on(",").join(initialIndices)
           );
           return initialIndices;
         }
@@ -118,10 +116,10 @@ public class RCTransactionalIndices {
             indices = ObjectArrays.concat(indices, ir.indices(), String.class);
           }
         }
-        else if (ar instanceof BulkRequest) {
-          BulkRequest cir = (BulkRequest) ar;
+        else if (ar instanceof CompositeIndicesRequest) {
+          CompositeIndicesRequest cir = (CompositeIndicesRequest) ar;
 
-          for (DocWriteRequest<?> ir : cir.requests()) {
+          for (IndicesRequest ir : cir.subRequests()) {
             String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, logger);
             if (docIndices.length == 0) {
               docIndices = extractStringArrayFromPrivateMethod("index", ir, logger);

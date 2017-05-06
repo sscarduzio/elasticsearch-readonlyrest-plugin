@@ -18,8 +18,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContex
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 
 /**
@@ -39,37 +40,40 @@ import java.util.Set;
 public class KibanaAccessSyncRule extends SyncRule {
 
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/exists",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/validate/query",
-      "indices:data/read/field_stats",
-      "indices:data/read/search",
-      "indices:data/read/msearch",
-      "indices:admin/get",
-      "indices:admin/refresh*",
-      "indices:data/read/*"
+    "indices:admin/exists",
+    "indices:admin/mappings/fields/get*",
+    "indices:admin/validate/query",
+    "indices:data/read/field_stats",
+    "indices:data/read/search",
+    "indices:data/read/msearch",
+    "indices:admin/get",
+    "indices:admin/refresh*",
+    "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/create",
-      "indices:admin/mapping/put",
-      "indices:data/write/delete",
-      "indices:data/write/index",
-      "indices:data/write/update",
-      "indices:data/write/bulk*"
+    "indices:admin/create",
+    "indices:admin/mapping/put",
+    "indices:data/write/delete",
+    "indices:data/write/index",
+    "indices:data/write/update",
+    "indices:data/write/bulk*"
   ));
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:admin/rradmin/*",
-      "indices:data/write/*",
-      "indices:admin/create"
+    "cluster:admin/rradmin/*",
+    "indices:data/write/*",
+    "indices:admin/create"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/nodes/info",
-      "cluster:monitor/health"
+    "cluster:monitor/nodes/info",
+    "cluster:monitor/main",
+    "cluster:monitor/health"
   ));
   private final ESLogger logger = Loggers.getLogger(this.getClass());
   private String kibanaIndex = ".kibana";
   private Boolean canModifyKibana;
+  private Boolean roStrict = false;
   private Boolean isAdmin = false;
+  private Pattern nonStrictAllowedPaths;
 
   public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
     super();
@@ -80,7 +84,11 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
     tmp = tmp.toLowerCase();
 
-    if ("ro".equals(tmp)) {
+    if ("ro_strict".equals(tmp)) {
+      canModifyKibana = false;
+      roStrict = true;
+    }
+    else if ("ro".equals(tmp)) {
       canModifyKibana = false;
     }
     else if ("rw".equals(tmp)) {
@@ -91,7 +99,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       isAdmin = true;
     }
     else {
-      throw new RuleConfigurationError("invalid configuration: use either 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
+      throw new RuleConfigurationError("invalid configuration: use either 'ro_strict', 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
     }
 
     kibanaIndex = ".kibana";
@@ -99,6 +107,10 @@ public class KibanaAccessSyncRule extends SyncRule {
     if (!Strings.isNullOrEmpty(tmp)) {
       kibanaIndex = tmp;
     }
+
+    // Save UI state in discover & Short urls
+    nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create).*"
+                                              .replace("@kibana_index", kibanaIndex));
   }
 
   public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
@@ -123,7 +135,22 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
+    // Apply variables replacements
+    Optional<String> kibanaIndexO = rc.applyVariables(kibanaIndex);
+    if (kibanaIndexO.isPresent()) {
+      kibanaIndex = kibanaIndexO.get();
+    }
+
     boolean targetsKibana = indices.size() == 1 && indices.contains(kibanaIndex);
+
+    // Ro non-strict cases to pass through
+    if (
+      targetsKibana && !roStrict && !canModifyKibana &&
+        nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
+        rc.getAction().startsWith("indices:data/write/")
+      ) {
+      return MATCH;
+    }
 
     // Kibana index, write op
     if (targetsKibana && canModifyKibana) {

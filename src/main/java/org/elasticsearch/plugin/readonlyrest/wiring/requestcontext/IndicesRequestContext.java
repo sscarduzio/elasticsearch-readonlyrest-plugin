@@ -39,5 +39,7 @@ public interface IndicesRequestContext {
 
   void setLoggedInUser(LoggedUser user);
 
+  Optional<String> applyVariables(String original);
+
   Boolean isReadRequest();
 }

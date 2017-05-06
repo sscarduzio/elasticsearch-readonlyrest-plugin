@@ -17,14 +17,13 @@
 
 package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 
@@ -61,8 +60,8 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
       return ((MultiGetRequest) r).getItems();
 
     }
-    else if (r instanceof BulkRequest) {
-      return ((BulkRequest) r).requests();
+    else if (r instanceof CompositeIndicesRequest) {
+      return ((CompositeIndicesRequest) r).subRequests();
     }
 
     else return new ArrayList<>(0);
@@ -128,13 +127,18 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     if (originalSubRequest instanceof SearchRequest || originalSubRequest instanceof MultiGetRequest.Item) {
       return true;
     }
-    else if (originalSubRequest instanceof DocWriteRequest<?>) {
-      return false;
+    else if (originalRC.isReadRequest()) {
+      return true;
     }
     else {
       throw new RCUtils.RRContextException(
         "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
     }
+  }
+
+  @Override
+  public Optional<String> applyVariables(String original) {
+    return originalRC.applyVariables(original);
   }
 
 

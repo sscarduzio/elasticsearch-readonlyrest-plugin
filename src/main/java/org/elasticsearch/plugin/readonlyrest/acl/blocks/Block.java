@@ -20,7 +20,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 import com.google.common.collect.Sets;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
@@ -31,9 +30,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
@@ -49,12 +45,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSync
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -82,16 +77,19 @@ public class Block {
                List<User> userList,
                LdapConfigs ldapConfigs,
                List<ProxyAuthConfig> proxyAuthConfigs,
-               List<UserGroupProviderConfig> groupsProviderConfigs,
-               List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs, ESLogger logger) {
+//               List<UserGroupProviderConfig> groupsProviderConfigs,
+//               List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs,
+               ESLogger logger) {
     this.name = settings.get("name");
     String sPolicy = settings.get("type", Policy.ALLOW.name());
     this.logger = logger;
 
     policy = Block.Policy.valueOf(sPolicy.toUpperCase());
 
-    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapConfigs, groupsProviderConfigs,
-        externalAuthenticationServiceConfigs);
+    conditionsToCheck = collectRules(settings, userList, proxyAuthConfigs, ldapConfigs
+                                     //groupsProviderConfigs,
+//                                     externalAuthenticationServiceConfigs
+    );
     authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationRule);
   }
 
@@ -117,38 +115,38 @@ public class Block {
    */
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
     return checkAsyncRules(rc)
-        .thenApply(asyncCheck -> {
-          if (asyncCheck != null && asyncCheck) {
-            return finishWithMatchResult(rc);
-          }
-          else {
-            return finishWithNoMatchResult(rc);
-          }
-        });
+      .thenApply(asyncCheck -> {
+        if (asyncCheck != null && asyncCheck) {
+          return finishWithMatchResult(rc);
+        }
+        else {
+          return finishWithNoMatchResult(rc);
+        }
+      });
   }
 
   private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
     // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
     Set<RuleExitResult> thisBlockHistory = new HashSet<>(conditionsToCheck.size());
     return checkAsyncRulesInSequence(rc, conditionsToCheck.iterator(), thisBlockHistory)
-        .thenApply(result -> {
-          rc.addToHistory(this, thisBlockHistory);
-          return result;
-        });
+      .thenApply(result -> {
+        rc.addToHistory(this, thisBlockHistory);
+        return result;
+      });
   }
 
   private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
-      Iterator<AsyncRule> rules,
-      Set<RuleExitResult> thisBlockHistory) {
+                                                               Iterator<AsyncRule> rules,
+                                                               Set<RuleExitResult> thisBlockHistory) {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
-        rules,
-        rule -> rule.match(rc),
-        ruleExitResult -> {
-          thisBlockHistory.add(ruleExitResult);
-          return !ruleExitResult.isMatch();
-        },
-        RuleExitResult::isMatch,
-        nothing -> true
+      rules,
+      rule -> rule.match(rc),
+      ruleExitResult -> {
+        thisBlockHistory.add(ruleExitResult);
+        return !ruleExitResult.isMatch();
+      },
+      RuleExitResult::isMatch,
+      nothing -> true
     );
   }
 
@@ -169,8 +167,10 @@ public class Block {
   }
 
   private Set<AsyncRule> collectRules(Settings s, List<User> userList, List<ProxyAuthConfig> proxyAuthConfigs,
-      LdapConfigs ldapConfigs, List<UserGroupProviderConfig> groupsProviderConfigs,
-                                      List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs) {
+                                      LdapConfigs ldapConfigs
+                                      //List<UserGroupProviderConfig> groupsProviderConfigs,
+                                      //                                    List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs
+  ) {
     Set<AsyncRule> rules = Sets.newLinkedHashSet();
     // Won't add the condition if its configuration is not found
 
@@ -200,15 +200,15 @@ public class Block {
     // then we could check potentially slow async rules
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
     LdapAuthenticationAsyncRule.fromSettings(s, ldapConfigs)
-                               .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
-    ExternalAuthenticationAsyncRule.fromSettings(s, externalAuthenticationServiceConfigs)
-        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+      .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+    //   ExternalAuthenticationAsyncRule.fromSettings(s, externalAuthenticationServiceConfigs)
+    //     .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // all authorization rules should be placed before any authentication rule
     LdapAuthorizationAsyncRule.fromSettings(s, ldapConfigs)
-                              .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
-    GroupsProviderAuthorizationAsyncRule.fromSettings(s, groupsProviderConfigs)
-                                        .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+      .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
+    //GroupsProviderAuthorizationAsyncRule.fromSettings(s, groupsProviderConfigs)
+    //  .map(rule -> wrapInCacheIfCacheIsEnabled(rule, s)).ifPresent(rules::add);
 
     // At the end the sync rule chain are those that can mutate
     // the client request.
@@ -219,7 +219,7 @@ public class Block {
 
   private boolean isAuthenticationRule(AsyncRule rule) {
     return rule instanceof Authentication ||
-        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication);
+      (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication);
   }
 
   public enum Policy {

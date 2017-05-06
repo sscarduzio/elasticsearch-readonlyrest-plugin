@@ -20,19 +20,17 @@ package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.elasticsearch.cluster.ClusterService;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.support.IndicesOptions;
+import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
@@ -84,7 +82,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
     @Override
     public void onCommit(Verbosity value) {
-        return;
+      return;
     }
   };
 
@@ -105,7 +103,8 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
       @Override
       public void onCommit(Map<String, String> hMap) {
-        hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
+        // Doesn't work like this in 2.x .. leaving this feature behind.
+        // hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
       }
     };
 
@@ -134,6 +133,8 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     }
   };
 
+  private final VariablesManager variablesManager;
+
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService,
                         IndexNameExpressionResolver indexResolver, ThreadPool threadPool) {
@@ -146,16 +147,11 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     this.threadPool = threadPool;
     this.indexResolver = indexResolver;
     this.id = request.hashCode() + "-" + actionRequest.hashCode();
+
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-
-    request.getHeaders().keySet().stream().forEach(k -> {
-      if (request.getAllHeaderValues(k).isEmpty()) {
-        return;
-      }
-      h.put(k, request.getAllHeaderValues(k).iterator().next());
-    });
-
+    request.headers().forEach(e -> h.put(e.getKey(), e.getValue()));
     this.requestHeaders = h;
+    variablesManager = new VariablesManager(h,this);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -212,12 +208,17 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return content;
   }
 
-  public void setVerbosity(Verbosity v){
-    logLevel.mutate(v);
+  public Optional<String> applyVariables(String original){
+    Optional<String> res =  variablesManager.apply(original);
+    return res;
   }
 
-  public Verbosity getVerbosity(){
+  public Verbosity getVerbosity() {
     return logLevel.get();
+  }
+
+  public void setVerbosity(Verbosity v) {
+    logLevel.mutate(v);
   }
 
   public Set<String> getAllIndicesAndAliases() {
@@ -226,7 +227,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
   public Set<String> getIndexMetadata(String s) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
-    return lookup.get(s).getIndices().stream().map( e -> e.getIndexUUID()).collect(Collectors.toSet());
+    return lookup.get(s).getIndices().stream().map(e -> e.getIndexUUID()).collect(Collectors.toSet());
   }
 
   public String getMethod() {
@@ -240,7 +241,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (doesInvolveIndices) {
-      Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(),"a");
+      //     String[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(),"a");
 //
 //      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
 //      String[] concreteIdxNames = indexResolver.concreteIndexNames(
@@ -272,9 +273,9 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
           " If this was intended, set '*' as indices.");
     }
 
-    if(isReadRequest()){
+    if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
-      if(!expanded.isEmpty()){
+      if (!expanded.isEmpty()) {
         indices.mutate(expanded);
       }
       else {

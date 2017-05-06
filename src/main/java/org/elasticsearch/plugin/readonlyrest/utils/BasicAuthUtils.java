@@ -17,9 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.utils;
 
-import org.apache.http.Header;
-import org.apache.http.message.BasicHeader;
-
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
@@ -29,16 +26,14 @@ public class BasicAuthUtils {
   private BasicAuthUtils() {
   }
 
-  public static Header basicAuthHeader(String user, String password) {
-    return new BasicHeader(
-        "Authorization",
-        String.format("Basic %s", Base64.getEncoder().encodeToString(String.format("%s:%s", user, password).getBytes())));
+  public static String basicAuthHeader(String user, String password) {
+    return String.format("Basic %s", Base64.getEncoder().encodeToString(String.format("%s:%s", user, password).getBytes()));
   }
 
   public static Optional<BasicAuth> getBasicAuthFromHeaders(Map<String, String> headers) {
     return Optional.ofNullable(headers.get("Authorization"))
-            .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
-            .flatMap(BasicAuth::fromBase64Value);
+      .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
+      .flatMap(BasicAuth::fromBase64Value);
   }
 
   private static Optional<String> getInterestingPartOfBasicAuthValue(String basicAuthValue) {

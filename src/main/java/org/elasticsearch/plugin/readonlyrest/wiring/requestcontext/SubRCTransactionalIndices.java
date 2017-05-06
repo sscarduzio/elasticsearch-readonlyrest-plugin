@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
 
 import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.common.logging.ESLogger;
@@ -50,9 +50,7 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
     else if (originalSubReq instanceof MultiGetRequest.Item) {
       return Sets.newHashSet(((MultiGetRequest.Item) originalSubReq).indices());
     }
-    else if (originalSubReq instanceof DocWriteRequest<?>) {
-      return Sets.newHashSet(((DocWriteRequest<?>) originalSubReq).indices());
-    }
+
     else {
       throw new RCUtils.RRContextException(
         "Cannot get indices from sub-request " + src.getClass().getSimpleName());
@@ -76,7 +74,7 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
       }
       ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
-    if (originalSubReq instanceof SearchRequest || originalSubReq instanceof DocWriteRequest<?>) {
+    if (originalSubReq instanceof SearchRequest || originalSubReq instanceof GetRequest) {
       if (newIndices.isEmpty()) {
         throw new ElasticsearchException(
           "need to have at least one index to replace into a " + originalSubReq.getClass().getSimpleName());

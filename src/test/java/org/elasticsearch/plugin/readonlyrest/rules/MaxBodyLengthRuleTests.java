@@ -15,16 +15,15 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.rest.action.readonlyrest.acl.rules;
+package org.elasticsearch.plugin.readonlyrest.rules;
 
-import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import static org.mockito.Mockito.when;
@@ -33,36 +32,38 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class ProxyAuthRuleTests extends TestCase {
+public class MaxBodyLengthRuleTests extends TestCase {
 
-  private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
+  private RuleExitResult match(Integer configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
+  private RuleExitResult match(Integer configured, String found, RequestContext rc) throws RuleNotConfiguredException {
+    when(rc.getContent()).thenReturn(found);
 
-    SyncRule r = new ProxyAuthSyncRule(Settings.builder()
-                                         .put("proxy_auth", configured)
-                                         .build());
+    SyncRule r = new MaxBodyLengthSyncRule(Settings.builder()
+                                                   .put("maxBodyLength", configured)
+                                                   .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
+
     return res;
   }
 
-  public void testOK() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "1234567890");
+  public void testShortEnuf() throws RuleNotConfiguredException {
+    RuleExitResult res = match(5, "xx");
     assertTrue(res.isMatch());
   }
 
-  public void testKO() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "123");
+  public void testEmpty() throws RuleNotConfiguredException {
+    RuleExitResult res = match(5, "");
+    assertTrue(res.isMatch());
+  }
+
+  public void testTooLong() throws RuleNotConfiguredException {
+    RuleExitResult res = match(5, "hello123123");
     assertFalse(res.isMatch());
   }
 
-  public void testEmpty() throws RuleNotConfiguredException {
-    RuleExitResult res = match("1234567890", "");
-    assertFalse(res.isMatch());
-  }
 }

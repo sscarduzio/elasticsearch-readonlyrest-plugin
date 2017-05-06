@@ -34,7 +34,6 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
@@ -93,10 +92,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       return;
     }
 
-    RestChannel channel = ThreadRepo.channel.get();
+    final RestChannel channel = request.getFromContext("channel");
     boolean chanNull = channel == null;
 
-    RestRequest req = null;
+    RestRequest req = request.getFromContext("request");
+
     if (!chanNull) {
       req = channel.request();
     }

@@ -23,14 +23,14 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 import java.util.Optional;
 
 public abstract class BasicAuthentication extends SyncRule implements UserRule, Authentication {
-  private static final ESLogger logger =  Loggers.getLogger(BasicAuthentication.class);
+  private static final ESLogger logger = Loggers.getLogger(BasicAuthentication.class);
 
   private final String authKey;
 

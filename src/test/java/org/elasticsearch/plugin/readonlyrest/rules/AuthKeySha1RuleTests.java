@@ -20,11 +20,11 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import java.util.Base64;
@@ -35,7 +35,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class AuthKeyRuleTests extends TestCase {
+public class AuthKeySha1RuleTests extends TestCase {
 
   private RuleExitResult match(String configured, String found) throws RuleNotConfiguredException {
     return match(configured, found, Mockito.mock(RequestContext.class));
@@ -44,9 +44,9 @@ public class AuthKeyRuleTests extends TestCase {
   private RuleExitResult match(String configured, String found, RequestContext rc) throws RuleNotConfiguredException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new AuthKeySyncRule(Settings.builder()
-                                       .put("auth_key", configured)
-                                       .build());
+    SyncRule r = new AuthKeySha1SyncRule(Settings.builder()
+                                                 .put("auth_key_sha1", configured)
+                                                 .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -55,18 +55,10 @@ public class AuthKeyRuleTests extends TestCase {
 
   public void testSimple() throws RuleNotConfiguredException {
     RuleExitResult res = match(
-      "logstash:logstash",
-      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+        "4338fa3ea95532196849ae27615e14dda95c77b1",
+        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
-  }
-
-  public void testInvalid() throws RuleNotConfiguredException {
-    RuleExitResult res = match(
-      "logstash:logstash",
-      "Basic " + Base64.getEncoder().encodeToString("logstash:".getBytes())
-    );
-    assertFalse(res.isMatch());
   }
 
 

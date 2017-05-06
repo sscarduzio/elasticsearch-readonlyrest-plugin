@@ -20,15 +20,16 @@ package org.elasticsearch.plugin.readonlyrest.rules;
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.mockito.Mockito.when;
@@ -43,15 +44,16 @@ public class IndicesRuleTests extends TestCase {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) throws RuleNotConfiguredException {
+  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc)
+      throws RuleNotConfiguredException {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new IndicesSyncRule(Settings.builder()
-                                       .put("indices", configured.toArray())
-                                       .build());
+                                             .putArray("indices", configured.toArray(new String[]{}))
+                                             .build());
 
     RuleExitResult res = r.match(rc);
     rc.commit();
@@ -71,7 +73,7 @@ public class IndicesRuleTests extends TestCase {
 
   public void testReverseWildcard() throws RuleNotConfiguredException {
     RequestContext rc = Mockito.mock(RequestContext.class);
-    when(rc.getAvailableIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("public-asd")));
+    when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("public-asd")));
 
     RuleExitResult res = match(Arrays.asList("public-asd"), Arrays.asList("public-*"), rc);
     assertTrue(res.isMatch());
@@ -79,7 +81,7 @@ public class IndicesRuleTests extends TestCase {
 
   public void testReturnAllowedSubset() throws RuleNotConfiguredException {
     RequestContext rc = Mockito.mock(RequestContext.class);
-    when(rc.getAvailableIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("a", "b", "c")));
+    when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("a", "b", "c")));
 
     RuleExitResult res = match(Arrays.asList("a"), Arrays.asList("a", "b", "c"), rc);
     assertTrue(res.isMatch());
@@ -89,22 +91,23 @@ public class IndicesRuleTests extends TestCase {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.isReadRequest()).thenReturn(true);
     when(rc.involvesIndices()).thenReturn(true);
-    when(rc.getExpandedIndices()).thenCallRealMethod();
-    when(rc.getAvailableIndicesAndAliases()).thenReturn(Sets.newHashSet(Arrays.asList("perfmon-bfarm", "another_index")));
+    when(rc.getLoggedInUser()).thenReturn(Optional.empty());
+    when(rc.getExpandedIndices()).thenReturn(Sets.newHashSet(Arrays.asList("another_index")));
+    when(rc.getAllIndicesAndAliases())
+        .thenReturn(Sets.newHashSet(Arrays.asList("perfmon-bfarm", "another_index")));
 
     RuleExitResult res = match(
-      // Mocks:  indices: ["perfmon*"]
-      Arrays.asList("perfmon*"),
+        // Mocks:  indices: ["perfmon*"]
+        Arrays.asList("perfmon*"),
 
-      // The incoming request is directed to "another_index"
-      Arrays.asList("another_index"),
+        // The incoming request is directed to "another_index"
+        Arrays.asList("another_index"),
 
-      rc
+        rc
     );
 
     // Should be a NO_MATCH
     assertFalse(res.isMatch());
   }
-
 
 }

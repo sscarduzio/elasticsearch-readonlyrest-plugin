@@ -26,9 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.Verbosity;
@@ -65,15 +63,17 @@ public class ACL {
     List<ProxyAuthConfig> proxyAuthConfigs = parseProxyAuthSettings(s.getGroups(PROXIES_PREFIX).values());
     List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values(), proxyAuthConfigs);
     LdapConfigs ldaps = LdapConfigs.fromSettings(LDAPS_PREFIX, s);
-    List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
-      s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
-    );
-    List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs =
-      parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
+//    List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
+//      s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
+//    );
+//    List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs =
+//      parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
     blocksMap.entrySet()
       .forEach(entry -> {
-        Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
-                                externalAuthenticationServiceConfigs, logger
+        Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs,
+                                //groupsProviderConfigs,
+                                //externalAuthenticationServiceConfigs,
+                                 logger
         );
         blocks.add(block);
         if (block.isAuthHeaderAccepted()) {
@@ -128,16 +128,16 @@ public class ACL {
       .collect(Collectors.toList());
   }
 
-  private List<UserGroupProviderConfig> parseUserGroupsProviderSettings(Collection<Settings> groupProvidersSettings) {
-    return groupProvidersSettings.stream()
-      .map(UserGroupProviderConfig::fromSettings)
-      .collect(Collectors.toList());
-  }
-
-  private List<ExternalAuthenticationServiceConfig> parseExternalAuthenticationServiceSettings(
-    Collection<Settings> ExternalAuthenticationServiceSettings) {
-    return ExternalAuthenticationServiceSettings.stream()
-      .map(ExternalAuthenticationServiceConfig::fromSettings)
-      .collect(Collectors.toList());
-  }
+//  private List<UserGroupProviderConfig> parseUserGroupsProviderSettings(Collection<Settings> groupProvidersSettings) {
+//    return groupProvidersSettings.stream()
+//      .map(UserGroupProviderConfig::fromSettings)
+//      .collect(Collectors.toList());
+//  }
+//
+//  private List<ExternalAuthenticationServiceConfig> parseExternalAuthenticationServiceSettings(
+//    Collection<Settings> ExternalAuthenticationServiceSettings) {
+//    return ExternalAuthenticationServiceSettings.stream()
+//      .map(ExternalAuthenticationServiceConfig::fromSettings)
+//      .collect(Collectors.toList());
+//  }
 }

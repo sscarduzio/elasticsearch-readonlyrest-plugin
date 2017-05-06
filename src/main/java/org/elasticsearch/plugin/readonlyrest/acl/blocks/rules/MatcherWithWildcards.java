@@ -18,10 +18,11 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.VariablesManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -33,11 +34,12 @@ import java.util.regex.Pattern;
  */
 public class MatcherWithWildcards {
 
-  private static final ESLogger logger =  Loggers.getLogger(MatcherWithWildcards.class);
+  private static final ESLogger logger = Loggers.getLogger(MatcherWithWildcards.class);
   private static Set<String> empty = new HashSet<>(0);
   protected Set<String> allMatchers = Sets.newHashSet();
 
   protected Set<Pattern> wildcardMatchers = Sets.newHashSet();
+  private boolean withReplacements;
 
   public MatcherWithWildcards(Set<String> matchers) {
     for (String a : matchers) {
@@ -60,6 +62,13 @@ public class MatcherWithWildcards {
         // A plain word can be matched as string
         allMatchers.add(a.trim());
       }
+
+      for (String m : allMatchers) {
+        if (VariablesManager.containsReplacements(m)) {
+          withReplacements = true;
+          break;
+        }
+      }
     }
   }
 
@@ -71,6 +80,7 @@ public class MatcherWithWildcards {
     if (a == null || a.length == 0) {
       throw new RuleNotConfiguredException();
     }
+
 
     return new MatcherWithWildcards(Sets.newHashSet(a));
   }
@@ -95,6 +105,10 @@ public class MatcherWithWildcards {
       return s.substring(1, s.length());
     }
     return s;
+  }
+
+  public boolean containsReplacements() {
+    return withReplacements;
   }
 
   public Set<String> getMatchers() {
@@ -130,7 +144,6 @@ public class MatcherWithWildcards {
   public boolean match(String s) {
     return matchWithResult(s) != null;
   }
-
 
   public Set<String> filter(Set<String> haystack) {
     if (haystack.isEmpty()) return empty;

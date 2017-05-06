@@ -58,7 +58,7 @@ public abstract class Rule {
    * @param e      The occurred exception
    * @return should continue to process the handlers' pipeline
    */
-  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Throwable e) {
+  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
     return true;
   }
 

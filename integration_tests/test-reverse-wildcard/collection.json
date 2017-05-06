@@ -19,7 +19,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/logstash-a-1/documents/doc-a1",
+        "url": "{{url_es}}/logstash-a-1/documents/doc-a1?refresh",
         "method": "PUT",
         "header": [
           {
@@ -53,7 +53,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/logstash-a-2/documents/doc-a2",
+        "url": "{{url_es}}/logstash-a-2/documents/doc-a2?refresh",
         "method": "PUT",
         "header": [
           {
@@ -87,7 +87,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/logstash-b-1/documents/doc-b1",
+        "url": "{{url_es}}/logstash-b-1/documents/doc-b1?refresh",
         "method": "PUT",
         "header": [
           {
@@ -121,7 +121,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/logstash-b-2/documents/doc-b2",
+        "url": "{{url_es}}/logstash-b-2/documents/doc-b2?refresh",
         "method": "PUT",
         "header": [
           {
@@ -144,7 +144,7 @@
       "response": []
     },
     {
-      "name": "/logstash-a-1/_search \t 200 [doc-a1]",
+      "name": "/logstash-a-1/_search?refresh \t 200 [doc-a1]",
       "event": [
         {
           "listen": "test",
@@ -155,7 +155,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/logstash-a-1/_search",
+        "url": "{{url_es}}/logstash-a-1/_search?refresh",
         "method": "GET",
         "header": [],
         "body": {
@@ -167,7 +167,7 @@
       "response": []
     },
     {
-      "name": "/logstash-a-*/_search \t 200 [doc-a1,doc-a2]",
+      "name": "/logstash-a-*/_search?refresh \t 200 [doc-a1,doc-a2]",
       "event": [
         {
           "listen": "test",
@@ -178,7 +178,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/logstash-a-*/_search",
+        "url": "{{url_es}}/logstash-a-*/_search?refresh",
         "method": "GET",
         "header": [],
         "body": {
@@ -213,7 +213,7 @@
       "response": []
     },
     {
-      "name": "/*/_search \t 200 [doc-a1,doc-a2]",
+      "name": "/*/_search?refresh \t 200 [doc-a1,doc-a2]",
       "event": [
         {
           "listen": "test",
@@ -224,7 +224,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/*/_search",
+        "url": "{{url_es}}/*/_search?refresh",
         "method": "GET",
         "header": [],
         "body": {
@@ -236,7 +236,7 @@
       "response": []
     },
     {
-      "name": "/_search \t 200 [doc-a1,doc-a2]",
+      "name": "/_search?refresh \t 200 [doc-a1,doc-a2]",
       "event": [
         {
           "listen": "test",
@@ -247,7 +247,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/_search",
+        "url": "{{url_es}}/_search?refresh",
         "method": "GET",
         "header": [],
         "body": {
@@ -270,7 +270,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/non-existent/_search",
+        "url": "{{url_es}}/non-existent/_search?refresh",
         "method": "GET",
         "header": [],
         "body": {
@@ -293,7 +293,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/non-existent,l*/_search",
+        "url": "{{url_es}}/non-existent,l*/_search?refresh",
         "method": "GET",
         "header": [],
         "body": {
@@ -316,7 +316,7 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/non-existent*,l*/_search",
+        "url": "{{url_es}}/non-existent*,l*/_search?refresh",
         "method": "GET",
         "header": [],
         "body": {
@@ -339,8 +339,8 @@
         }
       ],
       "request": {
-        "url": "{{url_es}}/_all",
-        "method": "DELETE",
+        "url": "{{url_es}}/_all?refresh",
+        "method": "GET",
         "header": [
           {
             "key": "Content-Type",

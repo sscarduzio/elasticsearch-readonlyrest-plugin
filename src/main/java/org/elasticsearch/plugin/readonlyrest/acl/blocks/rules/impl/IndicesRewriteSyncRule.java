@@ -17,24 +17,22 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkShardResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.get.MultiGetItemResponse;
 import org.elasticsearch.action.get.MultiGetResponse;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
@@ -49,7 +47,6 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -82,12 +79,16 @@ public class IndicesRewriteSyncRule extends SyncRule {
     System.arraycopy(a, 0, targets, 0, a.length - 1);
     replacement = a[a.length - 1];
 
+    if (Arrays.stream(targets).filter(t -> t.contains("@user")).findFirst().isPresent()) {
+      throw new RuleConfigurationError(
+        "Please use the new, safer syntax for variable replacements. I.e. use @{user} instead of @user", null);
+    }
     targetPatterns = Arrays.stream(targets)
       .distinct()
-      .map(Strings::emptyToNull)
-      .filter(Objects::nonNull)
+      .filter(i -> !Strings.isNullOrEmpty(i))
       .map(Pattern::compile)
       .toArray(Pattern[]::new);
+
   }
 
   public static Optional<IndicesRewriteSyncRule> fromSettings(Settings s) {
@@ -105,22 +106,32 @@ public class IndicesRewriteSyncRule extends SyncRule {
       return MATCH;
     }
 
+    if (rc.getIndices() == null || rc.getIndices().size() == 0) {
+      logger.error("request had no indices: " + rc);
+    }
+    final String theReplacement;
+
+    Optional<String> replO = rc.applyVariables(replacement);
+    if (!replO.isPresent()) {
+      return NO_MATCH;
+    }
+    theReplacement = replO.get();
+
     if (rc.hasSubRequests()) {
       rc.scanSubRequests((src) -> {
-        rewrite(src);
+        rewrite(src, theReplacement);
         return Optional.of(src);
       }, logger);
     }
     else {
-      rewrite(rc);
+      rewrite(rc, theReplacement);
     }
-
 
     // This is a side-effect only rule, will always match
     return MATCH;
   }
 
-  private void rewrite(IndicesRequestContext rc) {
+  private void rewrite(IndicesRequestContext rc, String currentReplacement) {
     // Expanded indices
     final Set<String> oldIndices = Sets.newHashSet(rc.getIndices());
 
@@ -137,13 +148,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
     }
 
     Set<String> newIndices = Sets.newHashSet();
-
-    String currentReplacement = replacement;
-
-    Optional<LoggedUser> currentUser = rc.getLoggedInUser();
-    if (currentUser.isPresent()) {
-      currentReplacement = replacement.replaceAll("@user", currentUser.get().getId());
-    }
 
     for (Pattern p : targetPatterns) {
       Iterator<String> it = oldIndices.iterator();
@@ -219,22 +223,6 @@ public class IndicesRewriteSyncRule extends SyncRule {
       }
     }
 
-    if (response instanceof BulkShardResponse) {
-      BulkShardResponse bsr = (BulkShardResponse) response;
-      final Set<String> originalIndex = Sets.newHashSet(rc.getIndices().iterator().next());
-      ReflecUtils.setIndices(bsr.getShardId().getIndex(), Sets.newHashSet("name"), originalIndex, logger);
-      for (BulkItemResponse i : bsr.getResponses()) {
-        if (!i.isFailed()) {
-          ReflecUtils.setIndices(
-            i.getResponse().getShardId().getIndex(),
-            Sets.newHashSet("name"),
-            originalIndex,
-            logger
-          );
-        }
-      }
-    }
-
     return true;
   }
 
@@ -242,7 +230,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
    * Return the requested index name if the rewritten index or document was not found.
    */
   @Override
-  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Throwable e) {
+  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
     if (e instanceof IndexNotFoundException) {
       ((IndexNotFoundException) e).setIndex(rc.getIndices().iterator().next());
     }

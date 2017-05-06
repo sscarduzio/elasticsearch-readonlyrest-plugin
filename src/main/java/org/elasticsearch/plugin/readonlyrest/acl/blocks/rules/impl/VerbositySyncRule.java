@@ -42,10 +42,13 @@ public class VerbositySyncRule extends SyncRule {
 
   public VerbositySyncRule(Settings s) throws RuleNotConfiguredException, RuleConfigurationError {
     super();
-    String tmp = s.get(getKey(), "info");
+    String tmp = s.get(getKey());
+    if(tmp == null){
+      throw new RuleNotConfiguredException();
+    }
     try {
       level = Verbosity.valueOf(tmp.toUpperCase());
-    } catch (Exception e) {
+    } catch (IllegalArgumentException e) {
       throw new RuleConfigurationError(
         tmp + " is not a valid verbosity level. Try one of " +
           Joiner.on(",").join(

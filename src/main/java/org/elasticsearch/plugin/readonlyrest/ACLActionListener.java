@@ -69,7 +69,7 @@ class ACLActionListener implements ActionListener<ActionResponse> {
     for (Rule r : result.getBlock().getRules()) {
       try {
         // Don't continue with further handlers if at least one says we should not continue
-        shouldContinue &= r.onFailure(result, rc, request, e);
+        shouldContinue &= r.onFailure(result, rc, request, (Exception) e);
       } catch (Exception e1) {
         logger.error(r.getKey() + " errored handling failure: " + e1);
         e.printStackTrace();
