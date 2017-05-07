@@ -181,7 +181,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private void sendNotAuthResponse(RestChannel channel, String forbiddenResponse) {
     BytesRestResponse resp;
-    if (ConfigurationHelper.doesRequirePassword()) {
+    boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
+    if (doesRequirePassword) {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, forbiddenResponse);
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");

@@ -19,7 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
@@ -34,8 +33,8 @@ import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
+import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_RED;
+import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_RESET;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -58,9 +57,6 @@ public class ACL {
         settings.getBlocksSettings().stream()
             .map(blockSettings -> {
               Block block = new Block(blockSettings, rulesFactory, context);
-              if (block.isAuthHeaderAccepted()) {
-                ConfigurationHelper.setRequirePassword(true);
-              }
               logger.info("ADDING #" + blockSettings.getName() + ":\t" + block.toString());
               return block;
             })
@@ -102,5 +98,9 @@ public class ACL {
 
   public RorSettings getSettings() {
     return settings;
+  }
+
+  public boolean doesRequirePassword() {
+    return blocks.stream().anyMatch(Block::isAuthHeaderAccepted);
   }
 }

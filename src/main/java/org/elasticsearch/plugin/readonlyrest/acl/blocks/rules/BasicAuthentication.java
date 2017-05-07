@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
@@ -36,7 +35,6 @@ public abstract class BasicAuthentication extends UserRule implements Authentica
 
   public BasicAuthentication(AuthKeyRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
-    ConfigurationHelper.setRequirePassword(true);
     this.authKey = s.getAuthKey();
   }
 

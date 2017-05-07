@@ -43,20 +43,10 @@ import java.util.List;
 
 @Singleton
 public class ConfigurationHelper {
-  public static final String ANSI_RESET = "\u001B[0m";
-  public static final String ANSI_BLACK = "\u001B[30m";
-  public static final String ANSI_RED = "\u001B[31m";
-  public static final String ANSI_GREEN = "\u001B[32m";
-  public static final String ANSI_YELLOW = "\u001B[33m";
-  public static final String ANSI_BLUE = "\u001B[34m";
-  public static final String ANSI_PURPLE = "\u001B[35m";
-  public static final String ANSI_CYAN = "\u001B[36m";
-  public static final String ANSI_WHITE = "\u001B[37m";
 
   private final Logger logger = Loggers.getLogger(ConfigurationHelper.class);
 
   private static ConfigurationHelper currentInstance;
-  private static boolean requirePassword;
 
   public boolean enabled;
   public String verbosity;
@@ -157,14 +147,6 @@ public class ConfigurationHelper {
 //        strA(users_prefix + "groups")
 
     );
-  }
-
-  public static void setRequirePassword(boolean requirePass) {
-    requirePassword = requirePass;
-  }
-
-  public static boolean doesRequirePassword(){
-    return requirePassword;
   }
 
   public void updateSettingsFromIndex(Client client) throws ResourceNotFoundException {

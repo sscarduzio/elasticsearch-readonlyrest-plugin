@@ -37,9 +37,9 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_CYAN;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_YELLOW;
+import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_CYAN;
+import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_RESET;
+import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_YELLOW;
 
 /**
  * Created by sscarduzio on 13/02/2016.
