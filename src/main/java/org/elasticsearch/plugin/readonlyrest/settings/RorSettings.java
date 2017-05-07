@@ -16,7 +16,6 @@ public class RorSettings {
 
   private static final String ATTRIBUTE_NAME = "readonlyrest";
 
-  private static final boolean DEFAULT_ENABLE = true;
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
   private static final List<BlockSettings> DEFAULT_BLOCK_SETTINGS = Lists.newArrayList();
 
@@ -38,7 +37,6 @@ public class RorSettings {
         ExternalAuthenticationServiceSettingsCollection.from(raw);
     AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(proxyAuthConfigSettingsCollection);
 
-    this.enable = raw.booleanOpt("enable").orElse(DEFAULT_ENABLE);
     this.forbiddenMessage = raw.stringOpt("response_if_req_forbidden").orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.sslSettings = SSLSettings.from(raw.inner("ssl"));
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
@@ -51,6 +49,7 @@ public class RorSettings {
             UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
         ))
         .collect(Collectors.toList());
+    this.enable = raw.booleanOpt("enable").orElse(!blocksSettings.isEmpty());
   }
 
   public boolean isEnabled() {

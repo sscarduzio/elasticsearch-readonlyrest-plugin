@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.elasticsearch.plugin.readonlyrest.rradmin.rest;
+package org.elasticsearch.plugin.readonlyrest.es53x.rradmin.rest;
 
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.rradmin.RRAdminAction;
-import org.elasticsearch.plugin.readonlyrest.rradmin.RRAdminRequest;
-import org.elasticsearch.plugin.readonlyrest.rradmin.RRAdminResponse;
+import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.RRAdminAction;
+import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.RRAdminRequest;
+import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.RRAdminResponse;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;

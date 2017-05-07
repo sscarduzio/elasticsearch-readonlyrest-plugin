@@ -15,11 +15,12 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest.ssl;
 
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.SSLSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSSLSettings;

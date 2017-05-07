@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.elasticsearch.plugin.readonlyrest.rradmin;
+package org.elasticsearch.plugin.readonlyrest.es53x.rradmin;
 
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
@@ -26,7 +26,7 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.es53x.ConfigurationHelper;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 

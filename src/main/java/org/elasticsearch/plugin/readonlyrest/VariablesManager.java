@@ -17,8 +17,6 @@
 package org.elasticsearch.plugin.readonlyrest;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,22 +31,21 @@ public class VariablesManager {
   private static final char ESCAPE_CHAR = '@';
   private static final char DELIMITER_BEGIN_CHAR = '{';
   private static final char DELIMITER_END_CHAR = '}';
-  private static final String VAR_DETECTOR = new StringBuilder(2).append(ESCAPE_CHAR).append(DELIMITER_BEGIN_CHAR).toString();
+  private static final String VAR_DETECTOR = String.valueOf(ESCAPE_CHAR) + DELIMITER_BEGIN_CHAR;
 
-  private final Logger logger = Loggers.getLogger(getClass());
+  private final Logger logger;
   private final IndicesRequestContext rc;
   private Map<String, String> headers;
 
-  public VariablesManager(Map<String, String> headers, IndicesRequestContext rc) {
+  public VariablesManager(Map<String, String> headers, IndicesRequestContext rc, ESContext context) {
+    this.logger = context.logger(getClass());
     this.rc = rc;
     Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    headers.keySet().stream().forEach(k -> {
-      map.put(k.toLowerCase(), headers.get(k));
-    });
+    headers.keySet().forEach(k -> map.put(k.toLowerCase(), headers.get(k)));
     this.headers = map;
   }
 
-  public static boolean containsReplacements(String template) {
+  private static boolean containsReplacements(String template) {
     return template.contains(VAR_DETECTOR);
   }
 

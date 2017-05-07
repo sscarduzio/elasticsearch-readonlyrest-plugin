@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest.es53x;
 
 /**
  * Created by sscarduzio on 28/11/2016.
@@ -29,7 +29,9 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
+import org.elasticsearch.plugin.readonlyrest.ssl.SSLEngineProvider;
 import org.elasticsearch.threadpool.ThreadPool;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {

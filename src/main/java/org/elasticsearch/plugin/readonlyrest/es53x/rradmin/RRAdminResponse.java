@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.elasticsearch.plugin.readonlyrest.rradmin;
+package org.elasticsearch.plugin.readonlyrest.es53x.rradmin;
 
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
