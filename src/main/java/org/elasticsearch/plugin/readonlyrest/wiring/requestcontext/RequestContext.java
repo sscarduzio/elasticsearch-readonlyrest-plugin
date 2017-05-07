@@ -82,11 +82,10 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
     @Override
     public void onCommit(Verbosity value) {
-        return;
+      return;
     }
   };
-
-
+  private final VariablesManager variablesManager;
   private ThreadPool threadPool;
   private final Transactional<Map<String, String>> responseHeaders =
     new Transactional<Map<String, String>>("rc-resp-headers") {
@@ -106,7 +105,6 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
         hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
       }
     };
-
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;
@@ -132,7 +130,6 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     }
   };
 
-  private final VariablesManager variablesManager;
   public RequestContext(RestChannel channel, RestRequest request, String action,
                         ActionRequest actionRequest, ClusterService clusterService,
                         IndexNameExpressionResolver indexResolver, ThreadPool threadPool) {
@@ -155,7 +152,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     });
     this.requestHeaders = h;
 
-    variablesManager = new VariablesManager(h,this);
+    variablesManager = new VariablesManager(h, this);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -212,17 +209,17 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     return content;
   }
 
-  public Optional<String> applyVariables(String original){
-    Optional<String> res =  variablesManager.apply(original);
+  public Optional<String> applyVariables(String original) {
+    Optional<String> res = variablesManager.apply(original);
     return res;
   }
 
-  public void setVerbosity(Verbosity v){
-    logLevel.mutate(v);
+  public Verbosity getVerbosity() {
+    return logLevel.get();
   }
 
-  public Verbosity getVerbosity(){
-    return logLevel.get();
+  public void setVerbosity(Verbosity v) {
+    logLevel.mutate(v);
   }
 
   public Set<String> getAllIndicesAndAliases() {
@@ -231,7 +228,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
 
   public Set<String> getIndexMetadata(String s) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
-    return lookup.get(s).getIndices().stream().map( e -> e.getIndexUUID()).collect(Collectors.toSet());
+    return lookup.get(s).getIndices().stream().map(e -> e.getIndexUUID()).collect(Collectors.toSet());
   }
 
   public String getMethod() {
@@ -270,14 +267,22 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     }
 
     if (newIndices.size() == 0) {
-      throw new ElasticsearchException(
-        "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
-          " If this was intended, set '*' as indices.");
+      if (isReadRequest()) {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] to empty set." +
+            ", probably your request matched no index, or was rewritten to nonexistent indices (which would expand to empty set).");
+      }
+      else {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this request is forbidden.");
+      }
     }
 
-    if(isReadRequest()){
+    if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
-      if(!expanded.isEmpty()){
+      if (!expanded.isEmpty()) {
         indices.mutate(expanded);
       }
       else {
