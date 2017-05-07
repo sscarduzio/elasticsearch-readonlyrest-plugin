@@ -190,7 +190,7 @@ public class ConfigurationHelper {
     Settings s = settings.getByPrefix("readonlyrest.");
     this.settings = settings;
     verbosity = s.get("verbosity", "info");
-    enabled = s.getAsBoolean("enable", false);
+    enabled = s.getAsBoolean("enable", true);
 
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
 
