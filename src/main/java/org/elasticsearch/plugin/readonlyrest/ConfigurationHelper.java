@@ -142,12 +142,12 @@ public class ConfigurationHelper {
     Settings s = settings.getByPrefix("readonlyrest.");
     this.settings = settings;
     verbosity = s.get("verbosity", "info");
-    enabled = s.getAsBoolean("enable", s.getByPrefix("access_control_rules").size() > 0);
+    enabled = s.getAsBoolean("enable", s.getByPrefix("access_control_rules").getAsMap().size() > 0);
 
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
 
     // -- SSL
-    sslEnabled = s.getAsBoolean("ssl.enable", s.getByPrefix("ssl").size() > 1);
+    sslEnabled = s.getAsBoolean("ssl.enable", s.getByPrefix("ssl").getAsMap().size() > 1);
     if (sslEnabled) {
       logger.debug("SSL: Enabled");
     }
