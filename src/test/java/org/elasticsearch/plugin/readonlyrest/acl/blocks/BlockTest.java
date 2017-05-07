@@ -30,7 +30,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Assert;
 
 import java.util.Iterator;
-import java.util.Set;
+import java.util.List;
 
 public class BlockTest extends TestCase {
 
@@ -55,7 +55,7 @@ public class BlockTest extends TestCase {
         MockedESContext.INSTANCE
     );
 
-    Set<AsyncRule> rules = block.getRules();
+    List<AsyncRule> rules = block.getRules();
     Iterator<AsyncRule> it = rules.iterator();
     AsyncRule auth = it.next();
     AsyncRule inspect = it.next();
