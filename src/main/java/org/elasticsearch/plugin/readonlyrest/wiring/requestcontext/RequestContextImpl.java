@@ -124,11 +124,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     };
 
-    this.loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
-      @Override
-      public Optional<LoggedUser> initialize() {
-        return Optional.empty();
-      }
+  this. loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
+    @Override
+    public Optional<LoggedUser> initialize() {
+      return Optional.empty();
+    }
 
       @Override
       public Optional<LoggedUser> copy(Optional<LoggedUser> initial) {
@@ -163,7 +163,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     };
 
-    variablesManager = new VariablesManager(h,this);
+    variablesManager = new VariablesManager(h, this);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -225,17 +225,18 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   }
 
   public Optional<String> resolveVariable(String original){
-
     return  variablesManager.apply(original);
 
   }
 
-  public void setVerbosity(Verbosity v) {
-    logLevel.mutate(v);
+
+
+  public Verbosity getVerbosity(){
+    return logLevel.get();
   }
 
-  public Verbosity getVerbosity() {
-    return logLevel.get();
+  public void setVerbosity(Verbosity v) {
+    logLevel.mutate(v);
   }
 
   public Set<String> getAllIndicesAndAliases() {
@@ -297,9 +298,16 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     }
 
     if (newIndices.size() == 0) {
-      throw new ElasticsearchException(
-          "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
-              " If this was intended, set '*' as indices.");
+      if (isReadRequest()) {throw new ElasticsearchException(
+        "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] toempty set." +
+            ", probably your request matched no index, or was rewritten to nonexistentindices (which would expand to empty set).");
+      }
+      else {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden." );
+          }
     }
 
     if (isReadRequest()) {
