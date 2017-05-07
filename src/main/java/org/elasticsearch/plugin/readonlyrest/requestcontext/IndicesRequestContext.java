@@ -44,4 +44,6 @@ public interface IndicesRequestContext extends Value.VariableResolver {
 
   Boolean isReadRequest();
 
+  void delegateTo(Delayed ambassador);
+
 }

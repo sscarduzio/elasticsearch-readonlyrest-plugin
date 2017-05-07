@@ -24,12 +24,13 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdl
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
+import org.elasticsearch.plugin.readonlyrest.utils.RulesUtils;
 
 import java.util.Comparator;
 
 public class RulesOrdering implements Comparator<AsyncRule> {
 
-  private final ImmutableList<Object> ordering;
+  private final ImmutableList<Class<? extends Rule>> ordering;
 
   public RulesOrdering() {
     this.ordering = ImmutableList.of(
@@ -67,15 +68,9 @@ public class RulesOrdering implements Comparator<AsyncRule> {
   @Override
   public int compare(AsyncRule r1, AsyncRule r2) {
     return Integer.compare(
-        indexOfRuleClass(classOfRule(r1)),
-        indexOfRuleClass(classOfRule(r2))
+        indexOfRuleClass(RulesUtils.classOfRule(r1)),
+        indexOfRuleClass(RulesUtils.classOfRule(r2))
     );
-  }
-
-  private Class<? extends Rule> classOfRule(AsyncRule rule) {
-    return rule instanceof AsyncRuleAdapter
-        ? ((AsyncRuleAdapter) rule).getUnderlying().getClass()
-        : rule.getClass();
   }
 
   private int indexOfRuleClass(Class<? extends Rule> ruleClass) {

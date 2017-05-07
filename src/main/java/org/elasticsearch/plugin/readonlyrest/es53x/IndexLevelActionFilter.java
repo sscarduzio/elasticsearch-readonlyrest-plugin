@@ -38,6 +38,8 @@ import org.elasticsearch.plugin.readonlyrest.ReloadableConfiguration;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.es53x.actionlisteners.ACLActionListener;
+import org.elasticsearch.plugin.readonlyrest.es53x.actionlisteners.RuleActionListenersProvider;
 import org.elasticsearch.plugin.readonlyrest.es53x.requestcontext.RequestContextImpl;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
@@ -66,6 +68,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ReloadableConfiguration configuration;
   private final AtomicReference<Optional<ACL>> acl;
   private final ESContext context;
+  private final RuleActionListenersProvider ruleActionListenersProvider;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, ThreadPool threadPool,
@@ -76,6 +79,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.threadPool = threadPool;
     this.indexResolver = indexResolver;
     this.acl = new AtomicReference<>(Optional.empty());
+    this.ruleActionListenersProvider =  new RuleActionListenersProvider(context);
     this.configuration = new ReloadableConfiguration(rorSettings -> {
       if (rorSettings.isEnabled()) {
         this.acl.set(Optional.of(new ACL(rorSettings, this.context)));
@@ -154,7 +158,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
           return null;
         })
-
         .thenApply(result -> {
           assert result != null;
 
@@ -162,7 +165,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             try {
               @SuppressWarnings("unchecked")
               ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
-                  request, (ActionListener<ActionResponse>) listener, rc, result, context
+                  request, (ActionListener<ActionResponse>) listener, ruleActionListenersProvider, rc, result, context
               );
               chain.proceed(task, action, request, aclActionListener);
               return null;

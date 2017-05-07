@@ -17,34 +17,20 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.bytes.BytesReference;
-import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SearchlogRuleSettings;
-
-import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * Created by sscarduzio on 27/03/2017.
  */
 public class SearchlogSyncRule extends SyncRule {
 
-  private final Logger logger;
   private final boolean shouldLog;
   private final SearchlogRuleSettings settings;
 
-  public SearchlogSyncRule(SearchlogRuleSettings s, ESContext context) {
-    logger = context.logger(getClass());
+  public SearchlogSyncRule(SearchlogRuleSettings s) {
     shouldLog = s.isEnabled();
     settings = s;
   }
@@ -59,41 +45,7 @@ public class SearchlogSyncRule extends SyncRule {
     return settings.getName();
   }
 
-  @Override
-  public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
-
-    if (shouldLog && ar instanceof SearchRequest && response instanceof SearchResponse) {
-      SearchRequest searchRequest = (SearchRequest) ar;
-      SearchResponse searchResponse = (SearchResponse) response;
-      logger.info(
-          "search: {" +
-              " ID:" + rc.getId() +
-              ", ACT:" + rc.getAction() +
-              ", USR:" + rc.getLoggedInUser() +
-              ", IDX:" + Arrays.toString(searchRequest.indices()) +
-              ", TYP:" + Arrays.toString(searchRequest.types()) +
-              ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
-              ", HIT:" + searchResponse.getHits().totalHits() +
-              ", RES:" + searchResponse.getHits().hits().length +
-              " }"
-      );
-    }
-    return true;
-  }
-
-  @Override
-  public boolean onFailure(BlockExitResult result, RequestContext rc, ActionRequest ar, Exception e) {
-    return true;
-  }
-
-  @SuppressWarnings("deprecation")
-  private String convertToJson(BytesReference searchSource) {
-    if (searchSource != null)
-      try {
-        return XContentHelper.convertToJson(searchSource, true);
-      } catch (IOException e) {
-        logger.warn("Unable to convert searchSource to JSON", e);
-      }
-    return "";
+  public boolean shouldLog() {
+    return shouldLog;
   }
 }

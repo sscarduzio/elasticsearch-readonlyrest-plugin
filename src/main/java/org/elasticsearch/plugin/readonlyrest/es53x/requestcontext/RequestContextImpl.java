@@ -326,7 +326,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
-  public Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer) {
+  public Integer scanSubRequests(final ReflecUtils.CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer) {
 
     List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 
@@ -339,8 +339,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
     Iterator<? extends IndicesRequest> it = subRequests.iterator();
     while (it.hasNext()) {
-      SubRequestContext i = new SubRequestContext(this, it.next(), context);
-      final Optional<SubRequestContext> mutatedSubReqO;
+      IndicesRequestContext i = new SubRequestContext(this, it.next(), context);
+      final Optional<IndicesRequestContext> mutatedSubReqO;
 
       // Empty optional = remove sub-request from the native list
       try {

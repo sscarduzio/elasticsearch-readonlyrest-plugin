@@ -80,7 +80,7 @@ public class RulesFactory {
     this.creators.put(MethodsRuleSettings.class,
         settings -> wrap(new MethodsSyncRule((MethodsRuleSettings) settings)));
     this.creators.put(SearchlogRuleSettings.class,
-        settings -> wrap(new SearchlogSyncRule((SearchlogRuleSettings) settings, context)));
+        settings -> wrap(new SearchlogSyncRule((SearchlogRuleSettings) settings)));
     this.creators.put(SessionMaxIdleRuleSettings.class,
         settings -> wrap(new SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context)));
     this.creators.put(UriReRuleSettings.class,

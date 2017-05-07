@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.es53x;
+package org.elasticsearch.plugin.readonlyrest.es53x.actionlisteners;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
@@ -29,20 +29,22 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 /**
  * Created by sscarduzio on 24/03/2017.
  */
+public class ACLActionListener implements ActionListener<ActionResponse> {
 
-class ACLActionListener implements ActionListener<ActionResponse> {
-
+  private final RuleActionListenersProvider ruleActionListenersProvider;
   private final Logger logger;
   private final ActionListener<ActionResponse> baseListener;
   private final ActionRequest request;
   private final RequestContext rc;
   private final BlockExitResult result;
 
-  ACLActionListener(ActionRequest request,
-                    ActionListener<ActionResponse> baseListener,
-                    RequestContext rc,
-                    BlockExitResult result,
-                    ESContext context) {
+  public ACLActionListener(ActionRequest request,
+                           ActionListener<ActionResponse> baseListener,
+                           RuleActionListenersProvider ruleActionListenersProvider,
+                           RequestContext rc,
+                           BlockExitResult result,
+                           ESContext context) {
+    this.ruleActionListenersProvider = ruleActionListenersProvider;
     this.logger = context.logger(getClass());
     this.request = request;
     this.baseListener = baseListener;
@@ -55,7 +57,9 @@ class ACLActionListener implements ActionListener<ActionResponse> {
     for (Rule r : result.getBlock().getRules()) {
       try {
         // Don't continue with further handlers if at least one says we should not continue
-        shouldContinue &= r.onResponse(result, rc, request, response);
+        shouldContinue &= ruleActionListenersProvider.getActionListenerOf(r)
+            .map(al -> al.onResponse(r, result, rc, request, response))
+            .orElse(true);
       } catch (Exception e) {
         logger.error(r.getKey() + " error handling response: " + response);
         e.printStackTrace();
@@ -72,7 +76,9 @@ class ACLActionListener implements ActionListener<ActionResponse> {
     for (Rule r : result.getBlock().getRules()) {
       try {
         // Don't continue with further handlers if at least one says we should not continue
-        shouldContinue &= r.onFailure(result, rc, request, e);
+        shouldContinue &= ruleActionListenersProvider.getActionListenerOf(r)
+            .map(al -> al.onFailure(r, result, rc, request, e))
+            .orElse(true);
       } catch (Exception e1) {
         logger.error(r.getKey() + " errored handling failure: " + e1);
         e.printStackTrace();
