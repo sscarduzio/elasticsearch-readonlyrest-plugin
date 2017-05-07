@@ -30,20 +30,21 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
+import org.elasticsearch.plugin.readonlyrest.es53x.settings.ssl.ESSslSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.plugin.readonlyrest.ssl.SSLEngineProvider;
 import org.elasticsearch.threadpool.ThreadPool;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
-  private final RorSettings rorSettings;
   private final ESContext esContext;
+  private final SslSettings sslSettings;
 
-  public SSLTransportNetty4(RorSettings rorSettings, ESContext esContext, Settings settings, NetworkService networkService,
-                            BigArrays bigArrays, ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
+  public SSLTransportNetty4(ESContext esContext, Settings settings, NetworkService networkService, BigArrays bigArrays,
+                            ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.rorSettings = rorSettings;
     this.esContext = esContext;
+    this.sslSettings = ESSslSettings.from(settings);
     logger.info("creating SSL transport");
   }
 
@@ -67,7 +68,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      SSLEngineProvider engineProvider = new SSLEngineProvider(rorSettings.getSslSettings(), esContext);
+      SSLEngineProvider engineProvider = new SSLEngineProvider(sslSettings, esContext);
       engineProvider.getContext().ifPresent(sslCtx -> {
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
       });

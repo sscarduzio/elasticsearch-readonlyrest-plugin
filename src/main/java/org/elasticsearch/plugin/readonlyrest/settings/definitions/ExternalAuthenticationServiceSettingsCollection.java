@@ -13,7 +13,7 @@ import static org.jooq.lambda.Seq.seq;
 
 public class ExternalAuthenticationServiceSettingsCollection {
 
-  private static final String ATTRIBUTE_NAME = "external_authentication_service_configs";
+  public static final String ATTRIBUTE_NAME = "external_authentication_service_configs";
 
   private final Map<String, ExternalAuthenticationServiceSettings> ExternalAuthenticationServiceSettingsMap;
 

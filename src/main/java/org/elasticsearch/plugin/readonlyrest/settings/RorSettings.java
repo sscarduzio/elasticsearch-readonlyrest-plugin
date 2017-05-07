@@ -14,14 +14,16 @@ import java.util.stream.Collectors;
 
 public class RorSettings {
 
-  private static final String ATTRIBUTE_NAME = "readonlyrest";
+  public static final String ATTRIBUTE_NAME = "readonlyrest";
+  public static final String ATTRIBUTE_ENABLE = "enable";
+  public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
+  public static final String ATTRIBUTE_SEARCHLOG = "searchlog";
 
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
   private static final List<BlockSettings> DEFAULT_BLOCK_SETTINGS = Lists.newArrayList();
 
   private final boolean enable;
   private final String forbiddenMessage;
-  private final SSLSettings sslSettings;
   private final List<BlockSettings> blocksSettings;
 
   static RorSettings from(RawSettings settings) {
@@ -37,8 +39,7 @@ public class RorSettings {
         ExternalAuthenticationServiceSettingsCollection.from(raw);
     AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(proxyAuthConfigSettingsCollection);
 
-    this.forbiddenMessage = raw.stringOpt("response_if_req_forbidden").orElse(DEFAULT_FORBIDDEN_MESSAGE);
-    this.sslSettings = SSLSettings.from(raw.inner("ssl"));
+    this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
         .map(block -> BlockSettings.from(
             new RawSettings((Map<String, ?>) block),
@@ -49,7 +50,7 @@ public class RorSettings {
             UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
         ))
         .collect(Collectors.toList());
-    this.enable = raw.booleanOpt("enable").orElse(!blocksSettings.isEmpty());
+    this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
   }
 
   public boolean isEnabled() {
@@ -58,10 +59,6 @@ public class RorSettings {
 
   public String getForbiddenMessage() {
     return forbiddenMessage;
-  }
-
-  public SSLSettings getSslSettings() {
-    return sslSettings;
   }
 
   public ImmutableList<BlockSettings> getBlocksSettings() {

@@ -22,8 +22,8 @@ import io.netty.handler.ssl.SslContextBuilder;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.settings.SSLSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSSLSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
 
 import javax.net.ssl.SSLException;
 import java.io.ByteArrayInputStream;
@@ -41,10 +41,10 @@ public class SSLEngineProvider {
   private final Logger logger;
   private SslContext context;
 
-  public SSLEngineProvider(SSLSettings settings, ESContext esContext) {
+  public SSLEngineProvider(SslSettings settings, ESContext esContext) {
     this.logger = esContext.logger(getClass());
-    if (settings instanceof EnabledSSLSettings) {
-      createContext((EnabledSSLSettings) settings);
+    if (settings instanceof EnabledSslSettings) {
+      createContext((EnabledSslSettings) settings);
     }
   }
 
@@ -52,7 +52,7 @@ public class SSLEngineProvider {
     return Optional.ofNullable(context);
   }
 
-  private void createContext(EnabledSSLSettings settings) {
+  private void createContext(EnabledSslSettings settings) {
     if (settings.getCertchainPem().isPresent() && settings.getPrivkeyPem().isPresent()) {
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
         try {

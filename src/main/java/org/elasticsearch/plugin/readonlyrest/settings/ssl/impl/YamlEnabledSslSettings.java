@@ -1,33 +1,33 @@
-package org.elasticsearch.plugin.readonlyrest.settings.ssl;
+package org.elasticsearch.plugin.readonlyrest.settings.ssl.impl;
 
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.SSLSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
 
 import java.io.File;
 import java.util.Optional;
 
-public class EnabledSSLSettings implements SSLSettings {
+public class YamlEnabledSslSettings implements EnabledSslSettings {
 
   private final File keystoreFile;
   private final Optional<String> keystorePass;
-  private final Optional<String>  keyPass;
+  private final Optional<String> keyPass;
   private final Optional<String> keyAlias;
   private final Optional<File> privkeyPem;
   private final Optional<File> certchainPem;
 
-  public static EnabledSSLSettings from(RawSettings settings) {
-    return new EnabledSSLSettings(
-        new File(settings.stringReq("keystore_file")),
-        settings.stringOpt("keystore_pass"),
-        settings.stringOpt("key_pass"),
-        settings.stringOpt("key_alias"),
-        settings.stringOpt("privkey_pem").map(File::new),
-        settings.stringOpt("certchain_pem").map(File::new)
+  public static EnabledSslSettings from(RawSettings settings) {
+    return new YamlEnabledSslSettings(
+        new File(settings.stringReq(ATTRIBUTE_KEYSTORE_FILE)),
+        settings.stringOpt(ATTRIBUTE_KEYSTORE_PASS),
+        settings.stringOpt(ATTRIBUTE_KEY_PASS),
+        settings.stringOpt(ATTRIBUTE_KEY_ALIAS),
+        settings.stringOpt(ATTRIBUTE_PRIVKEY_PEM).map(File::new),
+        settings.stringOpt(ATTRIBUTE_CERTCHAIN_PEM).map(File::new)
     );
   }
 
-  private EnabledSSLSettings(File keystoreFile, Optional<String> keystorePass, Optional<String> keyPass,
-                             Optional<String> keyAlias, Optional<File> privkeyPem, Optional<File> certchainPem) {
+  private YamlEnabledSslSettings(File keystoreFile, Optional<String> keystorePass, Optional<String> keyPass,
+                                 Optional<String> keyAlias, Optional<File> privkeyPem, Optional<File> certchainPem) {
     this.keystoreFile = keystoreFile;
     this.keystorePass = keystorePass;
     this.keyPass = keyPass;
@@ -59,4 +59,5 @@ public class EnabledSSLSettings implements SSLSettings {
   public Optional<File> getCertchainPem() {
     return certchainPem;
   }
+
 }

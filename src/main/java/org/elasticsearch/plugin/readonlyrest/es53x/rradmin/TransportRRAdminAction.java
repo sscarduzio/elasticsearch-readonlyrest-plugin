@@ -26,29 +26,32 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.es53x.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.configuration.ConfigurationContentProvider;
+import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableConfiguration;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESClientConfigurationContentProvider;
+import org.elasticsearch.plugin.readonlyrest.es53x.ReloadableConfigurationImpl;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-  private final NodeClient client;
-  private final ConfigurationHelper conf;
+  private final ConfigurationContentProvider client;
+  private final ReloadableConfiguration reloadableConfiguration;
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
                                 ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-                                NodeClient client, ConfigurationHelper conf) {
+                                NodeClient client, ReloadableConfigurationImpl reloadableConfiguration) {
     super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
         RRAdminRequest::new);
-    this.client = client;
-    this.conf = conf;
+    this.client = new ESClientConfigurationContentProvider(client);
+    this.reloadableConfiguration = reloadableConfiguration;
   }
 
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
-      conf.updateSettingsFromIndex(client);
+      reloadableConfiguration.reload(client);
       listener.onResponse(new RRAdminResponse(null));
     } catch (Exception e) {
       listener.onResponse(new RRAdminResponse(e));

@@ -17,15 +17,11 @@
 
 package org.elasticsearch.plugin.readonlyrest.es53x;
 
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
-import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
@@ -42,9 +38,6 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.RRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.TransportRRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.rest.RestRRAdminAction;
-import org.elasticsearch.plugin.readonlyrest.settings.ESSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
 import org.elasticsearch.plugins.NetworkPlugin;
@@ -52,35 +45,21 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
-import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
-import org.elasticsearch.watcher.ResourceWatcherService;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+public class ReadonlyRestPlugin extends Plugin
+    implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final Logger logger;
-  private final Settings settings;
-  private final RorSettings rorSettings;
   private final ESContext context;
 
-  public ReadonlyRestPlugin(Settings s) throws IOException {
-    this.settings = s;
-    this.rorSettings = new ESSettings(RawSettings.fromFile(new File("/config/elasticsearch.yml")))
-        .getRorSettings();
+  public ReadonlyRestPlugin(Settings s) {
     this.context = new ESContextImpl();
-    this.logger = this.context.logger(getClass());
   }
 
   @Override
@@ -100,45 +79,15 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
       HttpServerTransport.Dispatcher dispatcher) {
 
     return Collections.singletonMap(
-        "ssl_netty4", () -> new SSLTransportNetty4(
-            rorSettings, context, settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
-        ));
-  }
-
-  @Override
-  public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
-                                             ResourceWatcherService resourceWatcherService, ScriptService scriptService,
-                                             NamedXContentRegistry xContentRegistry) {
-
-    Collection<Object> fromSup = super.createComponents(client, clusterService, threadPool, resourceWatcherService,
-        scriptService, xContentRegistry
-    );
-    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-    Runnable task = new Runnable() {
-      @Override
-      public void run() {
-        try {
-          logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
-          ConfigurationHelper.getInstance(settings, client).updateSettingsFromIndex(client);
-          logger.info("Cluster-wide settings found, overriding elasticsearch.yml");
-          executor.shutdown();
-        } catch (ElasticsearchException ee) {
-          logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin." +
-              " Will keep on using elasticearch.yml.");
-          executor.shutdown();
-        } catch (Throwable t) {
-          logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet..");
-          executor.schedule(this, 200, TimeUnit.MILLISECONDS);
-        }
-      }
-    };
-    executor.schedule(task, 200, TimeUnit.MILLISECONDS);
-    return fromSup;
+        "ssl_netty4", () ->
+            new SSLTransportNetty4(
+                context, settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+            ));
   }
 
   @Override
   public List<Setting<?>> getSettings() {
-    return ConfigurationHelper.allowedSettings();
+    return AllowedSettings.INSTANCE.list();
   }
 
   @Override
@@ -161,7 +110,6 @@ public class ReadonlyRestPlugin extends Plugin implements ScriptPlugin, ActionPl
   public UnaryOperator<RestHandler> getRestHandlerWrapper(ThreadContext threadContext) {
     return restHandler -> (RestHandler) (request, channel, client) -> {
       // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
-      ConfigurationHelper.getInstance(settings, client);
       ThreadRepo.channel.set(channel);
       restHandler.handleRequest(request, channel, client);
     };

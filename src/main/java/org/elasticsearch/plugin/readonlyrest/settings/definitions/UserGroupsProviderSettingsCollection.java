@@ -13,7 +13,7 @@ import static org.jooq.lambda.Seq.seq;
 
 public class UserGroupsProviderSettingsCollection {
 
-  private static final String ATTRIBUTE_NAME = "user_groups_providers";
+  public static final String ATTRIBUTE_NAME = "user_groups_providers";
 
   private final Map<String, UserGroupsProviderSettings> userGroupsProviderSettingsMap;
 

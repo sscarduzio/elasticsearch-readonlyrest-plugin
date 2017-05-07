@@ -24,6 +24,7 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
@@ -34,13 +35,14 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.ReloadableConfiguration;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableConfiguration;
 import org.elasticsearch.plugin.readonlyrest.es53x.actionlisteners.ACLActionListener;
 import org.elasticsearch.plugin.readonlyrest.es53x.actionlisteners.RuleActionListenersProvider;
 import org.elasticsearch.plugin.readonlyrest.es53x.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -50,7 +52,11 @@ import org.elasticsearch.threadpool.ThreadPool;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.elasticsearch.rest.RestStatus.FORBIDDEN;
 import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
@@ -59,37 +65,46 @@ import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
  * Created by sscarduzio on 19/12/2015.
  */
 @Singleton
-public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
+public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter, Consumer<RorSettings> {
 
   private final ThreadPool threadPool;
   private final IndexNameExpressionResolver indexResolver;
   private final ClusterService clusterService;
 
-  private final ReloadableConfiguration configuration;
   private final AtomicReference<Optional<ACL>> acl;
   private final ESContext context;
   private final RuleActionListenersProvider ruleActionListenersProvider;
+  private final ReloadableConfiguration reloadableConfiguration;
+  private final Client client;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ClusterService clusterService, ThreadPool threadPool,
+  public IndexLevelActionFilter(Settings settings, ReloadableConfigurationImpl reloadableConfiguration,
+                                Client client, ClusterService clusterService, ThreadPool threadPool,
                                 IndexNameExpressionResolver indexResolver) throws IOException {
     super(settings);
+    this.reloadableConfiguration = reloadableConfiguration;
+    this.client = client;
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.indexResolver = indexResolver;
     this.acl = new AtomicReference<>(Optional.empty());
     this.ruleActionListenersProvider =  new RuleActionListenersProvider(context);
-    this.configuration = new ReloadableConfiguration(rorSettings -> {
-      if (rorSettings.isEnabled()) {
-        this.acl.set(Optional.of(new ACL(rorSettings, this.context)));
-        logger.info("Configuration reloaded - ReadonlyREST enabled");
-      } else {
-        this.acl.set(Optional.empty());
-        logger.info("Configuration reloaded - ReadonlyREST disabled");
-      }
-    });
+
+    this.reloadableConfiguration.addListener(this);
+    scheduleConfigurationReload();
     logger.info("Readonly REST plugin was loaded...");
+  }
+
+  @Override
+  public void accept(RorSettings rorSettings) {
+    if (rorSettings.isEnabled()) {
+      this.acl.set(Optional.of(new ACL(rorSettings, this.context)));
+      logger.info("Configuration reloaded - ReadonlyREST enabled");
+    } else {
+      this.acl.set(Optional.empty());
+      logger.info("Configuration reloaded - ReadonlyREST disabled");
+    }
   }
 
   @Override
@@ -211,4 +226,26 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
   }
 
+  private void scheduleConfigurationReload() {
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+    Runnable task = new Runnable() {
+      @Override
+      public void run() {
+        try {
+          logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
+          reloadableConfiguration.reload(new ESClientConfigurationContentProvider(client));
+          logger.info("Cluster-wide settings found, overriding elasticsearch.yml");
+          executor.shutdown();
+        } catch (ElasticsearchException ee) {
+          logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin." +
+              " Will keep on using elasticearch.yml.");
+          executor.shutdown();
+        } catch (Throwable t) {
+          logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet..");
+          executor.schedule(this, 200, TimeUnit.MILLISECONDS);
+        }
+      }
+    };
+    executor.schedule(task, 200, TimeUnit.MILLISECONDS);
+  }
 }

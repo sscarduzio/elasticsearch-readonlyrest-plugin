@@ -14,7 +14,7 @@ import static org.jooq.lambda.Seq.seq;
 
 public class UserSettingsCollection {
 
-  private static final String ATTRIBUTE_NAME = "users";
+  public static final String ATTRIBUTE_NAME = "users";
 
   private final Map<String, UserSettings> usersSettingsMap;
 

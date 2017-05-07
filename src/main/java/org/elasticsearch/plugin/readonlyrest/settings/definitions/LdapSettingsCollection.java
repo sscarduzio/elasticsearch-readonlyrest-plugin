@@ -13,7 +13,7 @@ import static org.jooq.lambda.Seq.seq;
 
 public class LdapSettingsCollection {
 
-  private static final String ATTRIBUTE_NAME = "ldaps";
+  public static final String ATTRIBUTE_NAME = "ldaps";
 
   private final Map<String, LdapSettings> ldapSettingsMap;
 

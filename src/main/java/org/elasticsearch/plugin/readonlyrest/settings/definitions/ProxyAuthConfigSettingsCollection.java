@@ -13,7 +13,7 @@ import static org.jooq.lambda.Seq.seq;
 
 public class ProxyAuthConfigSettingsCollection {
 
-  private static final String ATTRIBUTE_NAME = "proxy_auth_configs";
+  public static final String ATTRIBUTE_NAME = "proxy_auth_configs";
 
   private final Map<String, ProxyAuthConfigSettings> proxyAuthConfigsSettingsMap;
 
