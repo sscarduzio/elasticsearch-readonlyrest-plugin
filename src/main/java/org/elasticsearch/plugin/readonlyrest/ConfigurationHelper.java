@@ -195,7 +195,7 @@ public class ConfigurationHelper {
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
 
     // -- SSL
-    sslEnabled = s.getAsBoolean("ssl.enable", false);
+    sslEnabled = s.getAsBoolean("ssl.enable", s.getByPrefix("ssl").size() > 1);
     if (sslEnabled) {
       logger.debug("SSL: Enabled");
     }
