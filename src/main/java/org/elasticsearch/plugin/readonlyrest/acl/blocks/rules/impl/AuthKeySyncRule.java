@@ -21,7 +21,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAuthentication;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
+import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

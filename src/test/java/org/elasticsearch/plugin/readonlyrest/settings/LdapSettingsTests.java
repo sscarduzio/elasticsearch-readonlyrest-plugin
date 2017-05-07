@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
-import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
+import org.elasticsearch.plugin.readonlyrest.testutils.containers.LdapContainer;
 import org.junit.ClassRule;
 import org.junit.Test;
 

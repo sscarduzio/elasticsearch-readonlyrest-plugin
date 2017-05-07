@@ -37,9 +37,10 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
-      ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-      NodeClient client, ConfigurationHelper conf) {
-    super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver, RRAdminRequest::new);
+                                ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
+                                NodeClient client, ConfigurationHelper conf) {
+    super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
+        RRAdminRequest::new);
     this.client = client;
     this.conf = conf;
   }

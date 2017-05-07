@@ -18,7 +18,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.ReflecUtils;
 import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Field;

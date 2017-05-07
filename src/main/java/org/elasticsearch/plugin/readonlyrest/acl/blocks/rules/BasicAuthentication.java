@@ -23,8 +23,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
+import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils.BasicAuth;
 
 import java.util.Optional;
 

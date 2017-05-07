@@ -30,7 +30,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettings;
-import org.elasticsearch.plugin.readonlyrest.utils.CompletableFutureResponseListener;
+import org.elasticsearch.plugin.readonlyrest.testutils.CompletableFutureResponseListener;
 
 import java.io.IOException;
 import java.net.URI;

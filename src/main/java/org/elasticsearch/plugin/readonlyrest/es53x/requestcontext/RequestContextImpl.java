@@ -46,9 +46,9 @@ import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.VariablesManager;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils.BasicAuth;
+import org.elasticsearch.plugin.readonlyrest.testutils.ReflecUtils;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 

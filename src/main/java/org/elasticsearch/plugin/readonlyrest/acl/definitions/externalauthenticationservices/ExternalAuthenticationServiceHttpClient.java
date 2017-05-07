@@ -19,8 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthentica
 import com.google.common.collect.Maps;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.CompletableFutureResponseListener;
+import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.CompletableFutureResponseListener;
 
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;

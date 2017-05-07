@@ -16,13 +16,13 @@
  */
 package org.elasticsearch.plugin.readonlyrest.integration;
 
-import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
-import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainerUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
-import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainer;
-import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDependent;
-import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
-import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
+import org.elasticsearch.plugin.readonlyrest.testutils.containers.ESWithReadonlyRestContainer;
+import org.elasticsearch.plugin.readonlyrest.testutils.containers.ESWithReadonlyRestContainerUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.containers.LdapContainer;
+import org.elasticsearch.plugin.readonlyrest.testutils.containers.MultiContainer;
+import org.elasticsearch.plugin.readonlyrest.testutils.containers.MultiContainerDependent;
+import org.elasticsearch.plugin.readonlyrest.testutils.integration.ElasticsearchTweetsInitializer;
+import org.elasticsearch.plugin.readonlyrest.testutils.integration.ReadonlyRestedESAssertions;
 import org.junit.ClassRule;
 import org.junit.Test;
 

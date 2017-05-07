@@ -37,7 +37,7 @@ import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
-import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.ReflecUtils;
 import org.reflections.ReflectionUtils;
 
 import java.lang.reflect.Field;
@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+import static org.elasticsearch.plugin.readonlyrest.testutils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
 /**
  * Created by sscarduzio on 14/04/2017.

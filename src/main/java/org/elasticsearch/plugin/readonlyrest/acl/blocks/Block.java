@@ -28,7 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesOrdering;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
-import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
+import org.elasticsearch.plugin.readonlyrest.testutils.FuturesSequencer;
 
 import java.util.HashSet;
 import java.util.Iterator;

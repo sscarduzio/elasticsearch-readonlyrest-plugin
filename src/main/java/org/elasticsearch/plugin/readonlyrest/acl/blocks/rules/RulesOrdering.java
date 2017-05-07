@@ -24,7 +24,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdl
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
-import org.elasticsearch.plugin.readonlyrest.utils.RulesUtils;
+import org.elasticsearch.plugin.readonlyrest.testutils.RulesUtils;
 
 import java.util.Comparator;
 
