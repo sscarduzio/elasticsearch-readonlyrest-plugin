@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.es53x.requestcontext;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -28,24 +28,27 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
+import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
-import org.elasticsearch.plugin.readonlyrest.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.VariablesManager;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.VariablesManager;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
-import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
@@ -83,10 +86,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private Transactional<Optional<LoggedUser>> loggedInUser;
   private final VariablesManager variablesManager;
 
-  public RequestContextImpl(RestChannel channel, RestRequest request, String action,
-                            ActionRequest actionRequest, ClusterService clusterService,
-                            IndexNameExpressionResolver indexResolver, ThreadPool threadPool,
-                            ESContext context) {
+  public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest, ClusterService clusterService,
+                            IndexNameExpressionResolver indexResolver, ThreadPool threadPool, ESContext context) {
     super("rc", context);
     this.indexResolver = indexResolver;
     this.logger = context.logger(getClass());
@@ -158,12 +159,10 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
 
       @Override
-      public void onCommit(Verbosity value) {
-        return;
-      }
+      public void onCommit(Verbosity value) {}
     };
 
-    variablesManager = new VariablesManager(h, this);
+    variablesManager = new VariablesManager(h, this, context);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
 
@@ -245,7 +244,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public Set<String> getIndexMetadata(String s) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
-    return lookup.get(s).getIndices().stream().map(e -> e.getIndexUUID()).collect(Collectors.toSet());
+    return lookup.get(s).getIndices().stream().map(IndexMetaData::getIndexUUID).collect(Collectors.toSet());
   }
 
   public HttpMethod getMethod() {
@@ -287,14 +286,14 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public Set<String> getIndices() {
     if (!doesInvolveIndices) {
-      throw new RCUtils.RRContextException("cannot get indices of a request that doesn't involve indices" + this);
+      throw context.rorException("cannot get indices of a request that doesn't involve indices" + this);
     }
     return indices.getInitial();
   }
 
   public void setIndices(final Set<String> newIndices) {
     if (!doesInvolveIndices) {
-      throw new RCUtils.RRContextException("cannot set indices of a request that doesn't involve indices: " + this);
+      throw context.rorException("cannot set indices of a request that doesn't involve indices: " + this);
     }
 
     if (newIndices.size() == 0) {
@@ -335,7 +334,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
     // Composite request #TODO should we really prevent this?
     if (!doesInvolveIndices) {
-      throw new RCUtils.RRContextException("cannot replace indices of a composite request that doesn't involve indices: " + this);
+      throw context.rorException("cannot replace indices of a composite request that doesn't involve indices: " + this);
     }
 
     Iterator<? extends IndicesRequest> it = subRequests.iterator();

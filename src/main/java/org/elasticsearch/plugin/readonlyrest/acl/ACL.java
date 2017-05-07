@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;

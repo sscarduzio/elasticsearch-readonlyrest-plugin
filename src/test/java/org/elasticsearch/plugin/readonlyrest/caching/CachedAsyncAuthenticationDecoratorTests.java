@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.caching;
 
 import com.google.common.collect.ImmutableMap;
-import org.elasticsearch.plugin.readonlyrest.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;

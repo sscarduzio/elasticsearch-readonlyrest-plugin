@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.es53x.requestcontext;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
@@ -25,9 +25,11 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.plugin.readonlyrest.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +43,7 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
   private final Logger logger;
   private final RequestContextImpl originalRC;
   private final Object originalSubRequest;
+  private final ESContext context;
   private final SubRCTransactionalIndices indices;
 
   public SubRequestContext(RequestContextImpl originalRequestContext, Object originalSubRequest, ESContext context) {
@@ -49,6 +52,7 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     this.indices = new SubRCTransactionalIndices(this, context);
     this.originalRC = originalRequestContext;
     this.originalSubRequest = originalSubRequest;
+    this.context = context;
 
     // Register transactional fields
     indices.delegateTo(this);
@@ -77,7 +81,7 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
 
   public void setIndices(Set<String> newIndices) {
     if (newIndices.size() == 0) {
-      throw new RCUtils.RRContextException(
+      throw context.rorException(
           "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
               " If this was intended, set '*' as indices.");
     }
@@ -128,7 +132,7 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     } else if (originalSubRequest instanceof DocWriteRequest<?>) {
       return false;
     } else {
-      throw new RCUtils.RRContextException(
+      throw context.rorException(
           "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
     }
   }

@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring;
+package org.elasticsearch.plugin.readonlyrest.es53x;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
@@ -38,11 +38,7 @@ import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
-import org.elasticsearch.plugin.readonlyrest.es53x.ConfigurationHelper;
-import org.elasticsearch.plugin.readonlyrest.es53x.IndexLevelActionFilter;
-import org.elasticsearch.plugin.readonlyrest.es53x.SSLTransportNetty4;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESContextImpl;
 import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.RRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.TransportRRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.es53x.rradmin.rest.RestRRAdminAction;

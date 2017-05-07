@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.es53x.requestcontext;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
@@ -36,6 +36,7 @@ import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.reflections.ReflectionUtils;
 

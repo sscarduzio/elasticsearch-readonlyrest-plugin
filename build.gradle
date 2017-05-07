@@ -50,7 +50,7 @@ repositories {
 esplugin {
     name project.properties['pluginName']
     description 'Safely expose Elasticsearch REST API'
-    classname 'org.elasticsearch.plugin.readonlyrest.wiring.ReadonlyRestPlugin'
+    classname 'org.elasticsearch.plugin.readonlyrest.es53x.ReadonlyRestPlugin'
 }
 
 license {

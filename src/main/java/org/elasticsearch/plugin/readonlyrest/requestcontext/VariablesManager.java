@@ -14,9 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.util.HashMap;
 import java.util.Map;

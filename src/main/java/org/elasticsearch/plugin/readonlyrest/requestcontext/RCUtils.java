@@ -15,10 +15,9 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 
 import java.util.regex.Pattern;
@@ -31,7 +30,7 @@ public class RCUtils {
     * A regular expression to match the various representations of "localhost"
     */
 
-  static final String LOCALHOST = "127.0.0.1";
+  public static final String LOCALHOST = "127.0.0.1";
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/*",
@@ -49,22 +48,12 @@ public class RCUtils {
       "indices:data/read/*"
   ));
 
-  static boolean isReadRequest(String action) {
+  public static boolean isReadRequest(String action) {
     return readRequestMatcher.match(action);
   }
 
-  static boolean isLocalHost(String remoteHost) {
+  public static boolean isLocalHost(String remoteHost) {
     return localhostRe.matcher(remoteHost).find();
-  }
-
-  public static class RRContextException extends ElasticsearchException {
-    public RRContextException(String reason) {
-      super(reason);
-    }
-
-    public RRContextException(String reason, Throwable cause) {
-      super(reason, cause);
-    }
   }
 
 }

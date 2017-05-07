@@ -14,13 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.wiring;
+package org.elasticsearch.plugin.readonlyrest.es53x.wiring;
 
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
-import org.elasticsearch.plugin.readonlyrest.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.VariablesManager;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.VariablesManager;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
 import java.util.Optional;
@@ -40,40 +41,46 @@ public class VariablesManagerTest extends TestCase {
   }
 
   public void testSimple() {
-    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                 .put("key1", "x")
-                                                 .build(), getMock(Optional.of("simone"))
+    VariablesManager vm = new VariablesManager(
+        ImmutableMap.<String, String>builder().put("key1", "x").build(),
+        getMock(Optional.of("simone")),
+        MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("x"), vm.apply("@{key1}"));
   }
 
   public void testSimpleWithUser() {
-    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                 .build(), getMock(Optional.of("simone"))
+    VariablesManager vm = new VariablesManager(
+        ImmutableMap.<String, String>builder().build(),
+        getMock(Optional.of("simone")),
+        MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("simone"), vm.apply("@{user}"));
   }
 
   public void testNoReplacement() {
-    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                 .put("key1", "x")
-                                                 .build(), getMock(Optional.of("simone"))
+    VariablesManager vm = new VariablesManager(
+        ImmutableMap.<String, String>builder().put("key1", "x").build(),
+        getMock(Optional.of("simone")),
+        MockedESContext.INSTANCE
     );
     assertEquals(Optional.empty(), vm.apply("@{nonexistent}"));
   }
 
   public void testUpperHeadersLowerVar() {
-    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                 .put("KEY1", "x")
-                                                 .build(), getMock(Optional.of("simone"))
+    VariablesManager vm = new VariablesManager(
+        ImmutableMap.<String, String>builder().put("KEY1", "x").build(),
+        getMock(Optional.of("simone")),
+        MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("x"), vm.apply("@{key1}"));
   }
 
   public void testMessyOriginal() {
-    VariablesManager vm = new VariablesManager(ImmutableMap.<String, String>builder()
-                                                 .put("key1", "x")
-                                                 .build(), getMock(Optional.of("simone"))
+    VariablesManager vm = new VariablesManager(
+        ImmutableMap.<String, String>builder().put("key1", "x").build(),
+        getMock(Optional.of("simone")),
+        MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("@@@x"), vm.apply("@@@@{key1}"));
     assertEquals(Optional.of("@one@twox@three@@@"), vm.apply("@one@two@{key1}@three@@@"));

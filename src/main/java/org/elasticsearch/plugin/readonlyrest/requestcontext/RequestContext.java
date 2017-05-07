@@ -1,4 +1,4 @@
-package org.elasticsearch.plugin.readonlyrest;
+package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -6,7 +6,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.SubRequestContext;
+import org.elasticsearch.plugin.readonlyrest.es53x.requestcontext.SubRequestContext;
 
 import java.util.Map;
 import java.util.Optional;
@@ -22,6 +22,7 @@ public interface RequestContext extends IndicesRequestContext {
   Set<String> getIndices();
   boolean involvesIndices();
   Boolean hasSubRequests();
+  // todo: SubRequestContext is in es package
   Integer scanSubRequests(final ReflecUtils.CheckedFunction<SubRequestContext, Optional<SubRequestContext>> replacer);
   void setResponseHeader(String name, String value);
   String getContent();

@@ -38,8 +38,7 @@ import org.elasticsearch.plugin.readonlyrest.ReloadableConfiguration;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
-import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.es53x.requestcontext.RequestContextImpl;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -141,7 +140,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
     }
 
-    RequestContextImpl rc = new RequestContextImpl(channel, req, action, request, clusterService, indexResolver, threadPool, context);
+    RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, indexResolver, threadPool, context);
 
     acl.check(rc)
         .exceptionally(throwable -> {

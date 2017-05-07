@@ -17,8 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.utils.requestcontext;
 
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RCUtils;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.Transactional;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 
@@ -57,7 +56,7 @@ public class TransactionalTest {
     assertEquals("first", tv.getInitial());
   }
 
-  @Test(expected = RCUtils.RRContextException.class)
+  @Test(expected = RuntimeException.class)
   public void testThrowOnDoubleCommit() {
     Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
 
@@ -108,7 +107,7 @@ public class TransactionalTest {
     assertEquals("third", tv.get());
   }
 
-  @Test(expected = RCUtils.RRContextException.class)
+  @Test(expected = RuntimeException.class)
   public void testDelegate() {
     Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
 

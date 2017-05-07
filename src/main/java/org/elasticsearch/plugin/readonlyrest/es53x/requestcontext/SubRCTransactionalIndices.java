@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.es53x.requestcontext;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
@@ -24,6 +24,7 @@ import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
 import java.util.Set;
@@ -35,11 +36,13 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
 
   private final Logger logger;
   private final SubRequestContext src;
+  private final ESContext context;
 
   SubRCTransactionalIndices(SubRequestContext src, ESContext context) {
     super("src-indices", context);
     this.logger = context.logger(getClass());
     this.src = src;
+    this.context = context;
   }
 
   @Override
@@ -55,7 +58,7 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
       return Sets.newHashSet(((DocWriteRequest<?>) originalSubReq).indices());
     }
     else {
-      throw new RCUtils.RRContextException(
+      throw context.rorException(
         "Cannot get indices from sub-request " + src.getClass().getSimpleName());
     }
   }

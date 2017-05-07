@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring;
+package org.elasticsearch.plugin.readonlyrest.es53x;
 
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;

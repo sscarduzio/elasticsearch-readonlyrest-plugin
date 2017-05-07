@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.wiring.requestcontext;
+package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
@@ -30,14 +30,16 @@ import java.util.List;
 public abstract class Delayed {
   private final Logger logger;
   protected final String name;
+  private final ESContext context;
   private final List<Runnable> effects = new LinkedList<>();
   private final List<Delayed> delegates = new LinkedList<>();
   private Boolean committed = false;
   private Boolean delegated = false;
 
-  Delayed(String name, ESContext context) {
+  public Delayed(String name, ESContext context) {
     this.logger = context.logger(getClass());
     this.name = name;
+    this.context = context;
   }
 
   public void delay(Runnable r) {
@@ -50,7 +52,7 @@ public abstract class Delayed {
 
   public void commit() {
     if (committed) {
-      throw new RCUtils.RRContextException(name + " > already committed!");
+      throw context.rorException(name + " > already committed!");
     }
     committed = true;
 
@@ -91,7 +93,7 @@ public abstract class Delayed {
 
   public void delegateTo(Delayed ambassador) {
     if (delegated) {
-      throw new RCUtils.RRContextException(name + " > Already delegated, cannot delegate twice.");
+      throw context.rorException(name + " > Already delegated, cannot delegate twice.");
     }
 
     logger.debug(name + " > delegating effects to " + ambassador.name);
