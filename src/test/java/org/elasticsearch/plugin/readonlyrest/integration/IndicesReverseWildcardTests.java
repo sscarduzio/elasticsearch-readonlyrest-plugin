@@ -76,15 +76,23 @@ public class IndicesReverseWildcardTests {
     return EntityUtils.toString(r.getEntity());
   }
 
-  private String search(String endpoint) throws Exception{
+  private String search(String endpoint) throws Exception {
     System.out.println("> " + endpoint);
-    Response resp = ro.performRequest("GET", endpoint);
+    Response resp = ro.performRequest(
+      "GET",
+      endpoint,
+      Maps.newHashMap
+        (new ImmutableMap.Builder<String, String>()
+           .put("timeout", "50s")
+           .build())
+    );
     assertEquals(200, resp.getStatusLine().getStatusCode());
     String body = body(resp);
-    System.out.println("<"  +  XContentHelper.convertToJson(
+    System.out.println("<" + XContentHelper.convertToJson(
       StreamInput.wrap(body.getBytes()).readBytesReference(body.length()), true, true, XContentType.JSON));
     return body;
   }
+
   @Test
   public void testDirectSingleIdx() throws Exception {
 
