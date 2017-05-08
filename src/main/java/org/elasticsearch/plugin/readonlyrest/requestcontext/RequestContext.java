@@ -21,7 +21,7 @@ public interface RequestContext extends IndicesRequestContext {
   Set<String> getIndices();
   boolean involvesIndices();
   Boolean hasSubRequests();
-  Integer scanSubRequests(final CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer);
+  Integer scanSubRequests(CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer);
   void setResponseHeader(String name, String value);
   String getContent();
   HttpMethod getMethod();

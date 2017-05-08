@@ -36,7 +36,7 @@ public class BlockTest extends TestCase {
 
   public void testRulesShallFollowAuthInspectMutateOrder() {
     UserRuleFactory userRuleFactory = new UserRuleFactory(MockedESContext.INSTANCE);
-    DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory);
+    DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory, MockedESContext.INSTANCE);
     RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, MockedESContext.INSTANCE);
     Block block = new Block(
         BlockSettings.from(

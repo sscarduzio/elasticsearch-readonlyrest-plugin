@@ -26,9 +26,8 @@ import org.apache.http.message.BasicHeader;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.testutils.CompletableFutureResponseListener;
 
@@ -43,8 +42,7 @@ import java.util.function.Function;
 
 public class GroupsProviderServiceHttpClient implements GroupsProviderServiceClient {
 
-  private final Logger logger = Loggers.getLogger(GroupsProviderAuthorizationAsyncRule.class);
-
+  private final Logger logger;
   private final RestClient client;
   private final String name;
   private final URI endpoint;
@@ -56,7 +54,9 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
                                          URI endpoint,
                                          String authTokenName,
                                          UserGroupsProviderSettings.TokenPassingMethod passingMethod,
-                                         String responseGroupsJsonPath) {
+                                         String responseGroupsJsonPath,
+                                         ESContext context) {
+    this.logger = context.logger(getClass());
     this.name = name;
     this.endpoint = endpoint;
     this.authTokenName = authTokenName;

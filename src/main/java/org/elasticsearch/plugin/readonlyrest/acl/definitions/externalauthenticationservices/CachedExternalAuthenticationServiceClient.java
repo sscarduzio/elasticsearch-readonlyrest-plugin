@@ -20,7 +20,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.ExternalAuthenticationRuleSettings;
 
 import java.nio.charset.Charset;
 import java.time.Duration;

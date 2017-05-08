@@ -2,7 +2,7 @@ package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
-public class GroupsProviderLdapSettings extends LdapSettings {
+public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
 
   public static final String SEARCH_GROUPS = "search_groups_base_DN";
   private static final String UNIQUE_MEMBER = "unique_member_attribute";

@@ -21,7 +21,6 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
@@ -77,7 +76,7 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
                 )
             )
         ),
-        new DefinitionsFactory(new UserRuleFactory(MockedESContext.INSTANCE)),
+        new DefinitionsFactory(new UserRuleFactory(MockedESContext.INSTANCE), MockedESContext.INSTANCE),
         MockedESContext.INSTANCE
     );
 

@@ -18,6 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthentica
 
 import com.google.common.collect.Maps;
 import org.apache.http.HttpHost;
+// todo: es dependent (move to es package)
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.testutils.CompletableFutureResponseListener;

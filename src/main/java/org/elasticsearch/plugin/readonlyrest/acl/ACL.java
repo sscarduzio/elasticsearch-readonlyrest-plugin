@@ -51,7 +51,7 @@ public class ACL {
     this.settings = settings;
     this.logger = context.logger(getClass());
     final UserRuleFactory userRuleFactory = new UserRuleFactory(context);
-    final DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory);
+    final DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory, context);
     final RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, context);
     this.blocks = ImmutableList.copyOf(
         settings.getBlocksSettings().stream()

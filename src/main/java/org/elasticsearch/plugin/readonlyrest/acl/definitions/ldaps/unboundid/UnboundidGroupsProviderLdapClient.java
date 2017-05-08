@@ -23,7 +23,7 @@ import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
@@ -37,26 +37,29 @@ import java.util.stream.Collectors;
 
 public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLdapClient implements GroupsProviderLdapClient {
 
-  private final Logger logger = Loggers.getLogger(UnboundidGroupsProviderLdapClient.class);
+  private final Logger logger;
 
   private final UserGroupsSearchFilterConfig userGroupsSearchFilterConfig;
 
   public UnboundidGroupsProviderLdapClient(ConnectionConfig connectionConfig,
-      UserSearchFilterConfig userSearchFilterConfig,
-      UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
-      Optional<SearchingUserConfig> searchingUserConfig) {
+                                           UserSearchFilterConfig userSearchFilterConfig,
+                                           UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
+                                           Optional<SearchingUserConfig> searchingUserConfig,
+                                           ESContext context) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
-        connectionConfig.getRequestTimeout(),
-        userSearchFilterConfig);
+        connectionConfig.getRequestTimeout(), userSearchFilterConfig, context);
     this.userGroupsSearchFilterConfig = userGroupsSearchFilterConfig;
+    this.logger = context.logger(getClass());
   }
 
   public UnboundidGroupsProviderLdapClient(UnboundidConnection connection,
-      Duration requestTimeout,
-      UserSearchFilterConfig userSearchFilterConfig,
-      UserGroupsSearchFilterConfig userGroupsSearchFilterConfig) {
-    super(connection, requestTimeout, userSearchFilterConfig);
+                                           Duration requestTimeout,
+                                           UserSearchFilterConfig userSearchFilterConfig,
+                                           UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
+                                           ESContext context) {
+    super(connection, requestTimeout, userSearchFilterConfig, context);
     this.userGroupsSearchFilterConfig = userGroupsSearchFilterConfig;
+    this.logger = context.logger(getClass());
   }
 
   @Override
@@ -75,11 +78,11 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
       );
       return searchGroups
           .thenApply(groupSearchResult -> groupSearchResult.stream()
-                                                           .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
-                                                           .filter(Optional::isPresent)
-                                                           .map(Optional::get)
-                                                           .map(LdapGroup::new)
-                                                           .collect(Collectors.toSet()))
+              .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .map(LdapGroup::new)
+              .collect(Collectors.toSet()))
           .exceptionally(t -> {
             if (t instanceof LdapSearchError) {
               LdapSearchError error = (LdapSearchError) t;

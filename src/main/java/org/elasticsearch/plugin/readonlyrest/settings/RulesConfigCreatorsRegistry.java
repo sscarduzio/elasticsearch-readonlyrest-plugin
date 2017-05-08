@@ -120,7 +120,7 @@ public class RulesConfigCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> externalAuthenticationSettingsCreator(RawSettings blockSettings,
-                                                                       ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+                ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
     return () -> {
       Object settings = blockSettings.req(ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String

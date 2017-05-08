@@ -29,7 +29,8 @@ public class ExternalAuthenticationServiceSettingsCollection {
         .orElse(new ExternalAuthenticationServiceSettingsCollection(Lists.newArrayList()));
   }
 
-  private ExternalAuthenticationServiceSettingsCollection(List<ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
+  private ExternalAuthenticationServiceSettingsCollection(
+      List<ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
     validate(externalAuthenticationServiceSettings);
     this.ExternalAuthenticationServiceSettingsMap = seq(externalAuthenticationServiceSettings)
         .toMap(ExternalAuthenticationServiceSettings::getName, Function.identity());

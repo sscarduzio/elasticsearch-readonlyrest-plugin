@@ -22,7 +22,7 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SimpleBindRequest;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
@@ -33,20 +33,23 @@ import java.util.concurrent.CompletableFuture;
 
 public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient implements AuthenticationLdapClient {
 
-  private final Logger logger = Loggers.getLogger(UnboundidAuthenticationLdapClient.class);
+  private final Logger logger;
 
   public UnboundidAuthenticationLdapClient(ConnectionConfig connectionConfig,
-      UserSearchFilterConfig userSearchFilterConfig,
-      Optional<SearchingUserConfig> searchingUserConfig) {
+                                           UserSearchFilterConfig userSearchFilterConfig,
+                                           Optional<SearchingUserConfig> searchingUserConfig,
+                                           ESContext context) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
-        connectionConfig.getRequestTimeout(),
-        userSearchFilterConfig);
+        connectionConfig.getRequestTimeout(), userSearchFilterConfig, context);
+    this.logger = context.logger(getClass());
   }
 
   public UnboundidAuthenticationLdapClient(UnboundidConnection connection,
-      Duration requestTimeout,
-      UserSearchFilterConfig userSearchFilterConfig) {
-    super(connection, requestTimeout, userSearchFilterConfig);
+                                           Duration requestTimeout,
+                                           UserSearchFilterConfig userSearchFilterConfig,
+                                           ESContext context) {
+    super(connection, requestTimeout, userSearchFilterConfig, context);
+    this.logger = context.logger(getClass());
   }
 
   @Override
