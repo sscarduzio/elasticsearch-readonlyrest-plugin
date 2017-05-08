@@ -16,11 +16,14 @@ sed  -i.bak  "s/^\(elasticsearch.version=\).*/\1$ES_VERSION/" src/test/eshome/pl
 sed  -i.bak  "s/^\(version=\).*/\1$PLUGIN_VERSION/" src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties && rm src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties.bak
 
 # -Dmaven.test.skip=true -DskipTests
-mvn clean package || exit 1
+mvn clean install dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/lib || exit 1
 
 PACK=`ls target/readonlyrest-*es2*.zip`
 
 zip -j -g $PACK src/main/resources/plugin-descriptor.properties
 zip -j -g $PACK src/main/resources/plugin-security.policy
+#zip -j -g $PACK target/lib/*guava*jar
+zip -j -g $PACK target/lib/*unboundid*jar
+zip -j -g $PACK target/lib/*reflections*jar
 
 shasum -a1 $PACK | awk {'print $1'} > $PACK.sha1

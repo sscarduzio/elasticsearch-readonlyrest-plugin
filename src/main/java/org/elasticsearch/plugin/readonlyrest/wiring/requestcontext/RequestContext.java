@@ -268,9 +268,17 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     }
 
     if (newIndices.size() == 0) {
-      throw new ElasticsearchException(
-        "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
-          " If this was intended, set '*' as indices.");
+      if (isReadRequest()) {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] to empty set." +
+            ", probably your request matched no index, or was rewritten to nonexistent indices (which would expand to empty set).");
+      }
+      else {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this request is forbidden.");
+      }
     }
 
     if (isReadRequest()) {
@@ -280,7 +288,8 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
       }
       else {
         throw new IndexNotFoundException(
-          "rewritten indices not found: " + Joiner.on(",").join(newIndices));
+          "rewritten indices not found: " + Joiner.on(",").join(newIndices)
+          );
       }
     }
     indices.mutate(newIndices);
