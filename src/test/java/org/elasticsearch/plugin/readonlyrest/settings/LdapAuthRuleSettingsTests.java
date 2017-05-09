@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.testutils.settings.MockLdapClientHelper;
+import org.elasticsearch.plugin.readonlyrest.utils.settings.MockLdapClientHelper;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

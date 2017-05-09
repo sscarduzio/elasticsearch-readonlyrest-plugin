@@ -28,7 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
-import org.elasticsearch.plugin.readonlyrest.testutils.FuturesSequencer;
+import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;

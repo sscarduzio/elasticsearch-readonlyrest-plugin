@@ -21,7 +21,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
-import org.elasticsearch.plugin.readonlyrest.testutils.ReflecUtils.CheckedFunction;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.CheckedFunction;
 
 import java.util.Map;
 import java.util.Optional;

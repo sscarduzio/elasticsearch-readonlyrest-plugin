@@ -84,10 +84,10 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
     return response -> {
       if (response.getStatusCode() == 200) {
         try {
-          List<String> groups = JsonPath.read(response.getContent(), responseGroupsJsonPath);
+          List<String> groups = JsonPath.read(response.getContent().get(), responseGroupsJsonPath);
           logger.debug("Groups returned by groups provider '" + name + "': " + Joiner.on(",").join(groups));
           return Sets.newHashSet(groups);
-        } catch (IOException e) {
+        } catch (Exception e) {
           logger.error("Group based authorization response exception", e);
           return Sets.newHashSet();
         }

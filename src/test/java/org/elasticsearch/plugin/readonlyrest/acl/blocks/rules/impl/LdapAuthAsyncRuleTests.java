@@ -19,17 +19,16 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.testutils.esdependent.MockedESContext;
-import org.elasticsearch.plugin.readonlyrest.testutils.settings.MockLdapClientHelper;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.settings.MockLdapClientHelper;
 import org.junit.Test;
 
-import static org.elasticsearch.plugin.readonlyrest.testutils.mocks.RequestContextMock.mockedRequestContext;
+import static org.elasticsearch.plugin.readonlyrest.utils.mocks.RequestContextMock.mockedRequestContext;
 import static org.junit.Assert.assertEquals;
 
 public class LdapAuthAsyncRuleTests {

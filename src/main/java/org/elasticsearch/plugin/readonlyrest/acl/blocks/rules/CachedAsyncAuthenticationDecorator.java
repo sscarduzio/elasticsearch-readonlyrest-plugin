@@ -28,12 +28,12 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication {
+public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
 
-  private final BasicAsyncAuthentication underlying;
+  private final AsyncAuthentication underlying;
   private final Cache<String, String> cache;
 
-  public CachedAsyncAuthenticationDecorator(BasicAsyncAuthentication underlying, Duration ttl, ESContext context) {
+  public CachedAsyncAuthenticationDecorator(AsyncAuthentication underlying, Duration ttl, ESContext context) {
     super(context);
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
@@ -41,9 +41,9 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
                              .build();
   }
 
-  public static BasicAsyncAuthentication wrapInCacheIfCacheIsEnabled(BasicAsyncAuthentication authentication,
-                                                                     CacheSettings settings,
-                                                                     ESContext context) {
+  public static AsyncAuthentication wrapInCacheIfCacheIsEnabled(AsyncAuthentication authentication,
+                                                                CacheSettings settings,
+                                                                ESContext context) {
     return settings.getCacheTtl().isZero()
         ? authentication
         : new CachedAsyncAuthenticationDecorator(authentication, settings.getCacheTtl(), context);
@@ -72,5 +72,9 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
   @Override
   public String getKey() {
     return underlying.getKey();
+  }
+
+  public AsyncAuthentication getUnderlying() {
+    return underlying;
   }
 }

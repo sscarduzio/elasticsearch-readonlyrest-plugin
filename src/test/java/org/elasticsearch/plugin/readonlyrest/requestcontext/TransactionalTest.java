@@ -17,7 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
-import org.elasticsearch.plugin.readonlyrest.testutils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

@@ -25,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSync
 
 import java.util.Optional;
 
-import static org.elasticsearch.plugin.readonlyrest.testutils.RulesUtils.classOfRule;
+import static org.elasticsearch.plugin.readonlyrest.utils.RulesUtils.classOfRule;
 
 public class RuleActionListenersProvider {
 

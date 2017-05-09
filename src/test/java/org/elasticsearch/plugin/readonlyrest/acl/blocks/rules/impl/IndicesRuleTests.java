@@ -23,9 +23,8 @@ import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.testutils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
 import java.util.List;

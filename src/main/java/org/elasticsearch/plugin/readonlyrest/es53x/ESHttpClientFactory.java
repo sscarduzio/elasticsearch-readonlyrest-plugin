@@ -49,7 +49,7 @@ public enum ESHttpClientFactory implements HttpClientFactory {
         CompletableFuture<HttpResponse> promise = new CompletableFuture<>();
         underlyingClient.performRequestAsync(
             httpMethodToString(request.getMethod()),
-            request.getUrl().toString(),
+            request.getUrl().getPath(),
             request.getQueryParams(),
             new CompletableFutureResponseListener(promise),
             toHeadersList(request.getHeaders()).toArray(new Header[0])
@@ -107,7 +107,13 @@ public enum ESHttpClientFactory implements HttpClientFactory {
     }
 
     private HttpResponse from(Response response) throws IOException {
-      return new HttpResponse(response.getStatusLine().getStatusCode(), response.getEntity().getContent());
+      return new HttpResponse(response.getStatusLine().getStatusCode(), () -> {
+        try {
+          return response.getEntity().getContent();
+        } catch (IOException e) {
+          throw new RuntimeException("Cannot read content");
+        }
+      });
     }
   }
 

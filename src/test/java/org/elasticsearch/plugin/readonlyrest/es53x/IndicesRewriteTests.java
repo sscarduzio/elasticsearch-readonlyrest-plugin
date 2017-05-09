@@ -22,7 +22,7 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.plugin.readonlyrest.testutils.containers.ESWithReadonlyRestContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -30,7 +30,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 import java.util.Optional;
 
 import static junit.framework.TestCase.assertFalse;
-import static org.elasticsearch.plugin.readonlyrest.testutils.containers.ESWithReadonlyRestContainer.create;
+import static org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 

@@ -23,9 +23,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.KibanaAccess;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.testutils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
 import java.util.Optional;

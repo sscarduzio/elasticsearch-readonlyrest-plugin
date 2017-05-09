@@ -17,13 +17,14 @@
 package org.elasticsearch.plugin.readonlyrest.httpclient;
 
 import java.io.InputStream;
+import java.util.function.Supplier;
 
 public class HttpResponse {
 
   private final int statusCode;
-  private final InputStream content;
+  private final Supplier<InputStream> content;
 
-  public HttpResponse(int statusCode, InputStream content) {
+  public HttpResponse(int statusCode, Supplier<InputStream> content) {
     this.statusCode = statusCode;
     this.content = content;
   }
@@ -32,7 +33,7 @@ public class HttpResponse {
     return statusCode;
   }
 
-  public InputStream getContent() {
+  public Supplier<InputStream> getContent() {
     return content;
   }
 }

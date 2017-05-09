@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.requestcontext;
 import com.google.common.collect.ImmutableMap;
 import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.testutils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.mockito.Mockito;
 
 import java.util.Optional;

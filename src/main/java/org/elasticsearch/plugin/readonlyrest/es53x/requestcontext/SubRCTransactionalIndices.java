@@ -25,7 +25,7 @@ import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
-import org.elasticsearch.plugin.readonlyrest.testutils.ReflecUtils;
+import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
 import java.util.Set;
 

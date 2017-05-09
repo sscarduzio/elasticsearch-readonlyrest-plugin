@@ -26,7 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
-import org.elasticsearch.plugin.readonlyrest.testutils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Assert;
 
 import java.util.Iterator;

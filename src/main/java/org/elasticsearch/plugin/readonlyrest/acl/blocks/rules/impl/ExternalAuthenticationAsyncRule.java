@@ -17,14 +17,14 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ExternalAuthenticationRuleSettings;
 
 import java.util.concurrent.CompletableFuture;
 
-public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
+public class ExternalAuthenticationAsyncRule extends AsyncAuthentication {
 
   private final ExternalAuthenticationRuleSettings settings;
   private final ExternalAuthenticationServiceClient client;

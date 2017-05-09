@@ -65,4 +65,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
     return underlying.getKey();
   }
 
+  public AsyncAuthorization getUnderlying() {
+    return underlying;
+  }
 }

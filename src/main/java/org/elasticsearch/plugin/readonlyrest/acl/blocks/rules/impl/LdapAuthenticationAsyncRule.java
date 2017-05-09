@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
@@ -26,7 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRu
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-public class LdapAuthenticationAsyncRule extends BasicAsyncAuthentication {
+public class LdapAuthenticationAsyncRule extends AsyncAuthentication {
 
   private final AuthenticationLdapClient client;
   private final LdapAuthenticationRuleSettings settings;

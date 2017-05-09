@@ -21,7 +21,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
@@ -39,7 +39,7 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
 
   private static final String RULE_NAME = "ldap_auth";
 
-  private final BasicAsyncAuthentication authentication;
+  private final AsyncAuthentication authentication;
   private final AsyncAuthorization authorization;
 
   public LdapAuthAsyncRule(LdapAuthRuleSettings settings, LdapClientFactory factory, ESContext context) {

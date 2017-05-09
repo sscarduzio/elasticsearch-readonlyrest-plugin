@@ -21,8 +21,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.Con
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UnboundidGroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserGroupsSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
-import org.elasticsearch.plugin.readonlyrest.testutils.containers.LdapContainer;
-import org.elasticsearch.plugin.readonlyrest.testutils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;

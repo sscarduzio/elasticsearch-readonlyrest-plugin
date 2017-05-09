@@ -15,53 +15,31 @@ readonlyrest:
       keystore_pass: readonlyrest
       key_pass: readonlyrest
 
-    # Default policy is to forbid everything, so let's define a whitelist
     access_control_rules:
 
-    # ES container initializer need this rule to configure ES instance after startup
-    - name: "CONTAINER ADMIN"
+    - name: kibana
       type: allow
-      auth_key: admin:container
+      auth_key: kibana:kibana
+      verbosity: error
 
-    - name: "::Tweets::"
+    - name: "::LOGSTASH::"
       type: allow
-      methods: GET
-      indices: ["twitter"]
-      proxy_auth:
-        proxy_auth_config: "proxy1"
-        users: ["*"]
-      groups_provider_authorization:
-        user_groups_provider: "GroupsService1"
-        groups: ["group1"]
+      auth_key: logstash:logstash
+      actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+      indices: ["logstash-*", "simone_logstash*", "logstash*"]
+      indices_rewrite: ["^logstash-.*", "simone_$0"]
 
-    - name: "::Facebook posts::"
+    - name: "::RO::"
       type: allow
-      methods: GET
-      indices: ["facebook"]
-      proxy_auth:
-        proxy_auth_config: "proxy1"
-        users: ["*"]
-      groups_provider_authorization:
-        user_groups_provider: "GroupsService2"
-        groups: ["group3"]
-        cache_ttl_in_sec: 60
+      auth_key: simone:ro
+      kibana_access: ro
+      indices: [".kibana", "@user_.kibana", ".kibana-devnull", "@user_logstash-*", "logstash-*"]
+      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@user_$0"]
 
-    proxy_auth_configs:
-
-    - name: "proxy1"
-      user_id_header: "X-Auth-Token"
-
-    user_groups_providers:
-
-    - name: GroupsService1
-      groups_endpoint: "http://localhost:8080/groups"
-      auth_token_name: "user"
-      auth_token_passed_as: QUERY_PARAM
-      response_groups_json_path: "$..groups[?(@.name)].name"
-
-    - name: GroupsService2
-      groups_endpoint: "http://localhost:8080/groups"
-      auth_token_name: "auth_token"
-      auth_token_passed_as: HEADER
-      response_groups_json_path: "$..groups[?(@.name)].name"
+    - name: "::RW::"
+      type: allow
+      auth_key: simone:rw
+      kibana_access: rw
+      indices: [".kibana", "@user_.kibana", ".kibana-devnull", "@user_logstash-*","logstash-*"]
+      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@user_$0"]
 

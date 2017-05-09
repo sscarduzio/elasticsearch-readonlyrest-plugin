@@ -34,8 +34,8 @@ public class HttpRequest {
   public static HttpRequest get(URI url, Map<String, String> queryParams, Map<String, String> headers) {
     return new HttpRequest(HttpMethod.GET, url, queryParams, headers, Optional.empty());
   }
-  public static HttpRequest get(URI url) {
-    return get(url, Maps.newHashMap(), Maps.newHashMap());
+  public static HttpRequest get(URI url, Map<String, String> headers) {
+    return get(url, Maps.newHashMap(), headers);
   }
 
   public HttpRequest(HttpMethod method, URI url, Map<String, String> queryParams, Map<String, String> headers, Optional<String> body) {
