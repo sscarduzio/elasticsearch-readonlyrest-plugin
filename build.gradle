@@ -104,8 +104,8 @@ dependencies {
     testCompile 'junit:junit:4.12'
     testCompile 'org.gradle:gradle-tooling-api:2.13'
     testRuntime 'org.gradle:gradle-tooling-api:2.13'
-    testCompile('org.testcontainers:testcontainers:1.1.9')
-    testRuntime('org.testcontainers:testcontainers:1.1.9')
+    testCompile('org.testcontainers:testcontainers:1.2.1')
+    testRuntime('org.testcontainers:testcontainers:1.2.1')
 }
 
 run {

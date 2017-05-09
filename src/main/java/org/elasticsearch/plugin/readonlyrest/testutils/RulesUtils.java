@@ -22,9 +22,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 public class RulesUtils {
 
   public static Class<? extends Rule> classOfRule(Rule rule) {
-    return rule instanceof AsyncRuleAdapter
-        ? ((AsyncRuleAdapter) rule).getUnderlying().getClass()
-        : rule.getClass();
+    if(rule instanceof AsyncRuleAdapter) {
+      return ((AsyncRuleAdapter) rule).getUnderlying().getClass();
+    } else {
+      return rule.getClass();
+    }
   }
 
 }

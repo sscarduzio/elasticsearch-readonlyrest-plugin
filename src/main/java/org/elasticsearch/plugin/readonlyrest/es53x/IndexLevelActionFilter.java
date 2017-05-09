@@ -99,8 +99,13 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   @Override
   public void accept(RorSettings rorSettings) {
     if (rorSettings.isEnabled()) {
-      this.acl.set(Optional.of(new ACL(rorSettings, this.context)));
-      logger.info("Configuration reloaded - ReadonlyREST enabled");
+      try {
+        ACL acl = new ACL(rorSettings, this.context);
+        this.acl.set(Optional.of(acl));
+        logger.info("Configuration reloaded - ReadonlyREST enabled");
+      } catch (Exception ex) {
+        logger.error("Cannot configure ReadonlyREST plugin", ex);
+      }
     } else {
       this.acl.set(Optional.empty());
       logger.info("Configuration reloaded - ReadonlyREST disabled");
