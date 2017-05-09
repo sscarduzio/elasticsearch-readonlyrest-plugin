@@ -17,23 +17,19 @@
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.jayway.jsonpath.JsonPath;
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.message.BasicHeader;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpRequest;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpResponse;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettings;
-import org.elasticsearch.plugin.readonlyrest.testutils.CompletableFutureResponseListener;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +39,7 @@ import java.util.function.Function;
 public class GroupsProviderServiceHttpClient implements GroupsProviderServiceClient {
 
   private final Logger logger;
-  private final RestClient client;
+  private final HttpClient client;
   private final String name;
   private final URI endpoint;
   private final String authTokenName;
@@ -51,6 +47,7 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   private final String responseGroupsJsonPath;
 
   public GroupsProviderServiceHttpClient(String name,
+                                         HttpClient client,
                                          URI endpoint,
                                          String authTokenName,
                                          UserGroupsProviderSettings.TokenPassingMethod passingMethod,
@@ -62,49 +59,33 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
     this.authTokenName = authTokenName;
     this.passingMethod = passingMethod;
     this.responseGroupsJsonPath = responseGroupsJsonPath;
-    this.client = RestClient.builder(
-        new HttpHost(
-            endpoint.getHost(),
-            endpoint.getPort()
-        )
-    ).build();
+    this.client = client;
   }
 
   @Override
   public CompletableFuture<Set<String>> fetchGroupsFor(LoggedUser user) {
-    final CompletableFuture<Set<String>> promise = new CompletableFuture<>();
-    client.performRequestAsync(
-        "GET",
-        endpoint.getPath(),
-        createParams(user),
-        new CompletableFutureResponseListener<>(promise, groupsFromResponse()),
-        createHeaders(user).toArray(new Header[0])
-    );
-    return promise;
+    return client.send(HttpRequest.get(endpoint, createParams(user), createHeaders(user)))
+        .thenApply(groupsFromResponse());
   }
 
   private Map<String, String> createParams(LoggedUser user) {
-    Map<String, String> params = new HashMap<>();
-    if(passingMethod == UserGroupsProviderSettings.TokenPassingMethod.QUERY) {
-      params.put(authTokenName, user.getId());
-    }
-    return params;
+    return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.QUERY
+        ? ImmutableMap.of(authTokenName, user.getId())
+        : ImmutableMap.of();
   }
 
-  private List<Header> createHeaders(LoggedUser user) {
+  private Map<String, String> createHeaders(LoggedUser user) {
     return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.HEADER
-        ? Lists.newArrayList(new BasicHeader(authTokenName, user.getId()))
-        : Lists.newArrayList();
+        ? ImmutableMap.of(authTokenName, user.getId())
+        : ImmutableMap.of();
   }
 
-  private Function<Response, Set<String>> groupsFromResponse() {
+  private Function<HttpResponse, Set<String>> groupsFromResponse() {
     return response -> {
-      if (response.getStatusLine().getStatusCode() == 200) {
+      if (response.getStatusCode() == 200) {
         try {
-          List<String> groups = JsonPath.read(response.getEntity().getContent(), responseGroupsJsonPath);
-          logger.debug("Groups returned by groups provider '" + name + "': "
-              + Joiner.on(",").join(groups));
-
+          List<String> groups = JsonPath.read(response.getContent(), responseGroupsJsonPath);
+          logger.debug("Groups returned by groups provider '" + name + "': " + Joiner.on(",").join(groups));
           return Sets.newHashSet(groups);
         } catch (IOException e) {
           logger.error("Group based authorization response exception", e);

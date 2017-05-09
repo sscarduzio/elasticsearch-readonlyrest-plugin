@@ -21,6 +21,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.Use
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.users.User;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.users.UserFactory;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientConfig;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
@@ -41,6 +43,7 @@ public class DefinitionsFactory implements LdapClientFactory,
     UserFactory {
 
   private final UserRuleFactory userRuleFactory;
+  private final HttpClientFactory httpClientFactory;
   private final ESContext context;
   private final Cache<String, GroupsProviderLdapClient> groupsProviderLdapClientsCache;
   private final Cache<String, AuthenticationLdapClient> authenticationLdapClientsCache;
@@ -49,6 +52,7 @@ public class DefinitionsFactory implements LdapClientFactory,
 
   public DefinitionsFactory(UserRuleFactory userRuleFactory, ESContext context) {
     this.userRuleFactory = userRuleFactory;
+    this.httpClientFactory = context.httpClientFactory();
     this.context = context;
     this.groupsProviderLdapClientsCache = CacheBuilder.newBuilder().build();
     this.authenticationLdapClientsCache = CacheBuilder.newBuilder().build();
@@ -128,6 +132,10 @@ public class DefinitionsFactory implements LdapClientFactory,
         () -> wrapInCacheIfCacheIsEnabled(
             settings,
             new ExternalAuthenticationServiceHttpClient(
+                httpClientFactory.create(new HttpClientConfig(
+                    settings.getEndpoint().getHost(),
+                    settings.getEndpoint().getPort()
+                )),
                 settings.getEndpoint(),
                 settings.getSuccessStatusCode()
             )
@@ -144,6 +152,10 @@ public class DefinitionsFactory implements LdapClientFactory,
             settings,
             new GroupsProviderServiceHttpClient(
                 settings.getName(),
+                httpClientFactory.create(new HttpClientConfig(
+                    settings.getEndpoint().getHost(),
+                    settings.getEndpoint().getPort()
+                )),
                 settings.getEndpoint(),
                 settings.getAuthTokenName(),
                 settings.getAuthTokenPassedMethod(),

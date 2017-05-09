@@ -16,12 +16,8 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices;
 
-import com.google.common.collect.Maps;
-import org.apache.http.HttpHost;
-// todo: es dependent (move to es package)
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.plugin.readonlyrest.testutils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.testutils.CompletableFutureResponseListener;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpRequest;
 
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
@@ -30,29 +26,17 @@ public class ExternalAuthenticationServiceHttpClient implements ExternalAuthenti
 
   private final URI endpoint;
   private final int successStatusCode;
-  private final RestClient client;
+  private final HttpClient client;
 
-  public ExternalAuthenticationServiceHttpClient(URI endpoint, int successStatusCode) {
-    this.client = RestClient.builder(
-        new HttpHost(
-            endpoint.getHost(),
-            endpoint.getPort()
-        )
-    ).build();
+  public ExternalAuthenticationServiceHttpClient(HttpClient client, URI endpoint, int successStatusCode) {
+    this.client = client;
     this.endpoint = endpoint;
     this.successStatusCode = successStatusCode;
   }
 
   @Override
   public CompletableFuture<Boolean> authenticate(String user, String password) {
-    final CompletableFuture<Boolean> promise = new CompletableFuture<>();
-    client.performRequestAsync(
-        "GET",
-        endpoint.getPath(),
-        Maps.newHashMap(),
-        new CompletableFutureResponseListener<>(promise,
-            response -> response.getStatusLine().getStatusCode() == successStatusCode),
-        BasicAuthUtils.basicAuthHeader(user, password));
-    return promise;
+    return client.send(HttpRequest.get(endpoint))
+        .thenApply(response -> response.getStatusCode() == successStatusCode);
   }
 }
