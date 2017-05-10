@@ -14,17 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.utils.esdependent;
+package org.elasticsearch.plugin.readonlyrest.es;
+
 
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.es.ESHttpClientFactory;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientFactory;
 
-public class MockedESContext implements ESContext {
-
-  public static final ESContext INSTANCE = new MockedESContext();
+public class ESContextImpl implements ESContext {
 
   @Override
   public Logger logger(Class<?> clazz) {
@@ -33,12 +32,11 @@ public class MockedESContext implements ESContext {
 
   @Override
   public RuntimeException rorException(String message) {
-    return new RuntimeException(message);
+    return new ElasticsearchException(message);
   }
 
   @Override
   public HttpClientFactory httpClientFactory() {
-    // todo: use different http client than RestClient
     return ESHttpClientFactory.INSTANCE;
   }
 }
