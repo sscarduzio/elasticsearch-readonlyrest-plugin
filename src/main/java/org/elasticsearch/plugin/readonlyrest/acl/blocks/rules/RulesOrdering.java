@@ -38,7 +38,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSync
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.utils.RulesUtils;
 
@@ -68,7 +67,6 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         ActionsSyncRule.class,
         GroupsSyncRule.class,
         SearchlogSyncRule.class,
-        VerbositySyncRule.class,
         // then we could check potentially slow async rules
         LdapAuthAsyncRule.class,
         LdapAuthenticationAsyncRule.class,

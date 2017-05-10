@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
@@ -36,12 +37,15 @@ public class BlockSettings {
 
   private static final String NAME = "name";
   private static final String POLICY = "type";
+  private static final String VERBOSITY = "verbosity";
 
   private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
+  private static final Verbosity DEFAULT_VERBOSITY = Verbosity.ERROR;
 
   private final String name;
   private final BlockPolicy policy;
   private final List<RuleSettings> rules;
+  private final Verbosity verbosity;
 
   public static BlockSettings from(RawSettings settings,
                                    AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
@@ -62,12 +66,17 @@ public class BlockSettings {
         .map(value -> BlockPolicy.fromString(value)
             .<ConfigMalformedException>orElseThrow(() -> new ConfigMalformedException("Unknown block policy type: " + value)))
         .orElse(DEFAULT_BLOCK_POLICY);
+    Verbosity verbosity = settings.stringOpt(VERBOSITY)
+        .map(value -> Verbosity.fromString(value)
+            .<ConfigMalformedException>orElseThrow(() -> new ConfigMalformedException("Unknown verbosity value: " + value)))
+        .orElse(DEFAULT_VERBOSITY);
     Set<String> filteredBlockAttributes = Sets.newHashSet(
-        NAME, POLICY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER
+        NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER
     );
     return new BlockSettings(
         name,
         policy,
+        verbosity,
         settings.getKeys().stream()
             .filter(k -> !filteredBlockAttributes.contains(k))
             .map(registry::create)
@@ -75,10 +84,11 @@ public class BlockSettings {
     );
   }
 
-  private BlockSettings(String name, BlockPolicy policy, List<RuleSettings> rules) {
+  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
     validate(rules);
     this.name = name;
     this.policy = policy;
+    this.verbosity = verbosity;
     this.rules = rules;
   }
 
@@ -99,11 +109,15 @@ public class BlockSettings {
   }
 
   private void validateIfSessionMaxIdleRuleConfiguredWithUserRule(List<RuleSettings> rules) {
-    if(rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
-      if(rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
+    if (rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
+      if (rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
         throw new ConfigMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
             "' rule does not mean anything if you don't also set some authentication rule");
       }
     }
+  }
+
+  public Verbosity getVerbosity() {
+    return verbosity;
   }
 }

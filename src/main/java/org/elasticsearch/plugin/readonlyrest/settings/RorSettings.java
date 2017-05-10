@@ -18,6 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
@@ -34,12 +35,15 @@ public class RorSettings {
   public static final String ATTRIBUTE_ENABLE = "enable";
   public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
   public static final String ATTRIBUTE_SEARCHLOG = "searchlog";
+  private static final String VERBOSITY = "verbosity";
 
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
   private static final List<BlockSettings> DEFAULT_BLOCK_SETTINGS = Lists.newArrayList();
+  private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
 
   private final boolean enable;
   private final String forbiddenMessage;
+  private final Verbosity verbosity;
   private final List<BlockSettings> blocksSettings;
 
   static RorSettings from(RawSettings settings) {
@@ -67,6 +71,10 @@ public class RorSettings {
         ))
         .collect(Collectors.toList());
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
+    this.verbosity = raw.stringOpt(VERBOSITY)
+        .map(value -> Verbosity.fromString(value)
+            .<ConfigMalformedException>orElseThrow(() -> new ConfigMalformedException("Unknown verbosity value: " + value)))
+        .orElse(DEFAULT_VERBOSITY);
   }
 
   public boolean isEnabled() {
@@ -79,5 +87,9 @@ public class RorSettings {
 
   public ImmutableList<BlockSettings> getBlocksSettings() {
     return ImmutableList.copyOf(blocksSettings);
+  }
+
+  public Verbosity getVerbosity() {
+    return verbosity;
   }
 }

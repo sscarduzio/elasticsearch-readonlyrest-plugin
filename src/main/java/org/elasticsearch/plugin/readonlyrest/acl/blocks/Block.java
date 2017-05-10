@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
@@ -47,8 +48,7 @@ import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_YELLOW;
 public class Block {
 
   private final Logger logger;
-  private final String name;
-  private final BlockPolicy policy;
+  private final BlockSettings settings;
   private final List<AsyncRule> conditionsToCheck;
   private final boolean authHeaderAccepted;
 
@@ -56,8 +56,7 @@ public class Block {
                RulesFactory rulesFactory,
                ESContext context) {
     this.logger = context.logger(getClass());
-    this.name = settings.getName();
-    this.policy = settings.getPolicy();
+    this.settings = settings;
     this.conditionsToCheck = settings.getRules().stream()
         .map(rulesFactory::create)
         .collect(Collectors.toList());
@@ -70,11 +69,15 @@ public class Block {
   }
 
   public String getName() {
-    return name;
+    return settings.getName();
   }
 
   public BlockPolicy getPolicy() {
-    return policy;
+    return settings.getPolicy();
+  }
+
+  public Verbosity getVerbosity() {
+    return settings.getVerbosity();
   }
 
   public boolean isAuthHeaderAccepted() {
@@ -127,7 +130,7 @@ public class Block {
   }
 
   private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
-    logger.debug(ANSI_YELLOW + "[" + name + "] the request matches no rules in this block: " + rc + ANSI_RESET);
+    logger.debug(ANSI_YELLOW + "[" + settings.getName() + "] the request matches no rules in this block: " + rc + ANSI_RESET);
     return BlockExitResult.noMatch();
   }
 
@@ -138,7 +141,7 @@ public class Block {
 
   @Override
   public String toString() {
-    return "readonlyrest Rules Block :: { name: '" + name + "', policy: " + policy + "}";
+    return "readonlyrest Rules Block :: { name: '" + settings.getName() + "', policy: " + settings.getPolicy() + "}";
   }
 
 }

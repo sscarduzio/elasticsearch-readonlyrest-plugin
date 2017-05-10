@@ -42,8 +42,6 @@ public interface RequestContext extends IndicesRequestContext {
   String getContent();
   HttpMethod getMethod();
   String getUri();
-  Verbosity getVerbosity();
-  void setVerbosity(Verbosity v);
   void addToHistory(Block block, Set<RuleExitResult> results);
   void reset();
   void commit();

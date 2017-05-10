@@ -35,7 +35,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.XForwardedForSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
@@ -57,7 +56,6 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.MethodsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SearchlogRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SessionMaxIdleRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.UriReRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.VerbosityRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.XForwardedForRuleSettings;
 
 import java.util.Map;
@@ -101,8 +99,6 @@ public class RulesFactory {
         settings -> wrap(new SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context)));
     this.creators.put(UriReRuleSettings.class,
         settings -> wrap(new UriReSyncRule((UriReRuleSettings) settings)));
-    this.creators.put(VerbosityRuleSettings.class,
-        settings -> wrap(new VerbositySyncRule((VerbosityRuleSettings) settings)));
     this.creators.put(XForwardedForRuleSettings.class,
         settings -> wrap(new XForwardedForSyncRule((XForwardedForRuleSettings) settings)));
     this.creators.put(LdapAuthenticationRuleSettings.class,

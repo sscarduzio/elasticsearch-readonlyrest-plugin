@@ -83,7 +83,7 @@ readonlyrest:
 
 readonlyrest:
     enable: true
-    verbosity: error # don't log successful request
+    verbosity: info # log unmatched requests
     
     ssl:
       enable: true
@@ -106,6 +106,7 @@ readonlyrest:
     - name: "::KIBANA-SRV::"
       # auth_key is good for testing, but replace it with `auth_key_sha256`!
       auth_key: kibana:kibana
+      verbosity: error # don't log successful request
       type: allow
 
     # Using "Basic HTTP Auth" from browsers, can RW Kibana settings, RO on logstash indices from 2017 .

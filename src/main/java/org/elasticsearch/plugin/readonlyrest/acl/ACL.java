@@ -72,10 +72,9 @@ public class ACL {
           rc.reset();
           return block.check(rc);
         },
-        checkResult -> {
-          Verbosity v = rc.getVerbosity();
+        (block, checkResult) -> {
           if (checkResult.isMatch()) {
-            if (v.equals(Verbosity.INFO)) {
+            if (Verbosity.INFO.equals(block.getVerbosity())) {
               logger.info("request: " + rc + " matched block: " + checkResult);
             }
             if (checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW)) {
@@ -87,8 +86,7 @@ public class ACL {
           }
         },
         nothing -> {
-          Verbosity v = rc.getVerbosity();
-          if (v.equals(Verbosity.INFO) || v.equals(Verbosity.ERROR)) {
+          if (Verbosity.INFO.equals(settings.getVerbosity())) {
             logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
           }
           return BlockExitResult.noMatch();

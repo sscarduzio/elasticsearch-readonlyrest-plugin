@@ -42,7 +42,6 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSetting
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SearchlogRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SessionMaxIdleRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.UriReRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.VerbosityRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.XForwardedForRuleSettings;
 
 import java.util.HashMap;
@@ -88,7 +87,6 @@ public class RulesConfigCreatorsRegistry {
     creators.put(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
     creators.put(SearchlogRuleSettings.ATTRIBUTE_NAME, searchlogSettingsCreator(blockSettings));
     creators.put(UriReRuleSettings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
-    creators.put(VerbosityRuleSettings.ATTRIBUTE_NAME, verbositySettingsCreator(blockSettings));
     creators.put(XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
     creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
     this.ruleSettingsCreators = creators;
@@ -248,13 +246,6 @@ public class RulesConfigCreatorsRegistry {
   private Supplier<RuleSettings> uriReSettingsCreator(RawSettings blockSettings) {
     return () -> UriReRuleSettings.from(
         blockSettings.stringReq(UriReRuleSettings.ATTRIBUTE_NAME)
-    );
-  }
-
-  @SuppressWarnings("unchecked")
-  private Supplier<RuleSettings> verbositySettingsCreator(RawSettings blockSettings) {
-    return () -> VerbosityRuleSettings.from(
-        blockSettings.stringReq(VerbosityRuleSettings.ATTRIBUTE_NAME)
     );
   }
 

@@ -39,7 +39,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
@@ -77,7 +76,6 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private final ClusterService clusterService;
   private final ESContext context;
   private final Transactional<Set<String>> indices;
-  private final Transactional<Verbosity> logLevel;
   private final Transactional<Map<String, String>> responseHeaders;
 
   private String content = null;
@@ -147,21 +145,6 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     };
 
-    this.logLevel = new Transactional<Verbosity>("rc-verbosity", context) {
-      @Override
-      public Verbosity initialize() {
-        return Verbosity.INFO;
-      }
-
-      @Override
-      public Verbosity copy(Verbosity initial) {
-        return initial;
-      }
-
-      @Override
-      public void onCommit(Verbosity value) {}
-    };
-
     variablesManager = new VariablesManager(h, this, context);
 
     doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
@@ -175,7 +158,6 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     responseHeaders.delegateTo(this);
     loggedInUser.delegateTo(this);
     indices.delegateTo(this);
-    logLevel.delegateTo(this);
   }
 
   public Logger getLogger() {
@@ -226,16 +208,6 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   public Optional<String> resolveVariable(String original){
     return  variablesManager.apply(original);
 
-  }
-
-
-
-  public Verbosity getVerbosity(){
-    return logLevel.get();
-  }
-
-  public void setVerbosity(Verbosity v) {
-    logLevel.mutate(v);
   }
 
   public Set<String> getAllIndicesAndAliases() {
