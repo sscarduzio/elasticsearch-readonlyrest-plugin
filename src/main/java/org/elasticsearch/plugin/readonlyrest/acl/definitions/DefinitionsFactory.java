@@ -52,6 +52,8 @@ import static org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauth
 import static org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.CachedGroupsProviderServiceClient.wrapInCacheIfCacheIsEnabled;
 import static org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.caching.AuthenticationLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled;
 import static org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.caching.GroupsProviderLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled;
+import static org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.logging.AuthenticationLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled;
+import static org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.logging.GroupsProviderLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled;
 
 public class DefinitionsFactory implements LdapClientFactory,
     ExternalAuthenticationServiceClientFactory,
@@ -81,30 +83,34 @@ public class DefinitionsFactory implements LdapClientFactory,
     return getOrCreate(
         settings,
         groupsProviderLdapClientsCache,
-        () -> wrapInCacheIfCacheIsEnabled(
-            settings,
-            new UnboundidGroupsProviderLdapClient(
-                new ConnectionConfig(
-                    settings.getHost(),
-                    settings.getPort(),
-                    settings.getConnectionPoolSize(),
-                    settings.getConnectionTimeout(),
-                    settings.getRequestTimeout(),
-                    settings.isSslEnabled(),
-                    settings.isTrustAllCertificates()
-                ),
-                new UserSearchFilterConfig(
-                    settings.getSearchUserBaseDn(),
-                    settings.getUserIdAttribute()
-                ),
-                new UserGroupsSearchFilterConfig(
-                    settings.getSearchGroupBaseDn(),
-                    settings.getUniqueMemberAttribute()
-                ),
-                settings.getSearchingUserSettings().map(s ->
-                    new SearchingUserConfig(s.getDn(), s.getPassword())
-                ),
-                context
+        () -> wrapInLoggingIfIsLoggingEnabled(
+            settings.getName(),
+            context,
+            wrapInCacheIfCacheIsEnabled(
+                settings,
+                new UnboundidGroupsProviderLdapClient(
+                    new ConnectionConfig(
+                        settings.getHost(),
+                        settings.getPort(),
+                        settings.getConnectionPoolSize(),
+                        settings.getConnectionTimeout(),
+                        settings.getRequestTimeout(),
+                        settings.isSslEnabled(),
+                        settings.isTrustAllCertificates()
+                    ),
+                    new UserSearchFilterConfig(
+                        settings.getSearchUserBaseDn(),
+                        settings.getUserIdAttribute()
+                    ),
+                    new UserGroupsSearchFilterConfig(
+                        settings.getSearchGroupBaseDn(),
+                        settings.getUniqueMemberAttribute()
+                    ),
+                    settings.getSearchingUserSettings().map(s ->
+                        new SearchingUserConfig(s.getDn(), s.getPassword())
+                    ),
+                    context
+                )
             )
         )
     );
@@ -115,26 +121,30 @@ public class DefinitionsFactory implements LdapClientFactory,
     return getOrCreate(
         settings,
         authenticationLdapClientsCache,
-        () -> wrapInCacheIfCacheIsEnabled(
-            settings,
-            new UnboundidAuthenticationLdapClient(
-                new ConnectionConfig(
-                    settings.getHost(),
-                    settings.getPort(),
-                    settings.getConnectionPoolSize(),
-                    settings.getConnectionTimeout(),
-                    settings.getRequestTimeout(),
-                    settings.isSslEnabled(),
-                    settings.isTrustAllCertificates()
-                ),
-                new UserSearchFilterConfig(
-                    settings.getSearchUserBaseDn(),
-                    settings.getUserIdAttribute()
-                ),
-                settings.getSearchingUserSettings().map(s ->
-                    new SearchingUserConfig(s.getDn(), s.getPassword())
-                ),
-                context
+        () -> wrapInLoggingIfIsLoggingEnabled(
+            settings.getName(),
+            context,
+            wrapInCacheIfCacheIsEnabled(
+                settings,
+                new UnboundidAuthenticationLdapClient(
+                    new ConnectionConfig(
+                        settings.getHost(),
+                        settings.getPort(),
+                        settings.getConnectionPoolSize(),
+                        settings.getConnectionTimeout(),
+                        settings.getRequestTimeout(),
+                        settings.isSslEnabled(),
+                        settings.isTrustAllCertificates()
+                    ),
+                    new UserSearchFilterConfig(
+                        settings.getSearchUserBaseDn(),
+                        settings.getUserIdAttribute()
+                    ),
+                    settings.getSearchingUserSettings().map(s ->
+                        new SearchingUserConfig(s.getDn(), s.getPassword())
+                    ),
+                    context
+                )
             )
         )
     );
