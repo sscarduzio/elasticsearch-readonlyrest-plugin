@@ -16,8 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
@@ -54,7 +53,7 @@ public class LdapAuthRuleSettings implements RuleSettings, CacheSettings {
 
   private LdapAuthRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
     if(!(settings instanceof GroupsProviderLdapSettings))
-      throw new ConfigMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
+      throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
           "(without '" + GroupsProviderLdapSettings.SEARCH_GROUPS +"' attribute defined)");
     this.groups = groups;
     this.cacheTtl = cacheTtl;

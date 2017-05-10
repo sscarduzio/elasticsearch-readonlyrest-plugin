@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import com.google.common.collect.Lists;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
 import java.util.List;
@@ -52,7 +52,7 @@ public class UserSettingsCollection {
 
   public UserSettings get(String name) {
     if (!usersSettingsMap.containsKey(name))
-      throw new ConfigMalformedException("Cannot find User definition with name '" + name + "'");
+      throw new SettingsMalformedException("Cannot find User definition with name '" + name + "'");
     return usersSettingsMap.get(name);
   }
 

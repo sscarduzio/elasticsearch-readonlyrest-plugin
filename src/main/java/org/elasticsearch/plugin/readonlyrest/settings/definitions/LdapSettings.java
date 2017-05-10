@@ -16,7 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.NamedSettings;
@@ -137,7 +137,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
       Optional<String> bindPassword = settings.stringOpt(BIND_PASS);
       if ((bindDn.isPresent() && !bindPassword.isPresent()) ||
           (!bindDn.isPresent() && bindPassword.isPresent())) {
-        throw new ConfigMalformedException("'" + BIND_DN + "' & '" + BIND_PASS + "' should be both present or both absent");
+        throw new SettingsMalformedException("'" + BIND_DN + "' & '" + BIND_PASS + "' should be both present or both absent");
       }
       return bindDn.flatMap(bdn -> bindPassword.map(bp -> new SearchingUserSettings(bdn, bp)));
     }

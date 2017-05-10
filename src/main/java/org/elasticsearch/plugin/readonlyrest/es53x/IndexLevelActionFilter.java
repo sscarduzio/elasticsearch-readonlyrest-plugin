@@ -38,7 +38,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
-import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableConfiguration;
+import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.es53x.actionlisteners.ACLActionListener;
 import org.elasticsearch.plugin.readonlyrest.es53x.actionlisteners.RuleActionListenersProvider;
 import org.elasticsearch.plugin.readonlyrest.es53x.requestcontext.RequestContextImpl;
@@ -74,15 +74,15 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final AtomicReference<Optional<ACL>> acl;
   private final ESContext context;
   private final RuleActionListenersProvider ruleActionListenersProvider;
-  private final ReloadableConfiguration reloadableConfiguration;
+  private final ReloadableSettings reloadableSettings;
   private final Client client;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ReloadableConfigurationImpl reloadableConfiguration,
+  public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
                                 Client client, ClusterService clusterService, ThreadPool threadPool,
                                 IndexNameExpressionResolver indexResolver) throws IOException {
     super(settings);
-    this.reloadableConfiguration = reloadableConfiguration;
+    this.reloadableSettings = reloadableConfiguration;
     this.client = client;
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
@@ -91,7 +91,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.acl = new AtomicReference<>(Optional.empty());
     this.ruleActionListenersProvider =  new RuleActionListenersProvider(context);
 
-    this.reloadableConfiguration.addListener(this);
+    this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
     logger.info("Readonly REST plugin was loaded...");
   }
@@ -238,7 +238,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       public void run() {
         try {
           logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
-          reloadableConfiguration.reload(new ESClientConfigurationContentProvider(client));
+          reloadableSettings.reload(new ESClientSettingsContentProvider(client));
           logger.info("Cluster-wide settings found, overriding elasticsearch.yml");
           executor.shutdown();
         } catch (ElasticsearchException ee) {

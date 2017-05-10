@@ -17,11 +17,11 @@
 
 package org.elasticsearch.plugin.readonlyrest.settings;
 
-public class ConfigMalformedException extends RuntimeException {
-  public ConfigMalformedException(String msg) {
+public class SettingsMalformedException extends RuntimeException {
+  public SettingsMalformedException(String msg) {
     super(msg);
   }
-  public ConfigMalformedException(String msg, Throwable t) {
+  public SettingsMalformedException(String msg, Throwable t) {
     super(msg, t);
   }
 }

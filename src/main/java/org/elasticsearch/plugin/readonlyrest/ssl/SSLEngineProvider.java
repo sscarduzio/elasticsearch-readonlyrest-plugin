@@ -21,7 +21,7 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
 
@@ -101,14 +101,14 @@ public class SSLEngineProvider {
             logger.info("SSL ssl.key_alias not configured, took first alias in keystore: " + inferredAlias);
             sslKeyAlias = inferredAlias;
           } else {
-            throw new ConfigMalformedException("No alias found, therefore key found in keystore!");
+            throw new SettingsMalformedException("No alias found, therefore key found in keystore!");
           }
         } else {
           sslKeyAlias = settings.getKeyAlias().get();
         }
         Key key = ks.getKey(sslKeyAlias, keyPassBa);
         if (key == null) {
-          throw new ConfigMalformedException("Private key not found in keystore for alias: " + sslKeyAlias);
+          throw new SettingsMalformedException("Private key not found in keystore for alias: " + sslKeyAlias);
         }
 
         // Create a PEM of the private key

@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
@@ -33,18 +33,18 @@ public class AuthMethodCreatorsRegistry {
 
   private final Map<String, Function<RawSettings, AuthKeyProviderSettings>> authKeyProviderCreators;
 
-  public AuthMethodCreatorsRegistry(ProxyAuthConfigSettingsCollection proxyAuthConfigSettingsCollection) {
+  public AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     HashMap<String, Function<RawSettings, AuthKeyProviderSettings>> creators = Maps.newHashMap();
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator());
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator());
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
-    creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthConfigSettingsCollection));
+    creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
     this.authKeyProviderCreators = creators;
   }
 
   public AuthKeyProviderSettings create(String name, RawSettings settings) {
     if (!authKeyProviderCreators.containsKey(name)) {
-      throw new ConfigMalformedException("Unknown auth method name: '" + name + "'");
+      throw new SettingsMalformedException("Unknown auth method name: '" + name + "'");
     }
     return authKeyProviderCreators.get(name).apply(settings);
   }
@@ -66,7 +66,7 @@ public class AuthMethodCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> proxyAuthSettingsCreator(
-      ProxyAuthConfigSettingsCollection proxyAuthConfigSettingsCollection) {
+      ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     return settings -> {
       Object s = settings.req(ProxyAuthRuleSettings.ATTRIBUTE_NAME);
       if (s instanceof List<?>) {
@@ -74,7 +74,7 @@ public class AuthMethodCreatorsRegistry {
       } else if (s instanceof String) {
         return ProxyAuthRuleSettings.from(Lists.newArrayList((String) s));
       } else {
-        return ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s), proxyAuthConfigSettingsCollection);
+        return ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s), proxyAuthDefinitionSettingsCollection);
       }
     };
   }

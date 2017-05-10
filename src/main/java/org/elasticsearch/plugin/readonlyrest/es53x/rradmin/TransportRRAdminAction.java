@@ -26,32 +26,32 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.configuration.ConfigurationContentProvider;
-import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableConfiguration;
-import org.elasticsearch.plugin.readonlyrest.es53x.ESClientConfigurationContentProvider;
-import org.elasticsearch.plugin.readonlyrest.es53x.ReloadableConfigurationImpl;
+import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
+import org.elasticsearch.plugin.readonlyrest.configuration.SettingsContentProvider;
+import org.elasticsearch.plugin.readonlyrest.es53x.ESClientSettingsContentProvider;
+import org.elasticsearch.plugin.readonlyrest.es53x.ReloadableSettingsImpl;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-  private final ConfigurationContentProvider client;
-  private final ReloadableConfiguration reloadableConfiguration;
+  private final SettingsContentProvider client;
+  private final ReloadableSettings reloadableSettings;
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
                                 ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-                                NodeClient client, ReloadableConfigurationImpl reloadableConfiguration) {
+                                NodeClient client, ReloadableSettingsImpl reloadableConfiguration) {
     super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
         RRAdminRequest::new);
-    this.client = new ESClientConfigurationContentProvider(client);
-    this.reloadableConfiguration = reloadableConfiguration;
+    this.client = new ESClientSettingsContentProvider(client);
+    this.reloadableSettings = reloadableConfiguration;
   }
 
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
-      reloadableConfiguration.reload(client);
+      reloadableSettings.reload(client);
       listener.onResponse(new RRAdminResponse(null));
     } catch (Exception e) {
       listener.onResponse(new RRAdminResponse(e));

@@ -38,7 +38,7 @@ public class LdapAuthRuleSettingsTests {
     assertEquals("ldap_auth", settings.getName());
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testRuleSettingsCreationFailsDueToNotFoundLdapWithGivenName() {
     LdapAuthRuleSettings.from(
         RawSettings.fromString("" +
@@ -50,7 +50,7 @@ public class LdapAuthRuleSettingsTests {
     );
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testRuleSettingsCreationFailsDueToNotSetLdapAuthName() {
     LdapAuthRuleSettings.from(
         RawSettings.fromString("" +
@@ -61,7 +61,7 @@ public class LdapAuthRuleSettingsTests {
     );
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testRuleSettingsCreationFailsDueToEmptyGroupsSet() {
     LdapAuthRuleSettings.from(
         RawSettings.fromString("" +

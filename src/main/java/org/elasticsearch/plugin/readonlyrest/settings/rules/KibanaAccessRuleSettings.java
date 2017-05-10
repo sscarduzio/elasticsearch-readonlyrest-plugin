@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.KibanaAccess;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
@@ -38,7 +38,7 @@ public class KibanaAccessRuleSettings implements RuleSettings {
     String value = blockSettings.stringReq(ATTRIBUTE_NAME);
     return new KibanaAccessRuleSettings(
         KibanaAccess.fromString(value)
-            .orElseThrow(() -> new ConfigMalformedException("Unknown kibana_access value: " + value)),
+            .orElseThrow(() -> new SettingsMalformedException("Unknown kibana_access value: " + value)),
         blockSettings.stringOpt(ATTRIBUTE_KIBANA_INDEX).orElse(DEFAULT_KIBANA_INDEX)
     );
   }

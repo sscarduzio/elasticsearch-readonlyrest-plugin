@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import com.google.common.collect.Lists;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
 import java.util.List;
@@ -52,14 +52,14 @@ public class UserGroupsProviderSettingsCollection {
 
   public UserGroupsProviderSettings get(String name) {
     if (!userGroupsProviderSettingsMap.containsKey(name))
-      throw new ConfigMalformedException("Cannot find User Groups Provider definition with name '" + name + "'");
+      throw new SettingsMalformedException("Cannot find User Groups Provider definition with name '" + name + "'");
     return userGroupsProviderSettingsMap.get(name);
   }
 
   private void validate(List<UserGroupsProviderSettings> grouspProviderSettings) {
     List<String> names = seq(grouspProviderSettings).map(UserGroupsProviderSettings::getName).collect(Collectors.toList());
     if(names.stream().distinct().count() != names.size()) {
-      throw new ConfigMalformedException("Duplicated User Groups Provider name in '" + ATTRIBUTE_NAME + "' section");
+      throw new SettingsMalformedException("Duplicated User Groups Provider name in '" + ATTRIBUTE_NAME + "' section");
     }
   }
 }

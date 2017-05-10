@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
 import java.util.List;
@@ -43,9 +43,9 @@ public class UserSettings {
         .filter(k -> !Sets.newHashSet(USERNAME, GROUPS).contains(k))
         .collect(Collectors.toList());
     if(attributes.size() == 0) {
-      throw new ConfigMalformedException("No authentication method defined for user ['" + username + "']" );
+      throw new SettingsMalformedException("No authentication method defined for user ['" + username + "']" );
     } else if (attributes.size() > 1) {
-      throw new ConfigMalformedException("Only one authentication should be defined for user ['" + username + "']" );
+      throw new SettingsMalformedException("Only one authentication should be defined for user ['" + username + "']" );
     }
     this.authKeyProviderSettings = registry.create(attributes.get(0), settings);
   }

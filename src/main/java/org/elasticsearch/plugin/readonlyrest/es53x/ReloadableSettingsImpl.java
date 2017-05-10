@@ -14,28 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.settings.definitions;
+package org.elasticsearch.plugin.readonlyrest.es53x;
 
-import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.env.Environment;
+import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 
-public class ProxyAuthConfigSettings {
+import java.io.File;
+import java.io.IOException;
 
-  private static final String NAME = "name";
-  private static final String USER_ID_HEADER = "user_id_header";
+@Singleton
+public class ReloadableSettingsImpl extends ReloadableSettings {
 
-  private final String name;
-  private final String userIdHeader;
-
-  public ProxyAuthConfigSettings(RawSettings settings) {
-    this.name = settings.stringReq(NAME);
-    this.userIdHeader = settings.stringReq(USER_ID_HEADER);
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public String getUserIdHeader() {
-    return userIdHeader;
+  @Inject
+  public ReloadableSettingsImpl(Environment env) throws IOException {
+    super(new File(env.configFile().toFile(), "elasticsearch.yml"));
   }
 }

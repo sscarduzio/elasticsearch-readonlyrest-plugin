@@ -23,7 +23,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
@@ -40,7 +40,7 @@ public enum AllowedSettings {
     String rule_prefix = prefix + BlockSettings.ATTRIBUTE_NAME + ".";
     String users_prefix = prefix + UserSettingsCollection.ATTRIBUTE_NAME + ".";
     String ldaps_prefix = prefix + LdapSettingsCollection.ATTRIBUTE_NAME + ".";
-    String proxy_auth_configs_prefix = prefix + ProxyAuthConfigSettingsCollection.ATTRIBUTE_NAME + ".";
+    String proxy_auth_configs_prefix = prefix + ProxyAuthDefinitionSettingsCollection.ATTRIBUTE_NAME + ".";
     String user_groups_providers_prefix = prefix + UserGroupsProviderSettingsCollection.ATTRIBUTE_NAME + ".";
     String external_authentication_service_configs_prefix =
         prefix + ExternalAuthenticationServiceSettingsCollection.ATTRIBUTE_NAME + ".";

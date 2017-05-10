@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.util.Set;
@@ -32,7 +32,7 @@ public class MethodsRuleSettings implements RuleSettings {
   public static MethodsRuleSettings from(Set<String> methods) {
     return new MethodsRuleSettings(methods.stream()
         .map(value -> HttpMethod.fromString(value)
-            .<ConfigMalformedException>orElseThrow(() -> new ConfigMalformedException("Unknown/unsupported http method: " + value)))
+            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown/unsupported http method: " + value)))
         .collect(Collectors.toSet()));
   }
 

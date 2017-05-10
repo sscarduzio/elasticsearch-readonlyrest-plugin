@@ -50,16 +50,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
-public class RulesConfigCreatorsRegistry {
+public class RulesSettingsCreatorsRegistry {
 
   private final Map<String, Supplier<RuleSettings>> ruleSettingsCreators;
 
-  RulesConfigCreatorsRegistry(RawSettings blockSettings,
-                              AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
-                              LdapSettingsCollection ldapSettingsCollection,
-                              UserGroupsProviderSettingsCollection groupsProviderSettingsGroup,
-                              ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
-                              UserSettingsCollection userSettingsCollection) {
+  RulesSettingsCreatorsRegistry(RawSettings blockSettings,
+                                AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
+                                LdapSettingsCollection ldapSettingsCollection,
+                                UserGroupsProviderSettingsCollection groupsProviderSettingsGroup,
+                                ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
+                                UserSettingsCollection userSettingsCollection) {
     Map<String, Supplier<RuleSettings>> creators = new HashMap<>();
     creators.put(LdapAuthRuleSettings.ATTRIBUTE_NAME,
         ldapAuthRuleSettingsCreator(blockSettings, ldapSettingsCollection));
@@ -94,7 +94,7 @@ public class RulesConfigCreatorsRegistry {
 
   public RuleSettings create(String name) {
     if (!ruleSettingsCreators.containsKey(name)) {
-      throw new ConfigMalformedException("Unknown rule name: '" + name + "'");
+      throw new SettingsMalformedException("Unknown rule name: '" + name + "'");
     }
     return ruleSettingsCreators.get(name).get();
   }
@@ -270,7 +270,7 @@ public class RulesConfigCreatorsRegistry {
     return () -> {
       AuthKeyProviderSettings authKeyProviderSettings = authMethodCreatorsRegistry.create(attribute, settings);
       if (!(authKeyProviderSettings instanceof RuleSettings)) {
-        throw new ConfigMalformedException("No rule for auth method: " + attribute);
+        throw new SettingsMalformedException("No rule for auth method: " + attribute);
       }
       return (RuleSettings) authKeyProviderSettings;
     };

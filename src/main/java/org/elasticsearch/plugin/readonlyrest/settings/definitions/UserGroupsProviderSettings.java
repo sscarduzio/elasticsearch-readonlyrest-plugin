@@ -16,7 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.NamedSettings;
@@ -88,7 +88,7 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
       case "QUERY_PARAM":
         return TokenPassingMethod.QUERY;
         default:
-          throw new ConfigMalformedException("Unknown value '" + value + "' of '" + PASSED_AS + "' attribute");
+          throw new SettingsMalformedException("Unknown value '" + value + "' of '" + PASSED_AS + "' attribute");
     }
   }
 }

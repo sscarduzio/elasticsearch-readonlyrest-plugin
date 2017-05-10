@@ -14,21 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.es53x;
+package org.elasticsearch.plugin.readonlyrest.configuration;
 
-import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.env.Environment;
-import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableConfiguration;
+import java.util.concurrent.CompletableFuture;
 
-import java.io.File;
-import java.io.IOException;
-
-@Singleton
-public class ReloadableConfigurationImpl extends ReloadableConfiguration {
-
-  @Inject
-  public ReloadableConfigurationImpl(Environment env) throws IOException {
-    super(new File(env.configFile().toFile(), "elasticsearch.yml"));
-  }
+public interface SettingsContentProvider {
+  CompletableFuture<String> getSettingsContent();
 }

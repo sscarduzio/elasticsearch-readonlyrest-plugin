@@ -25,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry;
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Assert;
 
@@ -47,7 +47,7 @@ public class BlockTest extends TestCase {
                 "indices_rewrite: [\"needle\", \"replacement\"]\n" +
                 "indices: [\"allowed-index\"]"
             ),
-            new AuthMethodCreatorsRegistry(ProxyAuthConfigSettingsCollection.from(RawSettings.empty())),
+            new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty())),
             null, null,
             null, null
         ),

@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import com.google.common.collect.Lists;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
 import java.util.List;
@@ -54,7 +54,7 @@ public class ExternalAuthenticationServiceSettingsCollection {
 
   public ExternalAuthenticationServiceSettings get(String name) {
     if (!ExternalAuthenticationServiceSettingsMap.containsKey(name))
-      throw new ConfigMalformedException("Cannot find External Authentication Service definition with name '" + name + "'");
+      throw new SettingsMalformedException("Cannot find External Authentication Service definition with name '" + name + "'");
     return ExternalAuthenticationServiceSettingsMap.get(name);
   }
 
@@ -63,7 +63,7 @@ public class ExternalAuthenticationServiceSettingsCollection {
         .map(ExternalAuthenticationServiceSettings::getName)
         .collect(Collectors.toList());
     if(names.stream().distinct().count() != names.size()) {
-      throw new ConfigMalformedException("Duplicated LDAP name in '" + ATTRIBUTE_NAME + "' section");
+      throw new SettingsMalformedException("Duplicated LDAP name in '" + ATTRIBUTE_NAME + "' section");
     }
   }
 }

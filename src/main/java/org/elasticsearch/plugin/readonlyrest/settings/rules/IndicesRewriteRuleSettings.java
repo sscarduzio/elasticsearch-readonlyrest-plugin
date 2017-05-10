@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import com.google.common.base.Strings;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.util.List;
@@ -35,7 +35,7 @@ public class IndicesRewriteRuleSettings implements RuleSettings {
   private final Value<String> replacement;
 
   public static IndicesRewriteRuleSettings from(List<String> list) {
-    if (list.size() < 2) throw new ConfigMalformedException("Minimum two arguments required for " + ATTRIBUTE_NAME +
+    if (list.size() < 2) throw new SettingsMalformedException("Minimum two arguments required for " + ATTRIBUTE_NAME +
         ". I.e. [target1, target2, replacement]");
     return new IndicesRewriteRuleSettings(
         list.subList(0, list.size() - 1).stream()

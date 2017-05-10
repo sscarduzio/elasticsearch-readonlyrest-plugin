@@ -53,7 +53,7 @@ public class BlockSettings {
                                    UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
                                    ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
                                    UserSettingsCollection userSettingsCollection) {
-    RulesConfigCreatorsRegistry registry = new RulesConfigCreatorsRegistry(
+    RulesSettingsCreatorsRegistry registry = new RulesSettingsCreatorsRegistry(
         settings,
         authMethodCreatorsRegistry,
         ldapSettingsCollection,
@@ -64,11 +64,11 @@ public class BlockSettings {
     String name = settings.stringReq(NAME);
     BlockPolicy policy = settings.stringOpt(POLICY)
         .map(value -> BlockPolicy.fromString(value)
-            .<ConfigMalformedException>orElseThrow(() -> new ConfigMalformedException("Unknown block policy type: " + value)))
+            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown block policy type: " + value)))
         .orElse(DEFAULT_BLOCK_POLICY);
     Verbosity verbosity = settings.stringOpt(VERBOSITY)
         .map(value -> Verbosity.fromString(value)
-            .<ConfigMalformedException>orElseThrow(() -> new ConfigMalformedException("Unknown verbosity value: " + value)))
+            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
         .orElse(DEFAULT_VERBOSITY);
     Set<String> filteredBlockAttributes = Sets.newHashSet(
         NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER
@@ -111,7 +111,7 @@ public class BlockSettings {
   private void validateIfSessionMaxIdleRuleConfiguredWithUserRule(List<RuleSettings> rules) {
     if (rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
       if (rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
-        throw new ConfigMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
+        throw new SettingsMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
             "' rule does not mean anything if you don't also set some authentication rule");
       }
     }

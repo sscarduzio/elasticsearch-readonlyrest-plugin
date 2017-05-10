@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.IPMask;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.net.UnknownHostException;
@@ -56,7 +56,7 @@ public class XForwardedForRuleSettings implements RuleSettings {
     try {
       return IPMask.getIPMask(value);
     } catch (UnknownHostException e) {
-      throw new ConfigMalformedException("Cannot create IP address from string: " + value);
+      throw new SettingsMalformedException("Cannot create IP address from string: " + value);
     }
   };
 }

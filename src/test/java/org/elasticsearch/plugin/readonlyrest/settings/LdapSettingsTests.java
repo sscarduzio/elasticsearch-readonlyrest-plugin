@@ -42,7 +42,7 @@ public class LdapSettingsTests {
     ));
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenNameWasNotPresentInSettings() {
     new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
@@ -53,7 +53,7 @@ public class LdapSettingsTests {
     ));
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenSearchGroupBaseDnIsNotPresent() {
     new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
@@ -79,7 +79,7 @@ public class LdapSettingsTests {
     ));
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenHostWasNotPresentInSettings() {
     new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
@@ -88,7 +88,7 @@ public class LdapSettingsTests {
     ));
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenSearchUserBaseDNWasNotPresentInSettings() {
     new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +
@@ -123,7 +123,7 @@ public class LdapSettingsTests {
     ));
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testIfBindDnIsPresentBindPasswordMustBeProvided() {
     new GroupsProviderLdapSettings(RawSettings.fromString("" +
         "name: ldap1\n" +

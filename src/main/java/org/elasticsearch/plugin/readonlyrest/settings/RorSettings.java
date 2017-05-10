@@ -21,7 +21,7 @@ import com.google.common.collect.Lists;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 
@@ -54,10 +54,10 @@ public class RorSettings {
   private RorSettings(RawSettings raw) {
     LdapSettingsCollection ldapSettingsCollection = LdapSettingsCollection.from(raw);
     UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = UserGroupsProviderSettingsCollection.from(raw);
-    ProxyAuthConfigSettingsCollection proxyAuthConfigSettingsCollection = ProxyAuthConfigSettingsCollection.from(raw);
+    ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
     ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection =
         ExternalAuthenticationServiceSettingsCollection.from(raw);
-    AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(proxyAuthConfigSettingsCollection);
+    AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(proxyAuthDefinitionSettingsCollection);
 
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
@@ -73,7 +73,7 @@ public class RorSettings {
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
     this.verbosity = raw.stringOpt(VERBOSITY)
         .map(value -> Verbosity.fromString(value)
-            .<ConfigMalformedException>orElseThrow(() -> new ConfigMalformedException("Unknown verbosity value: " + value)))
+            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
         .orElse(DEFAULT_VERBOSITY);
   }
 

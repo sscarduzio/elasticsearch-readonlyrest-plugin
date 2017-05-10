@@ -19,7 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.settings.rules;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthConfigSettingsCollection;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 
 import java.util.List;
 
@@ -37,11 +37,11 @@ public class ProxyAuthRuleSettings implements RuleSettings, AuthKeyProviderSetti
 
   @SuppressWarnings("unchecked")
   public static ProxyAuthRuleSettings from(RawSettings settings,
-                                           ProxyAuthConfigSettingsCollection proxyAuthConfigSettingsCollection) {
+                                           ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     String providerName = settings.stringReq(PROXY_AUTH_CONFIG);
     return new ProxyAuthRuleSettings(
         (List<String>) settings.notEmptyListReq(USERS),
-        proxyAuthConfigSettingsCollection.get(providerName).getUserIdHeader()
+        proxyAuthDefinitionSettingsCollection.get(providerName).getUserIdHeader()
     );
   }
 

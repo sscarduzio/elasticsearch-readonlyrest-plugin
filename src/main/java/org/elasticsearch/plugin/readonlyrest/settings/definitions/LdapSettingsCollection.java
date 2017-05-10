@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import com.google.common.collect.Lists;
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
 import java.util.List;
@@ -57,14 +57,14 @@ public class LdapSettingsCollection {
 
   public LdapSettings get(String name) {
     if (!ldapSettingsMap.containsKey(name))
-      throw new ConfigMalformedException("Cannot find LDAP definition with name '" + name + "'");
+      throw new SettingsMalformedException("Cannot find LDAP definition with name '" + name + "'");
     return ldapSettingsMap.get(name);
   }
 
   private void validate(List<LdapSettings> ldapSettings) {
     List<String> names = seq(ldapSettings).map(LdapSettings::getName).collect(Collectors.toList());
     if (names.stream().distinct().count() != names.size()) {
-      throw new ConfigMalformedException("Duplicated LDAP name in '" + ATTRIBUTE_NAME + "' section");
+      throw new SettingsMalformedException("Duplicated LDAP name in '" + ATTRIBUTE_NAME + "' section");
     }
   }
 }

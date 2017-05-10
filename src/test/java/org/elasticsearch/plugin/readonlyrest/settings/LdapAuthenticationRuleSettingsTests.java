@@ -47,7 +47,7 @@ public class LdapAuthenticationRuleSettingsTests {
     assertEquals("ldap_authentication", settings.getName());
   }
 
-  @Test(expected = ConfigMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void testRuleSettingsCreationFailsDueToNotFoundLdapWithGivenName() {
     LdapAuthenticationRuleSettings.from(
         RawSettings.fromString("" +

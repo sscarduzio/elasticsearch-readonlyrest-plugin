@@ -16,7 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 
 import java.time.Duration;
@@ -30,7 +30,7 @@ public class SessionMaxIdleRuleSettings implements RuleSettings {
   public static SessionMaxIdleRuleSettings from(String millisStr) {
     Duration duration = Duration.ofMillis(timeIntervalStringToMillis(millisStr));
     if (duration.isNegative() || duration.isZero()) {
-      throw new ConfigMalformedException("'" + ATTRIBUTE_NAME + "' req must be greater than zero");
+      throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' req must be greater than zero");
     }
     return new SessionMaxIdleRuleSettings(duration);
   }

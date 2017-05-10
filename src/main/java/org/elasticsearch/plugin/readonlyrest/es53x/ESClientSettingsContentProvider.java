@@ -19,20 +19,20 @@ package org.elasticsearch.plugin.readonlyrest.es53x;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.plugin.readonlyrest.configuration.ConfigurationContentProvider;
+import org.elasticsearch.plugin.readonlyrest.configuration.SettingsContentProvider;
 
 import java.util.concurrent.CompletableFuture;
 
-public class ESClientConfigurationContentProvider implements ConfigurationContentProvider {
+public class ESClientSettingsContentProvider implements SettingsContentProvider {
 
   private final Client client;
 
-  public ESClientConfigurationContentProvider(Client client) {
+  public ESClientSettingsContentProvider(Client client) {
     this.client = client;
   }
 
   @Override
-  public CompletableFuture<String> getConfiguration() {
+  public CompletableFuture<String> getSettingsContent() {
     return CompletableFuture.supplyAsync(() -> {
       GetResponse resp = client.prepareGet(".readonlyrest", "settings", "1").get();
       if (!resp.isExists()) {

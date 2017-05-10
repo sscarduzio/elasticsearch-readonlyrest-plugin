@@ -26,12 +26,12 @@ import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-public abstract class ReloadableConfiguration {
+public abstract class ReloadableSettings {
 
   private final AtomicReference<RorSettings> rorSettings = new AtomicReference<>();
   private WeakHashMap<Consumer<RorSettings>, Boolean> onSettingsUpdateListeners = new WeakHashMap<>();
 
-  public ReloadableConfiguration(File yaml) throws IOException {
+  public ReloadableSettings(File yaml) throws IOException {
     this.rorSettings.set(
         new ESSettings(RawSettings.fromFile(yaml)).getRorSettings()
     );
@@ -42,8 +42,8 @@ public abstract class ReloadableConfiguration {
     onSettingsUpdate.accept(rorSettings.get());
   }
 
-  public void reload(ConfigurationContentProvider provider) {
-    provider.getConfiguration().thenAccept(configurationContent -> {
+  public void reload(SettingsContentProvider provider) {
+    provider.getSettingsContent().thenAccept(configurationContent -> {
           this.rorSettings.set(new ESSettings(RawSettings.fromString(configurationContent)).getRorSettings());
           notifyListeners();
         }

@@ -70,7 +70,7 @@ public class RawSettings {
   @SuppressWarnings("unchecked")
   public <T> T req(String attr) {
     Object val = raw.get(attr);
-    if (val == null) throw new ConfigMalformedException("Not find required attribute '" + attr + "'");
+    if (val == null) throw new SettingsMalformedException("Not find required attribute '" + attr + "'");
     return (T) val;
   }
 
@@ -104,7 +104,7 @@ public class RawSettings {
 
   public List<?> notEmptyListReq(String attr) {
     List<?> nel = req(attr);
-    if (nel.isEmpty()) throw new ConfigMalformedException("List value of'" + attr + "' attribute cannot be empty");
+    if (nel.isEmpty()) throw new SettingsMalformedException("List value of'" + attr + "' attribute cannot be empty");
     return nel;
   }
 
@@ -120,7 +120,7 @@ public class RawSettings {
     } else if (value instanceof String) {
       set.add(value);
     }
-    if (set.isEmpty()) throw new ConfigMalformedException("Set value of'" + attr + "' attribute cannot be empty");
+    if (set.isEmpty()) throw new SettingsMalformedException("Set value of'" + attr + "' attribute cannot be empty");
     return set;
   }
 
@@ -138,7 +138,7 @@ public class RawSettings {
     try {
       return new URI(stringReq(attr));
     } catch (URISyntaxException e) {
-      throw new ConfigMalformedException("Cannot convert '" + attr + "' to URI");
+      throw new SettingsMalformedException("Cannot convert '" + attr + "' to URI");
     }
   }
 
