@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps;
 
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.ConnectionConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UnboundidAuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UnboundidGroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserGroupsSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
@@ -29,9 +30,10 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-public class UnboundidLdapClientTests {
+public class UnboundidGroupsProviderLdapClientTests {
 
   @ClassRule
   public static LdapContainer ldapContainer = LdapContainer.create("/test_example.ldif");
@@ -52,29 +54,12 @@ public class UnboundidLdapClientTests {
   );
 
   @Test
-  public void testAuthenticationSuccess() throws Exception {
-    CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
-        new LdapCredentials("cartman", "user2")
+  public void testUserGroupsFetching() throws Exception {
+    CompletableFuture<Set<LdapGroup>> cartmanGroupsF = client.userGroups(
+        new LdapUser("cartman", "cn=Eric Cartman,ou=People,dc=example,dc=com")
     );
-    Optional<LdapUser> user = userF.get();
-    Assert.assertEquals(user.isPresent(), true);
+    Set<LdapGroup> cartmanGroups = cartmanGroupsF.get();
+    Assert.assertEquals(2, cartmanGroups.size());
   }
 
-  @Test
-  public void testAuthenticationErrorDueToInvalidPassword() throws Exception {
-    CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
-        new LdapCredentials("cartman", "wrongpassword")
-    );
-    Optional<LdapUser> user = userF.get();
-    Assert.assertEquals(user.isPresent(), false);
-  }
-
-  @Test
-  public void testAuthenticationErrorDueToUnknownUser() throws Exception {
-    CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
-        new LdapCredentials("nonexistent", "whatever")
-    );
-    Optional<LdapUser> user = userF.get();
-    Assert.assertEquals(user.isPresent(), false);
-  }
 }
