@@ -51,7 +51,7 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   }
 
   private boolean checkIfUserHasAccess(Set<LdapGroup> ldapGroups) {
-    return !ldapGroups.isEmpty() ||
+    return !ldapGroups.isEmpty() &&
         !Sets.intersection(
             settings.getGroups(),
             ldapGroups.stream().map(LdapGroup::getName).collect(Collectors.toSet())
