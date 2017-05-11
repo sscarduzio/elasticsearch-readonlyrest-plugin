@@ -79,4 +79,27 @@ public class LdapAuthorizationAsyncRuleTests {
     assertEquals(false, match.isMatch());
   }
 
+  @Test
+  public void testUserShouldNotBeAuthorizedIfLdapHasAGivenUserButLdapGroupsAreEmpty() throws Exception {
+    LdapAuthorizationAsyncRule rule = new LdapAuthorizationAsyncRule(
+        LdapAuthorizationRuleSettings.from(
+            RawSettings.fromString("" +
+                "ldap_authorization:\n" +
+                "  name: ldap1\n" +
+                "  groups: [group2, group3]").inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
+            LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+        ),
+        MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
+            new LdapUser(
+                "user",
+                "cn=Example user,ou=People,dc=example,dc=com"
+            ),
+            Sets.newHashSet()
+        )),
+        MockedESContext.INSTANCE
+    );
+    RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
+    assertEquals(false, match.isMatch());
+  }
+
 }
