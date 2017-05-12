@@ -28,7 +28,6 @@ import org.elasticsearch.plugin.readonlyrest.httpclient.HttpRequest;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpResponse;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettings;
 
-import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;

@@ -26,8 +26,6 @@ import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESA
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.io.IOException;
-
 public class LdapIntegrationSecondOptionTests {
 
   @ClassRule
@@ -44,23 +42,23 @@ public class LdapIntegrationSecondOptionTests {
   private static ReadonlyRestedESAssertions assertions = new ReadonlyRestedESAssertions(container);
 
   @Test
-  public void usersFromGroup1CanSeeTweets() throws IOException {
+  public void usersFromGroup1CanSeeTweets() throws Exception {
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
     assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
-  public void usersFromOutsideOfGroup1CannotSeeTweets() throws IOException {
+  public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
     assertions.assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
   @Test
-  public void unauthenticatedUserCannotSeeTweets() throws IOException {
+  public void unauthenticatedUserCannotSeeTweets() throws Exception {
     assertions.assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
 
   @Test
-  public void usersFromGroup3CanSeeFacebookPosts() throws IOException {
+  public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
     assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
     assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");

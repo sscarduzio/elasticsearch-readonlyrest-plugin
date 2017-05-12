@@ -16,16 +16,18 @@
  */
 package org.elasticsearch.plugin.readonlyrest.es;
 
-import com.google.common.collect.Maps;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
+import org.elasticsearch.plugin.readonlyrest.utils.httpclient.HttpGetWithEntity;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.util.Optional;
 
@@ -36,129 +38,113 @@ import static org.junit.Assert.assertTrue;
 
 public class IndicesRewriteTests {
 
-  public static RestClient ro;
-  public static RestClient rw;
-  public static RestClient kibana;
-  public static RestClient logstash;
+  private static RestClient ro;
+  private static RestClient rw;
+  private static RestClient kibana;
+  private static RestClient logstash;
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = create(
-    "/indices_rewrite/elasticsearch.yml",
-    Optional.of(new ESWithReadonlyRestContainer.ESInitalizer() {
-      @Override
-      public void initialize(RestClient client) {
-        ro = container.getBasicAuthClient("simone", "ro_pass");
-        rw = container.getBasicAuthClient("simone", "rw_pass");
-        kibana = container.getBasicAuthClient("kibana", "kibana");
-        logstash = container.getBasicAuthClient("simone", "logstash");
+      "/indices_rewrite/elasticsearch.yml",
+      Optional.of(new ESWithReadonlyRestContainer.ESInitalizer() {
+        @Override
+        public void initialize(RestClient client) {
+          ro = container.getBasicAuthClient("simone", "ro_pass");
+          rw = container.getBasicAuthClient("simone", "rw_pass");
+          kibana = container.getBasicAuthClient("kibana", "kibana");
+          logstash = container.getBasicAuthClient("simone", "logstash");
 
-        try {
-          System.out.println(body(kibana.performRequest(
-            "PUT",
-            "/.kibana_simone/doc/1",
-            Maps.newHashMap(new ImmutableMap.Builder<String, String>()
-                              .put("refresh", "true")
-                              .put("timeout", "50s")
-                              .build()),
-            new StringEntity("{\"helloWorld\": true}")
-          )));
-
-        } catch (Exception e) {
-          e.printStackTrace();
+          try {
+            HttpPut request = new HttpPut(client.from("/.kibana_simone/doc/1"));
+            request.setHeader("refresh", "true");
+            request.setHeader("timeout", "50s");
+            request.setEntity(new StringEntity("{\"helloWorld\": true}"));
+            System.out.println(body(kibana.execute(request)));
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
         }
-      }
-    })
+      })
   );
 
-  private static String body(Response r) throws Exception {
+  private static String body(HttpResponse r) throws Exception {
     return EntityUtils.toString(r.getEntity());
   }
 
   @Test
   public void testNonIndexRequest() throws Exception {
-    checkForErrors(kibana.performRequest("GET", "/"));
-    checkForErrors(kibana.performRequest("GET", "/_cluster/health"));
+    checkForErrors(kibana.execute(new HttpGet(kibana.from("/"))));
+    checkForErrors(kibana.execute(new HttpGet(kibana.from("/_cluster/health"))));
   }
 
   @Test
   public void testCreateIndex() throws Exception {
-    String indicesList = body(kibana.performRequest("GET", "/_cat/indices"));
+    String indicesList = body(kibana.execute(new HttpGet(kibana.from("/_cat/indices"))));
     assertTrue(indicesList.contains(".kibana_simone"));
   }
 
   @Test
   public void testSearch() throws Exception {
-    checkKibanaResponse(ro.performRequest("GET", "/.kibana/_search"));
+    checkKibanaResponse(ro.execute(new HttpGet(ro.from("/.kibana/_search"))));
   }
 
   @Test
   public void testMultiSearch() throws Exception {
-    checkKibanaResponse(ro.performRequest(
-      "GET",
-      "/_msearch",
-      Maps.newHashMap(),
-      new StringEntity("{\"index\" : \".kibana\"}\n" + "{}\n"),
-      new BasicHeader("Content-Type", "application/x-ndjso")
-    ));
+    HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/_msearch"));
+    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
+    request.setEntity(new StringEntity("{\"index\" : \".kibana\"}\n" + "{}\n"));
+    checkKibanaResponse(ro.execute(request));
   }
 
   @Test
   public void testGet() throws Exception {
-    checkKibanaResponse(ro.performRequest("GET", "/.kibana/doc/1"));
+    checkKibanaResponse(ro.execute(new HttpGet(ro.from("/.kibana/doc/1"))));
   }
 
   @Test
   public void testMultiGetDocs() throws Exception {
-    checkKibanaResponse(ro.performRequest(
-      "GET",
-      "/_mget",
-      Maps.newHashMap(),
-      new StringEntity("{\"docs\":[{\"_index\":\".kibana\",\"_type\":\"doc\",\"_id\":\"1\"}]}"),
-      new BasicHeader("Content-Type", "application/json")
-    ));
+    HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/_mget"));
+    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+    request.setEntity(new StringEntity("{\"docs\":[{\"_index\":\".kibana\",\"_type\":\"doc\",\"_id\":\"1\"}]}"));
+    checkKibanaResponse(ro.execute(request));
   }
 
   @Test
   public void testMultiGetIds() throws Exception {
-    checkKibanaResponse(ro.performRequest(
-      "GET",
-      "/.kibana/_mget",
-      Maps.newHashMap(),
-      new StringEntity("{\"ids\":[\"1\"]}"),
-      new BasicHeader("Content-Type", "application/json")
-    ));
+    HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/.kibana/_mget"));
+    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+    request.setEntity(new StringEntity("{\"ids\":[\"1\"]}"));
+    checkKibanaResponse(ro.execute(request));
   }
 
   @Test
   public void testBulkAll() throws Exception {
-    checkForErrors(logstash.performRequest(
-      "POST",
-      "/_bulk",
-      Maps.newHashMap(),
-      new StringEntity("{ \"index\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
-                         "{ \"helloWorld\" : false }\n" +
-                         "{ \"delete\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
-                         "{ \"create\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"3\" } }\n" +
-                         "{ \"helloWorld\" : false }\n" +
-                         "{ \"update\" : {\"_id\" : \"2\", \"_type\" : \"doc\", \"_index\" : \"logstash-2017-01-01\"} }\n"),
-      new BasicHeader("Content-Type", "application/json")
-    ));
+    HttpPost request = new HttpPost(logstash.from("/_bulk"));
+    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+    request.setEntity(
+        new StringEntity("{ \"index\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
+            "{ \"helloWorld\" : false }\n" +
+            "{ \"delete\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
+            "{ \"create\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"3\" } }\n" +
+            "{ \"helloWorld\" : false }\n" +
+            "{ \"update\" : {\"_id\" : \"2\", \"_type\" : \"doc\", \"_index\" : \"logstash-2017-01-01\"} }\n")
+    );
+    checkForErrors(logstash.execute(request));
   }
 
   @Test
   public void testCreateIndexPattern() throws Exception {
-    Response resp =  rw.performRequest(
-      "POST",
-      "/.kibana/index-pattern/logstash-*/_create",
-      Maps.newHashMap(),
-      new StringEntity("{\"title\":\"logstash-*\",\"timeFieldName\":\"@timestamp\"}\n"),
-      new BasicHeader("Content-Type", "application/json")
+    HttpPost request = new HttpPost(rw.from("/.kibana/index-pattern/logstash-*/_create"));
+    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+    request.setEntity(
+        new StringEntity("{\"title\":\"logstash-*\",\"timeFieldName\":\"@timestamp\"}\n")
     );
+    HttpResponse resp = rw.execute(request);
     checkForErrors(resp);
     assertTrue(body(resp).contains("\"_index\":\".kibana\""));
   }
 
-  private void checkKibanaResponse(Response resp) throws Exception {
+  private void checkKibanaResponse(HttpResponse resp) throws Exception {
     String body = body(resp);
     System.out.println(body);
     assertEquals(200, resp.getStatusLine().getStatusCode());
@@ -166,7 +152,8 @@ public class IndicesRewriteTests {
     assertTrue(body.contains(".kibana"));
     assertTrue(body.contains("helloWorld"));
   }
-  private void checkForErrors(Response resp) throws Exception {
+
+  private void checkForErrors(HttpResponse resp) throws Exception {
     assertTrue(resp.getStatusLine().getStatusCode() <= 201);
   }
 }

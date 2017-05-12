@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
@@ -28,12 +27,14 @@ import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.junit.Assert;
+import org.junit.Test;
 
 import java.util.Iterator;
 import java.util.List;
 
-public class BlockTest extends TestCase {
+public class BlockTest  {
 
+  @Test
   public void testRulesShallFollowAuthInspectMutateOrder() {
     UserRuleFactory userRuleFactory = new UserRuleFactory(MockedESContext.INSTANCE);
     DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory, MockedESContext.INSTANCE);

@@ -26,6 +26,7 @@ import static org.junit.Assert.assertEquals;
  * Created by sscarduzio on 14/04/2017.
  */
 public class TransactionalTest {
+
   @Test
   public void testTransactional() {
     Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {

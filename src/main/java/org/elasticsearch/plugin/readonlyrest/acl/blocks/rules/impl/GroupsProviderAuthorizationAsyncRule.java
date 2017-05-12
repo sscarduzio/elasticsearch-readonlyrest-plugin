@@ -47,10 +47,8 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
   }
 
   private boolean checkUserGroups(Set<String> groups) {
-
     Sets.SetView<String> intersection = Sets.intersection(settings.getGroups(), Sets.newHashSet(groups));
     return !intersection.isEmpty();
-
   }
 
   @Override

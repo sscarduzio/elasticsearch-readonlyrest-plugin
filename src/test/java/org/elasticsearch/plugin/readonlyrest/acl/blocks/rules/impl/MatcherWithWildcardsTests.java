@@ -18,47 +18,58 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
+import org.junit.Test;
+
+import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by sscarduzio on 12/12/2016.
  */
-public class MatcherWithWildcardsTests extends TestCase {
+public class MatcherWithWildcardsTests {
 
+  @Test
   public void testMatchSimpleString() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
     assertTrue(m.match("a"));
   }
 
+  @Test
   public void testMatchStarPatternRight() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
     assertTrue(m.match("bxxx")); // INVERTED (should be true)!!!
   }
 
+  @Test
   public void testMatchStarPatternLeft() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c"));
     assertTrue(m.match("xxxc"));
   }
 
+  @Test
   public void testNoMatchStarPatternRight() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("c*"));
     assertFalse(m.match("xxxcxxx"));
   }
 
+  @Test
   public void testNoMatchStarPatternLeft() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c"));
     assertFalse(m.match("xxxcxxx"));
   }
 
+  @Test
   public void testMatchStarPatternBilateral() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c*"));
     assertTrue(m.match("xxxcxxx"));
   }
 
-
+  @Test
   public void testMatchDotKibana() {
-    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default"));
+    MatcherWithWildcards m = new MatcherWithWildcards(
+        Sets.newHashSet("<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default")
+    );
     assertTrue(m.match(".kibana"));
   }
 }

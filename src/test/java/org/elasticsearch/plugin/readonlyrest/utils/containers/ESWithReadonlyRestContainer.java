@@ -17,16 +17,15 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.message.BasicHeader;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.utils.Tuple;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProjectUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProperties;
+import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -35,9 +34,9 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 
@@ -45,7 +44,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUt
 
 public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonlyRestContainer> {
 
-  private static Logger logger = Loggers.getLogger(ESWithReadonlyRestContainer.class);
+  private static Logger logger = LogManager.getLogger(ESWithReadonlyRestContainer.class);
 
   private static int ES_PORT = 9200;
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
@@ -63,7 +62,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   }
 
   public static ESWithReadonlyRestContainer create(String elasticsearchConfig,
-      Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
+                                                   Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File config = ContainerUtils.getResourceFile(elasticsearchConfig);
     Optional<File> pluginFileOpt = GradleProjectUtils.assemble();
     if (!pluginFileOpt.isPresent()) {
@@ -99,24 +98,15 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   }
 
   public RestClient getClient(Header... headers) {
-    return clientBuilder().setDefaultHeaders(headers).build();
+    return new RestClient(getESHost(), getESPort(), Optional.empty(), headers);
   }
 
   public RestClient getBasicAuthClient(String name, String password) {
-    return clientBuilder().setDefaultHeaders(new Header[]{authorizationHeader(name, password)}).build();
+    return new RestClient(getESHost(), getESPort(), Optional.of(Tuple.from(name, password)));
   }
 
   private RestClient getAdminClient() {
-    return clientBuilder().setDefaultHeaders(new Header[]{authorizationHeader(ADMIN_LOGIN, ADMIN_PASSWORD)}).build();
-  }
-
-  private Header authorizationHeader(String name, String password) {
-    String base64userPass = Base64.getEncoder().encodeToString((name + ":" + password).getBytes());
-    return new BasicHeader("Authorization", "Basic " + base64userPass);
-  }
-
-  private RestClientBuilder clientBuilder() {
-    return RestClient.builder(new HttpHost(getESHost(), getESPort()));
+    return new RestClient(getESHost(), getESPort(), Optional.of(Tuple.from(ADMIN_LOGIN, ADMIN_PASSWORD)));
   }
 
   private WaitStrategy waitStrategy(Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
@@ -134,13 +124,13 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
             e.printStackTrace();
           }
         }
-        initalizer.ifPresent(i -> i.initialize(getAdminClient()));
+        initalizer.ifPresent(i -> i.initialize(client));
         logger.info("ES container stated");
       }
 
       private boolean isReady(RestClient client) {
         try {
-          Response result = client.performRequest("GET", "_cluster/health");
+          HttpResponse result = client.execute(new HttpGet(client.from("_cluster/health")));
           if (result.getStatusLine().getStatusCode() != 200) return false;
           Map<String, String> healthJson = mapper.readValue(
               result.getEntity().getContent(),
@@ -148,7 +138,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               }
           );
           return "green".equals(healthJson.get("status"));
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
           return false;
         }
       }

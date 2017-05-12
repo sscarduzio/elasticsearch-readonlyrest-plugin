@@ -26,9 +26,9 @@ import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldif.LDIFReader;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.SearchingUserConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -43,7 +43,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUt
 
 public class LdapContainer extends GenericContainer<LdapContainer> {
 
-  private static Logger logger = Loggers.getLogger(LdapContainer.class);
+  private static Logger logger = MockedESContext.INSTANCE.logger(LdapContainer.class);
 
   private static int LDAP_PORT = 389;
   private static Duration LDAP_CONNECT_TIMEOUT = Duration.ofSeconds(5);

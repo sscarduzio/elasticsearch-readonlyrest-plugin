@@ -19,8 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps;
 
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.ConnectionConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UnboundidAuthenticationLdapClient;
-import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UnboundidGroupsProviderLdapClient;
-import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserGroupsSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
@@ -47,7 +45,6 @@ public class UnboundidAuthenticationLdapClientTests {
           .setTrustAllCerts(false)
           .build(),
       new UserSearchFilterConfig.Builder("ou=People,dc=example,dc=com").build(),
-//      new UserGroupsSearchFilterConfig.Builder("ou=Groups,dc=example,dc=com").build(),
       Optional.of(ldapContainer.getSearchingUserConfig()),
       MockedESContext.INSTANCE
   );

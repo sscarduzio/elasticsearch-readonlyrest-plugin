@@ -20,7 +20,6 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
@@ -34,12 +33,15 @@ import org.mockito.Captor;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -49,10 +51,100 @@ import static org.mockito.Mockito.when;
  */
 
 @RunWith(MockitoJUnitRunner.class)
-public class IndicesRewriteRuleTests extends TestCase {
+public class IndicesRewriteRuleTests {
 
   @Captor
   private ArgumentCaptor<Set<String>> argumentCaptor;
+
+  @Test
+  public void testNOOP() {
+    match(
+        asList("public-asd", "replacement"),
+        singletonList("x"),
+        singletonList("x")
+    );
+  }
+
+  @Test
+  public void testSimpleIndex() {
+    match(
+        asList("public-asd", "replacement"),
+        singletonList("public-asd"),
+        singletonList("replacement")
+    );
+  }
+
+  @Test
+  public void testRegexIndex() {
+    match(
+        asList("public-.*", "replacement"),
+        singletonList("public-asd"),
+        singletonList("replacement")
+    );
+  }
+
+  @Test
+  public void testBigRegexIndex() {
+    match(
+        asList("^public-.*$", "replacement"),
+        singletonList("public-asd"),
+        singletonList("replacement")
+    );
+  }
+
+  @Test
+  public void testBigRegexIndexMultiIndex() {
+    match(
+        asList("^public-.*$", "replacement"),
+        asList("public-asd", "quack"),
+        asList("replacement", "quack")
+    );
+  }
+
+  @Test
+  public void testBigRegexIndexMultiIndexMultiRule() {
+    match(
+        asList("^public-.*$", ".*ack", "replacement"),
+        asList("public-asd", "quack", "ack"),
+        singletonList("replacement")
+    );
+  }
+
+  @Test
+  public void testNOOPBigRegexIndexMultiIndexMultiRule() {
+    match(
+        asList("^public-.*$", ".*ack", "replacement"),
+        asList("x", "y", "z"),
+        asList("x", "y", "z")
+    );
+  }
+
+  @Test
+  public void testBigRegexIndexMultiIndexMultiRuleWithOutlier() {
+    match(
+        asList("^public-.*$", ".*ack", "replacement"),
+        asList("public-asd", "quack", "ack", "outlier"),
+        asList("replacement", "outlier")
+    );
+  }
+
+  @Test
+  public void testKibanaAndLogstash() {
+    match(
+        asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
+        asList(".kibana", "logstash-2001-01-01"),
+        asList(".kibana_user1", "logstash-2001-01-01_user1")
+    );
+  }
+
+  @Test
+  public void testUserReplacement() {
+    match(
+        asList("(^\\.kibana.*|^logstash.*)", "$1_@{user}"),
+        asList(".kibana", "logstash-2001-01-01"),
+        asList(".kibana_simone", "logstash-2001-01-01_simone")
+    );
+  }
 
   private void match(List<String> configured, List<String> foundInRequest, List<String> expected) {
     Collections.sort(foundInRequest);
@@ -67,10 +159,10 @@ public class IndicesRewriteRuleTests extends TestCase {
 
     when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
     when(rc.resolveVariable(anyString())).thenAnswer(i ->
-       Optional.of(
-         ((String) i.getArguments()[0])
-                     .replaceAll("@\\{user}", "simone")
-       )
+        Optional.of(
+            ((String) i.getArguments()[0])
+                .replaceAll("@\\{user}", "simone")
+        )
     );
 
     SyncRule r = new IndicesRewriteSyncRule(IndicesRewriteRuleSettings.from(configured), MockedESContext.INSTANCE);
@@ -84,96 +176,6 @@ public class IndicesRewriteRuleTests extends TestCase {
     String capturedJ = Joiner.on(",").join(argumentsAsList);
     assertEquals(expectedJ, capturedJ);
     assertTrue(res.isMatch());
-  }
-
-  @Test
-  public void testNOOP() {
-    match(
-        Arrays.asList("public-asd", "replacement"),
-        Arrays.asList("x"),
-        Arrays.asList("x")
-    );
-  }
-
-  @Test
-  public void testSimpleIndex() {
-    match(
-        Arrays.asList("public-asd", "replacement"),
-        Arrays.asList("public-asd"),
-        Arrays.asList("replacement")
-    );
-  }
-
-  @Test
-  public void testRegexIndex() {
-    match(
-        Arrays.asList("public-.*", "replacement"),
-        Arrays.asList("public-asd"),
-        Arrays.asList("replacement")
-    );
-  }
-
-  @Test
-  public void testBigRegexIndex() {
-    match(
-        Arrays.asList("^public-.*$", "replacement"),
-        Arrays.asList("public-asd"),
-        Arrays.asList("replacement")
-    );
-  }
-
-  @Test
-  public void testBigRegexIndexMultiIndex() {
-    match(
-        Arrays.asList("^public-.*$", "replacement"),
-        Arrays.asList("public-asd", "quack"),
-        Arrays.asList("replacement", "quack")
-    );
-  }
-
-  @Test
-  public void testBigRegexIndexMultiIndexMultiRule() {
-    match(
-        Arrays.asList("^public-.*$", ".*ack", "replacement"),
-        Arrays.asList("public-asd", "quack", "ack"),
-        Arrays.asList("replacement")
-    );
-  }
-
-  @Test
-  public void testNOOPBigRegexIndexMultiIndexMultiRule() {
-    match(
-        Arrays.asList("^public-.*$", ".*ack", "replacement"),
-        Arrays.asList("x", "y", "z"),
-        Arrays.asList("x", "y", "z")
-    );
-  }
-
-  @Test
-  public void testBigRegexIndexMultiIndexMultiRuleWithOutlier() {
-    match(
-        Arrays.asList("^public-.*$", ".*ack", "replacement"),
-        Arrays.asList("public-asd", "quack", "ack", "outlier"),
-        Arrays.asList("replacement", "outlier")
-    );
-  }
-
-  @Test
-  public void testKibanaAndLogstash() {
-    match(
-        Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
-        Arrays.asList(".kibana", "logstash-2001-01-01"),
-        Arrays.asList(".kibana_user1", "logstash-2001-01-01_user1")
-    );
-  }
-
-  @Test
-  public void testUserReplacement() {
-    match(
-        Arrays.asList("(^\\.kibana.*|^logstash.*)", "$1_@{user}"),
-        Arrays.asList(".kibana", "logstash-2001-01-01"),
-        Arrays.asList(".kibana_simone", "logstash-2001-01-01_simone")
-    );
   }
 
 }

@@ -19,21 +19,22 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ApiKeysRuleSettings;
+import org.junit.Test;
 import org.mockito.Mockito;
 
+import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class ApiKeysRuleTests extends TestCase {
+public class ApiKeysRuleTests {
 
   private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
@@ -46,11 +47,13 @@ public class ApiKeysRuleTests extends TestCase {
     return r.match(rc);
   }
 
+  @Test
   public void testOK() {
     RuleExitResult res = match("1234567890", "1234567890");
     assertTrue(res.isMatch());
   }
 
+  @Test
   public void testKO() {
     RuleExitResult res = match("1234567890", "x");
     assertFalse(res.isMatch());

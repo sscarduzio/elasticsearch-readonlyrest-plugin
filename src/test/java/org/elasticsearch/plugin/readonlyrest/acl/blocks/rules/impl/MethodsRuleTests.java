@@ -18,29 +18,49 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MethodsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.MethodsRuleSettings;
+import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
+import static junit.framework.TestCase.assertFalse;
+import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.DELETE;
 import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.GET;
 import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.POST;
 import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.PUT;
-import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.DELETE;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class MethodsRuleTests extends TestCase {
+public class MethodsRuleTests {
+
+  @Test
+  public void testSimpleGET() {
+    RuleExitResult res = match(Collections.singletonList(GET), GET);
+    assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testMultiple() {
+    RuleExitResult res = match(Arrays.asList(GET, POST, PUT), GET);
+    assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testDeny() {
+    RuleExitResult res = match(Arrays.asList(GET, POST, PUT), DELETE);
+    assertFalse(res.isMatch());
+  }
 
   private RuleExitResult match(List<HttpMethod> configured, HttpMethod found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
@@ -54,18 +74,4 @@ public class MethodsRuleTests extends TestCase {
     return r.match(rc);
   }
 
-  public void testSimpleGET() {
-    RuleExitResult res = match(Arrays.asList(GET), GET);
-    assertTrue(res.isMatch());
-  }
-
-  public void testMultiple() {
-    RuleExitResult res = match(Arrays.asList(GET, POST, PUT), GET);
-    assertTrue(res.isMatch());
-  }
-
-  public void testDeny() {
-    RuleExitResult res = match(Arrays.asList(GET, POST, PUT), DELETE);
-    assertFalse(res.isMatch());
-  }
 }

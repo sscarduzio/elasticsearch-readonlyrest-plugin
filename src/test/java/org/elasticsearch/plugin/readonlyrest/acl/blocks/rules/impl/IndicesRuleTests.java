@@ -19,12 +19,12 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
+import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.List;
@@ -32,42 +32,29 @@ import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Collections.singletonList;
+import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class IndicesRuleTests extends TestCase {
+public class IndicesRuleTests {
 
-  private RuleExitResult match(List<String> configured, List<String> found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
-  }
-
-  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc){
-    Set<String> foundSet = Sets.newHashSet();
-    foundSet.addAll(found);
-    when(rc.getIndices()).thenReturn(foundSet);
-    when(rc.isReadRequest()).thenReturn(true);
-
-    SyncRule r = new IndicesSyncRule(
-        IndicesRuleSettings.from(Sets.newHashSet(configured)),
-        MockedESContext.INSTANCE
-    );
-
-    return r.match(rc);
-  }
-
+  @Test
   public void testSimpleIndex() {
     RuleExitResult res = match(singletonList("public-asd"), singletonList("public-asd"));
     assertTrue(res.isMatch());
   }
 
+  @Test
   public void testSimpleWildcard() {
     RuleExitResult res = match(singletonList("public-*"), singletonList("public-asd"));
     assertTrue(res.isMatch());
   }
 
+  @Test
   public void testReverseWildcard() {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(singletonList("public-asd")));
@@ -76,6 +63,7 @@ public class IndicesRuleTests extends TestCase {
     assertTrue(res.isMatch());
   }
 
+  @Test
   public void testReturnAllowedSubset() {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(Lists.newArrayList("a", "b", "c")));
@@ -84,6 +72,7 @@ public class IndicesRuleTests extends TestCase {
     assertTrue(res.isMatch());
   }
 
+  @Test
   public void test152() {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.isReadRequest()).thenReturn(true);
@@ -103,6 +92,24 @@ public class IndicesRuleTests extends TestCase {
 
     // Should be a NO_MATCH
     assertFalse(res.isMatch());
+  }
+
+  private RuleExitResult match(List<String> configured, List<String> found) {
+    return match(configured, found, Mockito.mock(RequestContext.class));
+  }
+
+  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc){
+    Set<String> foundSet = Sets.newHashSet();
+    foundSet.addAll(found);
+    when(rc.getIndices()).thenReturn(foundSet);
+    when(rc.isReadRequest()).thenReturn(true);
+
+    SyncRule r = new IndicesSyncRule(
+        IndicesRuleSettings.from(Sets.newHashSet(configured)),
+        MockedESContext.INSTANCE
+    );
+
+    return r.match(rc);
   }
 
 }

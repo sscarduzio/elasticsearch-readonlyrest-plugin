@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSettings;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -35,17 +34,6 @@ import static org.mockito.Mockito.when;
  */
 
 public class ProxyAuthRuleTests {
-
-  private RuleExitResult match(String configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
-  }
-
-  private RuleExitResult match(String configured, String found, RequestContext rc) {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
-
-    ProxyAuthSyncRule r = new ProxyAuthSyncRule(ProxyAuthRuleSettings.from(Lists.newArrayList(configured)));
-    return r.match(rc);
-  }
 
   @Test
   public void testOK() {
@@ -63,6 +51,17 @@ public class ProxyAuthRuleTests {
   public void testEmpty() {
     RuleExitResult res = match("1234567890", "");
     assertFalse(res.isMatch());
+  }
+
+  private RuleExitResult match(String configured, String found) {
+    return match(configured, found, Mockito.mock(RequestContext.class));
+  }
+
+  private RuleExitResult match(String configured, String found, RequestContext rc) {
+    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
+
+    ProxyAuthSyncRule r = new ProxyAuthSyncRule(ProxyAuthRuleSettings.from(Lists.newArrayList(configured)));
+    return r.match(rc);
   }
 
 }

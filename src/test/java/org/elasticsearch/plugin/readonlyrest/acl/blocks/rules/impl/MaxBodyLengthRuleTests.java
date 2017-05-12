@@ -17,20 +17,39 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.MaxBodyLengthRuleSettings;
+import org.junit.Test;
 import org.mockito.Mockito;
 
+import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
  * Created by sscarduzio on 18/01/2017.
  */
-public class MaxBodyLengthRuleTests extends TestCase {
+public class MaxBodyLengthRuleTests {
+
+  @Test
+  public void testShortEnuf() {
+    RuleExitResult res = match(5, "xx");
+    assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testEmpty() {
+    RuleExitResult res = match(5, "");
+    assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testTooLong() {
+    RuleExitResult res = match(5, "hello123123");
+    assertFalse(res.isMatch());
+  }
 
   private RuleExitResult match(Integer configured, String found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
@@ -42,21 +61,6 @@ public class MaxBodyLengthRuleTests extends TestCase {
     SyncRule r = new MaxBodyLengthSyncRule(MaxBodyLengthRuleSettings.from(configured));
 
     return r.match(rc);
-  }
-
-  public void testShortEnuf() {
-    RuleExitResult res = match(5, "xx");
-    assertTrue(res.isMatch());
-  }
-
-  public void testEmpty() {
-    RuleExitResult res = match(5, "");
-    assertTrue(res.isMatch());
-  }
-
-  public void testTooLong() {
-    RuleExitResult res = match(5, "hello123123");
-    assertFalse(res.isMatch());
   }
 
 }

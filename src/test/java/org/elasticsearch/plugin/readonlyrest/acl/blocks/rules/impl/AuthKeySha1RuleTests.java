@@ -18,23 +18,24 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.ImmutableMap;
-import junit.framework.TestCase;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
+import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Base64;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class AuthKeySha1RuleTests extends TestCase {
+public class AuthKeySha1RuleTests {
 
   private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
@@ -48,6 +49,7 @@ public class AuthKeySha1RuleTests extends TestCase {
     return r.match(rc);
   }
 
+  @Test
   public void testSimple() {
     RuleExitResult res = match(
         "4338fa3ea95532196849ae27615e14dda95c77b1",

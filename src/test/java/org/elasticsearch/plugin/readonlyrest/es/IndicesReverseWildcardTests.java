@@ -16,18 +16,16 @@
  */
 package org.elasticsearch.plugin.readonlyrest.es;
 
-import com.google.common.collect.Maps;
+import com.google.common.collect.ImmutableMap;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.common.io.stream.StreamInput;
-import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -39,7 +37,7 @@ import static org.junit.Assert.assertTrue;
 
 public class IndicesReverseWildcardTests {
 
-  public static RestClient ro;
+  private static RestClient ro;
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = create(
@@ -48,54 +46,42 @@ public class IndicesReverseWildcardTests {
       @Override
       public void initialize(RestClient client) {
         ro = client;
-        Arrays.stream("a1,a2,b1,b2".split(",")).map(String::trim).forEach(docId -> {
-          insertDoc(docId);
-        });
+        Arrays.stream("a1,a2,b1,b2".split(",")).map(String::trim).forEach(IndicesReverseWildcardTests::insertDoc);
       }
     })
   );
 
   private static void insertDoc(String docName) {
     try {
-      System.out.println(body(container.getBasicAuthClient("admin", "container").performRequest(
-        "PUT",
-        "/logstash-" + docName + "/documents/doc-" + docName,
-        Maps.newHashMap(new ImmutableMap.Builder<String, String>()
-                          .put("refresh", "true")
-                          .put("timeout", "50s")
-                          .build()),
-        new StringEntity("{\"title\": \"" + docName + "\"}")
-      )));
-
+      RestClient client = container.getBasicAuthClient("admin", "container");
+      HttpPut request = new HttpPut(client.from(
+          "/logstash-" + docName + "/documents/doc-" + docName,
+          new ImmutableMap.Builder<String, String>()
+              .put("refresh", "true")
+              .put("timeout", "50s")
+              .build()));
+      request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));
+      System.out.println(body(client.execute(request)));
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
-  private static String body(Response r) throws Exception {
+  private static String body(HttpResponse r) throws Exception {
     return EntityUtils.toString(r.getEntity());
   }
 
   private String search(String endpoint) throws Exception {
-    System.out.println("> " + endpoint);
-    Response resp = ro.performRequest(
-      "GET",
-      endpoint,
-      Maps.newHashMap
-        (new ImmutableMap.Builder<String, String>()
-           .put("timeout", "50s")
-           .build())
-    );
+    HttpGet request = new HttpGet(ro.from(endpoint, new ImmutableMap.Builder<String, String>()
+        .put("timeout", "50s")
+        .build()));
+    HttpResponse resp = ro.execute(request);
     assertEquals(200, resp.getStatusLine().getStatusCode());
-    String body = body(resp);
-    System.out.println("<" + XContentHelper.convertToJson(
-      StreamInput.wrap(body.getBytes()).readBytesReference(body.length()), true, true, XContentType.JSON));
-    return body;
+    return body(resp);
   }
 
   @Test
   public void testDirectSingleIdx() throws Exception {
-
     String body = search("/logstash-a1/_search");
     assertTrue(body.contains("a1"));
     assertFalse(body.contains("a2"));

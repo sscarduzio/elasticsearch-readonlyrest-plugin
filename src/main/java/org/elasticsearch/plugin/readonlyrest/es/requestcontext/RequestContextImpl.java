@@ -66,7 +66,6 @@ import java.util.stream.Collectors;
  */
 public class RequestContextImpl extends Delayed implements RequestContext, IndicesRequestContext {
 
-  private final IndexNameExpressionResolver indexResolver;
   private final Logger logger;
   private final RestRequest request;
   private final String action;
@@ -87,7 +86,6 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest, ClusterService clusterService,
                             IndexNameExpressionResolver indexResolver, ThreadPool threadPool, ESContext context) {
     super("rc", context);
-    this.indexResolver = indexResolver;
     this.logger = context.logger(getClass());
     this.request = request;
     this.action = action;

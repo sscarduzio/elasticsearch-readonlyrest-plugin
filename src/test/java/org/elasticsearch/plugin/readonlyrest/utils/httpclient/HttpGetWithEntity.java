@@ -14,44 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.utils;
+package org.elasticsearch.plugin.readonlyrest.utils.httpclient;
 
-public class Tuple<A, B> {
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpGet;
 
-  private final A v1;
-  private final B v2;
+import java.net.URI;
 
-  public Tuple(A v1, B v2) {
-    this.v1 = v1;
-    this.v2 = v2;
-  }
+public final class HttpGetWithEntity extends HttpEntityEnclosingRequestBase {
 
-  public static <A, B>  Tuple<A, B> from(A v1, B v2) {
-    return new Tuple<>(v1, v2);
-  }
+  private static final String METHOD_NAME = HttpGet.METHOD_NAME;
 
-  public A v1() {
-    return v1;
-  }
-
-  public B v2() {
-    return v2;
+  public HttpGetWithEntity(final URI uri) {
+    setURI(uri);
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-
-    Tuple<?, ?> tuple = (Tuple<?, ?>) o;
-    if (!v1.equals(tuple.v1)) return false;
-    return v2.equals(tuple.v2);
-  }
-
-  @Override
-  public int hashCode() {
-    int result = v1.hashCode();
-    result = 31 * result + v2.hashCode();
-    return result;
+  public String getMethod() {
+    return METHOD_NAME;
   }
 }
