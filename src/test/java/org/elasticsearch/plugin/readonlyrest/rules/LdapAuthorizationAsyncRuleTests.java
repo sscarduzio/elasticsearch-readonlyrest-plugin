@@ -121,6 +121,25 @@ public class LdapAuthorizationAsyncRuleTests {
     assertEquals(false, match.isMatch());
   }
 
+  @Test
+  public void testUserShouldNotBeAuthorizedIfLdapHasAGivenUserButLdapGroupsAreEmpty() throws Exception {
+    LdapConfig<?> config1 = mockLdapConfig("ldap1", Optional.of(new Tuple<>(
+        new LdapUser(
+            "user",
+            "cn=Example user,ou=People,dc=example,dc=com"
+        ),
+        Sets.newHashSet()
+    )));
+    Settings blockSettings = baseExampleBlockBuilder()
+        .put("ldap_authorization.name", "ldap1")
+        .putArray("ldap_authorization.groups", Lists.newArrayList("group2", "group3"))
+        .build();
+
+    LdapAuthorizationAsyncRule rule = LdapAuthorizationAsyncRule.fromSettings(blockSettings, LdapConfigs.from(config1)).get();
+    RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
+    assertEquals(false, match.isMatch());
+  }
+
   private Settings.Builder baseExampleBlockBuilder() {
     return Settings.builder()
                    .put("name", "Accept requests from users in group team2 on blog2")
