@@ -36,3 +36,6 @@ src/test/eshome/*
 *.pem
 *.pkcs8
 *.p12
+
+// OSX
+.DS_Store

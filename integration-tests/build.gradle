@@ -1,0 +1,12 @@
+group = 'org.elasticsearch.plugin'
+version = pluginVersion + '_es' + esVersion
+
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile project(':tests-utils')
+}
