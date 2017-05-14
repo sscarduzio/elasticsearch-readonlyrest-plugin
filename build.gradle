@@ -96,6 +96,10 @@ dependencies {
         exclude group: 'dom4j', module: 'dom4j'
         exclude group: 'com.google.code.gson', module: 'gson'
     }
+    compile 'io.jsonwebtoken:jjwt:0.7.0'
+    /* jjwt depends on jackson-databind and jackson-annotations, why aren't they included? */
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.2'
+    compile 'com.fasterxml.jackson.core:jackson-annotations:2.8.0'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
     testCompile 'org.gradle:gradle-tooling-api:2.13'
