@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.utils.containers;
 import com.google.common.collect.ImmutableList;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer.ESInitalizer;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
+import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -31,18 +32,24 @@ import java.util.regex.Pattern;
 
 public class ESWithReadonlyRestContainerUtils {
 
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> create(
+      RorPluginGradleProject project,
+      MultiContainer externalDependencies,
       String elasticsearchConfig) {
-    return create(externalDependencies, elasticsearchConfig, Optional.empty());
+    return create(project, externalDependencies, elasticsearchConfig, Optional.empty());
   }
 
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> create(
+      RorPluginGradleProject project,
+      MultiContainer externalDependencies,
       String elasticsearchConfig,
       ESInitalizer initalizer) {
-    return create(externalDependencies, elasticsearchConfig, Optional.of(initalizer));
+    return create(project, externalDependencies, elasticsearchConfig, Optional.of(initalizer));
   }
 
-  private static MultiContainerDependent<ESWithReadonlyRestContainer> create(MultiContainer externalDependencies,
+  private static MultiContainerDependent<ESWithReadonlyRestContainer> create(
+      RorPluginGradleProject project,
+      MultiContainer externalDependencies,
       String elasticsearchConfig,
       Optional<ESInitalizer> initalizer) {
     return new MultiContainerDependent<>(
@@ -53,7 +60,7 @@ public class ESWithReadonlyRestContainerUtils {
               createTempFile(),
               multiContainer.containers()
           );
-          return ESWithReadonlyRestContainer.create(adjustedEsConfig.getName(), initalizer);
+          return ESWithReadonlyRestContainer.create(project, adjustedEsConfig.getName(), initalizer);
         }
     );
   }

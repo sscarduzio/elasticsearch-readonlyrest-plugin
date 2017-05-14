@@ -21,28 +21,33 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRest
 import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDependent;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
-import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
 
-public class ExternalAuthenticationTests {
+public class ExternalAuthenticationTests extends BaseIntegrationTests {
 
-  @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
-      ESWithReadonlyRestContainerUtils.create(
-          new MultiContainer.Builder()
-              .add("EXT1", () -> WireMockContainer.create(
-                  "/external_authentication/wiremock_service1_cartman.json",
-                  "/external_authentication/wiremock_service1_morgan.json"
-              ))
-              .add("EXT2", () -> WireMockContainer.create("/external_authentication/wiremock_service2_cartman.json"))
-              .build(),
-          "/elasticsearch.yml",
-          new ElasticsearchTweetsInitializer()
-      );
+  @Rule
+  public final MultiContainerDependent<ESWithReadonlyRestContainer> container;
+  private final ReadonlyRestedESAssertions assertions;
 
-  private static ReadonlyRestedESAssertions assertions = new ReadonlyRestedESAssertions(container);
+  public ExternalAuthenticationTests(String esProject) {
+    this.container = ESWithReadonlyRestContainerUtils.create(
+        new RorPluginGradleProject(esProject),
+        new MultiContainer.Builder()
+            .add("EXT1", () -> WireMockContainer.create(
+                "/external_authentication/wiremock_service1_cartman.json",
+                "/external_authentication/wiremock_service1_morgan.json"
+            ))
+            .add("EXT2", () -> WireMockContainer.create("/external_authentication/wiremock_service2_cartman.json"))
+            .build(),
+        "/external_authentication/elasticsearch.yml",
+        new ElasticsearchTweetsInitializer()
+    );
+    this.assertions = new ReadonlyRestedESAssertions(container);
+  }
 
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {

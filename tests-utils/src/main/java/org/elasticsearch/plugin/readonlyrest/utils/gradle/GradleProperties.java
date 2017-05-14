@@ -30,10 +30,10 @@ public class GradleProperties {
     this.properties = properties;
   }
 
-  public static Optional<GradleProperties> create() {
+  public static Optional<GradleProperties> create(File project) {
     try {
       Properties prop = new Properties();
-      File file = new File(GradleProjectUtils.getProjectDir().toFile(), "gradle.properties");
+      File file = new File(project, "gradle.properties");
       InputStream input = new FileInputStream(file);
       prop.load(input);
       return Optional.of(new GradleProperties(prop));

@@ -29,7 +29,6 @@ import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
@@ -83,8 +82,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private Transactional<Optional<LoggedUser>> loggedInUser;
   private final VariablesManager variablesManager;
 
-  public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest, ClusterService clusterService,
-                            IndexNameExpressionResolver indexResolver, ThreadPool threadPool, ESContext context) {
+  public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
+                            ClusterService clusterService, ThreadPool threadPool, ESContext context) {
     super("rc", context);
     this.logger = context.logger(getClass());
     this.request = request;
@@ -391,7 +390,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
         ", TYP:" + actionRequest.getClass().getSimpleName() +
         ", USR:" + (loggedInUser.get().isPresent()
         ? loggedInUser.get().get()
-        : (optBasicAuth.isPresent() ? optBasicAuth.get().getUserName() + "(?)" : "[no basic auth header]")) +
+        : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
         ", BRS:" + !Strings.isNullOrEmpty(requestHeaders.get("User-Agent")) +
         ", ACT:" + action +
         ", OA:" + getRemoteAddress() +
@@ -400,7 +399,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
         ", PTH:" + request.path() +
         ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
         ", HDR:" + theHeaders +
-        ",  HIS:" + hist +
+        ", HIS:" + hist +
         " }";
   }
 

@@ -21,25 +21,30 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRest
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDependent;
+import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
-import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
 
-public class LdapIntegrationFirstOptionTests {
+public class LdapIntegrationFirstOptionTests extends BaseIntegrationTests {
 
-  @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
-      ESWithReadonlyRestContainerUtils.create(
-          new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-              .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-              .build(),
-          "/ldap_integration_1st/elasticsearch.yml",
-          new ElasticsearchTweetsInitializer()
-      );
+  @Rule
+  public final MultiContainerDependent<ESWithReadonlyRestContainer> container;
+  private final ReadonlyRestedESAssertions assertions;
 
-  private static ReadonlyRestedESAssertions assertions = new ReadonlyRestedESAssertions(container);
+  public LdapIntegrationFirstOptionTests(String esProject) {
+    this.container = ESWithReadonlyRestContainerUtils.create(
+        new RorPluginGradleProject(esProject),
+        new MultiContainer.Builder()
+            .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+            .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+            .build(),
+        "/ldap_integration_1st/elasticsearch.yml",
+        new ElasticsearchTweetsInitializer()
+    );
+    this.assertions = new ReadonlyRestedESAssertions(container);
+  }
 
   @Test
   public void usersFromGroup1CanSeeTweets() throws Exception {

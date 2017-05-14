@@ -26,6 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 public abstract class BasicAuthentication extends UserRule implements Authentication {
@@ -47,8 +48,8 @@ public abstract class BasicAuthentication extends UserRule implements Authentica
     if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {
       try {
         logger.info("Attempting Login as: " + optBasicAuth.get().getUserName() + " rc: " + rc);
-      } catch (IllegalArgumentException e) {
-        e.printStackTrace();
+      } catch (NoSuchElementException e) {
+        logger.error("No basic auth");
       }
     }
 

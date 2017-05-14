@@ -164,7 +164,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
     }
 
-    RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, indexResolver, threadPool, context);
+    RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, threadPool, context);
 
     acl.check(rc)
         .exceptionally(throwable -> {

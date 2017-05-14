@@ -23,8 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.utils.Tuple;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.exceptions.ContainerCreationException;
-import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProjectUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.gradle.GradleProperties;
+import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
@@ -52,23 +51,17 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 
-  private static GradleProperties properties =
-      GradleProperties
-          .create()
-          .orElseThrow(() -> new ContainerCreationException("Cannot load gradle properties"));
-
   private ESWithReadonlyRestContainer(ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
   }
 
-  public static ESWithReadonlyRestContainer create(String elasticsearchConfig,
+  public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
+                                                   String elasticsearchConfig,
                                                    Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File config = ContainerUtils.getResourceFile(elasticsearchConfig);
-    Optional<File> pluginFileOpt = GradleProjectUtils.assemble();
-    if (!pluginFileOpt.isPresent()) {
-      throw new ContainerCreationException("Plugin file assembly failed");
-    }
-    File pluginFile = pluginFileOpt.get();
+    File pluginFile = project.assemble().orElseThrow(() ->
+        new ContainerCreationException("Plugin file assembly failed")
+    );
     logger.info("Creating ES container ...");
     String elasticsearchConfigName = "elasticsearch.yml";
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
@@ -76,7 +69,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
             .withFileFromFile(pluginFile.getName(), pluginFile)
             .withFileFromFile(elasticsearchConfigName, config)
             .withDockerfileFromBuilder(builder -> builder
-                .from("docker.elastic.co/elasticsearch/elasticsearch:" + properties.getProperty("esVersion"))
+                .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getProperties().getProperty("esVersion"))
                 .copy(pluginFile.getName(), "/tmp/")
                 .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
                 .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +
