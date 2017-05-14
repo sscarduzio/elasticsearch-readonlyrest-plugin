@@ -1,12 +1,24 @@
 group = 'org.elasticsearch.plugin'
-version = pluginVersion + '_es' + esVersion
+version = pluginVersion
+
+buildscript {
+    ext {
+        pluginVersion = rootProject.properties['pluginVersion']
+    }
+}
 
 apply plugin: 'java'
 
 repositories {
     mavenCentral()
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+}
+
+test {
+    systemProperty "project.dir", rootProject.projectDir
 }
 
 dependencies {
     testCompile project(':tests-utils')
+    testCompile 'org.gradle:gradle-tooling-api:2.13'
 }

@@ -20,8 +20,8 @@ version = pluginVersion + '_es' + esVersion
 
 buildscript {
     ext {
-        publishedPluginVersion = project.properties['pluginVersion']
-        pluginVersion = project.properties['pluginVersion']
+        publishedPluginVersion = rootProject.properties['pluginVersion']
+        pluginVersion = rootProject.properties['pluginVersion']
         esVersion = project.properties['esVersion']
     }
     repositories {
@@ -41,7 +41,7 @@ apply plugin: 'maven'
 apply plugin: 'elasticsearch.esplugin'
 
 esplugin {
-    name project.properties['pluginName']
+    name rootProject.properties['pluginName']
     description 'Safely expose Elasticsearch REST API'
     classname 'org.elasticsearch.plugin.readonlyrest.es.ReadonlyRestPlugin'
 }
@@ -70,6 +70,27 @@ run {
     jvmArgs += " -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=8000"
 }
 
+test {
+    onlyIf {
+        false
+    }
+}
+
+task configureAssemble(dependsOn: assemble) {
+    doLast {
+        if (project.hasProperty('esVersion')) {
+            esVersion = project.properties['esVersion']
+        }
+    }
+}
+
+//task(assemble1) {
+//    if (project.hasProperty('esVersion')) {
+//        esVersion = project.properties['esVersion']
+//        assemble
+//    }
+//}
+
 tasks.withType(Zip) { task ->
     task.doLast {
         ant.checksum file: it.archivePath, algorithm: 'sha1'
@@ -91,7 +112,3 @@ forbiddenApisTest.enabled = false
 integTest.enabled = false
 jarHell.enabled = false
 
-
-test {
-    systemProperty "project.dir", rootProject.project(':es53x').projectDir
-}

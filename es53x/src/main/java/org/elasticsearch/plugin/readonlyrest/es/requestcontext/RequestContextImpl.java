@@ -385,6 +385,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     }
 
     String hist = Joiner.on(", ").join(history);
+    String headerStr = Joiner.on(", ").join(request.getHeaders().entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.toList()));
+
     Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
     return "{ ID:" + id +
         ", TYP:" + actionRequest.getClass().getSimpleName() +
@@ -398,7 +400,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
         ", MET:" + request.method() +
         ", PTH:" + request.path() +
         ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-        ", HDR:" + theHeaders +
+        ", HDR:" + headerStr +
         ", HIS:" + hist +
         " }";
   }

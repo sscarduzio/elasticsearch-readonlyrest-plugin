@@ -158,8 +158,8 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
         new StringEntity("{\"title\":\"logstash-*\",\"timeFieldName\":\"@timestamp\"}\n")
     );
     HttpResponse resp = rw.execute(request);
-    checkForErrors(resp);
-    assertTrue(body(resp).contains("\"_index\":\".kibana\""));
+    String body = checkForErrors(resp);
+    assertTrue(body.contains("\"_index\":\".kibana\""));
   }
 
   private void checkKibanaResponse(HttpResponse resp) throws Exception {
@@ -171,8 +171,9 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
     assertTrue(body.contains("helloWorld"));
   }
 
-  private void checkForErrors(HttpResponse resp) throws Exception {
+  private String checkForErrors(HttpResponse resp) throws Exception {
     assertTrue(resp.getStatusLine().getStatusCode() <= 201);
+    return EntityUtils.toString(resp.getEntity());
   }
 
   private static String body(HttpResponse r) throws Exception {

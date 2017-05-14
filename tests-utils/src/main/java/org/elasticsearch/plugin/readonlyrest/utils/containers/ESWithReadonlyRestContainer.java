@@ -58,19 +58,27 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
                                                    String elasticsearchConfig,
                                                    Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
-    File config = ContainerUtils.getResourceFile(elasticsearchConfig);
+    return create(project, ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
+  }
+
+  public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
+                                                   File elasticsearchConfigFile,
+                                                   Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File pluginFile = project.assemble().orElseThrow(() ->
         new ContainerCreationException("Plugin file assembly failed")
     );
     logger.info("Creating ES container ...");
     String elasticsearchConfigName = "elasticsearch.yml";
+    String log4j2FileName = "log4j2.properties";
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
         new ImageFromDockerfile()
             .withFileFromFile(pluginFile.getName(), pluginFile)
-            .withFileFromFile(elasticsearchConfigName, config)
+            .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
+            .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
             .withDockerfileFromBuilder(builder -> builder
-                .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getProperties().getProperty("esVersion"))
+                .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getESVersion())
                 .copy(pluginFile.getName(), "/tmp/")
+                .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
                 .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
                 .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +
                     "file:/tmp/" + pluginFile.getName())

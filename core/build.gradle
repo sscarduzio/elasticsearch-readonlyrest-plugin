@@ -16,9 +16,12 @@
  */
 
 group = 'org.elasticsearch.plugin'
-version = pluginVersion + '_es' + esVersion
+version = pluginVersion
 
 buildscript {
+    ext {
+        pluginVersion = rootProject.properties['pluginVersion']
+    }
     repositories {
         mavenLocal()
         mavenCentral()
@@ -32,7 +35,7 @@ buildscript {
 
 repositories {
     mavenCentral()
-    maven { url 'http://repo.gradle.org/gradle/libs-releases-local' }
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
 }
 
 apply plugin: 'java'
@@ -58,13 +61,11 @@ dependencies {
     compile 'org.yaml:snakeyaml:1.15'
 
     testCompile project(':tests-utils')
+    testCompile 'org.gradle:gradle-tooling-api:2.13'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
 }
 
-test {
-    systemProperty "project.dir", rootProject.project(':es53x').projectDir
-}
 
 license {
     header rootProject.file('ReadonlyRESTLicenseHeader.txt')

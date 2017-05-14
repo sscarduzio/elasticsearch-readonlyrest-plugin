@@ -60,14 +60,14 @@ public class ESWithReadonlyRestContainerUtils {
               createTempFile(),
               multiContainer.containers()
           );
-          return ESWithReadonlyRestContainer.create(project, adjustedEsConfig.getName(), initalizer);
+          return ESWithReadonlyRestContainer.create(project, adjustedEsConfig, initalizer);
         }
     );
   }
 
   private static File createTempFile() {
     try {
-      File newEsConfigFile = Files.createTempFile(ContainerUtils.getResourceFile("").toPath(), "tmp", ".tmp").toFile();
+      File newEsConfigFile = Files.createTempFile("tmp", ".tmp").toFile();
       newEsConfigFile.deleteOnExit();
       return newEsConfigFile;
     } catch (IOException e) {

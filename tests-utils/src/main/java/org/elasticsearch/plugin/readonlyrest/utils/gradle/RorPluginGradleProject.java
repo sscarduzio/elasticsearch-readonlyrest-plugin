@@ -9,15 +9,19 @@ import java.util.Optional;
 
 public class RorPluginGradleProject {
 
-  private final GradleProperties properties;
+  private final GradleProperties esProjectProperties;
+  private final GradleProperties rootProjectProperties;
   private final File project;
   private final String name;
 
   public RorPluginGradleProject(String name) {
     this.name = name;
     this.project = esProject(name);
-    this.properties = GradleProperties.create(project).orElseThrow(() ->
-        new IllegalStateException("cannot load gradle.properties file")
+    this.esProjectProperties = GradleProperties.create(project).orElseThrow(() ->
+        new IllegalStateException("cannot load '" + name + "' project gradle.properties file")
+    );
+    this.rootProjectProperties = GradleProperties.create(getRootProject()).orElseThrow(() ->
+        new IllegalStateException("cannot load root project gradle.properties file")
     );
   }
 
@@ -33,8 +37,8 @@ public class RorPluginGradleProject {
     return Optional.of(plugin);
   }
 
-  public GradleProperties getProperties() {
-    return properties;
+  public String getESVersion() {
+    return esProjectProperties.getProperty("esVersion");
   }
 
   private File esProject(String esProjectName) {
@@ -44,9 +48,9 @@ public class RorPluginGradleProject {
   private String pluginName() {
     return String.format(
         "%s-%s_es%s.zip",
-        properties.getProperty("pluginName"),
-        properties.getProperty("pluginVersion"),
-        properties.getProperty("esVersion")
+        rootProjectProperties.getProperty("pluginName"),
+        rootProjectProperties.getProperty("pluginVersion"),
+        getESVersion()
     );
   }
 

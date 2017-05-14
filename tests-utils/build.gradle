@@ -1,6 +1,11 @@
-
 group = 'org.elasticsearch.plugin'
-version = pluginVersion + '_es' + esVersion
+version = pluginVersion
+
+buildscript {
+    ext {
+        pluginVersion = rootProject.properties['pluginVersion']
+    }
+}
 
 apply plugin: 'java'
 apply plugin: 'idea'
@@ -8,6 +13,7 @@ apply plugin: 'maven'
 
 repositories {
     mavenCentral()
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
 }
 
 dependencies {

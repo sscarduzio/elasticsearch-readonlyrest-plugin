@@ -5,6 +5,7 @@ out/
 *.swp
 *-execution-hints.log
 *-execution-times.log
+*.log
 
 // ignore the downloaded model files in git
 src/test/resources/models/
@@ -28,9 +29,9 @@ eclipse-build
 
 // Script generated files
 docker/*
-src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
-src/main/resources/plugin-descriptor.properties
-src/test/eshome/*
+integration-tests/src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
+integration-tests/src/main/resources/plugin-descriptor.properties
+integration-tests/src/test/eshome/*
 
 // Crypto
 *.pem
