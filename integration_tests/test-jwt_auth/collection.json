@@ -1,0 +1,192 @@
+{
+	"variables": [],
+	"info": {
+		"name": "test-jwt_auth",
+		"_postman_id": "c1720239-802f-6625-7b60-96cf07b045d4",
+		"description": "Test cases for 'jwt_auth' rule",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "reject-no-authorization-header",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status code is 401\"] = responseCode.code === 401;"
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"postman.setGlobalVariable(\"postman-jwt\", \"(\" + function () {\r",
+							"\tfunction urlConvertBase64(input) {\r",
+							"\t\treturn input.replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');\r",
+							"\t}\r",
+							"\tfunction base64url(input) {\r",
+							"\t\tvar base64String = btoa(input);\r",
+							"\t\treturn urlConvertBase64(base64String);\r",
+							"\t}\r",
+							"\tfunction signToken (token, secret) {\r",
+							"\t\tif (token.length !== 2) return;\r",
+							"        var hash = CryptoJS.HmacSHA256(token.join(\".\"), secret);\r",
+							"\t\tvar base64Hash = CryptoJS.enc.Base64.stringify(hash);\r",
+							"\t\treturn urlConvertBase64(base64Hash);\r",
+							"\t}\r",
+							"\tfunction generateJWT(body, secret) {\r",
+							"\t\tvar header = {\r",
+							"\t\t\t\"alg\": \"HS256\",\r",
+							"\t\t\t\"typ\": \"JWT\"\r",
+							"\t\t};\r",
+							"\t\tvar token = [];\r",
+							"\t\ttoken[0] = base64url(JSON.stringify(header));\r",
+							"\t\ttoken[1] = base64url(JSON.stringify(body));\r",
+							"\t\ttoken[2] = signToken(token, secret);\r",
+							"\t\treturn token.join(\".\");\r",
+							"\t}\r",
+							"\treturn {gen: generateJWT};\r",
+							"}+\"())\");\r",
+							"postman.setGlobalVariable(\"test-jwt_auth:secret\", \"123456\");"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/_cat/indices",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": "jwt_auth rule shall deny access when the token is not\nprovided in the 'Authorization' header."
+			},
+			"response": []
+		},
+		{
+			"name": "reject-wrong-key",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status code is 401\"] = responseCode.code === 401;"
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jwt = eval(postman.getGlobalVariable(\"postman-jwt\"));\r",
+							"var secret = postman.getGlobalVariable(\"test-jwt_auth:secret\");\r",
+							"\r",
+							"var token = jwt.gen({sub: \"test\"}, \"wrong \" + secret);\r",
+							"postman.setEnvironmentVariable(\"test-jwt_auth:token\", token);"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/_cat/indices",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{test-jwt_auth:token}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "jwt_auth rule shall deny access when the token cannot\nbe validated because it has been signed with the wrong\nsecret."
+			},
+			"response": []
+		},
+		{
+			"name": "require-user-claim",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status code is 401\"] = responseCode.code === 401;"
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jwt = eval(postman.getGlobalVariable(\"postman-jwt\"));\r",
+							"var secret = postman.getGlobalVariable(\"test-jwt_auth:secret\");\r",
+							"\r",
+							"var token = jwt.gen({sub: \"test\"}, secret);\r",
+							"postman.setEnvironmentVariable(\"test-jwt_auth:token\", token);"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/_cat/indices",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{test-jwt_auth:token}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "jwt_auth rule shall deny access when a token with a valid\nsignature does not containe the user claim."
+			},
+			"response": []
+		},
+		{
+			"name": "accept-valid-token-with-user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;"
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jwt = eval(postman.getGlobalVariable(\"postman-jwt\"));\r",
+							"var secret = postman.getGlobalVariable(\"test-jwt_auth:secret\");\r",
+							"\r",
+							"var token = jwt.gen({sub: \"test\", user: \"user\"}, secret);\r",
+							"postman.setEnvironmentVariable(\"test-jwt_auth:token\", token);"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/_cat/indices",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{test-jwt_auth:token}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "jwt_auth rule shall allow request carrying a token that has\nboth a valid signature and an appropiate user claim."
+			},
+			"response": []
+		}
+	]
+}
