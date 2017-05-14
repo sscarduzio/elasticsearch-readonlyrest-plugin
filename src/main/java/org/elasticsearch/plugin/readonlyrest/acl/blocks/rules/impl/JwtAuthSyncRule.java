@@ -22,6 +22,7 @@ import java.util.Optional;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
@@ -30,7 +31,9 @@ import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContex
 
 import com.google.common.base.Strings;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
@@ -42,6 +45,7 @@ public class JwtAuthSyncRule extends SyncRule implements UserRule, Authenticatio
   private static final String RULE_NAME = "jwt_auth";
 
   private byte[] key;
+  private Optional<String> userClaim;
 
   @Override
   public RuleExitResult match(RequestContext rc) {
@@ -55,9 +59,15 @@ public class JwtAuthSyncRule extends SyncRule implements UserRule, Authenticatio
     }
 
     try {
-      Jwts.parser()
+      Jws<Claims> jws = Jwts.parser()
         .setSigningKey(key)
         .parseClaimsJws(token.get());
+
+      Optional<String> user = this.userClaim.map(claim -> jws.getBody().get(claim, String.class));
+      if (userClaim.isPresent())
+        if (!user.isPresent()) return NO_MATCH;
+        else rc.setLoggedInUser(new LoggedUser(user.get()));
+
       return MATCH;
     } catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | SignatureException e) {
       return NO_MATCH;
@@ -72,6 +82,7 @@ public class JwtAuthSyncRule extends SyncRule implements UserRule, Authenticatio
 
     JwtAuthSyncRule rule = new JwtAuthSyncRule();
     rule.key = key.getBytes();
+    rule.userClaim = Optional.ofNullable(s.get(RULE_NAME + ".user_claim"));
     return Optional.of(rule);
   }
 
