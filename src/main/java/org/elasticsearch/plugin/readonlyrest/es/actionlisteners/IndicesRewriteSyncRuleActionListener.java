@@ -125,6 +125,12 @@ public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<Ind
 
   // Translate the get results indices
   private void handleGetResponse(GetResponse gr, RequestContext rc) {
+
+    if(rc.getIndices().contains("*") || rc.getIndices().isEmpty()){
+      // there was no restriction
+      return;
+    }
+
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
         Field f = GetResponse.class.getDeclaredField("getResult");
