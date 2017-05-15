@@ -28,7 +28,6 @@ public class GradleProjectUtils {
   private static final GradleProperties properties = GradleProperties.create().get();
 
   public static Optional<File> assemble() {
-    System.setProperty("java.io.tmpdir", "/tmp");
     runTask(":assemble");
     File plugin = new File(getProjectDir().toFile(), "build/distributions/" + pluginName());
     if (!plugin.exists()) return Optional.empty();

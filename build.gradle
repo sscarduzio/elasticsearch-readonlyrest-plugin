@@ -66,9 +66,11 @@ task customJarHellCheck(type: JavaExec) {
     main = "org.elasticsearch.bootstrap.JarHell"
     classpath = project.sourceSets.main.runtimeClasspath.filter { it.exists() }
 }
+
 test {
     dependsOn customJarHellCheck
     systemProperty "project.dir", rootProject.projectDir
+    systemProperty "java.io.tmpdir", "/tmp"
 }
 
 configurations.all {
