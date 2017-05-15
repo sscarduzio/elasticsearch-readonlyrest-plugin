@@ -33,14 +33,15 @@ import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContex
 
 public class TokenSyncRule extends SyncRule {
     private final Logger logger = Loggers.getLogger(getClass());
-    private final Boolean needToCheck;
+    private final Boolean needToCheckRule;
 
     public TokenSyncRule(Settings s) throws RuleNotConfiguredException {
         super();
         String tokenCheck = s.get("token", "TRUE");
         // if this param is set to false
         // we do not need to check the token
-        needToCheck = Boolean.parseBoolean(tokenCheck);        
+        // usefull when we want to bypass kibana health status pings
+        needToCheckRule = Boolean.parseBoolean(tokenCheck);        
     }
 
     public static Optional<TokenSyncRule> fromSettings(Settings s) {
@@ -54,7 +55,7 @@ public class TokenSyncRule extends SyncRule {
 	@Override
 	public RuleExitResult match(RequestContext rc) {
 		logger.debug("BEGIN Check token");
-        if (!needToCheck && rc.getToken() == null)
+        if (!needToCheckRule && rc.getToken() == null)
            return MATCH;
         if (rc.getToken() == null)
             return NO_MATCH;

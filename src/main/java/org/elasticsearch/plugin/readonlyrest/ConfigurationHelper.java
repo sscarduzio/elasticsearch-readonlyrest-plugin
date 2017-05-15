@@ -56,6 +56,7 @@ public class ConfigurationHelper {
 
   private static ConfigurationHelper currentInstance;
   private static boolean requirePassword;
+  private static boolean isOAuthEnabled;
   private final Client client;
 
   public boolean enabled;
@@ -70,6 +71,7 @@ public class ConfigurationHelper {
   public String sslKeyAlias;
   public String sslCertChainPem;
   public String sslPrivKeyPem;
+  public boolean oauthEnabled;
   public String cookieName;
   public String cookieSecret;
   public String tokenSecret;
@@ -136,6 +138,7 @@ public class ConfigurationHelper {
         bool(prefix + "enable"),
         str(prefix + "response_if_req_forbidden"),
         bool(prefix + "searchlog"),
+        bool(prefix + "oauth_enabled"),
         str(prefix + "cookieSecret"),
         str(prefix + "cookieName"),
         str(prefix + "tokenClientId"),
@@ -183,6 +186,10 @@ public class ConfigurationHelper {
     return requirePassword;
   }
 
+  public static boolean isOAuthEnabled() {
+	return isOAuthEnabled;
+  }
+  
   public void updateSettingsFromIndex(Client client) throws ResourceNotFoundException {
     GetResponse resp = client.prepareGet(".readonlyrest", "settings", "1").get();
     if (!resp.isExists()) {
@@ -200,11 +207,12 @@ public class ConfigurationHelper {
     enabled = s.getAsBoolean("enable", s.getByPrefix("access_control_rules").size() > 0);
 
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
-    cookieName = s.get("cookieName").trim();
-    cookieSecret = s.get("cookieSecret").trim();
-    tokenClientId = s.get("tokenClientId").trim();
-    tokenSecret = s.get("tokenSecret").trim();
-    
+    oauthEnabled = s.getAsBoolean("oauth_enabled", false);
+    cookieName = s.get("cookieName");
+    cookieSecret = s.get("cookieSecret");
+    tokenClientId = s.get("tokenClientId");
+    tokenSecret = s.get("tokenSecret");
+    isOAuthEnabled = oauthEnabled;
     // -- SSL
     sslEnabled = s.getAsBoolean("ssl.enable", s.getByPrefix("ssl").size() > 1);
     if (sslEnabled) {

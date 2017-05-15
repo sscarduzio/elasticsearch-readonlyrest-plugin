@@ -133,3 +133,4 @@ forbiddenApisMain.enabled = false
 forbiddenApisTest.enabled = false
 integTest.enabled = false
 jarHell.enabled = false
+forbiddenPatterns.enabled = false

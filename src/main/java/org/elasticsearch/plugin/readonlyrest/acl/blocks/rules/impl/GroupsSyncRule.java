@@ -17,17 +17,19 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
+import org.elasticsearch.plugin.readonlyrest.oauth.OAuthToken;
+import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 
 /**
  * A GroupsSyncRule checks if a request containing Basic Authentication credentials
@@ -70,27 +72,42 @@ public class GroupsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    for (User user : this.users) {
-      if (user.getAuthKeyRule().match(rc).isMatch()) {
-        List<String> commonGroups = new ArrayList<>(user.getGroups());
+    if (!ConfigurationHelper.isOAuthEnabled()) {
+	  for (User user : this.users) {
+        if (user.getAuthKeyRule().match(rc).isMatch()) {
+          List<String> commonGroups = new ArrayList<>(user.getGroups());
 
-        List<String> groupsInThisRule;
-        if(hasReplacements){
-          groupsInThisRule = new ArrayList<>(this.groups.size());
-          for(String g : this.groups){
-            // won't add if applyVariables doesn't find all replacements
-            rc.applyVariables(g).map(groupsInThisRule::add);
+          List<String> groupsInThisRule;
+          if(hasReplacements){
+            groupsInThisRule = new ArrayList<>(this.groups.size());
+            for(String g : this.groups){
+              // won't add if applyVariables doesn't find all replacements
+              rc.applyVariables(g).map(groupsInThisRule::add);
+            }
+          }
+          else{
+            groupsInThisRule = this.groups;
+          }
+
+          commonGroups.retainAll(groupsInThisRule);
+          if (!commonGroups.isEmpty()) {
+            return MATCH;
           }
         }
-        else{
-          groupsInThisRule = this.groups;
-        }
-
-        commonGroups.retainAll(groupsInThisRule);
-        if (!commonGroups.isEmpty()) {
-          return MATCH;
-        }
-      }
+	  }
+    } else {
+    	OAuthToken token = rc.getToken();
+		List<String> commonGroups = new ArrayList<>(this.groups);
+		if (commonGroups == null || commonGroups.isEmpty() || token == null || token.getRoles() == null)
+			return NO_MATCH;
+		commonGroups.retainAll(token.getRoles());
+//		if (!commonGroups.isEmpty() && token.getRoles().contains(adminGroup))
+//			return MATCH;
+//		else 
+			//if (commonGroups.size() == token.getRoles().size())
+		if (!commonGroups.isEmpty())
+			return MATCH;
+		return NO_MATCH;
     }
     return NO_MATCH;
   }

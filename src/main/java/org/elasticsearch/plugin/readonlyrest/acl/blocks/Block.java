@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
 import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
@@ -48,6 +49,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConf
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.TokenSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UriReSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.VerbositySyncRule;
@@ -196,7 +198,8 @@ public class Block {
     GroupsSyncRule.fromSettings(s, userList).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     SearchlogSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     VerbositySyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
-
+    if (ConfigurationHelper.isOAuthEnabled())
+    	TokenSyncRule.fromSettings(s).map(AsyncRuleAdapter::wrap).ifPresent(rules::add);
     // then we could check potentially slow async rules
     LdapAuthAsyncRule.fromSettings(s, ldapConfigs).ifPresent(rules::add);
     LdapAuthenticationAsyncRule.fromSettings(s, ldapConfigs)

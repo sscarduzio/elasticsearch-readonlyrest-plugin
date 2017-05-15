@@ -35,7 +35,7 @@ public class Jiron {
 
 	private static final String MAC_PREFIX = "Fe26." + MAC_FORMAT_VERSION;
 
-	public static enum Algorithm {
+	public enum Algorithm {
 
 		AES_128_CBC("aes-128-cbc", "AES/CBC/PKCS5PADDING", 128, 128),
 
@@ -48,7 +48,7 @@ public class Jiron {
 		protected final int keyBits;
 		protected final int ivBits;
 
-		private Algorithm(final String name, final String transformation,
+		Algorithm(final String name, final String transformation,
 				final int keyBits, final int ivBits) {
 			this.name = name;
 			this.transformation = transformation;

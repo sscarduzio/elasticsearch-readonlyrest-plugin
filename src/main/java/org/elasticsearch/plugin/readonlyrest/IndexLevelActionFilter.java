@@ -34,6 +34,8 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
+import org.elasticsearch.plugin.readonlyrest.oauth.OAuthToken;
+import org.elasticsearch.plugin.readonlyrest.utils.OAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.wiring.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
 import org.elasticsearch.rest.BytesRestResponse;
@@ -122,6 +124,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
 
     RequestContext rc = new RequestContext(channel, req, action, request, clusterService, indexResolver, threadPool);
+    if (conf.oauthEnabled) {
+	    OAuthToken token = OAuthUtils.getOAuthToken(rc.getHeaders(), conf);
+	    rc.setToken(token);
+    }
     conf.acl.check(rc)
 
       .exceptionally(throwable -> {
@@ -164,14 +170,17 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     String reason = conf.forbiddenResponse;
 
     BytesRestResponse resp;
-    if (ConfigurationHelper.doesRequirePassword()) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
-      logger.debug("Sending login prompt header...");
-      resp.addHeader("WWW-Authenticate", "Basic");
-    }
-    else {
+    if (!conf.oauthEnabled) {
+      if (ConfigurationHelper.doesRequirePassword()) {
+        resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
+        logger.debug("Sending login prompt header...");
+        resp.addHeader("WWW-Authenticate", "Basic");
+      }
+      else {
+        resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
+      }
+    } else
       resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, reason);
-    }
 
     channel.sendResponse(resp);
   }

@@ -367,7 +367,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   }
 
   public OAuthToken getToken() {
-	return token;
+     return token;
   }
 
   public void setToken(OAuthToken token) {

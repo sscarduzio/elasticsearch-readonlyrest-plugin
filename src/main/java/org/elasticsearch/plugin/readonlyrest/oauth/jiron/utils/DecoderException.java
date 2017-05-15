@@ -21,9 +21,10 @@ package org.elasticsearch.plugin.readonlyrest.oauth.jiron.utils;
  */
 
 
+@SuppressWarnings("serial")
 public class DecoderException extends Exception {
 
-    private static final long serialVersionUID = 1L;
+//    private static final long serialVersionUID = 1L;
 
     public DecoderException() {
         super();

@@ -20,9 +20,10 @@ package org.elasticsearch.plugin.readonlyrest.oauth.jiron.utils;
  * limitations under the License.
  */
 
+@SuppressWarnings("serial")
 public class EncoderException extends Exception {
 
-    private static final long serialVersionUID = 1L;
+//    private static final long serialVersionUID = 1L;
 
     public EncoderException() {
         super();
