@@ -137,6 +137,3 @@ forbiddenApisMain.enabled = false
 forbiddenApisTest.enabled = false
 integTest.enabled = false
 jarHell.enabled = false
-
-org.gradle.daemon=false
-
