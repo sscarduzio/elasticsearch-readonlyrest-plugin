@@ -103,8 +103,8 @@ dependencies {
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
     testCompile 'org.apache.httpcomponents:httpclient:4.5.2'
-    testCompile 'org.gradle:gradle-tooling-api:2.13'
-    testRuntime 'org.gradle:gradle-tooling-api:2.13'
+    testCompile 'org.gradle:gradle-tooling-api:3.5'
+    testRuntime 'org.gradle:gradle-tooling-api:3.5'
     testCompile('org.testcontainers:testcontainers:1.2.1')
     testRuntime('org.testcontainers:testcontainers:1.2.1')
 }

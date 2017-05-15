@@ -33,13 +33,15 @@ readonlyrest:
       type: allow
       auth_key: simone:ro
       kibana_access: ro
-      indices: [".kibana", "@user_.kibana", ".kibana-devnull", "@user_logstash-*", "logstash-*"]
-      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@user_$0"]
+      indices: [".kibana", "@{user}_.kibana", ".kibana-devnull", "@{user}_logstash-*", "logstash-*"]
+      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@{user}_$0"]
+      kibana_hide_apps: [timelion]
 
     - name: "::RW::"
       type: allow
       auth_key: simone:rw
       kibana_access: rw
-      indices: [".kibana", "@user_.kibana", ".kibana-devnull", "@user_logstash-*","logstash-*"]
-      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@user_$0"]
+      indices: [".kibana", "@{user}_.kibana", ".kibana-devnull", "@{user}_logstash-*","logstash-*"]
+      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@{user}_$0"]
+      kibana_hide_apps: [timelion]
 
