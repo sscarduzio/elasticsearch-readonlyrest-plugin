@@ -36,7 +36,7 @@ public final class FuturesSequencer {
 
   public static <A, B> CompletableFuture<B> runInSeqUntilConditionIsUndone(Iterator<A> iterator,
       Function<A, CompletableFuture<B>> asyncFunc,
-      Function<B, Boolean> breakCondition,
+      BiFunction<A, B, Boolean> breakCondition,
       Function<Void, B> noBreakReturn) {
     return runInSeqUntilConditionIsUndone(iterator, asyncFunc, breakCondition, res -> res, noBreakReturn);
   }

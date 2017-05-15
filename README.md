@@ -83,6 +83,8 @@ readonlyrest:
 
 readonlyrest:
     enable: true
+    verbosity: info # log unmatched requests
+    
     ssl:
       enable: true
       keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks"

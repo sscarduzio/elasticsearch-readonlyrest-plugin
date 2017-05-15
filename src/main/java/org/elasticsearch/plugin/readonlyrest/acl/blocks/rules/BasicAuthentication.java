@@ -18,26 +18,24 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.util.Optional;
 
-public abstract class BasicAuthentication extends SyncRule implements UserRule, Authentication {
-  private static final Logger logger = Loggers.getLogger(BasicAuthentication.class);
+public abstract class BasicAuthentication extends UserRule implements Authentication {
 
+  private final Logger logger;
   private final String authKey;
 
-  public BasicAuthentication(Settings s) throws RuleNotConfiguredException {
-    super();
-    ConfigurationHelper.setRequirePassword(true);
-    authKey = getAuthKey(s);
+  public BasicAuthentication(AuthKeyRuleSettings s, ESContext context) {
+    this.logger = context.logger(getClass());
+    this.authKey = s.getAuthKey();
   }
 
   protected abstract boolean authenticate(String configuredAuthKey, BasicAuth basicAuth);
@@ -65,16 +63,6 @@ public abstract class BasicAuthentication extends SyncRule implements UserRule, 
       rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
     }
     return res;
-  }
-
-  private String getAuthKey(Settings s) throws RuleNotConfiguredException {
-    String pAuthKey = s.get(this.getKey());
-    if (pAuthKey != null && pAuthKey.trim().length() > 0) {
-      return pAuthKey;
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
   }
 
 }

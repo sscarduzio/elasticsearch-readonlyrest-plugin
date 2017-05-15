@@ -19,15 +19,13 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.IndicesRequestContext;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -39,42 +37,55 @@ import java.util.stream.Collectors;
  */
 public class IndicesSyncRule extends SyncRule {
 
-  private final Logger logger = Loggers.getLogger(this.getClass());
+  private final IndicesRuleSettings settings;
+  private final Logger logger;
 
-  private MatcherWithWildcards configuredWildcards;
-
-  public IndicesSyncRule(Settings s) throws RuleNotConfiguredException {
-    configuredWildcards = MatcherWithWildcards.fromSettings(s, getKey());
-    if(configuredWildcards.getMatchers().stream().filter(m -> m.contains("@user")).findFirst().isPresent()){
-      throw new RuleConfigurationError(
-        "Please use the new, safer syntax for variable replacements. I.e. use @{user} instead of @user", null);
-    }
+  public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
+    this.logger = context.logger(getClass());
+    this.settings = s;
   }
 
-  public static Optional<IndicesSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new IndicesSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
+  @Override
+  public RuleExitResult match(RequestContext rc) {
+
+    logger.debug("Stage -1");
+    if (!rc.involvesIndices()) {
+      return MATCH;
     }
+
+    // Run through sub-requests potentially mutating or discarding them.
+    if (rc.hasSubRequests()) {
+      Integer allowedSubRequests = rc.scanSubRequests((subRc) -> {
+        if (canPass(subRc)) {
+          return Optional.of(subRc);
+        }
+        return Optional.empty();
+      });
+      if (allowedSubRequests == 0) {
+        return NO_MATCH;
+      }
+      // We policed the single sub-requests, should be OK to let the allowed ones through
+      return MATCH;
+    }
+
+    // Regular non-composite request
+    return canPass(rc) ? MATCH : NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends IndicesRequestContext> boolean canPass(T src) {
-
-    MatcherWithWildcards matcher;
-
-    if (configuredWildcards.containsReplacements()) {
-      matcher = new MatcherWithWildcards(
-        configuredWildcards.getMatchers().stream()
-          .map(m -> src.applyVariables(m))
-          .filter(opt -> opt.isPresent())
-          .map(opt -> opt.get())
-          .collect(Collectors.toSet()));
-    }
-    else {
-      matcher = configuredWildcards;
-    }
+    MatcherWithWildcards matcher = new MatcherWithWildcards(
+        settings.getIndices().stream()
+            .map(v -> v.getValue(src))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .collect(Collectors.toSet())
+    );
 
     Set<String> indices = Sets.newHashSet(src.getIndices());
 
@@ -169,34 +180,5 @@ public class IndicesSyncRule extends SyncRule {
       // Conditions are satisfied
       return true;
     }
-  }
-
-  @Override
-  public RuleExitResult match(RequestContext rc) {
-
-    logger.debug("Stage -1");
-    if (!rc.involvesIndices()) {
-      return MATCH;
-    }
-
-    // Run through sub-requests potentially mutating or discarding them.
-    if (rc.hasSubRequests()) {
-      Integer allowedSubRequests = rc.scanSubRequests((subRc) -> {
-        if (canPass(subRc)) {
-          return Optional.of(subRc);
-        }
-        return Optional.empty();
-      }, logger);
-      if (allowedSubRequests == 0) {
-        return NO_MATCH;
-      }
-      // We policed the single sub-requests, should be OK to let the allowed ones through
-      return MATCH;
-    }
-
-    // Regular non-composite request
-    return canPass(rc) ? MATCH : NO_MATCH;
-
-
   }
 }

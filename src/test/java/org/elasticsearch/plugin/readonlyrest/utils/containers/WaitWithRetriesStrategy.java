@@ -17,7 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
 import org.testcontainers.containers.GenericContainer;
 
 import java.time.Duration;
@@ -27,7 +27,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.containers.ContainerUt
 
 public abstract class WaitWithRetriesStrategy extends GenericContainer.AbstractWaitStrategy {
 
-  private static Logger logger = Loggers.getLogger(WaitWithRetriesStrategy.class);
+  private static Logger logger = MockedESContext.INSTANCE.logger(WaitWithRetriesStrategy.class);
 
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
 

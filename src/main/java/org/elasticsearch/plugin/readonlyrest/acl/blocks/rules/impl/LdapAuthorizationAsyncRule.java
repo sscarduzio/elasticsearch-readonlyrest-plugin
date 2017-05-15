@@ -17,50 +17,27 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
-import org.elasticsearch.plugin.readonlyrest.ldap.GroupsProviderLdapClient;
-import org.elasticsearch.plugin.readonlyrest.ldap.LdapGroup;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;
 
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
 
-  private static final String RULE_NAME = "ldap_authorization";
-
-  private static final String LDAP_NAME = "name";
-  private static final String LDAP_GROUP_NAMES = "groups";
-
   private final GroupsProviderLdapClient client;
-  private final Set<String> groups;
+  private final LdapAuthorizationRuleSettings settings;
 
-  private LdapAuthorizationAsyncRule(GroupsProviderLdapClient client, Set<String> groups) {
-    this.client = client;
-    this.groups = groups;
-  }
-
-  public static Optional<LdapAuthorizationAsyncRule> fromSettings(Settings s,
-      LdapConfigs ldapConfigs) throws ConfigMalformedException {
-    return fromSettings(RULE_NAME, s, ldapConfigs);
-  }
-
-  static Optional<LdapAuthorizationAsyncRule> fromSettings(String ruleName, Settings s,
-      LdapConfigs ldapConfigs) throws ConfigMalformedException {
-    Settings ldapSettings = s.getAsSettings(ruleName);
-    if(ldapSettings.isEmpty()) return Optional.empty();
-
-    String name = ldapSettings.get(LDAP_NAME);
-    if (name == null)
-      throw new ConfigMalformedException("No [" + LDAP_NAME + "] attribute defined");
-    Set<String> groups = Sets.newHashSet(ldapSettings.getAsArray(LDAP_GROUP_NAMES));
-
-    return Optional.of(new LdapAuthorizationAsyncRule(ldapConfigs.authorizationLdapClientForName(name), groups));
+  public LdapAuthorizationAsyncRule(LdapAuthorizationRuleSettings settings, LdapClientFactory factory, ESContext context) {
+    super(context);
+    this.client = factory.getClient(settings.getLdapSettings());
+    this.settings = settings;
   }
 
   @Override
@@ -76,17 +53,14 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   private boolean checkIfUserHasAccess(Set<LdapGroup> ldapGroups) {
     return !ldapGroups.isEmpty() &&
         !Sets.intersection(
-            groups,
+            settings.getGroups(),
             ldapGroups.stream().map(LdapGroup::getName).collect(Collectors.toSet())
         ).isEmpty();
   }
 
   @Override
   public String getKey() {
-    return RULE_NAME;
+    return settings.getName();
   }
 
-  public GroupsProviderLdapClient getClient() {
-    return client;
-  }
 }

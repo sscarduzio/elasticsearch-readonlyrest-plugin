@@ -17,17 +17,16 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.settings.Settings;
+import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.users.UserFactory;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsRuleSettings;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A GroupsSyncRule checks if a request containing Basic Authentication credentials
@@ -37,62 +36,33 @@ import java.util.Optional;
  */
 public class GroupsSyncRule extends SyncRule {
 
-  private final List<User> users;
-  private final List<String> groups;
-  private  boolean hasReplacements = false;
+  private final GroupsRuleSettings settings;
+  private final UserFactory userFactory;
 
-  public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
-    super();
-
-    users = userList;
-    String[] pGroups = s.getAsArray(this.getKey());
-    if (pGroups != null && pGroups.length > 0) {
-      for(int i = 0; i < pGroups.length; i++){
-        if(pGroups[i] != null && pGroups[i].contains("@")){
-          hasReplacements = true;
-          break;
-        }
-      }
-      this.groups = Arrays.asList(pGroups);
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
-  }
-
-  public static Optional<GroupsSyncRule> fromSettings(Settings s, List<User> userList) {
-    try {
-      return Optional.of(new GroupsSyncRule(s, userList));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public GroupsSyncRule(GroupsRuleSettings s, UserFactory userFactory) {
+    this.settings = s;
+    this.userFactory = userFactory;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    for (User user : this.users) {
-      if (user.getAuthKeyRule().match(rc).isMatch()) {
-        List<String> commonGroups = new ArrayList<>(user.getGroups());
+    Set<String> resolvedGroups = settings.getGroups().stream()
+        .map(g -> g.getValue(rc))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .collect(Collectors.toSet());
+    boolean anyMatch = settings.getUsersSettings().stream()
+        .map(userFactory::getUser)
+        .anyMatch(user -> Sets.intersection(resolvedGroups, user.getGroups()).isEmpty()
+            ? user.getAuthKeyRule().match(rc).isMatch()
+            : false
+        );
 
-        List<String> groupsInThisRule;
-        if(hasReplacements){
-          groupsInThisRule = new ArrayList<>(this.groups.size());
-          for(String g : this.groups){
-            // won't add if applyVariables doesn't find all replacements
-            rc.applyVariables(g).map(groupsInThisRule::add);
-          }
-        }
-        else{
-          groupsInThisRule = this.groups;
-        }
-
-        commonGroups.retainAll(groupsInThisRule);
-        if (!commonGroups.isEmpty()) {
-          return MATCH;
-        }
-      }
-    }
-    return NO_MATCH;
+    return anyMatch ? MATCH : NO_MATCH;
   }
 
+  @Override
+  public String getKey() {
+    return settings.getName();
+  }
 }

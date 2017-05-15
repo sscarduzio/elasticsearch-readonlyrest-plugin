@@ -50,7 +50,7 @@ repositories {
 esplugin {
     name project.properties['pluginName']
     description 'Safely expose Elasticsearch REST API'
-    classname 'org.elasticsearch.plugin.readonlyrest.wiring.ReadonlyRestPlugin'
+    classname 'org.elasticsearch.plugin.readonlyrest.es.ReadonlyRestPlugin'
 }
 
 license {
@@ -82,26 +82,31 @@ configurations.all {
 }
 
 dependencies {
+
     compile 'com.google.guava:guava:21.0'
-    compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
-    compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
-    compile 'org.elasticsearch.client:rest:' + esVersion
     compile 'com.jayway.jsonpath:json-path:2.2.0'
-    compile 'net.minidev:json-smart:2.3'
+    compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
     compile 'net.minidev:accessors-smart:1.2'
-    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'net.minidev:json-smart:2.3'
+    compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
+    compile 'org.elasticsearch.client:rest:' + esVersion
+    compile 'org.jooq:jool:0.9.12'
+    compile 'org.yaml:snakeyaml:1.15'
     compile ('org.reflections:reflections:0.9.11'){
         exclude group: 'org.slf4j', module: 'slf4j-api'
         exclude group: 'org.slf4j', module: 'slf4j-simple'
         exclude group: 'dom4j', module: 'dom4j'
         exclude group: 'com.google.code.gson', module: 'gson'
     }
+    compile 'org.slf4j:slf4j-api:1.7.25'
+
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
+    testCompile 'org.apache.httpcomponents:httpclient:4.5.2'
     testCompile 'org.gradle:gradle-tooling-api:2.13'
     testRuntime 'org.gradle:gradle-tooling-api:2.13'
-    testCompile('org.testcontainers:testcontainers:1.1.9')
-    testRuntime('org.testcontainers:testcontainers:1.1.9')
+    testCompile('org.testcontainers:testcontainers:1.2.1')
+    testRuntime('org.testcontainers:testcontainers:1.2.1')
 }
 
 run {
