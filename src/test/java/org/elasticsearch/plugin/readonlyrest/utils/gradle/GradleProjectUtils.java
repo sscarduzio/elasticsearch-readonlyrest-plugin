@@ -28,6 +28,7 @@ public class GradleProjectUtils {
   private static final GradleProperties properties = GradleProperties.create().get();
 
   public static Optional<File> assemble() {
+    System.setProperty("java.io.tmpdir", "/tmp");
     runTask(":assemble");
     File plugin = new File(getProjectDir().toFile(), "build/distributions/" + pluginName());
     if (!plugin.exists()) return Optional.empty();
@@ -50,6 +51,7 @@ public class GradleProjectUtils {
 
   private static void runTask(String task) {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(getProjectDir().toFile());
+
     ProjectConnection connect = null;
     try {
       connect = connector.connect();
