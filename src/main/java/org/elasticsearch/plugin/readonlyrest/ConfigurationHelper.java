@@ -70,6 +70,10 @@ public class ConfigurationHelper {
   public String sslKeyAlias;
   public String sslCertChainPem;
   public String sslPrivKeyPem;
+  public String cookieName;
+  public String cookieSecret;
+  public String tokenSecret;
+  public String tokenClientId;
   public ACL acl;
 
   @Inject
@@ -132,7 +136,10 @@ public class ConfigurationHelper {
         bool(prefix + "enable"),
         str(prefix + "response_if_req_forbidden"),
         bool(prefix + "searchlog"),
-
+        str(prefix + "cookieSecret"),
+        str(prefix + "cookieName"),
+        str(prefix + "tokenClientId"),
+        str(prefix + "tokenSecret"),
         // SSL
         bool(prefix + "ssl.enable"),
         str(prefix + "ssl.keystore_file"),
@@ -193,7 +200,11 @@ public class ConfigurationHelper {
     enabled = s.getAsBoolean("enable", s.getByPrefix("access_control_rules").size() > 0);
 
     forbiddenResponse = s.get("response_if_req_forbidden", "Forbidden").trim();
-
+    cookieName = s.get("cookieName").trim();
+    cookieSecret = s.get("cookieSecret").trim();
+    tokenClientId = s.get("tokenClientId").trim();
+    tokenSecret = s.get("tokenSecret").trim();
+    
     // -- SSL
     sslEnabled = s.getAsBoolean("ssl.enable", s.getByPrefix("ssl").size() > 1);
     if (sslEnabled) {

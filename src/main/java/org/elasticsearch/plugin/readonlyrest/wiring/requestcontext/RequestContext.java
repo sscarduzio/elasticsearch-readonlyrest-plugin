@@ -37,6 +37,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.oauth.OAuthToken;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
@@ -69,6 +70,7 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
   private final ClusterService clusterService;
   private final IndexNameExpressionResolver indexResolver;
   private final Transactional<Set<String>> indices;
+  private OAuthToken token;
   private final Transactional<Verbosity> logLevel = new Transactional<Verbosity>("rc-verbosity") {
     @Override
     public Verbosity initialize() {
@@ -364,7 +366,15 @@ public class RequestContext extends Delayed implements IndicesRequestContext {
     loggedInUser.mutate(Optional.of(user));
   }
 
-  @Override
+  public OAuthToken getToken() {
+	return token;
+  }
+
+  public void setToken(OAuthToken token) {
+	this.token = token;
+  }
+
+@Override
   public String toString() {
     return toString(false);
   }

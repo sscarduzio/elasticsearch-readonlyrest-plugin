@@ -90,6 +90,7 @@ dependencies {
     compile 'net.minidev:json-smart:2.3'
     compile 'net.minidev:accessors-smart:1.2'
     compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'org.json:json:20160810'
     compile ('org.reflections:reflections:0.9.11'){
         exclude group: 'org.slf4j', module: 'slf4j-api'
         exclude group: 'org.slf4j', module: 'slf4j-simple'
