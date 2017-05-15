@@ -120,6 +120,11 @@ tasks.withType(Zip) { task ->
         ant.checksum file: it.archivePath, algorithm: 'sha1'
     }
 }
+
+task wrapper(type: Wrapper) {
+ gradleVersion = '3.5' 
+}
+
 // Set to false to not use elasticsearch checkstyle rules
 checkstyleMain.enabled = true
 checkstyleTest.enabled = true
