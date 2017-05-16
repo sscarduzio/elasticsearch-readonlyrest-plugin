@@ -18,36 +18,33 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
-
 public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
-
-  private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
 
   private final AsyncAuthorization underlying;
   private final Cache<String, Boolean> cache;
 
-  public CachedAsyncAuthorizationDecorator(AsyncAuthorization underlying, Duration ttl) {
+  public CachedAsyncAuthorizationDecorator(AsyncAuthorization underlying, Duration ttl, ESContext context) {
+    super(context);
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
-                             .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-                             .build();
+        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+        .build();
   }
 
-  public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization, Settings settings) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? authorization
-            : new CachedAsyncAuthorizationDecorator(authorization, ttl))
-        .orElse(authorization);
+  public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization,
+                                                               CacheSettings settings,
+                                                               ESContext context) {
+    return settings.getCacheTtl().isZero()
+        ? authorization
+        : new CachedAsyncAuthorizationDecorator(authorization, settings.getCacheTtl(), context);
   }
 
   @Override
@@ -55,10 +52,10 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
     Boolean authorizationResult = cache.getIfPresent(user.getId());
     if (authorizationResult == null) {
       return underlying.authorize(user)
-                       .thenApply(result -> {
-                         cache.put(user.getId(), result);
-                         return result;
-                       });
+          .thenApply(result -> {
+            cache.put(user.getId(), result);
+            return result;
+          });
     }
     return CompletableFuture.completedFuture(authorizationResult);
   }
@@ -68,4 +65,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
     return underlying.getKey();
   }
 
+  public AsyncAuthorization getUnderlying() {
+    return underlying;
+  }
 }

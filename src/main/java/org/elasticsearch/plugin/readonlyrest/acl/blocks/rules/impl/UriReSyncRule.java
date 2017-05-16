@@ -17,55 +17,36 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.UriReRuleSettings;
 
-import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class UriReSyncRule extends SyncRule {
 
-  private Pattern uri_re = null;
+  private final Value<Pattern> uri_re;
+  private final UriReRuleSettings settings;
 
-  public UriReSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-
-    String tmp = s.get(getKey());
-    if (!Strings.isNullOrEmpty(tmp)) {
-      try {
-        uri_re = Pattern.compile(tmp.trim());
-      } catch (PatternSyntaxException e) {
-        throw new RuleConfigurationError("invalid 'uri_re' regexp", e);
-      }
-
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
-  }
-
-  public static Optional<UriReSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new UriReSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public UriReSyncRule(UriReRuleSettings s){
+    this.uri_re = s.getPattern();
+    this.settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return rc.applyVariables(uri_re.pattern())
-      .map(Pattern::compile)
-      .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
-      .orElse(NO_MATCH);
+    return uri_re.getValue(rc)
+        .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
+        .orElse(NO_MATCH);
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

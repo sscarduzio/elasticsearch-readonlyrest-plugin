@@ -21,13 +21,12 @@ import java.util.Optional;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
 
 import com.google.common.base.Strings;
 
@@ -39,13 +38,15 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
 
-public class JwtAuthSyncRule extends SyncRule implements UserRule, Authentication {
+public class JwtAuthSyncRule extends UserRule implements Authentication {
 
   private static final Logger logger = Loggers.getLogger(JwtAuthSyncRule.class);
-  private static final String RULE_NAME = "jwt_auth";
 
-  private byte[] key;
-  private Optional<String> userClaim;
+  private final JwtAuthRuleSettings settings;
+
+  public JwtAuthSyncRule(JwtAuthRuleSettings settings) {
+    this.settings = settings;
+  }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
@@ -60,11 +61,11 @@ public class JwtAuthSyncRule extends SyncRule implements UserRule, Authenticatio
 
     try {
       Jws<Claims> jws = Jwts.parser()
-        .setSigningKey(key)
+        .setSigningKey(settings.getKey())
         .parseClaimsJws(token.get());
 
-      Optional<String> user = this.userClaim.map(claim -> jws.getBody().get(claim, String.class));
-      if (userClaim.isPresent())
+      Optional<String> user = settings.getUserClaim().map(claim -> jws.getBody().get(claim, String.class));
+      if (settings.getUserClaim().isPresent())
         if (!user.isPresent()) return NO_MATCH;
         else rc.setLoggedInUser(new LoggedUser(user.get()));
 
@@ -74,16 +75,9 @@ public class JwtAuthSyncRule extends SyncRule implements UserRule, Authenticatio
     }
   }
 
-  public static Optional<SyncRule> fromSettings(Settings s) {
-    String key = s.get(RULE_NAME + ".signature.key");
-
-    if (Strings.isNullOrEmpty(key))
-      return Optional.empty();
-
-    JwtAuthSyncRule rule = new JwtAuthSyncRule();
-    rule.key = key.getBytes();
-    rule.userClaim = Optional.ofNullable(s.get(RULE_NAME + ".user_claim"));
-    return Optional.of(rule);
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 
   private static Optional<String> extractToken(String authHeader) {

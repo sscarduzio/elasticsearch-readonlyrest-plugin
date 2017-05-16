@@ -50,6 +50,7 @@ public class GradleProjectUtils {
 
   private static void runTask(String task) {
     GradleConnector connector = GradleConnector.newConnector().forProjectDirectory(getProjectDir().toFile());
+
     ProjectConnection connect = null;
     try {
       connect = connector.connect();

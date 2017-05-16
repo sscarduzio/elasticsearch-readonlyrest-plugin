@@ -16,10 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -38,11 +35,6 @@ public class AsyncRuleAdapter extends AsyncRule {
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     return CompletableFuture.completedFuture(underlying.match(rc));
-  }
-
-  @Override
-  public boolean onResponse(BlockExitResult result, RequestContext rc, ActionRequest ar, ActionResponse response) {
-    return underlying.onResponse(result, rc, ar, response);
   }
 
   @Override

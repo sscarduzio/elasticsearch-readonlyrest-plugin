@@ -18,44 +18,39 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-
-import java.util.Optional;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.ActionsRuleSettings;
 
 /**
  * Created by sscarduzio on 14/02/2016.
  */
 public class ActionsSyncRule extends SyncRule {
 
-  private static final Logger logger = Loggers.getLogger(ActionsSyncRule.class);
+  private final Logger logger;
+  private final MatcherWithWildcards matcher;
+  private final ActionsRuleSettings settings;
 
-  protected MatcherWithWildcards m;
-
-  public ActionsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    m = MatcherWithWildcards.fromSettings(s, getKey());
-  }
-
-  public static Optional<ActionsSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new ActionsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public ActionsSyncRule(ActionsRuleSettings s, ESContext context) {
+    logger = context.logger(getClass());
+    matcher = new MatcherWithWildcards(s.getActions());
+    settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (m.match(rc.getAction())) {
+    if (matcher.match(rc.getAction())) {
       return MATCH;
     }
     logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");
     return NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

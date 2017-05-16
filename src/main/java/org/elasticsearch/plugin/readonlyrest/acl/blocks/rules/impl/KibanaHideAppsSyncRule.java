@@ -18,17 +18,15 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.util.Strings;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaHideAppsRuleSettings;
 
-import java.util.Arrays;
 import java.util.Optional;
 
 /**
@@ -37,24 +35,21 @@ import java.util.Optional;
 public class KibanaHideAppsSyncRule extends SyncRule {
 
   private static final String KIBANA_HIDE_APPS_HEADER = "x-kibana-hide-apps";
-  private final Logger logger = Loggers.getLogger(this.getClass());
+
+  private final Logger logger;
   private final String hiddenApps;
+  private final KibanaHideAppsRuleSettings settings;
 
-  public KibanaHideAppsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    // Will work fine also with single strings (non array) values.
-    String[] a = s.getAsArray(getKey());
-
-    if (a == null || a.length == 0) {
-      throw new RuleNotConfiguredException();
-    }
-    hiddenApps = Joiner.on(",").join(Arrays.asList(a));
+  public KibanaHideAppsSyncRule(KibanaHideAppsRuleSettings s, ESContext context) {
+    logger = context.logger(getClass());
+    hiddenApps = Joiner.on(",").join(s.getKibanaHideApps());
+    settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
     Optional<LoggedUser> loggedInUser = rc.getLoggedInUser();
-    if (Strings.isEmpty(hiddenApps) || !loggedInUser.isPresent()) {
+    if (Strings.isNullOrEmpty(hiddenApps) || !loggedInUser.isPresent()) {
       return MATCH;
     }
 
@@ -63,5 +58,10 @@ public class KibanaHideAppsSyncRule extends SyncRule {
 
     // This is a side-effect only rule, will always match
     return MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

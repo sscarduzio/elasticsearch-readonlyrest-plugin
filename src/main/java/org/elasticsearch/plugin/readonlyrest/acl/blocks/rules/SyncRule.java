@@ -17,33 +17,13 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import com.google.common.base.CaseFormat;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public abstract class SyncRule extends Rule {
 
-  private final String KEY;
-
-  public SyncRule() {
-    super();
-    KEY = mkKey(getClass());
-  }
-
   public abstract RuleExitResult match(RequestContext rc);
-
-  protected String mkKey(Class<? extends Rule> c) {
-    return CaseFormat.LOWER_CAMEL.to(
-        CaseFormat.LOWER_UNDERSCORE,
-        c.getSimpleName().replace("SyncRule", "")
-    );
-  }
-
-  @Override
-  public String getKey() {
-    return KEY;
-  }
 
 }

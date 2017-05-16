@@ -18,32 +18,26 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAuthentication;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Optional;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public class AuthKeySyncRule extends BasicAuthentication {
-  private static final Logger logger = Loggers.getLogger(AuthKeySyncRule.class);
 
-  public AuthKeySyncRule(Settings s) throws RuleNotConfiguredException {
-    super(s);
-  }
+  private final Logger logger;
+  private final AuthKeyPlainTextRuleSettings settings;
 
-  public static Optional<AuthKeySyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new AuthKeySyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public AuthKeySyncRule(AuthKeyPlainTextRuleSettings s, ESContext context) {
+    super(s, context);
+    this.logger = context.logger(AuthKeySyncRule.class);
+    this.settings = s;
   }
 
   @Override
@@ -55,5 +49,10 @@ public class AuthKeySyncRule extends BasicAuthentication {
       logger.warn("Exception while authentication", e);
       return false;
     }
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

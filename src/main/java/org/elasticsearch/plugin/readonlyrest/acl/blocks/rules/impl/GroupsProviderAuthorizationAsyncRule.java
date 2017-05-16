@@ -16,83 +16,44 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.groupsproviders.GroupsProviderServiceClientFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsProviderAuthorizationRuleSettings;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeArrayValue;
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.requiredAttributeValue;
 
 public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
-  private static final String RULE_NAME = "groups_provider_authorization";
-  private static final String ATTRIBUTE_USER_GROUPS_PROVIDER = "user_groups_provider";
-  private static final String ATTRIBUTE_GROUPS = "groups";
+  private final GroupsProviderAuthorizationRuleSettings settings;
+  private final GroupsProviderServiceClient client;
 
-  private final ProviderGroupsAuthDefinition providerGroupsAuthDefinition;
-
-  private GroupsProviderAuthorizationAsyncRule(ProviderGroupsAuthDefinition definition) {
-    this.providerGroupsAuthDefinition = definition;
-  }
-
-  public static Optional<GroupsProviderAuthorizationAsyncRule> fromSettings(Settings s,
-      List<UserGroupProviderConfig> groupProviderConfigs)
-      throws ConfigMalformedException {
-    Settings groupBaseAuthSettings = s.getAsSettings(RULE_NAME);
-    if(groupBaseAuthSettings.isEmpty()) return Optional.empty();
-
-    Map<String, UserGroupProviderConfig> userGroupProviderConfigByName =
-        groupProviderConfigs.stream().collect(Collectors.toMap(UserGroupProviderConfig::getName, Function.identity()));
-
-    String name = requiredAttributeValue(ATTRIBUTE_USER_GROUPS_PROVIDER, groupBaseAuthSettings);
-    if (!userGroupProviderConfigByName.containsKey(name)) {
-      throw new ConfigMalformedException("User groups provider with name [" + name + "] wasn't defined.");
-    }
-    List<String> groups = requiredAttributeArrayValue(ATTRIBUTE_GROUPS, groupBaseAuthSettings);
-
-    return Optional.of(new GroupsProviderAuthorizationAsyncRule(
-        new ProviderGroupsAuthDefinition(userGroupProviderConfigByName.get(name), groups)
-    ));
+  public GroupsProviderAuthorizationAsyncRule(GroupsProviderAuthorizationRuleSettings settings,
+                                              GroupsProviderServiceClientFactory factory,
+                                              ESContext context) {
+    super(context);
+    this.settings = settings;
+    this.client = factory.getClient(settings.getUserGroupsProviderSettings());
   }
 
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
-    return providerGroupsAuthDefinition.config.getClient()
-        .fetchGroupsFor(user)
+    return client.fetchGroupsFor(user)
         .thenApply(this::checkUserGroups);
   }
 
-  private boolean checkUserGroups(Set<String> groups ) {
-
-          Sets.SetView<String> intersection = Sets.intersection(providerGroupsAuthDefinition.groups, Sets.newHashSet(groups));
-          return !intersection.isEmpty();
-
+  private boolean checkUserGroups(Set<String> groups) {
+    Sets.SetView<String> intersection = Sets.intersection(settings.getGroups(), Sets.newHashSet(groups));
+    return !intersection.isEmpty();
   }
 
   @Override
   public String getKey() {
-    return RULE_NAME;
-  }
-
-  private static class ProviderGroupsAuthDefinition {
-    private final UserGroupProviderConfig config;
-    private final ImmutableSet<String> groups;
-
-    ProviderGroupsAuthDefinition(UserGroupProviderConfig config, List<String> groups) {
-      this.config = config;
-      this.groups = ImmutableSet.copyOf(groups);
-    }
+    return settings.getName();
   }
 
 }

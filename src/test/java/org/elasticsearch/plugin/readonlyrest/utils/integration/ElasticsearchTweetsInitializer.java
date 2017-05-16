@@ -16,15 +16,15 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils.integration;
 
-
-import com.google.common.collect.Maps;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
+import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+
+import static org.apache.http.util.EntityUtils.consume;
 
 public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContainer.ESInitalizer {
 
@@ -36,11 +36,11 @@ public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContain
     createPost(client, "2", "morgan",
         "Let me tell you something my friend. Hope is a dangerous thing. Hope can drive a man insane."
     );
+    createPost(client, "1", "elon", "We're going to Mars!");
     createTweet(client, "3", "bong",
         "Alright! Check out this bad boy: 12 megabytes of RAM, 500 megabyte hard drive, built-in " +
             "spreadhseet capabilities and a modem that transmits it over 28,000 bps. "
     );
-    createPost(client, "1", "elon", "We're going to Mars!");
   }
 
   private void createTweet(RestClient client, String id, String user, String message) {
@@ -53,19 +53,17 @@ public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContain
 
   private void createMessage(RestClient client, String endpoint, String id, String user, String message) {
     try {
-      client.performRequest(
-          "PUT",
-          endpoint + id,
-          Maps.newHashMap(),
-          new StringEntity(
-              "{\n" +
-                  "\"user\" : \"" + user + "\",\n" +
-                  "\"post_date\" : \"" + LocalDateTime.now().format(DateTimeFormatter.BASIC_ISO_DATE) + "\",\n" +
-                  "\"message\" : \"" + message + "\"\n" +
-                  "}")
-      );
-    } catch (IOException e) {
+      HttpPut httpPut = new HttpPut(client.from(endpoint + id));
+      httpPut.setEntity(new StringEntity(
+          "{\n" +
+              "\"user\" : \"" + user + "\",\n" +
+              "\"post_date\" : \"" + LocalDateTime.now().format(DateTimeFormatter.BASIC_ISO_DATE) + "\",\n" +
+              "\"message\" : \"" + message + "\"\n" +
+              "}"));
+      consume(client.execute(httpPut).getEntity());
+    } catch (Exception e) {
       e.printStackTrace();
+      throw new RuntimeException("Creating message failed", e);
     }
   }
 }

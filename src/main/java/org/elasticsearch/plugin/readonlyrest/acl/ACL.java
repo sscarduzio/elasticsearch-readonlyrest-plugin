@@ -17,127 +17,88 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.ConfigurationHelper;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.LdapConfigs;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.User;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationServiceConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.UserGroupProviderConfig;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
+import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.Verbosity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RED;
-import static org.elasticsearch.plugin.readonlyrest.ConfigurationHelper.ANSI_RESET;
+import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_RED;
+import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_RESET;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 
 public class ACL {
-  private static final String RULES_PREFIX = "readonlyrest.access_control_rules";
-  private static final String USERS_PREFIX = "readonlyrest.users";
-  private static final String LDAPS_PREFIX = "readonlyrest.ldaps";
-  private static final String PROXIES_PREFIX = "readonlyrest.proxy_auth_configs";
-  private static final String USER_GROUPS_PROVIDERS_PREFIX = "readonlyrest.user_groups_providers";
-  private static final String EXTERNAL_AUTH_SERVICES_PREFIX = "readonlyrest.external_authentication_service_configs";
 
-  private final Logger logger = Loggers.getLogger(getClass());
-  // Array list because it preserves the insertion order
-  private ArrayList<Block> blocks = new ArrayList<>();
+  private final Logger logger;
+  private final RorSettings settings;
+  // list because it preserves the insertion order
+  private final ImmutableList<Block> blocks;
 
-  public ACL(Client client, ConfigurationHelper conf) {
-    Settings s = conf.settings;
-    Map<String, Settings> blocksMap = s.getGroups(RULES_PREFIX);
-    List<ProxyAuthConfig> proxyAuthConfigs = parseProxyAuthSettings(s.getGroups(PROXIES_PREFIX).values());
-    List<User> users = parseUserSettings(s.getGroups(USERS_PREFIX).values(), proxyAuthConfigs);
-    LdapConfigs ldaps = LdapConfigs.fromSettings(LDAPS_PREFIX, s);
-    List<UserGroupProviderConfig> groupsProviderConfigs = parseUserGroupsProviderSettings(
-      s.getGroups(USER_GROUPS_PROVIDERS_PREFIX).values()
+  public ACL(RorSettings settings, ESContext context) {
+    this.settings = settings;
+    this.logger = context.logger(getClass());
+    final UserRuleFactory userRuleFactory = new UserRuleFactory(context);
+    final DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory, context);
+    final RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, context);
+    this.blocks = ImmutableList.copyOf(
+        settings.getBlocksSettings().stream()
+            .map(blockSettings -> {
+              Block block = new Block(blockSettings, rulesFactory, context);
+              logger.info("ADDING #" + blockSettings.getName() + ":\t" + block.toString());
+              return block;
+            })
+            .collect(Collectors.toList())
     );
-    List<ExternalAuthenticationServiceConfig> externalAuthenticationServiceConfigs =
-      parseExternalAuthenticationServiceSettings(s.getGroups(EXTERNAL_AUTH_SERVICES_PREFIX).values());
-    blocksMap.entrySet()
-      .forEach(entry -> {
-        Block block = new Block(entry.getValue(), users, ldaps, proxyAuthConfigs, groupsProviderConfigs,
-                                externalAuthenticationServiceConfigs, logger
-        );
-        blocks.add(block);
-        if (block.isAuthHeaderAccepted()) {
-          ConfigurationHelper.setRequirePassword(true);
-        }
-        logger.info("ADDING #" + entry.getKey() + ":\t" + block.toString());
-      });
   }
 
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
     logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
-      blocks.iterator(),
-      block -> {
-        rc.reset();
-        return block.check(rc);
-      },
-      checkResult -> {
-        Verbosity v = rc.getVerbosity();
-        if (checkResult.isMatch()) {
-          if (v.equals(Verbosity.INFO)) {
-            logger.info("request: " + rc + " matched block: " + checkResult);
+        blocks.iterator(),
+        block -> {
+          rc.reset();
+          return block.check(rc);
+        },
+        (block, checkResult) -> {
+          if (checkResult.isMatch()) {
+            if (Verbosity.INFO.equals(block.getVerbosity())) {
+              logger.info("request: " + rc + " matched block: " + checkResult);
+            }
+            if (checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW)) {
+              rc.commit();
+            }
+            return true;
+          } else {
+            return false;
           }
-          if(checkResult.getBlock().getPolicy().equals(Block.Policy.ALLOW)){
-            rc.commit();
+        },
+        nothing -> {
+          if (Verbosity.INFO.equals(settings.getVerbosity())) {
+            logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
           }
-          return true;
+          return BlockExitResult.noMatch();
         }
-        else {
-          return false;
-        }
-      },
-      nothing -> {
-        Verbosity v = rc.getVerbosity();
-        if (v.equals(Verbosity.INFO) || v.equals(Verbosity.ERROR)) {
-          logger.info(ANSI_RED + " no block has matched, forbidding by default: " + rc + ANSI_RESET);
-        }
-        return BlockExitResult.noMatch();
-      }
     );
   }
 
-  private List<User> parseUserSettings(Collection<Settings> userSettings, List<ProxyAuthConfig> proxyAuthConfigs) {
-    return userSettings.stream()
-      .map(settings -> User.fromSettings(settings, proxyAuthConfigs))
-      .collect(Collectors.toList());
+  public RorSettings getSettings() {
+    return settings;
   }
 
-  private List<ProxyAuthConfig> parseProxyAuthSettings(Collection<Settings> proxyAuthSettings) {
-    return proxyAuthSettings.stream()
-      .map(ProxyAuthConfig::fromSettings)
-      .collect(Collectors.toList());
-  }
-
-  private List<UserGroupProviderConfig> parseUserGroupsProviderSettings(Collection<Settings> groupProvidersSettings) {
-    return groupProvidersSettings.stream()
-      .map(UserGroupProviderConfig::fromSettings)
-      .collect(Collectors.toList());
-  }
-
-  private List<ExternalAuthenticationServiceConfig> parseExternalAuthenticationServiceSettings(
-    Collection<Settings> ExternalAuthenticationServiceSettings) {
-    return ExternalAuthenticationServiceSettings.stream()
-      .map(ExternalAuthenticationServiceConfig::fromSettings)
-      .collect(Collectors.toList());
+  public boolean doesRequirePassword() {
+    return blocks.stream().anyMatch(Block::isAuthHeaderAccepted);
   }
 }

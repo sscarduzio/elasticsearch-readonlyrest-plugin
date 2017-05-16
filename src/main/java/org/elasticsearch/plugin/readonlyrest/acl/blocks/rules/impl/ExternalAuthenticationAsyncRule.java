@@ -16,82 +16,34 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAsyncAuthentication;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.ConfigMalformedException;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthentication;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.ExternalAuthenticationRuleSettings;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.notSupported;
+public class ExternalAuthenticationAsyncRule extends AsyncAuthentication {
 
-public class ExternalAuthenticationAsyncRule extends BasicAsyncAuthentication {
+  private final ExternalAuthenticationRuleSettings settings;
+  private final ExternalAuthenticationServiceClient client;
 
-  private static final String RULE_NAME = "external_authentication";
-  private static final String ATTRIBUTE_SERVICE = "service";
-
-  private final ExternalAuthenticationServiceConfig config;
-
-  public static Optional<ExternalAuthenticationAsyncRule> fromSettings(Settings s,
-                                                                       List<ExternalAuthenticationServiceConfig> configs)
-      throws ConfigMalformedException {
-    return ConfigReaderHelper.fromSettings(RULE_NAME, s, parseSimpleSettings(configs),
-        notSupported(RULE_NAME), parseExtendedSettings(configs));
-  }
-
-  private static Function<Settings, Optional<ExternalAuthenticationAsyncRule>> parseSimpleSettings(
-      List<ExternalAuthenticationServiceConfig> configs) {
-    return settings -> {
-      String name = settings.get(RULE_NAME);
-      if(name == null)
-        throw new ConfigMalformedException(String.format("No external authentication service name defined in rule %s", RULE_NAME));
-
-      return Optional.of(new ExternalAuthenticationAsyncRule(serviceConfigByName(name, configs)));
-    };
-  }
-
-  private static Function<Settings, Optional<ExternalAuthenticationAsyncRule>> parseExtendedSettings(
-      List<ExternalAuthenticationServiceConfig> configs) {
-    return settings -> {
-      Settings externalAuthSettings = settings.getAsSettings(RULE_NAME);
-      if(externalAuthSettings.isEmpty()) return Optional.empty();
-
-      String externalAuthConfigName = externalAuthSettings.get(ATTRIBUTE_SERVICE);
-      if (externalAuthConfigName == null)
-        throw new ConfigMalformedException(String.format("No '%s' attribute found in '%s' rule", ATTRIBUTE_SERVICE, RULE_NAME));
-
-      return Optional.of(new ExternalAuthenticationAsyncRule(serviceConfigByName(externalAuthConfigName, configs)));
-    };
-  }
-
-  private static ExternalAuthenticationServiceConfig serviceConfigByName(String name,
-                                                                         List<ExternalAuthenticationServiceConfig> configs) {
-    Map<String, ExternalAuthenticationServiceConfig> serviceConfigByName = configs.stream()
-        .collect(Collectors.toMap(ExternalAuthenticationServiceConfig::getName, Function.identity()));
-
-    ExternalAuthenticationServiceConfig serviceConfig = serviceConfigByName.get(name);
-    if (serviceConfig == null)
-      throw new ConfigMalformedException(String.format("There is no external authentication service config with name '%s'", name));
-
-    return serviceConfig;
-  }
-
-  private ExternalAuthenticationAsyncRule(ExternalAuthenticationServiceConfig config) {
-    this.config = config;
+  public ExternalAuthenticationAsyncRule(ExternalAuthenticationRuleSettings settings,
+                                         ExternalAuthenticationServiceClientFactory factory,
+                                         ESContext context) {
+    super(context);
+    this.settings = settings;
+    this.client = factory.getClient(settings.getExternalAuthenticationServiceSettings());
   }
 
   @Override
   protected CompletableFuture<Boolean> authenticate(String user, String password) {
-    return config.getClient().authenticate(user, password);
+    return client.authenticate(user, password);
   }
 
   @Override
   public String getKey() {
-    return RULE_NAME;
+    return settings.getName();
   }
 }

@@ -19,8 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 
 import java.nio.charset.Charset;
 import java.time.Duration;
@@ -28,28 +28,25 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import static org.elasticsearch.plugin.readonlyrest.utils.ConfigReaderHelper.optionalAttributeValue;
+public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
 
-public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication {
-
-  private static String ATTRIBUTE_CACHE_TTL = "cache_ttl_in_sec";
-
-  private final BasicAsyncAuthentication underlying;
+  private final AsyncAuthentication underlying;
   private final Cache<String, String> cache;
 
-  public CachedAsyncAuthenticationDecorator(BasicAsyncAuthentication underlying, Duration ttl) {
+  public CachedAsyncAuthenticationDecorator(AsyncAuthentication underlying, Duration ttl, ESContext context) {
+    super(context);
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
                              .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
                              .build();
   }
 
-  public static BasicAsyncAuthentication wrapInCacheIfCacheIsEnabled(BasicAsyncAuthentication authentication, Settings settings) {
-    return optionalAttributeValue(ATTRIBUTE_CACHE_TTL, settings, ConfigReaderHelper.toDuration())
-        .map(ttl -> ttl.isZero()
-            ? authentication
-            : new CachedAsyncAuthenticationDecorator(authentication, ttl))
-        .orElse(authentication);
+  public static AsyncAuthentication wrapInCacheIfCacheIsEnabled(AsyncAuthentication authentication,
+                                                                CacheSettings settings,
+                                                                ESContext context) {
+    return settings.getCacheTtl().isZero()
+        ? authentication
+        : new CachedAsyncAuthenticationDecorator(authentication, settings.getCacheTtl(), context);
   }
 
   private static String hashPassword(String password) {
@@ -75,5 +72,9 @@ public class CachedAsyncAuthenticationDecorator extends BasicAsyncAuthentication
   @Override
   public String getKey() {
     return underlying.getKey();
+  }
+
+  public AsyncAuthentication getUnderlying() {
+    return underlying;
   }
 }

@@ -19,13 +19,12 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.acl.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
@@ -44,22 +43,22 @@ import java.util.UUID;
  */
 public class SessionCookie {
 
-  private static final Logger logger = Loggers.getLogger(SessionCookie.class);
-
   private static final String SERVER_SECRET = UUID.randomUUID().toString();
-
   private static final String COOKIE_NAME = "ReadonlyREST_Session";
   private static final String COOKIE_STRING_SEPARATOR = "__";
   private static final DateFormat df = new SimpleDateFormat("EEE MMM dd kk:mm:ss z yyyy", Locale.getDefault());
+
+  private final Logger logger;
   private final Long sessionMaxIdleMillis;
   private final RequestContext rc;
 
   private boolean cookiePresent = false;
   private boolean cookieValid = false;
 
-  public SessionCookie(RequestContext rc, Long sessionMaxIdleMillis) {
+  SessionCookie(RequestContext rc, Long sessionMaxIdleMillis, ESContext context) {
+    logger = context.logger(getClass());
     if (sessionMaxIdleMillis <= 0) {
-      throw new ElasticsearchException("session max idle interval cannot be negative");
+      throw context.rorException("session max idle interval cannot be negative");
     }
     this.sessionMaxIdleMillis = sessionMaxIdleMillis;
     this.rc = rc;

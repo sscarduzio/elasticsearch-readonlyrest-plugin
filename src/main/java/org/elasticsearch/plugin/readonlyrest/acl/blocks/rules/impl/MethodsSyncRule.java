@@ -17,52 +17,25 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import com.google.common.collect.Lists;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
-import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.MethodsRuleSettings;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 /**
  * Created by sscarduzio on 14/02/2016.
  */
 public class MethodsSyncRule extends SyncRule {
-  private List<String> allowedMethods;
 
-  public MethodsSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
-    String[] a = s.getAsArray(getKey());
-    if (a != null && a.length > 0) {
-      try {
-        for (String string : a) {
-          RestRequest.Method m = RestRequest.Method.valueOf(string.trim().toUpperCase());
-          if (allowedMethods == null) {
-            allowedMethods = Lists.newArrayList();
-          }
-          allowedMethods.add(m.toString());
-        }
-      } catch (Throwable t) {
-        throw new RuleConfigurationError("Invalid HTTP method found in configuration " + a, t);
-      }
-    }
-    else {
-      throw new RuleNotConfiguredException();
-    }
+  private final Set<HttpMethod> allowedMethods;
+  private final MethodsRuleSettings settings;
 
-  }
-
-  public static Optional<MethodsSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new MethodsSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+  public MethodsSyncRule(MethodsRuleSettings s) {
+    this.allowedMethods = s.getMethods();
+    this.settings = s;
   }
 
   /*
@@ -72,11 +45,13 @@ public class MethodsSyncRule extends SyncRule {
    */
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (allowedMethods.contains(rc.getMethod())) {
-      return MATCH;
-    }
-    else {
-      return NO_MATCH;
-    }
+    return allowedMethods.contains(rc.getMethod())
+        ? MATCH
+        : NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

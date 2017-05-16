@@ -19,20 +19,16 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.plugin.readonlyrest.acl.RuleConfigurationError;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleNotConfiguredException;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.wiring.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
 
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
-
 
 /**
  * Created by sscarduzio on 26/03/2016.
@@ -68,57 +64,38 @@ public class KibanaAccessSyncRule extends SyncRule {
       "cluster:monitor/main",
       "cluster:monitor/health"
   ));
-  private final Logger logger = Loggers.getLogger(this.getClass());
-  private String kibanaIndex = ".kibana";
-  private Boolean canModifyKibana;
+
+  private final Logger logger;
+  private final Value<String> kibanaIndex;
+  private final Boolean canModifyKibana;
+  private final KibanaAccessRuleSettings settings;
   private Boolean roStrict = false;
   private Boolean isAdmin = false;
-  private Pattern nonStrictAllowedPaths;
 
-  public KibanaAccessSyncRule(Settings s) throws RuleNotConfiguredException {
-    super();
+  public KibanaAccessSyncRule(KibanaAccessRuleSettings s, ESContext context) {
+    settings = s;
+    logger = context.logger(getClass());
 
-    String tmp = s.get(getKey());
-    if (Strings.isNullOrEmpty(tmp)) {
-      throw new RuleNotConfiguredException();
-    }
-    tmp = tmp.toLowerCase();
-
-    if ("ro_strict".equals(tmp)) {
-      canModifyKibana = false;
-      roStrict = true;
-    }
-    else if ("ro".equals(tmp)) {
-      canModifyKibana = false;
-    }
-    else if ("rw".equals(tmp)) {
-      canModifyKibana = true;
-    }
-    else if ("admin".equals(tmp)) {
-      canModifyKibana = true;
-      isAdmin = true;
-    }
-    else {
-      throw new RuleConfigurationError("invalid configuration: use either 'ro_strict', 'ro', 'rw' or 'admin'. Found: + " + tmp, null);
+    switch (s.getKibanaAccess()) {
+      case RO_STRICT:
+        canModifyKibana = false;
+        roStrict = true;
+        break;
+      case RO:
+        canModifyKibana = false;
+        break;
+      case RW:
+        canModifyKibana = true;
+        break;
+      case ADMIN:
+        canModifyKibana = true;
+        isAdmin = true;
+        break;
+      default:
+        throw context.rorException("Unsupported kibana access option");
     }
 
-    kibanaIndex = ".kibana";
-    tmp = s.get("kibana_index");
-    if (!Strings.isNullOrEmpty(tmp)) {
-      kibanaIndex = tmp;
-    }
-
-    // Save UI state in discover & Short urls
-    nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create).*"
-                                              .replace("@kibana_index", kibanaIndex));
-  }
-
-  public static Optional<KibanaAccessSyncRule> fromSettings(Settings s) {
-    try {
-      return Optional.of(new KibanaAccessSyncRule(s));
-    } catch (RuleNotConfiguredException ignored) {
-      return Optional.empty();
-    }
+    kibanaIndex = s.getKibanaIndex();
   }
 
   @Override
@@ -135,20 +112,20 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
-    // Apply variables replacements
-    Optional<String> kibanaIndexO =  rc.applyVariables(kibanaIndex);
-    if(kibanaIndexO.isPresent()){
-      kibanaIndex = kibanaIndexO.get();
-    }
+    String resolvedKibanaIndex = kibanaIndex.getValue(rc).orElse(".kibana");
 
-    boolean targetsKibana = indices.size() == 1 && indices.contains(kibanaIndex);
+    // Save UI state in discover & Short urls
+    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create)/.*"
+        .replace("@kibana_index", resolvedKibanaIndex));
+
+    boolean targetsKibana = indices.size() == 1 && indices.contains(resolvedKibanaIndex);
 
     // Ro non-strict cases to pass through
     if (
-      targetsKibana && !roStrict && !canModifyKibana &&
-        nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
-        rc.getAction().startsWith("indices:data/write/")
-      ) {
+        targetsKibana && !roStrict && !canModifyKibana &&
+            nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
+            rc.getAction().startsWith("indices:data/write/")
+        ) {
       return MATCH;
     }
 
@@ -168,5 +145,10 @@ public class KibanaAccessSyncRule extends SyncRule {
 
     logger.debug("KIBANA ACCESS DENIED " + rc.getId());
     return NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

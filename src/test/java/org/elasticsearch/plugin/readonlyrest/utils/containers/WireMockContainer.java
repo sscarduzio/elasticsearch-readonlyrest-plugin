@@ -17,10 +17,10 @@
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
 import com.google.common.collect.Lists;
-import org.apache.http.HttpHost;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
@@ -28,13 +28,14 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class WireMockContainer extends GenericContainer<WireMockContainer> {
 
-  private static Logger logger = Loggers.getLogger(WireMockContainer.class);
+  private static Logger logger = MockedESContext.INSTANCE.logger(WireMockContainer.class);
 
   private static int WIRE_MOCK_PORT = 8080;
   private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
@@ -73,7 +74,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   }
 
   private RestClient getClient() {
-    return RestClient.builder(new HttpHost(getWireMockHost(), getWireMockPort())).build();
+    return new RestClient(getWireMockHost(), getWireMockPort());
   }
 
   private WaitStrategy waitStrategy() {
@@ -82,10 +83,10 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
       @Override
       protected boolean isReady() {
         try {
-          return getClient()
-              .performRequest("GET", "/__admin/")
+          RestClient client = getClient();
+          return client.execute(new HttpGet(client.from("/__admin/")))
               .getStatusLine().getStatusCode() == 200;
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
           return false;
         }
       }
