@@ -31,8 +31,8 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.es.settings.ssl.ESSslSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.plugin.readonlyrest.es.settings.ssl.SSLEngineProvider;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.threadpool.ThreadPool;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
@@ -40,12 +40,14 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private final ESContext esContext;
   private final SslSettings sslSettings;
 
-  public SSLTransportNetty4(ESContext esContext, Settings settings, NetworkService networkService, BigArrays bigArrays,
-                            ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
-    super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
+  public SSLTransportNetty4(ESContext esContext, Settings settings, final NetworkService networkService,
+                            final BigArrays bigArrays, final ThreadPool threadPool,
+                            final NamedXContentRegistry namedXContentRegistry) {
+    super(settings, networkService, bigArrays, threadPool, namedXContentRegistry);
     this.esContext = esContext;
     this.sslSettings = ESSslSettings.from(settings);
     logger.info("creating SSL transport");
+
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -60,7 +62,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     return new SSLHandler(this);
   }
 
-  private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
+  private class SSLHandler extends HttpChannelHandler {
 
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());

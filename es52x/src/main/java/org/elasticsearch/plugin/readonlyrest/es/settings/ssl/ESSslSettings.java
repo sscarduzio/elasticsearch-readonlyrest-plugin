@@ -14,11 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package org.elasticsearch.plugin.readonlyrest.es.settings.ssl;
 
-rootProject.name = 'readonlyrest'
-include 'core'
-include 'es53x'
-include 'integration-tests'
-include 'tests-utils'
-include 'es52x'
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 
+public class ESSslSettings {
+
+  public static SslSettings from(Settings settings) {
+    Settings sslSettings = settings.getByPrefix(RorSettings.ATTRIBUTE_NAME + "." + SslSettings.ATTRIBUTE_NAME + ".");
+
+    boolean sslEnabled = sslSettings.getAsBoolean(SslSettings.ATTRIBUTE_ENABLE, !sslSettings.isEmpty());
+    if(!sslEnabled) return ESDisabledSslSettings.INSTANCE;
+
+    return new ESEnabledSslSettings(sslSettings);
+  }
+}

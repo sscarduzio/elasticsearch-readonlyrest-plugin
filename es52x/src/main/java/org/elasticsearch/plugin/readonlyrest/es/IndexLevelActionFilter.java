@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -30,9 +29,6 @@ import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.ToXContent;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
@@ -58,7 +54,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.elasticsearch.rest.RestStatus.FORBIDDEN;
-import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -165,11 +160,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     acl.check(rc)
         .exceptionally(throwable -> {
           logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
-          if (throwable.getCause() instanceof ResourceNotFoundException) {
-            logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
-            sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
-            return null;
-          }
           throwable.printStackTrace();
           sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
           return null;
@@ -213,19 +203,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     channel.sendResponse(resp);
   }
 
-  private void sendNotFound(ResourceNotFoundException e, RestChannel channel) {
-    try {
-      XContentBuilder b = JsonXContent.contentBuilder();
-      b.startObject();
-      ElasticsearchException.generateFailureXContent(b, ToXContent.EMPTY_PARAMS, e, true);
-      b.endObject();
-      BytesRestResponse resp;
-      resp = new BytesRestResponse(NOT_FOUND, "application/json", b.string());
-      channel.sendResponse(resp);
-    } catch (Exception e1) {
-      e1.printStackTrace();
-    }
-  }
 
   private void scheduleConfigurationReload() {
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);

@@ -14,11 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package org.elasticsearch.plugin.readonlyrest.es.settings.ssl;
 
-rootProject.name = 'readonlyrest'
-include 'core'
-include 'es53x'
-include 'integration-tests'
-include 'tests-utils'
-include 'es52x'
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.DisabledSslSettings;
 
+enum ESDisabledSslSettings implements DisabledSslSettings {
+  INSTANCE
+}

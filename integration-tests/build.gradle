@@ -5,9 +5,18 @@ buildscript {
     ext {
         pluginVersion = rootProject.properties['pluginVersion']
     }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
+    }
 }
 
 apply plugin: 'java'
+apply plugin: 'license'
 
 repositories {
     mavenCentral()
@@ -21,4 +30,13 @@ test {
 dependencies {
     testCompile project(':tests-utils')
     testCompile 'org.gradle:gradle-tooling-api:2.13'
+}
+
+license {
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders true
+    useDefaultMappings = false
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+    }
 }

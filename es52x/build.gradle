@@ -29,7 +29,6 @@ buildscript {
         mavenCentral()
         jcenter()
     }
-
     dependencies {
         classpath 'org.elasticsearch.gradle:build-tools:' + esVersion
         classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
@@ -106,8 +105,10 @@ license {
 checkstyleMain.enabled = true
 checkstyleTest.enabled = true
 dependencyLicenses.enabled = true
+
 // FIXME thirdparty audit needs to be enabled
 thirdPartyAudit.enabled = false
+
 // Uncomment this to skip license header checks
 licenseHeaders.enabled = false
 namingConventions.enabled = false
@@ -115,3 +116,4 @@ forbiddenApisMain.enabled = false
 forbiddenApisTest.enabled = false
 integTest.enabled = false
 jarHell.enabled = false
+

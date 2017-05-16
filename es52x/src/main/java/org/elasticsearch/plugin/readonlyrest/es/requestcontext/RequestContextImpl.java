@@ -94,11 +94,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     this.id = request.hashCode() + "-" + actionRequest.hashCode();
 
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    request.getHeaders().keySet().forEach(k -> {
-      if (request.getAllHeaderValues(k).isEmpty()) {
-        return;
-      }
-      h.put(k, request.getAllHeaderValues(k).iterator().next());
+    request.headers().forEach(k -> {
+      h.put(k.getKey(), k.getValue());
     });
 
     this.requestHeaders = h;
@@ -120,11 +117,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     };
 
-  this. loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
-    @Override
-    public Optional<LoggedUser> initialize() {
-      return Optional.empty();
-    }
+    this.loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
+      @Override
+      public Optional<LoggedUser> initialize() {
+        return Optional.empty();
+      }
 
       @Override
       public Optional<LoggedUser> copy(Optional<LoggedUser> initial) {
@@ -202,8 +199,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return content;
   }
 
-  public Optional<String> resolveVariable(String original){
-    return  variablesManager.apply(original);
+  public Optional<String> resolveVariable(String original) {
+    return variablesManager.apply(original);
 
   }
 
@@ -266,16 +263,16 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     }
 
     if (newIndices.size() == 0) {
-      if (isReadRequest()) {throw new ElasticsearchException(
-        "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
-            "] toempty set." +
-            ", probably your request matched no index, or was rewritten to nonexistentindices (which would expand to empty set).");
-      }
-      else {
+      if (isReadRequest()) {
         throw new ElasticsearchException(
-          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
-            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden." );
-          }
+            "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+                "] toempty set." +
+                ", probably your request matched no index, or was rewritten to nonexistentindices (which would expand to empty set).");
+      } else {
+        throw new ElasticsearchException(
+            "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+                "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden.");
+      }
     }
 
     if (isReadRequest()) {
@@ -283,9 +280,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       if (!expanded.isEmpty()) {
         indices.mutate(expanded);
       } else {
-        throw new IndexNotFoundException(
-            "rewritten indices not found: " + Joiner.on(",").join(newIndices)
-            , getIndices().iterator().next());
+        throw new IndexNotFoundException("rewritten indices not found: " + Joiner.on(",").join(newIndices));
       }
     }
     indices.mutate(newIndices);
@@ -377,12 +372,9 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
     }
-    String theHeaders;
-    if (!logger.isDebugEnabled()) {
-      theHeaders = Joiner.on(",").join(getHeaders().keySet());
-    } else {
-      theHeaders = getHeaders().toString();
-    }
+    String theHeaders = !logger.isDebugEnabled()
+        ? Joiner.on(",").join(getHeaders().keySet())
+        : getHeaders().toString();
 
     String hist = Joiner.on(", ").join(history);
     Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());

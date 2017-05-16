@@ -14,11 +14,29 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package org.elasticsearch.plugin.readonlyrest.es;
 
-rootProject.name = 'readonlyrest'
-include 'core'
-include 'es53x'
-include 'integration-tests'
-include 'tests-utils'
-include 'es52x'
 
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientFactory;
+
+public class ESContextImpl implements ESContext {
+
+  @Override
+  public Logger logger(Class<?> clazz) {
+    return Loggers.getLogger(clazz);
+  }
+
+  @Override
+  public RuntimeException rorException(String message) {
+    return new ElasticsearchException(message);
+  }
+
+  @Override
+  public HttpClientFactory httpClientFactory() {
+    return ESHttpClientFactory.INSTANCE;
+  }
+}
