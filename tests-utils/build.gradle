@@ -41,3 +41,7 @@ license {
         java = 'SLASHSTAR_STYLE'
     }
 }
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.5'
+}

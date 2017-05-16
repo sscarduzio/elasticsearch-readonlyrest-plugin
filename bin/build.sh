@@ -1,5 +1,5 @@
 #!/bin/sh
-./gradlew updateSHAs check assemble
+./gradlew ror
 # additional build of ES module for specified ES version
-./gradlew es53x:assemble '-PesVersion=5.3.0'
+./gradlew es53x:ror '-PesVersion=5.3.0'
 # -x test
