@@ -42,7 +42,9 @@ public class GroupsSyncRule extends SyncRule {
   private final List<User> users;
   private final List<String> groups;
   private  boolean hasReplacements = false;
-
+  private String kibanaGroup = "Kibana";
+  private String adminGroup = "Admin";
+  
   public GroupsSyncRule(Settings s, List<User> userList) throws RuleNotConfiguredException {
     super();
 
@@ -98,11 +100,13 @@ public class GroupsSyncRule extends SyncRule {
     } else {
     	OAuthToken token = rc.getToken();
 		List<String> commonGroups = new ArrayList<>(this.groups);
+		if (commonGroups.contains(kibanaGroup) && token == null)
+			return MATCH;
 		if (commonGroups == null || commonGroups.isEmpty() || token == null || token.getRoles() == null)
 			return NO_MATCH;
 		commonGroups.retainAll(token.getRoles());
-//		if (!commonGroups.isEmpty() && token.getRoles().contains(adminGroup))
-//			return MATCH;
+		if (!commonGroups.isEmpty() && token.getRoles().contains(adminGroup))
+			return MATCH;
 //		else 
 			//if (commonGroups.size() == token.getRoles().size())
 		if (!commonGroups.isEmpty())

@@ -31,6 +31,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import joptsimple.internal.Strings;
+
 public class OAuthToken {
 
 	private String alg;
@@ -226,6 +228,18 @@ public class OAuthToken {
 		return signature;
 	}
 
+	public void setHeader(String header) {
+		this.header = header;
+	}
+
+	public void setPayload(String payload) {
+		this.payload = payload;
+	}
+
+	public void setSignature(String signature) {
+		this.signature = signature;
+	}
+
 	public OAuthToken parseEncryptedJWT(String jwt, String secret) {
 		String token;
 		try {
@@ -321,11 +335,7 @@ public class OAuthToken {
 		sb.append("{Expiration date: " + this.exp.toString() + "}\n");
 		sb.append("User roles: " + this.roles);
 		sb.append("[");
-		this.roles.forEach(role -> {
-			sb.append(role);
-			if (this.roles.indexOf(role) <= this.roles.size())
-				sb.append(",");
-		});
+		Strings.join(this.roles, ",");
 		sb.append("]");
 		return sb.toString();
 	}
