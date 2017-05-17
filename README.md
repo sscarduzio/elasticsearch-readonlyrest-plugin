@@ -409,6 +409,8 @@ Only RSA-256 (for now) encryption is supported as JWT signature.
 - `tokenClientId` is the name used to get the groups of the user in the token, under the claim "resource_access"
 - `tokenSecret` the public key (in case of RSA-256) used to sign and verify the token
 
+In order to make this use case work, you'll need to install http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html in your JAVA_HOME
+
 ### 3. Restart Elasticsearch
 
 **For other use cases and finer access control** have a look at the official documentation to see [the full list of supported rules](https://readonlyrest.com/documentation)
