@@ -53,7 +53,7 @@ public class KibanaHideAppsSyncRule extends SyncRule {
       return MATCH;
     }
 
-    logger.info("setting hidden apps for user " + loggedInUser.get() + ": " + hiddenApps);
+    logger.debug("setting hidden apps for user " + loggedInUser.get() + ": " + hiddenApps);
     rc.setResponseHeader(KIBANA_HIDE_APPS_HEADER, hiddenApps);
 
     // This is a side-effect only rule, will always match

@@ -22,7 +22,7 @@ import java.util.Set;
 
 public class KibanaHideAppsRuleSettings implements RuleSettings {
 
-  public static final String ATTRIBUTE_NAME = "x-kibana-hide-apps";
+  public static final String ATTRIBUTE_NAME = "kibana_hide_apps";
 
   private final Set<String> kibanaHideApps;
 

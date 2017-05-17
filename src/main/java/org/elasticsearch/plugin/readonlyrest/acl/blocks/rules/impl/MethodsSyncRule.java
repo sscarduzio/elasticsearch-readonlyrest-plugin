@@ -39,7 +39,7 @@ public class MethodsSyncRule extends SyncRule {
   }
 
   /*
-    NB: Elasticsearch will parse as GET any HTTP methods than it does not understand.
+    NB: Elasticsearch will parse as GET any HTTP methods that it does not understand.
     So it's normal if you allowed GET and see a 'LINK' request going throw.
     It's actually interpreted by all means as a GET!
    */
