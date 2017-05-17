@@ -389,6 +389,26 @@ To define user groups provider you should specify:
 
 As usual, the cache behaviour can be defined at service level or/and at rule level.
 
+### USE CASE: OAuth Authentication
+This authentication is based on OAuth. The goal is to authenticate a user with an access token.
+```
+readonlyrest:
+    enable: true
+    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
+    oauth_enabled: true
+    cookieSecret: secret
+    cookieName: myCookie
+    tokenClientId: demo
+    tokenSecret: publickey
+```
+
+In the example above, the user is authenticated with a JWT token (https://jwt.io/) set in a cookie called 'myCookie'
+Only RSA-256 (for now) encryption is supported as JWT signature.
+- `cookieSecret` is the secret used to encrypt the cookie (with Jiron)
+- `cookieName` is the name of the Cookie
+- `tokenClientId` is the name used to get the groups of the user in the token, under the claim "resource_access"
+- `tokenSecret` the public key (in case of RSA-256) used to sign and verify the token
+
 ### 3. Restart Elasticsearch
 
 **For other use cases and finer access control** have a look at the official documentation to see [the full list of supported rules](https://readonlyrest.com/documentation)
