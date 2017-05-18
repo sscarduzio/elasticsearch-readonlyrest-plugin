@@ -53,6 +53,10 @@ public class IndicesSyncRule extends SyncRule {
       return MATCH;
     }
 
+    if (!canPass(rc)) {
+      return NO_MATCH;
+    }
+
     // Run through sub-requests potentially mutating or discarding them.
     if (rc.hasSubRequests()) {
       Integer allowedSubRequests = rc.scanSubRequests((subRc) -> {
