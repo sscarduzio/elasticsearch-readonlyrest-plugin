@@ -175,7 +175,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             return null;
           }
           throwable.printStackTrace();
-          sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
+          sendNotAuthResponse(channel, acl.getSettings());
           return null;
         })
         .thenApply(result -> {
@@ -198,20 +198,20 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
 
           logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
-          sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
+          sendNotAuthResponse(channel, acl.getSettings());
           return null;
         });
   }
 
-  private void sendNotAuthResponse(RestChannel channel, String forbiddenResponse) {
+  private void sendNotAuthResponse(RestChannel channel, RorSettings rorSettings) {
     BytesRestResponse resp;
-    boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
+    boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false) && rorSettings.isPromptForBasicAuth();
     if (doesRequirePassword) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, forbiddenResponse);
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
     } else {
-      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, forbiddenResponse);
+      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
     }
 
     channel.sendResponse(resp);

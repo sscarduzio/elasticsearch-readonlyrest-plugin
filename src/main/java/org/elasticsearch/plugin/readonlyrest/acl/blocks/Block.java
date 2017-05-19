@@ -19,6 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
@@ -135,8 +137,11 @@ public class Block {
   }
 
   private boolean isAuthenticationRule(AsyncRule rule) {
-    return rule instanceof Authentication ||
-        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication);
+    return
+      rule instanceof Authentication ||
+      rule instanceof ExternalAuthenticationAsyncRule ||
+        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication) ||
+        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof GroupsSyncRule);
   }
 
   @Override
