@@ -73,7 +73,7 @@ public class RorSettings {
         ))
         .collect(Collectors.toList());
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
-    this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(false);
+    this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);
     this.verbosity = raw.stringOpt(VERBOSITY)
         .map(value -> Verbosity.fromString(value)
             .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
