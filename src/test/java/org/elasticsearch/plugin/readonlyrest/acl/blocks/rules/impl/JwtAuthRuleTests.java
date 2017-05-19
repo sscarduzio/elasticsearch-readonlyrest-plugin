@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.elasticsearch.mock.orig.Mockito;
@@ -34,6 +36,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
 import org.junit.Test;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 
 import io.jsonwebtoken.Jwts;
@@ -152,6 +155,31 @@ public class JwtAuthRuleTests {
     assertTrue(res.isPresent());
     assertTrue(res.get().isMatch());
     verify(rc, never()).setLoggedInUser(any());
+  }
+
+  @Test
+  public void shouldSupportTextPrefixInSignatureKey() {
+    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "text:" + SECRET);
+    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(raw);
+    assertArrayEquals(SECRET.getBytes(), settings.getKey());
+  }
+
+  @Test
+  public void shouldSupportReadingKeyFromEnvironmentUsingEnvPrefix() {
+    /* FIXME : figure a better way to test for variable substitution */
+    Entry<String, String> vars = System.getenv()
+        .entrySet()
+        .stream()
+        .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+        .findAny()
+        .get();
+    String variable = vars.getKey();
+    String value = vars.getValue();
+    /* ************************************************************* */
+
+    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "env:" + variable);
+    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(raw);
+    assertArrayEquals(value.getBytes(), settings.getKey());
   }
 
   private RequestContext getMock(String token) {

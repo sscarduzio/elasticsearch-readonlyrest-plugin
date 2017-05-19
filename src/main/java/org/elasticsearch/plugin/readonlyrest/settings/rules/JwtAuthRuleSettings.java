@@ -34,9 +34,17 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
 
   public static JwtAuthRuleSettings from(RawSettings settings) {
     return new JwtAuthRuleSettings(
-        settings.req(SIGNATURE_KEY),
+        evalPrefixedSignatureKey(settings.req(SIGNATURE_KEY)),
         settings.opt(USER_CLAIM)
     );
+  }
+
+  private static String evalPrefixedSignatureKey(String s) {
+    if (s.startsWith("text:"))
+      return s.substring(5);
+    else if (s.startsWith("env:"))
+      return System.getenv(s.substring(4));
+    else return s;
   }
 
   private JwtAuthRuleSettings(String key, Optional<String> userClaim) {
