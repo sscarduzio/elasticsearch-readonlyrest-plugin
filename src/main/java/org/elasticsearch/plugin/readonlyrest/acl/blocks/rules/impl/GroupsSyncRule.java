@@ -54,8 +54,8 @@ public class GroupsSyncRule extends SyncRule {
     boolean anyMatch = settings.getUsersSettings().stream()
         .map(userFactory::getUser)
         .anyMatch(user -> Sets.intersection(resolvedGroups, user.getGroups()).isEmpty()
-            ? user.getAuthKeyRule().match(rc).isMatch()
-            : false
+            ? false
+            : user.getAuthKeyRule().match(rc).isMatch()
         );
 
     return anyMatch ? MATCH : NO_MATCH;
