@@ -23,5 +23,5 @@ readonlyrest:
       - name: Valid JWT token is present
         type: allow
         jwt_auth:
-          signature.key: 123456
+          signature.key: "123456"
           user_claim: user
