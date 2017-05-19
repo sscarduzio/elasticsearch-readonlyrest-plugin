@@ -16,6 +16,8 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
 
 import org.apache.logging.log4j.Logger;
@@ -59,9 +61,11 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
     }
 
     try {
-      Jws<Claims> jws = Jwts.parser()
-        .setSigningKey(settings.getKey())
-        .parseClaimsJws(token.get());
+      Jws<Claims> jws = AccessController.doPrivileged(
+        (PrivilegedAction<Jws<Claims>>) () ->
+          Jwts.parser()
+            .setSigningKey(settings.getKey())
+            .parseClaimsJws(token.get()));
 
       Optional<String> user = settings.getUserClaim().map(claim -> jws.getBody().get(claim, String.class));
       if (settings.getUserClaim().isPresent())
