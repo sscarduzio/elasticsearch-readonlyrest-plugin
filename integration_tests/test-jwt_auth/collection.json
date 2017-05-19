@@ -187,6 +187,47 @@
 				"description": "jwt_auth rule shall allow request carrying a token that has\nboth a valid signature and an appropiate user claim."
 			},
 			"response": []
+		},
+		{
+			"name": "reject-expired-token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status code is 401\"] = responseCode.code === 401;"
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jwt = eval(postman.getGlobalVariable(\"postman-jwt\"));\r",
+							"var secret = postman.getGlobalVariable(\"test-jwt_auth:secret\");\r",
+							"\r",
+							"var token = jwt.gen({sub: \"test\", user: \"user\", exp: 0}, secret);\r",
+							"postman.setEnvironmentVariable(\"test-jwt_auth:token\", token);"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{url_es}}/_cat/indices",
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{test-jwt_auth:token}}",
+						"description": ""
+					}
+				],
+				"body": {},
+				"description": "jwt_auth rule shall reject requests carrying an expired\ntoken."
+			},
+			"response": []
 		}
 	]
 }
