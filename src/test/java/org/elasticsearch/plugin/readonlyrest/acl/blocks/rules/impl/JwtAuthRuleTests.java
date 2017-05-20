@@ -45,8 +45,8 @@ import io.jsonwebtoken.SignatureAlgorithm;
 
 public class JwtAuthRuleTests {
 
-  private static final String SETTINGS_SIGNATURE_KEY = "signature.key";
-  private static final String SETTINGS_USER_CLAIM = "user_claim";
+  private static final String SETTINGS_SIGNATURE_KEY = JwtAuthRuleSettings.SIGNATURE_KEY;
+  private static final String SETTINGS_USER_CLAIM = JwtAuthRuleSettings.USER_CLAIM;
   private static final String ALGO = "HS256";
   private static final String SECRET = "123456";
   private static final String BAD_SECRET = "abcdef";

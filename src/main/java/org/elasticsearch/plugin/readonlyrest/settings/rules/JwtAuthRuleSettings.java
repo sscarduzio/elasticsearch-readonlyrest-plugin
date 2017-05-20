@@ -28,9 +28,8 @@ import com.google.common.base.Strings;
 public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
 
   public static final String ATTRIBUTE_NAME = "jwt_auth";
-
-  private static final String SIGNATURE_KEY = "signature.key";
-  private static final String USER_CLAIM = "user_claim";
+  public static final String SIGNATURE_KEY = "signature_key";
+  public static final String USER_CLAIM = "user_claim";
 
   private final byte[] key;
   private final Optional<String> userClaim;
