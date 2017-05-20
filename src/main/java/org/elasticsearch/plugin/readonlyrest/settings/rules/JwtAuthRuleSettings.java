@@ -21,6 +21,9 @@ import java.util.Optional;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
+
+import com.google.common.base.Strings;
 
 public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
 
@@ -34,9 +37,16 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
 
   public static JwtAuthRuleSettings from(RawSettings settings) {
     return new JwtAuthRuleSettings(
-        evalPrefixedSignatureKey(settings.req(SIGNATURE_KEY)),
+        evalPrefixedSignatureKey(ensureString(settings, SIGNATURE_KEY)),
         settings.opt(USER_CLAIM)
     );
+  }
+
+  private static String ensureString(RawSettings settings, String key) {
+    Object value = settings.req(key);
+    if (value instanceof String) return (String) value;
+    else throw new SettingsMalformedException(
+        "Attribute '" + key + "' must be a string; if it looks like a number try adding quotation marks");
   }
 
   private static String evalPrefixedSignatureKey(String s) {
@@ -48,6 +58,9 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   }
 
   private JwtAuthRuleSettings(String key, Optional<String> userClaim) {
+    if (Strings.isNullOrEmpty(key))
+      throw new SettingsMalformedException(
+          "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string");
     this.key = key.getBytes();
     this.userClaim = userClaim;
   }

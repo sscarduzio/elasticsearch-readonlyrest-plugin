@@ -33,6 +33,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
 import org.junit.Test;
 
@@ -52,6 +53,7 @@ public class JwtAuthRuleTests {
   private static final String SUBJECT = "test";
   private static final String USER_CLAIM = "user";
   private static final String USER1 = "user1";
+  private static final String EMPTY_VAR = "HOPE_THIS_VARIABLE_IS_NOT_IN_THE_ENVIRONMENT";
 
   @Test
   public void shouldAcceptTokenWithValidSignature() {
@@ -182,6 +184,24 @@ public class JwtAuthRuleTests {
     assertArrayEquals(value.getBytes(), settings.getKey());
   }
 
+  @Test(expected=SettingsMalformedException.class)
+  public void shouldFailWhenKeytIsEmpty() {
+    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "");
+    JwtAuthRuleSettings.from(raw);
+  }
+
+  @Test(expected=SettingsMalformedException.class)
+  public void shouldFailWhenKeyFromEnvironmentIsEmpty() {
+    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "env:" + EMPTY_VAR);
+    JwtAuthRuleSettings.from(raw);
+  }
+
+  @Test(expected=SettingsMalformedException.class)
+  public void shouldFailInAControlledFashionWhenKeyIsNotAString() {
+    RawSettings raw = makeSettings(false, SETTINGS_SIGNATURE_KEY, "123456");
+    JwtAuthRuleSettings.from(raw);
+  }
+
   private RequestContext getMock(String token) {
     RequestContext mock = Mockito.mock(RequestContext.class);
     when(mock.getHeaders()).thenReturn(ImmutableMap.of("Authorization", "Bearer " + token));
@@ -189,14 +209,20 @@ public class JwtAuthRuleTests {
   }
 
   private RawSettings makeSettings(String ...kvp) {
+    return makeSettings(true, kvp);
+  }
+
+  private RawSettings makeSettings(boolean escapeValues, String ...kvp) {
     assert kvp.length % 2 == 0;
 
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < kvp.length; i += 2) {
       sb.append(kvp[i]);
-      sb.append(": \"");
+      sb.append(": ");
+      if (escapeValues) sb.append('"');
       sb.append(kvp[i + 1]);
-      sb.append("\"\n");
+      if (escapeValues) sb.append('"');
+      sb.append("\n");
     }
 
     return RawSettings.fromString(sb.toString());
