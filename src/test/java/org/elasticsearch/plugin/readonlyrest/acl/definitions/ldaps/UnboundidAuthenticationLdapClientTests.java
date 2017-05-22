@@ -17,8 +17,10 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps;
 
+import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.ConnectionConfig;
-import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UnboundidAuthenticationLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UnboundidGroupsProviderLdapClient;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserGroupsSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.esdependent.MockedESContext;
@@ -28,6 +30,7 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public class UnboundidAuthenticationLdapClientTests {
@@ -35,7 +38,7 @@ public class UnboundidAuthenticationLdapClientTests {
   @ClassRule
   public static LdapContainer ldapContainer = LdapContainer.create("/test_example.ldif");
 
-  private UnboundidAuthenticationLdapClient client = new UnboundidAuthenticationLdapClient(
+  private UnboundidGroupsProviderLdapClient client = new UnboundidGroupsProviderLdapClient(
       new ConnectionConfig.Builder(ldapContainer.getLdapHost())
           .setPort(ldapContainer.getLdapPort())
           .setPoolSize(10)
@@ -45,6 +48,7 @@ public class UnboundidAuthenticationLdapClientTests {
           .setTrustAllCerts(false)
           .build(),
       new UserSearchFilterConfig.Builder("ou=People,dc=example,dc=com").build(),
+      new UserGroupsSearchFilterConfig.Builder("ou=Groups,dc=example,dc=com").build(),
       Optional.of(ldapContainer.getSearchingUserConfig()),
       MockedESContext.INSTANCE
   );
@@ -55,7 +59,7 @@ public class UnboundidAuthenticationLdapClientTests {
         new LdapCredentials("cartman", "user2")
     );
     Optional<LdapUser> user = userF.get();
-    Assert.assertEquals(user.isPresent(), true);
+    Assert.assertEquals(true, user.isPresent());
   }
 
   @Test
@@ -64,7 +68,7 @@ public class UnboundidAuthenticationLdapClientTests {
         new LdapCredentials("cartman", "wrongpassword")
     );
     Optional<LdapUser> user = userF.get();
-    Assert.assertEquals(user.isPresent(), false);
+    Assert.assertEquals(false, user.isPresent());
   }
 
   @Test
@@ -73,6 +77,16 @@ public class UnboundidAuthenticationLdapClientTests {
         new LdapCredentials("nonexistent", "whatever")
     );
     Optional<LdapUser> user = userF.get();
-    Assert.assertEquals(user.isPresent(), false);
+    Assert.assertEquals(false, user.isPresent());
+  }
+
+  @Test
+  public void testAuthenticationSuccessAndCNIsProperlyEscaped() throws Exception {
+    CompletableFuture<Set<LdapGroup>> groupsF = client.authenticate(new LdapCredentials("viktor", "user2"))
+        .thenCompose(ldapUser ->
+            ldapUser.map(user -> client.userGroups(user))
+                .orElse(CompletableFuture.completedFuture(Sets.newHashSet()))
+        );
+    Assert.assertEquals(false, groupsF.get().isEmpty());
   }
 }
