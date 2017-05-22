@@ -17,7 +17,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid;
 
 import com.google.common.collect.Lists;
-import com.sun.jndi.toolkit.dir.SearchFilter;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
