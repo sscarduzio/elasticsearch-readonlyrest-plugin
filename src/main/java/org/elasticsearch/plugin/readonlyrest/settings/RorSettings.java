@@ -35,6 +35,7 @@ public class RorSettings {
   public static final String ATTRIBUTE_ENABLE = "enable";
   public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
   public static final String ATTRIBUTE_SEARCHLOG = "searchlog";
+  public static final String PROMPT_FOR_BASIC_AUTH = "prompt_for_basic_auth";
   private static final String VERBOSITY = "verbosity";
 
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
@@ -45,6 +46,7 @@ public class RorSettings {
   private final String forbiddenMessage;
   private final Verbosity verbosity;
   private final List<BlockSettings> blocksSettings;
+  private final Boolean promptForBasicAuth;
 
   static RorSettings from(RawSettings settings) {
     return new RorSettings(settings.inner(ATTRIBUTE_NAME));
@@ -71,6 +73,7 @@ public class RorSettings {
         ))
         .collect(Collectors.toList());
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
+    this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);
     this.verbosity = raw.stringOpt(VERBOSITY)
         .map(value -> Verbosity.fromString(value)
             .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
@@ -91,5 +94,9 @@ public class RorSettings {
 
   public Verbosity getVerbosity() {
     return verbosity;
+  }
+
+  public Boolean isPromptForBasicAuth() {
+    return promptForBasicAuth;
   }
 }

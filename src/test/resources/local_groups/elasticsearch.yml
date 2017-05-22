@@ -1,0 +1,27 @@
+http.bind_host: _eth0:ipv4_
+network.host: _eth0:ipv4_
+xpack:
+    monitoring.enabled: false
+    security.enabled: false
+    graph.enabled: false
+    watcher.enabled: false
+
+readonlyrest:
+  access_control_rules:
+
+  - name: "CONTAINER ADMIN"
+    type: allow
+    auth_key: admin:container
+
+  - name: R1
+    groups: ["nonexisting"]
+
+  - name: R2
+    groups: ["testgroup"]
+    uri_re: ".*nodes.*"
+
+  users:
+  - username: user
+    auth_key: user:passwd
+    groups: ["testgroup"]
+

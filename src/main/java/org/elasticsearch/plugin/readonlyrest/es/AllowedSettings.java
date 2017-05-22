@@ -49,6 +49,7 @@ public enum AllowedSettings {
         bool(prefix + RorSettings.ATTRIBUTE_ENABLE),
         str(prefix + RorSettings.ATTRIBUTE_FORBIDDEN_RESPONSE),
         bool(prefix + RorSettings.ATTRIBUTE_SEARCHLOG),
+        bool(prefix + RorSettings.PROMPT_FOR_BASIC_AUTH),
 
         // SSL
         bool(sslPrefix + SslSettings.ATTRIBUTE_ENABLE),
