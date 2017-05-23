@@ -18,6 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
@@ -72,7 +73,10 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
                   new UnboundidSearchResultListener(searchGroups),
                   userGroupsSearchFilterConfig.getSearchGroupBaseDN(),
                   SearchScope.SUB,
-                  String.format("(&(cn=*)(%s=%s))", userGroupsSearchFilterConfig.getUniqueMemberAttribute(), user.getDN())
+                  String.format(
+                      "(&(cn=*)(%s=%s))", userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
+                      Filter.encodeValue(user.getDN())
+                  )
               )),
           requestTimeout.toMillis()
       );
