@@ -82,8 +82,9 @@ configurations {
 }
 
 task cleanOldData {
-    outputs.upToDateWhen { false }
-    delete 'build/tmp/' + pluginFullName
+    doLast {
+        delete 'build/tmp/' + pluginFullName
+    }
 }
 
 task jarHellCheck(type: JavaExec) {
@@ -93,40 +94,32 @@ task jarHellCheck(type: JavaExec) {
 }
 
 task configureEsVersion() {
-    outputs.upToDateWhen { false }
-    doFirst {
+    doLast {
         if (project.hasProperty('esVersion')) {
             esVersion = project.properties['esVersion']
         }
     }
 }
 
-task resolvePluginDescriptorTemplate(dependsOn: configureEsVersion) {
-    copy {
-        from '../plugin-metadata'
-        into 'build/tmp/' + pluginFullName
-        expand([
-                'descriptor': [
-                        'name'         : pluginName,
-                        'pluginVersion': project.properties['pluginVersion'],
-                        'esVersion'    : project.properties['esVersion']
-                ]
-        ])
-    }
+task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) {
+    outputs.upToDateWhen { false }
+    from '../plugin-metadata'
+    into 'build/tmp/' + pluginFullName
+    expand([
+            'descriptor': [
+                    'name'         : pluginName,
+                    'pluginVersion': project.properties['pluginVersion'],
+                    'esVersion'    : project.properties['esVersion']
+            ]
+    ])
 }
 
-task ror(type: Zip,
-        dependsOn: [
-                project.task(':cleanOldData'),
-                project.task(':jarHellCheck'),
-                project.task(':jar'),
-                project.task(':resolvePluginDescriptorTemplate')
-        ]) {
+task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDescriptorTemplate]) {
+    outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('elasticsearch') {
         from configurations.distJars
         from 'build/libs/' + pluginFullName + '.jar'
         from 'build/tmp/' + pluginFullName
     }
-    outputs.upToDateWhen { false }
 }

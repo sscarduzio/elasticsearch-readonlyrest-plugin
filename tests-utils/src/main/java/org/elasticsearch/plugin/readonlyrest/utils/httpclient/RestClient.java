@@ -67,7 +67,7 @@ public class RestClient {
     }
     return builder
         .setDefaultHeaders(Lists.newArrayList(headers))
-        .setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(5000).build())
+        .setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(10000).build())
         .build();
   }
 
