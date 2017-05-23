@@ -22,6 +22,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefin
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSettings;
 
 import java.util.HashMap;
@@ -39,6 +40,7 @@ public class AuthMethodCreatorsRegistry {
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator());
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
     creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
+    creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator());
     this.authKeyProviderCreators = creators;
   }
 
@@ -76,6 +78,13 @@ public class AuthMethodCreatorsRegistry {
       } else {
         return ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s), proxyAuthDefinitionSettingsCollection);
       }
+    };
+  }
+
+  private Function<RawSettings, AuthKeyProviderSettings> jwtAuthSettingsCreator() {
+    return settings -> {
+      RawSettings conf = settings.inner(JwtAuthRuleSettings.ATTRIBUTE_NAME);
+      return JwtAuthRuleSettings.from(conf);
     };
   }
 

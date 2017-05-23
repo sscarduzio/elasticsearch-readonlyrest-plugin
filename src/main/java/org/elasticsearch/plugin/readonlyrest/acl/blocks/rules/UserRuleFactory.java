@@ -21,12 +21,14 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.JwtAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSettings;
 
 import java.util.Map;
@@ -49,6 +51,8 @@ public class UserRuleFactory {
     this.creators.put(ProxyAuthRuleSettings.class,
         settings ->
             new ProxyAuthSyncRule((ProxyAuthRuleSettings) settings));
+    this.creators.put(JwtAuthRuleSettings.class,
+        settings -> new JwtAuthSyncRule((JwtAuthRuleSettings) settings));
   }
 
   public UserRule create(AuthKeyProviderSettings settings) {
