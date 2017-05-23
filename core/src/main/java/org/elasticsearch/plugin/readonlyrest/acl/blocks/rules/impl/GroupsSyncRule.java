@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
@@ -34,7 +35,7 @@ import java.util.stream.Collectors;
  *
  * @author Christian Henke (maitai@users.noreply.github.com)
  */
-public class GroupsSyncRule extends SyncRule {
+public class GroupsSyncRule extends SyncRule implements Authorization {
 
   private final GroupsRuleSettings settings;
   private final UserFactory userFactory;
@@ -54,8 +55,8 @@ public class GroupsSyncRule extends SyncRule {
     boolean anyMatch = settings.getUsersSettings().stream()
         .map(userFactory::getUser)
         .anyMatch(user -> Sets.intersection(resolvedGroups, user.getGroups()).isEmpty()
-            ? user.getAuthKeyRule().match(rc).isMatch()
-            : false
+            ? false
+            : user.getAuthKeyRule().match(rc).isMatch()
         );
 
     return anyMatch ? MATCH : NO_MATCH;

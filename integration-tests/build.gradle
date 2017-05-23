@@ -29,6 +29,7 @@ test {
 
 dependencies {
     testCompile project(':tests-utils')
+    testCompile 'io.jsonwebtoken:jjwt:0.7.0'
     testCompile 'org.gradle:gradle-tooling-api:2.13'
 }
 

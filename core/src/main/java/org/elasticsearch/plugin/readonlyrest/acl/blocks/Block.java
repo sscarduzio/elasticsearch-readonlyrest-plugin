@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
@@ -61,7 +62,7 @@ public class Block {
         .map(rulesFactory::create)
         .collect(Collectors.toList());
     this.conditionsToCheck.sort(new RulesOrdering());
-    this.authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationRule);
+    this.authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationOrAuthorizationRule);
   }
 
   public List<AsyncRule> getRules() {
@@ -134,9 +135,11 @@ public class Block {
     return BlockExitResult.noMatch();
   }
 
-  private boolean isAuthenticationRule(AsyncRule rule) {
-    return rule instanceof Authentication ||
-        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication);
+  private boolean isAuthenticationOrAuthorizationRule(AsyncRule rule) {
+    return
+      rule instanceof Authentication || rule instanceof Authorization ||
+        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication) ||
+        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authorization);
   }
 
   @Override

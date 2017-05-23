@@ -70,7 +70,7 @@ public class RawSettings {
   @SuppressWarnings("unchecked")
   public <T> T req(String attr) {
     Object val = raw.get(attr);
-    if (val == null) throw new SettingsMalformedException("Not find required attribute '" + attr + "'");
+    if (val == null) throw new SettingsMalformedException("Could not find required attribute '" + attr + "'");
     return (T) val;
   }
 

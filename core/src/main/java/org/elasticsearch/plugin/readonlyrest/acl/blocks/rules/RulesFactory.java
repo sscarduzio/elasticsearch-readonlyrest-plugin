@@ -22,6 +22,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsSyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
@@ -43,6 +44,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.ActionsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ApiKeysRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ExternalAuthenticationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsProviderAuthorizationRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
@@ -128,6 +130,10 @@ public class RulesFactory {
             (GroupsProviderAuthorizationRuleSettings) settings,
             context
         )
+    );
+    this.creators.put(GroupsRuleSettings.class,
+        settings ->
+            wrap(new GroupsSyncRule((GroupsRuleSettings) settings, definitionsFactory))
     );
   }
 

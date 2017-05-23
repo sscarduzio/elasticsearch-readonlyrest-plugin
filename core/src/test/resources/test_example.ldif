@@ -35,6 +35,16 @@ sn: Bong
 uid: bong
 userPassword:: e1NIQX1zOXFuZTB3RXFWVWJoNEhRTVpIK0NZOHlYbWM9
 
+dn: cn=Viktor Navorski (Tom Hanks),ou=People,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Viktor Navorski (Tom Hanks)
+sn: Navorski
+uid: viktor
+userPassword:: e1NNRDV9czdnM0NVekVCMGQxMm5CM0N3VGFrQmp3K0VGMTE3cFg=
+
 dn: ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: organizationalUnit
@@ -60,3 +70,4 @@ cn: group3
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
+uniqueMember: cn=Viktor Navorski (Tom Hanks),ou=People,dc=example,dc=com

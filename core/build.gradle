@@ -59,6 +59,9 @@ dependencies {
     }
     compile 'org.slf4j:slf4j-api:1.7.25'
     compile 'org.yaml:snakeyaml:1.15'
+    compile ('io.jsonwebtoken:jjwt:0.7.0') {
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+    }
 
     testCompile project(':tests-utils')
     testCompile 'org.gradle:gradle-tooling-api:2.13'

@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaHideAppsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
@@ -89,6 +90,8 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(UriReRuleSettings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
     creators.put(XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
     creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
+    creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+
     this.ruleSettingsCreators = creators;
   }
 
@@ -263,6 +266,12 @@ public class RulesSettingsCreatorsRegistry {
         (Set<String>) blockSettings.notEmptySetReq(GroupsRuleSettings.ATTRIBUTE_NAME),
         userSettingsCollection
     );
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> jwtAuthSettingsCreator(RawSettings blockSettings,
+                                                        AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
+    return authRuleFrom(JwtAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   private Supplier<RuleSettings> authRuleFrom(String attribute, RawSettings settings,
