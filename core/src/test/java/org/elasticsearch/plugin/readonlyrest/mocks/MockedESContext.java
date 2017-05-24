@@ -24,7 +24,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientFactory;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpRequest;
@@ -36,9 +35,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
-
-import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.GET;
-import static org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod.POST;
 
 public class MockedESContext implements ESContext {
 

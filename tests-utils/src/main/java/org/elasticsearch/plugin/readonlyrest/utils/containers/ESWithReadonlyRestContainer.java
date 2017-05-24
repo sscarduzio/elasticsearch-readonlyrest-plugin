@@ -51,8 +51,11 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 
-  private ESWithReadonlyRestContainer(ImageFromDockerfile imageFromDockerfile) {
+  private final String esVersion;
+
+  private ESWithReadonlyRestContainer(String esVersion, ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
+    this.esVersion = esVersion;
   }
 
   public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
@@ -71,6 +74,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
+        project.getESVersion(),
         new ImageFromDockerfile()
             .withFileFromFile(pluginFile.getName(), pluginFile)
             .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
@@ -88,6 +92,10 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         .withExposedPorts(ES_PORT)
         .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 
+  }
+
+  public String getEsVersion() {
+    return esVersion;
   }
 
   public String getESHost() {

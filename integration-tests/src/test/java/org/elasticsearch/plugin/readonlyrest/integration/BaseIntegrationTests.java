@@ -31,7 +31,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradle
 public abstract class BaseIntegrationTests {
 
   @Parameterized.Parameters(name = "{0}")
-  public static Collection<String> ESSpecificVersions() {
+  public static Collection<String> esSpecificVersions() {
     return Optional.ofNullable(getRootProject().listFiles())
         .map(Lists::newArrayList)
         .orElse(Lists.newArrayList())
