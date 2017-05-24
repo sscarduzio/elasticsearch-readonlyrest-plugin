@@ -24,6 +24,7 @@ import org.apache.http.util.EntityUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.shaded.jersey.repackaged.com.google.common.collect.Lists;
@@ -54,52 +55,57 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests {
   }
 
   // todo: for review for Simone (don't know why it does not work)
-  
-//  @Test
-//  public void testDirectSingleIdx() throws Exception {
-//    String body = search("/logstash-a1/_search");
-//    assertTrue(body.contains("a1"));
-//    assertFalse(body.contains("a2"));
-//    assertFalse(body.contains("b1"));
-//    assertFalse(body.contains("b2"));
-//  }
 
-//  @Test
-//  public void testSimpleWildcard() throws Exception {
-//    String body = search("/logstash-a*/_search");
-//    assertTrue(body.contains("a1"));
-//    assertTrue(body.contains("a2"));
-//    assertFalse(body.contains("b1"));
-//    assertFalse(body.contains("b2"));
-//  }
-//
-//  @Test
-//  public void testReverseWildcard() throws Exception {
-//    String body = search("/logstash-*/_search");
-//    assertTrue(body.contains("a1"));
-//    assertTrue(body.contains("a2"));
-//    assertFalse(body.contains("b1"));
-//    assertFalse(body.contains("b2"));
-//  }
-//
-//  @Test
-//  public void testReverseTotalWildcard() throws Exception {
-//    String body = search("/*/_search");
-//
-//    assertTrue(body.contains("a1"));
-//    assertTrue(body.contains("a2"));
-//    assertFalse(body.contains("b1"));
-//    assertFalse(body.contains("b2"));
-//  }
-//
-//  @Test
-//  public void testGenericSearchAll() throws Exception {
-//    String body = search("/_search");
-//    assertTrue(body.contains("a1"));
-//    assertTrue(body.contains("a2"));
-//    assertFalse(body.contains("b1"));
-//    assertFalse(body.contains("b2"));
-//  }
+  @Ignore
+  @Test
+  public void testDirectSingleIdx() throws Exception {
+    String body = search("/logstash-a1/_search");
+    assertTrue(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+  }
+
+  @Ignore
+  @Test
+  public void testSimpleWildcard() throws Exception {
+    String body = search("/logstash-a*/_search");
+    assertTrue(body.contains("a1"));
+    assertTrue(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+  }
+
+  @Ignore
+  @Test
+  public void testReverseWildcard() throws Exception {
+    String body = search("/logstash-*/_search");
+    assertTrue(body.contains("a1"));
+    assertTrue(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+  }
+
+  @Ignore
+  @Test
+  public void testReverseTotalWildcard() throws Exception {
+    String body = search("/*/_search");
+
+    assertTrue(body.contains("a1"));
+    assertTrue(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+  }
+
+  @Ignore
+  @Test
+  public void testGenericSearchAll() throws Exception {
+    String body = search("/_search");
+    assertTrue(body.contains("a1"));
+    assertTrue(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+  }
 
   private void insertDoc(String docName) {
     try {
