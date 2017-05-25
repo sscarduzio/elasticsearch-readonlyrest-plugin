@@ -24,8 +24,6 @@ import org.apache.http.util.EntityUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
-import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.shaded.jersey.repackaged.com.google.common.collect.Lists;
 
@@ -36,27 +34,24 @@ import static org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReado
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class IndicesReverseWildcardTests extends BaseIntegrationTests {
-
-  @Rule
-  public final ESWithReadonlyRestContainer container;
-  private RestClient ro;
+public class IndicesReverseWildcardTests extends BaseIntegrationTests<ESWithReadonlyRestContainer> {
 
   public IndicesReverseWildcardTests(String esProject) {
-    this.container = create(
+    super(esProject);
+  }
+
+  @Override
+  protected ESWithReadonlyRestContainer createContainer(String esProject) {
+    return create(
         new RorPluginGradleProject(esProject),
         "/indices_reverse_wildcards/elasticsearch.yml",
         Optional.of(client -> {
-          ro = client;
           Lists.newArrayList("a1", "a2", "b1", "b2")
-              .forEach(this::insertDoc);
+              .forEach(doc -> insertDoc(doc, client));
         })
     );
   }
 
-  // todo: for review for Simone (don't know why it does not work)
-
-  @Ignore
   @Test
   public void testDirectSingleIdx() throws Exception {
     String body = search("/logstash-a1/_search");
@@ -66,7 +61,6 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests {
     assertFalse(body.contains("b2"));
   }
 
-  @Ignore
   @Test
   public void testSimpleWildcard() throws Exception {
     String body = search("/logstash-a*/_search");
@@ -76,7 +70,6 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests {
     assertFalse(body.contains("b2"));
   }
 
-  @Ignore
   @Test
   public void testReverseWildcard() throws Exception {
     String body = search("/logstash-*/_search");
@@ -86,7 +79,6 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests {
     assertFalse(body.contains("b2"));
   }
 
-  @Ignore
   @Test
   public void testReverseTotalWildcard() throws Exception {
     String body = search("/*/_search");
@@ -97,7 +89,6 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests {
     assertFalse(body.contains("b2"));
   }
 
-  @Ignore
   @Test
   public void testGenericSearchAll() throws Exception {
     String body = search("/_search");
@@ -107,9 +98,8 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests {
     assertFalse(body.contains("b2"));
   }
 
-  private void insertDoc(String docName) {
+  private void insertDoc(String docName, RestClient client) {
     try {
-      RestClient client = container.getBasicAuthClient("admin", "container");
       HttpPut request = new HttpPut(client.from(
           "/logstash-" + docName + "/documents/doc-" + docName
       ));
@@ -128,9 +118,10 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests {
   }
 
   private String search(String endpoint) throws Exception {
-    HttpGet request = new HttpGet(ro.from(endpoint));
+    RestClient client = getContainer().getAdminClient();
+    HttpGet request = new HttpGet(client.from(endpoint));
     request.setHeader("timeout", "50s");
-    HttpResponse resp = ro.execute(request);
+    HttpResponse resp = client.execute(request);
     assertEquals(200, resp.getStatusLine().getStatusCode());
     return body(resp);
   }

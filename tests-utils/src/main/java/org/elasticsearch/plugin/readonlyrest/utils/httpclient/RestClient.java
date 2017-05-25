@@ -29,6 +29,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.config.SocketConfig;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.message.BasicNameValuePair;
 import org.elasticsearch.plugin.readonlyrest.utils.Tuple;
 
@@ -66,8 +67,9 @@ public class RestClient {
       builder.setDefaultCredentialsProvider(provider);
     }
     return builder
+        .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
         .setDefaultHeaders(Lists.newArrayList(headers))
-        .setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(10000).build())
+        .setDefaultSocketConfig(SocketConfig.custom().build())
         .build();
   }
 

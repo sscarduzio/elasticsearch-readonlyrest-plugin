@@ -22,7 +22,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
-import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -30,15 +29,17 @@ import java.util.Optional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-public class LocalGroupsTest extends BaseIntegrationTests {
+public class LocalGroupsTest extends BaseIntegrationTests<ESWithReadonlyRestContainer> {
 
   private static final String matchingEndpoint = "/_cat/nodes";
 
-  @Rule
-  public final ESWithReadonlyRestContainer container;
-
   public LocalGroupsTest(String esProject) {
-    this.container = ESWithReadonlyRestContainer.create(
+    super(esProject);
+  }
+
+  @Override
+  protected ESWithReadonlyRestContainer createContainer(String esProject) {
+    return ESWithReadonlyRestContainer.create(
         new RorPluginGradleProject(esProject),
         "/local_groups/elasticsearch.yml",
         Optional.empty()
@@ -46,7 +47,7 @@ public class LocalGroupsTest extends BaseIntegrationTests {
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {
-    RestClient rcl = container.getBasicAuthClient(user, pass);
+    RestClient rcl = getContainer().getBasicAuthClient(user, pass);
     return rcl.execute(new HttpGet(rcl.from(
         endpoint,
         new ImmutableMap.Builder<String, String>()

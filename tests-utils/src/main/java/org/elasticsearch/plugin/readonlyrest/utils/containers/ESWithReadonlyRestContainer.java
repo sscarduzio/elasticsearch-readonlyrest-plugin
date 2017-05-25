@@ -114,7 +114,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     return new RestClient(getESHost(), getESPort(), Optional.of(Tuple.from(name, password)));
   }
 
-  private RestClient getAdminClient() {
+  public RestClient getAdminClient() {
     return new RestClient(getESHost(), getESPort(), Optional.of(Tuple.from(ADMIN_LOGIN, ADMIN_PASSWORD)));
   }
 
@@ -155,7 +155,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   }
 
   public interface ESInitalizer {
-    void initialize(RestClient client);
+    void initialize(RestClient adminClient);
   }
 
 }

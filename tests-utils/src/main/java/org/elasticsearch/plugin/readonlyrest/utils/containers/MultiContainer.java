@@ -19,8 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.utils.containers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import org.junit.runner.Description;
-import org.testcontainers.containers.FailureDetectingExternalResource;
 import org.testcontainers.containers.GenericContainer;
 
 import java.util.HashMap;
@@ -30,25 +28,26 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class MultiContainer extends FailureDetectingExternalResource {
+public class MultiContainer extends GenericContainer<MultiContainer> {
 
   private ImmutableMap<String, NamedContainer> containers;
 
   public MultiContainer(Map<String, Supplier<GenericContainer<?>>> containerCreators) {
     List<NamedContainer> namedContainers = containerCreators.entrySet().stream()
-                                                            .map(entry -> new NamedContainer(entry.getKey(), entry.getValue().get()))
-                                                            .collect(Collectors.toList());
+        .map(entry -> new NamedContainer(entry.getKey(), entry.getValue().get()))
+        .collect(Collectors.toList());
     this.containers = Maps.uniqueIndex(namedContainers, NamedContainer::getName);
   }
 
   @Override
-  protected void starting(Description description) {
+  public void start() {
     this.containers.values().forEach(c -> c.getContainer().start());
   }
 
   @Override
-  protected void finished(Description description) {
+  public void stop() {
     this.containers.values().forEach(c -> c.getContainer().stop());
+    super.stop();
   }
 
   public <T extends GenericContainer<?>> T get(String name, Class<T> clazz) {

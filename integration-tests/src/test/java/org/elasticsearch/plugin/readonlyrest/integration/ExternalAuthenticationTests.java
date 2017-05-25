@@ -24,17 +24,19 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
-import org.junit.Rule;
 import org.junit.Test;
 
-public class ExternalAuthenticationTests extends BaseIntegrationTests {
+import static org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions.assertions;
 
-  @Rule
-  public final MultiContainerDependent<ESWithReadonlyRestContainer> container;
-  private final ReadonlyRestedESAssertions assertions;
+public class ExternalAuthenticationTests extends BaseIntegrationTests<MultiContainerDependent<ESWithReadonlyRestContainer>> {
 
   public ExternalAuthenticationTests(String esProject) {
-    this.container = ESWithReadonlyRestContainerUtils.create(
+    super(esProject);
+  }
+
+  @Override
+  protected MultiContainerDependent<ESWithReadonlyRestContainer> createContainer(String esProject) {
+    return ESWithReadonlyRestContainerUtils.create(
         new RorPluginGradleProject(esProject),
         new MultiContainer.Builder()
             .add("EXT1", () -> WireMockContainer.create(
@@ -46,22 +48,22 @@ public class ExternalAuthenticationTests extends BaseIntegrationTests {
         "/external_authentication/elasticsearch.yml",
         new ElasticsearchTweetsInitializer()
     );
-    this.assertions = new ReadonlyRestedESAssertions(container);
   }
 
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {
-    assertions.assertUserHasAccessToIndex("cartman", "user1", "twitter");
+    assertions(getContainer()).assertUserHasAccessToIndex("cartman", "user1", "twitter");
   }
 
   @Test
   public void testAuthenticationErrorWithService1() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(getContainer());
     assertions.assertUserAccessToIndexForbidden("cartman", "user2", "twitter");
     assertions.assertUserAccessToIndexForbidden("morgan", "user2", "twitter");
   }
 
   @Test
   public void testAuthenticationSuccessWithService2() throws Exception {
-    assertions.assertUserHasAccessToIndex("cartman", "user1", "facebook");
+    assertions(getContainer()).assertUserHasAccessToIndex("cartman", "user1", "facebook");
   }
 }

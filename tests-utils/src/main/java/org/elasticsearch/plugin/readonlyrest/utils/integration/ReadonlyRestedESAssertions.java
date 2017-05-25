@@ -31,6 +31,10 @@ public class ReadonlyRestedESAssertions {
 
   private final MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent;
 
+  public static ReadonlyRestedESAssertions assertions(MultiContainerDependent<ESWithReadonlyRestContainer> container) {
+    return new ReadonlyRestedESAssertions(container);
+  }
+
   public ReadonlyRestedESAssertions(MultiContainerDependent<ESWithReadonlyRestContainer> container) {
     this.multiContainerDependent = container;
   }

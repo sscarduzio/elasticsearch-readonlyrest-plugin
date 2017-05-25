@@ -23,18 +23,20 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDepe
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
-import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
-import org.junit.Rule;
 import org.junit.Test;
 
-public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests extends BaseIntegrationTests {
+import static org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions.assertions;
 
-  @Rule
-  public final MultiContainerDependent<ESWithReadonlyRestContainer> container;
-  private final ReadonlyRestedESAssertions assertions;
+public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests
+    extends BaseIntegrationTests<MultiContainerDependent<ESWithReadonlyRestContainer>> {
 
   public ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests(String esProject) {
-    this.container = ESWithReadonlyRestContainerUtils.create(
+    super(esProject);
+  }
+
+  @Override
+  protected MultiContainerDependent<ESWithReadonlyRestContainer> createContainer(String esProject) {
+    return ESWithReadonlyRestContainerUtils.create(
         new RorPluginGradleProject(esProject),
         new MultiContainer.Builder()
             .add("GROUPS1", () -> WireMockContainer.create(
@@ -46,22 +48,25 @@ public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests exte
         "/rev_proxy_groups_provider/elasticsearch.yml",
         new ElasticsearchTweetsInitializer()
     );
-    this.assertions = new ReadonlyRestedESAssertions(container);
   }
 
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
-    assertions.assertReverseProxyUserHasAccessToIndex("X-Auth-Token", "cartman", "twitter");
+    assertions(getContainer()).assertReverseProxyUserHasAccessToIndex(
+        "X-Auth-Token", "cartman", "twitter"
+    );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationErrorWithService1() throws Exception {
-    assertions.assertReverseProxyAccessToIndexForbidden("X-Auth-Token", "morgan", "twitter");
+    assertions(getContainer()).assertReverseProxyAccessToIndexForbidden(
+        "X-Auth-Token", "morgan", "twitter"
+    );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService2() throws Exception {
-    assertions.assertReverseProxyUserHasAccessToIndex(
+    assertions(getContainer()).assertReverseProxyUserHasAccessToIndex(
         "X-Auth-Token", "29b3d166-1952-11e7-8b77-6c4008a76fc6", "facebook"
     );
   }

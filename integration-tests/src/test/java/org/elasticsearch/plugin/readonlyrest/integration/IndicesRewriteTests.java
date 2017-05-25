@@ -28,7 +28,6 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRest
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.HttpGetWithEntity;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
-import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -38,35 +37,28 @@ import static org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReado
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class IndicesRewriteTests extends BaseIntegrationTests {
-
-  @Rule
-  public final ESWithReadonlyRestContainer container;
-  private RestClient ro;
-  private RestClient rw;
-  private RestClient kibana;
-  private RestClient logstash;
+public class IndicesRewriteTests extends BaseIntegrationTests<ESWithReadonlyRestContainer> {
 
   public IndicesRewriteTests(String esProject) {
-    this.container = create(
+    super(esProject);
+  }
+
+  @Override
+  protected ESWithReadonlyRestContainer createContainer(String esProject) {
+    return create(
         new RorPluginGradleProject(esProject),
         "/indices_rewrite/elasticsearch.yml",
         Optional.of(
             new ESWithReadonlyRestContainer.ESInitalizer() {
               @Override
-              public void initialize(RestClient client) {
-                ro = container.getBasicAuthClient("simone", "ro_pass");
-                rw = container.getBasicAuthClient("simone", "rw_pass");
-                kibana = container.getBasicAuthClient("kibana", "kibana");
-                logstash = container.getBasicAuthClient("simone", "logstash");
-
+              public void initialize(RestClient adminClient) {
                 try {
-                  HttpPut request = new HttpPut(client.from("/.kibana_simone/doc/1"));
+                  HttpPut request = new HttpPut(adminClient.from("/.kibana_simone/doc/1"));
                   request.setHeader("refresh", "true");
                   request.setHeader("timeout", "50s");
                   request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
                   request.setEntity(new StringEntity("{\"helloWorld\": true}"));
-                  System.out.println(body(kibana.execute(request)));
+                  System.out.println(body(adminClient.execute(request)));
                 } catch (Exception e) {
                   e.printStackTrace();
                   throw new IllegalStateException("Cannot configure test case", e);
@@ -75,8 +67,8 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
                 try {
                   HttpResponse response;
                   do {
-                    HttpHead request = new HttpHead(client.from("/.kibana_simone/doc/1"));
-                    response = kibana.execute(request);
+                    HttpHead request = new HttpHead(adminClient.from("/.kibana_simone/doc/1"));
+                    response = adminClient.execute(request);
                     EntityUtils.consume(response.getEntity());
                   } while (response.getStatusLine().getStatusCode() != 200);
                 } catch (Exception e) {
@@ -90,28 +82,32 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
 
   @Test
   public void testNonIndexRequest() throws Exception {
+    RestClient kibana = getKibana();
     checkForErrors(kibana.execute(new HttpGet(kibana.from("/"))));
     checkForErrors(kibana.execute(new HttpGet(kibana.from("/_cluster/health"))));
   }
 
   @Test
   public void testCreateIndex() throws Exception {
+    RestClient kibana = getKibana();
     String indicesList = body(kibana.execute(new HttpGet(kibana.from("/_cat/indices"))));
     assertTrue(indicesList.contains(".kibana_simone"));
   }
 
   @Test
   public void testSearch() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
+    RestClient ro = getRO();
     HttpGet request = new HttpGet(ro.from("/.kibana/_search"));
     checkKibanaResponse(ro.execute(request));
   }
 
   @Test
   public void testMultiSearch() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
+    RestClient ro = getRO();
     HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/_msearch"));
     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
     request.setEntity(new StringEntity("{\"index\" : \".kibana\"}\n" + "{}\n"));
@@ -120,11 +116,13 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
 
   @Test
   public void testGet() throws Exception {
+    RestClient ro = getRO();
     checkKibanaResponse(ro.execute(new HttpGet(ro.from("/.kibana/doc/1"))));
   }
 
   @Test
   public void testMultiGetDocs() throws Exception {
+    RestClient ro = getRO();
     HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/_mget"));
     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     request.setEntity(new StringEntity("{\"docs\":[{\"_index\":\".kibana\",\"_type\":\"doc\",\"_id\":\"1\"}]}"));
@@ -133,6 +131,7 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
 
   @Test
   public void testMultiGetIds() throws Exception {
+    RestClient ro = getRO();
     HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/.kibana/_mget"));
     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     request.setEntity(new StringEntity("{\"ids\":[\"1\"]}"));
@@ -141,8 +140,9 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
 
   @Test
   public void testBulkAll() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
+    RestClient logstash = getLogstash();
     HttpPost request = new HttpPost(logstash.from("/_bulk"));
     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     request.setEntity(
@@ -158,8 +158,9 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
 
   @Test
   public void testCreateIndexPattern() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
+    RestClient rw = getRW();
     HttpPost request = new HttpPost(rw.from("/.kibana/index-pattern/logstash-*/_create"));
     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     request.setEntity(
@@ -188,4 +189,19 @@ public class IndicesRewriteTests extends BaseIntegrationTests {
     return EntityUtils.toString(r.getEntity());
   }
 
+  private RestClient getRO() {
+    return getContainer().getBasicAuthClient("simone", "ro_pass");
+  }
+
+  private RestClient getRW() {
+    return getContainer().getBasicAuthClient("simone", "rw_pass");
+  }
+
+  private RestClient getKibana() {
+    return getContainer().getBasicAuthClient("kibana", "kibana");
+  }
+
+  private RestClient getLogstash() {
+    return getContainer().getBasicAuthClient("simone", "logstash");
+  }
 }
