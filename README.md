@@ -32,15 +32,12 @@ Append either of these snippets to `conf/elasticsearch.yml`
 ### USE CASE: Secure public searchbox from [ransomware](http://code972.com/blog/2017/01/107-dont-be-ransacked-securing-your-elasticsearch-cluster-properly)
 ```yml
 readonlyrest:
-    enable: true
     access_control_rules: 
     
     - name: "Accept all requests from localhost"
-      type: allow
       hosts: [127.0.0.1]
 
     - name: "::PUBLIC SEARCHBOX::"
-      type: allow
       indices: ["public"]
       actions: ["indices:data/read/*"]
 ```
@@ -50,7 +47,7 @@ Remember to enable SSL whenever you use HTTP basic auth or API keys so your cred
 ```yml
 http.type: ssl_netty4
 readonlyrest:
-    enable: true
+    enable: true # optional, defaults=true if at least 1 "access_control_rules" block
     
     ssl:
       enable: true
@@ -63,17 +60,15 @@ readonlyrest:
 
 ```yml
 readonlyrest:
-    enable: true
+    #optional
     response_if_req_forbidden: Sorry, your request is forbidden.
     
     access_control_rules:
 
     - name: Accept all requests from localhost
-      type: allow
       hosts: [127.0.0.1]
 
     - name: Just certain indices, and read only
-      type: allow
       actions: ["indices:data/read/*"]
       indices: ["product_catalogue-*"] # index aliases are taken in account!
 ```
@@ -82,7 +77,6 @@ readonlyrest:
 ```yml
 
 readonlyrest:
-    enable: true
     verbosity: info # log unmatched requests
     
     ssl:
@@ -98,7 +92,6 @@ readonlyrest:
     - name: "::LOGSTASH::"
       # auth_key is good for testing, but replace it with `auth_key_sha1`!
       auth_key: logstash:logstash
-      type: allow
       actions: ["cluster:monitor/main","indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
       indices: ["logstash-*"]
 
@@ -107,19 +100,16 @@ readonlyrest:
       # auth_key is good for testing, but replace it with `auth_key_sha256`!
       auth_key: kibana:kibana
       verbosity: error # don't log successful request
-      type: allow
 
     # Using "Basic HTTP Auth" from browsers, can RW Kibana settings, RO on logstash indices from 2017 .
     - name: "::RW DEVELOPER::"
       auth_key: rw:dev
-      type: allow
       kibana_access: rw
       indices: [".kibana", ".kibana-devnull", "logstash-2017*"]
 
     # Same as above, but cannot change dashboards, visualizations or settings in Kibana
     - name: "::RO DEVELOPER::"
       auth_key: ro:dev
-      type: allow
       kibana_access: ro
       indices: [".kibana", ".kibana-devnull", "logstash-2017*"]
 
@@ -140,23 +130,17 @@ This is secure because the users connecting from their browsers will be asked to
 ### USE CASE: Group-based access control
 ```yml
 readonlyrest:
-    enable: true
-    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
-    
     access_control_rules:
 
     - name: Accept requests from users in group team1 on index1
-      type: allow
       groups: ["team1"]
       indices: ["index1"]
 
     - name: Accept requests from users in group team2 on index2
-      type: allow
       groups: ["team2"]
       indices: ["index2"]
 
     - name: Accept requests from users in groups team1 or team2 on index3
-      type: allow
       groups: ["team1", "team2"]
       indices: ["index3"]
     
@@ -181,20 +165,17 @@ readonlyrest:
 #### Simpler: authentication and authorization in one rule
 ```yml
 readonlyrest:
-    enable: true
     response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
     
     access_control_rules:
 
     - name: Accept requests from users in group team1 on index1
-      type: allow
       ldap_auth:
           name: "ldap1"                                       # ldap name from below 'ldaps' section
           groups: ["g1", "g2"]                                # group within 'ou=Groups,dc=example,dc=com'
       indices: ["index1"]
       
     - name: Accept requests from users in group team2 on index2
-      type: allow
       ldap_auth:
           - name: "ldap2"
             groups: ["g3"]
@@ -229,13 +210,9 @@ readonlyrest:
 #### Advanced: authentication and authorization in separate rules
 ```yml
 readonlyrest:
-    enable: true
-    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
-    
     access_control_rules:
 
     - name: Accept requests from users in group team1 on index1
-      type: allow
       ldap_authentication: "ldap1"  
       ldap_authorization:
         name: "ldap1"                                       # ldap name from 'ldaps' section
@@ -243,7 +220,6 @@ readonlyrest:
       indices: ["index1"]
       
     - name: Accept requests from users in group team2 on index2
-      type: allow
       ldap_authentication:
         name: "ldap2"  
         cache_ttl_in_sec: 60
@@ -292,19 +268,16 @@ This is useful if you already have a web server with all the credentials configu
 
 ```yml
 readonlyrest:
-    enable: true
     response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
     
     access_control_rules:
     
     - name: "::Tweets::"
-      type: allow
       methods: GET
       indices: ["twitter"]
       external_authentication: "ext1"
 
     - name: "::Facebook posts::"
-      type: allow
       methods: GET
       indices: ["facebook"]
       external_authentication:
@@ -336,13 +309,9 @@ This external authorization connector makes it possible to resolve to what group
 
 ```yml
 readonlyrest:
-    enable: true
-    response_if_req_forbidden: Forbidden by ReadonlyREST ES plugin
-    
     access_control_rules:
 
     - name: "::Tweets::"
-      type: allow
       methods: GET
       indices: ["twitter"]
       proxy_auth:
@@ -353,7 +322,6 @@ readonlyrest:
         groups: ["group3"]
 
     - name: "::Facebook posts::"
-      type: allow
       methods: GET
       indices: ["facebook"]
       proxy_auth:
