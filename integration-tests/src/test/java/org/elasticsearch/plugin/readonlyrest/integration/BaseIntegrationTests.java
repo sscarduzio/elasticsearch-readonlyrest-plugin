@@ -41,6 +41,7 @@ public abstract class BaseIntegrationTests<T extends GenericContainer<?>> {
 
   @SuppressWarnings("unchecked")
   protected T getContainer() {
+    System.out.print(".");
     if(!containers.containsKey(currentEsProject)) {
       T newContainer = createContainer(currentEsProject);
       newContainer.start();
