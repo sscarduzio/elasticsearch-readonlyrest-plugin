@@ -1,0 +1,47 @@
+group = 'org.elasticsearch.plugin'
+version = pluginVersion
+
+buildscript {
+    ext {
+        pluginVersion = rootProject.properties['pluginVersion']
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'license'
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+}
+
+test {
+    systemProperty "project.dir", rootProject.projectDir
+}
+
+dependencies {
+    testCompile project(':tests-utils')
+    testCompile 'io.jsonwebtoken:jjwt:0.7.0'
+    testCompile 'org.gradle:gradle-tooling-api:2.13'
+}
+
+license {
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders true
+    useDefaultMappings = false
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.5'
+}

@@ -16,3 +16,9 @@
  */
 
 rootProject.name = 'readonlyrest'
+include 'core'
+include 'es53x'
+include 'integration-tests'
+include 'tests-utils'
+include 'es52x'
+
