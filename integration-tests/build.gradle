@@ -27,6 +27,10 @@ test {
     systemProperty "project.dir", rootProject.projectDir
 }
 
+tasks.withType(Test) {
+    maxParallelForks = 1
+}
+
 dependencies {
     testCompile project(':tests-utils')
     testCompile 'io.jsonwebtoken:jjwt:0.7.0'
