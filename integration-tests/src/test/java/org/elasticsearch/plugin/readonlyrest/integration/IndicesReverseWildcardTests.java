@@ -24,6 +24,7 @@ import org.apache.http.util.EntityUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.testcontainers.shaded.jersey.repackaged.com.google.common.collect.Lists;
 
@@ -53,6 +54,7 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests<ESWithRead
   }
 
   @Test
+  @Ignore
   public void testDirectSingleIdx() throws Exception {
     String body = search("/logstash-a1/_search");
     assertTrue(body.contains("a1"));
@@ -62,6 +64,7 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests<ESWithRead
   }
 
   @Test
+  @Ignore
   public void testSimpleWildcard() throws Exception {
     String body = search("/logstash-a*/_search");
     assertTrue(body.contains("a1"));
@@ -71,6 +74,7 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests<ESWithRead
   }
 
   @Test
+  @Ignore
   public void testReverseWildcard() throws Exception {
     String body = search("/logstash-*/_search");
     assertTrue(body.contains("a1"));
@@ -80,6 +84,7 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests<ESWithRead
   }
 
   @Test
+  @Ignore
   public void testReverseTotalWildcard() throws Exception {
     String body = search("/*/_search");
 
@@ -90,6 +95,7 @@ public class IndicesReverseWildcardTests extends BaseIntegrationTests<ESWithRead
   }
 
   @Test
+  @Ignore
   public void testGenericSearchAll() throws Exception {
     String body = search("/_search");
     assertTrue(body.contains("a1"));
