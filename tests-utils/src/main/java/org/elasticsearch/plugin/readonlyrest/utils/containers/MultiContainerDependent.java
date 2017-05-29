@@ -16,12 +16,14 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils.containers;
 
+import org.junit.runner.Description;
+import org.testcontainers.containers.FailureDetectingExternalResource;
 import org.testcontainers.containers.GenericContainer;
 
 import java.util.function.Function;
 
 public class MultiContainerDependent<T extends GenericContainer<T>>
-    extends GenericContainer<MultiContainerDependent<?>> {
+    extends FailureDetectingExternalResource {
 
   private final MultiContainer multiContainer;
   private final Function<MultiContainer, T> containerCreator;
@@ -42,17 +44,16 @@ public class MultiContainerDependent<T extends GenericContainer<T>>
   }
 
   @Override
-  public void start() {
-    multiContainer.start();
+  protected void starting(Description description) {
+    multiContainer.starting(description);
     container = containerCreator.apply(multiContainer);
     container.start();
   }
 
   @Override
-  public void stop() {
+  protected void finished(Description description) {
     container.stop();
-    multiContainer.stop();
-    super.stop();
+    multiContainer.finished(description);
   }
 
 }

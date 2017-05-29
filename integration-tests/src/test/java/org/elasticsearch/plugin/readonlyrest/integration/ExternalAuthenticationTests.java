@@ -24,46 +24,42 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions.assertions;
 
-public class ExternalAuthenticationTests extends BaseIntegrationTests<MultiContainerDependent<ESWithReadonlyRestContainer>> {
+public class ExternalAuthenticationTests {
 
-  public ExternalAuthenticationTests(String esProject) {
-    super(esProject);
-  }
-
-  @Override
-  protected MultiContainerDependent<ESWithReadonlyRestContainer> createContainer(String esProject) {
-    return ESWithReadonlyRestContainerUtils.create(
-        new RorPluginGradleProject(esProject),
-        new MultiContainer.Builder()
-            .add("EXT1", () -> WireMockContainer.create(
-                "/external_authentication/wiremock_service1_cartman.json",
-                "/external_authentication/wiremock_service1_morgan.json"
-            ))
-            .add("EXT2", () -> WireMockContainer.create("/external_authentication/wiremock_service2_cartman.json"))
-            .build(),
-        "/external_authentication/elasticsearch.yml",
-        new ElasticsearchTweetsInitializer()
-    );
-  }
+  @ClassRule
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+      ESWithReadonlyRestContainerUtils.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          new MultiContainer.Builder()
+              .add("EXT1", () -> WireMockContainer.create(
+                  "/external_authentication/wiremock_service1_cartman.json",
+                  "/external_authentication/wiremock_service1_morgan.json"
+              ))
+              .add("EXT2", () -> WireMockContainer.create("/external_authentication/wiremock_service2_cartman.json"))
+              .build(),
+          "/external_authentication/elasticsearch.yml",
+          new ElasticsearchTweetsInitializer()
+      );
 
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {
-    assertions(getContainer()).assertUserHasAccessToIndex("cartman", "user1", "twitter");
+    assertions(container).assertUserHasAccessToIndex("cartman", "user1", "twitter");
   }
 
   @Test
   public void testAuthenticationErrorWithService1() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(getContainer());
+    ReadonlyRestedESAssertions assertions = assertions(container);
     assertions.assertUserAccessToIndexForbidden("cartman", "user2", "twitter");
     assertions.assertUserAccessToIndexForbidden("morgan", "user2", "twitter");
   }
 
   @Test
   public void testAuthenticationSuccessWithService2() throws Exception {
-    assertions(getContainer()).assertUserHasAccessToIndex("cartman", "user1", "facebook");
+    assertions(container).assertUserHasAccessToIndex("cartman", "user1", "facebook");
   }
 }

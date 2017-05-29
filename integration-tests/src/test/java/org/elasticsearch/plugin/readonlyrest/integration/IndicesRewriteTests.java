@@ -28,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRest
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.HttpGetWithEntity;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -37,48 +38,43 @@ import static org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReado
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class IndicesRewriteTests extends BaseIntegrationTests<ESWithReadonlyRestContainer> {
+public class IndicesRewriteTests {
 
-  public IndicesRewriteTests(String esProject) {
-    super(esProject);
-  }
+  @ClassRule
+  public static ESWithReadonlyRestContainer container =
+      create(
+          RorPluginGradleProject.fromSystemProperty(),
+          "/indices_rewrite/elasticsearch.yml",
+          Optional.of(
+              new ESWithReadonlyRestContainer.ESInitalizer() {
+                @Override
+                public void initialize(RestClient adminClient) {
+                  try {
+                    HttpPut request = new HttpPut(adminClient.from("/.kibana_simone/doc/1"));
+                    request.setHeader("refresh", "true");
+                    request.setHeader("timeout", "50s");
+                    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
+                    request.setEntity(new StringEntity("{\"helloWorld\": true}"));
+                    System.out.println(body(adminClient.execute(request)));
+                  } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new IllegalStateException("Cannot configure test case", e);
+                  }
 
-  @Override
-  protected ESWithReadonlyRestContainer createContainer(String esProject) {
-    return create(
-        new RorPluginGradleProject(esProject),
-        "/indices_rewrite/elasticsearch.yml",
-        Optional.of(
-            new ESWithReadonlyRestContainer.ESInitalizer() {
-              @Override
-              public void initialize(RestClient adminClient) {
-                try {
-                  HttpPut request = new HttpPut(adminClient.from("/.kibana_simone/doc/1"));
-                  request.setHeader("refresh", "true");
-                  request.setHeader("timeout", "50s");
-                  request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
-                  request.setEntity(new StringEntity("{\"helloWorld\": true}"));
-                  System.out.println(body(adminClient.execute(request)));
-                } catch (Exception e) {
-                  e.printStackTrace();
-                  throw new IllegalStateException("Cannot configure test case", e);
-                }
-
-                try {
-                  HttpResponse response;
-                  do {
-                    HttpHead request = new HttpHead(adminClient.from("/.kibana_simone/doc/1"));
-                    response = adminClient.execute(request);
-                    EntityUtils.consume(response.getEntity());
-                  } while (response.getStatusLine().getStatusCode() != 200);
-                } catch (Exception e) {
-                  e.printStackTrace();
-                  throw new IllegalStateException("Cannot configure test case", e);
+                  try {
+                    HttpResponse response;
+                    do {
+                      HttpHead request = new HttpHead(adminClient.from("/.kibana_simone/doc/1"));
+                      response = adminClient.execute(request);
+                      EntityUtils.consume(response.getEntity());
+                    } while (response.getStatusLine().getStatusCode() != 200);
+                  } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new IllegalStateException("Cannot configure test case", e);
+                  }
                 }
               }
-            }
-        ));
-  }
+          ));
 
   @Test
   public void testNonIndexRequest() throws Exception {
@@ -96,7 +92,7 @@ public class IndicesRewriteTests extends BaseIntegrationTests<ESWithReadonlyRest
 
   @Test
   public void testSearch() throws Exception {
-    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient ro = getRO();
     HttpGet request = new HttpGet(ro.from("/.kibana/_search"));
@@ -105,7 +101,7 @@ public class IndicesRewriteTests extends BaseIntegrationTests<ESWithReadonlyRest
 
   @Test
   public void testMultiSearch() throws Exception {
-    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient ro = getRO();
     HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/_msearch"));
@@ -140,7 +136,7 @@ public class IndicesRewriteTests extends BaseIntegrationTests<ESWithReadonlyRest
 
   @Test
   public void testBulkAll() throws Exception {
-    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient logstash = getLogstash();
     HttpPost request = new HttpPost(logstash.from("/_bulk"));
@@ -158,7 +154,7 @@ public class IndicesRewriteTests extends BaseIntegrationTests<ESWithReadonlyRest
 
   @Test
   public void testCreateIndexPattern() throws Exception {
-    if(getContainer().getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient rw = getRW();
     HttpPost request = new HttpPost(rw.from("/.kibana/index-pattern/logstash-*/_create"));
@@ -190,18 +186,18 @@ public class IndicesRewriteTests extends BaseIntegrationTests<ESWithReadonlyRest
   }
 
   private RestClient getRO() {
-    return getContainer().getBasicAuthClient("simone", "ro_pass");
+    return container.getBasicAuthClient("simone", "ro_pass");
   }
 
   private RestClient getRW() {
-    return getContainer().getBasicAuthClient("simone", "rw_pass");
+    return container.getBasicAuthClient("simone", "rw_pass");
   }
 
   private RestClient getKibana() {
-    return getContainer().getBasicAuthClient("kibana", "kibana");
+    return container.getBasicAuthClient("kibana", "kibana");
   }
 
   private RestClient getLogstash() {
-    return getContainer().getBasicAuthClient("simone", "logstash");
+    return container.getBasicAuthClient("simone", "logstash");
   }
 }

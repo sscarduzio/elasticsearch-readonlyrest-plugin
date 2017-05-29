@@ -24,50 +24,45 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDepe
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions.assertions;
 
-public class LdapIntegrationFirstOptionTests
-    extends BaseIntegrationTests<MultiContainerDependent<ESWithReadonlyRestContainer>> {
+public class LdapIntegrationFirstOptionTests {
 
-  public LdapIntegrationFirstOptionTests(String esProject) {
-    super(esProject);
-  }
-
-  @Override
-  protected MultiContainerDependent<ESWithReadonlyRestContainer> createContainer(String esProject) {
-    return ESWithReadonlyRestContainerUtils.create(
-        new RorPluginGradleProject(esProject),
-        new MultiContainer.Builder()
-            .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-            .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-            .build(),
-        "/ldap_integration_1st/elasticsearch.yml",
-        new ElasticsearchTweetsInitializer()
-    );
-  }
+  @ClassRule
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+      ESWithReadonlyRestContainerUtils.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          new MultiContainer.Builder()
+              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .build(),
+          "/ldap_integration_1st/elasticsearch.yml",
+          new ElasticsearchTweetsInitializer()
+      );
 
   @Test
   public void usersFromGroup1CanSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(getContainer());
+    ReadonlyRestedESAssertions assertions = assertions(container);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
     assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
   public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    assertions(getContainer()).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
   @Test
   public void unauthenticatedUserCannotSeeTweets() throws Exception {
-    assertions(getContainer()).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
+    assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
 
   @Test
   public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(getContainer());
+    ReadonlyRestedESAssertions assertions = assertions(container);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
     assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");

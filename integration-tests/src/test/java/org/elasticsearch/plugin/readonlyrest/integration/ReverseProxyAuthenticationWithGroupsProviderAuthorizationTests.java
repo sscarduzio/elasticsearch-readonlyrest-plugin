@@ -23,50 +23,45 @@ import org.elasticsearch.plugin.readonlyrest.utils.containers.MultiContainerDepe
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.integration.ElasticsearchTweetsInitializer;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions.assertions;
 
-public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests
-    extends BaseIntegrationTests<MultiContainerDependent<ESWithReadonlyRestContainer>> {
+public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
 
-  public ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests(String esProject) {
-    super(esProject);
-  }
-
-  @Override
-  protected MultiContainerDependent<ESWithReadonlyRestContainer> createContainer(String esProject) {
-    return ESWithReadonlyRestContainerUtils.create(
-        new RorPluginGradleProject(esProject),
-        new MultiContainer.Builder()
-            .add("GROUPS1", () -> WireMockContainer.create(
-                "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
-                "/rev_proxy_groups_provider/wiremock_service1_morgan.json"
-            ))
-            .add("GROUPS2", () -> WireMockContainer.create("/rev_proxy_groups_provider/wiremock_service2.json"))
-            .build(),
-        "/rev_proxy_groups_provider/elasticsearch.yml",
-        new ElasticsearchTweetsInitializer()
-    );
-  }
+  @ClassRule
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+      ESWithReadonlyRestContainerUtils.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          new MultiContainer.Builder()
+              .add("GROUPS1", () -> WireMockContainer.create(
+                  "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
+                  "/rev_proxy_groups_provider/wiremock_service1_morgan.json"
+              ))
+              .add("GROUPS2", () -> WireMockContainer.create("/rev_proxy_groups_provider/wiremock_service2.json"))
+              .build(),
+          "/rev_proxy_groups_provider/elasticsearch.yml",
+          new ElasticsearchTweetsInitializer()
+      );
 
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
-    assertions(getContainer()).assertReverseProxyUserHasAccessToIndex(
+    assertions(container).assertReverseProxyUserHasAccessToIndex(
         "X-Auth-Token", "cartman", "twitter"
     );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationErrorWithService1() throws Exception {
-    assertions(getContainer()).assertReverseProxyAccessToIndexForbidden(
+    assertions(container).assertReverseProxyAccessToIndexForbidden(
         "X-Auth-Token", "morgan", "twitter"
     );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService2() throws Exception {
-    assertions(getContainer()).assertReverseProxyUserHasAccessToIndex(
+    assertions(container).assertReverseProxyUserHasAccessToIndex(
         "X-Auth-Token", "29b3d166-1952-11e7-8b77-6c4008a76fc6", "facebook"
     );
   }
