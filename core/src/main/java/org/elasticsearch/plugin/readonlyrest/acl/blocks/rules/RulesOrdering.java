@@ -30,6 +30,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewrit
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.JwtAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
@@ -77,7 +78,8 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         LdapAuthorizationAsyncRule.class,
         GroupsProviderAuthorizationAsyncRule.class,
         // At the end the sync rule chain are those that can mutate the client request.
-        IndicesRewriteSyncRule.class
+        IndicesRewriteSyncRule.class,
+        KibanaHideAppsSyncRule.class
     );
   }
 
