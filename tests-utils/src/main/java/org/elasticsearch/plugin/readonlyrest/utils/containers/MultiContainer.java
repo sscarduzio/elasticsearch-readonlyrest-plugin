@@ -19,6 +19,8 @@ package org.elasticsearch.plugin.readonlyrest.utils.containers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import org.junit.runner.Description;
+import org.testcontainers.containers.FailureDetectingExternalResource;
 import org.testcontainers.containers.GenericContainer;
 
 import java.util.HashMap;
@@ -28,7 +30,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class MultiContainer extends GenericContainer<MultiContainer> {
+public class MultiContainer extends FailureDetectingExternalResource {
 
   private ImmutableMap<String, NamedContainer> containers;
 
@@ -40,14 +42,13 @@ public class MultiContainer extends GenericContainer<MultiContainer> {
   }
 
   @Override
-  public void start() {
+  protected void starting(Description description) {
     this.containers.values().forEach(c -> c.getContainer().start());
   }
 
   @Override
-  public void stop() {
+  protected void finished(Description description) {
     this.containers.values().forEach(c -> c.getContainer().stop());
-    super.stop();
   }
 
   public <T extends GenericContainer<?>> T get(String name, Class<T> clazz) {

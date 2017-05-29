@@ -22,6 +22,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -29,31 +30,17 @@ import java.util.Optional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-public class LocalGroupsTest extends BaseIntegrationTests<ESWithReadonlyRestContainer> {
+public class LocalGroupsTest {
 
   private static final String matchingEndpoint = "/_cat/nodes";
-
-  public LocalGroupsTest(String esProject) {
-    super(esProject);
-  }
-
-  @Override
-  protected ESWithReadonlyRestContainer createContainer(String esProject) {
-    return ESWithReadonlyRestContainer.create(
-        new RorPluginGradleProject(esProject),
-        "/local_groups/elasticsearch.yml",
-        Optional.empty()
-    );
-  }
-
-  private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {
-    RestClient rcl = getContainer().getBasicAuthClient(user, pass);
-    return rcl.execute(new HttpGet(rcl.from(
-        endpoint,
-        new ImmutableMap.Builder<String, String>()
-            .build()
-    )));
-  }
+  
+  @ClassRule
+  public static ESWithReadonlyRestContainer container =
+      ESWithReadonlyRestContainer.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          "/local_groups/elasticsearch.yml",
+          Optional.empty()
+      );
 
   @Test
   public void testOK_GoodCredsWithGoodRule() throws Exception {
@@ -86,4 +73,14 @@ public class LocalGroupsTest extends BaseIntegrationTests<ESWithReadonlyRestCont
         mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
     );
   }
+
+  private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {
+    RestClient rcl = container.getBasicAuthClient(user, pass);
+    return rcl.execute(new HttpGet(rcl.from(
+        endpoint,
+        new ImmutableMap.Builder<String, String>()
+            .build()
+    )));
+  }
+
 }

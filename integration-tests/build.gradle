@@ -25,10 +25,12 @@ repositories {
 
 test {
     systemProperty "project.dir", rootProject.projectDir
-}
-
-tasks.withType(Test) {
-    maxParallelForks = 1
+    enabled = project.hasProperty('esModule')
+    if (enabled) {
+        def module = project.properties['esModule']
+        systemProperty "esModule", module
+    }
+    outputs.upToDateWhen { false }
 }
 
 dependencies {

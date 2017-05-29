@@ -30,6 +30,12 @@ public class RorPluginGradleProject {
   private final File project;
   private final String name;
 
+  public static RorPluginGradleProject fromSystemProperty() {
+    return Optional.ofNullable(System.getProperty("esModule"))
+        .map(RorPluginGradleProject::new)
+        .orElseThrow(() -> new IllegalStateException("No 'esModule' system property set"));
+  }
+
   public RorPluginGradleProject(String name) {
     this.name = name;
     this.project = esProject(name);

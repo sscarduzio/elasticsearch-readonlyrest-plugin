@@ -25,6 +25,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -33,7 +34,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 
-public class JwtAuthTests extends BaseIntegrationTests<ESWithReadonlyRestContainer> {
+public class JwtAuthTests {
 
   private static final String ALGO = "HS256";
   private static final String KEY = "123456";
@@ -42,18 +43,13 @@ public class JwtAuthTests extends BaseIntegrationTests<ESWithReadonlyRestContain
   private static final String USER_CLAIM = "user";
   private static final String EXP = "exp";
 
-  public JwtAuthTests(String esProject) {
-    super(esProject);
-  }
-
-  @Override
-  protected ESWithReadonlyRestContainer createContainer(String esProject) {
-    return ESWithReadonlyRestContainer.create(
-        new RorPluginGradleProject(esProject),
-        "/jwt_auth/elasticsearch.yml",
-        Optional.empty()
-    );
-  }
+  @ClassRule
+  public static ESWithReadonlyRestContainer container =
+      ESWithReadonlyRestContainer.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          "/jwt_auth/elasticsearch.yml",
+          Optional.empty()
+      );
 
   @Test
   public void rejectRequestWithoutAuthorizationHeader() throws Exception {
@@ -86,7 +82,7 @@ public class JwtAuthTests extends BaseIntegrationTests<ESWithReadonlyRestContain
   }
 
   private int test(Optional<String> token) throws Exception {
-    RestClient rc = getContainer().getClient();
+    RestClient rc = container.getClient();
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
     token.ifPresent(t -> req.addHeader("Authorization", "Bearer " + t));
     HttpResponse resp = rc.execute(req);
