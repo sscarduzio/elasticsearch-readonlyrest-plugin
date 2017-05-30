@@ -27,6 +27,7 @@ import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
+import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
@@ -43,10 +44,12 @@ import org.reflections.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
@@ -131,6 +134,10 @@ public class RCTransactionalIndices {
         }
         else if (ar instanceof IndexRequest) {
           IndexRequest ir = (IndexRequest) ar;
+          indices = ir.indices();
+        }
+        else if (ar instanceof DeleteRequest) {
+          DeleteRequest ir = (DeleteRequest) ar;
           indices = ir.indices();
         }
         else if (ar instanceof CompositeIndicesRequest) {

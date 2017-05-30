@@ -24,7 +24,9 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
+import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
@@ -116,18 +118,21 @@ public class RCTransactionalIndices {
             indices = ArrayUtils.concat(indices, ir.indices(), String.class);
           }
         }
-        // todo: for Simone (what about BulkRequest in ES 5.2.2?
-//        else if (ar instanceof BulkRequest) {
-//          BulkRequest cir = (BulkRequest) ar;
-//
-//          for (DocWriteRequest<?> ir : cir.requests()) {
-//            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, es);
-//            if (docIndices.length == 0) {
-//              docIndices = extractStringArrayFromPrivateMethod("index", ir, es);
-//            }
-//            indices = ArrayUtils.concat(indices, docIndices, String.class);
-//          }
-//        }
+        else if (ar instanceof DeleteRequest) {
+          DeleteRequest ir = (DeleteRequest) ar;
+          indices = ir.indices();
+        }
+        else if (ar instanceof BulkRequest) {
+          BulkRequest cir = (BulkRequest) ar;
+
+          for (ActionRequest ir : cir.requests()) {
+            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, es);
+            if (docIndices.length == 0) {
+              docIndices = extractStringArrayFromPrivateMethod("index", ir, es);
+            }
+            indices = ArrayUtils.concat(indices, docIndices, String.class);
+          }
+        }
         else if (ar instanceof IndexRequest) {
           IndexRequest ir = (IndexRequest) ar;
           indices = ir.indices();
@@ -221,7 +226,6 @@ public class RCTransactionalIndices {
           logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
         }
       }
-
 
     };
   }
