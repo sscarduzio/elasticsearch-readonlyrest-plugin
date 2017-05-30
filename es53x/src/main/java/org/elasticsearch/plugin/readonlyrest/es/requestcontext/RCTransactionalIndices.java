@@ -44,12 +44,10 @@ import org.reflections.ReflectionUtils;
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
@@ -80,8 +78,8 @@ public class RCTransactionalIndices {
         Set<String> initialIndices = restLevelIndicesCache.get(restRequestId);
         if (initialIndices != null && !initialIndices.isEmpty()) {
           logger.debug("Finding cached indices for: " + rc.getId() + " "
-                        + rc.getUnderlyingRequest().getClass().getSimpleName()
-                        + ": " + Joiner.on(",").join(initialIndices)
+                         + rc.getUnderlyingRequest().getClass().getSimpleName()
+                         + ": " + Joiner.on(",").join(initialIndices)
           );
           return initialIndices;
         }

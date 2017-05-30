@@ -22,7 +22,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthent
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
