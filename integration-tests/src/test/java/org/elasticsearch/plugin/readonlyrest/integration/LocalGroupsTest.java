@@ -61,9 +61,9 @@ public class LocalGroupsTest {
   @Test
   public void testFail_BadCredsBadRule() throws Exception {
     assertNotEquals(
-        mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode(),
-        200
-    );
+        200,
+        mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode()
+        );
   }
 
   @Test

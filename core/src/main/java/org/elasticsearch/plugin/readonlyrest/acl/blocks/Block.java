@@ -17,20 +17,22 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
+import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesOrdering;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
+import org.elasticsearch.plugin.readonlyrest.utils.RulesUtils;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -50,7 +52,7 @@ public class Block {
 
   private final Logger logger;
   private final BlockSettings settings;
-  private final List<AsyncRule> conditionsToCheck;
+  private final List<AsyncRule> rules;
   private final boolean authHeaderAccepted;
 
   public Block(BlockSettings settings,
@@ -58,15 +60,31 @@ public class Block {
                ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = settings;
-    this.conditionsToCheck = settings.getRules().stream()
-        .map(rulesFactory::create)
-        .collect(Collectors.toList());
-    this.conditionsToCheck.sort(new RulesOrdering());
-    this.authHeaderAccepted = conditionsToCheck.stream().anyMatch(this::isAuthenticationOrAuthorizationRule);
+    this.rules = settings.getRules().stream()
+      .map(rulesFactory::create)
+      .collect(Collectors.toList());
+
+    Set<Class<?>> phantomTypes = rules.stream()
+      .flatMap(r -> RulesUtils.ruleHasPhantomTypes(r, Sets.newHashSet(Authorization.class, Authentication.class)).stream())
+      .collect(Collectors.toSet());
+
+    boolean containsAuthorization = phantomTypes.contains(Authorization.class);
+    boolean containsAuthentication = phantomTypes.contains(Authentication.class);
+
+    // Fail if this block contains authZ, but not authC
+    if (containsAuthorization && !containsAuthentication) {
+      throw new SettingsMalformedException(
+        "The '" + this.getName() + "' block contains an authorization rule, but not an authentication rule. " +
+          "This does not mean anything if you don't also set some authentication rule");
+    }
+
+    this.authHeaderAccepted = containsAuthentication || containsAuthorization;
+
+    this.rules.sort(new RulesOrdering());
   }
 
   public List<AsyncRule> getRules() {
-    return conditionsToCheck;
+    return rules;
   }
 
   public String getName() {
@@ -91,37 +109,38 @@ public class Block {
    */
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
     return checkAsyncRules(rc)
-        .thenApply(asyncCheck -> {
-          if (asyncCheck != null && asyncCheck) {
-            return finishWithMatchResult();
-          } else {
-            return finishWithNoMatchResult(rc);
-          }
-        });
+      .thenApply(asyncCheck -> {
+        if (asyncCheck != null && asyncCheck) {
+          return finishWithMatchResult();
+        }
+        else {
+          return finishWithNoMatchResult(rc);
+        }
+      });
   }
 
   private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
     // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
-    Set<RuleExitResult> thisBlockHistory = new HashSet<>(conditionsToCheck.size());
-    return checkAsyncRulesInSequence(rc, conditionsToCheck.iterator(), thisBlockHistory)
-        .thenApply(result -> {
-          rc.addToHistory(this, thisBlockHistory);
-          return result;
-        });
+    Set<RuleExitResult> thisBlockHistory = new HashSet<>(rules.size());
+    return checkAsyncRulesInSequence(rc, rules.iterator(), thisBlockHistory)
+      .thenApply(result -> {
+        rc.addToHistory(this, thisBlockHistory);
+        return result;
+      });
   }
 
   private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
                                                                Iterator<AsyncRule> rules,
                                                                Set<RuleExitResult> thisBlockHistory) {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
-        rules,
-        rule -> rule.match(rc),
-        ruleExitResult -> {
-          thisBlockHistory.add(ruleExitResult);
-          return !ruleExitResult.isMatch();
-        },
-        RuleExitResult::isMatch,
-        nothing -> true
+      rules,
+      rule -> rule.match(rc),
+      ruleExitResult -> {
+        thisBlockHistory.add(ruleExitResult);
+        return !ruleExitResult.isMatch();
+      },
+      RuleExitResult::isMatch,
+      nothing -> true
     );
   }
 
@@ -135,12 +154,6 @@ public class Block {
     return BlockExitResult.noMatch();
   }
 
-  private boolean isAuthenticationOrAuthorizationRule(AsyncRule rule) {
-    return
-      rule instanceof Authentication || rule instanceof Authorization ||
-        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authentication) ||
-        (rule instanceof AsyncRuleAdapter && ((AsyncRuleAdapter) rule).getUnderlying() instanceof Authorization);
-  }
 
   @Override
   public String toString() {

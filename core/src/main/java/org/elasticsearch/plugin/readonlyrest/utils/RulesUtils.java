@@ -16,27 +16,44 @@
  */
 package org.elasticsearch.plugin.readonlyrest.utils;
 
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRuleAdapter;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthenticationDecorator;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.CachedAsyncAuthorizationDecorator;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RulesUtils {
 
   public static Class<? extends Rule> classOfRule(Rule rule) {
     if (rule instanceof CachedAsyncAuthenticationDecorator) {
       return tryAsyncAdapterUnpack(((CachedAsyncAuthenticationDecorator) rule).getUnderlying());
-    } else if (rule instanceof CachedAsyncAuthorizationDecorator) {
+    }
+    else if (rule instanceof CachedAsyncAuthorizationDecorator) {
       return tryAsyncAdapterUnpack(((CachedAsyncAuthorizationDecorator) rule).getUnderlying());
-    } else {
+    }
+    else {
       return tryAsyncAdapterUnpack(rule);
     }
   }
 
   private static Class<? extends Rule> tryAsyncAdapterUnpack(Rule rule) {
     return rule instanceof AsyncRuleAdapter
-        ? ((AsyncRuleAdapter) rule).getUnderlying().getClass()
-        : rule.getClass();
+      ? ((AsyncRuleAdapter) rule).getUnderlying().getClass()
+      : rule.getClass();
+  }
+
+
+  public static Set<Class<?>> ruleHasPhantomTypes(AsyncRule rule, Set<Class<?>> phantomTypes) {
+    Class<?> tmpRuleClass = rule.getClass();
+    if (rule instanceof AsyncRuleAdapter) {
+      tmpRuleClass = ((AsyncRuleAdapter) rule).getUnderlying().getClass();
+    }
+    Class<?> ruleClass = tmpRuleClass;
+    return phantomTypes.stream().filter(pt -> pt.isAssignableFrom(ruleClass)).collect(Collectors.toSet());
   }
 
 }

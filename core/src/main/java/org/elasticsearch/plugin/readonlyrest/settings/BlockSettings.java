@@ -17,8 +17,11 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
@@ -26,6 +29,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProv
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SessionMaxIdleRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.utils.RulesUtils;
 
 import java.util.List;
 import java.util.Set;
@@ -47,6 +51,14 @@ public class BlockSettings {
   private final List<RuleSettings> rules;
   private final Verbosity verbosity;
 
+  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
+    validate(rules);
+    this.name = name;
+    this.policy = policy;
+    this.verbosity = verbosity;
+    this.rules = rules;
+  }
+
   public static BlockSettings from(RawSettings settings,
                                    AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
                                    LdapSettingsCollection ldapSettingsCollection,
@@ -54,42 +66,34 @@ public class BlockSettings {
                                    ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
                                    UserSettingsCollection userSettingsCollection) {
     RulesSettingsCreatorsRegistry registry = new RulesSettingsCreatorsRegistry(
-        settings,
-        authMethodCreatorsRegistry,
-        ldapSettingsCollection,
-        groupsProviderSettingsCollection,
-        externalAuthenticationServiceSettingsCollection,
-        userSettingsCollection
+      settings,
+      authMethodCreatorsRegistry,
+      ldapSettingsCollection,
+      groupsProviderSettingsCollection,
+      externalAuthenticationServiceSettingsCollection,
+      userSettingsCollection
     );
     String name = settings.stringReq(NAME);
     BlockPolicy policy = settings.stringOpt(POLICY)
-        .map(value -> BlockPolicy.fromString(value)
-            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown block policy type: " + value)))
-        .orElse(DEFAULT_BLOCK_POLICY);
+      .map(value -> BlockPolicy.fromString(value)
+        .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown block policy type: " + value)))
+      .orElse(DEFAULT_BLOCK_POLICY);
     Verbosity verbosity = settings.stringOpt(VERBOSITY)
-        .map(value -> Verbosity.fromString(value)
-            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
-        .orElse(DEFAULT_VERBOSITY);
+      .map(value -> Verbosity.fromString(value)
+        .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
+      .orElse(DEFAULT_VERBOSITY);
     Set<String> filteredBlockAttributes = Sets.newHashSet(
-        NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER
+      NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER
     );
     return new BlockSettings(
-        name,
-        policy,
-        verbosity,
-        settings.getKeys().stream()
-            .filter(k -> !filteredBlockAttributes.contains(k))
-            .map(registry::create)
-            .collect(Collectors.toList())
+      name,
+      policy,
+      verbosity,
+      settings.getKeys().stream()
+        .filter(k -> !filteredBlockAttributes.contains(k))
+        .map(registry::create)
+        .collect(Collectors.toList())
     );
-  }
-
-  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
-    validate(rules);
-    this.name = name;
-    this.policy = policy;
-    this.verbosity = verbosity;
-    this.rules = rules;
   }
 
   public String getName() {
@@ -112,7 +116,7 @@ public class BlockSettings {
     if (rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
       if (rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
         throw new SettingsMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
-            "' rule does not mean anything if you don't also set some authentication rule");
+                                               "' rule does not mean anything if you don't also set some authentication rule");
       }
     }
   }

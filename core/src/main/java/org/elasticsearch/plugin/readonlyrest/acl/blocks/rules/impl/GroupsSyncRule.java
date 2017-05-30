@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
  *
  * @author Christian Henke (maitai@users.noreply.github.com)
  */
-public class GroupsSyncRule extends SyncRule implements Authorization {
+public class GroupsSyncRule extends SyncRule implements Authorization, Authentication {
 
   private final GroupsRuleSettings settings;
   private final UserFactory userFactory;
