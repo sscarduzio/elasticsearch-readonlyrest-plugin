@@ -69,7 +69,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
-    SSLEngineProvider engineProvider = new SSLEngineProvider(sslSettings, esContext);
+    private SSLEngineProvider engineProvider = new SSLEngineProvider(sslSettings, esContext);
 
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
