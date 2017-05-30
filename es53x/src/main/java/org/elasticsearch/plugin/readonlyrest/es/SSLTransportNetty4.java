@@ -24,6 +24,7 @@ package org.elasticsearch.plugin.readonlyrest.es;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.ssl.NotSslRecordException;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
@@ -31,8 +32,8 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.es.settings.ssl.ESSslSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.plugin.readonlyrest.es.settings.ssl.SSLEngineProvider;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.threadpool.ThreadPool;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
@@ -52,8 +53,15 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     if (!this.lifecycle.started()) {
       return;
     }
-    logger.error("exception in SSL transport: " + cause.getMessage());
-    cause.printStackTrace();
+    if(cause.getCause() instanceof NotSslRecordException){
+      logger.warn(cause.getMessage());
+    }
+    else {
+      logger.error("exception in SSL transport: " + cause.getMessage());
+      cause.printStackTrace();
+      super.exceptionCaught(ctx, cause);
+    }
+    ctx.channel().flush().close();
   }
 
   public ChannelHandler configureServerChannelHandler() {
