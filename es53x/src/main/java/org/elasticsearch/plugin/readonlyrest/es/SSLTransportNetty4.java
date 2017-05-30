@@ -53,7 +53,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     if (!this.lifecycle.started()) {
       return;
     }
-    if(cause.getCause() instanceof NotSslRecordException){
+    if (cause.getCause() instanceof NotSslRecordException) {
       logger.warn(cause.getMessage());
     }
     else {
@@ -69,6 +69,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
+    SSLEngineProvider engineProvider = new SSLEngineProvider(sslSettings, esContext);
 
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
@@ -76,7 +77,6 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      SSLEngineProvider engineProvider = new SSLEngineProvider(sslSettings, esContext);
       engineProvider.getContext().ifPresent(sslCtx -> {
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
       });
