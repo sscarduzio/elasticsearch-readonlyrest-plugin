@@ -46,6 +46,7 @@ for zipFile in `ls -1 es*x/build/distributions/*zip`; do
     processBuild $zipFile
 done
 
+exit 0
 
 ##########################################
 # Sample of available ENV vars in Travis #
