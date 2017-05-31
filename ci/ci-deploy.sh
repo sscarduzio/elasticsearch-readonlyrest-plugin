@@ -34,10 +34,9 @@ function processBuild {
     echo "PLUGIN_VERSION: $PLUGIN_VERSION"
     GIT_TAG=v$(echo $PLUGIN_FILE_BASE | sed 's/readonlyrest-//' | sed 's/\.zip//')
     echo "GIT_TAG: $GIT_TAG"
-    tag $GIT_TAG
 
-    # s3cli -c config.json  put <path/to/file> <remote-blob>
-    upload  $PLUGIN_FILE        build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE
+    tag $GIT_TAG &&
+    upload  $PLUGIN_FILE        build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE &&
     upload  $PLUGIN_FILE.sha1   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
 }
 

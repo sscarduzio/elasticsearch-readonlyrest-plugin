@@ -6,7 +6,7 @@ function tag {
     # Check if this tag already exists, so we don't overwrite builds
     if git tag --list | grep ${GIT_TAG} > /dev/null; then
         echo "Git tag $GIT_TAG already exists, exiting."
-        exit 0
+        return 1
     fi
 
     echo "Tagging as $GIT_TAG"
@@ -18,6 +18,7 @@ function tag {
         git tag $GIT_TAG -a -m "Generated tag from TravisCI build $TRAVIS_BUILD_NUMBER"
         git push origin $GIT_TAG
     fi
+    return 0
 }
 
 # UPLOADING
