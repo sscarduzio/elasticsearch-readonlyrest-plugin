@@ -57,6 +57,12 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         AuthKeySha256SyncRule.class,
         ProxyAuthSyncRule.class,
         JwtAuthSyncRule.class,
+        
+        // then we could check potentially slow async rules
+        LdapAuthAsyncRule.class,
+        LdapAuthenticationAsyncRule.class,
+        ExternalAuthenticationAsyncRule.class,
+
         // Inspection rules next; these act based on properties of the request.
         KibanaAccessSyncRule.class,
         HostsSyncRule.class,
@@ -70,10 +76,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         ActionsSyncRule.class,
         GroupsSyncRule.class,
         SearchlogSyncRule.class,
-        // then we could check potentially slow async rules
-        LdapAuthAsyncRule.class,
-        LdapAuthenticationAsyncRule.class,
-        ExternalAuthenticationAsyncRule.class,
+
         // all authorization rules should be placed before any authentication rule
         LdapAuthorizationAsyncRule.class,
         GroupsProviderAuthorizationAsyncRule.class,
