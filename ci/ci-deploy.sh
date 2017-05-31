@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. ci/ci-lib.sh
+
 ###############################
 # S3 Artifact Uploader Script #
 ###############################
@@ -12,63 +14,39 @@
 #
 # Ultimately, I'm just going to commit changes to the build.gradle and this thing tags and uploads where necessary.
 
-CONF_FILE="conf.json"
-BUCKET="readonlyrest-data"
-DISTRIBUTION_PATH="build/distributions/"
 
 if [ ! -z "$TRAVIS_TAG" ]; then
   echo "Don't try to tag in response on a tag event"
+  exit 0
 fi
 
 echo "Entering release uploader.."
 
-PLUGIN_FILE=$(echo ${DISTRIBUTION_PATH}readonlyrest-*.zip)
-echo "PLUGIN_FILE: $PLUGIN_FILE"
-PLUGIN_FILE_BASE=$(basename $PLUGIN_FILE)
-ES_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $2'} | sed "s/\.zip//")
-echo "ES_VERSION: $ES_VERSION"
-PLUGIN_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $1'} | awk -F "readonlyrest-" {'print $2'})
-echo "PLUGIN_VERSION: $PLUGIN_VERSION"
-GIT_TAG=v$(echo $PLUGIN_FILE_BASE | sed 's/readonlyrest-//' | sed 's/\.zip//')
-echo "GIT_TAG: $GIT_TAG"
 
-# Check if this tag already exists, so we don't overwrite builds
-if git tag --list | grep ${GIT_TAG} > /dev/null; then
-    echo "Git tag $GIT_TAG already exists, exiting."
-    exit 0
-fi
+function processBuild {
+    PLUGIN_FILE="$1"
+    echo "PLUGIN_FILE: $PLUGIN_FILE"
+    DISTRIBUTION_PATH=$(dirname "$PLUGIN_FILE")
+    PLUGIN_FILE_BASE=$(basename "$PLUGIN_FILE")
+    ES_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $2'} | sed "s/\.zip//")
+    echo "ES_VERSION: $ES_VERSION"
+    PLUGIN_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $1'} | awk -F "readonlyrest-" {'print $2'})
+    echo "PLUGIN_VERSION: $PLUGIN_VERSION"
+    GIT_TAG=v$(echo $PLUGIN_FILE_BASE | sed 's/readonlyrest-//' | sed 's/\.zip//')
+    echo "GIT_TAG: $GIT_TAG"
+    tag $GIT_TAG
 
-# TAGGING
-echo "Tagging as $GIT_TAG"
-if [[ "$(uname -s)" == *"Linux"* ]]; then
-    git remote set-url origin git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git
-    git config --global push.default matching
-    git config --global user.email "builds@travis-ci.com"
-    git config --global user.name "Travis CI"
-    git tag $GIT_TAG -a -m "Generated tag from TravisCI build $TRAVIS_BUILD_NUMBER"
-    git push origin $GIT_TAG
-fi
-
-S3CLI="ci/dummy-s3cmd.sh"
-if [[ "$(uname -s)" == *"Linux"* ]]; then
-    S3CLI="ci/s3cli"
-fi
-
-cat > $CONF_FILE <<- EOM
-{
-  "bucket_name":            "${BUCKET}",
-  "credentials_source":     "static",
-  "access_key_id":          "${aws_access_key_id}",
-  "secret_access_key":      "${aws_secret_access_key}",
-  "region":                 "eu-west-1"
+    # s3cli -c config.json  put <path/to/file> <remote-blob>
+    upload  $PLUGIN_FILE        build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE
+    upload  $PLUGIN_FILE.sha1   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
 }
-EOM
 
-# s3cli -c config.json  put <path/to/file> <remote-blob>
-$S3CLI  -c $CONF_FILE   put $PLUGIN_FILE   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE
-$S3CLI  -c $CONF_FILE   put $PLUGIN_FILE.sha1   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
 
-rm $CONF_FILE
+for zipFile in `ls -1 es*x/build/distributions/*zip`; do
+    echo "Processing $zipFile ..."
+    processBuild $zipFile
+done
+
 
 ##########################################
 # Sample of available ENV vars in Travis #

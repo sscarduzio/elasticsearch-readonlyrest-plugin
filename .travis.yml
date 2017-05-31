@@ -16,6 +16,7 @@ deploy:
   skip_cleanup: true
   on:
     all_branches: true
+    tags: false
 
 env:
 - GH_USER_EMAIL=scarduzio+travisci@gmail.com
