@@ -1,7 +1,7 @@
 #!/bin/bash
 # TAGGING
 function tag {
-    GIT_TAG = $1
+    GIT_TAG="$1"
 
     # Check if this tag already exists, so we don't overwrite builds
     if git tag --list | grep ${GIT_TAG} > /dev/null; then
