@@ -195,13 +195,17 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
           logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
           sendNotAuthResponse(channel, acl.getSettings());
+
+          listener.onFailure(null);
           return null;
         });
+
+
   }
 
   private void sendNotAuthResponse(RestChannel channel, RorSettings rorSettings) {
     BytesRestResponse resp;
-    boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false) && rorSettings.isPromptForBasicAuth();
+    boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
     if (doesRequirePassword) {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
       logger.debug("Sending login prompt header...");

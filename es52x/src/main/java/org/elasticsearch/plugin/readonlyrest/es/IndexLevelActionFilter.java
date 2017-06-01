@@ -185,6 +185,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
           logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
           sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
+          listener.onFailure(null);
+
           return null;
         });
   }

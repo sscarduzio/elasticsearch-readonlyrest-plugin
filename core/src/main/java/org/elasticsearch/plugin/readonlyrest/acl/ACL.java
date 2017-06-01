@@ -99,6 +99,6 @@ public class ACL {
   }
 
   public boolean doesRequirePassword() {
-    return blocks.stream().anyMatch(Block::isAuthHeaderAccepted);
+    return blocks.stream().anyMatch(Block::isAuthHeaderAccepted) && settings.isPromptForBasicAuth();
   }
 }
