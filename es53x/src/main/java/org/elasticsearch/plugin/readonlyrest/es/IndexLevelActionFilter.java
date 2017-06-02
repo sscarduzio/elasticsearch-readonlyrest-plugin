@@ -42,6 +42,7 @@ import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.ACLActionListene
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.RuleActionListenersProvider;
 import org.elasticsearch.plugin.readonlyrest.es.requestcontext.RequestContextImpl;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -245,14 +246,21 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           if(res.isPresent()){
             throw res.get();
           }
-          logger.info("Cluster-wide settings found, overriding elasticsearch.yml");
+          logger.info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding elasticsearch.yml");
           executor.shutdown();
         } catch (ElasticsearchException ee) {
           logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin." +
               " Will keep on using elasticearch.yml.");
           executor.shutdown();
         } catch (Throwable t) {
-          logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet..");
+          if(t.getCause() != null && t.getCause() instanceof SettingsMalformedException){
+            logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + t.getCause().getMessage());
+            executor.shutdown();
+            return;
+          }
+          else {
+            logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet.. (" + t + ")");
+          }
           executor.schedule(this, 200, TimeUnit.MILLISECONDS);
         }
       }

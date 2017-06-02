@@ -34,9 +34,8 @@ public abstract class ReloadableSettings {
   private WeakHashMap<Consumer<RorSettings>, Boolean> onSettingsUpdateListeners = new WeakHashMap<>();
 
   public ReloadableSettings(File yaml) throws IOException {
-    this.rorSettings.set(
-        new ESSettings(RawSettings.fromFile(yaml)).getRorSettings()
-    );
+    ESSettings es = new ESSettings(RawSettings.fromFile(yaml));
+    this.rorSettings.set(es.getRorSettings());
   }
 
   public void addListener(Consumer<RorSettings> onSettingsUpdate) {
@@ -46,16 +45,19 @@ public abstract class ReloadableSettings {
 
   public CompletableFuture<Optional<Throwable>> reload(SettingsContentProvider provider) {
     CompletableFuture<String> stringContent = provider.getSettingsContent();
-   return  stringContent.thenApply(configurationContent -> {
-          this.rorSettings.set(new ESSettings(RawSettings.fromString(configurationContent)).getRorSettings());
-          notifyListeners();
-          return Optional.<Throwable>empty();
-        }
+    return stringContent.thenApply(configurationContent -> {
+                                     RawSettings raw = RawSettings.fromString(configurationContent);
+                                     ESSettings es = new ESSettings(raw);
+                                     this.rorSettings.set(es.getRorSettings());
+
+                                     notifyListeners();
+                                     return Optional.<Throwable>empty();
+                                   }
     ).exceptionally(Optional::of);
   }
 
   private void notifyListeners() {
     onSettingsUpdateListeners.keySet()
-        .forEach(listener -> listener.accept(rorSettings.get()));
+      .forEach(listener -> listener.accept(rorSettings.get()));
   }
 }

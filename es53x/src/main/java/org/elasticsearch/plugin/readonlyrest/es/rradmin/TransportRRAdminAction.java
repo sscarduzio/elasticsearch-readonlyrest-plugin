@@ -41,18 +41,25 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
                                 ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-                                NodeClient client, ReloadableSettingsImpl reloadableConfiguration) {
+                                NodeClient client, ReloadableSettingsImpl reloadableSettings) {
     super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
-        RRAdminRequest::new);
+          RRAdminRequest::new
+    );
     this.client = new ESClientSettingsContentProvider(client);
-    this.reloadableSettings = reloadableConfiguration;
+    this.reloadableSettings = reloadableSettings;
   }
 
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
-      reloadableSettings.reload(client);
-      listener.onResponse(new RRAdminResponse(null));
+      reloadableSettings.reload(client).thenAccept(o -> {
+        if (o.isPresent()) {
+          listener.onResponse(new RRAdminResponse(o.get()));
+        }
+        else {
+          listener.onResponse(new RRAdminResponse(null));
+        }
+      });
     } catch (Exception e) {
       listener.onResponse(new RRAdminResponse(e));
     }

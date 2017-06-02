@@ -29,12 +29,11 @@ import java.io.IOException;
 
 public class RRAdminResponse extends ActionResponse implements ToXContent {
 
-  private final Exception exception;
+  private final Throwable throwable;
 
-  public RRAdminResponse(Exception e) {
-    this.exception = e;
+  public RRAdminResponse(Throwable t) {
+    this.throwable = t;
   }
-
 
   @Override
   public void writeTo(StreamOutput out) throws IOException {
@@ -49,11 +48,11 @@ public class RRAdminResponse extends ActionResponse implements ToXContent {
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
     builder.startObject();
-    if (exception == null) {
+    if (throwable == null) {
       builder.field("status", "ok").field("message", "settings refreshed");
     }
     else {
-      builder.field("status", "ko").field("message", exception.getMessage());
+      builder.field("status", "ko").field("message", throwable.getMessage());
     }
     builder.endObject();
     return builder;
