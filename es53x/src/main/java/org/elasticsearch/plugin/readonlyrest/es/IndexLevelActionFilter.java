@@ -51,6 +51,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -178,18 +179,21 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           assert result != null;
 
           if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
+            boolean hasProceeded = false;
             try {
               @SuppressWarnings("unchecked")
               ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
                   request, (ActionListener<ActionResponse>) listener, ruleActionListenersProvider, rc, result, context
               );
               chain.proceed(task, action, request, aclActionListener);
+              hasProceeded = true;
               return null;
             } catch (Throwable e) {
               e.printStackTrace();
             }
-
-            chain.proceed(task, action, request, listener);
+            if(!hasProceeded) {
+              chain.proceed(task, action, request, listener);
+            }
             return null;
           }
 
@@ -238,7 +242,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       public void run() {
         try {
           logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
-          reloadableSettings.reload(new ESClientSettingsContentProvider(client));
+          Optional<Throwable> res = reloadableSettings.reload(new ESClientSettingsContentProvider(client)).get();
+          if(res.isPresent()){
+            throw res.get();
+          }
           logger.info("Cluster-wide settings found, overriding elasticsearch.yml");
           executor.shutdown();
         } catch (ElasticsearchException ee) {

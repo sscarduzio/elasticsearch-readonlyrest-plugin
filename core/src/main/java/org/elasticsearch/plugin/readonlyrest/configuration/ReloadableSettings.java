@@ -22,7 +22,9 @@ import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.WeakHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -42,12 +44,14 @@ public abstract class ReloadableSettings {
     onSettingsUpdate.accept(rorSettings.get());
   }
 
-  public void reload(SettingsContentProvider provider) {
-    provider.getSettingsContent().thenAccept(configurationContent -> {
+  public CompletableFuture<Optional<Throwable>> reload(SettingsContentProvider provider) {
+    CompletableFuture<String> stringContent = provider.getSettingsContent();
+   return  stringContent.thenApply(configurationContent -> {
           this.rorSettings.set(new ESSettings(RawSettings.fromString(configurationContent)).getRorSettings());
           notifyListeners();
+          return Optional.<Throwable>empty();
         }
-    );
+    ).exceptionally(Optional::of);
   }
 
   private void notifyListeners() {

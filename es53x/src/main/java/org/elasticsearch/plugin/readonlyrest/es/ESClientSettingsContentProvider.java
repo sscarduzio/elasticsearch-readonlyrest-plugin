@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.es;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
@@ -34,11 +35,17 @@ public class ESClientSettingsContentProvider implements SettingsContentProvider 
   @Override
   public CompletableFuture<String> getSettingsContent() {
     return CompletableFuture.supplyAsync(() -> {
-      GetResponse resp = client.prepareGet(".readonlyrest", "settings", "1").get();
-      if (!resp.isExists()) {
+      GetResponse resp = null;
+      try {
+        resp  = client.prepareGet(".readonlyrest", "settings", "1").get();
+      }
+      catch(Throwable t){
+        throw new ElasticsearchException(t.getMessage());
+      }
+      if (resp == null || !resp.isExists()) {
         throw new ElasticsearchException("no settings found in index");
       }
       return (String) resp.getSource().get("settings");
-    });
+    }, MoreExecutors.directExecutor());
   }
 }
