@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.users;
 
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 
 import java.util.Set;
 

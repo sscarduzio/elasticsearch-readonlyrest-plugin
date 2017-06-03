@@ -47,17 +47,9 @@ public class ACL {
   // list because it preserves the insertion order
   private final ImmutableList<Block> blocks;
 
-  public UserRuleFactory getUserRuleFactory() {
-    return userRuleFactory;
-  }
-
-  public DefinitionsFactory getDefinitionsFactory() {
-    return definitionsFactory;
-  }
-
   private final UserRuleFactory userRuleFactory;
-  private final DefinitionsFactory definitionsFactory;
 
+  private final DefinitionsFactory definitionsFactory;
   public ACL(RorSettings settings, ESContext context) {
     this.settings = settings;
     this.logger = context.logger(getClass());
@@ -109,6 +101,14 @@ public class ACL {
 
   public RorSettings getSettings() {
     return settings;
+  }
+
+  public UserRuleFactory getUserRuleFactory() {
+    return userRuleFactory;
+  }
+
+  public DefinitionsFactory getDefinitionsFactory() {
+    return definitionsFactory;
   }
 
   public boolean doesRequirePassword() {

@@ -25,7 +25,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.JwtAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
