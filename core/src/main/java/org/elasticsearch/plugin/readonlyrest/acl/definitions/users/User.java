@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.users;
 
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 
 import java.util.Set;
@@ -28,9 +29,9 @@ public class User {
 
   private final String username;
   private final Set<String> groups;
-  private final UserRule authKeyRule;
+  private final AsyncRule authKeyRule;
 
-  public User(String username, Set<String> groups, UserRule rule) {
+  public User(String username, Set<String> groups, AsyncRule rule) {
     this.username = username;
     this.groups = groups;
     this.authKeyRule = rule;
@@ -44,7 +45,7 @@ public class User {
     return groups;
   }
 
-  public UserRule getAuthKeyRule() {
+  public AsyncRule getAuthKeyRule() {
     return authKeyRule;
   }
 }

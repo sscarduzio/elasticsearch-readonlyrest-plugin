@@ -23,8 +23,8 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1Sy
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
@@ -62,6 +62,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         LdapAuthAsyncRule.class,
         LdapAuthenticationAsyncRule.class,
         ExternalAuthenticationAsyncRule.class,
+        GroupsAsyncRule.class,
 
         // Inspection rules next; these act based on properties of the request.
         KibanaAccessSyncRule.class,
@@ -74,7 +75,6 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         MethodsSyncRule.class,
         IndicesSyncRule.class,
         ActionsSyncRule.class,
-        GroupsSyncRule.class,
         SearchlogSyncRule.class,
 
         // all authorization rules should be placed before any authentication rule

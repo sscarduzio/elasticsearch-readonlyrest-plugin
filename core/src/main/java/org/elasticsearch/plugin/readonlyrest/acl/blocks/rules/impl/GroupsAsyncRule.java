@@ -18,16 +18,17 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.users.UserFactory;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsRuleSettings;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -36,31 +37,33 @@ import java.util.stream.Collectors;
  *
  * @author Christian Henke (maitai@users.noreply.github.com)
  */
-public class GroupsSyncRule extends SyncRule implements Authorization, Authentication {
+public class GroupsAsyncRule extends AsyncRule implements Authorization, Authentication {
 
   private final GroupsRuleSettings settings;
   private final UserFactory userFactory;
 
-  public GroupsSyncRule(GroupsRuleSettings s, UserFactory userFactory) {
+  public GroupsAsyncRule(GroupsRuleSettings s, UserFactory userFactory) {
     this.settings = s;
     this.userFactory = userFactory;
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     Set<String> resolvedGroups = settings.getGroups().stream()
-        .map(g -> g.getValue(rc))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .collect(Collectors.toSet());
-    boolean anyMatch = settings.getUsersSettings().stream()
-        .map(userFactory::getUser)
-        .anyMatch(user -> Sets.intersection(resolvedGroups, user.getGroups()).isEmpty()
-            ? false
-            : user.getAuthKeyRule().match(rc).isMatch()
-        );
-
-    return anyMatch ? MATCH : NO_MATCH;
+      .map(g -> g.getValue(rc))
+      .filter(Optional::isPresent)
+      .map(Optional::get)
+      .collect(Collectors.toSet());
+    return settings.getUsersSettings().stream()
+      .map(userFactory::getUser)
+      .map(user -> {
+        Set<String> groups = Sets.intersection(resolvedGroups, user.getGroups());
+        if (groups.isEmpty()) {
+          return CompletableFuture.completedFuture(NO_MATCH);
+        }
+        return user.getAuthKeyRule().match(rc);
+      })
+      .findFirst().orElse(CompletableFuture.completedFuture(NO_MATCH));
   }
 
   @Override

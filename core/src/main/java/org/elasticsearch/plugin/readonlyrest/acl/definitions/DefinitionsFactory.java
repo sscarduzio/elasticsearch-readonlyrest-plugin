@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
@@ -60,16 +61,16 @@ public class DefinitionsFactory implements LdapClientFactory,
     GroupsProviderServiceClientFactory,
     UserFactory {
 
-  private final UserRuleFactory userRuleFactory;
   private final HttpClientFactory httpClientFactory;
   private final ESContext context;
   private final Cache<String, GroupsProviderLdapClient> groupsProviderLdapClientsCache;
   private final Cache<String, AuthenticationLdapClient> authenticationLdapClientsCache;
   private final Cache<String, ExternalAuthenticationServiceClient> externalAuthenticationServiceClientsCache;
   private final Cache<String, GroupsProviderServiceClient> groupsProviderServiceClientsCache;
+  private final ACL acl;
 
-  public DefinitionsFactory(UserRuleFactory userRuleFactory, ESContext context) {
-    this.userRuleFactory = userRuleFactory;
+  public DefinitionsFactory(ESContext context, ACL acl) {
+    this.acl = acl;
     this.httpClientFactory = context.httpClientFactory();
     this.context = context;
     this.groupsProviderLdapClientsCache = CacheBuilder.newBuilder().build();
@@ -197,7 +198,7 @@ public class DefinitionsFactory implements LdapClientFactory,
     return new User(
         settings.getUsername(),
         settings.getGroups(),
-        userRuleFactory.create(settings.getAuthKeyProviderSettings())
+        acl.getUserRuleFactory().create(settings.getAuthKeyProviderSettings())
     );
   }
 

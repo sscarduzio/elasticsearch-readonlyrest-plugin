@@ -21,8 +21,8 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ActionsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ApiKeysSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.HostsSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
@@ -133,14 +133,14 @@ public class RulesFactory {
     );
     this.creators.put(GroupsRuleSettings.class,
         settings ->
-            wrap(new GroupsSyncRule((GroupsRuleSettings) settings, definitionsFactory))
+          new GroupsAsyncRule((GroupsRuleSettings) settings, definitionsFactory)
     );
   }
 
   public AsyncRule create(RuleSettings settings) {
     Class<? extends RuleSettings> ruleSettingsClass = settings.getClass();
     if (settings instanceof AuthKeyProviderSettings) {
-      return wrap(userRuleFactory.create((AuthKeyProviderSettings) settings));
+      return userRuleFactory.create((AuthKeyProviderSettings) settings);
     } else if (creators.containsKey(ruleSettingsClass)) {
       return creators.get(settings.getClass()).apply(settings);
     } else {

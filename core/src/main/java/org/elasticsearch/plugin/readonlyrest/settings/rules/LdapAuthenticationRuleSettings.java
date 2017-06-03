@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
+import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
@@ -24,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCo
 
 import java.time.Duration;
 
-public class LdapAuthenticationRuleSettings implements RuleSettings, CacheSettings {
+public class LdapAuthenticationRuleSettings implements RuleSettings, CacheSettings, AuthKeyProviderSettings {
 
   public static final String ATTRIBUTE_NAME = "ldap_authentication";
 

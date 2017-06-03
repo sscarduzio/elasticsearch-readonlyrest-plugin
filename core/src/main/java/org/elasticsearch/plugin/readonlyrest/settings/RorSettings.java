@@ -48,36 +48,37 @@ public class RorSettings {
   private final List<BlockSettings> blocksSettings;
   private final Boolean promptForBasicAuth;
 
-  static RorSettings from(RawSettings settings) {
-    return new RorSettings(settings.inner(ATTRIBUTE_NAME));
-  }
-
   @SuppressWarnings("unchecked")
   private RorSettings(RawSettings raw) {
     LdapSettingsCollection ldapSettingsCollection = LdapSettingsCollection.from(raw);
     UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = UserGroupsProviderSettingsCollection.from(raw);
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
     ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection =
-        ExternalAuthenticationServiceSettingsCollection.from(raw);
-    AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(proxyAuthDefinitionSettingsCollection);
+      ExternalAuthenticationServiceSettingsCollection.from(raw);
+    AuthMethodCreatorsRegistry authMethodCreatorsRegistry =
+      new AuthMethodCreatorsRegistry(proxyAuthDefinitionSettingsCollection, ldapSettingsCollection);
 
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
-        .map(block -> BlockSettings.from(
-            new RawSettings((Map<String, ?>) block),
-            authMethodCreatorsRegistry,
-            ldapSettingsCollection,
-            userGroupsProviderSettingsCollection,
-            externalAuthenticationServiceSettingsCollection,
-            UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
-        ))
-        .collect(Collectors.toList());
+      .map(block -> BlockSettings.from(
+        new RawSettings((Map<String, ?>) block),
+        authMethodCreatorsRegistry,
+        ldapSettingsCollection,
+        userGroupsProviderSettingsCollection,
+        externalAuthenticationServiceSettingsCollection,
+        UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
+      ))
+      .collect(Collectors.toList());
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
     this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);
     this.verbosity = raw.stringOpt(VERBOSITY)
-        .map(value -> Verbosity.fromString(value)
-            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
-        .orElse(DEFAULT_VERBOSITY);
+      .map(value -> Verbosity.fromString(value)
+        .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
+      .orElse(DEFAULT_VERBOSITY);
+  }
+
+  static RorSettings from(RawSettings settings) {
+    return new RorSettings(settings.inner(ATTRIBUTE_NAME));
   }
 
   public boolean isEnabled() {

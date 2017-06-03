@@ -20,6 +20,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockedACL;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
@@ -76,7 +77,7 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
                 )
             )
         ),
-        new DefinitionsFactory(new UserRuleFactory(MockedESContext.INSTANCE), MockedESContext.INSTANCE),
+        new DefinitionsFactory(MockedESContext.INSTANCE, MockedACL.getMock()),
         MockedESContext.INSTANCE
     );
 

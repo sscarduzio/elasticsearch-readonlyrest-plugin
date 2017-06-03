@@ -47,12 +47,25 @@ public class ACL {
   // list because it preserves the insertion order
   private final ImmutableList<Block> blocks;
 
+  public UserRuleFactory getUserRuleFactory() {
+    return userRuleFactory;
+  }
+
+  public DefinitionsFactory getDefinitionsFactory() {
+    return definitionsFactory;
+  }
+
+  private final UserRuleFactory userRuleFactory;
+  private final DefinitionsFactory definitionsFactory;
+
   public ACL(RorSettings settings, ESContext context) {
     this.settings = settings;
     this.logger = context.logger(getClass());
-    final UserRuleFactory userRuleFactory = new UserRuleFactory(context);
-    final DefinitionsFactory definitionsFactory = new DefinitionsFactory(userRuleFactory, context);
+
+    this.userRuleFactory = new UserRuleFactory(context, this);
+    this.definitionsFactory = new DefinitionsFactory(context, this);
     final RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, context);
+
     this.blocks = ImmutableList.copyOf(
         settings.getBlocksSettings().stream()
             .map(blockSettings -> {

@@ -18,11 +18,13 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSettings;
 
 import java.util.HashMap;
@@ -34,12 +36,17 @@ public class AuthMethodCreatorsRegistry {
 
   private final Map<String, Function<RawSettings, AuthKeyProviderSettings>> authKeyProviderCreators;
 
-  public AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
+  public AuthMethodCreatorsRegistry(
+    ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection,
+    LdapSettingsCollection ldapSettingsCollection
+  ) {
+
     HashMap<String, Function<RawSettings, AuthKeyProviderSettings>> creators = Maps.newHashMap();
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator());
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator());
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
     creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
+    creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME, ldapAuthenticationRuleSettingsCreator(ldapSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator());
     this.authKeyProviderCreators = creators;
   }
@@ -68,14 +75,16 @@ public class AuthMethodCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> proxyAuthSettingsCreator(
-      ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
+    ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     return settings -> {
       Object s = settings.req(ProxyAuthRuleSettings.ATTRIBUTE_NAME);
       if (s instanceof List<?>) {
         return ProxyAuthRuleSettings.from((List<String>) s);
-      } else if (s instanceof String) {
+      }
+      else if (s instanceof String) {
         return ProxyAuthRuleSettings.from(Lists.newArrayList((String) s));
-      } else {
+      }
+      else {
         return ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s), proxyAuthDefinitionSettingsCollection);
       }
     };
@@ -86,6 +95,18 @@ public class AuthMethodCreatorsRegistry {
       RawSettings conf = settings.inner(JwtAuthRuleSettings.ATTRIBUTE_NAME);
       return JwtAuthRuleSettings.from(conf);
     };
+  }
+
+
+  @SuppressWarnings("unchecked")
+  private Function<RawSettings, AuthKeyProviderSettings> ldapAuthenticationRuleSettingsCreator(LdapSettingsCollection ldapSettingsCollection) {
+    return (rawSettings) -> {
+      Object settings = rawSettings.req(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME);
+      return settings instanceof String
+        ? LdapAuthenticationRuleSettings.from((String) settings, ldapSettingsCollection)
+        : LdapAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings), ldapSettingsCollection);
+    };
+
   }
 
 }
