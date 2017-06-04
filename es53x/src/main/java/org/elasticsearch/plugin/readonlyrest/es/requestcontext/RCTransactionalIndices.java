@@ -24,6 +24,7 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
@@ -188,6 +189,11 @@ public class RCTransactionalIndices {
               " If this was intended, set '*' as indices.");
         }
 
+        // Best case, this request is designed to have indices replaced.
+        if (actionRequest instanceof IndicesRequest.Replaceable){
+          ((IndicesRequest.Replaceable) actionRequest).indices(newIndices.toArray(new String[newIndices.size()]));
+          return;
+        }
 
         if (actionRequest instanceof BulkShardRequest) {
           BulkShardRequest bsr = (BulkShardRequest) actionRequest;
