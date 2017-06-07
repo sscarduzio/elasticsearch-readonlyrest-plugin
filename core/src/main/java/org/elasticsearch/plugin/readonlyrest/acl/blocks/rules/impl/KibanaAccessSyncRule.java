@@ -100,6 +100,14 @@ public class KibanaAccessSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
+    RuleExitResult res = doMatch(rc);
+    if(res.isMatch()){
+      rc.setResponseHeader("x-ror-kiban_access", settings.getKibanaAccess().name());
+      rc.setResponseHeader("x-ror-kibana_index", settings.getKibanaIndex().getValue(rc).orElse(".kibana"));
+    }
+    return res;
+  }
+  private RuleExitResult doMatch(RequestContext rc) {
     Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
 
     // Allow other actions if devnull is targeted to readers and writers
