@@ -22,9 +22,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
+import org.elasticsearch.plugin.readonlyrest.acl.definitions.users.User;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.users.UserFactory;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
 import java.util.Optional;
 import java.util.Set;
@@ -54,16 +56,20 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
       .filter(Optional::isPresent)
       .map(Optional::get)
       .collect(Collectors.toSet());
-    return settings.getUsersSettings().stream()
-      .map(userFactory::getUser)
-      .map(user -> {
-        Set<String> groups = Sets.intersection(resolvedGroups, user.getGroups());
-        if (groups.isEmpty()) {
-          return CompletableFuture.completedFuture(NO_MATCH);
-        }
-        return user.getAuthKeyRule().match(rc);
-      })
-      .findFirst().orElse(CompletableFuture.completedFuture(NO_MATCH));
+
+    return FuturesSequencer.runInSeqUntilConditionIsUndone(
+
+      settings.getUsersSettings().iterator(),
+
+      uSettings -> userFactory.getUser(uSettings).getAuthKeyRule().match(rc),
+
+      (uSettings, ruleExit) ->{
+        Set<String> groups = Sets.intersection(resolvedGroups, uSettings.getGroups());
+        return !groups.isEmpty() && ruleExit.isMatch();
+      },
+
+      nothing -> NO_MATCH
+    );
   }
 
   @Override
