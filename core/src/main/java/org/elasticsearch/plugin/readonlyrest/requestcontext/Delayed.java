@@ -56,7 +56,7 @@ public abstract class Delayed {
     }
     committed = true;
 
-    logger.debug(name + " > Committing " + effects.size() + " effects");
+    logger.trace(name + " > Committing " + effects.size() + " effects");
     Iterator<Runnable> it = effects.iterator();
     while (it.hasNext()) {
       Runnable eff = it.next();
@@ -66,7 +66,7 @@ public abstract class Delayed {
         t.printStackTrace();
       }
       finally {
-        logger.debug(name + " > committed.");
+        logger.trace(name + " > committed.");
       }
       it.remove();
     }
@@ -74,7 +74,7 @@ public abstract class Delayed {
   }
 
   public void reset() {
-    logger.debug(name + " > resetting!!! ");
+    logger.trace(name + " > resetting!!! ");
     effects.clear();
     committed = false;
 
@@ -96,7 +96,7 @@ public abstract class Delayed {
       throw context.rorException(name + " > Already delegated, cannot delegate twice.");
     }
 
-    logger.debug(name + " > delegating effects to " + ambassador.name);
+    logger.trace(name + " > delegating effects to " + ambassador.name);
     if (!this.effects.isEmpty()) {
       ambassador.effects.addAll(this.effects);
     }

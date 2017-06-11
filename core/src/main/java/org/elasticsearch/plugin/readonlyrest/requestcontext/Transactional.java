@@ -54,10 +54,10 @@ public abstract class Transactional<T> extends Delayed {
        lazyLoad();
      }
      if (transientValue == null && initialValue == null || Objects.equals(transientValue, initialValue)) {
-       logger.debug(name + " > nothing to be committed..");
+       logger.trace(name + " > nothing to be committed..");
        return;
      }
-     logger.debug(name + " > committing final req " + transientValue);
+     logger.trace(name + " > committing final req " + transientValue);
      onCommit(transientValue);
    });
     super.commit();
@@ -68,7 +68,7 @@ public abstract class Transactional<T> extends Delayed {
     initialized = true;
     initialValue = initialize();
     transientValue = copy(this.initialValue);
-    logger.debug(name + " > lazy loading initial req to " + initialValue);
+    logger.trace(name + " > lazy loading initial req to " + initialValue);
   }
 
   public abstract T initialize();
