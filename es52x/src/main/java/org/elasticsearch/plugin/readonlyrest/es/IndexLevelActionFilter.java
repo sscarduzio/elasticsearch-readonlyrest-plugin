@@ -223,18 +223,22 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
           logger.info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding elasticsearch.yml");
           executor.shutdown();
-        } catch (ElasticsearchException ee) {
-          logger.info("[CLUSTERWIDE SETTINGS] settings not found, please install ReadonlyREST Kibana plugin." +
-                        " Will keep on using elasticearch.yml.");
-          executor.shutdown();
         } catch (Throwable t) {
-          if(t.getCause() != null && t.getCause() instanceof SettingsMalformedException){
-            logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + t.getCause().getMessage());
-            executor.shutdown();
-            return;
+          if(t.getCause() != null){
+            if (t.getCause() instanceof SettingsMalformedException) {
+              logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + t.getCause().getMessage());
+              executor.shutdown();
+              return;
+            }
+            if (t.getCause() instanceof ElasticsearchException) {
+              logger.info("[CLUSTERWIDE SETTINGS] index settings not found, have you installed ReadonlyREST Kibana plugin?" +
+                            " Will keep on using elasticearch.yml. Learn more at https://readonlyrest.com ");
+              executor.shutdown();
+              return;
+            }
           }
           else {
-            logger.debug("[CLUSTERWIDE SETTINGS] index not ready yet.. (" + t + ")");
+            logger.info("[CLUSTERWIDE SETTINGS] index not ready yet.. (" + t + ")");
           }
           executor.schedule(this, 200, TimeUnit.MILLISECONDS);
         }
