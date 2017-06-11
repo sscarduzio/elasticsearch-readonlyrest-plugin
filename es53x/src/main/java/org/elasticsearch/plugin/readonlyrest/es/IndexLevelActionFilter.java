@@ -33,6 +33,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.plugin.readonlyrest.Constants;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
@@ -165,7 +166,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     acl.check(rc)
         .exceptionally(throwable -> {
-          logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
+                        throwable.getMessage() + Constants.ANSI_RESET);
+          
           if (throwable.getCause() instanceof ResourceNotFoundException) {
             logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
             sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
@@ -197,7 +200,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             return null;
           }
 
-          logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
+                        result.getBlock() + " (" + result.getBlock() + ")" + Constants.ANSI_RESET);
+
           sendNotAuthResponse(channel, acl.getSettings());
 
           listener.onFailure(null);

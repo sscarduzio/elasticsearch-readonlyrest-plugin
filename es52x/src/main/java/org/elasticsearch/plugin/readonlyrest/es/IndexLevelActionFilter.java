@@ -29,6 +29,7 @@ import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.Constants;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
@@ -160,7 +161,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     acl.check(rc)
         .exceptionally(throwable -> {
-          logger.info("forbidden request: " + rc + " Reason: " + throwable.getMessage());
+          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
+                        throwable.getMessage() + Constants.ANSI_RESET);
           throwable.printStackTrace();
           sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
           return null;
@@ -187,7 +189,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             return null;
           }
 
-          logger.info("forbidden request: " + rc + " Reason: " + result.getBlock() + " (" + result.getBlock() + ")");
+          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
+                        result.getBlock() + " (" + result.getBlock() + ")" + Constants.ANSI_RESET);
           sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
           listener.onFailure(null);
 
