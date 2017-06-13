@@ -45,6 +45,7 @@ public class RCUtils {
       "indices:admin/refresh*",
       "indices:admin/types/exists",
       "indices:admin/validate/*",
+      "indices:monitor/*",
       "indices:data/read/*"
   ));
 
