@@ -78,7 +78,7 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
         throw new ElasticsearchException(
           "need to have one exactly one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
     if (originalSubReq instanceof SearchRequest || originalSubReq instanceof DocWriteRequest<?>) {
       if (newIndices.isEmpty()) {

@@ -35,7 +35,6 @@ public class RRAdminResponse extends ActionResponse implements ToXContentObject 
     this.throwable = t;
   }
 
-
   @Override
   public void writeTo(StreamOutput out) throws IOException {
     super.writeTo(out);

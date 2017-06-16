@@ -120,11 +120,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     };
 
-  this. loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
-    @Override
-    public Optional<LoggedUser> initialize() {
-      return Optional.empty();
-    }
+    this.loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
+      @Override
+      public Optional<LoggedUser> initialize() {
+        return Optional.empty();
+      }
 
       @Override
       public Optional<LoggedUser> copy(Optional<LoggedUser> initial) {
@@ -202,8 +202,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return content;
   }
 
-  public Optional<String> resolveVariable(String original){
-    return  variablesManager.apply(original);
+  public Optional<String> resolveVariable(String original) {
+    return variablesManager.apply(original);
 
   }
 

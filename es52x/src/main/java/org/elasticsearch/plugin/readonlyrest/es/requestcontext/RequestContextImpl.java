@@ -263,16 +263,16 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     }
 
     if (newIndices.size() == 0) {
-      if (isReadRequest()) {
-        throw new ElasticsearchException(
-            "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
-                "] toempty set." +
-                ", probably your request matched no index, or was rewritten to nonexistentindices (which would expand to empty set).");
-      } else {
-        throw new ElasticsearchException(
-            "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
-                "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden.");
+      if (isReadRequest()) {throw new ElasticsearchException(
+        "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] toempty set." +
+            ", probably your request matched no index, or was rewritten to nonexistentindices (which would expand to empty set).");
       }
+      else {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden." );
+          }
     }
 
     if (isReadRequest()) {
@@ -372,9 +372,12 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     if (Strings.isNullOrEmpty(content)) {
       content = "<N/A>";
     }
-    String theHeaders = !logger.isDebugEnabled()
-        ? Joiner.on(",").join(getHeaders().keySet())
-        : getHeaders().toString();
+    String theHeaders;
+    if (!logger.isDebugEnabled()) {
+      theHeaders = Joiner.on(",").join(getHeaders().keySet());
+    } else {
+      theHeaders = getHeaders().toString();
+    }
 
     String hist = Joiner.on(", ").join(history);
     Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());

@@ -71,7 +71,9 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     else if (r instanceof BulkRequest) {
       return ((BulkRequest) r).requests();
     }
-    else return new ArrayList<>(0);
+    else {
+      return new ArrayList<>(0);
+    }
   }
 
   public Object getOriginalSubRequest() {

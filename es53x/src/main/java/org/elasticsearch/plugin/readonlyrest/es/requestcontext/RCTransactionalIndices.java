@@ -120,6 +120,10 @@ public class RCTransactionalIndices {
             indices = ArrayUtils.concat(indices, ir.indices(), String.class);
           }
         }
+        else if (ar instanceof DeleteRequest) {
+          DeleteRequest ir = (DeleteRequest) ar;
+          indices = ir.indices();
+        }
         else if (ar instanceof BulkRequest) {
           BulkRequest cir = (BulkRequest) ar;
 

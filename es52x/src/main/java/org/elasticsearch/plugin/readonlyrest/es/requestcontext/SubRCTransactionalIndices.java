@@ -94,7 +94,6 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
       }
       ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
-
   }
 
 }
