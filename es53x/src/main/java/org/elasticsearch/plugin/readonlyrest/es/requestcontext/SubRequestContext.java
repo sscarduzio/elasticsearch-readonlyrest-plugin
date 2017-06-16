@@ -96,10 +96,10 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
 
     Set<String> oldIndices = indices.get();
     if (newIndices.equals(oldIndices)) {
-      logger.info("id: " + getId() + " - Not replacing in sub-request. Indices are the same. Old:" + oldIndices + " New:" + newIndices);
+      logger.debug("id: " + getId() + " - Not replacing in sub-request. Indices are the same. Old:" + oldIndices + " New:" + newIndices);
       return;
     }
-    logger.info("id: " + getId() + " - Replacing indices in sub-request. Old:" + oldIndices + " New:" + newIndices);
+    logger.debug("id: " + getId() + " - Replacing indices in sub-request. Old:" + oldIndices + " New:" + newIndices);
 
     indices.mutate(newIndices);
   }

@@ -294,7 +294,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
     List<Object> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 
-    logger.info("found " + subRequests.size() + " subrequests");
+    logger.debug("found " + subRequests.size() + " subrequests");
 
     // Composite request #TODO should we really prevent this?
     if (!doesInvolveIndices) {

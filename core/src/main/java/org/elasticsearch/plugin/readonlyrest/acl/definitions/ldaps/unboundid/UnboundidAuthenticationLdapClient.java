@@ -68,7 +68,7 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
       BindResult result = ldapConnection.bind(new SimpleBindRequest(user.getDN(), password));
       return ResultCode.SUCCESS.equals(result.getResultCode());
     } catch (LDAPException e) {
-      logger.error("LDAP authenticate operation failed");
+      logger.error("LDAP authenticate operation failed: " + e.getMessage());
       return false;
     } finally {
       if (ldapConnection != null) {
