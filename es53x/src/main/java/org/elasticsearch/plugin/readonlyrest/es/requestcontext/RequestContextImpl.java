@@ -38,6 +38,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
@@ -48,6 +49,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.tasks.TaskAwareRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.net.InetSocketAddress;
@@ -75,12 +77,12 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private final ESContext context;
   private final Transactional<Set<String>> indices;
   private final Transactional<Map<String, String>> responseHeaders;
-
+  private final Long taskId;
+  private final VariablesManager variablesManager;
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;
   private Transactional<Optional<LoggedUser>> loggedInUser;
-  private final VariablesManager variablesManager;
 
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
                             ClusterService clusterService, ThreadPool threadPool, ESContext context) {
@@ -91,8 +93,17 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.context = context;
-    this.id = request.hashCode() + "-" + actionRequest.hashCode();
-
+    String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
+    Long taskId = ThreadRepo.taskId.get();
+    if (taskId != null && actionRequest instanceof TaskAwareRequest) {
+      this.id = tmpID + "#" + taskId;
+      ThreadRepo.taskId.remove();
+      this.taskId = taskId;
+    }
+    else {
+      this.id = tmpID;
+      this.taskId = null;
+    }
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     request.getHeaders().keySet().forEach(k -> {
       if (request.getAllHeaderValues(k).isEmpty()) {
@@ -120,11 +131,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     };
 
-  this. loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
-    @Override
-    public Optional<LoggedUser> initialize() {
-      return Optional.empty();
-    }
+    this.loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
+      @Override
+      public Optional<LoggedUser> initialize() {
+        return Optional.empty();
+      }
 
       @Override
       public Optional<LoggedUser> copy(Optional<LoggedUser> initial) {
@@ -161,6 +172,10 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return logger;
   }
 
+  public Set<BlockHistory> getHistory() {
+    return history;
+  }
+
   public void addToHistory(Block block, Set<RuleExitResult> results) {
     BlockHistory blockHistory = new BlockHistory(block.getName(), results);
     history.add(blockHistory);
@@ -172,6 +187,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public String getId() {
     return id;
+  }
+
+  @Override
+  public Long getTaskId() {
+    return taskId;
   }
 
   public boolean involvesIndices() {
@@ -202,8 +222,12 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return content;
   }
 
-  public Optional<String> resolveVariable(String original){
-    return  variablesManager.apply(original);
+  public String getType() {
+    return actionRequest.getClass().getSimpleName();
+  }
+
+  public Optional<String> resolveVariable(String original) {
+    return variablesManager.apply(original);
 
   }
 
@@ -266,26 +290,28 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     }
 
     if (newIndices.size() == 0) {
-      if (isReadRequest()) {throw new ElasticsearchException(
-        "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+      if (isReadRequest()) {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
             "] toempty set." +
             ", probably your request matched no index, or was rewritten to nonexistentindices (which would expand to empty set).");
       }
       else {
         throw new ElasticsearchException(
           "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
-            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden." );
-          }
+            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden.");
+      }
     }
 
     if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
       if (!expanded.isEmpty()) {
         indices.mutate(expanded);
-      } else {
+      }
+      else {
         throw new IndexNotFoundException(
-            "rewritten indices not found: " + Joiner.on(",").join(newIndices)
-            , getIndices().iterator().next());
+          "rewritten indices not found: " + Joiner.on(",").join(newIndices)
+          , getIndices().iterator().next());
       }
     }
     indices.mutate(newIndices);
@@ -369,7 +395,8 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     String theIndices;
     if (skipIndices || !doesInvolveIndices) {
       theIndices = "<N/A>";
-    } else {
+    }
+    else {
       theIndices = Joiner.on(",").skipNulls().join(indices.get());
     }
 
@@ -380,27 +407,31 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     String theHeaders;
     if (!logger.isDebugEnabled()) {
       theHeaders = Joiner.on(",").join(getHeaders().keySet());
-    } else {
+    }
+    else {
       theHeaders = getHeaders().toString();
     }
 
     String hist = Joiner.on(", ").join(history);
     Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
+
+    Optional<LoggedUser> loggedInUser = getLoggedInUser();
+
     return "{ ID:" + id +
-        ", TYP:" + actionRequest.getClass().getSimpleName() +
-        ", USR:" + (loggedInUser.get().isPresent()
-        ? loggedInUser.get().get()
-        : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
-        ", BRS:" + !Strings.isNullOrEmpty(requestHeaders.get("User-Agent")) +
-        ", ACT:" + action +
-        ", OA:" + getRemoteAddress() +
-        ", IDX:" + theIndices +
-        ", MET:" + request.method() +
-        ", PTH:" + request.path() +
-        ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-        ", HDR:" + theHeaders +
-        ", HIS:" + hist +
-        " }";
+      ", TYP:" + actionRequest.getClass().getSimpleName() +
+      ", USR:" + (loggedInUser.isPresent()
+      ? loggedInUser.get()
+      : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
+      ", BRS:" + !Strings.isNullOrEmpty(requestHeaders.get("User-Agent")) +
+      ", ACT:" + action +
+      ", OA:" + getRemoteAddress() +
+      ", IDX:" + theIndices +
+      ", MET:" + request.method() +
+      ", PTH:" + request.path() +
+      ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+      ", HDR:" + theHeaders +
+      ", HIS:" + hist +
+      " }";
   }
 
 }

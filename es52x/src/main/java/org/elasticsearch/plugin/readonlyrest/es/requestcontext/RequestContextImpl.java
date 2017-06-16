@@ -27,6 +27,7 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -38,6 +39,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
@@ -70,6 +72,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private final String action;
   private final ActionRequest actionRequest;
   private final String id;
+  private final Long taskId;
   private final Map<String, String> requestHeaders;
   private final ClusterService clusterService;
   private final ESContext context;
@@ -91,7 +94,17 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.context = context;
-    this.id = request.hashCode() + "-" + actionRequest.hashCode();
+    String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
+    Long taskId = ThreadRepo.taskId.get();
+    if (taskId != null) {
+      this.id = tmpID + "#" + taskId;
+      ThreadRepo.taskId.remove();
+      this.taskId = taskId;
+    }
+    else {
+      this.id = tmpID;
+      this.taskId = null;
+    }
 
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     request.headers().forEach(k -> {
@@ -176,6 +189,9 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   }
 
   public Boolean isReadRequest() {
+    if(actionRequest.getClass().isAssignableFrom(WriteRequest.class)){
+      return false;
+    }
     return RCUtils.isReadRequest(action);
   }
 
@@ -343,6 +359,16 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return request.uri();
   }
 
+  @Override
+  public String getType() {
+    return actionRequest.getClass().getSimpleName();
+  }
+
+  @Override
+  public Set<BlockHistory> getHistory() {
+    return history;
+  }
+
   public String getAction() {
     return action;
   }
@@ -353,6 +379,10 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public void setLoggedInUser(LoggedUser user) {
     loggedInUser.mutate(Optional.of(user));
+  }
+
+  public Long getTaskId(){
+    return taskId;
   }
 
   @Override

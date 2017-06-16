@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -50,6 +51,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -76,10 +78,13 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final RuleActionListenersProvider ruleActionListenersProvider;
   private final ReloadableSettings reloadableSettings;
   private final Client client;
+  private final TransportService transportService;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
-                                Client client, ClusterService clusterService, ThreadPool threadPool) throws IOException {
+                                Client client, ClusterService clusterService,
+                                TransportService transportService,
+                                ThreadPool threadPool) throws IOException {
     super(settings);
     this.reloadableSettings = reloadableConfiguration;
     this.client = client;
@@ -91,6 +96,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
+
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+    this.transportService = transportService;
+
     logger.info("Readonly REST plugin was loaded...");
   }
 
@@ -163,12 +172,16 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
 
     RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, threadPool, context);
-
+    try {
+      System.out.println(rc.asJson(logger.isDebugEnabled()));
+    } catch (JsonProcessingException e) {
+      e.printStackTrace();
+    }
     acl.check(rc)
         .exceptionally(throwable -> {
           logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
                         throwable.getMessage() + Constants.ANSI_RESET);
-          
+
           if (throwable.getCause() instanceof ResourceNotFoundException) {
             logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
             sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);

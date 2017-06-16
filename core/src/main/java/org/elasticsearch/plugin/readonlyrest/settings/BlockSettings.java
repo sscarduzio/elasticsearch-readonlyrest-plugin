@@ -41,7 +41,7 @@ public class BlockSettings {
   private static final String VERBOSITY = "verbosity";
 
   private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
-  private static final Verbosity DEFAULT_VERBOSITY = Verbosity.ERROR;
+  private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
 
   private final String name;
   private final BlockPolicy policy;

@@ -26,4 +26,5 @@ import org.elasticsearch.rest.RestRequest;
 public class ThreadRepo {
   public static ThreadLocal<RestRequest> request = new ThreadLocal<>();
   public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
+  public static ThreadLocal<Long> taskId = new ThreadLocal<>();
 }
