@@ -22,8 +22,8 @@ import io.netty.handler.ssl.SslContextBuilder;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
-import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
 
 import javax.net.ssl.SSLException;
 import java.io.ByteArrayInputStream;

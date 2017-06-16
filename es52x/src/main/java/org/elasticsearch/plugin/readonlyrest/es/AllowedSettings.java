@@ -20,13 +20,13 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 
 import java.util.Arrays;
 import java.util.List;
@@ -43,28 +43,29 @@ public enum AllowedSettings {
     String proxy_auth_configs_prefix = prefix + ProxyAuthDefinitionSettingsCollection.ATTRIBUTE_NAME + ".";
     String user_groups_providers_prefix = prefix + UserGroupsProviderSettingsCollection.ATTRIBUTE_NAME + ".";
     String external_authentication_service_configs_prefix =
-        prefix + ExternalAuthenticationServiceSettingsCollection.ATTRIBUTE_NAME + ".";
+      prefix + ExternalAuthenticationServiceSettingsCollection.ATTRIBUTE_NAME + ".";
 
     return Arrays.asList(
-        bool(prefix + RorSettings.ATTRIBUTE_ENABLE),
-        str(prefix + RorSettings.ATTRIBUTE_FORBIDDEN_RESPONSE),
-        bool(prefix + RorSettings.ATTRIBUTE_SEARCHLOG),
+      bool(prefix + RorSettings.ATTRIBUTE_ENABLE),
+      str(prefix + RorSettings.ATTRIBUTE_FORBIDDEN_RESPONSE),
+      bool(prefix + RorSettings.ATTRIBUTE_SEARCHLOG),
+      bool(prefix + RorSettings.PROMPT_FOR_BASIC_AUTH),
 
-        // SSL
-        bool(sslPrefix + SslSettings.ATTRIBUTE_ENABLE),
-        str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEYSTORE_FILE),
-        str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEYSTORE_PASS),
-        str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEY_PASS),
-        str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEY_ALIAS),
-        str(sslPrefix + EnabledSslSettings.ATTRIBUTE_PRIVKEY_PEM),
-        str(sslPrefix + EnabledSslSettings.ATTRIBUTE_CERTCHAIN_PEM),
+      // SSL
+      bool(sslPrefix + SslSettings.ATTRIBUTE_ENABLE),
+      str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEYSTORE_FILE),
+      str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEYSTORE_PASS),
+      str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEY_PASS),
+      str(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEY_ALIAS),
+      str(sslPrefix + EnabledSslSettings.ATTRIBUTE_PRIVKEY_PEM),
+      str(sslPrefix + EnabledSslSettings.ATTRIBUTE_CERTCHAIN_PEM),
 
-        grp(rule_prefix),
-        grp(users_prefix),
-        grp(ldaps_prefix),
-        grp(proxy_auth_configs_prefix),
-        grp(user_groups_providers_prefix),
-        grp(external_authentication_service_configs_prefix)
+      grp(rule_prefix),
+      grp(users_prefix),
+      grp(ldaps_prefix),
+      grp(proxy_auth_configs_prefix),
+      grp(user_groups_providers_prefix),
+      grp(external_authentication_service_configs_prefix)
     );
   }
 

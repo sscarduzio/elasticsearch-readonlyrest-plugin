@@ -25,7 +25,7 @@ public class ESSslSettings {
   public static SslSettings from(Settings settings) {
     Settings sslSettings = settings.getByPrefix(RorSettings.ATTRIBUTE_NAME + "." + SslSettings.ATTRIBUTE_NAME + ".");
 
-    boolean sslEnabled = sslSettings.getAsBoolean(SslSettings.ATTRIBUTE_ENABLE, !sslSettings.isEmpty());
+    boolean sslEnabled = sslSettings.getAsBoolean(SslSettings.ATTRIBUTE_ENABLE, sslSettings.getAsMap().size() > 1);
     if(!sslEnabled) return ESDisabledSslSettings.INSTANCE;
 
     return new ESEnabledSslSettings(sslSettings);

@@ -292,7 +292,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public Integer scanSubRequests(final ReflecUtils.CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer) {
 
-    List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
+    List<Object> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
 
     logger.info("found " + subRequests.size() + " subrequests");
 
@@ -301,7 +301,7 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       throw context.rorException("cannot replace indices of a composite request that doesn't involve indices: " + this);
     }
 
-    Iterator<? extends IndicesRequest> it = subRequests.iterator();
+    Iterator<Object> it = subRequests.iterator();
     while (it.hasNext()) {
       IndicesRequestContext i = new SubRequestContext(this, it.next(), context);
       final Optional<IndicesRequestContext> mutatedSubReqO;

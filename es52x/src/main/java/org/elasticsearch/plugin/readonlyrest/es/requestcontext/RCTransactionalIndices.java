@@ -78,8 +78,8 @@ public class RCTransactionalIndices {
         Set<String> initialIndices = restLevelIndicesCache.get(restRequestId);
         if (initialIndices != null && !initialIndices.isEmpty()) {
           logger.debug("Finding cached indices for: " + rc.getId() + " "
-                        + rc.getUnderlyingRequest().getClass().getSimpleName()
-                        + ": " + Joiner.on(",").join(initialIndices)
+                         + rc.getUnderlyingRequest().getClass().getSimpleName()
+                         + ": " + Joiner.on(",").join(initialIndices)
           );
           return initialIndices;
         }
@@ -138,6 +138,10 @@ public class RCTransactionalIndices {
           IndexRequest ir = (IndexRequest) ar;
           indices = ir.indices();
         }
+        else if (ar instanceof DeleteRequest) {
+          DeleteRequest ir = (DeleteRequest) ar;
+          indices = ir.indices();
+        }
         else if (ar instanceof CompositeIndicesRequest) {
           logger.error(
             "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
@@ -187,7 +191,6 @@ public class RCTransactionalIndices {
             "Attempted to set empty indices list, this would allow full access, therefore this is forbidden." +
               " If this was intended, set '*' as indices.");
         }
-
 
         // Best case, this request is designed to have indices replaced.
         if (actionRequest instanceof IndicesRequest.Replaceable){

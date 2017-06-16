@@ -28,6 +28,8 @@ import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
 import java.util.Set;
 
+import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+
 /**
  * Created by sscarduzio on 14/04/2017.
  */
@@ -53,14 +55,19 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
     else if (originalSubReq instanceof MultiGetRequest.Item) {
       return Sets.newHashSet(((MultiGetRequest.Item) originalSubReq).indices());
     }
-    // todo: for Simone (what about es 5.2.2?)
-//    else if (originalSubReq instanceof DocWriteRequest<?>) {
-//      return Sets.newHashSet(((DocWriteRequest<?>) originalSubReq).indices());
-//    }
-    else {
+
+    // Cover bulk request items and other strange animals
+    String[] docIndices = extractStringArrayFromPrivateMethod("indices", originalSubReq, context);
+    if (docIndices.length == 0) {
+      docIndices = extractStringArrayFromPrivateMethod("index", originalSubReq, context);
+    }
+
+    if (docIndices == null) {
       throw context.rorException(
         "Cannot get indices from sub-request " + src.getClass().getSimpleName());
     }
+
+    return Sets.newHashSet(docIndices);
   }
 
   @Override
@@ -78,15 +85,16 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
         throw new ElasticsearchException(
           "need to have one exactly one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
     if (originalSubReq instanceof SearchRequest) { // || originalSubReq instanceof DocWriteRequest<?>) { // todo: for Simone
       if (newIndices.isEmpty()) {
         throw new ElasticsearchException(
           "need to have at least one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
+
   }
 
 }

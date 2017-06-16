@@ -19,10 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 13/04/2017.
@@ -55,16 +57,18 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     indices.delegateTo(this);
   }
 
-  static List<? extends IndicesRequest> extractNativeSubrequests(ActionRequest r) {
+  static List<Object> extractNativeSubrequests(ActionRequest r) {
 
     if (r instanceof MultiSearchRequest) {
-      return ((MultiSearchRequest) r).requests();
-    } else if (r instanceof MultiGetRequest) {
-      return ((MultiGetRequest) r).getItems();
-      // todo: for Simone
-//    } else if (r instanceof BulkRequest) {
-//      return ((BulkRequest) r).requests();
-    } else {
+      return ((MultiSearchRequest) r).requests().stream().map(i -> (Object) i).collect(Collectors.toList());
+    }
+    else if (r instanceof MultiGetRequest) {
+      return ((MultiGetRequest) r).getItems().stream().map(i -> (Object) i).collect(Collectors.toList());
+    }
+    else if (r instanceof BulkRequest) {
+      return ((BulkRequest) r).requests().stream().map(i -> (Object) i).collect(Collectors.toList());
+    }
+    else {
       return new ArrayList<>(0);
     }
   }
@@ -80,8 +84,8 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
   public void setIndices(Set<String> newIndices) {
     if (newIndices.size() == 0) {
       throw context.rorException(
-          "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
-              " If this was intended, set '*' as indices.");
+        "Attempted to set empty indices list in a sub-request this would allow full access, therefore this is forbidden." +
+          " If this was intended, set '*' as indices.");
     }
 
     newIndices.remove("<no-index>");
@@ -125,14 +129,16 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
   }
 
   public Boolean isReadRequest() {
-    if (originalSubRequest instanceof SearchRequest || originalSubRequest instanceof MultiGetRequest.Item) {
+    if (originalSubRequest instanceof WriteRequest) {
+      return false;
+    }
+    if (originalSubRequest instanceof SearchRequest ||
+      originalSubRequest instanceof MultiGetRequest.Item) {
       return true;
-      // todo: for Simone
-//    } else if (originalSubRequest instanceof DocWriteRequest<?>) {
-//      return false;
-    } else {
+    }
+    else {
       throw context.rorException(
-          "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
+        "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
     }
   }
 
@@ -143,6 +149,6 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
 
   public String toString() {
     return "sub-request: { original:" + originalRC.getClass().getSimpleName() +
-        ", sub:" + originalSubRequest.getClass().getSimpleName() + "}";
+      ", sub:" + originalSubRequest.getClass().getSimpleName() + "}";
   }
 }
