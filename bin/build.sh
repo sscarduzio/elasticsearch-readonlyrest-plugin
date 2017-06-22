@@ -14,6 +14,7 @@ done
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.1'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.2'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.0'
+./gradlew --stacktrace es53x:ror '-PesVersion=5.4.1'
 
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.2'
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.1'
