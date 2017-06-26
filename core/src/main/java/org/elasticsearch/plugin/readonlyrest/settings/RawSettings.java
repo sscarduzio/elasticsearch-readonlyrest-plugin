@@ -19,7 +19,6 @@ package org.elasticsearch.plugin.readonlyrest.settings;
 import com.google.common.collect.Maps;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import org.yaml.snakeyaml.Yaml;
 
 import java.net.URI;
 import java.net.URISyntaxException;

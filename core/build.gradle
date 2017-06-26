@@ -58,7 +58,6 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
     compile 'org.slf4j:slf4j-api:1.7.25'
-    compile 'org.yaml:snakeyaml:1.15'
     compile ('io.jsonwebtoken:jjwt:0.7.0') {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
@@ -68,6 +67,8 @@ dependencies {
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
     testCompile 'io.jsonwebtoken:jjwt:0.7.0'
+    testCompile 'org.yaml:snakeyaml:1.15'
+
 }
 
 license {
