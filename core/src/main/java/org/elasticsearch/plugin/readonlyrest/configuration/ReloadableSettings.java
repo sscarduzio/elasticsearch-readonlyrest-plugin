@@ -16,10 +16,12 @@
  */
 package org.elasticsearch.plugin.readonlyrest.configuration;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
@@ -46,10 +48,13 @@ public abstract class ReloadableSettings {
   public CompletableFuture<Optional<Throwable>> reload() {
     return CompletableFuture
       .supplyAsync(() -> {
-                     this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.reloadSettingsFromIndex())));
+                     Map<String, ?> fromIndex = settingsManager.reloadSettingsFromIndex();
+                     RawSettings raw = new RawSettings(fromIndex);
+                     RorSettings ror = RorSettings.from(raw);
+                     this.rorSettings.set(ror);
                      return Optional.<Throwable>empty();
                    }
-      ).exceptionally(th ->
+      , MoreExecutors.directExecutor()).exceptionally(th ->
                         Optional.of(th)
       );
   }
