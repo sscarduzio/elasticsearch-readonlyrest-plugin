@@ -19,14 +19,14 @@ package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 

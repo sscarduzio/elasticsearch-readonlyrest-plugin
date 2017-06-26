@@ -248,7 +248,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       public void run() {
         try {
           logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
-          Optional<Throwable> res = reloadableSettings.reload(new ESClientSettingsContentProvider(client)).get();
+          Optional<Throwable> res = reloadableSettings.reload().get();
           if(res.isPresent()){
             throw res.get();
           }

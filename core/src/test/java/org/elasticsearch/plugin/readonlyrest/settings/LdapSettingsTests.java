@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.AuthenticationLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.LdapContainer;
@@ -30,7 +31,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testSuccessfulCreationFromRequiredSettings() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -44,7 +45,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenNameWasNotPresentInSettings() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
         "ssl_enabled: false\n" +
@@ -55,7 +56,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenSearchGroupBaseDnIsNotPresent() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -68,7 +69,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testCreationOfAuthenticationLdapEvenIfSearchGroupBaseDnIsNotPresent() {
-    new AuthenticationLdapSettings(RawSettings.fromString("" +
+    new AuthenticationLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -81,7 +82,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenHostWasNotPresentInSettings() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "search_user_base_DN: ou=People,dc=example,dc=com\n" +
         "search_groups_base_DN: ou=Group,dc=example,dc=com\n"
@@ -90,7 +91,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenSearchUserBaseDNWasNotPresentInSettings() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -101,7 +102,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testWhenSearchGroupsBaseDNWasPresentGroupProviderLdapClientIsBeingCreated() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -113,7 +114,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testBindDnAndPasswordAreNotRequiredParam() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -125,7 +126,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testIfBindDnIsPresentBindPasswordMustBeProvided() {
-    new GroupsProviderLdapSettings(RawSettings.fromString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
         "name: ldap1\n" +
         "host: " + ldapContainer.getLdapHost() + "\n" +
         "port: " + ldapContainer.getLdapPort() + "\n" +

@@ -49,7 +49,7 @@ public class RorSettings {
   private final Boolean promptForBasicAuth;
 
   @SuppressWarnings("unchecked")
-  private RorSettings(RawSettings raw) {
+  public RorSettings(RawSettings raw) {
     LdapSettingsCollection ldapSettingsCollection = LdapSettingsCollection.from(raw);
     UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = UserGroupsProviderSettingsCollection.from(raw);
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
@@ -77,7 +77,7 @@ public class RorSettings {
       .orElse(DEFAULT_VERBOSITY);
   }
 
-  static RorSettings from(RawSettings settings) {
+  public static RorSettings from(RawSettings settings) {
     return new RorSettings(settings.inner(ATTRIBUTE_NAME));
   }
 

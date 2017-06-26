@@ -17,8 +17,8 @@
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
 import java.util.Set;
 import java.util.stream.Collectors;

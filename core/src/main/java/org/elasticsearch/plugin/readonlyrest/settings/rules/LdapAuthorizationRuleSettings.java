@@ -16,9 +16,9 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;

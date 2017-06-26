@@ -16,21 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Optional;
-
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
-
 import com.google.common.base.Strings;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
@@ -38,6 +24,18 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
+
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Optional;
 
 public class JwtAuthSyncRule extends UserRule implements Authentication {
 

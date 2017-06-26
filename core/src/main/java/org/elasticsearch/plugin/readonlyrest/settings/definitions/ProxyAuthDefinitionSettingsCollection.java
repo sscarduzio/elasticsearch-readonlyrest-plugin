@@ -17,8 +17,8 @@
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
 import com.google.common.collect.Lists;
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
 import java.util.List;
 import java.util.Map;

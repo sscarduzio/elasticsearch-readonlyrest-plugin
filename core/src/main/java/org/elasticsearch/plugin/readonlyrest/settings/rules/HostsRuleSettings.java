@@ -16,11 +16,11 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.IPMask;
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
 import java.net.UnknownHostException;
 import java.util.Set;

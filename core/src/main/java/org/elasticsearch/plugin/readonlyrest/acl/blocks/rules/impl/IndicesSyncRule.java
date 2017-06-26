@@ -19,13 +19,13 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
 
 import java.util.HashSet;
 import java.util.Optional;

@@ -20,10 +20,10 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.KibanaAccess;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
 import org.junit.Test;
 import org.mockito.Mockito;
 

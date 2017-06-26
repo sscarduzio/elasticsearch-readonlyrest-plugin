@@ -19,11 +19,11 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.IPMask;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
 
 import java.net.UnknownHostException;

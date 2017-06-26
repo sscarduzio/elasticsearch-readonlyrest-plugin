@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.junit.Test;
 
@@ -26,7 +27,7 @@ public class ExternalAuthenticationSettingsTests {
   @Test
   public void testSuccessfulCreationFromRequiredSettings() throws URISyntaxException {
     ExternalAuthenticationServiceSettingsCollection.from(
-        RawSettings.fromString("" +
+      TestUtils.fromYAMLString("" +
             "external_authentication_service_configs:\n" +
             "    - name: \"ext1\"\n" +
             "      authentication_endpoint: \"http://localhost:8080/auth1\"\n" +

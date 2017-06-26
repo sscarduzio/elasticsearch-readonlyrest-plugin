@@ -17,6 +17,7 @@
 package org.elasticsearch.plugin.readonlyrest.mocks;
 
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientFactory;
@@ -81,7 +82,7 @@ public class MockLdapClientHelper {
   }
 
   public static RawSettings mockLdapsCollection() {
-    return RawSettings.fromString("" +
+    return TestUtils.fromYAMLString("" +
         "ldaps:\n" +
         " - name: ldap1\n" +
         "   host: \"localhost\"\n" +

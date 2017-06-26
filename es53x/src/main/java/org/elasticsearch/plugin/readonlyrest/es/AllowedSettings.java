@@ -20,13 +20,13 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.ssl.EnabledSslSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
 
 import java.util.Arrays;
 import java.util.List;

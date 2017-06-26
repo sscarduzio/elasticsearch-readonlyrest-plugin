@@ -8,7 +8,6 @@ cluster.name: elasticsearch
 readonlyrest:
     # (De)activate plugin
     enable: true
-
     ssl:
       enable: false
       keystore_file: "/me/elasticsearch-readonlyrest-plugin-5.x/src/test/eshome/plugins/readonlyrest/keystore.jks"
@@ -27,14 +26,12 @@ readonlyrest:
       auth_key: logstash:logstash
       actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
       indices: ["logstash-*", "simone_logstash*", "logstash*"]
-      indices_rewrite: ["^logstash-.*", "simone_$0"]
 
     - name: "::RO::"
       type: allow
       auth_key: simone:ro
       kibana_access: ro
       indices: [".kibana", "@{user}_.kibana", ".kibana-devnull", "@{user}_logstash-*", "logstash-*"]
-      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@{user}_$0"]
       kibana_hide_apps: [timelion]
 
     - name: "::RW::"
@@ -42,6 +39,12 @@ readonlyrest:
       auth_key: simone:rw
       kibana_access: rw
       indices: [".kibana", "@{user}_.kibana", ".kibana-devnull", "@{user}_logstash-*","logstash-*"]
-      indices_rewrite: ["(^\\.kibana$|^logstash-.*)", "@{user}_$0"]
+      kibana_hide_apps: [timelion]
+
+    - name: "::ADMIN::"
+      type: allow
+      auth_key: admin:admin
+      kibana_access: admin
+      indices: [".kibana", "@{user}_.kibana", ".readonlyrest", ".kibana-devnull", "@{user}_logstash-*","logstash-*"]
       kibana_hide_apps: [timelion]
 

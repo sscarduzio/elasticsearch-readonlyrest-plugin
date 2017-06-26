@@ -18,16 +18,16 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockedACL;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockedACL;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.WireMockContainer;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -60,13 +60,13 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
   private RuleExitResult createRuleRunMatch(List<String> ruleGroups) throws Exception {
     GroupsProviderAuthorizationAsyncRule rule = new GroupsProviderAuthorizationAsyncRule(
         GroupsProviderAuthorizationRuleSettings.from(
-            RawSettings.fromString("" +
+          TestUtils.fromYAMLString("" +
                 "groups_provider_authorization:\n" +
                 "  user_groups_provider: \"provider1\"\n" +
                 "  groups: [" + Joiner.on(",").join(ruleGroups.stream().map(g -> "\"" + g + "\"").collect(Collectors.toSet())) + "]\n" +
                 "  cache_ttl_in_sec: 60").inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
-            UserGroupsProviderSettingsCollection.from(
-                RawSettings.fromString("" +
+          UserGroupsProviderSettingsCollection.from(
+            TestUtils.fromYAMLString("" +
                     "user_groups_providers:\n" +
                     "  - name: provider1\n" +
                     "    groups_endpoint: \"http://localhost:" + wireMockContainer.getWireMockPort() + "/groups\"\n" +

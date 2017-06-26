@@ -18,10 +18,10 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;

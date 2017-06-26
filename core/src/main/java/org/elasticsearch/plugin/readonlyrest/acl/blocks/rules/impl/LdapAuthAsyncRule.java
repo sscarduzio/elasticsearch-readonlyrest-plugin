@@ -18,14 +18,14 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthorization;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncAuthentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientFactory;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;

@@ -16,11 +16,11 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 import org.junit.Test;
 import org.mockito.Mockito;
 

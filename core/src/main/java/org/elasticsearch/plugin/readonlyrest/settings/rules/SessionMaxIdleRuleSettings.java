@@ -16,8 +16,8 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
 import java.time.Duration;
 

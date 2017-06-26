@@ -16,11 +16,9 @@
  */
 package org.elasticsearch.plugin.readonlyrest.configuration;
 
-import org.elasticsearch.plugin.readonlyrest.settings.ESSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.WeakHashMap;
@@ -31,11 +29,13 @@ import java.util.function.Consumer;
 public abstract class ReloadableSettings {
 
   private final AtomicReference<RorSettings> rorSettings = new AtomicReference<>();
+  private final SettingsManager settingsManager;
   private WeakHashMap<Consumer<RorSettings>, Boolean> onSettingsUpdateListeners = new WeakHashMap<>();
 
-  public ReloadableSettings(File yaml) throws IOException {
-    ESSettings es = new ESSettings(RawSettings.fromFile(yaml));
-    this.rorSettings.set(es.getRorSettings());
+  public ReloadableSettings(SettingsManager settingsManager) throws IOException {
+
+    this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.getCurrentSettings())));
+    this.settingsManager = settingsManager;
   }
 
   public void addListener(Consumer<RorSettings> onSettingsUpdate) {
@@ -43,17 +43,15 @@ public abstract class ReloadableSettings {
     onSettingsUpdate.accept(rorSettings.get());
   }
 
-  public CompletableFuture<Optional<Throwable>> reload(SettingsContentProvider provider) {
-    CompletableFuture<String> stringContent = provider.getSettingsContent();
-    return stringContent.thenApply(configurationContent -> {
-                                     RawSettings raw = RawSettings.fromString(configurationContent);
-                                     ESSettings es = new ESSettings(raw);
-                                     this.rorSettings.set(es.getRorSettings());
-
-                                     notifyListeners();
-                                     return Optional.<Throwable>empty();
-                                   }
-    ).exceptionally(Optional::of);
+  public CompletableFuture<Optional<Throwable>> reload() {
+    return CompletableFuture
+      .supplyAsync(() -> {
+                     this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.reloadSettingsFromIndex())));
+                     return Optional.<Throwable>empty();
+                   }
+      ).exceptionally(th ->
+                        Optional.of(th)
+      );
   }
 
   private void notifyListeners() {

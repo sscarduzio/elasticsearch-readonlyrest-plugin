@@ -16,8 +16,8 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.CacheSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.NamedSettings;
 

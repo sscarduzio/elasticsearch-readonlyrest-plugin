@@ -16,17 +16,11 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Map.Entry;
-import java.util.Optional;
-
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
@@ -36,13 +30,18 @@ import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
 import org.junit.Test;
-
-import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import org.mockito.Mockito;
+
+import java.util.Map.Entry;
+import java.util.Optional;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class JwtAuthRuleTests {
 
@@ -226,7 +225,7 @@ public class JwtAuthRuleTests {
       sb.append("\n");
     }
 
-    return RawSettings.fromString(sb.toString());
+    return TestUtils.fromYAMLString(sb.toString());
   }
 
   private Optional<SyncRule> makeRule(RawSettings settings) {

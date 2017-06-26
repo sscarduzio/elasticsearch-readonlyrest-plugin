@@ -17,14 +17,14 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
-import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockLdapClientHelper;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockLdapClientHelper;
 import org.junit.Test;
 
 import static org.elasticsearch.plugin.readonlyrest.mocks.RequestContextMock.mockedRequestContext;
@@ -37,10 +37,10 @@ public class LdapAuthenticationAsyncRuleTests {
   public void testUserShouldBeNotAuthenticatedIfLdapReturnError() throws Exception {
     LdapAuthenticationAsyncRule rule = new LdapAuthenticationAsyncRule(
         LdapAuthenticationRuleSettings.from(
-            RawSettings.fromString("" +
+          TestUtils.fromYAMLString("" +
                 "ldap_authentication:\n" +
                 "  name: ldap1").inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
-            LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+          LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
         ),
         MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient()),
         MockedESContext.INSTANCE
@@ -53,7 +53,7 @@ public class LdapAuthenticationAsyncRuleTests {
   public void testUserShouldBeAuthenticatedIfLdapReturnSuccess() throws Exception {
     LdapAuthenticationAsyncRule rule = new LdapAuthenticationAsyncRule(
         LdapAuthenticationRuleSettings.from(
-            RawSettings.fromString("" +
+          TestUtils.fromYAMLString("" +
                 "ldap_authentication:\n" +
                 "  name: ldap2").inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
             LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())

@@ -16,14 +16,13 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import java.util.Optional;
-
+import com.google.common.base.Strings;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
-import com.google.common.base.Strings;
+import java.util.Optional;
 
 public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
 

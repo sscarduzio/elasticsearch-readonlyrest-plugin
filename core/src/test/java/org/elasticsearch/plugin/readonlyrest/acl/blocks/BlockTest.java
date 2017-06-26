@@ -17,16 +17,17 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
 import org.elasticsearch.plugin.readonlyrest.mocks.MockedACL;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry;
 import org.elasticsearch.plugin.readonlyrest.settings.BlockSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -42,16 +43,16 @@ public class BlockTest  {
     RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, MockedESContext.INSTANCE);
     Block block = new Block(
         BlockSettings.from(
-            RawSettings.fromString("" +
+          TestUtils.fromYAMLString("" +
                 "name: Dummy block\n" +
                 "type: allow\n" +
                 "proxy_auth: \"*\"\n" +
                 "indices_rewrite: [\"needle\", \"replacement\"]\n" +
                 "indices: [\"allowed-index\"]"
             ),
-            new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty()), null),
-            null, null,
-            null, null
+          new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty()), null),
+          null, null,
+          null, null
         ),
         rulesFactory,
         MockedESContext.INSTANCE

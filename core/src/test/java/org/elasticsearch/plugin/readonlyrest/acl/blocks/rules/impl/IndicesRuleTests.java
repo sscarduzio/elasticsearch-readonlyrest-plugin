@@ -21,9 +21,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
 import org.junit.Test;
 import org.mockito.Mockito;
 

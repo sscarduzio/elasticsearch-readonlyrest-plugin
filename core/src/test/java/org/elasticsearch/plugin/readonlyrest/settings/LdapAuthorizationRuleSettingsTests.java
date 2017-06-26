@@ -16,9 +16,10 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockLdapClientHelper;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockLdapClientHelper;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -28,12 +29,12 @@ public class LdapAuthorizationRuleSettingsTests {
   @Test
   public void testRuleSettingsSuccessfulCreation() {
     LdapAuthorizationRuleSettings ruleSettings = LdapAuthorizationRuleSettings.from(
-        RawSettings.fromString("" +
+      TestUtils.fromYAMLString("" +
             "ldap_authorization:\n" +
             "  name: ldap1\n" +
             "  groups: [group1, group2]")
             .inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
-        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
     assertEquals("ldap_authorization", ruleSettings.getName());
   }
@@ -41,7 +42,7 @@ public class LdapAuthorizationRuleSettingsTests {
   @Test(expected = SettingsMalformedException.class)
   public void testRuleSettingsCreationFailsDueToNotFoundLdapWithGivenName() {
     LdapAuthorizationRuleSettings.from(
-        RawSettings.fromString("" +
+      TestUtils.fromYAMLString("" +
             "ldap_authorization:\n" +
             "  name: ldap3\n" +
             "  groups: [group2, group3]")
@@ -53,7 +54,7 @@ public class LdapAuthorizationRuleSettingsTests {
   @Test(expected = SettingsMalformedException.class)
   public void testRuleSettingsCreationFailsDueToNotSetLdapAuthName() {
     LdapAuthorizationRuleSettings.from(
-        RawSettings.fromString("" +
+      TestUtils.fromYAMLString("" +
             "ldap_authorization:\n" +
             "  groups: [group1, group2]")
             .inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
@@ -64,7 +65,7 @@ public class LdapAuthorizationRuleSettingsTests {
   @Test(expected = SettingsMalformedException.class)
   public void testRuleSettingsCreationFailsDueToEmptyGroupsSet() {
     LdapAuthorizationRuleSettings.from(
-        RawSettings.fromString("" +
+      TestUtils.fromYAMLString("" +
             "ldap_authorization:\n" +
             "  name: ldap1\n" +
             "  groups: []")

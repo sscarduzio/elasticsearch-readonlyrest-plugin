@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.junit.Test;
 
@@ -26,7 +27,7 @@ public class UserGroupsProviderSettingsTests {
   @Test
   public void testSuccessfulCreationFromRequiredSettings() throws URISyntaxException {
     UserGroupsProviderSettingsCollection.from(
-        RawSettings.fromString("" +
+      TestUtils.fromYAMLString("" +
             "user_groups_providers:\n" +
             "\n" +
             "  - name: GroupsService1\n" +

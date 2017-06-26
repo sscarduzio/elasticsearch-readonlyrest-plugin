@@ -18,14 +18,14 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import org.elasticsearch.plugin.readonlyrest.TestUtils;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
-import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockLdapClientHelper;
+import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockedESContext;
-import org.elasticsearch.plugin.readonlyrest.mocks.MockLdapClientHelper;
 import org.junit.Test;
 
 import static org.elasticsearch.plugin.readonlyrest.mocks.RequestContextMock.mockedRequestContext;
@@ -37,11 +37,11 @@ public class LdapAuthAsyncRuleTests {
   public void testUserShouldBeNotAuthenticatedIfLdapReturnError() throws Exception {
     LdapAuthAsyncRule rule = new LdapAuthAsyncRule(
         LdapAuthRuleSettings.from(
-            RawSettings.fromString("" +
+          TestUtils.fromYAMLString("" +
                 "ldap_auth:\n" +
                 "  name: ldap1\n" +
                 "  groups: [group1, group2]").inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
-            LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+          LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
         ),
         MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient()),
         MockedESContext.INSTANCE
@@ -54,7 +54,7 @@ public class LdapAuthAsyncRuleTests {
   public void testUserShouldBeAuthenticatedIfLdapReturnSuccess() throws Exception {
     LdapAuthAsyncRule rule = new LdapAuthAsyncRule(
         LdapAuthRuleSettings.from(
-            RawSettings.fromString("" +
+          TestUtils.fromYAMLString("" +
                 "ldap_auth:\n" +
                 "  name: ldap2\n" +
                 "  groups: [group1, group2]").inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
@@ -77,7 +77,7 @@ public class LdapAuthAsyncRuleTests {
   public void testUserShouldNotBeAuthorizedIfLdapHasAGivenUserButWithinDifferentGroup() throws Exception {
     LdapAuthAsyncRule rule = new LdapAuthAsyncRule(
         LdapAuthRuleSettings.from(
-            RawSettings.fromString("" +
+          TestUtils.fromYAMLString("" +
                 "ldap_auth:\n" +
                 "  name: ldap1\n" +
                 "  groups: [group2, group3]").inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),

@@ -17,11 +17,10 @@
 package org.elasticsearch.plugin.readonlyrest.settings;
 
 import com.google.common.collect.Maps;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashSet;
@@ -33,29 +32,15 @@ import java.util.Set;
 public class RawSettings {
 
   private final Map<String, ?> raw;
+  private final DocumentContext jpathContext;
 
   public RawSettings(Map<String, ?> raw) {
     this.raw = raw;
+    this.jpathContext = JsonPath.parse(raw);
   }
 
   public static RawSettings empty() {
     return new RawSettings(Maps.newHashMap());
-  }
-
-  @SuppressWarnings("unchecked")
-  public static RawSettings fromFile(File file) throws IOException {
-    Yaml yaml = new Yaml();
-    try (FileInputStream stream = new FileInputStream(file)) {
-      Map<String, ?> parsedData = (Map<String, ?>) yaml.load(stream);
-      return new RawSettings(parsedData);
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  public static RawSettings fromString(String yamlContent) {
-    Yaml yaml = new Yaml();
-    Map<String, ?> parsedData = (Map<String, ?>) yaml.load(yamlContent);
-    return new RawSettings(parsedData);
   }
 
   public Set<String> getKeys() {
@@ -64,18 +49,39 @@ public class RawSettings {
 
   @SuppressWarnings("unchecked")
   public <T> Optional<T> opt(String attr) {
-    return Optional.ofNullable((T) raw.get(attr));
+
+    Object val;
+    try {
+      val = jpathContext.read("$." + attr);
+    } catch (Exception e) {
+      val = null;
+    }
+
+    return Optional.ofNullable((T) val);
   }
 
   @SuppressWarnings("unchecked")
   public <T> T req(String attr) {
-    Object val = raw.get(attr);
-    if (val == null) throw new SettingsMalformedException("Could not find required attribute '" + attr + "'");
+    //Object val = raw.get(attr);
+    Object val;
+    try {
+      val = (T) jpathContext.read("$." + attr);
+    } catch (Exception e) {
+      val = null;
+    }
+    if (val == null) {
+      throw new SettingsMalformedException("Could not find required attribute '" + attr + "'");
+    }
     return (T) val;
   }
 
   public Optional<Boolean> booleanOpt(String attr) {
-    return opt(attr);
+    return opt(attr).map(x -> {
+      if(x instanceof String){
+          return Boolean.parseBoolean((String) x);
+      }
+      return (Boolean)x;
+    });
   }
 
   public Boolean booleanReq(String attr) {
@@ -117,7 +123,8 @@ public class RawSettings {
     HashSet<Object> set = new HashSet<>();
     if (value instanceof List<?>) {
       set.addAll((List<?>) value);
-    } else if (value instanceof String) {
+    }
+    else if (value instanceof String) {
       set.add(value);
     }
     if (set.isEmpty()) throw new SettingsMalformedException("Set value of'" + attr + "' attribute cannot be empty");
@@ -150,5 +157,4 @@ public class RawSettings {
   public Optional<RawSettings> innerOpt(String attr) {
     return opt(attr).map(r -> new RawSettings((Map<String, ?>) r));
   }
-
 }
