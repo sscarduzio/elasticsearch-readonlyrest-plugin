@@ -28,19 +28,21 @@ import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.Fina
  */
 public abstract class AuditSinkStub {
 
-  public abstract void submit(ResponseContext rc) throws JsonProcessingException;
-
   protected static final Integer MAX_ITEMS = 100;
   protected static final Integer MAX_KB = 100;
   protected static final Integer MAX_SECONDS = 2;
   protected static final Integer MAX_RETRIES = 3;
 
+  public abstract void submit(ResponseContext rc) throws JsonProcessingException;
+
+  public abstract Boolean isAuditCollectorEnabled();
+
   public void log(ResponseContext res, Logger logger) {
 
-    boolean shouldLog = res.finalState().equals(FinalState.ALLOWED) &&
+    boolean skipLog = res.finalState().equals(FinalState.ALLOWED) &&
       Verbosity.INFO.equals(res.getResult().getBlock().getVerbosity());
 
-    if (!shouldLog) {
+    if (skipLog) {
       return;
     }
     String color;
@@ -66,6 +68,10 @@ public abstract class AuditSinkStub {
     logger.info(color + res.finalState().name() + " by " +
                   (res.getResult().isMatch() ? ("'" + res.getResult().toString() + "'") : "default") +
                   " req=" + res.getRequestContext() + " " + Constants.ANSI_RESET);
+
+    if (!isAuditCollectorEnabled()) {
+      return;
+    }
 
     try {
       submit(res);

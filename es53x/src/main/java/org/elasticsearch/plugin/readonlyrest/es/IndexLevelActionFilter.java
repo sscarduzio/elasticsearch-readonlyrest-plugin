@@ -37,6 +37,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
+import org.elasticsearch.plugin.readonlyrest.audit.AuditSinkStub;
 import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.ACLActionListener;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.RuleActionListenersProvider;
@@ -52,6 +53,7 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
+import javax.swing.text.html.Option;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -78,31 +80,28 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final RuleActionListenersProvider ruleActionListenersProvider;
   private final ReloadableSettings reloadableSettings;
   private final Client client;
-  private final TransportService transportService;
-  private final AuditSink audit;
+  private AtomicReference<Optional<AuditSink>> audit;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
-                                Client client, ClusterService clusterService,
+                                ClusterService clusterService,
                                 TransportService transportService,
-                                ThreadPool threadPool,
-                                AuditSink audit
-  ) throws IOException {
+                                Client client,
+                                ThreadPool threadPool)
+    throws IOException {
     super(settings);
-    this.audit = audit;
     this.reloadableSettings = reloadableConfiguration;
-    this.client = client;
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
+    this.audit = new AtomicReference<>(Optional.empty());
     this.ruleActionListenersProvider =  new RuleActionListenersProvider(context);
-
+    this.client = client;
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
 
     new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
-    this.transportService = transportService;
 
     logger.info("Readonly REST plugin was loaded...");
   }
@@ -111,6 +110,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   public void accept(RorSettings rorSettings) {
     if (rorSettings.isEnabled()) {
       try {
+        AuditSink audit = new AuditSink(client, rorSettings);
+        this.audit.set(Optional.of(audit));
         ACL acl = new ACL(rorSettings, this.context, audit);
         this.acl.set(Optional.of(acl));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
@@ -179,7 +180,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     acl.check(rc)
         .exceptionally(throwable -> {
-
+          AuditSink audit = this.audit.get().get();
           if (throwable.getCause() instanceof ResourceNotFoundException) {
             logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
             sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);

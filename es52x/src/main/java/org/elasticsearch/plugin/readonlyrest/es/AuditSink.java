@@ -34,6 +34,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.plugin.readonlyrest.audit.AuditSinkStub;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
+import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -49,13 +50,12 @@ import java.util.stream.Collectors;
 public class AuditSink extends AuditSinkStub{
   private static final Logger logger = Loggers.getLogger(AuditSink.class);
   private final static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-  private final Client client;
   private final BulkProcessor bulkProcessor;
+  private final RorSettings settings;
 
   @Inject
-  public AuditSink(Client client) {
-    this.client = client;
-
+  public AuditSink(Client client, RorSettings settings) {
+    this.settings = settings;
     this.bulkProcessor = BulkProcessor.builder(
       client,
       new BulkProcessor.Listener() {
@@ -103,8 +103,13 @@ public class AuditSink extends AuditSinkStub{
       indexName,
       "ror_audit_evt",
       rc.getRequestContext().getId()).source(
-        rc.toJson(),
-        XContentType.JSON);
+      rc.toJson(),
+      XContentType.JSON);
     bulkProcessor.add(ir);
+  }
+
+  @Override
+  public Boolean isAuditCollectorEnabled() {
+    return settings.getAuditCollector();
   }
 }
