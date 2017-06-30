@@ -49,6 +49,6 @@ public class BlockExitResult {
 
   @Override
   public String toString() {
-    return "{ block: " + block == null ? "<none>" : block.getName() + " match: " + isMatch() + "}";
+    return "{ block=" + (block == null ? "<none>" : block.getName()) + ", match=" + isMatch() + " }";
   }
 }

@@ -59,7 +59,7 @@ dependencies {
     }
     compile 'org.slf4j:slf4j-api:1.7.25'
     compile ('io.jsonwebtoken:jjwt:0.7.0') {
-        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+       // exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
 
     testCompile project(':tests-utils')

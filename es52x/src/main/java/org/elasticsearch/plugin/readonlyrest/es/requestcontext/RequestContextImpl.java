@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
@@ -27,6 +28,7 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -38,6 +40,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
@@ -51,6 +54,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.net.InetSocketAddress;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +67,7 @@ import java.util.stream.Collectors;
 /**
  * Created by sscarduzio on 20/02/2016.
  */
+@JsonSerialize(as=RequestContext.class)
 public class RequestContextImpl extends Delayed implements RequestContext, IndicesRequestContext {
 
   private final Logger logger;
@@ -70,11 +75,13 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private final String action;
   private final ActionRequest actionRequest;
   private final String id;
+  private final Long taskId;
   private final Map<String, String> requestHeaders;
   private final ClusterService clusterService;
   private final ESContext context;
   private final Transactional<Set<String>> indices;
   private final Transactional<Map<String, String>> responseHeaders;
+  private final Date timestamp;
 
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
@@ -82,16 +89,28 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private Transactional<Optional<LoggedUser>> loggedInUser;
   private final VariablesManager variablesManager;
 
+
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
                             ClusterService clusterService, ThreadPool threadPool, ESContext context) {
     super("rc", context);
+    this.timestamp = new Date();
     this.logger = context.logger(getClass());
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.context = context;
-    this.id = request.hashCode() + "-" + actionRequest.hashCode();
+    String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
+    Long taskId = ThreadRepo.taskId.get();
+    if (taskId != null) {
+      this.id = tmpID + "#" + taskId;
+      ThreadRepo.taskId.remove();
+      this.taskId = taskId;
+    }
+    else {
+      this.id = tmpID;
+      this.taskId = null;
+    }
 
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     request.headers().forEach(k -> {
@@ -163,6 +182,16 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     history.add(blockHistory);
   }
 
+  @Override
+  public String getClusterUUID() {
+    return clusterService.state().stateUUID();
+  }
+
+  @Override
+  public String getNodeUUID() {
+    return clusterService.state().nodes().getLocalNodeId();
+  }
+
   ActionRequest getUnderlyingRequest() {
     return actionRequest;
   }
@@ -176,6 +205,9 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   }
 
   public Boolean isReadRequest() {
+    if(actionRequest.getClass().isAssignableFrom(WriteRequest.class)){
+      return false;
+    }
     return RCUtils.isReadRequest(action);
   }
 
@@ -255,6 +287,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       throw context.rorException("cannot get indices of a request that doesn't involve indices" + this);
     }
     return indices.getInitial();
+  }
+
+  @Override
+  public boolean isDebug() {
+    return false;
   }
 
   public void setIndices(final Set<String> newIndices) {
@@ -343,6 +380,16 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return request.uri();
   }
 
+  @Override
+  public String getType() {
+    return actionRequest.getClass().getSimpleName();
+  }
+
+  @Override
+  public Set<BlockHistory> getHistory() {
+    return history;
+  }
+
   public String getAction() {
     return action;
   }
@@ -353,6 +400,15 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public void setLoggedInUser(LoggedUser user) {
     loggedInUser.mutate(Optional.of(user));
+  }
+
+  @Override
+  public Date getTimestamp() {
+    return timestamp;
+  }
+
+  public Long getTaskId(){
+    return taskId;
   }
 
   @Override

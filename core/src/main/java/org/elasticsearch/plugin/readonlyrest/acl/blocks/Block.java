@@ -157,7 +157,7 @@ public class Block {
 
   @Override
   public String toString() {
-    return "readonlyrest Rules Block :: { name: '" + settings.getName() + "', policy: " + settings.getPolicy() + "}";
+    return "{ name: '" + settings.getName() + "', policy: " + settings.getPolicy() + "}";
   }
 
 }

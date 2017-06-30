@@ -37,7 +37,14 @@ public class BlockHistory {
     this.name = name;
   }
 
-  @Override
+  public Set<RuleExitResult> getResults() {
+    return results;
+  }
+
+  public String getName() {
+    return name;
+  }
+
   public String toString() {
     Map<String, Boolean> rule2result = Maps.newHashMap();
     for (RuleExitResult rer : results) {

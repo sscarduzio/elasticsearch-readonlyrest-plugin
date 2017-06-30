@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -42,6 +43,7 @@ import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.ACLActionListener;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.RuleActionListenersProvider;
 import org.elasticsearch.plugin.readonlyrest.es.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.rest.BytesRestResponse;
@@ -50,6 +52,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -59,8 +62,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.elasticsearch.rest.RestStatus.FORBIDDEN;
-import static org.elasticsearch.rest.RestStatus.NOT_FOUND;
+import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.FinalState.*;
+
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -76,11 +79,18 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final RuleActionListenersProvider ruleActionListenersProvider;
   private final ReloadableSettings reloadableSettings;
   private final Client client;
+  private final TransportService transportService;
+  private final AuditSink audit;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
-                                Client client, ClusterService clusterService, ThreadPool threadPool) throws IOException {
+                                Client client, ClusterService clusterService,
+                                TransportService transportService,
+                                ThreadPool threadPool,
+                                AuditSink audit
+  ) throws IOException {
     super(settings);
+    this.audit = audit;
     this.reloadableSettings = reloadableConfiguration;
     this.client = client;
     this.context = new ESContextImpl();
@@ -91,6 +101,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
+
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+    this.transportService = transportService;
+
     logger.info("Readonly REST plugin was loaded...");
   }
 
@@ -98,7 +112,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   public void accept(RorSettings rorSettings) {
     if (rorSettings.isEnabled()) {
       try {
-        ACL acl = new ACL(rorSettings, this.context);
+        ACL acl = new ACL(rorSettings, this.context, audit);
         this.acl.set(Optional.of(acl));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       } catch (Exception ex) {
@@ -166,15 +180,16 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     acl.check(rc)
         .exceptionally(throwable -> {
-          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
-                        throwable.getMessage() + Constants.ANSI_RESET);
-          
+
           if (throwable.getCause() instanceof ResourceNotFoundException) {
             logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
             sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
+            audit.log(new ResponseContext(NOT_FOUND, rc, throwable, null), logger);
+
             return null;
           }
           throwable.printStackTrace();
+          audit.log(new ResponseContext(ERRORED, rc, throwable, null), logger);
           sendNotAuthResponse(channel, acl.getSettings());
           return null;
         })
@@ -200,15 +215,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             return null;
           }
 
-          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
-                        result.getBlock() + " (" + result.getBlock() + ")" + Constants.ANSI_RESET);
-
           sendNotAuthResponse(channel, acl.getSettings());
 
           listener.onFailure(null);
           return null;
         });
-
 
   }
 
@@ -220,7 +231,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
     } else {
-      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
+      resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
     }
 
     channel.sendResponse(resp);
@@ -233,7 +244,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       ElasticsearchException.generateFailureXContent(b, ToXContent.EMPTY_PARAMS, e, true);
       b.endObject();
       BytesRestResponse resp;
-      resp = new BytesRestResponse(NOT_FOUND, "application/json", b.string());
+      resp = new BytesRestResponse(RestStatus.NOT_FOUND, "application/json", b.string());
       channel.sendResponse(resp);
     } catch (Exception e1) {
       e1.printStackTrace();

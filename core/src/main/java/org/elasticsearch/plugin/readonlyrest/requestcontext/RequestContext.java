@@ -16,32 +16,81 @@
  */
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
+import com.fasterxml.jackson.annotation.JacksonAnnotation;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.CheckedFunction;
 
+import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+
 public interface RequestContext extends IndicesRequestContext {
+
   Optional<LoggedUser> getLoggedInUser();
+
   void setLoggedInUser(LoggedUser user);
+
+  Date getTimestamp();
+
   String getAction();
+
   String getId();
+
+  Long getTaskId();
+
   Map<String, String> getHeaders();
+
   String getRemoteAddress();
+
   Set<String> getIndices();
+
+  boolean isDebug();
+
   boolean involvesIndices();
+
   Boolean hasSubRequests();
+
   Integer scanSubRequests(CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer);
+
   void setResponseHeader(String name, String value);
+
   String getContent();
+
   HttpMethod getMethod();
+
   String getUri();
+
+  String getType();
+
+  @JsonIgnore
+  Set<BlockHistory> getHistory();
+
+  @JsonIgnore
   void addToHistory(Block block, Set<RuleExitResult> results);
+
+  @JsonIgnore
   void reset();
+
+  @JsonIgnore
   void commit();
+
+  String getClusterUUID();
+
+  String getNodeUUID();
+
+  @JsonIgnore
+  default String asJson(Boolean debug) throws JsonProcessingException {
+
+    return new SerializationTool().toJson(this);
+  }
+
+
 }
