@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -29,6 +30,9 @@ import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.ToXContent;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.Constants;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
@@ -38,6 +42,7 @@ import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.ACLActionListener;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.RuleActionListenersProvider;
 import org.elasticsearch.plugin.readonlyrest.es.requestcontext.RequestContextImpl;
+import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.rest.BytesRestResponse;
@@ -46,6 +51,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -55,7 +61,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.elasticsearch.rest.RestStatus.FORBIDDEN;
+import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.FinalState.ERRORED;
+import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.FinalState.NOT_FOUND;
+
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -71,11 +79,18 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final RuleActionListenersProvider ruleActionListenersProvider;
   private final ReloadableSettings reloadableSettings;
   private final Client client;
+  private final TransportService transportService;
+  private final AuditSink audit;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
-                                Client client, ClusterService clusterService, ThreadPool threadPool) throws IOException {
+                                Client client, ClusterService clusterService,
+                                TransportService transportService,
+                                ThreadPool threadPool,
+                                AuditSink audit
+  ) throws IOException {
     super(settings);
+    this.audit = audit;
     this.reloadableSettings = reloadableConfiguration;
     this.client = client;
     this.context = new ESContextImpl();
@@ -86,6 +101,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
+
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+    this.transportService = transportService;
+
     logger.info("Readonly REST plugin was loaded...");
   }
 
@@ -93,7 +112,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   public void accept(RorSettings rorSettings) {
     if (rorSettings.isEnabled()) {
       try {
-        ACL acl = new ACL(rorSettings, this.context);
+        ACL acl = new ACL(rorSettings, this.context, audit);
         this.acl.set(Optional.of(acl));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       } catch (Exception ex) {
@@ -161,10 +180,17 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     acl.check(rc)
         .exceptionally(throwable -> {
-          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
-                        throwable.getMessage() + Constants.ANSI_RESET);
+
+          if (throwable.getCause() instanceof ResourceNotFoundException) {
+            logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
+            sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
+            audit.log(new ResponseContext(NOT_FOUND, rc, throwable, null), logger);
+
+            return null;
+          }
           throwable.printStackTrace();
-          sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
+          audit.log(new ResponseContext(ERRORED, rc, throwable, null), logger);
+          sendNotAuthResponse(channel, acl.getSettings());
           return null;
         })
         .thenApply(result -> {
@@ -189,29 +215,42 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             return null;
           }
 
-          logger.info(Constants.ANSI_PURPLE + "forbidden request: " + rc + " Reason: " +
-                        result.getBlock() + " (" + result.getBlock() + ")" + Constants.ANSI_RESET);
-          sendNotAuthResponse(channel, acl.getSettings().getForbiddenMessage());
-          listener.onFailure(null);
+          sendNotAuthResponse(channel, acl.getSettings());
 
+          listener.onFailure(null);
           return null;
         });
+
   }
 
-  private void sendNotAuthResponse(RestChannel channel, String forbiddenResponse) {
+  private void sendNotAuthResponse(RestChannel channel, RorSettings rorSettings) {
     BytesRestResponse resp;
     boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
     if (doesRequirePassword) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, forbiddenResponse);
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
     } else {
-      resp = new BytesRestResponse(FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, forbiddenResponse);
+      resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
     }
 
     channel.sendResponse(resp);
   }
   
+  private void sendNotFound(ResourceNotFoundException e, RestChannel channel) {
+    try {
+      XContentBuilder b = JsonXContent.contentBuilder();
+      b.startObject();
+      ElasticsearchException.renderException(b, ToXContent.EMPTY_PARAMS, e);
+      b.endObject();
+      BytesRestResponse resp;
+      resp = new BytesRestResponse(RestStatus.NOT_FOUND, "application/json", b.string());
+      channel.sendResponse(resp);
+    } catch (Exception e1) {
+      e1.printStackTrace();
+    }
+  }
+
 
   private void scheduleConfigurationReload() {
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);

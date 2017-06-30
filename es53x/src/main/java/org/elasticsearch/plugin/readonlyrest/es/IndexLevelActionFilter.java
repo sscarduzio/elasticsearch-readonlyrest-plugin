@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -34,7 +33,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.plugin.readonlyrest.Constants;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
@@ -62,7 +60,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.FinalState.*;
+import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.FinalState.ERRORED;
+import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.FinalState.NOT_FOUND;
 
 
 /**

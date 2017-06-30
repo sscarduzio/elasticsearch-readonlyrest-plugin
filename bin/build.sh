@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Check all license headers are in place
+./gradlew license
+
 # Log file friendly Gradle output
 export TERM=dumb
 

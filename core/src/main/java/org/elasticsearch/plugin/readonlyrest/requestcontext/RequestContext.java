@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
-import com.fasterxml.jackson.annotation.JacksonAnnotation;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
