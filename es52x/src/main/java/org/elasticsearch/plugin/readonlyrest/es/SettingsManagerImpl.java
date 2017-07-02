@@ -45,13 +45,6 @@ public class SettingsManagerImpl implements SettingsManager {
   public SettingsManagerImpl(Settings settings, NodeClient client) throws IOException {
     this.settings = settings;
     this.client = client;
-    XContentBuilder builder = XContentFactory.jsonBuilder();
-    builder.startObject();
-    settings.toXContent(builder, ToXContent.EMPTY_PARAMS);
-    builder.endObject();
-    builder.prettyPrint();
-    String jsonSettings = builder.string();
-    System.out.println(jsonSettings);
   }
 
   public Map<String, ?> getCurrentSettings() {

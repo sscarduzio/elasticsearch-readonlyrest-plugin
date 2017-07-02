@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
@@ -39,14 +38,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.VariablesManager;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.tasks.TaskAwareRequest;
@@ -66,7 +62,7 @@ import java.util.stream.Collectors;
 /**
  * Created by sscarduzio on 20/02/2016.
  */
-public class RequestContextImpl extends Delayed implements RequestContext, IndicesRequestContext {
+public class RequestContextImpl extends RequestContext implements IndicesRequestContext {
 
   private final Logger logger;
   private final RestRequest request;
@@ -334,6 +330,13 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
+
+  public void setResponseHeader(String name, String value) {
+    Map<String, String> oldMap = responseHeaders.get();
+    oldMap.put(name, value);
+    responseHeaders.mutate(oldMap);
+  }
+
   public Integer scanSubRequests(final ReflecUtils.CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer) {
 
     List<? extends IndicesRequest> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
@@ -373,12 +376,6 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return subRequests.size();
   }
 
-  public void setResponseHeader(String name, String value) {
-    Map<String, String> oldMap = responseHeaders.get();
-    oldMap.put(name, value);
-    responseHeaders.mutate(oldMap);
-  }
-
   public Map<String, String> getHeaders() {
     return this.requestHeaders;
   }
@@ -399,61 +396,17 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     loggedInUser.mutate(Optional.of(user));
   }
 
+  @Override
   public Date getTimestamp() {
     return timestamp;
   }
 
-  public boolean isDebug(){
+  public boolean isDebug() {
     return logger.isDebugEnabled();
   }
 
-
-  @Override
-  public String toString() {
-    return toString(false);
-  }
-
-  private String toString(boolean skipIndices) {
-    String theIndices;
-    if (skipIndices || !doesInvolveIndices) {
-      theIndices = "<N/A>";
-    }
-    else {
-      theIndices = Joiner.on(",").skipNulls().join(indices.get());
-    }
-
-    String content = getContent();
-    if (Strings.isNullOrEmpty(content)) {
-      content = "<N/A>";
-    }
-    String theHeaders;
-    if (!logger.isDebugEnabled()) {
-      theHeaders = Joiner.on(",").join(getHeaders().keySet());
-    }
-    else {
-      theHeaders = getHeaders().toString();
-    }
-
-    String hist = Joiner.on(", ").join(history);
-    Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
-
-    Optional<LoggedUser> loggedInUser = getLoggedInUser();
-
-    return "{ ID:" + id +
-      ", TYP:" + actionRequest.getClass().getSimpleName() +
-      ", USR:" + (loggedInUser.isPresent()
-      ? loggedInUser.get()
-      : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
-      ", BRS:" + !Strings.isNullOrEmpty(requestHeaders.get("User-Agent")) +
-      ", ACT:" + action +
-      ", OA:" + getRemoteAddress() +
-      ", IDX:" + theIndices +
-      ", MET:" + request.method() +
-      ", PTH:" + request.path() +
-      ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-      ", HDR:" + theHeaders +
-      ", HIS:" + hist +
-      " }";
+  public Set<String> getTransientIndices() {
+    return indices.get();
   }
 
 }

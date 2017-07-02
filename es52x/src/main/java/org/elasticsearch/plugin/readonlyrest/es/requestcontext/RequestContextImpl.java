@@ -17,9 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
@@ -41,14 +39,11 @@ import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.VariablesManager;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
-import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
@@ -67,8 +62,7 @@ import java.util.stream.Collectors;
 /**
  * Created by sscarduzio on 20/02/2016.
  */
-@JsonSerialize(as=RequestContext.class)
-public class RequestContextImpl extends Delayed implements RequestContext, IndicesRequestContext {
+public class RequestContextImpl extends RequestContext implements IndicesRequestContext {
 
   private final Logger logger;
   private final RestRequest request;
@@ -82,12 +76,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
   private final Transactional<Set<String>> indices;
   private final Transactional<Map<String, String>> responseHeaders;
   private final Date timestamp;
-
+  private final VariablesManager variablesManager;
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;
   private Transactional<Optional<LoggedUser>> loggedInUser;
-  private final VariablesManager variablesManager;
 
 
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
@@ -177,6 +170,10 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return logger;
   }
 
+  public Set<BlockHistory> getHistory() {
+    return history;
+  }
+
   public void addToHistory(Block block, Set<RuleExitResult> results) {
     BlockHistory blockHistory = new BlockHistory(block.getName(), results);
     history.add(blockHistory);
@@ -200,12 +197,17 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return id;
   }
 
+  @Override
+  public Long getTaskId() {
+    return taskId;
+  }
+
   public boolean involvesIndices() {
     return doesInvolveIndices;
   }
 
   public Boolean isReadRequest() {
-    if(actionRequest.getClass().isAssignableFrom(WriteRequest.class)){
+    if (actionRequest.getClass().isAssignableFrom(WriteRequest.class)) {
       return false;
     }
     return RCUtils.isReadRequest(action);
@@ -229,6 +231,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
       }
     }
     return content;
+  }
+
+
+  public String getType() {
+    return actionRequest.getClass().getSimpleName();
   }
 
   public Optional<String> resolveVariable(String original) {
@@ -289,34 +296,31 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return indices.getInitial();
   }
 
-  @Override
-  public boolean isDebug() {
-    return false;
-  }
-
   public void setIndices(final Set<String> newIndices) {
     if (!doesInvolveIndices) {
       throw context.rorException("cannot set indices of a request that doesn't involve indices: " + this);
     }
 
     if (newIndices.size() == 0) {
-      if (isReadRequest()) {throw new ElasticsearchException(
-        "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
+      if (isReadRequest()) {
+        throw new ElasticsearchException(
+          "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
             "] toempty set." +
             ", probably your request matched no index, or was rewritten to nonexistentindices (which would expand to empty set).");
       }
       else {
         throw new ElasticsearchException(
           "Attempted to set indices from [" + Joiner.on(",").join(indices.getInitial()) +
-            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden." );
-          }
+            "] to empty set. " + "In ES, specifying no index is the same as full access, therefore this requestis forbidden.");
+      }
     }
 
     if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
       if (!expanded.isEmpty()) {
         indices.mutate(expanded);
-      } else {
+      }
+      else {
         throw new IndexNotFoundException("rewritten indices not found: " + Joiner.on(",").join(newIndices));
       }
     }
@@ -325,6 +329,13 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
 
   public Boolean hasSubRequests() {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
+  }
+
+
+  public void setResponseHeader(String name, String value) {
+    Map<String, String> oldMap = responseHeaders.get();
+    oldMap.put(name, value);
+    responseHeaders.mutate(oldMap);
   }
 
   public Integer scanSubRequests(final ReflecUtils.CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer) {
@@ -366,28 +377,12 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return subRequests.size();
   }
 
-  public void setResponseHeader(String name, String value) {
-    Map<String, String> oldMap = responseHeaders.get();
-    oldMap.put(name, value);
-    responseHeaders.mutate(oldMap);
-  }
-
   public Map<String, String> getHeaders() {
     return this.requestHeaders;
   }
 
   public String getUri() {
     return request.uri();
-  }
-
-  @Override
-  public String getType() {
-    return actionRequest.getClass().getSimpleName();
-  }
-
-  @Override
-  public Set<BlockHistory> getHistory() {
-    return history;
   }
 
   public String getAction() {
@@ -407,51 +402,11 @@ public class RequestContextImpl extends Delayed implements RequestContext, Indic
     return timestamp;
   }
 
-  public Long getTaskId(){
-    return taskId;
+  public boolean isDebug() {
+    return logger.isDebugEnabled();
   }
 
-  @Override
-  public String toString() {
-    return toString(false);
+  public Set<String> getTransientIndices() {
+    return indices.get();
   }
-
-  private String toString(boolean skipIndices) {
-    String theIndices;
-    if (skipIndices || !doesInvolveIndices) {
-      theIndices = "<N/A>";
-    } else {
-      theIndices = Joiner.on(",").skipNulls().join(indices.get());
-    }
-
-    String content = getContent();
-    if (Strings.isNullOrEmpty(content)) {
-      content = "<N/A>";
-    }
-    String theHeaders;
-    if (!logger.isDebugEnabled()) {
-      theHeaders = Joiner.on(",").join(getHeaders().keySet());
-    } else {
-      theHeaders = getHeaders().toString();
-    }
-
-    String hist = Joiner.on(", ").join(history);
-    Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
-    return "{ ID:" + id +
-        ", TYP:" + actionRequest.getClass().getSimpleName() +
-        ", USR:" + (loggedInUser.get().isPresent()
-        ? loggedInUser.get().get()
-        : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
-        ", BRS:" + !Strings.isNullOrEmpty(requestHeaders.get("User-Agent")) +
-        ", ACT:" + action +
-        ", OA:" + getRemoteAddress() +
-        ", IDX:" + theIndices +
-        ", MET:" + request.method() +
-        ", PTH:" + request.path() +
-        ", CNT:" + (logger.isDebugEnabled() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
-        ", HDR:" + theHeaders +
-        ", HIS:" + hist +
-        " }";
-  }
-
 }

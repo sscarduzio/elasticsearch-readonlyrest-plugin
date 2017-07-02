@@ -84,11 +84,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
                                 ClusterService clusterService,
                                 TransportService transportService,
-                                ThreadPool threadPool,
-                                Client client
-  ) throws IOException {
+                                Client client,
+                                ThreadPool threadPool)
+    throws IOException {
     super(settings);
-    this.client = client;
     this.reloadableSettings = reloadableConfiguration;
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
@@ -96,7 +95,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.acl = new AtomicReference<>(Optional.empty());
     this.audit = new AtomicReference<>(Optional.empty());
     this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
-
+    this.client = client;
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
 
@@ -117,8 +116,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       } catch (Exception ex) {
         logger.error("Cannot configure ReadonlyREST plugin", ex);
       }
-    }
-    else {
+    } else {
       this.acl.set(Optional.empty());
       logger.info("Configuration reloaded - ReadonlyREST disabled");
     }

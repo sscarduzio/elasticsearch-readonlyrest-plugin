@@ -32,7 +32,7 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.plugin.readonlyrest.audit.AuditSinkStub;
+import org.elasticsearch.plugin.readonlyrest.audit.AuditSinkShim;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  */
 
 @Singleton
-public class AuditSink extends AuditSinkStub{
+public class AuditSink extends AuditSinkShim {
   private static final Logger logger = Loggers.getLogger(AuditSink.class);
   private final static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
   private final BulkProcessor bulkProcessor;

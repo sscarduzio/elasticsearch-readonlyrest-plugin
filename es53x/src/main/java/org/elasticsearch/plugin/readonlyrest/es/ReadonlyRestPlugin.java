@@ -35,6 +35,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.configuration.AllowedSettings;
 import org.elasticsearch.plugin.readonlyrest.es.rradmin.RRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.es.rradmin.TransportRRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.es.rradmin.rest.RestRRAdminAction;
@@ -52,9 +53,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class ReadonlyRestPlugin extends Plugin
-    implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+  implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final ESContext context;
 
@@ -69,40 +72,53 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-      Settings settings,
-      ThreadPool threadPool,
-      BigArrays bigArrays,
-      CircuitBreakerService circuitBreakerService,
-      NamedWriteableRegistry namedWriteableRegistry,
-      NamedXContentRegistry xContentRegistry,
-      NetworkService networkService,
-      HttpServerTransport.Dispatcher dispatcher) {
+    Settings settings,
+    ThreadPool threadPool,
+    BigArrays bigArrays,
+    CircuitBreakerService circuitBreakerService,
+    NamedWriteableRegistry namedWriteableRegistry,
+    NamedXContentRegistry xContentRegistry,
+    NetworkService networkService,
+    HttpServerTransport.Dispatcher dispatcher) {
 
     return Collections.singletonMap(
-        "ssl_netty4", () ->
-            new SSLTransportNetty4(
-                context, settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
-            ));
+      "ssl_netty4", () ->
+        new SSLTransportNetty4(
+          context, settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+        ));
   }
 
   @Override
   public List<Setting<?>> getSettings() {
-    return AllowedSettings.INSTANCE.list();
+    return AllowedSettings.list().entrySet().stream().map((e) -> {
+      Setting<?> theSetting = null;
+      switch (e.getValue()) {
+        case BOOL:
+          theSetting = Setting.boolSetting(e.getKey(), Boolean.FALSE, Setting.Property.NodeScope);
+        break;
+        case STRING:
+          theSetting = new Setting<>(e.getKey(), "", (value) -> value, Setting.Property.NodeScope);
+        break;
+        case GROUP:
+          theSetting = Setting.groupSetting(e.getKey(), Setting.Property.Dynamic, Setting.Property.NodeScope);
+      }
+      return theSetting;
+    }).collect(Collectors.toList());
   }
 
   @Override
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<RestHandler> getRestHandlers(
-      Settings settings, RestController restController, ClusterSettings clusterSettings,
-      IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
-      IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+    Settings settings, RestController restController, ClusterSettings clusterSettings,
+    IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
+    IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
     return Collections.singletonList(new RestRRAdminAction(settings, restController));
   }
 

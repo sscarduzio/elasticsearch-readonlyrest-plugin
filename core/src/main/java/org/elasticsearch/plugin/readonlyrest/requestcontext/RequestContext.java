@@ -16,13 +16,16 @@
  */
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
+import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.CheckedFunction;
 
 import java.util.Date;
@@ -31,64 +34,108 @@ import java.util.Optional;
 import java.util.Set;
 
 
-public interface RequestContext extends IndicesRequestContext {
+public abstract class RequestContext extends Delayed implements IndicesRequestContext {
 
-  Optional<LoggedUser> getLoggedInUser();
+  public RequestContext(String name, ESContext context) {
+    super(name, context);
+  }
 
-  void setLoggedInUser(LoggedUser user);
+  abstract public Optional<LoggedUser> getLoggedInUser();
 
-  Date getTimestamp();
+  abstract public void setLoggedInUser(LoggedUser user);
 
-  String getAction();
+  abstract public Date getTimestamp();
 
-  String getId();
+  abstract public Set<String> getTransientIndices();
 
-  Long getTaskId();
+  abstract public String getAction();
 
-  Map<String, String> getHeaders();
+  abstract public String getId();
 
-  String getRemoteAddress();
+  abstract public Long getTaskId();
 
-  Set<String> getIndices();
+  abstract public Map<String, String> getHeaders();
 
-  boolean isDebug();
+  abstract public String getRemoteAddress();
 
-  boolean involvesIndices();
+  abstract public Set<String> getIndices();
 
-  Boolean hasSubRequests();
+  abstract public boolean isDebug();
 
-  Integer scanSubRequests(CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer);
+  abstract public boolean involvesIndices();
 
-  void setResponseHeader(String name, String value);
+  abstract public Boolean hasSubRequests();
 
-  String getContent();
+  abstract public Integer scanSubRequests(CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer);
 
-  HttpMethod getMethod();
+  abstract public void setResponseHeader(String name, String value);
 
-  String getUri();
+  abstract public String getContent();
 
-  String getType();
+  abstract public HttpMethod getMethod();
 
-  @JsonIgnore
-  Set<BlockHistory> getHistory();
+  abstract public String getUri();
 
-  @JsonIgnore
-  void addToHistory(Block block, Set<RuleExitResult> results);
+  abstract public String getType();
 
-  @JsonIgnore
-  void reset();
+  abstract public Set<BlockHistory> getHistory();
 
-  @JsonIgnore
-  void commit();
+  abstract public void addToHistory(Block block, Set<RuleExitResult> results);
 
-  String getClusterUUID();
+  abstract public String getClusterUUID();
 
-  String getNodeUUID();
+  abstract public String getNodeUUID();
 
-  @JsonIgnore
-  default String asJson(Boolean debug) throws JsonProcessingException {
+  public String asJson(Boolean debug) throws JsonProcessingException {
 
     return new SerializationTool().toJson(this);
+  }
+
+  public String toString() {
+    return toString(false);
+  }
+
+  private String toString(boolean skipIndices) {
+    String theIndices;
+    if (skipIndices || !involvesIndices()) {
+      theIndices = "<N/A>";
+    }
+    else {
+      theIndices = Joiner.on(",").skipNulls().join(getTransientIndices());
+    }
+
+    String content = getContent();
+    if (Strings.isNullOrEmpty(content)) {
+      content = "<N/A>";
+    }
+    String theHeaders;
+    if (!isDebug()) {
+      theHeaders = Joiner.on(",").join(getHeaders().keySet());
+    }
+    else {
+      theHeaders = getHeaders().toString();
+    }
+
+    String hist = Joiner.on(", ").join(getHistory());
+    Optional<BasicAuthUtils.BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
+
+    Optional<LoggedUser> loggedInUser = getLoggedInUser();
+
+    return "{ ID:" + getId() +
+      ", TYP:" + getType() +
+      ", USR:" + (loggedInUser.isPresent()
+      ? loggedInUser.get()
+      : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
+      ", BRS:" + !Strings.isNullOrEmpty(getHeaders().get("User-Agent")) +
+      ", ACT:" + getAction() +
+      ", OA:" + getRemoteAddress() +
+      ", IDX:" + theIndices +
+      ", MET:" + getMethod() +
+      ", PTH:" + getUri() +
+      ", CNT:" + (isDebug() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+      ", HDR:" + theHeaders +
+      ", HIS:" + hist +
+      " }";
   }
 
 

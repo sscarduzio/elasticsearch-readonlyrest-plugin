@@ -25,27 +25,33 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.NotSslRecordException;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.es.settings.ssl.ESSslSettings;
-import org.elasticsearch.plugin.readonlyrest.es.settings.ssl.SSLEngineProvider;
-import org.elasticsearch.plugin.readonlyrest.settings.ssl.SslSettings;
+import org.elasticsearch.plugin.readonlyrest.SSLCertParser;
+import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.threadpool.ThreadPool;
+
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   private final ESContext esContext;
-  private final SslSettings sslSettings;
+  private final RorSettings sslSettings;
 
   public SSLTransportNetty4(ESContext esContext, Settings settings, NetworkService networkService, BigArrays bigArrays,
                             ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.esContext = esContext;
-    this.sslSettings = ESSslSettings.from(settings);
+    this.sslSettings = new RorSettings(new RawSettings(settings.getAsStructuredMap()));
     logger.info("creating SSL transport");
   }
 
@@ -57,7 +63,6 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       logger.warn(cause.getMessage());
     }
     else {
-      logger.error("exception in SSL transport: " + cause.getMessage());
       cause.printStackTrace();
       super.exceptionCaught(ctx, cause);
     }
@@ -69,15 +74,30 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
-    private SSLEngineProvider engineProvider = new SSLEngineProvider(sslSettings, esContext);
+    private Optional<SslContext> context;
 
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+
+      new SSLCertParser(sslSettings, esContext, (certChain, privateKey) -> {
+        try {
+          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+          context = Optional.of(SslContextBuilder.forServer(
+            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+            null
+          ).build());
+        } catch (Exception e) {
+          context = Optional.empty();
+          logger.error("Failed to load SSL CertChain & private key from Keystore!");
+          e.printStackTrace();
+        }
+      });
     }
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      engineProvider.getContext().ifPresent(sslCtx -> {
+      context.ifPresent(sslCtx -> {
         ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
       });
     }

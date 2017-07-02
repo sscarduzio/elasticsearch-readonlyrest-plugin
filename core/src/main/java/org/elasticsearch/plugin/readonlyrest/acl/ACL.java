@@ -25,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRuleFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.DefinitionsFactory;
-import org.elasticsearch.plugin.readonlyrest.audit.AuditSinkStub;
+import org.elasticsearch.plugin.readonlyrest.audit.AuditSinkShim;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
@@ -51,9 +51,9 @@ public class ACL {
   private final UserRuleFactory userRuleFactory;
 
   private final DefinitionsFactory definitionsFactory;
-  private AuditSinkStub audit;
+  private AuditSinkShim audit;
 
-  public ACL(RorSettings settings, ESContext context, AuditSinkStub audit) {
+  public ACL(RorSettings settings, ESContext context, AuditSinkShim audit) {
     this.settings = settings;
     this.logger = context.logger(getClass());
 

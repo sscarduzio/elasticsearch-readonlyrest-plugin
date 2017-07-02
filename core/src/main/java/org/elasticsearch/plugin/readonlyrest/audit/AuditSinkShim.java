@@ -26,7 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext.Fina
 /**
  * Created by sscarduzio on 29/06/2017.
  */
-public abstract class AuditSinkStub {
+public abstract class AuditSinkShim {
 
   protected static final Integer MAX_ITEMS = 100;
   protected static final Integer MAX_KB = 100;

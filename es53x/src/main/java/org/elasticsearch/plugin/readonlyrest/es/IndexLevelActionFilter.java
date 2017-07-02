@@ -37,7 +37,6 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
-import org.elasticsearch.plugin.readonlyrest.audit.AuditSinkStub;
 import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.ACLActionListener;
 import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.RuleActionListenersProvider;
@@ -53,7 +52,6 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
-import javax.swing.text.html.Option;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -138,7 +136,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     Optional<ACL> acl = this.acl.get();
     if (acl.isPresent()) {
       handleRequest(acl.get(), task, action, request, listener, chain);
-    } else {
+    }
+    else {
       chain.proceed(task, action, request, listener);
     }
   }
@@ -230,7 +229,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
-    } else {
+    }
+    else {
       resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
     }
 

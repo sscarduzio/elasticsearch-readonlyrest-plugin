@@ -27,6 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCo
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class RorSettings {
@@ -39,6 +40,14 @@ public class RorSettings {
   public static final String VERBOSITY = "verbosity";
   public static final String AUDIT_COLLECTOR = "audit_collector";
 
+  // SSL
+  public static final String PREFIX_SSL = "ssl.";
+  public static final String ATTRIBUTE_SSL_KEYSTORE_FILE = "keystore_file";
+  public static final String ATTRIBUTE_SSL_KEYSTORE_PASS = "keystore_pass";
+  public static final String ATTRIBUTE_SSL_KEY_PASS = "key_pass";
+  public static final String ATTRIBUTE_SSL_KEY_ALIAS = "key_alias";
+
+
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
   private static final List<BlockSettings> DEFAULT_BLOCK_SETTINGS = Lists.newArrayList();
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
@@ -49,6 +58,11 @@ public class RorSettings {
   private final Boolean auditCollector;
   private final List<BlockSettings> blocksSettings;
   private final Boolean promptForBasicAuth;
+  private final boolean sslEnabled;
+  private Optional<String> keystorePass;
+  private Optional<String> keyPass;
+  private Optional<String> keyAlias;
+  private String keystoreFile;
 
   @SuppressWarnings("unchecked")
   public RorSettings(RawSettings raw) {
@@ -78,6 +92,25 @@ public class RorSettings {
         .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
       .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
+
+    // SSL
+    Optional<RawSettings> sslSettingsOpt = raw.innerOpt("ssl");
+    Optional sslEnableOpt = raw.booleanOpt(PREFIX_SSL + "enable");
+    Optional<String> ksOpt = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE);
+
+    if (!sslSettingsOpt.isPresent() || sslEnableOpt.get().equals(false) || !ksOpt.isPresent()) {
+      this.sslEnabled = false;
+    }
+    else {
+      this.sslEnabled = true;
+    }
+
+    if (sslEnabled) {
+      this.keystoreFile = raw.stringReq(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE);
+      this.keyAlias = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_ALIAS);
+      this.keyPass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_PASS);
+      this.keystorePass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_PASS);
+    }
   }
 
   public static RorSettings from(RawSettings settings) {
@@ -96,13 +129,27 @@ public class RorSettings {
     return ImmutableList.copyOf(blocksSettings);
   }
 
-  public Verbosity getVerbosity() {
-    return verbosity;
+  public Boolean getAuditCollector() {
+    return auditCollector;
   }
-
-  public Boolean getAuditCollector() {return auditCollector;}
 
   public Boolean isPromptForBasicAuth() {
     return promptForBasicAuth;
+  }
+
+  public Optional<String> getKeystorePass() {
+    return keystorePass;
+  }
+
+  public String getKeystoreFile() {
+    return keystoreFile;
+  }
+
+  public Optional<String> getKeyPass() {
+    return keyPass;
+  }
+
+  public Optional<String> getKeyAlias() {
+    return keyAlias;
   }
 }
