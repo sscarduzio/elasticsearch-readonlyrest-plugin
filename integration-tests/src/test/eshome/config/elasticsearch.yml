@@ -13,7 +13,7 @@ readonlyrest:
     enable: true
     ssl:
       enable: false
-      keystore_file: "/me/elasticsearch-readonlyrest-plugin-5.x/src/test/eshome/plugins/readonlyrest/keystore.jks"
+      keystore_file: "/me/elasticsearch-readonlyrest-plugin-5.x/integration-tests/src/test/eshome/plugins/readonlyrest/keystore.jks"
       keystore_pass: readonlyrest
       key_pass: readonlyrest
 
