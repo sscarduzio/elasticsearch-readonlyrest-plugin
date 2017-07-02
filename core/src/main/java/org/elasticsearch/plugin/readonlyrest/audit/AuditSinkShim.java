@@ -40,7 +40,7 @@ public abstract class AuditSinkShim {
   public void log(ResponseContext res, Logger logger) {
 
     boolean skipLog = res.finalState().equals(FinalState.ALLOWED) &&
-      Verbosity.INFO.equals(res.getResult().getBlock().getVerbosity());
+      !Verbosity.INFO.equals(res.getResult().getBlock().getVerbosity());
 
     if (skipLog) {
       return;
@@ -55,11 +55,9 @@ public abstract class AuditSinkShim {
         color = Constants.ANSI_CYAN;
         break;
       case ERRORED:
-
         color = Constants.ANSI_RED;
         break;
       case NOT_FOUND:
-
         color = Constants.ANSI_YELLOW;
         break;
       default:
