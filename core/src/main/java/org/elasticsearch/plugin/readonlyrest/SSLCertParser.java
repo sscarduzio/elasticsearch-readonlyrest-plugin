@@ -4,6 +4,9 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.Key;
 import java.security.PrivilegedAction;
@@ -15,16 +18,19 @@ import java.util.Base64;
  */
 public class SSLCertParser {
   private final SSLContextCreator creator;
-  private final RorSettings settings;
   private final Logger logger;
 
   public SSLCertParser(RorSettings settings, ESContext esContext, SSLContextCreator creator) {
     this.creator = creator;
     this.logger = esContext.logger(getClass());
-    this.settings = settings;
+    createContext(settings);
   }
 
   private void createContext(RorSettings settings) {
+    if(!settings.isSSLEnabled()){
+      logger.info("SSL is disabled");
+      return;
+    }
     logger.info("SSL: attempting with JKS keystore..");
     try {
       char[] keyStorePassBa = null;
@@ -34,7 +40,7 @@ public class SSLCertParser {
 
       // Load the JKS keystore
       java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
-      ks.load(new java.io.FileInputStream(settings.getKeystoreFile()), keyStorePassBa);
+      ks.load(new FileInputStream(settings.getKeystoreFile()), keyStorePassBa);
 
       char[] keyPassBa = null;
       if (settings.getKeyPass().isPresent()) {
@@ -93,9 +99,11 @@ public class SSLCertParser {
 
     } catch (Throwable t) {
       logger.error("Failed to load SSL certs and keys from JKS Keystore!");
+      if( t instanceof AccessControlException){
+        logger.error("Check the JKS Keystore path is correct: " + settings.getKeystoreFile());
+      }
       t.printStackTrace();
     }
-
   }
 
   public interface SSLContextCreator {
