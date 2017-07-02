@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
@@ -50,7 +51,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class ReadonlyRestPlugin extends Plugin
-    implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+  implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final ESContext context;
 
@@ -65,17 +66,17 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-      Settings settings,
-      ThreadPool threadPool,
-      BigArrays bigArrays,
-      CircuitBreakerService circuitBreakerService,
-      NamedWriteableRegistry namedWriteableRegistry,
-      NamedXContentRegistry xContentRegistry,
-      NetworkService networkService
+    Settings settings,
+    ThreadPool threadPool,
+    BigArrays bigArrays,
+    CircuitBreakerService circuitBreakerService,
+    NamedWriteableRegistry namedWriteableRegistry,
+    NamedXContentRegistry xContentRegistry,
+    NetworkService networkService
   ) {
     return Collections.singletonMap(
-        "ssl_netty4", () ->
-            new SSLTransportNetty4(context, settings, networkService, bigArrays, threadPool, xContentRegistry));
+      "ssl_netty4", () ->
+        new SSLTransportNetty4(context, settings, networkService, bigArrays, threadPool, xContentRegistry));
   }
 
   @Override
@@ -91,15 +92,19 @@ public class ReadonlyRestPlugin extends Plugin
           break;
         case GROUP:
           theSetting = Setting.groupSetting(e.getKey(), Setting.Property.Dynamic, Setting.Property.NodeScope);
+          break;
+        default:
+          throw new ElasticsearchException("invalid settings " + e);
       }
       return theSetting;
     }).collect(Collectors.toList());
   }
+
   @Override
   @SuppressWarnings({"unchecked", "rawtypes"})
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override

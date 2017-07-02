@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
@@ -53,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class ReadonlyRestPlugin extends Plugin
@@ -95,12 +95,15 @@ public class ReadonlyRestPlugin extends Plugin
       switch (e.getValue()) {
         case BOOL:
           theSetting = Setting.boolSetting(e.getKey(), Boolean.FALSE, Setting.Property.NodeScope);
-        break;
+          break;
         case STRING:
           theSetting = new Setting<>(e.getKey(), "", (value) -> value, Setting.Property.NodeScope);
-        break;
+          break;
         case GROUP:
           theSetting = Setting.groupSetting(e.getKey(), Setting.Property.Dynamic, Setting.Property.NodeScope);
+          break;
+        default:
+          throw new ElasticsearchException("invalid settings " + e);
       }
       return theSetting;
     }).collect(Collectors.toList());
