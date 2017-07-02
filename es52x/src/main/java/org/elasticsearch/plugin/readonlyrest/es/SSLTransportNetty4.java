@@ -53,7 +53,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     super(settings, networkService, bigArrays, threadPool, namedXContentRegistry);
     this.esContext = esContext;
     this.sslSettings = new RorSettings(new RawSettings(settings.getAsStructuredMap()));
-    logger.info("creating SSL transport");
+    if (sslSettings.isSSLEnabled()) {
+      logger.info("creating SSL transport");
+    }
 
   }
 
@@ -76,7 +78,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
-    private Optional<SslContext> context;
+    private Optional<SslContext> context = Optional.empty();
 
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
@@ -95,6 +97,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           e.printStackTrace();
         }
       });
+
     }
 
     protected void initChannel(final Channel ch) throws Exception {

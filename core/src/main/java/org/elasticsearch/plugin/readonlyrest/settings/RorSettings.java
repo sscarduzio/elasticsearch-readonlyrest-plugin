@@ -41,7 +41,7 @@ public class RorSettings {
   public static final String AUDIT_COLLECTOR = "audit_collector";
 
   // SSL
-  public static final String PREFIX_SSL = "ssl.";
+  public static final String PREFIX_SSL = "readonlyrest.ssl.";
   public static final String ATTRIBUTE_SSL_KEYSTORE_FILE = "keystore_file";
   public static final String ATTRIBUTE_SSL_KEYSTORE_PASS = "keystore_pass";
   public static final String ATTRIBUTE_SSL_KEY_PASS = "key_pass";
@@ -94,7 +94,7 @@ public class RorSettings {
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
 
     // SSL
-    Optional<RawSettings> sslSettingsOpt = raw.innerOpt("ssl");
+    Optional<RawSettings> sslSettingsOpt = raw.innerOpt(PREFIX_SSL.replaceFirst(".$",""));
     Optional sslEnableOpt = raw.booleanOpt(PREFIX_SSL + "enable");
     Optional<String> ksOpt = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE);
 
@@ -135,6 +135,10 @@ public class RorSettings {
 
   public Boolean isPromptForBasicAuth() {
     return promptForBasicAuth;
+  }
+
+  public Boolean isSSLEnabled() {
+    return sslEnabled;
   }
 
   public Optional<String> getKeystorePass() {
