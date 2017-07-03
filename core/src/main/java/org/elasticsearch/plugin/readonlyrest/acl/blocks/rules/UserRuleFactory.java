@@ -19,20 +19,10 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 import com.google.common.collect.Maps;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha1SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySha256SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.AuthKeySyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.JwtAuthSyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.*;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.*;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -54,6 +44,10 @@ public class UserRuleFactory {
     this.creators.put(
       AuthKeySha256RuleSettings.class,
       settings ->AsyncRuleAdapter.wrap( new AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context))
+    );
+    this.creators.put(
+            AuthKeySha512RuleSettings.class,
+            settings ->AsyncRuleAdapter.wrap( new AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
     );
     this.creators.put(
       AuthKeyPlainTextRuleSettings.class,
