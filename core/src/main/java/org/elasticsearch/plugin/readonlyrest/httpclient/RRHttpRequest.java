@@ -23,7 +23,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
 
-public class HttpRequest {
+public class RRHttpRequest {
 
   private final HttpMethod method;
   private final URI url;
@@ -31,14 +31,14 @@ public class HttpRequest {
   private final Map<String, String> headers;
   private final Optional<String> body;
 
-  public static HttpRequest get(URI url, Map<String, String> queryParams, Map<String, String> headers) {
-    return new HttpRequest(HttpMethod.GET, url, queryParams, headers, Optional.empty());
+  public static RRHttpRequest get(URI url, Map<String, String> queryParams, Map<String, String> headers) {
+    return new RRHttpRequest(HttpMethod.GET, url, queryParams, headers, Optional.empty());
   }
-  public static HttpRequest get(URI url, Map<String, String> headers) {
+  public static RRHttpRequest get(URI url, Map<String, String> headers) {
     return get(url, Maps.newHashMap(), headers);
   }
 
-  public HttpRequest(HttpMethod method, URI url, Map<String, String> queryParams, Map<String, String> headers, Optional<String> body) {
+  public RRHttpRequest(HttpMethod method, URI url, Map<String, String> queryParams, Map<String, String> headers, Optional<String> body) {
     this.method = method;
     this.url = url;
     this.queryParams = queryParams;

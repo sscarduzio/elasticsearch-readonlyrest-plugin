@@ -18,7 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.definitions.externalauthentica
 
 import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpRequest;
+import org.elasticsearch.plugin.readonlyrest.httpclient.RRHttpRequest;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils;
 
 import java.net.URI;
@@ -38,7 +38,7 @@ public class ExternalAuthenticationServiceHttpClient implements ExternalAuthenti
 
   @Override
   public CompletableFuture<Boolean> authenticate(String user, String password) {
-    return client.send(HttpRequest.get(
+    return client.send(RRHttpRequest.get(
         endpoint, ImmutableMap.of("Authorization", BasicAuthUtils.basicAuthHeaderValue(user, password))
     )).thenApply(response -> response.getStatusCode() == successStatusCode);
   }

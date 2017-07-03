@@ -50,7 +50,6 @@ dependencies {
     compile project(':core')
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
-    compile 'org.elasticsearch.client:rest:' + esVersion
 }
 
 license {

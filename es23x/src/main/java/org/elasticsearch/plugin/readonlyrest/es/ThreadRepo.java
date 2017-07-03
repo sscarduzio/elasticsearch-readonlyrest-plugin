@@ -14,26 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package org.elasticsearch.plugin.readonlyrest.httpclient;
 
-import java.io.InputStream;
-import java.util.function.Supplier;
+package org.elasticsearch.plugin.readonlyrest.es;
 
-public class HttpResponse {
+import org.elasticsearch.rest.RestChannel;
+import org.elasticsearch.rest.RestRequest;
 
-  private final int statusCode;
-  private final Supplier<InputStream> content;
-
-  public HttpResponse(int statusCode, Supplier<InputStream> content) {
-    this.statusCode = statusCode;
-    this.content = content;
-  }
-
-  public int getStatusCode() {
-    return statusCode;
-  }
-
-  public Supplier<InputStream> getContent() {
-    return content;
-  }
+/**
+ * Created by sscarduzio on 25/11/2016.
+ */
+public class ThreadRepo {
+  public static ThreadLocal<RestRequest> request = new ThreadLocal<>();
+  public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
+  public static ThreadLocal<Long> taskId = new ThreadLocal<>();
 }

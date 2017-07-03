@@ -44,13 +44,11 @@ import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
-  private final ESContext esContext;
   private final RorSettings sslSettings;
 
   public SSLTransportNetty4(ESContext esContext, Settings settings, NetworkService networkService, BigArrays bigArrays,
                             ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.esContext = esContext;
     this.sslSettings = new RorSettings(new RawSettings(settings.getAsStructuredMap()));
     logger.info("creating SSL transport");
   }
@@ -79,7 +77,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
 
-      new SSLCertParser(sslSettings, esContext, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, ESContextImpl.mkLoggerShim(logger), (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           context = Optional.of(SslContextBuilder.forServer(

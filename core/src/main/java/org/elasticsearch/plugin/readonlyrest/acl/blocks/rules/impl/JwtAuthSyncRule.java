@@ -26,6 +26,7 @@ import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
@@ -39,7 +40,7 @@ import java.util.Optional;
 
 public class JwtAuthSyncRule extends UserRule implements Authentication {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final JwtAuthRuleSettings settings;
 
   public JwtAuthSyncRule(JwtAuthRuleSettings settings, ESContext context) {

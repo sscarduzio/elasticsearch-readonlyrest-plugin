@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.utils;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 
 import java.lang.reflect.Field;
@@ -96,7 +97,7 @@ public class ReflecUtils {
     return null;
   }
 
-  public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, Logger logger) {
+  public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, LoggerShim logger) {
 
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {

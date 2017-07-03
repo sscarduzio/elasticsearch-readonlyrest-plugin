@@ -31,6 +31,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
@@ -44,7 +45,7 @@ import java.util.Set;
 
 public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<IndicesRewriteSyncRule> {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   public IndicesRewriteSyncRuleActionListener(ESContext context) {
     super(IndicesRewriteSyncRule.class);

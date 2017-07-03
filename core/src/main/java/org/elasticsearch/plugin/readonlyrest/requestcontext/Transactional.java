@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 import java.util.Objects;
 
@@ -36,7 +37,7 @@ import java.util.Objects;
 
 public abstract class Transactional<T> extends Delayed {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   private Boolean initialized = false;
   private T initialValue;

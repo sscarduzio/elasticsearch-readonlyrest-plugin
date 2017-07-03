@@ -34,6 +34,7 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
@@ -79,6 +80,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ReloadableSettings reloadableSettings;
   private final Client client;
   private AtomicReference<Optional<AuditSink>> audit;
+  private final LoggerShim logger;
 
   @Inject
   public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
@@ -99,7 +101,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
 
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+    this.logger = ESContextImpl.mkLoggerShim(super.logger);
+
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, super.logger);
 
     logger.info("Readonly REST plugin was loaded...");
   }

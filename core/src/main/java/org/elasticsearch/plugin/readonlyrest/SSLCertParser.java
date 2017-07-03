@@ -18,11 +18,11 @@ import java.util.Base64;
  */
 public class SSLCertParser {
   private final SSLContextCreator creator;
-  private final Logger logger;
+  private final LoggerShim logger;
 
-  public SSLCertParser(RorSettings settings, ESContext esContext, SSLContextCreator creator) {
+  public SSLCertParser(RorSettings settings, LoggerShim logger, SSLContextCreator creator) {
     this.creator = creator;
-    this.logger = esContext.logger(getClass());
+    this.logger = logger;
     createContext(settings);
   }
 

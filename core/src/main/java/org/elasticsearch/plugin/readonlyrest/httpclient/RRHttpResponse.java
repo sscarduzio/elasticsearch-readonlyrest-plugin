@@ -16,21 +16,24 @@
  */
 package org.elasticsearch.plugin.readonlyrest.httpclient;
 
-public class HttpClientConfig {
+import java.io.InputStream;
+import java.util.function.Supplier;
 
-  private final String host;
-  private final int port;
+public class RRHttpResponse {
 
-  public HttpClientConfig(String host, int port) {
-    this.host = host;
-    this.port = port;
+  private final int statusCode;
+  private final Supplier<InputStream> content;
+
+  public RRHttpResponse(int statusCode, Supplier<InputStream> content) {
+    this.statusCode = statusCode;
+    this.content = content;
   }
 
-  public String getHost() {
-    return host;
+  public int getStatusCode() {
+    return statusCode;
   }
 
-  public int getPort() {
-    return port;
+  public Supplier<InputStream> getContent() {
+    return content;
   }
 }

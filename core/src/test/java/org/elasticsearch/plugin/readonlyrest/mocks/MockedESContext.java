@@ -24,10 +24,10 @@ import org.apache.http.entity.StringEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientFactory;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpRequest;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpResponse;
+import org.elasticsearch.plugin.readonlyrest.httpclient.RRHttpRequest;
+import org.elasticsearch.plugin.readonlyrest.httpclient.RRHttpResponse;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 
 import java.io.IOException;
@@ -41,8 +41,52 @@ public class MockedESContext implements ESContext {
   public static final ESContext INSTANCE = new MockedESContext();
 
   @Override
-  public Logger logger(Class<?> clazz) {
-    return LogManager.getLogger(clazz);
+  public LoggerShim logger(Class<?> clazz) {
+    Logger l =  LogManager.getLogger(clazz);
+    return new LoggerShim() {
+
+      @Override
+      public void trace(String message) {
+        l.trace(message);
+      }
+
+      @Override
+      public void info(String message) {
+        l.info(message);
+      }
+
+      @Override
+      public void debug(String message) {
+        l.debug(message);
+      }
+
+      @Override
+      public void warn(String message) {
+        l.warn(message);
+      }
+
+      @Override
+      public void warn(String message, Throwable t) {
+        l.warn(message);
+        t.printStackTrace();
+      }
+
+      @Override
+      public void error(String message, Throwable t) {
+        l.error(message);
+        t.printStackTrace();
+      }
+
+      @Override
+      public void error(String message) {
+        l.error(message);
+      }
+
+      @Override
+      public boolean isDebugEnabled() {
+        return l.isDebugEnabled();
+      }
+    };
   }
 
   @Override
@@ -51,14 +95,14 @@ public class MockedESContext implements ESContext {
   }
 
   @Override
-  public HttpClientFactory httpClientFactory() {
-    return config -> new HttpClientAdapter();
+  public HttpClient mkHttpClient() {
+    return new HttpClientAdapter();
   }
 
   private static class HttpClientAdapter implements HttpClient {
 
     @Override
-    public CompletableFuture<HttpResponse> send(HttpRequest request) {
+    public CompletableFuture<RRHttpResponse> send(RRHttpRequest request) {
       RestClient client = new RestClient(request.getUrl().getHost(), request.getUrl().getPort());
       return CompletableFuture
           .supplyAsync(() -> {
@@ -71,7 +115,7 @@ public class MockedESContext implements ESContext {
           .thenApply(this::toResponse);
     }
 
-    private HttpUriRequest toUriRequest(HttpRequest request) throws URISyntaxException {
+    private HttpUriRequest toUriRequest(RRHttpRequest request) throws URISyntaxException {
       URIBuilder uriBuilder = new URIBuilder(request.getUrl());
       request.getQueryParams().forEach(uriBuilder::setParameter);
       URI uri = uriBuilder.build();
@@ -96,8 +140,8 @@ public class MockedESContext implements ESContext {
       }
     }
 
-    private HttpResponse toResponse(org.apache.http.HttpResponse resp) {
-      return new HttpResponse(resp.getStatusLine().getStatusCode(), () -> {
+    private RRHttpResponse toResponse(org.apache.http.HttpResponse resp) {
+      return new RRHttpResponse(resp.getStatusLine().getStatusCode(), () -> {
         try {
           return resp.getEntity().getContent();
         } catch (IOException e) {

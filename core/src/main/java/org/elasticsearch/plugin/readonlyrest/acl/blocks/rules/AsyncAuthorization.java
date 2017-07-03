@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authorization;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
@@ -28,7 +29,7 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthorization extends AsyncRule implements Authorization {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   protected AsyncAuthorization(ESContext context) {
     logger = context.logger(getClass());
