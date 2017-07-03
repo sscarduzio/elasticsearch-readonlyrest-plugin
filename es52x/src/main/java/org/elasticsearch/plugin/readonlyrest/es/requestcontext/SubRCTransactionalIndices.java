@@ -23,6 +23,7 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 
@@ -35,7 +36,7 @@ import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStr
  */
 public class SubRCTransactionalIndices extends Transactional<Set<String>> {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final SubRequestContext src;
   private final ESContext context;
 

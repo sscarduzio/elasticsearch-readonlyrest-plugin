@@ -25,6 +25,7 @@ import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Delayed;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
@@ -39,7 +40,7 @@ import java.util.stream.Collectors;
  * Created by sscarduzio on 13/04/2017.
  */
 public class SubRequestContext extends Delayed implements IndicesRequestContext {
-  private final Logger logger;
+  private final LoggerShim logger;
   private final RequestContextImpl originalRC;
   private final Object originalSubRequest;
   private final ESContext context;

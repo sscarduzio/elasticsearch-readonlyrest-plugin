@@ -22,6 +22,7 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
@@ -32,7 +33,7 @@ import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 public class ACLActionListener implements ActionListener<ActionResponse> {
 
   private final RuleActionListenersProvider ruleActionListenersProvider;
-  private final Logger logger;
+  private final LoggerShim logger;
   private final ActionListener<ActionResponse> baseListener;
   private final ActionRequest request;
   private final RequestContext rc;
