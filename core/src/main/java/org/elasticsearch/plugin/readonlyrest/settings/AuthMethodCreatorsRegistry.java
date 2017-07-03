@@ -41,6 +41,7 @@ public class AuthMethodCreatorsRegistry {
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator());
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
     creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator());
+    creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator());
     creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
     creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME, ldapAuthenticationRuleSettingsCreator(ldapSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator());
@@ -72,6 +73,11 @@ public class AuthMethodCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeySha512SettingsCreator() {
     return settings -> AuthKeySha512RuleSettings.from(settings.stringReq(AuthKeySha512RuleSettings.ATTRIBUTE_NAME));
+  }
+
+  @SuppressWarnings("unchecked")
+  private Function<RawSettings, AuthKeyProviderSettings> authKeyUnixSettingsCreator() {
+    return settings -> AuthKeyUnixRuleSettings.from(settings.stringReq(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME));
   }
 
   @SuppressWarnings("unchecked")

@@ -59,6 +59,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
     creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
     creators.put(ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
@@ -187,6 +188,12 @@ public class RulesSettingsCreatorsRegistry {
   private Supplier<RuleSettings> authKeySha512SettingsCreator(RawSettings blockSettings,
                                                               AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
     return authRuleFrom(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> authKeyUnixSettingsCreator(RawSettings blockSettings,
+                                                              AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
+    return authRuleFrom(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")

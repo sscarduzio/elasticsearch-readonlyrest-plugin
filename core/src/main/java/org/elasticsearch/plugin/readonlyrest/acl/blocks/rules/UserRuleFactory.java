@@ -50,6 +50,10 @@ public class UserRuleFactory {
             settings ->AsyncRuleAdapter.wrap( new AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
     );
     this.creators.put(
+            AuthKeyUnixRuleSettings.class,
+            settings ->AsyncRuleAdapter.wrap( new AuthKeyUnixSyncRule((AuthKeyUnixRuleSettings) settings, context))
+    );
+    this.creators.put(
       AuthKeyPlainTextRuleSettings.class,
       settings ->AsyncRuleAdapter.wrap(new AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context))
     );
