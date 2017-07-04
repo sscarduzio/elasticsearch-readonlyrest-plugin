@@ -24,7 +24,7 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -78,25 +78,26 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ESContext context;
   private final RuleActionListenersProvider ruleActionListenersProvider;
   private final ReloadableSettings reloadableSettings;
-  private final Client client;
-  private AtomicReference<Optional<AuditSink>> audit;
+  private final NodeClient client;
   private final LoggerShim logger;
+  private AtomicReference<Optional<AuditSink>> audit;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
+  public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
                                 TransportService transportService,
-                                Client client,
+                                NodeClient client,
                                 ThreadPool threadPool)
     throws IOException {
     super(settings);
-    this.reloadableSettings = reloadableConfiguration;
+    this.reloadableSettings = new ReloadableSettingsImpl(new SettingsManagerImpl(settings, client));
+
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
     this.audit = new AtomicReference<>(Optional.empty());
-    this.ruleActionListenersProvider =  new RuleActionListenersProvider(context);
+    this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
     this.client = client;
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
@@ -120,7 +121,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       } catch (Exception ex) {
         logger.error("Cannot configure ReadonlyREST plugin", ex);
       }
-    } else {
+    }
+    else {
       this.acl.set(Optional.empty());
       logger.info("Configuration reloaded - ReadonlyREST disabled");
     }
@@ -171,58 +173,58 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     if (reqNull != chanNull) {
       if (chanNull) {
         throw new SecurityPermissionException("Problems analyzing the channel object. " +
-            "Have you checked the security permissions?", null);
+                                                "Have you checked the security permissions?", null);
       }
       if (reqNull) {
         throw new SecurityPermissionException("Problems analyzing the request object. " +
-            "Have you checked the security permissions?", null);
+                                                "Have you checked the security permissions?", null);
       }
     }
 
     RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, threadPool, context);
 
     acl.check(rc)
-        .exceptionally(throwable -> {
-          AuditSink audit = this.audit.get().get();
-          if (throwable.getCause() instanceof ResourceNotFoundException) {
-            logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
-            sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
-            audit.log(new ResponseContext(NOT_FOUND, rc, throwable, null), logger);
+      .exceptionally(throwable -> {
+        AuditSink audit = this.audit.get().get();
+        if (throwable.getCause() instanceof ResourceNotFoundException) {
+          logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
+          sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
+          audit.log(new ResponseContext(NOT_FOUND, rc, throwable, null), logger);
 
-            return null;
-          }
-          throwable.printStackTrace();
-          audit.log(new ResponseContext(ERRORED, rc, throwable, null), logger);
-          sendNotAuthResponse(channel, acl.getSettings());
           return null;
-        })
-        .thenApply(result -> {
-          assert result != null;
+        }
+        throwable.printStackTrace();
+        audit.log(new ResponseContext(ERRORED, rc, throwable, null), logger);
+        sendNotAuthResponse(channel, acl.getSettings());
+        return null;
+      })
+      .thenApply(result -> {
+        assert result != null;
 
-          if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
-            boolean hasProceeded = false;
-            try {
-              @SuppressWarnings("unchecked")
-              ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
-                  request, (ActionListener<ActionResponse>) listener, ruleActionListenersProvider, rc, result, context
-              );
-              chain.proceed(task, action, request, aclActionListener);
-              hasProceeded = true;
-              return null;
-            } catch (Throwable e) {
-              e.printStackTrace();
-            }
-            if(!hasProceeded) {
-              chain.proceed(task, action, request, listener);
-            }
+        if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
+          boolean hasProceeded = false;
+          try {
+            @SuppressWarnings("unchecked")
+            ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
+              request, (ActionListener<ActionResponse>) listener, ruleActionListenersProvider, rc, result, context
+            );
+            chain.proceed(task, action, request, aclActionListener);
+            hasProceeded = true;
             return null;
+          } catch (Throwable e) {
+            e.printStackTrace();
           }
-
-          sendNotAuthResponse(channel, acl.getSettings());
-
-          listener.onFailure(null);
+          if (!hasProceeded) {
+            chain.proceed(task, action, request, listener);
+          }
           return null;
-        });
+        }
+
+        sendNotAuthResponse(channel, acl.getSettings());
+
+        listener.onFailure(null);
+        return null;
+      });
 
   }
 
@@ -264,13 +266,13 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         try {
           logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
           Optional<Throwable> res = reloadableSettings.reload().get();
-          if(res.isPresent()){
+          if (res.isPresent()) {
             throw res.get();
           }
           logger.info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding elasticsearch.yml");
           executor.shutdown();
         } catch (Throwable t) {
-          if(t.getCause() != null){
+          if (t.getCause() != null) {
             if (t.getCause() instanceof SettingsMalformedException) {
               logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + t.getCause().getMessage());
               executor.shutdown();
