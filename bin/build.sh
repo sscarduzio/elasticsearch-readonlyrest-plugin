@@ -13,9 +13,9 @@ done
 
 ./gradlew --stacktrace --debug test ror &&
 # additional build of ES module for specified ES version
-./gradlew --stacktrace es53x:ror '-PesVersion=5.3.0'
-./gradlew --stacktrace es53x:ror '-PesVersion=5.3.1'
-./gradlew --stacktrace es53x:ror '-PesVersion=5.3.2'
+# ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.0'
+#./gradlew --stacktrace es53x:ror '-PesVersion=5.3.1'
+#./gradlew --stacktrace es53x:ror '-PesVersion=5.3.2'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.0'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.1'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.2'
