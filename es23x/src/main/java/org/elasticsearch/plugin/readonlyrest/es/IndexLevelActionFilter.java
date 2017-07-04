@@ -24,7 +24,7 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -71,37 +71,52 @@ import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseConte
 @Singleton
 public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter, Consumer<RorSettings> {
 
-  private final ThreadPool threadPool;
-  private final ClusterService clusterService;
+  private ThreadPool threadPool;
+  private ClusterService clusterService;
 
-  private final AtomicReference<Optional<ACL>> acl;
-  private final ESContext context;
-  private final RuleActionListenersProvider ruleActionListenersProvider;
-  private final ReloadableSettings reloadableSettings;
-  private final AtomicReference<Optional<AuditSink>> audit;
-  private final Client client;
-  private final LoggerShim logger;
+  private AtomicReference<Optional<ACL>> acl = new AtomicReference<>(Optional.empty());
+  private ESContext context;
+  private RuleActionListenersProvider ruleActionListenersProvider;
+  private ReloadableSettings reloadableSettings;
+  private AtomicReference<Optional<AuditSink>> audit = new AtomicReference<>(Optional.empty());
+  private NodeClient client;
+  private LoggerShim logger;
+
+
   @Inject
-  public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
+  public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
                                 TransportService transportService,
-                                Client client,
                                 ThreadPool threadPool)
     throws IOException {
     super(settings);
-    this.reloadableSettings = reloadableConfiguration;
+
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
     this.threadPool = threadPool;
-    this.acl = new AtomicReference<>(Optional.empty());
-    this.audit = new AtomicReference<>(Optional.empty());
-    this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
-    this.client = client;
-    this.logger = ESContextImpl.mkLoggerShim(super.logger);
-    this.reloadableSettings.addListener(this);
-    scheduleConfigurationReload();
 
+    ReadonlyRestPlugin.clientFuture.thenAccept(c -> {
+      try {
+        initialize(c, settings, transportService);
+      } catch (Throwable e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+      }
+    });
+
+  }
+
+  private void initialize(NodeClient client, Settings settings, TransportService transportService) throws IOException {
+    this.client = client;
+    reloadableSettings = new ReloadableSettingsImpl(new SettingsManagerImpl(settings, client));
+
+    this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
+    this.logger = ESContextImpl.mkLoggerShim(super.logger);
     new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+
+    accept(reloadableSettings.getRorSettings());
+
+    reloadableSettings.addListener(s -> accept(s));
 
     logger.info("Readonly REST plugin was loaded...");
   }
@@ -137,11 +152,14 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                     ActionRequest request,
                     ActionListener listener,
                     ActionFilterChain chain) {
+
+
     Optional<ACL> acl = this.acl.get();
     if (acl.isPresent()) {
       handleRequest(acl.get(), task, action, request, listener, chain);
     }
     else {
+      logger.warn("ACL not set yet..");
       chain.proceed(task, action, request, listener);
     }
   }
@@ -223,9 +241,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           return null;
         }
 
+        //listener.onFailure(null);
         sendNotAuthResponse(channel, acl.getSettings());
-
-        listener.onFailure(null);
         return null;
       });
 

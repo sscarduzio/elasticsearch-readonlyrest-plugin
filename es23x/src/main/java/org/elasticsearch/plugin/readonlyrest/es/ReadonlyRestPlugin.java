@@ -18,10 +18,9 @@
 package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.elasticsearch.action.ActionModule;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Module;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.http.HttpServerModule;
 import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.rest.RestChannel;
@@ -32,13 +31,12 @@ import org.elasticsearch.rest.RestRequest;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
+
 
 public class ReadonlyRestPlugin extends Plugin {
+  static CompletableFuture<NodeClient> clientFuture = new CompletableFuture<>();
 
-
-  public ReadonlyRestPlugin(Settings s) {
-
-  }
 
   @Override
   public String name() {
@@ -64,21 +62,23 @@ public class ReadonlyRestPlugin extends Plugin {
     return Collections.singleton(restLoggerModule);
   }
 
+
   public static class RestLogger {
     @Inject
-    public RestLogger(RestController restController, Settings settings, Client client) {
+    public RestLogger(RestController restController, NodeClient client) {
+
+      clientFuture.complete(client);
+
       restController.registerFilter(new RestFilter() {
         @Override
         public void process(RestRequest request, RestChannel channel, RestFilterChain filterChain) throws Exception {
-          request.putInContext("channel", channel);
+          ThreadRepo.channel.set(channel);
           filterChain.continueProcessing(request, channel);
         }
       });
     }
-
   }
-
-//  @Override
+  //  @Override
 //  @SuppressWarnings({"unchecked", "rawtypes"})
 //  public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
 //    return Collections.singletonList(
@@ -93,6 +93,5 @@ public class ReadonlyRestPlugin extends Plugin {
 //    IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
 //    return Collections.singletonList(new RestRRAdminAction(settings, restController));
 //  }
-
 
 }

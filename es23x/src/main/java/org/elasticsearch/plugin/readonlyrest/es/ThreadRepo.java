@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 
@@ -27,4 +28,5 @@ public class ThreadRepo {
   public static ThreadLocal<RestRequest> request = new ThreadLocal<>();
   public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
   public static ThreadLocal<Long> taskId = new ThreadLocal<>();
+  public static ThreadLocal<NodeClient> client = new ThreadLocal<>();
 }

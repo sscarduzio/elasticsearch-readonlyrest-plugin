@@ -40,6 +40,10 @@ public abstract class ReloadableSettings {
     this.settingsManager = settingsManager;
   }
 
+  public RorSettings getRorSettings() {
+    return rorSettings.get();
+  }
+
   public void addListener(Consumer<RorSettings> onSettingsUpdate) {
     this.onSettingsUpdateListeners.put(onSettingsUpdate, true);
     onSettingsUpdate.accept(rorSettings.get());
@@ -54,8 +58,8 @@ public abstract class ReloadableSettings {
                      this.rorSettings.set(ror);
                      return Optional.<Throwable>empty();
                    }
-      , MoreExecutors.directExecutor()).exceptionally(th ->
-                        Optional.of(th)
+        , MoreExecutors.directExecutor()).exceptionally(th ->
+                                                          Optional.of(th)
       );
   }
 

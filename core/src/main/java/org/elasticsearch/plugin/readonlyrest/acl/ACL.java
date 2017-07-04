@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
@@ -91,11 +90,15 @@ public class ACL {
           }
           return true;
         }
-        audit.log(new ResponseContext( FORBIDDEN, rc, null, checkResult), logger);
+        audit.log(new ResponseContext(FORBIDDEN, rc, null, checkResult), logger);
         return false;
       },
       nothing -> BlockExitResult.noMatch()
-    );
+    )
+      .exceptionally(t -> {
+        t.printStackTrace();
+        return BlockExitResult.noMatch();
+      });
   }
 
   public RorSettings getSettings() {

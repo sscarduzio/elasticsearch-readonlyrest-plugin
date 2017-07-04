@@ -17,27 +17,27 @@
  * under the License.
  */
 
-package org.elasticsearch.plugin.readonlyrest.es.rradmin;
-
-import org.elasticsearch.action.Action;
-import org.elasticsearch.client.ElasticsearchClient;
-
-public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
-
-  public static final String NAME = "cluster:admin/rradmin/refreshsettings";
-  public static final RRAdminAction INSTANCE = new RRAdminAction();
-
-  public RRAdminAction() {
-    super(NAME);
-  }
-
-  @Override
-  public RRAdminRequestBuilder newRequestBuilder(ElasticsearchClient client) {
-    return new RRAdminRequestBuilder(client, INSTANCE);
-  }
-
-  @Override
-  public RRAdminResponse newResponse() {
-    return new RRAdminResponse(null);
-  }
-}
+//package org.elasticsearch.plugin.readonlyrest.es.rradmin;
+//
+//import org.elasticsearch.action.Action;
+//import org.elasticsearch.client.ElasticsearchClient;
+//
+//public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
+//
+//  public static final String NAME = "cluster:admin/rradmin/refreshsettings";
+//  public static final RRAdminAction INSTANCE = new RRAdminAction();
+//
+//  public RRAdminAction() {
+//    super(NAME);
+//  }
+//
+//  @Override
+//  public RRAdminRequestBuilder newRequestBuilder(ElasticsearchClient client) {
+//    return new RRAdminRequestBuilder(client, INSTANCE);
+//  }
+//
+//  @Override
+//  public RRAdminResponse newResponse() {
+//    return new RRAdminResponse(null);
+//  }
+//}

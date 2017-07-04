@@ -53,7 +53,6 @@ public class AuditSink extends AuditSinkShim {
   private final BulkProcessor bulkProcessor;
   private final RorSettings settings;
 
-  @Inject
   public AuditSink(Client client, RorSettings settings) {
     this.settings = settings;
     this.bulkProcessor = BulkProcessor.builder(

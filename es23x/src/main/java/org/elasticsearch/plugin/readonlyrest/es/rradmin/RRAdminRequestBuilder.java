@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.elasticsearch.plugin.readonlyrest.es.rradmin;
-
-import org.elasticsearch.action.ActionRequestBuilder;
-import org.elasticsearch.client.ElasticsearchClient;
-
-public class RRAdminRequestBuilder extends ActionRequestBuilder<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
-
-  public RRAdminRequestBuilder(ElasticsearchClient client, RRAdminAction action) {
-    super(client, action, new RRAdminRequest());
-  }
-}
+//package org.elasticsearch.plugin.readonlyrest.es.rradmin;
+//
+//import org.elasticsearch.action.ActionRequestBuilder;
+//import org.elasticsearch.client.ElasticsearchClient;
+//
+//public class RRAdminRequestBuilder extends ActionRequestBuilder<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
+//
+//  public RRAdminRequestBuilder(ElasticsearchClient client, RRAdminAction action) {
+//    super(client, action, new RRAdminRequest());
+//  }
+//}
