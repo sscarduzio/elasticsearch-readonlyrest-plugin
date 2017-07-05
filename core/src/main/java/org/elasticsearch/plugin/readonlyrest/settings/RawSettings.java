@@ -92,11 +92,12 @@ public class RawSettings {
   }
 
   public String stringReq(String attr) {
-    return req(attr);
+    String s = req(attr);
+    return s;
   }
 
   public Optional<Integer> intOpt(String attr) {
-    return opt(attr);
+    return opt(attr).map(s -> Integer.parseInt((String)s));
   }
 
   public Integer intReq(String attr) {
