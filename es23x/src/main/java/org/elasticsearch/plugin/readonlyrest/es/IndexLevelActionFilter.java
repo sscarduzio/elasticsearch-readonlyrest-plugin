@@ -159,7 +159,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       handleRequest(acl.get(), task, action, request, listener, chain);
     }
     else {
-      logger.warn("ACL not set yet..");
+      if(logger != null) {
+        logger.warn("ACL not set yet..");
+      }
       chain.proceed(task, action, request, listener);
     }
   }
