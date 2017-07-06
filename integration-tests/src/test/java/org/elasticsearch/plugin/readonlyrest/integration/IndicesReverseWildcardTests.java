@@ -26,7 +26,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.testcontainers.shaded.jersey.repackaged.com.google.common.collect.Lists;
+import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 import java.util.Optional;
 
