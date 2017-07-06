@@ -97,7 +97,16 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     ReadonlyRestPlugin.clientFuture.thenAccept(c -> {
       try {
-        initialize(c, settings, transportService);
+        this.client = c;
+        reloadableSettings = new ReloadableSettingsImpl(new SettingsManagerImpl(settings, client));
+
+        this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
+        this.logger = ESContextImpl.mkLoggerShim(super.logger);
+        new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+
+        reloadableSettings.addListener(s -> accept(s));
+
+        logger.info("Readonly REST plugin was loaded...");
       } catch (Throwable e) {
         e.printStackTrace();
         throw new RuntimeException(e);
@@ -106,39 +115,31 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   }
 
-  private void initialize(NodeClient client, Settings settings, TransportService transportService) throws IOException {
-    this.client = client;
-    reloadableSettings = new ReloadableSettingsImpl(new SettingsManagerImpl(settings, client));
-
-    this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
-    this.logger = ESContextImpl.mkLoggerShim(super.logger);
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
-
-    accept(reloadableSettings.getRorSettings());
-
-    reloadableSettings.addListener(s -> accept(s));
-
-    logger.info("Readonly REST plugin was loaded...");
-  }
-
-  @Override
-  public void accept(RorSettings rorSettings) {
+  private void initialize(RorSettings rorSettings) {
     if (rorSettings.isEnabled()) {
       try {
         AuditSink audit = new AuditSink(client, rorSettings);
         this.audit.set(Optional.of(audit));
         ACL acl = new ACL(rorSettings, this.context, audit);
         this.acl.set(Optional.of(acl));
-        logger.info("Configuration reloaded - ReadonlyREST enabled");
       } catch (Exception ex) {
-        logger.error("Cannot configure ReadonlyREST plugin");
-        ex.printStackTrace();
+        logger.error("Cannot initialize ReadonlyREST settings!", ex);
       }
     }
     else {
       this.acl.set(Optional.empty());
-      logger.info("Configuration reloaded - ReadonlyREST disabled");
+      logger.info("ReadonlyREST Settings initialized - ReadonlyREST disabled");
     }
+
+  }
+
+  @Override
+  public void accept(RorSettings rorSettings) {
+    if (!rorSettings.isEnabled()) {
+      logger.info("ReadonlyREST Settings reloaded - ReadonlyREST ENABLED");
+    }
+    initialize(rorSettings);
+    logger.info("ReadonlyREST Settings reloaded - ReadonlyREST DISABLED");
   }
 
   @Override
