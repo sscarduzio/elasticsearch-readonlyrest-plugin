@@ -217,17 +217,26 @@ public class RCTransactionalIndices {
             return null;
           });
         }
+
+        // Optimistic reflection attempt
         boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
 
+        if (!okSetResult && actionRequest instanceof MultiSearchRequest) {
+          // If it's an empty MSR, we are ok
+          okSetResult = true;
+          MultiSearchRequest msr = (MultiSearchRequest) actionRequest;
+          for (SearchRequest sr : msr.requests()) {
+            okSetResult &= ReflecUtils.setIndices(sr, Sets.newHashSet("indices"), newIndices, logger);
+          }
+        }
 
         if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
           IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
-          final boolean[] okSubResult = {false};
-          actions.forEach(a -> {
-            okSubResult[0] &= ReflecUtils.setIndices(a, Sets.newHashSet("index"), newIndices, logger);
-          });
-          okSetResult &= okSubResult[0];
+          okSetResult = true;
+          for(IndicesAliasesRequest.AliasActions act : actions) {
+            act.indices(newIndices.toArray(new String[newIndices.size()]));
+          }
         }
 
         if (okSetResult) {
