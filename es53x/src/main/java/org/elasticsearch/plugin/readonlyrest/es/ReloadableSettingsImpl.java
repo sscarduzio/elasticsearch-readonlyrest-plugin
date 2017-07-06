@@ -16,12 +16,16 @@
  */
 package org.elasticsearch.plugin.readonlyrest.es;
 
+import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 
 import java.io.IOException;
 
-public class ReloadableSettingsImpl extends ReloadableSettings {
 
+@Singleton
+public class ReloadableSettingsImpl extends ReloadableSettings {
+  @Inject
   public ReloadableSettingsImpl(SettingsManagerImpl settingsManager) throws IOException {
     super(settingsManager);
   }

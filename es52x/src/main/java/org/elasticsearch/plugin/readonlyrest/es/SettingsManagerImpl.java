@@ -32,12 +32,13 @@ import java.util.Map;
  * Created by sscarduzio on 25/06/2017.
  */
 
-
+@Singleton
 public class SettingsManagerImpl implements SettingsManager {
 
   private final NodeClient client;
   private Settings settings;
 
+  @Inject
   public SettingsManagerImpl(Settings settings, NodeClient client) throws IOException {
     this.settings = settings;
     this.client = client;

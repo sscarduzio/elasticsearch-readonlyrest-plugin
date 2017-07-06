@@ -87,10 +87,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                 ClusterService clusterService,
                                 TransportService transportService,
                                 NodeClient client,
-                                ThreadPool threadPool)
+                                ThreadPool threadPool,
+                                ReloadableSettingsImpl reloadableSettings
+  )
     throws IOException {
     super(settings);
-    this.reloadableSettings = new ReloadableSettingsImpl(new SettingsManagerImpl(settings, client));
+    this.reloadableSettings = reloadableSettings;
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
     this.threadPool = threadPool;
