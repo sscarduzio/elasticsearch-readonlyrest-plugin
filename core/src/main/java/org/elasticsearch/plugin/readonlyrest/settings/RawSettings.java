@@ -97,7 +97,12 @@ public class RawSettings {
   }
 
   public Optional<Integer> intOpt(String attr) {
-    return opt(attr).map(s -> Integer.parseInt((String)s));
+    return opt(attr).map(s -> {
+      if(s instanceof String){
+        return Integer.parseInt((String)s);
+      }
+      return (Integer) s;
+    });
   }
 
   public Integer intReq(String attr) {
