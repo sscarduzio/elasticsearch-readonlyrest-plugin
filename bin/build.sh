@@ -19,7 +19,7 @@ done
 ./gradlew --stacktrace --debug test ror &&
 
 echo "##########################################################"
-echo ($0) additional build of ES module for specified ES version
+echo "($0) additional build of ES module for specified ES version"
 echo "##########################################################"
 
 # ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.0'
