@@ -22,7 +22,6 @@ import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 
 import java.io.IOException;
 
-
 @Singleton
 public class ReloadableSettingsImpl extends ReloadableSettings {
   @Inject

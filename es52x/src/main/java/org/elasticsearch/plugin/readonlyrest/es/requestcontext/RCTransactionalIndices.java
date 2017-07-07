@@ -238,11 +238,13 @@ public class RCTransactionalIndices {
             act.index(newIndices.iterator().next());
           }
         }
+
         if (okSetResult) {
           logger.debug("success changing indices: " + newIndices + " correctly set as " + get());
         }
         else {
-          logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
+          logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName() +
+                         "  in req id: " + rc.getId());
         }
       }
 

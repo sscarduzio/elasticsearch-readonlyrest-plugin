@@ -33,6 +33,7 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.SSLCertParser;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
@@ -45,12 +46,16 @@ import java.util.Optional;
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   private final RorSettings sslSettings;
+  private final LoggerShim logger;
 
   public SSLTransportNetty4(ESContext esContext, Settings settings, NetworkService networkService, BigArrays bigArrays,
                             ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
+    this.logger = esContext.logger(getClass());
     this.sslSettings = new RorSettings(new RawSettings(settings.getAsStructuredMap()));
-    logger.info("creating SSL transport");
+    if (sslSettings.isSSLEnabled()) {
+      logger.info("creating SSL transport");
+    }
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -77,7 +82,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
 
-      new SSLCertParser(sslSettings, ESContextImpl.mkLoggerShim(logger), (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           context = Optional.of(SslContextBuilder.forServer(

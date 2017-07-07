@@ -239,6 +239,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
 
   public Optional<String> resolveVariable(String original) {
     return variablesManager.apply(original);
+
   }
 
   public Set<String> getAllIndicesAndAliases() {
@@ -409,5 +410,4 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   public Set<String> getTransientIndices() {
     return indices.get();
   }
-
 }

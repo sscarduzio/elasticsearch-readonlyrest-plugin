@@ -92,10 +92,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   )
     throws IOException {
     super(settings);
-    this.logger = ESContextImpl.mkLoggerShim(super.logger);
-    this.reloadableSettings = reloadableSettings;
-
     this.context = new ESContextImpl();
+    this.logger = context.logger(getClass());
+    
+    this.reloadableSettings = reloadableSettings;
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
@@ -105,8 +105,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
 
-
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, super.logger);
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
 
     logger.info("Readonly REST plugin was loaded...");
   }

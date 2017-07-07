@@ -57,7 +57,6 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     if (sslSettings.isSSLEnabled()) {
       logger.info("creating SSL transport");
     }
-
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -98,7 +97,6 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           e.printStackTrace();
         }
       });
-
     }
 
     protected void initChannel(final Channel ch) throws Exception {

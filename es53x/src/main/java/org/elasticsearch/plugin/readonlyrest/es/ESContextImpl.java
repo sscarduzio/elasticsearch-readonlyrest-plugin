@@ -82,5 +82,4 @@ public class ESContextImpl implements ESContext {
     return new ElasticsearchException(message);
   }
 
-
 }

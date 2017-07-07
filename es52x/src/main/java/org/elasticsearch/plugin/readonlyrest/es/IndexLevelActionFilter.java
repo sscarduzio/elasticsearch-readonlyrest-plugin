@@ -78,9 +78,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ESContext context;
   private final RuleActionListenersProvider ruleActionListenersProvider;
   private final ReloadableSettings reloadableSettings;
-  private final AtomicReference<Optional<AuditSink>> audit;
   private final NodeClient client;
   private final LoggerShim logger;
+  private AtomicReference<Optional<AuditSink>> audit;
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
@@ -92,8 +92,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   )
     throws IOException {
     super(settings);
-    this.reloadableSettings = reloadableSettings;
     this.context = new ESContextImpl();
+    this.logger = context.logger(getClass());
+
+    this.reloadableSettings = reloadableSettings;
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
@@ -103,7 +105,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.reloadableSettings.addListener(this);
     scheduleConfigurationReload();
 
-    this.logger = context.logger(getClass());
     new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
 
     logger.info("Readonly REST plugin was loaded...");

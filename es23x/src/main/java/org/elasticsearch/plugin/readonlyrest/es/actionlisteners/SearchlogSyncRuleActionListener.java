@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.es.actionlisteners;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.search.SearchRequest;
@@ -51,20 +50,21 @@ public class SearchlogSyncRuleActionListener extends RuleActionListener<Searchlo
       SearchRequest searchRequest = (SearchRequest) ar;
       SearchResponse searchResponse = (SearchResponse) response;
       logger.info(
-          "search: {" +
-              " ID:" + rc.getId() +
-              ", ACT:" + rc.getAction() +
-              ", USR:" + rc.getLoggedInUser() +
-              ", IDX:" + Arrays.toString(searchRequest.indices()) +
-              ", TYP:" + Arrays.toString(searchRequest.types()) +
-              ", SRC:" + convertToJson(searchRequest.source().toBytesArray()) +
-              ", HIT:" + searchResponse.getHits().totalHits() +
-              ", RES:" + searchResponse.getHits().hits().length +
-              " }"
+        "search: {" +
+          " ID:" + rc.getId() +
+          ", ACT:" + rc.getAction() +
+          ", USR:" + rc.getLoggedInUser() +
+          ", IDX:" + Arrays.toString(searchRequest.indices()) +
+          ", TYP:" + Arrays.toString(searchRequest.types()) +
+          ", SRC:" + convertToJson(searchRequest.source().toBytesArray()) +
+          ", HIT:" + searchResponse.getHits().totalHits() +
+          ", RES:" + searchResponse.getHits().hits().length +
+          " }"
       );
     }
     return true;
   }
+
   @Override
   protected boolean onFailure(BlockExitResult result,
                               RequestContext rc,

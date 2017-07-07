@@ -69,7 +69,6 @@ public class ESContextImpl implements ESContext {
         return l.isDebugEnabled();
       }
     };
-
   }
 
   @Override
