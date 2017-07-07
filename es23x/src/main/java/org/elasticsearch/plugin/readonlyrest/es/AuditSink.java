@@ -24,7 +24,6 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -55,6 +54,10 @@ public class AuditSink extends AuditSinkShim {
 
   public AuditSink(Client client, RorSettings settings) {
     this.settings = settings;
+    if (!settings.getAuditCollector()) {
+      bulkProcessor = null;
+      return;
+    }
     this.bulkProcessor = BulkProcessor.builder(
       client,
       new BulkProcessor.Listener() {
@@ -97,6 +100,9 @@ public class AuditSink extends AuditSinkShim {
   }
 
   public void submit(ResponseContext rc) throws JsonProcessingException {
+    if (!settings.getAuditCollector()) {
+      return;
+    }
     String indexName = "readonlyrest_audit-" + formatter.format(Calendar.getInstance().getTime());
     IndexRequest ir = new IndexRequest(
       indexName,

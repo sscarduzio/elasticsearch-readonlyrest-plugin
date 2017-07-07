@@ -56,6 +56,12 @@ public class AuditSink extends AuditSinkShim {
   @Inject
   public AuditSink(Client client, RorSettings settings) {
     this.settings = settings;
+
+    if (!isAuditCollectorEnabled()) {
+      bulkProcessor = null;
+      return;
+    }
+
     this.bulkProcessor = BulkProcessor.builder(
       client,
       new BulkProcessor.Listener() {
@@ -98,13 +104,18 @@ public class AuditSink extends AuditSinkShim {
   }
 
   public void submit(ResponseContext rc) throws JsonProcessingException {
+    if (!isAuditCollectorEnabled()) {
+      return;
+    }
     String indexName = "readonlyrest_audit-" + formatter.format(Calendar.getInstance().getTime());
     IndexRequest ir = new IndexRequest(
       indexName,
       "ror_audit_evt",
-      rc.getRequestContext().getId()).source(
+      rc.getRequestContext().getId()
+    ).source(
       rc.toJson(),
-      XContentType.JSON);
+      XContentType.JSON
+    );
     bulkProcessor.add(ir);
   }
 

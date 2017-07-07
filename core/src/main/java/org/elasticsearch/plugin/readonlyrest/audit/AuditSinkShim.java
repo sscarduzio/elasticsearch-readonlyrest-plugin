@@ -17,7 +17,6 @@
 package org.elasticsearch.plugin.readonlyrest.audit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.Constants;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Verbosity;
@@ -39,6 +38,15 @@ public abstract class AuditSinkShim {
   public abstract Boolean isAuditCollectorEnabled();
 
   public void log(ResponseContext res, LoggerShim logger) {
+    try {
+      doLog(res, logger);
+    } catch (Throwable t) {
+      t.printStackTrace();
+      logger.error("issues with audit logs :" + t.getMessage());
+    }
+  }
+
+  private void doLog(ResponseContext res, LoggerShim logger) {
 
     boolean skipLog = res.finalState().equals(FinalState.ALLOWED) &&
       !Verbosity.INFO.equals(res.getResult().getBlock().getVerbosity());
