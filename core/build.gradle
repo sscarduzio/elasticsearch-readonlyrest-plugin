@@ -58,6 +58,9 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
     compile 'org.slf4j:slf4j-api:1.7.25'
+
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
+
     compile ('io.jsonwebtoken:jjwt:0.7.0') {
       // exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
