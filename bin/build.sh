@@ -1,23 +1,35 @@
 #!/bin/sh
 
-echo "####################################"
+echo "#############################################"
 echo "($0) RUNNINIG CONTINUOUS INTEGRATION"
-echo "####################################"
+echo "#############################################"
 
 # Log file friendly Gradle output
 export TERM=dumb
 
-echo -n "Check all license headers are in place"
+echo
+echo
+echo  ">>> Check all license headers are in place"
 ./gradlew license
 
-#for esProject in `ls | grep 'es\d\dx'`; do
-for esProject in `ls | grep 'es5\dx'`; do
-    echo "Running integration tests for $esProject ..."
-    ./gradlew --stacktrace integration-tests:test '-PesModule='$esProject # --debug
-done
+echo
+echo ">>> Running unit tests.."
+./gradlew --stacktrace test ror &&
 
-./gradlew --stacktrace --debug test ror &&
 
+echo
+echo
+echo ">>> es53x => Running testcontainers.."
+./gradlew --stacktrace integration-tests:test '-PesModule=es53x'
+
+echo
+echo
+echo ">>> es52x => Running testcontainers.."
+./gradlew --stacktrace integration-tests:test '-PesModule=es52x'
+
+
+echo
+echo
 echo "##########################################################"
 echo "($0) additional build of ES module for specified ES version"
 echo "##########################################################"
