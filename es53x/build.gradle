@@ -77,7 +77,7 @@ configurations {
         exclude group: 'lucene-analyzers-common'
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
-        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
 }
 
