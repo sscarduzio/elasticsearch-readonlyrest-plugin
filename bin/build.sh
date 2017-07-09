@@ -1,9 +1,6 @@
 #!/bin/sh
 
-# Exit with error if any command fails
-
-{
-set -e
+set -xe
 
 echo "#############################################"
 echo "($0) RUNNINIG CONTINUOUS INTEGRATION"
@@ -25,13 +22,12 @@ echo ">>> Running unit tests.."
 echo
 echo
 echo ">>> es53x => Running testcontainers.."
-./gradlew --stacktrace integration-tests:test '-PesModule=es53x'
+./gradlew --stacktrace integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
 echo
 echo
 echo ">>> es52x => Running testcontainers.."
-./gradlew --stacktrace integration-tests:test '-PesModule=es52x'
-
+./gradlew --stacktrace integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
 echo
 echo
@@ -53,7 +49,3 @@ echo "##########################################################"
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.2'
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.1'
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.0'
-
-} || {
-   find . |grep hs_err |xargs cat
-}
