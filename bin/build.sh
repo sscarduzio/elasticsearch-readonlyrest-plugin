@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# Exit with error if any command fails
+
+{
+set -e
+
 echo "#############################################"
 echo "($0) RUNNINIG CONTINUOUS INTEGRATION"
 echo "#############################################"
@@ -14,7 +19,7 @@ echo  ">>> Check all license headers are in place"
 
 echo
 echo ">>> Running unit tests.."
-./gradlew --stacktrace test ror &&
+./gradlew --stacktrace test ror
 
 
 echo
@@ -48,3 +53,7 @@ echo "##########################################################"
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.2'
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.1'
 ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.0'
+
+} || {
+   find . |grep hs_err |xargs cat
+}
