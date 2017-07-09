@@ -76,19 +76,20 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
         project.getESVersion(),
         new ImageFromDockerfile()
-            .withFileFromFile(pluginFile.getName(), pluginFile)
+            .withFileFromFile(pluginFile.getAbsolutePath(), pluginFile)
             .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
             .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
-            .withDockerfileFromBuilder(builder -> builder
+            .withDockerfileFromBuilder(builder -> logger.info(builder
                 .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getESVersion())
-                .copy(pluginFile.getName(), "/tmp/")
+              .copy(pluginFile.getAbsolutePath(), "/tmp/")
                 .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
                 .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
                 .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +
-                    "file:/tmp/" + pluginFile.getName())
-                .build()));
+                     "file:///tmp/" + pluginFile.getName() + " 2>&1")
+              .build()))
+    );
     return container
-       // .withLogConsumer((l) -> System.out.print(l.getUtf8String()))
+        .withLogConsumer((l) -> System.out.print(l.getUtf8String()))
         .withExposedPorts(ES_PORT)
         .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 
