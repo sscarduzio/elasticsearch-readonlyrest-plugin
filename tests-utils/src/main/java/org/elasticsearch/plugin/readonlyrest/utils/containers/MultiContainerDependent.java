@@ -52,7 +52,9 @@ public class MultiContainerDependent<T extends GenericContainer<T>>
 
   @Override
   protected void finished(Description description) {
-    container.stop();
+    if(container != null) {
+      container.stop();
+    }
     multiContainer.finished(description);
   }
 
