@@ -22,6 +22,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -32,9 +34,12 @@ import java.util.concurrent.CompletableFuture;
  */
 public class ApacheHttpCoreClient implements HttpClient {
   private final CloseableHttpAsyncClient hcHttpClient;
+  private final LoggerShim logger;
 
-  public ApacheHttpCoreClient() {
+  public ApacheHttpCoreClient(ESContext esContext) {
     this.hcHttpClient = HttpAsyncClients.createDefault();
+    this.hcHttpClient.start();
+    this.logger = esContext.logger(getClass());
   }
 
   @Override
@@ -48,17 +53,18 @@ public class ApacheHttpCoreClient implements HttpClient {
     hcHttpClient.execute(hcRequest, new FutureCallback<HttpResponse>() {
 
       public void completed(final HttpResponse hcResponse) {
-        if (hcResponse.getStatusLine().getStatusCode() == 200) {
-          promise.complete(hcResponse);
-        }
+        int statusCode = hcResponse.getStatusLine().getStatusCode();
+        logger.debug("HTTP REQ SUCCESS with status: " + statusCode + " "+ request);
+        promise.complete(hcResponse);
       }
 
       public void failed(final Exception ex) {
+        logger.debug("HTTP REQ FAILED " + request);
         promise.completeExceptionally(ex);
       }
 
       public void cancelled() {
-        promise.completeExceptionally(new RuntimeException("HC HTTP Request to " + request.getUrl() + "cancelled"));
+        promise.completeExceptionally(new RuntimeException("HTTP REQ CANCELLED: " + request));
       }
     });
 

@@ -25,7 +25,7 @@ public interface ESContext {
   RuntimeException rorException(String message);
 
   default HttpClient mkHttpClient(){
-    return new ApacheHttpCoreClient();
+    return new ApacheHttpCoreClient(this);
   }
 
 }

@@ -17,11 +17,13 @@
 package org.elasticsearch.plugin.readonlyrest.httpclient;
 
 import com.google.common.collect.Maps;
+import javafx.beans.binding.StringBinding;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 
 import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 public class RRHttpRequest {
 
@@ -30,6 +32,7 @@ public class RRHttpRequest {
   private final Map<String, String> queryParams;
   private final Map<String, String> headers;
   private final Optional<String> body;
+  private final String id;
 
   public static RRHttpRequest get(URI url, Map<String, String> queryParams, Map<String, String> headers) {
     return new RRHttpRequest(HttpMethod.GET, url, queryParams, headers, Optional.empty());
@@ -44,6 +47,7 @@ public class RRHttpRequest {
     this.queryParams = queryParams;
     this.headers = headers;
     this.body = body;
+    this.id = UUID.randomUUID().toString();
   }
 
   public HttpMethod getMethod() {
@@ -64,5 +68,12 @@ public class RRHttpRequest {
 
   public Optional<String> getBody() {
     return body;
+  }
+
+  @Override
+  public String toString() {
+    return new StringBuilder()
+      .append("[").append(id).append("] ")
+      .append(method).append(" ").append(url).toString();
   }
 }
