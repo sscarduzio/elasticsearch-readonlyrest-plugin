@@ -60,6 +60,7 @@ public class ApacheHttpCoreClient implements HttpClient {
 
       public void failed(final Exception ex) {
         logger.debug("HTTP REQ FAILED " + request);
+        logger.info("HTTP client failed to connect: " + request + " reason: " + ex.getMessage());
         promise.completeExceptionally(ex);
       }
 
