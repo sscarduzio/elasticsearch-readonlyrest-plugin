@@ -14,13 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package org.elasticsearch.plugin.readonlyrest.es;
 
-rootProject.name = 'readonlyrest'
-include 'core'
-include 'tests-utils'
-include 'integration-tests'
-include 'es23x'
-include 'es52x'
-include 'es53x'
-include 'es54x'
+import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 
+import java.io.IOException;
+
+@Singleton
+public class ReloadableSettingsImpl extends ReloadableSettings {
+  @Inject
+  public ReloadableSettingsImpl(SettingsManagerImpl settingsManager) throws IOException {
+    super(settingsManager);
+  }
+}
