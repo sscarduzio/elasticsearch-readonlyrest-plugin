@@ -23,6 +23,7 @@ import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SimpleBindRequest;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
@@ -33,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient implements AuthenticationLdapClient {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   public UnboundidAuthenticationLdapClient(ConnectionConfig connectionConfig,
                                            UserSearchFilterConfig userSearchFilterConfig,

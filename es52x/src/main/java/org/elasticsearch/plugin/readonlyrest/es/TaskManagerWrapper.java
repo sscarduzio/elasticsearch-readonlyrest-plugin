@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.tasks.TaskManager;
 import org.elasticsearch.transport.TransportRequest;
@@ -48,7 +49,7 @@ public class TaskManagerWrapper extends TaskManager {
     return t;
   }
 
-  public boolean injectIntoTransportService(Object o, Logger logger) {
+  public boolean injectIntoTransportService(Object o, LoggerShim logger) {
 
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {

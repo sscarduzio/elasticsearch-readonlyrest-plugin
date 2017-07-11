@@ -20,6 +20,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks;
 import com.google.common.collect.Sets;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -50,7 +51,7 @@ import static org.elasticsearch.plugin.readonlyrest.Constants.ANSI_YELLOW;
  */
 public class Block {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final BlockSettings settings;
   private final List<AsyncRule> rules;
   private final boolean authHeaderAccepted;

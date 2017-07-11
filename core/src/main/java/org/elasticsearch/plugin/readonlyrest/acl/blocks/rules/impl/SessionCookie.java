@@ -23,6 +23,7 @@ import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 
@@ -48,7 +49,7 @@ public class SessionCookie {
   private static final String COOKIE_STRING_SEPARATOR = "__";
   private static final DateFormat df = new SimpleDateFormat("EEE MMM dd kk:mm:ss z yyyy", Locale.getDefault());
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final Long sessionMaxIdleMillis;
   private final RequestContext rc;
 

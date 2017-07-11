@@ -20,5 +20,5 @@ import java.util.concurrent.CompletableFuture;
 
 public interface HttpClient {
 
-  CompletableFuture<HttpResponse> send(HttpRequest request);
+  CompletableFuture<RRHttpResponse> send(RRHttpRequest request);
 }

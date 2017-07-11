@@ -24,7 +24,7 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
-import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -34,6 +34,7 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.SecurityPermissionException;
 import org.elasticsearch.plugin.readonlyrest.acl.ACL;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
@@ -77,19 +78,24 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ESContext context;
   private final RuleActionListenersProvider ruleActionListenersProvider;
   private final ReloadableSettings reloadableSettings;
-  private final AtomicReference<Optional<AuditSink>> audit;
-  private final Client client;
+  private final NodeClient client;
+  private final LoggerShim logger;
+  private AtomicReference<Optional<AuditSink>> audit;
 
   @Inject
-  public IndexLevelActionFilter(Settings settings, ReloadableSettingsImpl reloadableConfiguration,
+  public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
                                 TransportService transportService,
-                                Client client,
-                                ThreadPool threadPool)
+                                NodeClient client,
+                                ThreadPool threadPool,
+                                ReloadableSettingsImpl reloadableSettings
+  )
     throws IOException {
     super(settings);
-    this.reloadableSettings = reloadableConfiguration;
     this.context = new ESContextImpl();
+    this.logger = context.logger(getClass());
+
+    this.reloadableSettings = reloadableSettings;
     this.clusterService = clusterService;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
@@ -116,7 +122,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       } catch (Exception ex) {
         logger.error("Cannot configure ReadonlyREST plugin", ex);
       }
-    } else {
+    }
+    else {
       this.acl.set(Optional.empty());
       logger.info("Configuration reloaded - ReadonlyREST disabled");
     }

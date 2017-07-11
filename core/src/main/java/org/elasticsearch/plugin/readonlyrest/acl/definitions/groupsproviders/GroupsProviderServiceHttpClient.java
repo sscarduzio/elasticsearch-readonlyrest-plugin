@@ -20,12 +20,12 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.jayway.jsonpath.JsonPath;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpRequest;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpResponse;
+import org.elasticsearch.plugin.readonlyrest.httpclient.RRHttpRequest;
+import org.elasticsearch.plugin.readonlyrest.httpclient.RRHttpResponse;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettings;
 
 import java.net.URI;
@@ -37,7 +37,7 @@ import java.util.function.Function;
 
 public class GroupsProviderServiceHttpClient implements GroupsProviderServiceClient {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final HttpClient client;
   private final String name;
   private final URI endpoint;
@@ -63,7 +63,7 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
 
   @Override
   public CompletableFuture<Set<String>> fetchGroupsFor(LoggedUser user) {
-    return client.send(HttpRequest.get(endpoint, createParams(user), createHeaders(user)))
+    return client.send(RRHttpRequest.get(endpoint, createParams(user), createHeaders(user)))
         .thenApply(groupsFromResponse());
   }
 
@@ -79,7 +79,7 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
         : ImmutableMap.of();
   }
 
-  private Function<HttpResponse, Set<String>> groupsFromResponse() {
+  private Function<RRHttpResponse, Set<String>> groupsFromResponse() {
     return response -> {
       if (response.getStatusCode() == 200) {
         try {

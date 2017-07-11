@@ -1,11 +1,26 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.Key;
@@ -18,16 +33,16 @@ import java.util.Base64;
  */
 public class SSLCertParser {
   private final SSLContextCreator creator;
-  private final Logger logger;
+  private final LoggerShim logger;
 
-  public SSLCertParser(RorSettings settings, ESContext esContext, SSLContextCreator creator) {
+  public SSLCertParser(RorSettings settings, LoggerShim logger, SSLContextCreator creator) {
     this.creator = creator;
-    this.logger = esContext.logger(getClass());
+    this.logger = logger;
     createContext(settings);
   }
 
   private void createContext(RorSettings settings) {
-    if(!settings.isSSLEnabled()){
+    if (!settings.isSSLEnabled()) {
       logger.info("SSL is disabled");
       return;
     }
@@ -99,7 +114,7 @@ public class SSLCertParser {
 
     } catch (Throwable t) {
       logger.error("Failed to load SSL certs and keys from JKS Keystore!");
-      if( t instanceof AccessControlException){
+      if (t instanceof AccessControlException) {
         logger.error("Check the JKS Keystore path is correct: " + settings.getKeystoreFile());
       }
       t.printStackTrace();

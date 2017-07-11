@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -28,7 +29,7 @@ import java.util.List;
  * Created by sscarduzio on 14/04/2017.
  */
 public abstract class Delayed {
-  private final Logger logger;
+  private final LoggerShim logger;
   protected final String name;
   private final ESContext context;
   private final List<Runnable> effects = new LinkedList<>();

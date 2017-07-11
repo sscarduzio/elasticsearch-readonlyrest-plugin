@@ -37,6 +37,7 @@ import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.reflections.ReflectionUtils;
@@ -62,7 +63,7 @@ public class RCTransactionalIndices {
   private static final Map<String, Set<String>> restLevelIndicesCache = Maps.newHashMap();
 
   public static Transactional<Set<String>> mkInstance(RequestContextImpl rc, ESContext es) {
-    final Logger logger = es.logger(RCTransactionalIndices.class);
+    final LoggerShim logger = es.logger(RCTransactionalIndices.class);
     if (!rc.involvesIndices()) {
       return new DummyTXIndices(es);
     }
@@ -216,24 +217,34 @@ public class RCTransactionalIndices {
             return null;
           });
         }
+
+        // Optimistic reflection attempt
         boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
 
+        if (!okSetResult && actionRequest instanceof MultiSearchRequest) {
+          // If it's an empty MSR, we are ok
+          okSetResult = true;
+          MultiSearchRequest msr = (MultiSearchRequest) actionRequest;
+          for (SearchRequest sr : msr.requests()) {
+            okSetResult &= ReflecUtils.setIndices(sr, Sets.newHashSet("indices"), newIndices, logger);
+          }
+        }
 
         if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
           IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
-          final boolean[] okSubResult = {false};
-          actions.forEach(a -> {
-            okSubResult[0] &= ReflecUtils.setIndices(a, Sets.newHashSet("index"), newIndices, logger);
-          });
-          okSetResult &= okSubResult[0];
+          okSetResult = true;
+          for(IndicesAliasesRequest.AliasActions act : actions) {
+            act.index(newIndices.iterator().next());
+          }
         }
 
         if (okSetResult) {
           logger.debug("success changing indices: " + newIndices + " correctly set as " + get());
         }
         else {
-          logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName());
+          logger.error("Failed to set indices for type " + rc.getUnderlyingRequest().getClass().getSimpleName() +
+                         "  in req id: " + rc.getId());
         }
       }
 

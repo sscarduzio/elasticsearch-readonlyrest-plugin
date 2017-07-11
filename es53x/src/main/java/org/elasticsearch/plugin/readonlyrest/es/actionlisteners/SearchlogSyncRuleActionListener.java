@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.es.actionlisteners;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.search.SearchRequest;
@@ -24,6 +23,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.SearchlogSyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
@@ -33,7 +33,7 @@ import java.util.Arrays;
 
 public class SearchlogSyncRuleActionListener extends RuleActionListener<SearchlogSyncRule> {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   public SearchlogSyncRuleActionListener(ESContext context) {
     super(SearchlogSyncRule.class);
@@ -50,20 +50,21 @@ public class SearchlogSyncRuleActionListener extends RuleActionListener<Searchlo
       SearchRequest searchRequest = (SearchRequest) ar;
       SearchResponse searchResponse = (SearchResponse) response;
       logger.info(
-          "search: {" +
-              " ID:" + rc.getId() +
-              ", ACT:" + rc.getAction() +
-              ", USR:" + rc.getLoggedInUser() +
-              ", IDX:" + Arrays.toString(searchRequest.indices()) +
-              ", TYP:" + Arrays.toString(searchRequest.types()) +
-              ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
-              ", HIT:" + searchResponse.getHits().totalHits() +
-              ", RES:" + searchResponse.getHits().hits().length +
-              " }"
+        "search: {" +
+          " ID:" + rc.getId() +
+          ", ACT:" + rc.getAction() +
+          ", USR:" + rc.getLoggedInUser() +
+          ", IDX:" + Arrays.toString(searchRequest.indices()) +
+          ", TYP:" + Arrays.toString(searchRequest.types()) +
+          ", SRC:" + convertToJson(searchRequest.source().buildAsBytes()) +
+          ", HIT:" + searchResponse.getHits().totalHits() +
+          ", RES:" + searchResponse.getHits().hits().length +
+          " }"
       );
     }
     return true;
   }
+
   @Override
   protected boolean onFailure(BlockExitResult result,
                               RequestContext rc,

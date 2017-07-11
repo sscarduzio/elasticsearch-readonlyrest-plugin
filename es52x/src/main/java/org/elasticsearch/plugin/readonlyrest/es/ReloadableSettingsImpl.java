@@ -24,7 +24,6 @@ import java.io.IOException;
 
 @Singleton
 public class ReloadableSettingsImpl extends ReloadableSettings {
-
   @Inject
   public ReloadableSettingsImpl(SettingsManagerImpl settingsManager) throws IOException {
     super(settingsManager);
