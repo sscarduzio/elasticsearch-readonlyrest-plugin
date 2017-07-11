@@ -45,7 +45,7 @@ public class SerializationTool {
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
       "SimpleModule",
-      new Version(1, 0, 0, null)
+      new Version(1, 0, 0, null,"com.readonlyrest", "readonlyrest")
     );
     mapper.registerModule(simpleModule);
     this.mapper = mapper;
