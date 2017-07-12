@@ -31,7 +31,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class RorSettings {
-
   public static final String ATTRIBUTE_NAME = "readonlyrest";
   public static final String ATTRIBUTE_ENABLE = "enable";
   public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
@@ -46,12 +45,9 @@ public class RorSettings {
   public static final String ATTRIBUTE_SSL_KEYSTORE_PASS = "keystore_pass";
   public static final String ATTRIBUTE_SSL_KEY_PASS = "key_pass";
   public static final String ATTRIBUTE_SSL_KEY_ALIAS = "key_alias";
-
-
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
   private static final List<BlockSettings> DEFAULT_BLOCK_SETTINGS = Lists.newArrayList();
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
-
   private final boolean enable;
   private final String forbiddenMessage;
   private final Verbosity verbosity;
@@ -65,7 +61,8 @@ public class RorSettings {
   private String keystoreFile;
 
   @SuppressWarnings("unchecked")
-  public RorSettings(RawSettings raw) {
+  public RorSettings(RawSettings raw_global) {
+    RawSettings raw = raw_global.inner(ATTRIBUTE_NAME);
     LdapSettingsCollection ldapSettingsCollection = LdapSettingsCollection.from(raw);
     UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = UserGroupsProviderSettingsCollection.from(raw);
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
@@ -94,7 +91,7 @@ public class RorSettings {
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
 
     // SSL
-    Optional<RawSettings> sslSettingsOpt = raw.innerOpt(PREFIX_SSL.replaceFirst(".$",""));
+    Optional<RawSettings> sslSettingsOpt = raw.innerOpt(PREFIX_SSL.replaceFirst(".$", ""));
     Optional sslEnableOpt = raw.booleanOpt(PREFIX_SSL + "enable");
     Optional<String> ksOpt = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE);
 
@@ -114,7 +111,7 @@ public class RorSettings {
   }
 
   public static RorSettings from(RawSettings settings) {
-    return new RorSettings(settings.inner(ATTRIBUTE_NAME));
+    return new RorSettings(settings);
   }
 
   public boolean isEnabled() {

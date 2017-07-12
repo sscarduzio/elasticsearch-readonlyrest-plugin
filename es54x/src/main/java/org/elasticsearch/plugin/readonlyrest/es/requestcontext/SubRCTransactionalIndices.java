@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
@@ -86,7 +85,7 @@ public class SubRCTransactionalIndices extends Transactional<Set<String>> {
         throw new ElasticsearchException(
           "need to have at least one index to replace into a " + originalSubReq.getClass().getSimpleName());
       }
-      ReflecUtils.setIndices(originalSubReq,Sets.newHashSet("index"), newIndices, logger);
+      ReflecUtils.setIndices(originalSubReq, Sets.newHashSet("index"), newIndices, logger);
     }
   }
 

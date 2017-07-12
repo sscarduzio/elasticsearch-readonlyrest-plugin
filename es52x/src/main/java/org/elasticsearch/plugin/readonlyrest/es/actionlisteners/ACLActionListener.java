@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.es.actionlisteners;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -59,8 +58,8 @@ public class ACLActionListener implements ActionListener<ActionResponse> {
       try {
         // Don't continue with further handlers if at least one says we should not continue
         shouldContinue &= ruleActionListenersProvider.getActionListenerOf(r)
-            .map(al -> al.onResponse(r, result, rc, request, response))
-            .orElse(true);
+          .map(al -> al.onResponse(r, result, rc, request, response))
+          .orElse(true);
       } catch (Exception e) {
         logger.error(r.getKey() + " error handling response: " + response);
         e.printStackTrace();
@@ -78,8 +77,8 @@ public class ACLActionListener implements ActionListener<ActionResponse> {
       try {
         // Don't continue with further handlers if at least one says we should not continue
         shouldContinue &= ruleActionListenersProvider.getActionListenerOf(r)
-            .map(al -> al.onFailure(r, result, rc, request, e))
-            .orElse(true);
+          .map(al -> al.onFailure(r, result, rc, request, e))
+          .orElse(true);
       } catch (Exception e1) {
         logger.error(r.getKey() + " errored handling failure: " + e1);
         e.printStackTrace();
