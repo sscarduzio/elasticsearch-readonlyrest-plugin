@@ -1,7 +1,6 @@
 #!/bin/sh
 
-#set -xe
-set -x
+set -xe
 
 echo "#############################################"
 echo "($0) RUNNINIG CONTINUOUS INTEGRATION"
@@ -20,8 +19,13 @@ echo ">>> Running unit tests.."
 ./gradlew --stacktrace test ror
 
 
+echo ">>> es54x => Running testcontainers.."
+./gradlew --stacktrace  --debug integration-tests:test '-PesModule=es54x' || ( find . |grep hs_err |xargs cat && exit 1 )
+
+
 echo ">>> es53x => Running testcontainers.."
 ./gradlew --stacktrace  --debug integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
+
 
 echo ">>> es52x => Running testcontainers.."
 ./gradlew --stacktrace --debug integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )

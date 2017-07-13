@@ -68,30 +68,34 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                                                    File elasticsearchConfigFile,
                                                    Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File pluginFile = project.assemble().orElseThrow(() ->
-        new ContainerCreationException("Plugin file assembly failed")
+                                                       new ContainerCreationException("Plugin file assembly failed")
     );
     logger.info("Creating ES container ...");
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
+
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
-        project.getESVersion(),
-        new ImageFromDockerfile()
-            .withFileFromFile(pluginFile.getAbsolutePath(), pluginFile)
-            .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
-            .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
-            .withDockerfileFromBuilder(builder -> logger.info(builder
-                .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getESVersion())
-              .copy(pluginFile.getAbsolutePath(), "/tmp/")
-                .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
-                .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
-                .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install " +
-                     "file:///tmp/" + pluginFile.getName() + " 2>&1")
-              .build()))
+      project.getESVersion(),
+      new ImageFromDockerfile()
+        .withFileFromFile(pluginFile.getAbsolutePath(), pluginFile)
+        .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
+        .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
+        .withDockerfileFromBuilder(builder -> logger.info(
+          builder
+            .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getESVersion())
+            .copy(pluginFile.getAbsolutePath(), "/tmp/")
+            .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
+            .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
+            .user("root")
+            .run("chown elasticsearch:elasticsearch config/*")
+            .user("elasticsearch")
+            .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + pluginFile.getName())
+            .build()))
     );
     return container
-        .withLogConsumer((l) -> System.out.print(l.getUtf8String()))
-        .withExposedPorts(ES_PORT)
-        .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
+      .withLogConsumer((l) -> System.out.print(l.getUtf8String()))
+      .withExposedPorts(ES_PORT)
+      .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 
   }
 
@@ -143,9 +147,9 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
           HttpResponse result = client.execute(new HttpGet(client.from("_cluster/health")));
           if (result.getStatusLine().getStatusCode() != 200) return false;
           Map<String, String> healthJson = mapper.readValue(
-              result.getEntity().getContent(),
-              new TypeReference<Map<String, String>>() {
-              }
+            result.getEntity().getContent(),
+            new TypeReference<Map<String, String>>() {
+            }
           );
           return "green".equals(healthJson.get("status"));
         } catch (IOException | URISyntaxException e) {
