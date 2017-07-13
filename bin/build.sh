@@ -20,15 +20,11 @@ echo ">>> Running unit tests.."
 ./gradlew --stacktrace test ror
 
 
-#echo
-#echo
-#echo ">>> es53x => Running testcontainers.."
-#./gradlew --stacktrace  --debug integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
-#
-#echo
-#echo
-#echo ">>> es52x => Running testcontainers.."
-#./gradlew --stacktrace --debug integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
+echo ">>> es53x => Running testcontainers.."
+./gradlew --stacktrace  --debug integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
+
+echo ">>> es52x => Running testcontainers.."
+./gradlew --stacktrace --debug integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
 echo
 echo
