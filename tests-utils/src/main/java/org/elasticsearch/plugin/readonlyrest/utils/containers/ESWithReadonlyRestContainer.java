@@ -86,6 +86,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
             .copy(pluginFile.getAbsolutePath(), "/tmp/")
             .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
             .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
+            .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
             .user("root")
             .run("chown elasticsearch:elasticsearch config/*")
             .user("elasticsearch")
