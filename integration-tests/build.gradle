@@ -15,6 +15,12 @@ buildscript {
     }
 }
 
+subprojects {
+    tasks.withType(Test) {
+        maxParallelForks = 1
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'license'
 
