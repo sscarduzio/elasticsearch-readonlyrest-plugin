@@ -21,6 +21,7 @@ apply plugin: 'license'
 repositories {
     mavenCentral()
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+    maven { url 'https://jitpack.io' }
 }
 
 test {
