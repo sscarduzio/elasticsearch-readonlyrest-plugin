@@ -50,8 +50,7 @@ public class IPMask {
    * @throws UnknownHostException if address part cannot be parsed by
    *                              InetAddress
    */
-  public static IPMask getIPMask(String addrSlashMask)
-      throws UnknownHostException {
+  public static IPMask getIPMask(String addrSlashMask) throws UnknownHostException {
     int pos = addrSlashMask.indexOf('/');
     String addr;
     byte maskCtr;
@@ -72,9 +71,9 @@ public class IPMask {
   private static int addrToInt(Inet4Address i4addr) {
     byte[] ba = i4addr.getAddress();
     return (ba[0] << 24)
-        | ((ba[1] & 0xFF) << 16)
-        | ((ba[2] & 0xFF) << 8)
-        | (ba[3] & 0xFF);
+      | ((ba[1] & 0xFF) << 16)
+      | ((ba[2] & 0xFF) << 8)
+      | (ba[3] & 0xFF);
   }
 
   /**
@@ -100,7 +99,7 @@ public class IPMask {
    * @throws UnknownHostException if the string cannot be decoded.
    */
   public boolean matches(String addr)
-      throws UnknownHostException {
+    throws UnknownHostException {
     return matches((Inet4Address) InetAddress.getByName(addr));
   }
 

@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 

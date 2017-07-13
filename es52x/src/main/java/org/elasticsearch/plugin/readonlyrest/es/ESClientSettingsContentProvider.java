@@ -37,9 +37,8 @@ public class ESClientSettingsContentProvider implements SettingsContentProvider 
     return CompletableFuture.supplyAsync(() -> {
       GetResponse resp = null;
       try {
-        resp  = client.prepareGet(".readonlyrest", "settings", "1").get();
-      }
-      catch(Throwable t){
+        resp = client.prepareGet(".readonlyrest", "settings", "1").get();
+      } catch (Throwable t) {
         throw new ElasticsearchException(t.getMessage());
       }
       if (resp == null || !resp.isExists()) {

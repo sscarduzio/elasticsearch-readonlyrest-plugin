@@ -73,15 +73,16 @@ public abstract class RuleActionListener<T extends Rule> {
   @SuppressWarnings("unchecked")
   private T extractFrom(Rule rule) {
     Rule innerRule = rule instanceof AsyncRuleAdapter
-        ? ((AsyncRuleAdapter) rule).getUnderlying()
-        : rule;
+      ? ((AsyncRuleAdapter) rule).getUnderlying()
+      : rule;
 
     if (Objects.equals(innerRule.getClass(), ruleClass)) {
       return (T) innerRule;
-    } else {
+    }
+    else {
       throw new IllegalStateException("Class '" + innerRule.getClass().getName() + "' is not equal to '" + ruleClass
-          + "' class. Check " + RuleActionListenersProvider.class.getName() + " class implementation - it must be" +
-          "a programmer mistake");
+                                        + "' class. Check " + RuleActionListenersProvider.class.getName() + " class implementation - it must be" +
+                                        "a programmer mistake");
     }
   }
 }

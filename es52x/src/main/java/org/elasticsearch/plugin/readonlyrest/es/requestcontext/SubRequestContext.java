@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;

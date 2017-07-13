@@ -17,12 +17,9 @@
 package org.elasticsearch.plugin.readonlyrest.es.actionlisteners;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkShardResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.get.MultiGetItemResponse;
 import org.elasticsearch.action.get.MultiGetResponse;
@@ -41,7 +38,6 @@ import org.elasticsearch.search.SearchHit;
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Set;
 
 public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<IndicesRewriteSyncRule> {
 

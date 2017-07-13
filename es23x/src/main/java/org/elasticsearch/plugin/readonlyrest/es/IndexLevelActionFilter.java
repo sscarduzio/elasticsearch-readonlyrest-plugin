@@ -44,7 +44,6 @@ import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.RuleActionListen
 import org.elasticsearch.plugin.readonlyrest.es.requestcontext.RequestContextImpl;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -55,9 +54,6 @@ import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 

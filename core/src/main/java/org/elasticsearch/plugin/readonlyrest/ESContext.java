@@ -16,8 +16,8 @@
  */
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
 import org.elasticsearch.plugin.readonlyrest.httpclient.ApacheHttpCoreClient;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
 
 public interface ESContext {
   LoggerShim logger(Class<?> clazz);

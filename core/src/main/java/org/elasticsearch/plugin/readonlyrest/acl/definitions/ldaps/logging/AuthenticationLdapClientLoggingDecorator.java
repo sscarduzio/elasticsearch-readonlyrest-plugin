@@ -16,7 +16,6 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.logging;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;

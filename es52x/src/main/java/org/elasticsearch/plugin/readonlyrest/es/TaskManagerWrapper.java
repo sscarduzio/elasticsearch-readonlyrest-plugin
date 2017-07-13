@@ -17,7 +17,6 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.tasks.Task;

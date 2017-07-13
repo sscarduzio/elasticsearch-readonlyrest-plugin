@@ -234,7 +234,7 @@ public class RCTransactionalIndices {
           IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
           okSetResult = true;
-          for(IndicesAliasesRequest.AliasActions act : actions) {
+          for (IndicesAliasesRequest.AliasActions act : actions) {
             act.index(newIndices.iterator().next());
           }
         }

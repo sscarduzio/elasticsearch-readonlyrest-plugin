@@ -94,7 +94,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     super(settings);
     this.context = new ESContextImpl();
     this.logger = context.logger(getClass());
-    
+
     this.reloadableSettings = reloadableSettings;
     this.clusterService = clusterService;
     this.threadPool = threadPool;

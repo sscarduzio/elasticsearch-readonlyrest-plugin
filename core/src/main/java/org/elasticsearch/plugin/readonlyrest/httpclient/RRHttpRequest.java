@@ -17,7 +17,6 @@
 package org.elasticsearch.plugin.readonlyrest.httpclient;
 
 import com.google.common.collect.Maps;
-import javafx.beans.binding.StringBinding;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 
 import java.net.URI;

@@ -20,7 +20,6 @@ package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
@@ -194,7 +193,7 @@ public class RCTransactionalIndices {
         }
 
         // Best case, this request is designed to have indices replaced.
-        if (actionRequest instanceof IndicesRequest.Replaceable){
+        if (actionRequest instanceof IndicesRequest.Replaceable) {
           ((IndicesRequest.Replaceable) actionRequest).indices(newIndices.toArray(new String[newIndices.size()]));
           return;
         }
@@ -234,7 +233,7 @@ public class RCTransactionalIndices {
           IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
           okSetResult = true;
-          for(IndicesAliasesRequest.AliasActions act : actions) {
+          for (IndicesAliasesRequest.AliasActions act : actions) {
             act.index(newIndices.iterator().next());
           }
         }

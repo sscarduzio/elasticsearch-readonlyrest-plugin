@@ -17,7 +17,6 @@
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.logging;
 
 import com.google.common.base.Joiner;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
