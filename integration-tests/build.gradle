@@ -38,6 +38,8 @@ test {
         systemProperty "esModule", module
     }
     outputs.upToDateWhen { false }
+
+    testLogging.showStandardStreams = true
 }
 
 dependencies {

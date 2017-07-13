@@ -15,15 +15,15 @@ echo ">>> Running unit tests.."
 
 
 echo ">>> es54x => Running testcontainers.."
-./gradlew --debug integration-tests:test '-PesModule=es54x' || ( find . |grep hs_err |xargs cat && exit 1 )
+./gradlew integration-tests:test '-PesModule=es54x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
 
 echo ">>> es53x => Running testcontainers.."
-./gradlew  --debug integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
+./gradlew  integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
 
 echo ">>> es52x => Running testcontainers.."
-./gradlew  --debug integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
+./gradlew  integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
 
 echo ">>> ($0) additional build of ES module for specified ES version"
