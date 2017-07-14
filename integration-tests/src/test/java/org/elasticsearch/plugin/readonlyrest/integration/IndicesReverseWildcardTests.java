@@ -37,26 +37,30 @@ import static org.junit.Assert.assertTrue;
 
 public class IndicesReverseWildcardTests {
 
+
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     create(
       RorPluginGradleProject.fromSystemProperty(),
       "/indices_reverse_wildcards/elasticsearch.yml",
-      Optional.of(client -> {
-        Lists.newArrayList("a1", "a2", "b1", "b2")
-          .forEach(doc -> insertDoc(doc, client));
-      })
+      Optional.of(client -> Lists.newArrayList("a1", "a2", "b1", "b2")
+        .forEach(doc -> insertDoc(doc, client)))
     );
 
-  private static void insertDoc(String docName, RestClient client) {
+  private static RestClient adminClient;
+
+  private static void insertDoc(String docName, RestClient restClient) {
+    if(adminClient == null) {
+      adminClient = restClient;
+    }
     try {
-      HttpPut request = new HttpPut(client.from(
+      HttpPut request = new HttpPut(restClient.from(
         "/logstash-" + docName + "/documents/doc-" + docName
       ));
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
       request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));
-      System.out.println(body(client.execute(request)));
+      System.out.println(body(restClient.execute(request)));
     } catch (Exception e) {
       e.printStackTrace();
       throw new IllegalStateException("Test problem", e);
@@ -115,11 +119,10 @@ public class IndicesReverseWildcardTests {
 
   private String search(String endpoint) throws Exception {
     String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
-    RestClient client = container.getAdminClient();
-    HttpGet request = new HttpGet(client.from(endpoint));
+    HttpGet request = new HttpGet(adminClient.from(endpoint));
     request.setHeader("timeout", "50s");
     request.setHeader("x-caller-" + caller, "true");
-    HttpResponse resp = client.execute(request);
+    HttpResponse resp = adminClient.execute(request);
     String body = body(resp);
     System.out.println("SEARCH RESPONSE for " + caller + ": " + body);
     assertEquals(200, resp.getStatusLine().getStatusCode());
