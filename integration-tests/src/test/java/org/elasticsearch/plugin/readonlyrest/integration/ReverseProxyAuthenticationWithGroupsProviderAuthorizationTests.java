@@ -46,12 +46,12 @@ public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
       );
 
   // #TODO doesnt pass
-//  @Test
-//  public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
-//    assertions(container).assertReverseProxyUserHasAccessToIndex(
-//        "X-Auth-Token", "cartman", "twitter"
-//    );
-//  }
+  @Test
+  public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
+    assertions(container).assertReverseProxyUserHasAccessToIndex(
+        "X-Auth-Token", "cartman", "twitter"
+    );
+  }
 
   @Test
   public void testAuthenticationAndAuthorizationErrorWithService1() throws Exception {

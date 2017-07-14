@@ -19,14 +19,19 @@ package org.elasticsearch.plugin.readonlyrest.httpclient;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 
 /**
@@ -35,11 +40,13 @@ import java.util.concurrent.CompletableFuture;
 public class ApacheHttpCoreClient implements HttpClient {
   private final CloseableHttpAsyncClient hcHttpClient;
   private final LoggerShim logger;
+  private final ESContext context;
 
   public ApacheHttpCoreClient(ESContext esContext) {
     this.hcHttpClient = HttpAsyncClients.createDefault();
     this.hcHttpClient.start();
     this.logger = esContext.logger(getClass());
+    this.context = esContext;
   }
 
   @Override
@@ -47,14 +54,26 @@ public class ApacheHttpCoreClient implements HttpClient {
 
     CompletableFuture<HttpResponse> promise = new CompletableFuture<>();
 
-    final HttpGet hcRequest = new HttpGet(request.getUrl().toASCIIString());
-    request.getHeaders().entrySet().forEach(e -> hcRequest.addHeader(e.getKey(),e.getValue()));
+    URI uri;
+    try {
+      uri = new URIBuilder(request.getUrl().toASCIIString())
+        .addParameters(
+          request.getQueryParams().entrySet().stream()
+            .map(e -> new BasicNameValuePair(e.getKey(), e.getValue()))
+            .collect(Collectors.toList())
+        ).build();
+    } catch (URISyntaxException e) {
+      throw context.rorException(e.getClass().getSimpleName() + ": " + e.getMessage());
+    }
+
+    final HttpGet hcRequest = new HttpGet(uri);
+    request.getHeaders().entrySet().forEach(e -> hcRequest.addHeader(e.getKey(), e.getValue()));
 
     hcHttpClient.execute(hcRequest, new FutureCallback<HttpResponse>() {
 
       public void completed(final HttpResponse hcResponse) {
         int statusCode = hcResponse.getStatusLine().getStatusCode();
-        logger.debug("HTTP REQ SUCCESS with status: " + statusCode + " "+ request);
+        logger.debug("HTTP REQ SUCCESS with status: " + statusCode + " " + request);
         promise.complete(hcResponse);
       }
 
