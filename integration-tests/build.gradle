@@ -39,7 +39,11 @@ test {
     }
     outputs.upToDateWhen { false }
 
-    testLogging.showStandardStreams = true
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
 }
 
 dependencies {

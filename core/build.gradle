@@ -44,6 +44,13 @@ apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'license'
 
+test {
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
+}
 dependencies {
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'
@@ -62,8 +69,8 @@ dependencies {
 
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
 
-    compile ('io.jsonwebtoken:jjwt:0.7.0') {
-      // exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+    compile('io.jsonwebtoken:jjwt:0.7.0') {
+        // exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
 
     //compile 'org.asynchttpclient:async-http-client:2.0.33'
