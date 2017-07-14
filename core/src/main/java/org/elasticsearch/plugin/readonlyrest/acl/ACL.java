@@ -90,10 +90,12 @@ public class ACL {
           }
           return true;
         }
-        audit.log(new ResponseContext(FORBIDDEN, rc, null, checkResult), logger);
         return false;
       },
-      nothing -> BlockExitResult.noMatch()
+      nothing -> {
+        audit.log(new ResponseContext(FORBIDDEN, rc, null, BlockExitResult.match(null)), logger);
+        return BlockExitResult.noMatch();
+      }
     )
       .exceptionally(t -> {
         //t.printStackTrace();
