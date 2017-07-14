@@ -314,16 +314,16 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
 
     if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
-      if (!expanded.isEmpty()) {
-        indices.mutate(expanded);
+
+      // When an index don't expand into one or more indices, it means it does not exist. This is fine.
+      if(expanded.isEmpty()){
+        expanded = newIndices;
       }
-      else {
-        throw new IndexNotFoundException(
-          "rewritten indices not found: " + Joiner.on(",").join(newIndices)
-          , getIndices().iterator().next());
-      }
+      indices.mutate(expanded);
     }
-    indices.mutate(newIndices);
+    else {
+      indices.mutate(newIndices);
+    }
   }
 
   public Boolean hasSubRequests() {
