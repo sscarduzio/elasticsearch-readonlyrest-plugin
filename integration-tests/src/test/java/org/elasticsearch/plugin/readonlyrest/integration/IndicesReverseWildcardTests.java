@@ -118,7 +118,9 @@ public class IndicesReverseWildcardTests  {
     HttpGet request = new HttpGet(client.from(endpoint));
     request.setHeader("timeout", "50s");
     HttpResponse resp = client.execute(request);
+    String body = body(resp);
+    System.out.println("SEARCH RESPONSE: " + body);
     assertEquals(200, resp.getStatusLine().getStatusCode());
-    return body(resp);
+    return body;
   }
 }
