@@ -104,6 +104,7 @@ public class HostsSyncRule extends SyncRule {
       IPMask ip = IPMask.getIPMask(hostString);
       return ip.matches(address);
     } catch (UnknownHostException e) {
+      logger.warn("Cannot resolve configured host name! " + e.getClass().getSimpleName() + ": " + hostString);
       return false;
     }
   }
