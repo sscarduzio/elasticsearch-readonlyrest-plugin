@@ -47,14 +47,19 @@ public class RRAdminResponse extends ActionResponse implements ToXContent {
 
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
-    builder.startObject();
+
+    // No need to wrap in object in pre-5.3.x!
+    // builder.startObject();
+
     if (throwable == null) {
       builder.field("status", "ok").field("message", "settings refreshed");
     }
     else {
       builder.field("status", "ko").field("message", throwable.getMessage());
     }
-    builder.endObject();
+
+    //builder.endObject();
+
     return builder;
   }
 }
