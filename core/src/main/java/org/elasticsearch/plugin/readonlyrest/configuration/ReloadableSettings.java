@@ -56,6 +56,7 @@ public abstract class ReloadableSettings {
                      RawSettings raw = new RawSettings(fromIndex);
                      RorSettings ror = RorSettings.from(raw);
                      this.rorSettings.set(ror);
+                     notifyListeners();
                      return Optional.<Throwable>empty();
                    }
         , MoreExecutors.directExecutor()).exceptionally(th ->
