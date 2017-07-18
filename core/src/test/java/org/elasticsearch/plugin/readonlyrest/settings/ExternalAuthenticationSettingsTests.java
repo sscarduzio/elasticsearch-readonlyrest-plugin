@@ -28,17 +28,17 @@ public class ExternalAuthenticationSettingsTests {
   public void testSuccessfulCreationFromRequiredSettings() throws URISyntaxException {
     ExternalAuthenticationServiceSettingsCollection.from(
       TestUtils.fromYAMLString("" +
-            "external_authentication_service_configs:\n" +
-            "    - name: \"ext1\"\n" +
-            "      authentication_endpoint: \"http://localhost:8080/auth1\"\n" +
-            "      success_status_code: 200\n" +
-            "      cache_ttl_in_sec: 60\n" +
-            "\n" +
-            "    - name: \"ext2\"\n" +
-            "      authentication_endpoint: \"http://192.168.0.1:8080/auth2\"\n" +
-            "      success_status_code: 204\n" +
-            "      cache_ttl_in_sec: 60"
-        )
+                                 "external_authentication_service_configs:\n" +
+                                 "    - name: \"ext1\"\n" +
+                                 "      authentication_endpoint: \"http://localhost:8080/auth1\"\n" +
+                                 "      success_status_code: 200\n" +
+                                 "      cache_ttl_in_sec: 60\n" +
+                                 "\n" +
+                                 "    - name: \"ext2\"\n" +
+                                 "      authentication_endpoint: \"http://192.168.0.1:8080/auth2\"\n" +
+                                 "      success_status_code: 204\n" +
+                                 "      cache_ttl_in_sec: 60"
+      )
     );
   }
 }

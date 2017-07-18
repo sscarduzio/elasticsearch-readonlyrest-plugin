@@ -41,10 +41,10 @@ public class ProxyAuthSyncRule extends UserRule implements Authentication {
   public ProxyAuthSyncRule(ProxyAuthRuleSettings s) {
     this.settings = s;
     this.userListMatcher = new MatcherWithWildcards(
-        s.getUsers().stream()
-            .filter(i -> !Strings.isNullOrEmpty(i))
-            .distinct()
-            .collect(Collectors.toSet())
+      s.getUsers().stream()
+        .filter(i -> !Strings.isNullOrEmpty(i))
+        .distinct()
+        .collect(Collectors.toSet())
     );
   }
 

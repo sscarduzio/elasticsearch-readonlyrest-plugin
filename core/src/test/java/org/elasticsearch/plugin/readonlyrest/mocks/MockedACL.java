@@ -27,8 +27,8 @@ import org.mockito.Mockito;
 public class MockedACL {
   private static ACL INSTANCE;
 
-  public static final ACL getMock()  {
-    if(INSTANCE != null){
+  public static final ACL getMock() {
+    if (INSTANCE != null) {
       return INSTANCE;
     }
     ACL acl = Mockito.mock(ACL.class);

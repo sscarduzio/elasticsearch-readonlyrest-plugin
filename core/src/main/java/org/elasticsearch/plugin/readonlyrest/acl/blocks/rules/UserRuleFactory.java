@@ -53,11 +53,11 @@ public class UserRuleFactory {
     );
     this.creators.put(
       AuthKeySha256RuleSettings.class,
-      settings ->AsyncRuleAdapter.wrap( new AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context))
+      settings -> AsyncRuleAdapter.wrap(new AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context))
     );
     this.creators.put(
       AuthKeyPlainTextRuleSettings.class,
-      settings ->AsyncRuleAdapter.wrap(new AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context))
+      settings -> AsyncRuleAdapter.wrap(new AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context))
     );
     this.creators.put(
       ProxyAuthRuleSettings.class,
@@ -66,7 +66,7 @@ public class UserRuleFactory {
 
     this.creators.put(
       LdapAuthenticationRuleSettings.class,
-      settings -> new LdapAuthenticationAsyncRule((LdapAuthenticationRuleSettings)settings, acl.getDefinitionsFactory(), context)
+      settings -> new LdapAuthenticationAsyncRule((LdapAuthenticationRuleSettings) settings, acl.getDefinitionsFactory(), context)
     );
 
     this.creators.put(
@@ -78,7 +78,7 @@ public class UserRuleFactory {
   public AsyncRule create(AuthKeyProviderSettings settings) {
     Class<? extends RuleSettings> ruleSettingsClass = settings.getClass();
     if (creators.containsKey(ruleSettingsClass)) {
-      return  creators.get(ruleSettingsClass).apply(settings);
+      return creators.get(ruleSettingsClass).apply(settings);
     }
     else {
       throw context.rorException("Cannot find rule for config class [" + ruleSettingsClass.getName() + "]");

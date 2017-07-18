@@ -40,24 +40,24 @@ public class LdapAuthRuleSettings implements RuleSettings, CacheSettings {
   private final Duration cacheTtl;
   private final GroupsProviderLdapSettings ldapSettings;
 
+  private LdapAuthRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
+    if (!(settings instanceof GroupsProviderLdapSettings))
+      throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
+                                             "(without '" + GroupsProviderLdapSettings.SEARCH_GROUPS + "' attribute defined)");
+    this.groups = groups;
+    this.cacheTtl = cacheTtl;
+    this.ldapSettings = (GroupsProviderLdapSettings) settings;
+  }
+
   @SuppressWarnings("unchecked")
   public static LdapAuthRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
     String ldapName = settings.stringReq(LDAP_NAME);
     Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     return new LdapAuthRuleSettings(
-        ldapSettingsCollection.get(ldapName),
-        groups,
-        settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
+      ldapSettingsCollection.get(ldapName),
+      groups,
+      settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
-  }
-
-  private LdapAuthRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
-    if(!(settings instanceof GroupsProviderLdapSettings))
-      throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
-          "(without '" + GroupsProviderLdapSettings.SEARCH_GROUPS +"' attribute defined)");
-    this.groups = groups;
-    this.cacheTtl = cacheTtl;
-    this.ldapSettings = (GroupsProviderLdapSettings) settings;
   }
 
   @Override

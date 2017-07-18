@@ -40,12 +40,13 @@ public class UserSettings {
     this.username = settings.stringReq(USERNAME);
     this.groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     List<String> attributes = settings.getKeys().stream()
-        .filter(k -> !Sets.newHashSet(USERNAME, GROUPS).contains(k))
-        .collect(Collectors.toList());
-    if(attributes.size() == 0) {
-      throw new SettingsMalformedException("No authentication method defined for user ['" + username + "']" );
-    } else if (attributes.size() > 1) {
-      throw new SettingsMalformedException("Only one authentication should be defined for user ['" + username + "']" );
+      .filter(k -> !Sets.newHashSet(USERNAME, GROUPS).contains(k))
+      .collect(Collectors.toList());
+    if (attributes.size() == 0) {
+      throw new SettingsMalformedException("No authentication method defined for user ['" + username + "']");
+    }
+    else if (attributes.size() > 1) {
+      throw new SettingsMalformedException("Only one authentication should be defined for user ['" + username + "']");
     }
     this.authKeyProviderSettings = registry.create(attributes.get(0), settings);
   }

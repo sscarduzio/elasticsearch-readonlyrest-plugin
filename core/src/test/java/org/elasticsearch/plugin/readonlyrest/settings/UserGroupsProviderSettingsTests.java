@@ -28,20 +28,20 @@ public class UserGroupsProviderSettingsTests {
   public void testSuccessfulCreationFromRequiredSettings() throws URISyntaxException {
     UserGroupsProviderSettingsCollection.from(
       TestUtils.fromYAMLString("" +
-            "user_groups_providers:\n" +
-            "\n" +
-            "  - name: GroupsService1\n" +
-            "    groups_endpoint: \"http://localhost:8080/groups\"\n" +
-            "    auth_token_name: \"user\"\n" +
-            "    auth_token_passed_as: QUERY_PARAM\n" +
-            "    response_groups_json_path: \"$..groups[?(@.name)].name\"\n" +
-            "\n" +
-            "  - name: GroupsService2\n" +
-            "    groups_endpoint: \"http://192.168.0.1:8080/groups\"\n" +
-            "    auth_token_name: \"auth_token\"\n" +
-            "    auth_token_passed_as: HEADER\n" +
-            "    response_groups_json_path: \"$..groups[?(@.name)].name\""
-        )
+                                 "user_groups_providers:\n" +
+                                 "\n" +
+                                 "  - name: GroupsService1\n" +
+                                 "    groups_endpoint: \"http://localhost:8080/groups\"\n" +
+                                 "    auth_token_name: \"user\"\n" +
+                                 "    auth_token_passed_as: QUERY_PARAM\n" +
+                                 "    response_groups_json_path: \"$..groups[?(@.name)].name\"\n" +
+                                 "\n" +
+                                 "  - name: GroupsService2\n" +
+                                 "    groups_endpoint: \"http://192.168.0.1:8080/groups\"\n" +
+                                 "    auth_token_name: \"auth_token\"\n" +
+                                 "    auth_token_passed_as: HEADER\n" +
+                                 "    response_groups_json_path: \"$..groups[?(@.name)].name\""
+      )
     );
   }
 

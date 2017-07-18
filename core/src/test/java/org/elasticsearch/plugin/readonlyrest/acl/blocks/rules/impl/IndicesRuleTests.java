@@ -80,14 +80,14 @@ public class IndicesRuleTests {
     when(rc.getLoggedInUser()).thenReturn(Optional.empty());
     when(rc.getExpandedIndices()).thenReturn(Sets.newHashSet(singletonList("another_index")));
     when(rc.getAllIndicesAndAliases())
-        .thenReturn(Sets.newHashSet(Lists.newArrayList("perfmon-bfarm", "another_index")));
+      .thenReturn(Sets.newHashSet(Lists.newArrayList("perfmon-bfarm", "another_index")));
 
     RuleExitResult res = match(
-        // Mocks:  indices: ["perfmon*"]
-        singletonList("perfmon*"),
-        // The incoming request is directed to "another_index"
-        singletonList("another_index"),
-        rc
+      // Mocks:  indices: ["perfmon*"]
+      singletonList("perfmon*"),
+      // The incoming request is directed to "another_index"
+      singletonList("another_index"),
+      rc
     );
 
     // Should be a NO_MATCH
@@ -98,15 +98,15 @@ public class IndicesRuleTests {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc){
+  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new IndicesSyncRule(
-        IndicesRuleSettings.from(Sets.newHashSet(configured)),
-        MockedESContext.INSTANCE
+      IndicesRuleSettings.from(Sets.newHashSet(configured)),
+      MockedESContext.INSTANCE
     );
 
     return r.match(rc);

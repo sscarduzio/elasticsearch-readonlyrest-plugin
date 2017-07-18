@@ -33,53 +33,53 @@ import static org.junit.Assert.assertNotEquals;
 public class LocalGroupsTest {
 
   private static final String matchingEndpoint = "/_cat/nodes";
-  
+
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-      ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/local_groups/elasticsearch.yml",
-          Optional.empty()
-      );
+    ESWithReadonlyRestContainer.create(
+      RorPluginGradleProject.fromSystemProperty(),
+      "/local_groups/elasticsearch.yml",
+      Optional.empty()
+    );
 
   @Test
   public void testOK_GoodCredsWithGoodRule() throws Exception {
     assertEquals(
-        200,
-        mkRequest("user", "passwd", matchingEndpoint).getStatusLine().getStatusCode()
+      200,
+      mkRequest("user", "passwd", matchingEndpoint).getStatusLine().getStatusCode()
     );
   }
 
   @Test
   public void testFail_BadCredsGoodRule() throws Exception {
     assertNotEquals(
-        200,
-        mkRequest("user", "wrong", matchingEndpoint).getStatusLine().getStatusCode()
+      200,
+      mkRequest("user", "wrong", matchingEndpoint).getStatusLine().getStatusCode()
     );
   }
 
   @Test
   public void testFail_BadCredsBadRule() throws Exception {
     assertNotEquals(
-        200,
-        mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode()
-        );
+      200,
+      mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode()
+    );
   }
 
   @Test
   public void testFail_GoodCredsBadRule() throws Exception {
     assertNotEquals(
-        200,
-        mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
+      200,
+      mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
     );
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {
     RestClient rcl = container.getBasicAuthClient(user, pass);
     return rcl.execute(new HttpGet(rcl.from(
-        endpoint,
-        new ImmutableMap.Builder<String, String>()
-            .build()
+      endpoint,
+      new ImmutableMap.Builder<String, String>()
+        .build()
     )));
   }
 

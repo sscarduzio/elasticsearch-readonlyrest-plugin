@@ -46,8 +46,8 @@ public class MethodsSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     return allowedMethods.contains(rc.getMethod())
-        ? MATCH
-        : NO_MATCH;
+      ? MATCH
+      : NO_MATCH;
   }
 
   @Override

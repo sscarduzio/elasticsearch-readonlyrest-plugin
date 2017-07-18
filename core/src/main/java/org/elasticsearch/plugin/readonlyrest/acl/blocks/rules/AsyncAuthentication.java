@@ -57,13 +57,13 @@ public abstract class AsyncAuthentication extends AsyncRule implements Authentic
 
     BasicAuth basicAuth = optBasicAuth.get();
     return authenticate(basicAuth.getUserName(), basicAuth.getPassword())
-        .thenApply(result -> {
-          RuleExitResult r = result != null && result ? MATCH : NO_MATCH;
-          if (r.isMatch()) {
-            rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
-          }
-          return r;
-        });
+      .thenApply(result -> {
+        RuleExitResult r = result != null && result ? MATCH : NO_MATCH;
+        if (r.isMatch()) {
+          rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
+        }
+        return r;
+      });
   }
 
 }

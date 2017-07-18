@@ -29,16 +29,16 @@ public class IndicesRuleSettings implements RuleSettings {
 
   private final Set<Value<String>> indices;
 
-  public static IndicesRuleSettings from(Set<String> indices) {
-    return new IndicesRuleSettings(
-        indices.stream()
-            .map(i -> Value.fromString(i, Function.identity()))
-            .collect(Collectors.toSet())
-    );
-  }
-
   private IndicesRuleSettings(Set<Value<String>> indices) {
     this.indices = indices;
+  }
+
+  public static IndicesRuleSettings from(Set<String> indices) {
+    return new IndicesRuleSettings(
+      indices.stream()
+        .map(i -> Value.fromString(i, Function.identity()))
+        .collect(Collectors.toSet())
+    );
   }
 
   public Set<Value<String>> getIndices() {

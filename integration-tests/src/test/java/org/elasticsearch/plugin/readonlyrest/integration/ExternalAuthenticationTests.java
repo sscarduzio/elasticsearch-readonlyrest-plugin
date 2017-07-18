@@ -33,20 +33,20 @@ public class ExternalAuthenticationTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
-      ESWithReadonlyRestContainerUtils.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          new MultiContainer.Builder()
-              .add("EXT1", () -> WireMockContainer.create(
-                  "/external_authentication/wiremock_service1_cartman.json",
-                  "/external_authentication/wiremock_service1_morgan.json"
-              ))
-              .add("EXT2", () -> WireMockContainer.create("/external_authentication/wiremock_service2_cartman.json"))
-              .build(),
-          "/external_authentication/elasticsearch.yml",
-          new ElasticsearchTweetsInitializer()
-      );
+    ESWithReadonlyRestContainerUtils.create(
+      RorPluginGradleProject.fromSystemProperty(),
+      new MultiContainer.Builder()
+        .add("EXT1", () -> WireMockContainer.create(
+          "/external_authentication/wiremock_service1_cartman.json",
+          "/external_authentication/wiremock_service1_morgan.json"
+        ))
+        .add("EXT2", () -> WireMockContainer.create("/external_authentication/wiremock_service2_cartman.json"))
+        .build(),
+      "/external_authentication/elasticsearch.yml",
+      new ElasticsearchTweetsInitializer()
+    );
 
-// #TODO this fails
+  // #TODO this fails
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {
     assertions(container).assertUserHasAccessToIndex("cartman", "user1", "twitter");

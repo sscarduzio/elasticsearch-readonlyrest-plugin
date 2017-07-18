@@ -29,15 +29,15 @@ public class MethodsRuleSettings implements RuleSettings {
 
   private final Set<HttpMethod> methods;
 
-  public static MethodsRuleSettings from(Set<String> methods) {
-    return new MethodsRuleSettings(methods.stream()
-        .map(value -> HttpMethod.fromString(value)
-            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown/unsupported http method: " + value)))
-        .collect(Collectors.toSet()));
-  }
-
   public MethodsRuleSettings(Set<HttpMethod> methods) {
     this.methods = methods;
+  }
+
+  public static MethodsRuleSettings from(Set<String> methods) {
+    return new MethodsRuleSettings(methods.stream()
+                                     .map(value -> HttpMethod.fromString(value)
+                                       .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown/unsupported http method: " + value)))
+                                     .collect(Collectors.toSet()));
   }
 
   public Set<HttpMethod> getMethods() {

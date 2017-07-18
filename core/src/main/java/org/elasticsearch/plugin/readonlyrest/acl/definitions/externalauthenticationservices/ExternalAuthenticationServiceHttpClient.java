@@ -39,7 +39,7 @@ public class ExternalAuthenticationServiceHttpClient implements ExternalAuthenti
   @Override
   public CompletableFuture<Boolean> authenticate(String user, String password) {
     return client.send(RRHttpRequest.get(
-        endpoint, ImmutableMap.of("Authorization", BasicAuthUtils.basicAuthHeaderValue(user, password))
+      endpoint, ImmutableMap.of("Authorization", BasicAuthUtils.basicAuthHeaderValue(user, password))
     )).thenApply(response -> response.getStatusCode() == successStatusCode);
   }
 }

@@ -42,39 +42,44 @@ public class IndicesRewriteTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-      create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/indices_rewrite/elasticsearch.yml",
-          Optional.of(
-              new ESWithReadonlyRestContainer.ESInitalizer() {
-                @Override
-                public void initialize(RestClient adminClient) {
-                  try {
-                    HttpPut request = new HttpPut(adminClient.from("/.kibana_simone/doc/1"));
-                    request.setHeader("refresh", "true");
-                    request.setHeader("timeout", "50s");
-                    request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
-                    request.setEntity(new StringEntity("{\"helloWorld\": true}"));
-                    System.out.println(body(adminClient.execute(request)));
-                  } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new IllegalStateException("Cannot configure test case", e);
-                  }
+    create(
+      RorPluginGradleProject.fromSystemProperty(),
+      "/indices_rewrite/elasticsearch.yml",
+      Optional.of(
+        new ESWithReadonlyRestContainer.ESInitalizer() {
+          @Override
+          public void initialize(RestClient adminClient) {
+            try {
+              HttpPut request = new HttpPut(adminClient.from("/.kibana_simone/doc/1"));
+              request.setHeader("refresh", "true");
+              request.setHeader("timeout", "50s");
+              request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
+              request.setEntity(new StringEntity("{\"helloWorld\": true}"));
+              System.out.println(body(adminClient.execute(request)));
+            } catch (Exception e) {
+              e.printStackTrace();
+              throw new IllegalStateException("Cannot configure test case", e);
+            }
 
-                  try {
-                    HttpResponse response;
-                    do {
-                      HttpHead request = new HttpHead(adminClient.from("/.kibana_simone/doc/1"));
-                      response = adminClient.execute(request);
-                      EntityUtils.consume(response.getEntity());
-                    } while (response.getStatusLine().getStatusCode() != 200);
-                  } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new IllegalStateException("Cannot configure test case", e);
-                  }
-                }
-              }
-          ));
+            try {
+              HttpResponse response;
+              do {
+                HttpHead request = new HttpHead(adminClient.from("/.kibana_simone/doc/1"));
+                response = adminClient.execute(request);
+                EntityUtils.consume(response.getEntity());
+              } while (response.getStatusLine().getStatusCode() != 200);
+            } catch (Exception e) {
+              e.printStackTrace();
+              throw new IllegalStateException("Cannot configure test case", e);
+            }
+          }
+        }
+      )
+    );
+
+  private static String body(HttpResponse r) throws Exception {
+    return EntityUtils.toString(r.getEntity());
+  }
 
   @Test
   public void testNonIndexRequest() throws Exception {
@@ -92,7 +97,7 @@ public class IndicesRewriteTests {
 
   @Test
   public void testSearch() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if (container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient ro = getRO();
     HttpGet request = new HttpGet(ro.from("/.kibana/_search"));
@@ -101,7 +106,7 @@ public class IndicesRewriteTests {
 
   @Test
   public void testMultiSearch() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if (container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient ro = getRO();
     HttpGetWithEntity request = new HttpGetWithEntity(ro.from("/_msearch"));
@@ -136,31 +141,31 @@ public class IndicesRewriteTests {
 
   @Test
   public void testBulkAll() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if (container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient logstash = getLogstash();
     HttpPost request = new HttpPost(logstash.from("/_bulk"));
     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     request.setEntity(
-        new StringEntity("{ \"index\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
-            "{ \"helloWorld\" : false }\n" +
-            "{ \"delete\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
-            "{ \"create\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"3\" } }\n" +
-            "{ \"helloWorld\" : false }\n" +
-            "{ \"update\" : {\"_id\" : \"2\", \"_type\" : \"doc\", \"_index\" : \"logstash-2017-01-01\"} }\n")
+      new StringEntity("{ \"index\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
+                         "{ \"helloWorld\" : false }\n" +
+                         "{ \"delete\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"2\" } }\n" +
+                         "{ \"create\" : { \"_index\" : \"logstash-2017-01-01\", \"_type\" : \"doc\", \"_id\" : \"3\" } }\n" +
+                         "{ \"helloWorld\" : false }\n" +
+                         "{ \"update\" : {\"_id\" : \"2\", \"_type\" : \"doc\", \"_index\" : \"logstash-2017-01-01\"} }\n")
     );
     checkForErrors(logstash.execute(request));
   }
 
   @Test
   public void testCreateIndexPattern() throws Exception {
-    if(container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
+    if (container.getEsVersion().startsWith("5.2")) return; // todo: for review for Simone
 
     RestClient rw = getRW();
     HttpPost request = new HttpPost(rw.from("/.kibana/index-pattern/logstash-*/_create"));
     request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     request.setEntity(
-        new StringEntity("{\"title\":\"logstash-*\",\"timeFieldName\":\"@timestamp\"}\n")
+      new StringEntity("{\"title\":\"logstash-*\",\"timeFieldName\":\"@timestamp\"}\n")
     );
     HttpResponse resp = rw.execute(request);
     String body = checkForErrors(resp);
@@ -179,10 +184,6 @@ public class IndicesRewriteTests {
   private String checkForErrors(HttpResponse resp) throws Exception {
     assertTrue(resp.getStatusLine().getStatusCode() <= 201);
     return EntityUtils.toString(resp.getEntity());
-  }
-
-  private static String body(HttpResponse r) throws Exception {
-    return EntityUtils.toString(r.getEntity());
   }
 
   private RestClient getRO() {

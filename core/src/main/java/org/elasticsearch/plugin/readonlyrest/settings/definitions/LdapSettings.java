@@ -132,19 +132,19 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
     private final String dn;
     private final String password;
 
+    SearchingUserSettings(String dn, String password) {
+      this.dn = dn;
+      this.password = password;
+    }
+
     static Optional<SearchingUserSettings> from(RawSettings settings) {
       Optional<String> bindDn = settings.stringOpt(BIND_DN);
       Optional<String> bindPassword = settings.stringOpt(BIND_PASS);
       if ((bindDn.isPresent() && !bindPassword.isPresent()) ||
-          (!bindDn.isPresent() && bindPassword.isPresent())) {
+        (!bindDn.isPresent() && bindPassword.isPresent())) {
         throw new SettingsMalformedException("'" + BIND_DN + "' & '" + BIND_PASS + "' should be both present or both absent");
       }
       return bindDn.flatMap(bdn -> bindPassword.map(bp -> new SearchingUserSettings(bdn, bp)));
-    }
-
-    SearchingUserSettings(String dn, String password) {
-      this.dn = dn;
-      this.password = password;
     }
 
     public String getDn() {

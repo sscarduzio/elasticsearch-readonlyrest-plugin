@@ -45,25 +45,25 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
   public LdapAuthAsyncRule(LdapAuthRuleSettings settings, LdapClientFactory factory, ESContext context) {
     LdapAuthenticationRuleSettings ldapAuthenticationRuleSettings = LdapAuthenticationRuleSettings.from(settings);
     this.authentication = wrapInCacheIfCacheIsEnabled(
-        new LdapAuthenticationAsyncRule(ldapAuthenticationRuleSettings, factory, context),
-        ldapAuthenticationRuleSettings,
-        context
+      new LdapAuthenticationAsyncRule(ldapAuthenticationRuleSettings, factory, context),
+      ldapAuthenticationRuleSettings,
+      context
     );
     LdapAuthorizationRuleSettings ldapAuthorizationRuleSettings = LdapAuthorizationRuleSettings.from(settings);
     this.authorization = wrapInCacheIfCacheIsEnabled(
-        new LdapAuthorizationAsyncRule(ldapAuthorizationRuleSettings, factory, context),
-        ldapAuthorizationRuleSettings,
-        context
+      new LdapAuthorizationAsyncRule(ldapAuthorizationRuleSettings, factory, context),
+      ldapAuthorizationRuleSettings,
+      context
     );
   }
 
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     return authentication.match(rc)
-        .thenCompose(result -> result.isMatch()
-            ? authorization.match(rc)
-            : CompletableFuture.completedFuture(result)
-        );
+      .thenCompose(result -> result.isMatch()
+        ? authorization.match(rc)
+        : CompletableFuture.completedFuture(result)
+      );
   }
 
   @Override

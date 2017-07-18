@@ -38,22 +38,22 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, Ca
   private final Duration cacheTtl;
   private final UserGroupsProviderSettings userGroupsProviderSettings;
 
+  private GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Duration cacheTtl) {
+    this.groups = groups;
+    this.cacheTtl = cacheTtl;
+    this.userGroupsProviderSettings = settings;
+  }
+
   @SuppressWarnings("unchecked")
   public static GroupsProviderAuthorizationRuleSettings from(RawSettings settings,
                                                              UserGroupsProviderSettingsCollection groupsProviderSettingsCollection) {
     String providerName = settings.stringReq(GROUPS_PROVIDER_NAME);
     Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     return new GroupsProviderAuthorizationRuleSettings(
-        groupsProviderSettingsCollection.get(providerName),
-        groups,
-        settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
+      groupsProviderSettingsCollection.get(providerName),
+      groups,
+      settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
-  }
-
-  private GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Duration cacheTtl) {
-    this.groups = groups;
-    this.cacheTtl = cacheTtl;
-    this.userGroupsProviderSettings = settings;
   }
 
   @Override

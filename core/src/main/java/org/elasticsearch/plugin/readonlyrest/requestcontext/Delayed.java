@@ -28,8 +28,8 @@ import java.util.List;
  * Created by sscarduzio on 14/04/2017.
  */
 public abstract class Delayed {
-  private final LoggerShim logger;
   protected final String name;
+  private final LoggerShim logger;
   private final ESContext context;
   private final List<Runnable> effects = new LinkedList<>();
   private final List<Delayed> delegates = new LinkedList<>();
@@ -62,10 +62,9 @@ public abstract class Delayed {
       Runnable eff = it.next();
       try {
         eff.run();
-      }catch(Throwable t){
+      } catch (Throwable t) {
         t.printStackTrace();
-      }
-      finally {
+      } finally {
         logger.trace(name + " > committed.");
       }
       it.remove();

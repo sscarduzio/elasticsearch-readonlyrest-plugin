@@ -27,25 +27,16 @@ public class SessionMaxIdleRuleSettings implements RuleSettings {
 
   private final Duration maxIdle;
 
+  private SessionMaxIdleRuleSettings(Duration maxIdle) {
+    this.maxIdle = maxIdle;
+  }
+
   public static SessionMaxIdleRuleSettings from(String millisStr) {
     Duration duration = Duration.ofMillis(timeIntervalStringToMillis(millisStr));
     if (duration.isNegative() || duration.isZero()) {
       throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' req must be greater than zero");
     }
     return new SessionMaxIdleRuleSettings(duration);
-  }
-
-  private SessionMaxIdleRuleSettings(Duration maxIdle) {
-    this.maxIdle = maxIdle;
-  }
-
-  public Duration getMaxIdle() {
-    return maxIdle;
-  }
-
-  @Override
-  public String getName() {
-    return ATTRIBUTE_NAME;
   }
 
   private static long timeIntervalStringToMillis(String input) {
@@ -81,6 +72,15 @@ public class SessionMaxIdleRuleSettings implements RuleSettings {
       default:
         return 0;
     }
+  }
+
+  public Duration getMaxIdle() {
+    return maxIdle;
+  }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
   }
 
 }

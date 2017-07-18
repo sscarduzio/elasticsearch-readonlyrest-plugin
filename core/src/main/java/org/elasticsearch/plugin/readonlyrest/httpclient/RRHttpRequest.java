@@ -33,13 +33,6 @@ public class RRHttpRequest {
   private final Optional<String> body;
   private final String id;
 
-  public static RRHttpRequest get(URI url, Map<String, String> queryParams, Map<String, String> headers) {
-    return new RRHttpRequest(HttpMethod.GET, url, queryParams, headers, Optional.empty());
-  }
-  public static RRHttpRequest get(URI url, Map<String, String> headers) {
-    return get(url, Maps.newHashMap(), headers);
-  }
-
   public RRHttpRequest(HttpMethod method, URI url, Map<String, String> queryParams, Map<String, String> headers, Optional<String> body) {
     this.method = method;
     this.url = url;
@@ -47,6 +40,14 @@ public class RRHttpRequest {
     this.headers = headers;
     this.body = body;
     this.id = UUID.randomUUID().toString();
+  }
+
+  public static RRHttpRequest get(URI url, Map<String, String> queryParams, Map<String, String> headers) {
+    return new RRHttpRequest(HttpMethod.GET, url, queryParams, headers, Optional.empty());
+  }
+
+  public static RRHttpRequest get(URI url, Map<String, String> headers) {
+    return get(url, Maps.newHashMap(), headers);
   }
 
   public HttpMethod getMethod() {

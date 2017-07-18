@@ -47,7 +47,7 @@ public class SerializationTool {
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
       "SimpleModule",
-      new Version(1, 0, 0, null,"com.readonlyrest", "readonlyrest")
+      new Version(1, 0, 0, null, "com.readonlyrest", "readonlyrest")
     );
     mapper.registerModule(simpleModule);
     this.mapper = mapper;
@@ -106,7 +106,7 @@ public class SerializationTool {
       });
     }
     // The stupidity of checked exceptions. (TM)
-    catch (RuntimeException e){
+    catch (RuntimeException e) {
       throw (JsonProcessingException) e.getCause();
     }
     return res[0];

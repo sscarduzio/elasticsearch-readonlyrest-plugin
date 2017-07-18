@@ -33,6 +33,7 @@ public class ESVersion {
 
 
   private final int id;
+
   public ESVersion(int id) {
     this.id = id;
   }

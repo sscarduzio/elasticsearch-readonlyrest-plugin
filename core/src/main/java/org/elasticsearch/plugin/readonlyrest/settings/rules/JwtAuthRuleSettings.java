@@ -33,10 +33,18 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   private final byte[] key;
   private final Optional<String> userClaim;
 
+  private JwtAuthRuleSettings(String key, Optional<String> userClaim) {
+    if (Strings.isNullOrEmpty(key))
+      throw new SettingsMalformedException(
+        "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string");
+    this.key = key.getBytes();
+    this.userClaim = userClaim;
+  }
+
   public static JwtAuthRuleSettings from(RawSettings settings) {
     return new JwtAuthRuleSettings(
-        evalPrefixedSignatureKey(ensureString(settings, SIGNATURE_KEY)),
-        settings.opt(USER_CLAIM)
+      evalPrefixedSignatureKey(ensureString(settings, SIGNATURE_KEY)),
+      settings.opt(USER_CLAIM)
     );
   }
 
@@ -44,7 +52,7 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
     Object value = settings.req(key);
     if (value instanceof String) return (String) value;
     else throw new SettingsMalformedException(
-        "Attribute '" + key + "' must be a string; if it looks like a number try adding quotation marks");
+      "Attribute '" + key + "' must be a string; if it looks like a number try adding quotation marks");
   }
 
   private static String evalPrefixedSignatureKey(String s) {
@@ -53,14 +61,6 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
     else if (s.startsWith("env:"))
       return System.getenv(s.substring(4));
     else return s;
-  }
-
-  private JwtAuthRuleSettings(String key, Optional<String> userClaim) {
-    if (Strings.isNullOrEmpty(key))
-      throw new SettingsMalformedException(
-          "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string");
-    this.key = key.getBytes();
-    this.userClaim = userClaim;
   }
 
   public byte[] getKey() {

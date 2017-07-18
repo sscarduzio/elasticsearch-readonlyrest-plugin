@@ -50,7 +50,7 @@ public class LdapCredentials {
     if (getClass() != obj.getClass()) return false;
     final LdapCredentials other = (LdapCredentials) obj;
     return Objects.equals(this.userName, other.userName)
-        && Objects.equals(this.password, other.password);
+      && Objects.equals(this.password, other.password);
   }
 
   @Override

@@ -42,6 +42,17 @@ public class XForwardedForSyncRule extends SyncRule {
     this.settings = s;
   }
 
+  private static String getXForwardedForHeader(Map<String, String> headers) {
+    String header = headers.get("X-Forwarded-For");
+    if (!Strings.isNullOrEmpty(header)) {
+      String[] parts = header.split(",");
+      if (!Strings.isNullOrEmpty(parts[0])) {
+        return parts[0];
+      }
+    }
+    return null;
+  }
+
   @Override
   public RuleExitResult match(RequestContext rc) {
     String header = getXForwardedForHeader(rc.getHeaders());
@@ -68,11 +79,11 @@ public class XForwardedForSyncRule extends SyncRule {
     }
 
     return allowedAddresses.stream()
-        .anyMatch(value ->
-            value.getValue(rc)
-                .map(ip -> ipMatchesAddress(ip, address))
-                .orElse(false)
-        );
+      .anyMatch(value ->
+                  value.getValue(rc)
+                    .map(ip -> ipMatchesAddress(ip, address))
+                    .orElse(false)
+      );
   }
 
   private boolean ipMatchesAddress(IPMask ip, String address) {
@@ -81,16 +92,5 @@ public class XForwardedForSyncRule extends SyncRule {
     } catch (UnknownHostException e) {
       return false;
     }
-  }
-
-  private static String getXForwardedForHeader(Map<String, String> headers) {
-    String header = headers.get("X-Forwarded-For");
-    if (!Strings.isNullOrEmpty(header)) {
-      String[] parts = header.split(",");
-      if (!Strings.isNullOrEmpty(parts[0])) {
-        return parts[0];
-      }
-    }
-    return null;
   }
 }

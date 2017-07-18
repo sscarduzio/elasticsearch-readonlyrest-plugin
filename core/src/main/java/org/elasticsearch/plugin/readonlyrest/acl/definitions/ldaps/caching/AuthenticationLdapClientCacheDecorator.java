@@ -38,17 +38,17 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
   public AuthenticationLdapClientCacheDecorator(AuthenticationLdapClient underlyingClient, Duration ttl) {
     this.underlyingClient = underlyingClient;
     this.ldapUsersWithPasswordCache = CacheBuilder.newBuilder()
-                                                  .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-                                                  .build();
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
     this.ldapUsersCache = CacheBuilder.newBuilder()
-                                      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-                                      .build();
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
   }
 
   public static AuthenticationLdapClient wrapInCacheIfCacheIsEnabled(CacheSettings settings, AuthenticationLdapClient client) {
     return settings.getCacheTtl().isZero()
-        ? client
-        : new AuthenticationLdapClientCacheDecorator(client, settings.getCacheTtl());
+      ? client
+      : new AuthenticationLdapClientCacheDecorator(client, settings.getCacheTtl());
   }
 
   @Override
@@ -56,10 +56,10 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
     Optional<LdapUser> ldapUser = ldapUsersCache.getIfPresent(userId);
     if (ldapUser == null) {
       return underlyingClient.userById(userId)
-                             .thenApply(user -> {
-                               ldapUsersCache.put(userId, user);
-                               return user;
-                             });
+        .thenApply(user -> {
+          ldapUsersCache.put(userId, user);
+          return user;
+        });
     }
     return CompletableFuture.completedFuture(ldapUser);
   }
@@ -69,18 +69,18 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
     LdapUserWithHashedPassword cachedUser = ldapUsersWithPasswordCache.getIfPresent(credentials.getUserName());
     if (cachedUser == null) {
       return underlyingClient.authenticate(credentials)
-                             .thenApply(newUser -> {
-                               newUser.ifPresent(ldapUser -> ldapUsersWithPasswordCache.put(
-                                   credentials.getUserName(),
-                                   new LdapUserWithHashedPassword(ldapUser, credentials.getHashedPassword())
-                               ));
-                               return newUser;
-                             });
+        .thenApply(newUser -> {
+          newUser.ifPresent(ldapUser -> ldapUsersWithPasswordCache.put(
+            credentials.getUserName(),
+            new LdapUserWithHashedPassword(ldapUser, credentials.getHashedPassword())
+          ));
+          return newUser;
+        });
     }
     return CompletableFuture.completedFuture(
-        Objects.equals(cachedUser.hashedPassword, credentials.getHashedPassword())
-            ? Optional.of(cachedUser.ldapUser)
-            : Optional.empty()
+      Objects.equals(cachedUser.hashedPassword, credentials.getHashedPassword())
+        ? Optional.of(cachedUser.ldapUser)
+        : Optional.empty()
     );
   }
 

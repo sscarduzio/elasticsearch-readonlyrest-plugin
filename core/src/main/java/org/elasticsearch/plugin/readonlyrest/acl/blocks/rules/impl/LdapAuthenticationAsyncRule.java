@@ -42,8 +42,8 @@ public class LdapAuthenticationAsyncRule extends AsyncAuthentication {
   @Override
   protected CompletableFuture<Boolean> authenticate(String user, String password) {
     return client
-        .authenticate(new LdapCredentials(user, password))
-        .thenApply(Optional::isPresent);
+      .authenticate(new LdapCredentials(user, password))
+      .thenApply(Optional::isPresent);
   }
 
   @Override

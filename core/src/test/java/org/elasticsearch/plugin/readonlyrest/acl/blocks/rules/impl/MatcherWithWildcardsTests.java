@@ -68,7 +68,7 @@ public class MatcherWithWildcardsTests {
   @Test
   public void testMatchDotKibana() {
     MatcherWithWildcards m = new MatcherWithWildcards(
-        Sets.newHashSet("<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default")
+      Sets.newHashSet("<no-index>", ".kibana", ".kibana-devnull", "logstash-*", "default")
     );
     assertTrue(m.match(".kibana"));
   }

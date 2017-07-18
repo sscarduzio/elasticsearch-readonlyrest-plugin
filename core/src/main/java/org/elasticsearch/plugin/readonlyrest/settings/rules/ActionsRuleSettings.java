@@ -26,12 +26,12 @@ public class ActionsRuleSettings implements RuleSettings {
 
   private final Set<String> actions;
 
-  public static ActionsRuleSettings from(Set<String> indices) {
-    return new ActionsRuleSettings(indices);
-  }
-
   private ActionsRuleSettings(Set<String> actions) {
     this.actions = actions;
+  }
+
+  public static ActionsRuleSettings from(Set<String> indices) {
+    return new ActionsRuleSettings(indices);
   }
 
   public Set<String> getActions() {

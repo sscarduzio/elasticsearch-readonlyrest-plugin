@@ -64,19 +64,19 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   @Override
   public CompletableFuture<Set<String>> fetchGroupsFor(LoggedUser user) {
     return client.send(RRHttpRequest.get(endpoint, createParams(user), createHeaders(user)))
-        .thenApply(groupsFromResponse());
+      .thenApply(groupsFromResponse());
   }
 
   private Map<String, String> createParams(LoggedUser user) {
     return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.QUERY
-        ? ImmutableMap.of(authTokenName, user.getId())
-        : ImmutableMap.of();
+      ? ImmutableMap.of(authTokenName, user.getId())
+      : ImmutableMap.of();
   }
 
   private Map<String, String> createHeaders(LoggedUser user) {
     return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.HEADER
-        ? ImmutableMap.of(authTokenName, user.getId())
-        : ImmutableMap.of();
+      ? ImmutableMap.of(authTokenName, user.getId())
+      : ImmutableMap.of();
   }
 
   private Function<RRHttpResponse, Set<String>> groupsFromResponse() {

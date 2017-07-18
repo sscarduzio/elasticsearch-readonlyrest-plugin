@@ -97,6 +97,7 @@ public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<Ind
 
     return true;
   }
+
   @Override
   protected boolean onFailure(BlockExitResult result,
                               RequestContext rc,
@@ -116,7 +117,8 @@ public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<Ind
   private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
     for (SearchHit h : sr.getHits().getHits()) {
       ReflecUtils.setIndices(h, Sets.newHashSet("index"),
-          Sets.newHashSet(rc.getIndices().iterator().next()), logger);
+                             Sets.newHashSet(rc.getIndices().iterator().next()), logger
+      );
     }
   }
 

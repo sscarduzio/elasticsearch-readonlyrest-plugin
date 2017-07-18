@@ -69,20 +69,20 @@ public class KibanaAccessRuleTests {
 
       System.out.println("trying " + a + " as RO_STRICT");
       assertFalse(
-          matchRule(KibanaAccess.RO_STRICT, a, Sets.newHashSet(".kibana"), ".kibana", true)
-              .isMatch()
+        matchRule(KibanaAccess.RO_STRICT, a, Sets.newHashSet(".kibana"), ".kibana", true)
+          .isMatch()
       );
 
       System.out.println("trying " + a + " as RO");
       assertFalse(
-          matchRule(KibanaAccess.RO, a, Sets.newHashSet(".kibana"), ".kibana", true)
-              .isMatch()
+        matchRule(KibanaAccess.RO, a, Sets.newHashSet(".kibana"), ".kibana", true)
+          .isMatch()
       );
 
       System.out.println("trying " + a + " as RW");
       assertTrue(
-          matchRule(KibanaAccess.RW, a, Sets.newHashSet(".kibana"), ".kibana", true)
-              .isMatch()
+        matchRule(KibanaAccess.RW, a, Sets.newHashSet(".kibana"), ".kibana", true)
+          .isMatch()
       );
     }
   }
@@ -161,8 +161,8 @@ public class KibanaAccessRuleTests {
     when(rc.resolveVariable(anyString())).then(invocation -> Optional.of((String) invocation.getArguments()[0]));
 
     SyncRule r = new KibanaAccessSyncRule(
-        new KibanaAccessRuleSettings(configured.accessLevel, configured.kibanaIndex),
-        MockedESContext.INSTANCE
+      new KibanaAccessRuleSettings(configured.accessLevel, configured.kibanaIndex),
+      MockedESContext.INSTANCE
     );
     return r.match(rc);
   }

@@ -37,16 +37,16 @@ public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
     super(context);
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
-                             .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-                             .build();
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
   }
 
   public static AsyncAuthentication wrapInCacheIfCacheIsEnabled(AsyncAuthentication authentication,
                                                                 CacheSettings settings,
                                                                 ESContext context) {
     return settings.getCacheTtl().isZero()
-        ? authentication
-        : new CachedAsyncAuthenticationDecorator(authentication, settings.getCacheTtl(), context);
+      ? authentication
+      : new CachedAsyncAuthenticationDecorator(authentication, settings.getCacheTtl(), context);
   }
 
   private static String hashPassword(String password) {
@@ -59,12 +59,12 @@ public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
     String providedHashedPassword = hashPassword(password);
     if (hashedPassword == null) {
       return underlying.authenticate(user, password)
-                       .thenApply(result -> {
-                         if (result) {
-                           cache.put(user, providedHashedPassword);
-                         }
-                         return result;
-                       });
+        .thenApply(result -> {
+          if (result) {
+            cache.put(user, providedHashedPassword);
+          }
+          return result;
+        });
     }
     return CompletableFuture.completedFuture(Objects.equals(hashedPassword, providedHashedPassword));
   }

@@ -50,12 +50,12 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.6.2'
     compile 'log4j:log4j:1.2.17'
 
-    compile (project(':core')) { // 2.x didn't have rest client
+    compile(project(':core')) { // 2.x didn't have rest client
         exclude group: 'com.google.guava', module: 'guava'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
 
     }
-    compile ('org.elasticsearch:elasticsearch:' + esVersion)
+    compile('org.elasticsearch:elasticsearch:' + esVersion)
 
 }
 

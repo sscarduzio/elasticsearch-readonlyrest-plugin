@@ -31,19 +31,19 @@ public class CachedGroupsProviderServiceClient implements GroupsProviderServiceC
   private final GroupsProviderServiceClient underlying;
   private final Cache<String, Set<String>> cache;
 
-  public static GroupsProviderServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
-                                                                        GroupsProviderServiceClient client) {
-    return settings.getCacheTtl().isZero()
-        ? client
-        : new CachedGroupsProviderServiceClient(client, settings.getCacheTtl());
-  }
-
   private CachedGroupsProviderServiceClient(GroupsProviderServiceClient underlying,
                                             Duration ttl) {
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
+  }
+
+  public static GroupsProviderServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
+                                                                        GroupsProviderServiceClient client) {
+    return settings.getCacheTtl().isZero()
+      ? client
+      : new CachedGroupsProviderServiceClient(client, settings.getCacheTtl());
   }
 
   @Override
@@ -51,10 +51,10 @@ public class CachedGroupsProviderServiceClient implements GroupsProviderServiceC
     Set<String> cachedUserGroups = cache.getIfPresent(user.getId());
     if (cachedUserGroups == null) {
       return underlying.fetchGroupsFor(user)
-          .thenApply(groups -> {
-            cache.put(user.getId(), groups);
-            return groups;
-          });
+        .thenApply(groups -> {
+          cache.put(user.getId(), groups);
+          return groups;
+        });
     }
     return CompletableFuture.completedFuture(cachedUserGroups);
   }

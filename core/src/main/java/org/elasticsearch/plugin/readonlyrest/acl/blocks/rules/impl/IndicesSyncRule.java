@@ -84,11 +84,11 @@ public class IndicesSyncRule extends SyncRule {
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends IndicesRequestContext> boolean canPass(T src) {
     MatcherWithWildcards matcher = new MatcherWithWildcards(
-        settings.getIndices().stream()
-            .map(v -> v.getValue(src))
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .collect(Collectors.toSet())
+      settings.getIndices().stream()
+        .map(v -> v.getValue(src))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .collect(Collectors.toSet())
     );
 
     Set<String> indices = Sets.newHashSet(src.getIndices());

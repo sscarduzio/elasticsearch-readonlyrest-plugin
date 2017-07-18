@@ -40,7 +40,8 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
                                            Optional<SearchingUserConfig> searchingUserConfig,
                                            ESContext context) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
-        connectionConfig.getRequestTimeout(), userSearchFilterConfig, context);
+          connectionConfig.getRequestTimeout(), userSearchFilterConfig, context
+    );
     this.logger = context.logger(getClass());
   }
 
@@ -55,10 +56,10 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
   @Override
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
     return userById(credentials.getUserName())
-        .thenApply(user ->
-            user.map(u -> authenticate(u, credentials.getPassword()))
-                .flatMap(isAuthenticated -> isAuthenticated ? user : Optional.empty())
-        );
+      .thenApply(user ->
+                   user.map(u -> authenticate(u, credentials.getPassword()))
+                     .flatMap(isAuthenticated -> isAuthenticated ? user : Optional.empty())
+      );
   }
 
   private Boolean authenticate(LdapUser user, String password) {

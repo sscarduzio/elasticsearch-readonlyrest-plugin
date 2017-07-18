@@ -33,23 +33,23 @@ public class ExternalAuthenticationServiceSettingsCollection {
 
   private final Map<String, ExternalAuthenticationServiceSettings> ExternalAuthenticationServiceSettingsMap;
 
+  private ExternalAuthenticationServiceSettingsCollection(
+    List<ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
+    validate(externalAuthenticationServiceSettings);
+    this.ExternalAuthenticationServiceSettingsMap = seq(externalAuthenticationServiceSettings)
+      .toMap(ExternalAuthenticationServiceSettings::getName, Function.identity());
+  }
+
   @SuppressWarnings("unchecked")
   public static ExternalAuthenticationServiceSettingsCollection from(RawSettings data) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
-        .map(list ->
-            list.stream()
-                .map(l -> new ExternalAuthenticationServiceSettings(new RawSettings((Map<String, ?>) l)))
-                .collect(Collectors.toList())
-        )
-        .map(ExternalAuthenticationServiceSettingsCollection::new)
-        .orElse(new ExternalAuthenticationServiceSettingsCollection(Lists.newArrayList()));
-  }
-
-  private ExternalAuthenticationServiceSettingsCollection(
-      List<ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
-    validate(externalAuthenticationServiceSettings);
-    this.ExternalAuthenticationServiceSettingsMap = seq(externalAuthenticationServiceSettings)
-        .toMap(ExternalAuthenticationServiceSettings::getName, Function.identity());
+      .map(list ->
+             list.stream()
+               .map(l -> new ExternalAuthenticationServiceSettings(new RawSettings((Map<String, ?>) l)))
+               .collect(Collectors.toList())
+      )
+      .map(ExternalAuthenticationServiceSettingsCollection::new)
+      .orElse(new ExternalAuthenticationServiceSettingsCollection(Lists.newArrayList()));
   }
 
   public ExternalAuthenticationServiceSettings get(String name) {
@@ -60,9 +60,9 @@ public class ExternalAuthenticationServiceSettingsCollection {
 
   private void validate(List<ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
     List<String> names = seq(externalAuthenticationServiceSettings)
-        .map(ExternalAuthenticationServiceSettings::getName)
-        .collect(Collectors.toList());
-    if(names.stream().distinct().count() != names.size()) {
+      .map(ExternalAuthenticationServiceSettings::getName)
+      .collect(Collectors.toList());
+    if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated LDAP name in '" + ATTRIBUTE_NAME + "' section");
     }
   }

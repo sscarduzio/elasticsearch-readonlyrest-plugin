@@ -77,13 +77,13 @@ public class SessionCookie {
     // ----- Check cookie validity
     String user = rc.getLoggedInUser().map(LoggedUser::getId).orElseGet(null);
     Iterator<String> cookiePartsIterator =
-        Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
+      Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
     // Check user is the same with basic auth header
     String cookieUser = cookiePartsIterator.next();
     if (!cookieUser.equals(user)) {
       logger.info("this cookie does not belong to the user logged in as. Found in Cookie: "
-          + cookieUser + " whilst in Authentication: " + user);
+                    + cookieUser + " whilst in Authentication: " + user);
       return;
     }
 
@@ -135,12 +135,12 @@ public class SessionCookie {
 
   private String mkCookie(String userName, Date expiry) {
     return new StringBuilder()
-        .append(userName)
-        .append(COOKIE_STRING_SEPARATOR)
-        .append(expiry.toString())
-        .append(COOKIE_STRING_SEPARATOR)
-        .append(Hashing.sha1().hashString(SERVER_SECRET + userName + expiry.getTime() / 1000, StandardCharsets.UTF_8))
-        .toString();
+      .append(userName)
+      .append(COOKIE_STRING_SEPARATOR)
+      .append(expiry.toString())
+      .append(COOKIE_STRING_SEPARATOR)
+      .append(Hashing.sha1().hashString(SERVER_SECRET + userName + expiry.getTime() / 1000, StandardCharsets.UTF_8))
+      .toString();
   }
 
   private String extractCookie(String cookieName) {

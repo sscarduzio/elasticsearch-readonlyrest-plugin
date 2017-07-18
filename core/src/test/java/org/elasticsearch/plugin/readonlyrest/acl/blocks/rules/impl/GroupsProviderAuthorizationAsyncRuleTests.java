@@ -59,25 +59,25 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
 
   private RuleExitResult createRuleRunMatch(List<String> ruleGroups) throws Exception {
     GroupsProviderAuthorizationAsyncRule rule = new GroupsProviderAuthorizationAsyncRule(
-        GroupsProviderAuthorizationRuleSettings.from(
+      GroupsProviderAuthorizationRuleSettings.from(
+        TestUtils.fromYAMLString("" +
+                                   "groups_provider_authorization:\n" +
+                                   "  user_groups_provider: \"provider1\"\n" +
+                                   "  groups: [" + Joiner.on(",").join(ruleGroups.stream().map(g -> "\"" + g + "\"").collect(Collectors.toSet())) + "]\n" +
+                                   "  cache_ttl_in_sec: 60").inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
+        UserGroupsProviderSettingsCollection.from(
           TestUtils.fromYAMLString("" +
-                "groups_provider_authorization:\n" +
-                "  user_groups_provider: \"provider1\"\n" +
-                "  groups: [" + Joiner.on(",").join(ruleGroups.stream().map(g -> "\"" + g + "\"").collect(Collectors.toSet())) + "]\n" +
-                "  cache_ttl_in_sec: 60").inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
-          UserGroupsProviderSettingsCollection.from(
-            TestUtils.fromYAMLString("" +
-                    "user_groups_providers:\n" +
-                    "  - name: provider1\n" +
-                    "    groups_endpoint: \"http://localhost:" + wireMockContainer.getWireMockPort() + "/groups\"\n" +
-                    "    auth_token_name: \"userId\"\n" +
-                    "    auth_token_passed_as: QUERY_PARAM\n" +
-                    "    response_groups_json_path: \"$..groups[?(@.name)].name\"\n"
-                )
-            )
-        ),
-        new DefinitionsFactory(MockedESContext.INSTANCE, MockedACL.getMock()),
-        MockedESContext.INSTANCE
+                                     "user_groups_providers:\n" +
+                                     "  - name: provider1\n" +
+                                     "    groups_endpoint: \"http://localhost:" + wireMockContainer.getWireMockPort() + "/groups\"\n" +
+                                     "    auth_token_name: \"userId\"\n" +
+                                     "    auth_token_passed_as: QUERY_PARAM\n" +
+                                     "    response_groups_json_path: \"$..groups[?(@.name)].name\"\n"
+          )
+        )
+      ),
+      new DefinitionsFactory(MockedESContext.INSTANCE, MockedACL.getMock()),
+      MockedESContext.INSTANCE
     );
 
     LoggedUser user = new LoggedUser("example_user");

@@ -2,9 +2,9 @@
   "request": {
     "method": "GET",
     "urlPath": "/groups",
-    "queryParameters" : {
-      "userId" : {
-        "equalTo" : "example_user"
+    "queryParameters": {
+      "userId": {
+        "equalTo": "example_user"
       }
     }
   },

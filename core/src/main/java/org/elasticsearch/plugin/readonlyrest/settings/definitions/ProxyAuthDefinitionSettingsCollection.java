@@ -33,21 +33,21 @@ public class ProxyAuthDefinitionSettingsCollection {
 
   private final Map<String, ProxyAuthDefinitionSettings> proxyAuthConfigsSettingsMap;
 
-  @SuppressWarnings("unchecked")
-  public static ProxyAuthDefinitionSettingsCollection from(RawSettings data) {
-    return data.notEmptyListOpt(ATTRIBUTE_NAME)
-        .map(list ->
-            list.stream()
-                .map(l -> new ProxyAuthDefinitionSettings(new RawSettings((Map<String, ?>) l)))
-                .collect(Collectors.toList())
-        )
-        .map(ProxyAuthDefinitionSettingsCollection::new)
-        .orElse(new ProxyAuthDefinitionSettingsCollection(Lists.newArrayList()));
-  }
-
   private ProxyAuthDefinitionSettingsCollection(List<ProxyAuthDefinitionSettings> proxyAuthConfigsSettings) {
     validate(proxyAuthConfigsSettings);
     this.proxyAuthConfigsSettingsMap = seq(proxyAuthConfigsSettings).toMap(ProxyAuthDefinitionSettings::getName, Function.identity());
+  }
+
+  @SuppressWarnings("unchecked")
+  public static ProxyAuthDefinitionSettingsCollection from(RawSettings data) {
+    return data.notEmptyListOpt(ATTRIBUTE_NAME)
+      .map(list ->
+             list.stream()
+               .map(l -> new ProxyAuthDefinitionSettings(new RawSettings((Map<String, ?>) l)))
+               .collect(Collectors.toList())
+      )
+      .map(ProxyAuthDefinitionSettingsCollection::new)
+      .orElse(new ProxyAuthDefinitionSettingsCollection(Lists.newArrayList()));
   }
 
   public ProxyAuthDefinitionSettings get(String name) {
@@ -58,7 +58,7 @@ public class ProxyAuthDefinitionSettingsCollection {
 
   private void validate(List<ProxyAuthDefinitionSettings> proxyAuthConfigsSettings) {
     List<String> names = seq(proxyAuthConfigsSettings).map(ProxyAuthDefinitionSettings::getName).collect(Collectors.toList());
-    if(names.stream().distinct().count() != names.size()) {
+    if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated Proxy Auth Config name in '" + ATTRIBUTE_NAME + "' section");
     }
   }

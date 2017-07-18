@@ -32,7 +32,7 @@ public class ResponseContext {
   private final BlockExitResult result;
 
   public ResponseContext(FinalState finalState, RequestContext rc, Throwable error, BlockExitResult result) {
-    if(serTool == null){
+    if (serTool == null) {
       serTool = new SerializationTool();
     }
     this.finalState = finalState;
@@ -62,14 +62,14 @@ public class ResponseContext {
     return finalState;
   }
 
+  public String toJson() throws JsonProcessingException {
+    return serTool.toJson(this);
+  }
+
   public enum FinalState {
     FORBIDDEN,
     ALLOWED,
     ERRORED,
     NOT_FOUND
-  }
-
-  public String toJson() throws JsonProcessingException {
-    return serTool.toJson(this);
   }
 }

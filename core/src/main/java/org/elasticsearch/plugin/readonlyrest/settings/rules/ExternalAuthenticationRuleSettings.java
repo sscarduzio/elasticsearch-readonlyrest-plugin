@@ -35,26 +35,27 @@ public class ExternalAuthenticationRuleSettings implements RuleSettings, CacheSe
   private final ExternalAuthenticationServiceSettings externalAuthenticationServiceSettings;
   private final Duration cacheTtl;
 
-  @SuppressWarnings("unchecked")
-  public static ExternalAuthenticationRuleSettings from(RawSettings settings,
-                       ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
-    return new ExternalAuthenticationRuleSettings(
-        externalAuthenticationServiceSettingsCollection.get(settings.stringReq(SERVICE)),
-        settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
-    );
-  }
-
-  public static ExternalAuthenticationRuleSettings from(String serviceName,
-                       ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
-    return new ExternalAuthenticationRuleSettings(
-        externalAuthenticationServiceSettingsCollection.get(serviceName),
-        DEFAULT_CACHE_TTL);
-  }
-
   private ExternalAuthenticationRuleSettings(ExternalAuthenticationServiceSettings externalAuthenticationServiceSettings,
                                              Duration cacheTtl) {
     this.externalAuthenticationServiceSettings = externalAuthenticationServiceSettings;
     this.cacheTtl = cacheTtl;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static ExternalAuthenticationRuleSettings from(RawSettings settings,
+                                                        ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+    return new ExternalAuthenticationRuleSettings(
+      externalAuthenticationServiceSettingsCollection.get(settings.stringReq(SERVICE)),
+      settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
+    );
+  }
+
+  public static ExternalAuthenticationRuleSettings from(String serviceName,
+                                                        ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+    return new ExternalAuthenticationRuleSettings(
+      externalAuthenticationServiceSettingsCollection.get(serviceName),
+      DEFAULT_CACHE_TTL
+    );
   }
 
   public ExternalAuthenticationServiceSettings getExternalAuthenticationServiceSettings() {

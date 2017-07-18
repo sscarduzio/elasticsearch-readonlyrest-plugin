@@ -193,7 +193,7 @@ public class RCTransactionalIndices {
         }
 
         // Best case, this request is designed to have indices replaced.
-        if (actionRequest instanceof IndicesRequest.Replaceable){
+        if (actionRequest instanceof IndicesRequest.Replaceable) {
           ((IndicesRequest.Replaceable) actionRequest).indices(newIndices.toArray(new String[newIndices.size()]));
           return;
         }
@@ -233,7 +233,7 @@ public class RCTransactionalIndices {
           IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
           List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
           okSetResult = true;
-          for(IndicesAliasesRequest.AliasActions act : actions) {
+          for (IndicesAliasesRequest.AliasActions act : actions) {
             act.indices(newIndices.toArray(new String[newIndices.size()]));
           }
         }

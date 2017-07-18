@@ -40,28 +40,28 @@ public class LdapAuthorizationRuleSettings implements RuleSettings, CacheSetting
   private final Duration cacheTtl;
   private final GroupsProviderLdapSettings ldapSettings;
 
+  private LdapAuthorizationRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
+    if (!(settings instanceof GroupsProviderLdapSettings))
+      throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
+                                             "(without '" + GroupsProviderLdapSettings.SEARCH_GROUPS + "' attribute defined)");
+    this.groups = groups;
+    this.cacheTtl = cacheTtl;
+    this.ldapSettings = (GroupsProviderLdapSettings) settings;
+  }
+
   @SuppressWarnings("unchecked")
   public static LdapAuthorizationRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
     String ldapName = settings.stringReq(LDAP_NAME);
     Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     return new LdapAuthorizationRuleSettings(
-        ldapSettingsCollection.get(ldapName),
-        groups,
-        settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
+      ldapSettingsCollection.get(ldapName),
+      groups,
+      settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
   }
 
   public static LdapAuthorizationRuleSettings from(LdapAuthRuleSettings settings) {
     return new LdapAuthorizationRuleSettings(settings.getLdapSettings(), settings.getGroups(), settings.getCacheTtl());
-  }
-
-  private LdapAuthorizationRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
-    if (!(settings instanceof GroupsProviderLdapSettings))
-      throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
-          "(without '" + GroupsProviderLdapSettings.SEARCH_GROUPS + "' attribute defined)");
-    this.groups = groups;
-    this.cacheTtl = cacheTtl;
-    this.ldapSettings = (GroupsProviderLdapSettings) settings;
   }
 
   @Override

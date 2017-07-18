@@ -36,21 +36,21 @@ public class LdapAuthorizationAsyncRuleTests {
   @Test
   public void testUserShouldBeAuthorizedIfLdapReturnSuccess() throws Exception {
     LdapAuthorizationAsyncRule rule = new LdapAuthorizationAsyncRule(
-        LdapAuthorizationRuleSettings.from(
-          TestUtils.fromYAMLString("" +
-                "ldap_authorization:\n" +
-                "  name: ldap2\n" +
-                "  groups: [group1, group2]").inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
-          LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      LdapAuthorizationRuleSettings.from(
+        TestUtils.fromYAMLString("" +
+                                   "ldap_authorization:\n" +
+                                   "  name: ldap2\n" +
+                                   "  groups: [group1, group2]").inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
+        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      ),
+      MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
+        new LdapUser(
+          "user",
+          "cn=Example user,ou=People,dc=example,dc=com"
         ),
-        MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
-            new LdapUser(
-                "user",
-                "cn=Example user,ou=People,dc=example,dc=com"
-            ),
-            Sets.newHashSet(new LdapGroup("group2"))
-        )),
-        MockedESContext.INSTANCE
+        Sets.newHashSet(new LdapGroup("group2"))
+      )),
+      MockedESContext.INSTANCE
     );
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(true, match.isMatch());
@@ -59,21 +59,21 @@ public class LdapAuthorizationAsyncRuleTests {
   @Test
   public void testUserShouldNotBeAuthorizedIfLdapHasAGivenUserButWithinDifferentGroup() throws Exception {
     LdapAuthorizationAsyncRule rule = new LdapAuthorizationAsyncRule(
-        LdapAuthorizationRuleSettings.from(
-          TestUtils.fromYAMLString("" +
-                "ldap_authorization:\n" +
-                "  name: ldap1\n" +
-                "  groups: [group2, group3]").inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
-            LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      LdapAuthorizationRuleSettings.from(
+        TestUtils.fromYAMLString("" +
+                                   "ldap_authorization:\n" +
+                                   "  name: ldap1\n" +
+                                   "  groups: [group2, group3]").inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
+        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      ),
+      MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
+        new LdapUser(
+          "user",
+          "cn=Example user,ou=People,dc=example,dc=com"
         ),
-        MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
-            new LdapUser(
-                "user",
-                "cn=Example user,ou=People,dc=example,dc=com"
-            ),
-            Sets.newHashSet(new LdapGroup("group5"))
-        )),
-        MockedESContext.INSTANCE
+        Sets.newHashSet(new LdapGroup("group5"))
+      )),
+      MockedESContext.INSTANCE
     );
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());
@@ -82,21 +82,21 @@ public class LdapAuthorizationAsyncRuleTests {
   @Test
   public void testUserShouldNotBeAuthorizedIfLdapHasAGivenUserButLdapGroupsAreEmpty() throws Exception {
     LdapAuthorizationAsyncRule rule = new LdapAuthorizationAsyncRule(
-        LdapAuthorizationRuleSettings.from(
-          TestUtils.fromYAMLString("" +
-                "ldap_authorization:\n" +
-                "  name: ldap1\n" +
-                "  groups: [group2, group3]").inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
-            LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      LdapAuthorizationRuleSettings.from(
+        TestUtils.fromYAMLString("" +
+                                   "ldap_authorization:\n" +
+                                   "  name: ldap1\n" +
+                                   "  groups: [group2, group3]").inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
+        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      ),
+      MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
+        new LdapUser(
+          "user",
+          "cn=Example user,ou=People,dc=example,dc=com"
         ),
-        MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
-            new LdapUser(
-                "user",
-                "cn=Example user,ou=People,dc=example,dc=com"
-            ),
-            Sets.newHashSet()
-        )),
-        MockedESContext.INSTANCE
+        Sets.newHashSet()
+      )),
+      MockedESContext.INSTANCE
     );
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());

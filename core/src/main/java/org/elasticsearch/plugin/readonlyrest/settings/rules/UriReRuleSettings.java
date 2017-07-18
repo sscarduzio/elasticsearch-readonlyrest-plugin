@@ -27,15 +27,21 @@ import java.util.regex.PatternSyntaxException;
 public class UriReRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "uri_re";
-
+  private static Function<String, Pattern> patternFromString = value -> {
+    try {
+      return Pattern.compile(value);
+    } catch (PatternSyntaxException e) {
+      throw new SettingsMalformedException("invalid 'uri_re' regexp", e);
+    }
+  };
   private final Value<Pattern> pattern;
-
-  public static UriReRuleSettings from(String value) {
-    return new UriReRuleSettings(Value.fromString(value, patternFromString));
-  }
 
   private UriReRuleSettings(Value<Pattern> pattern) {
     this.pattern = pattern;
+  }
+
+  public static UriReRuleSettings from(String value) {
+    return new UriReRuleSettings(Value.fromString(value, patternFromString));
   }
 
   public Value<Pattern> getPattern() {
@@ -46,13 +52,5 @@ public class UriReRuleSettings implements RuleSettings {
   public String getName() {
     return ATTRIBUTE_NAME;
   }
-
-  private static Function<String, Pattern> patternFromString = value -> {
-    try {
-      return Pattern.compile(value);
-    } catch (PatternSyntaxException e) {
-      throw new SettingsMalformedException("invalid 'uri_re' regexp", e);
-    }
-  };
 }
 

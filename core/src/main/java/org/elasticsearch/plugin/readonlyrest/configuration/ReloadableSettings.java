@@ -40,8 +40,8 @@ public abstract class ReloadableSettings {
   public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
   private final AtomicReference<RorSettings> rorSettings = new AtomicReference<>();
   private final SettingsManager settingsManager;
-  private CompletableFuture<Void> clientReadyFuture;
   private final LoggerShim logger;
+  private CompletableFuture<Void> clientReadyFuture;
   private WeakHashMap<Consumer<RorSettings>, Boolean> onSettingsUpdateListeners = new WeakHashMap<>();
 
   public ReloadableSettings(SettingsManager settingsManager) throws IOException {

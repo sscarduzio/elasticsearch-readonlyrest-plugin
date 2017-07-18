@@ -34,15 +34,15 @@ public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
     this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse(DEFAULT_UNIQUE_MEMBER_ATTRIBUTE);
   }
 
+  public static boolean canBeCreated(RawSettings settings) {
+    return settings.stringOpt(SEARCH_GROUPS).isPresent();
+  }
+
   public String getSearchGroupBaseDn() {
     return searchGroupBaseDn;
   }
 
   public String getUniqueMemberAttribute() {
     return uniqueMemberAttribute;
-  }
-
-  public static boolean canBeCreated(RawSettings settings) {
-    return settings.stringOpt(SEARCH_GROUPS).isPresent();
   }
 }

@@ -26,12 +26,12 @@ public class ApiKeysRuleSettings implements RuleSettings {
 
   private final Set<String> apiKeys;
 
-  public static ApiKeysRuleSettings from(Set<String> indices) {
-    return new ApiKeysRuleSettings(indices);
-  }
-
   public ApiKeysRuleSettings(Set<String> apiKeys) {
     this.apiKeys = apiKeys;
+  }
+
+  public static ApiKeysRuleSettings from(Set<String> indices) {
+    return new ApiKeysRuleSettings(indices);
   }
 
   public Set<String> getApiKeys() {

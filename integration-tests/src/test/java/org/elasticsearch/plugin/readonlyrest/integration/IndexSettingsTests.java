@@ -93,7 +93,7 @@ public class IndexSettingsTests {
     RestClient user2client = getUser2();
     checkOK(user2client.execute(new HttpGet(user2client.from("/_cluster/health"))));
   }
-  
+
   @Test
   public void testUser1KO() throws Exception {
     RestClient user1client = getUser1();

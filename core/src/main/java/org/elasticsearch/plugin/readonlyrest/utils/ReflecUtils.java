@@ -57,12 +57,12 @@ public class ReflecUtils {
           }
         } catch (SecurityException e) {
           context.logger(ReflecUtils.class)
-              .error("Can't get indices for request because of wrong security configuration " + o.getClass());
+            .error("Can't get indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
-              "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
+            "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
           context.logger(ReflecUtils.class)
-              .debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
+            .debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
         }
         clazz = clazz.getSuperclass();
       }
@@ -102,9 +102,9 @@ public class ReflecUtils {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")
       Set<Field> indexFields = getAllFields(
-          o.getClass(),
-          (Field field) -> field != null && fieldNames.contains(field.getName()) &&
-              (field.getType().equals(String.class) || field.getType().equals(String[].class))
+        o.getClass(),
+        (Field field) -> field != null && fieldNames.contains(field.getName()) &&
+          (field.getType().equals(String.class) || field.getType().equals(String[].class))
       );
       String firstIndex = newIndices.iterator().next();
       for (Field f : indexFields) {
@@ -112,13 +112,14 @@ public class ReflecUtils {
         try {
           if (f.getType().equals(String[].class)) {
             f.set(o, newIndices.toArray(new String[]{}));
-          } else {
+          }
+          else {
             f.set(o, firstIndex);
           }
           res[0] = true;
         } catch (IllegalAccessException | IllegalArgumentException e) {
           logger.error("could not find index or indices field to replace: " +
-              e.getMessage() + " and then " + e.getMessage());
+                         e.getMessage() + " and then " + e.getMessage());
         }
       }
       return null;
@@ -135,9 +136,9 @@ public class ReflecUtils {
   static class SetFieldException extends Exception {
     SetFieldException(Class<?> c, String id, String fieldName, Throwable e) {
       super(" Could not set " + fieldName + " to class " + c.getSimpleName() +
-          "for req id: " + id + " because: "
-          + e.getClass().getSimpleName() + " : " + e.getMessage() +
-          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+              "for req id: " + id + " because: "
+              + e.getClass().getSimpleName() + " : " + e.getMessage() +
+              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
     }
   }
 }

@@ -43,19 +43,19 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     return client.userById(user.getId())
-        .thenCompose(ldapUser -> ldapUser
-            .map(client::userGroups)
-            .orElseGet(() -> CompletableFuture.completedFuture(Sets.newHashSet()))
-        )
-        .thenApply(this::checkIfUserHasAccess);
+      .thenCompose(ldapUser -> ldapUser
+        .map(client::userGroups)
+        .orElseGet(() -> CompletableFuture.completedFuture(Sets.newHashSet()))
+      )
+      .thenApply(this::checkIfUserHasAccess);
   }
 
   private boolean checkIfUserHasAccess(Set<LdapGroup> ldapGroups) {
     return !ldapGroups.isEmpty() &&
-        !Sets.intersection(
-            settings.getGroups(),
-            ldapGroups.stream().map(LdapGroup::getName).collect(Collectors.toSet())
-        ).isEmpty();
+      !Sets.intersection(
+        settings.getGroups(),
+        ldapGroups.stream().map(LdapGroup::getName).collect(Collectors.toSet())
+      ).isEmpty();
   }
 
   @Override

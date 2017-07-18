@@ -29,7 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 public abstract class AuthKeyHashingRule extends BasicAuthentication {
-  private final LoggerShim logger ;
+  private final LoggerShim logger;
 
   public AuthKeyHashingRule(AuthKeyRuleSettings s, ESContext context) {
     super(s, context);

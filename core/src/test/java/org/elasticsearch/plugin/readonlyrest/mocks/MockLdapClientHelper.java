@@ -45,6 +45,7 @@ public class MockLdapClientHelper {
       public GroupsProviderLdapClient getClient(GroupsProviderLdapSettings settings) {
         return client;
       }
+
       @Override
       public AuthenticationLdapClient getClient(AuthenticationLdapSettings settings) {
         return client;
@@ -73,7 +74,8 @@ public class MockLdapClientHelper {
       when(client.authenticate(any())).thenReturn(CompletableFuture.completedFuture(Optional.of(user)));
       when(client.userGroups(user)).thenReturn(CompletableFuture.completedFuture(groups));
       when(client.userById(user.getUid())).thenReturn(CompletableFuture.completedFuture(Optional.of(user)));
-    } else {
+    }
+    else {
       when(client.authenticate(any())).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
       when(client.userGroups(any())).thenReturn(CompletableFuture.completedFuture(Sets.newHashSet()));
       when(client.userById(any())).thenReturn(CompletableFuture.completedFuture(Optional.empty()));
@@ -83,37 +85,37 @@ public class MockLdapClientHelper {
 
   public static RawSettings mockLdapsCollection() {
     return TestUtils.fromYAMLString("" +
-        "ldaps:\n" +
-        " - name: ldap1\n" +
-        "   host: \"localhost\"\n" +
-        "   port: 389                                                 # default 389\n" +
-        "   ssl_enabled: false                                        # default true\n" +
-        "   ssl_trust_all_certs: true                                 # default false\n" +
-        "   bind_dn: \"cn=admin,dc=example,dc=com\"                     # skip for anonymous bind\n" +
-        "   bind_password: \"password\"                                 # skip for anonymous bind\n" +
-        "   search_user_base_DN: \"ou=People,dc=example,dc=com\"\n" +
-        "   search_groups_base_DN: \"ou=Groups,dc=example,dc=com\"\n" +
-        "   user_id_attribute: \"uid\"                                  # default \"uid\"\n" +
-        "   unique_member_attribute: \"uniqueMember\"                   # default \"uniqueMember\"\n" +
-        "   connection_pool_size: 10                                  # default 30\n" +
-        "   connection_timeout_in_sec: 10                             # default 1\n" +
-        "   request_timeout_in_sec: 10                                # default 1\n" +
-        "   cache_ttl_in_sec: 60\n" +
-        "\n" +
-        " - name: ldap2\n" +
-        "   host: \"localhost\"\n" +
-        "   port: 389                                                 # default 389\n" +
-        "   ssl_enabled: false                                        # default true\n" +
-        "   ssl_trust_all_certs: true                                 # default false\n" +
-        "   bind_dn: \"cn=admin,dc=example,dc=com\"                     # skip for anonymous bind\n" +
-        "   bind_password: \"password\"                                 # skip for anonymous bind\n" +
-        "   search_user_base_DN: \"ou=People,dc=example,dc=com\"\n" +
-        "   search_groups_base_DN: \"ou=Groups,dc=example,dc=com\"\n" +
-        "   user_id_attribute: \"uid\"                                  # default \"uid\"\n" +
-        "   unique_member_attribute: \"uniqueMember\"                   # default \"uniqueMember\"\n" +
-        "   connection_pool_size: 10                                  # default 30\n" +
-        "   connection_timeout_in_sec: 10                             # default 1\n" +
-        "   request_timeout_in_sec: 10                                # default 1\n" +
-        "   cache_ttl_in_sec: 60 ");
+                                      "ldaps:\n" +
+                                      " - name: ldap1\n" +
+                                      "   host: \"localhost\"\n" +
+                                      "   port: 389                                                 # default 389\n" +
+                                      "   ssl_enabled: false                                        # default true\n" +
+                                      "   ssl_trust_all_certs: true                                 # default false\n" +
+                                      "   bind_dn: \"cn=admin,dc=example,dc=com\"                     # skip for anonymous bind\n" +
+                                      "   bind_password: \"password\"                                 # skip for anonymous bind\n" +
+                                      "   search_user_base_DN: \"ou=People,dc=example,dc=com\"\n" +
+                                      "   search_groups_base_DN: \"ou=Groups,dc=example,dc=com\"\n" +
+                                      "   user_id_attribute: \"uid\"                                  # default \"uid\"\n" +
+                                      "   unique_member_attribute: \"uniqueMember\"                   # default \"uniqueMember\"\n" +
+                                      "   connection_pool_size: 10                                  # default 30\n" +
+                                      "   connection_timeout_in_sec: 10                             # default 1\n" +
+                                      "   request_timeout_in_sec: 10                                # default 1\n" +
+                                      "   cache_ttl_in_sec: 60\n" +
+                                      "\n" +
+                                      " - name: ldap2\n" +
+                                      "   host: \"localhost\"\n" +
+                                      "   port: 389                                                 # default 389\n" +
+                                      "   ssl_enabled: false                                        # default true\n" +
+                                      "   ssl_trust_all_certs: true                                 # default false\n" +
+                                      "   bind_dn: \"cn=admin,dc=example,dc=com\"                     # skip for anonymous bind\n" +
+                                      "   bind_password: \"password\"                                 # skip for anonymous bind\n" +
+                                      "   search_user_base_DN: \"ou=People,dc=example,dc=com\"\n" +
+                                      "   search_groups_base_DN: \"ou=Groups,dc=example,dc=com\"\n" +
+                                      "   user_id_attribute: \"uid\"                                  # default \"uid\"\n" +
+                                      "   unique_member_attribute: \"uniqueMember\"                   # default \"uniqueMember\"\n" +
+                                      "   connection_pool_size: 10                                  # default 30\n" +
+                                      "   connection_timeout_in_sec: 10                             # default 1\n" +
+                                      "   request_timeout_in_sec: 10                                # default 1\n" +
+                                      "   cache_ttl_in_sec: 60 ");
   }
 }

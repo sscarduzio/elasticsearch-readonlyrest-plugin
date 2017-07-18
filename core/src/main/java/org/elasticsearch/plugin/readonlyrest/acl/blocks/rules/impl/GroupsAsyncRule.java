@@ -62,7 +62,7 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
       uSettings -> userFactory.getUser(uSettings).getAuthKeyRule().match(rc),
 
-      (uSettings, ruleExit) ->{
+      (uSettings, ruleExit) -> {
         Set<String> groups = Sets.intersection(resolvedGroups, uSettings.getGroups());
         return !groups.isEmpty() && ruleExit.isMatch();
       },

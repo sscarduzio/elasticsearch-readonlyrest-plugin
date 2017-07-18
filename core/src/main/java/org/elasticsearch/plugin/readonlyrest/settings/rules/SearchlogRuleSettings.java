@@ -24,12 +24,12 @@ public class SearchlogRuleSettings implements RuleSettings {
 
   private final boolean enabled;
 
-  public static SearchlogRuleSettings from(boolean value) {
-    return new SearchlogRuleSettings(value);
-  }
-
   private SearchlogRuleSettings(boolean enabled) {
     this.enabled = enabled;
+  }
+
+  public static SearchlogRuleSettings from(boolean value) {
+    return new SearchlogRuleSettings(value);
   }
 
   public boolean isEnabled() {

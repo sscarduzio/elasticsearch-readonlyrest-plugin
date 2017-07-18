@@ -52,8 +52,8 @@ public class AuthKeySha1RuleTests {
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-        "4338fa3ea95532196849ae27615e14dda95c77b1",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+      "4338fa3ea95532196849ae27615e14dda95c77b1",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }

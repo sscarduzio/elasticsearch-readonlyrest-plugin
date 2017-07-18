@@ -76,10 +76,10 @@ public class RawSettings {
 
   public Optional<Boolean> booleanOpt(String attr) {
     return opt(attr).map(x -> {
-      if(x instanceof String){
-          return Boolean.parseBoolean((String) x);
+      if (x instanceof String) {
+        return Boolean.parseBoolean((String) x);
       }
-      return (Boolean)x;
+      return (Boolean) x;
     });
   }
 
@@ -98,8 +98,8 @@ public class RawSettings {
 
   public Optional<Integer> intOpt(String attr) {
     return opt(attr).map(s -> {
-      if(s instanceof String){
-        return Integer.parseInt((String)s);
+      if (s instanceof String) {
+        return Integer.parseInt((String) s);
       }
       return (Integer) s;
     });

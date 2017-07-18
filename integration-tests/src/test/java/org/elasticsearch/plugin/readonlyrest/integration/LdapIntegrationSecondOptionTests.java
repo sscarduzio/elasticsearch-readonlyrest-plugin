@@ -30,19 +30,19 @@ import org.junit.Test;
 import static org.elasticsearch.plugin.readonlyrest.utils.integration.ReadonlyRestedESAssertions.assertions;
 
 public class LdapIntegrationSecondOptionTests {
-  
+
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
-      ESWithReadonlyRestContainerUtils.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-              .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-              .build(),
-          "/ldap_integration_1st/elasticsearch.yml",
-          new ElasticsearchTweetsInitializer()
-      );
-  
+    ESWithReadonlyRestContainerUtils.create(
+      RorPluginGradleProject.fromSystemProperty(),
+      new MultiContainer.Builder()
+        .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+        .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+        .build(),
+      "/ldap_integration_1st/elasticsearch.yml",
+      new ElasticsearchTweetsInitializer()
+    );
+
   @Test
   public void usersFromGroup1CanSeeTweets() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container);

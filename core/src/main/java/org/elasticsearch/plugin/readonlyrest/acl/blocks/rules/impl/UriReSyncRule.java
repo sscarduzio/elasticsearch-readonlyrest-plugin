@@ -33,7 +33,7 @@ public class UriReSyncRule extends SyncRule {
   private final Value<Pattern> uri_re;
   private final UriReRuleSettings settings;
 
-  public UriReSyncRule(UriReRuleSettings s){
+  public UriReSyncRule(UriReRuleSettings s) {
     this.uri_re = s.getPattern();
     this.settings = s;
   }
@@ -41,8 +41,8 @@ public class UriReSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     return uri_re.getValue(rc)
-        .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
-        .orElse(NO_MATCH);
+      .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
+      .orElse(NO_MATCH);
   }
 
   @Override

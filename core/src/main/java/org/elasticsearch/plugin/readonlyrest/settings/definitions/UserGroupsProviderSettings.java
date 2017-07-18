@@ -26,19 +26,13 @@ import java.time.Duration;
 
 public class UserGroupsProviderSettings implements CacheSettings, NamedSettings {
 
-  public enum TokenPassingMethod {
-    QUERY, HEADER
-  }
-
   private static final String NAME = "name";
   private static final String ENDPOINT = "groups_endpoint";
   private static final String AUTH_TOKEN_NAME = "auth_token_name";
   private static final String PASSED_AS = "auth_token_passed_as";
   private static final String JSON_PATH = "response_groups_json_path";
   private static final String CACHE = "cache_ttl_in_sec";
-
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
-
   private final String name;
   private final URI endpoint;
   private final String authTokenName;
@@ -87,8 +81,12 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
         return TokenPassingMethod.HEADER;
       case "QUERY_PARAM":
         return TokenPassingMethod.QUERY;
-        default:
-          throw new SettingsMalformedException("Unknown value '" + value + "' of '" + PASSED_AS + "' attribute");
+      default:
+        throw new SettingsMalformedException("Unknown value '" + value + "' of '" + PASSED_AS + "' attribute");
     }
+  }
+
+  public enum TokenPassingMethod {
+    QUERY, HEADER
   }
 }

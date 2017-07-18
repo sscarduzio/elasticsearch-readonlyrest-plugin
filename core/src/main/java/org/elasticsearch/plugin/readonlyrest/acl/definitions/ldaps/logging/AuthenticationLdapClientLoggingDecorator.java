@@ -41,31 +41,31 @@ public class AuthenticationLdapClientLoggingDecorator implements AuthenticationL
                                                                          AuthenticationLdapClient client) {
     LoggerShim logger = context.logger(AuthenticationLdapClientLoggingDecorator.class);
     return logger.isDebugEnabled()
-        ? new AuthenticationLdapClientLoggingDecorator(name, context, client)
-        : client;
+      ? new AuthenticationLdapClientLoggingDecorator(name, context, client)
+      : client;
   }
 
   @Override
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
     logger.debug("Trying to authenticate user [" + credentials.getUserName() + "] with LDAP [" + name + "]");
     return underlying.authenticate(credentials)
-        .thenApply(user -> {
-          logger.debug("User [" + credentials.getUserName() + "] " + (user.isPresent() ? "" : "not") +
-              " authenticated by LDAP [" + name + "]");
-          return user;
-        });
+      .thenApply(user -> {
+        logger.debug("User [" + credentials.getUserName() + "] " + (user.isPresent() ? "" : "not") +
+                       " authenticated by LDAP [" + name + "]");
+        return user;
+      });
   }
 
   @Override
   public CompletableFuture<Optional<LdapUser>> userById(String userId) {
     logger.debug("Trying to fetch user with identifier [" + userId + "] from LDAP [" + name + "]");
     return underlying.userById(userId)
-        .thenApply(user -> {
-          logger.debug(
-              user.map(ldapUser -> "User with identifier [" + userId + "] found [dn = " + ldapUser.getDN() + "]")
-                  .orElseGet(() -> "User with  identifier [" + userId + "] not found")
-          );
-          return user;
-        });
+      .thenApply(user -> {
+        logger.debug(
+          user.map(ldapUser -> "User with identifier [" + userId + "] found [dn = " + ldapUser.getDN() + "]")
+            .orElseGet(() -> "User with  identifier [" + userId + "] not found")
+        );
+        return user;
+      });
   }
 }

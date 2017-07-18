@@ -53,14 +53,14 @@ public class CachedAsyncAuthorizationDecoratorTests {
   @Test
   public void testIfAsyncAuthorizationRuleIsWrappedInCacheIfOneIsEnabled() {
     CacheSettings settings = () -> Duration.ofSeconds(10);
-    AsyncAuthorization authorization = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
+    AsyncAuthorization authorization = wrapInCacheIfCacheIsEnabled(dummyAsyncRule, settings, MockedESContext.INSTANCE);
     assertNotEquals(dummyAsyncRule, authorization);
   }
 
   @Test
   public void testIfAsyncAuthorizationRuleIsNotWrappedInCacheIfTtlIsZero() {
     CacheSettings settings = () -> Duration.ZERO;
-    AsyncAuthorization authorization = wrapInCacheIfCacheIsEnabled(dummyAsyncRule,settings, MockedESContext.INSTANCE);
+    AsyncAuthorization authorization = wrapInCacheIfCacheIsEnabled(dummyAsyncRule, settings, MockedESContext.INSTANCE);
     assertEquals(dummyAsyncRule, authorization);
   }
 
@@ -74,7 +74,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
     CacheSettings settings = () -> Duration.ofSeconds(10);
-    AsyncAuthorization cachedAuthorizationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
+    AsyncAuthorization cachedAuthorizationRule = wrapInCacheIfCacheIsEnabled(rule, settings, MockedESContext.INSTANCE);
     CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthorizationRule.match(requestContext);
     CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthorizationRule.match(requestContext);
 
@@ -94,7 +94,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
     CacheSettings settings = () -> ttl;
-    AsyncAuthorization cachedAuthorizationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
+    AsyncAuthorization cachedAuthorizationRule = wrapInCacheIfCacheIsEnabled(rule, settings, MockedESContext.INSTANCE);
     CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthorizationRule.match(requestContext);
     Thread.sleep((long) (ttl.toMillis() * 1.5));
     CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthorizationRule.match(requestContext);

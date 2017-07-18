@@ -33,26 +33,26 @@ public class LdapSettingsCollection {
 
   private final Map<String, LdapSettings> ldapSettingsMap;
 
-  @SuppressWarnings("unchecked")
-  public static LdapSettingsCollection from(RawSettings data) {
-    return data.notEmptyListOpt(ATTRIBUTE_NAME)
-        .map(list ->
-            list.stream()
-                .map(l -> {
-                  RawSettings s = new RawSettings((Map<String, ?>) l);
-                  return (LdapSettings) (GroupsProviderLdapSettings.canBeCreated(s)
-                      ? new GroupsProviderLdapSettings(s)
-                      : new AuthenticationLdapSettings(s));
-                })
-                .collect(Collectors.toList())
-        )
-        .map(LdapSettingsCollection::new)
-        .orElse(new LdapSettingsCollection(Lists.newArrayList()));
-  }
-
   private LdapSettingsCollection(List<LdapSettings> ldapSettings) {
     validate(ldapSettings);
     this.ldapSettingsMap = seq(ldapSettings).toMap(LdapSettings::getName, Function.identity());
+  }
+
+  @SuppressWarnings("unchecked")
+  public static LdapSettingsCollection from(RawSettings data) {
+    return data.notEmptyListOpt(ATTRIBUTE_NAME)
+      .map(list ->
+             list.stream()
+               .map(l -> {
+                 RawSettings s = new RawSettings((Map<String, ?>) l);
+                 return (LdapSettings) (GroupsProviderLdapSettings.canBeCreated(s)
+                   ? new GroupsProviderLdapSettings(s)
+                   : new AuthenticationLdapSettings(s));
+               })
+               .collect(Collectors.toList())
+      )
+      .map(LdapSettingsCollection::new)
+      .orElse(new LdapSettingsCollection(Lists.newArrayList()));
   }
 
   public LdapSettings get(String name) {

@@ -38,7 +38,7 @@ public class IndexLevelSecuritySyncRuleActionListener extends RuleActionListener
     if (!rc.involvesIndices() || !rc.isReadRequest()) {
       return true;
     }
-    if (response instanceof MultiSearchResponse){
+    if (response instanceof MultiSearchResponse) {
       MultiSearchResponse msr = (MultiSearchResponse) response;
 
     }
