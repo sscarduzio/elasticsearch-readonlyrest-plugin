@@ -89,5 +89,4 @@ public class ESContextImpl implements ESContext {
     return new ESVersion(Version.CURRENT.id);
   }
 
-
 }

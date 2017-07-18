@@ -84,7 +84,6 @@ public class ESContextImpl implements ESContext {
     return new ElasticsearchException(message);
   }
 
-
   @Override
   public ESVersion getVersion() {
     return new ESVersion(Version.CURRENT.id);

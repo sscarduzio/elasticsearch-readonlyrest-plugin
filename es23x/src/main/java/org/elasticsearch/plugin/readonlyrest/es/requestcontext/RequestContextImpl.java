@@ -28,7 +28,6 @@ import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
-import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
@@ -312,16 +311,20 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       }
     }
 
+
     if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
-      if (!expanded.isEmpty()) {
-        indices.mutate(expanded);
+
+      // When an index don't expand into one or more indices, it means it does not exist. This is fine.
+      if (expanded.isEmpty()) {
+        expanded = newIndices;
       }
-      else {
-        throw new IndexNotFoundException("rewritten indices not found: " + Joiner.on(",").join(newIndices));
-      }
+      indices.mutate(expanded);
     }
-    indices.mutate(newIndices);
+    else {
+      indices.mutate(newIndices);
+    }
+
   }
 
   public Boolean hasSubRequests() {

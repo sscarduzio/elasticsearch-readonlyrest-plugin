@@ -85,4 +85,5 @@ public class SettingsManagerImpl implements SettingsManager {
   public ESContext getContext() {
     return new ESContextImpl();
   }
+
 }

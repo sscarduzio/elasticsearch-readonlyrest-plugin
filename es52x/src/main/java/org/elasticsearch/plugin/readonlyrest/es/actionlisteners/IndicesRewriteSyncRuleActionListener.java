@@ -118,10 +118,11 @@ public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<Ind
 
   // Translate the search results indices
   private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
-    for (SearchHit h : sr.getHits().getHits()) {
-      ReflecUtils.setIndices(h, Sets.newHashSet("index"),
-                             Sets.newHashSet(rc.getIndices().iterator().next()), logger
-      );
+    if (rc.getIndices().size() > 0) {
+      String replacement = rc.getIndices().iterator().next();
+      for (SearchHit h : sr.getHits().getHits()) {
+        ReflecUtils.setIndices(h, Sets.newHashSet("index"), Sets.newHashSet(replacement), logger);
+      }
     }
   }
 

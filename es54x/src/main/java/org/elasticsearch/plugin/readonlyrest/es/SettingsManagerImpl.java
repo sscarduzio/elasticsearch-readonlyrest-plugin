@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.elasticsearch.ElasticsearchException;
@@ -85,4 +86,5 @@ public class SettingsManagerImpl implements SettingsManager {
   public ESContext getContext() {
     return new ESContextImpl();
   }
+
 }

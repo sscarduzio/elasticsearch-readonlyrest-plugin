@@ -52,9 +52,9 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
-      reloadableSettings.reload().thenAccept(o -> {
-        if (o.isPresent()) {
-          listener.onResponse(new RRAdminResponse(o.get()));
+      reloadableSettings.reload().thenAccept(th -> {
+        if (th.isPresent()) {
+          listener.onResponse(new RRAdminResponse(th.get()));
         }
         else {
           listener.onResponse(new RRAdminResponse(null));
