@@ -44,7 +44,6 @@ import org.elasticsearch.plugin.readonlyrest.es.actionlisteners.RuleActionListen
 import org.elasticsearch.plugin.readonlyrest.es.requestcontext.RequestContextImpl;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -55,9 +54,6 @@ import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -103,7 +99,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
     this.client = client;
     this.reloadableSettings.addListener(this);
-    scheduleConfigurationReload();
 
     new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
 
@@ -258,41 +253,4 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
   }
 
-
-  private void scheduleConfigurationReload() {
-    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-    Runnable task = new Runnable() {
-      @Override
-      public void run() {
-        try {
-          logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
-          Optional<Throwable> res = reloadableSettings.reload().get();
-          if (res.isPresent()) {
-            throw res.get();
-          }
-          logger.info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding elasticsearch.yml");
-          executor.shutdown();
-        } catch (Throwable t) {
-          if (t.getCause() != null) {
-            if (t.getCause() instanceof SettingsMalformedException) {
-              logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + t.getCause().getMessage());
-              executor.shutdown();
-              return;
-            }
-            if (t.getCause() instanceof ElasticsearchException) {
-              logger.info("[CLUSTERWIDE SETTINGS] index settings not found, have you installed ReadonlyREST Kibana plugin?" +
-                            " Will keep on using elasticearch.yml. Learn more at https://readonlyrest.com ");
-              executor.shutdown();
-              return;
-            }
-          }
-          else {
-            logger.info("[CLUSTERWIDE SETTINGS] index not ready yet.. (" + t + ")");
-          }
-          executor.schedule(this, 200, TimeUnit.MILLISECONDS);
-        }
-      }
-    };
-    executor.schedule(task, 200, TimeUnit.MILLISECONDS);
-  }
 }

@@ -66,7 +66,7 @@ public class ACL {
       settings.getBlocksSettings().stream()
         .map(blockSettings -> {
           Block block = new Block(blockSettings, rulesFactory, context);
-          logger.info("ADDING BLOCK #" + blockSettings.getName() + ":\t" + block.toString());
+          logger.info("ADDING BLOCK:\t" + block.toString());
           return block;
         })
         .collect(Collectors.toList())

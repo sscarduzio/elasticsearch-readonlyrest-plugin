@@ -18,11 +18,15 @@
 package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.configuration.SettingsManager;
 
 import java.io.IOException;
@@ -53,14 +57,32 @@ public class SettingsManagerImpl implements SettingsManager {
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
     } catch (Throwable t) {
+      if (t instanceof ResourceNotFoundException) {
+        throw new ElasticsearchException(ReloadableSettings.SETTINGS_NOT_FOUND_MESSAGE);
+      }
       throw new ElasticsearchException(t.getMessage());
     }
     if (resp == null || !resp.isExists()) {
-      throw new ElasticsearchException("no settings found in index");
+      throw new ElasticsearchException(ReloadableSettings.SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
     Settings settingsFromIndex = Settings.builder().loadFromSource(yamlString).build();
     return settingsFromIndex.getAsStructuredMap();
   }
 
+  @Override
+  public boolean isClusterReady() {
+    try {
+      ClusterHealthStatus status = client.admin().cluster().prepareHealth().get().getStatus();
+      Boolean ready = !status.equals(ClusterHealthStatus.RED);
+      return ready;
+    } catch (Throwable e) {
+      return false;
+    }
+  }
+
+  @Override
+  public ESContext getContext() {
+    return new ESContextImpl();
+  }
 }

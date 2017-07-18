@@ -17,27 +17,68 @@
 package org.elasticsearch.plugin.readonlyrest.configuration;
 
 import com.google.common.util.concurrent.MoreExecutors;
+import org.elasticsearch.plugin.readonlyrest.ESVersion;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public abstract class ReloadableSettings {
 
+  public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
   private final AtomicReference<RorSettings> rorSettings = new AtomicReference<>();
   private final SettingsManager settingsManager;
+  private CompletableFuture<Void> clientReadyFuture;
+  private final LoggerShim logger;
   private WeakHashMap<Consumer<RorSettings>, Boolean> onSettingsUpdateListeners = new WeakHashMap<>();
 
   public ReloadableSettings(SettingsManager settingsManager) throws IOException {
 
     this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.getCurrentSettings())));
     this.settingsManager = settingsManager;
+    this.logger = settingsManager.getContext().logger(getClass());
+
+    // This stuff doesn't matter for 2.x as it does it differently.
+    if (settingsManager.getContext().getVersion().after(ESVersion.V_5_0_0)) {
+
+      // When ReloadableSettings is created at boot time, wait the cluster to stabilise and read in-index settings.
+      CompletableFuture<Void> result = new CompletableFuture<>();
+      ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+
+      ScheduledFuture scheduledJob = executor
+        .scheduleWithFixedDelay(() -> {
+          if (settingsManager.isClusterReady()) {
+            logger.info("[CLUSTERWIDE SETTINGS] Cluster is ready!");
+            result.complete(null);
+            reload();
+          }
+          else {
+            logger.info("[CLUSTERWIDE SETTINGS] Cluster not ready...");
+          }
+        }, 1, 1, TimeUnit.SECONDS);
+
+      // When the cluster is up, stop polling.
+      result.thenAccept((_x) -> {
+        logger.info("[CLUSTERWIDE SETTINGS] Stopping cluster poller..");
+        scheduledJob.cancel(false);
+        executor.shutdown();
+      });
+
+      this.clientReadyFuture = result;
+    }
+
   }
 
   public RorSettings getRorSettings() {
@@ -49,18 +90,31 @@ public abstract class ReloadableSettings {
     onSettingsUpdate.accept(rorSettings.get());
   }
 
+
   public CompletableFuture<Optional<Throwable>> reload() {
-    return CompletableFuture
-      .supplyAsync(() -> {
-                     Map<String, ?> fromIndex = settingsManager.reloadSettingsFromIndex();
-                     RawSettings raw = new RawSettings(fromIndex);
-                     RorSettings ror = RorSettings.from(raw);
-                     this.rorSettings.set(ror);
-                     notifyListeners();
-                     return Optional.<Throwable>empty();
-                   }
-        , MoreExecutors.directExecutor()).exceptionally(th ->
-                                                          Optional.of(th)
+    return clientReadyFuture
+      .thenCompose((x) ->
+                     CompletableFuture.supplyAsync(() -> {
+                                                     logger.debug("[CLUSTERWIDE SETTINGS] checking index..");
+                                                     Map<String, ?> fromIndex = settingsManager.reloadSettingsFromIndex();
+                                                     RawSettings raw = new RawSettings(fromIndex);
+                                                     RorSettings ror = RorSettings.from(raw);
+                                                     this.rorSettings.set(ror);
+                                                     logger.info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding elasticsearch.yml");
+                                                     notifyListeners();
+                                                     return Optional.<Throwable>empty();
+                                                   }
+                       , MoreExecutors.directExecutor())
+                       .exceptionally(th -> {
+                         if (th instanceof SettingsMalformedException) {
+                           logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + th.getCause().getMessage());
+                         }
+                         else if (th.getMessage().contains(SETTINGS_NOT_FOUND_MESSAGE)) {
+                           logger.info("[CLUSTERWIDE SETTINGS] index settings not found, have you installed ReadonlyREST Kibana plugin?" +
+                                         " Will keep on using elasticearch.yml. Learn more at https://readonlyrest.com ");
+                         }
+                         return Optional.of(th);
+                       })
       );
   }
 

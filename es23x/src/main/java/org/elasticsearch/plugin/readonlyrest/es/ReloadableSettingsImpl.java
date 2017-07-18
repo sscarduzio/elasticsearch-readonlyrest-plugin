@@ -25,6 +25,5 @@ public class ReloadableSettingsImpl extends ReloadableSettings {
 
   public ReloadableSettingsImpl(SettingsManagerImpl settingsManager) throws IOException {
     super(settingsManager);
-
   }
 }

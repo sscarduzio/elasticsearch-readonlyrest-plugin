@@ -19,8 +19,10 @@ package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESVersion;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 public class ESContextImpl implements ESContext {
@@ -80,6 +82,11 @@ public class ESContextImpl implements ESContext {
   @Override
   public RuntimeException rorException(String message) {
     return new ElasticsearchException(message);
+  }
+
+  @Override
+  public ESVersion getVersion() {
+    return new ESVersion(Version.CURRENT.id);
   }
 
 }

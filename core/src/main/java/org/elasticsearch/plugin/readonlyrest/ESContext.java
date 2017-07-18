@@ -24,8 +24,9 @@ public interface ESContext {
 
   RuntimeException rorException(String message);
 
-  default HttpClient mkHttpClient(){
+  default HttpClient mkHttpClient() {
     return new ApacheHttpCoreClient(this);
   }
 
+  ESVersion getVersion();
 }
