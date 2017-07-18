@@ -1,0 +1,18 @@
+http.bind_host: _eth0:ipv4_
+network.host: _eth0:ipv4_
+xpack:
+    monitoring.enabled: false
+    security.enabled: false
+    graph.enabled: false
+    watcher.enabled: false
+
+readonlyrest:
+    access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "User 1"
+      type: allow
+      auth_key: user1:dev
