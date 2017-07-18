@@ -24,6 +24,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.ESVersion;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
 import org.elasticsearch.plugin.readonlyrest.httpclient.RRHttpRequest;
@@ -42,7 +43,7 @@ public class MockedESContext implements ESContext {
 
   @Override
   public LoggerShim logger(Class<?> clazz) {
-    Logger l =  LogManager.getLogger(clazz);
+    Logger l = LogManager.getLogger(clazz);
     return new LoggerShim() {
 
       @Override
@@ -99,20 +100,25 @@ public class MockedESContext implements ESContext {
     return new HttpClientAdapter();
   }
 
+  @Override
+  public ESVersion getVersion() {
+    return ESVersion.V_5_4_0;
+  }
+
   private static class HttpClientAdapter implements HttpClient {
 
     @Override
     public CompletableFuture<RRHttpResponse> send(RRHttpRequest request) {
       RestClient client = new RestClient(request.getUrl().getHost(), request.getUrl().getPort());
       return CompletableFuture
-          .supplyAsync(() -> {
-            try {
-              return client.execute(toUriRequest(request));
-            } catch (Exception e) {
-              throw new RuntimeException("execution exception", e);
-            }
-          })
-          .thenApply(this::toResponse);
+        .supplyAsync(() -> {
+          try {
+            return client.execute(toUriRequest(request));
+          } catch (Exception e) {
+            throw new RuntimeException("execution exception", e);
+          }
+        })
+        .thenApply(this::toResponse);
     }
 
     private HttpUriRequest toUriRequest(RRHttpRequest request) throws URISyntaxException {
