@@ -18,6 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.integration;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
@@ -43,8 +44,20 @@ public class IndicesReverseWildcardTests {
     create(
       RorPluginGradleProject.fromSystemProperty(),
       "/indices_reverse_wildcards/elasticsearch.yml",
-      Optional.of(client -> Lists.newArrayList("a1", "a2", "b1", "b2")
-        .forEach(doc -> insertDoc(doc, client)))
+      Optional.of(client -> {
+        Lists.newArrayList("a1", "a2", "b1", "b2").forEach(doc -> insertDoc(doc, client));
+        try {
+          HttpResponse response;
+          do {
+            HttpHead request = new HttpHead(client.from("/logstash-b2/documents/doc-b2" ));
+            response = client.execute(request);
+            EntityUtils.consume(response.getEntity());
+          } while (response.getStatusLine().getStatusCode() != 200);
+        } catch (Exception e) {
+          e.printStackTrace();
+          throw new IllegalStateException("Cannot configure test case", e);
+        }
+      })
     );
 
   private static RestClient adminClient;
@@ -62,6 +75,7 @@ public class IndicesReverseWildcardTests {
       request.setHeader("timeout", "50s");
       request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));
       System.out.println(body(restClient.execute(request)));
+
     } catch (Exception e) {
       e.printStackTrace();
       throw new IllegalStateException("Test problem", e);
