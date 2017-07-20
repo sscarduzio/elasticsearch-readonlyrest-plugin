@@ -25,6 +25,9 @@ echo ">>> es53x => Running testcontainers.."
 echo ">>> es52x => Running testcontainers.."
 ./gradlew  integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
+echo ">>> es51x => Running testcontainers.."
+./gradlew  integration-tests:test '-PesModule=es51x' || ( find . |grep hs_err |xargs cat && exit 1 )
+
 
 echo ">>> ($0) additional build of ES module for specified ES version"
 
