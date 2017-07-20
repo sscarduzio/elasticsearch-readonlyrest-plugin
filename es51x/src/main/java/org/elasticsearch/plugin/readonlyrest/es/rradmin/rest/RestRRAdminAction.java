@@ -25,7 +25,6 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.es.rradmin.RRAdminAction;
 import org.elasticsearch.plugin.readonlyrest.es.rradmin.RRAdminRequest;
-import org.elasticsearch.plugin.readonlyrest.es.rradmin.RRAdminResponse;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
