@@ -1,39 +1,49 @@
 http.bind_host: _eth0:ipv4_
 network.host: _eth0:ipv4_
+
 xpack:
-    monitoring.enabled: false
-    security.enabled: false
-    graph.enabled: false
-    watcher.enabled: false
+  monitoring.enabled: false
+  security.enabled: false
+  graph.enabled: false
+  watcher.enabled: false
+
+http.type: ssl_netty4
+transport.type: local
 
 readonlyrest:
-    access_control_rules:
+  ssl:
+    enable: true
+    keystore_file: "config/keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
 
-    - name: "CONTAINER ADMIN"
-      type: allow
-      auth_key: admin:container
+  access_control_rules:
 
-    - name: "Kibana RO user"
-      type: allow
-      auth_key: "simone:ro_pass"
-      kibana_access: ro
+  - name: "CONTAINER ADMIN"
+    type: allow
+    auth_key: admin:container
+
+  - name: "Kibana RO user"
+    type: allow
+    auth_key: "simone:ro_pass"
+    kibana_access: ro
 #      indices: ["logstash*", ".kibana", ".kibana_devnull"]
-      indices_rewrite: ["^\\.kibana.*", ".kibana_@{user}"]
+    indices_rewrite: ["^\\.kibana.*", ".kibana_@{user}"]
 
-    - name: "Kibana RW user"
-      type: allow
-      auth_key: "simone:rw_pass"
-      kibana_access: rw
+  - name: "Kibana RW user"
+    type: allow
+    auth_key: "simone:rw_pass"
+    kibana_access: rw
 #      indices: ["logstash*", ".kibana", ".kibana_devnull"]
-      indices_rewrite: ["^\\.kibana.*", ".kibana_@{user}"]
+    indices_rewrite: ["^\\.kibana.*", ".kibana_@{user}"]
 
-    - name: "::LOGSTASH::"
-      auth_key: simone:logstash
-      type: allow
-      actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-      indices: ["logstash-*", "@{user}_logstash-*"]
-      indices_rewrite: ["^logstash-.*", "@{user}_$0"]
+  - name: "::LOGSTASH::"
+    auth_key: simone:logstash
+    type: allow
+    actions: ["indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+    indices: ["logstash-*", "@{user}_logstash-*"]
+    indices_rewrite: ["^logstash-.*", "@{user}_$0"]
 
-    - name: "Kibana Daemon"
-      type: allow
-      auth_key: kibana:kibana
+  - name: "Kibana Daemon"
+    type: allow
+    auth_key: kibana:kibana

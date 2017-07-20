@@ -3,6 +3,12 @@ http.type: ssl_netty4
 
 readonlyrest:
 
+    ssl:
+      enable: true
+      keystore_file: "plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
+      key_pass: readonlyrest
+
     # IMPORTANT FOR LOGIN/LOGOUT TO WORK
     prompt_for_basic_auth: false
 
@@ -30,7 +36,6 @@ readonlyrest:
       kibana_access: rw
       indices: [".kibana", ".kibana-devnull", "logstash-*"]
       kibana_hide_apps: ["readonlyrest_kbn", "timelion", "kibana:dev_tools", "kibana:management"]
-
 
     - name: "::ADMIN::"
       auth_key: admin:dev

@@ -43,7 +43,7 @@ public class IndexSettingsTests {
   public static ESWithReadonlyRestContainer container =
     create(
       RorPluginGradleProject.fromSystemProperty(),
-      "/indices_rewrite/elasticsearch.yml",
+      "/index_settings/elasticsearch.yml",
       Optional.of(
         new ESWithReadonlyRestContainer.ESInitalizer() {
           @Override

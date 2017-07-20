@@ -1,22 +1,31 @@
 http.bind_host: _eth0:ipv4_
 network.host: _eth0:ipv4_
 xpack:
-    monitoring.enabled: false
-    security.enabled: false
-    graph.enabled: false
-    watcher.enabled: false
+  monitoring.enabled: false
+  security.enabled: false
+  graph.enabled: false
+  watcher.enabled: false
+
+http.type: ssl_netty4
+transport.type: local
 
 readonlyrest:
-    access_control_rules:
+  ssl:
+    enable: true
+    keystore_file: "config/keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
 
-    - name: "::POLLER::"
-      methods: [HEAD]
+  access_control_rules:
 
-    - name: "::GETTER::"
-      methods: [GET]
-      indices: logstash-a*
+  - name: "::POLLER::"
+    methods: [HEAD]
 
-    - name: "CONTAINER ADMIN"
-      actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*"]
-      #auth_key: admin:container
+  - name: "::GETTER::"
+    methods: [GET]
+    indices: logstash-a*
+
+  - name: "CONTAINER ADMIN"
+    actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*"]
+    #auth_key: admin:container
 

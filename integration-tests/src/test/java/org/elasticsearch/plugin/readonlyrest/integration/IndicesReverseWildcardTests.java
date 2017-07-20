@@ -39,6 +39,7 @@ import static org.junit.Assert.assertTrue;
 public class IndicesReverseWildcardTests {
 
 
+  private static RestClient adminClient;
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     create(
@@ -46,24 +47,11 @@ public class IndicesReverseWildcardTests {
       "/indices_reverse_wildcards/elasticsearch.yml",
       Optional.of(client -> {
         Lists.newArrayList("a1", "a2", "b1", "b2").forEach(doc -> insertDoc(doc, client));
-        try {
-          HttpResponse response;
-          do {
-            HttpHead request = new HttpHead(client.from("/logstash-b2/documents/doc-b2" ));
-            response = client.execute(request);
-            EntityUtils.consume(response.getEntity());
-          } while (response.getStatusLine().getStatusCode() != 200);
-        } catch (Exception e) {
-          e.printStackTrace();
-          throw new IllegalStateException("Cannot configure test case", e);
-        }
       })
     );
 
-  private static RestClient adminClient;
-
   private static void insertDoc(String docName, RestClient restClient) {
-    if(adminClient == null) {
+    if (adminClient == null) {
       adminClient = restClient;
     }
 
@@ -79,6 +67,20 @@ public class IndicesReverseWildcardTests {
     } catch (Exception e) {
       e.printStackTrace();
       throw new IllegalStateException("Test problem", e);
+    }
+
+    // Polling phase.. #TODO is there a better way?
+    try {
+      HttpResponse response;
+      do {
+        Thread.sleep(200);
+        HttpHead request = new HttpHead(restClient.from("/logstash-" + docName + "/documents/doc-" + docName));
+        response = restClient.execute(request);
+        System.out.println("polling for " + docName + ".. result: " + response.getStatusLine().getReasonPhrase());
+      } while (response.getStatusLine().getStatusCode() != 200);
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new IllegalStateException("Cannot configure test case", e);
     }
   }
 

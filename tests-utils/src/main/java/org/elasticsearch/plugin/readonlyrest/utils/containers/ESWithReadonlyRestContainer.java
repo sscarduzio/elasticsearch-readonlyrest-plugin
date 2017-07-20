@@ -73,6 +73,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     logger.info("Creating ES container ...");
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
+    String keystoreFileName = "keystore.jks";
 
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
       project.getESVersion(),
@@ -80,11 +81,13 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         .withFileFromFile(pluginFile.getAbsolutePath(), pluginFile)
         .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
         .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
+        .withFileFromFile(keystoreFileName, ContainerUtils.getResourceFile("/" + keystoreFileName))
         .withDockerfileFromBuilder(builder -> logger.info(
           builder
             .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getESVersion())
             .copy(pluginFile.getAbsolutePath(), "/tmp/")
             .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
+            .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
             .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
             .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
             .user("root")
@@ -114,15 +117,15 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   }
 
   public RestClient getClient(Header... headers) {
-    return new RestClient(getESHost(), getESPort(), Optional.empty(), headers);
+    return new RestClient(true, getESHost(), getESPort(), Optional.empty(), headers);
   }
 
   public RestClient getBasicAuthClient(String name, String password) {
-    return new RestClient(getESHost(), getESPort(), Optional.of(Tuple.from(name, password)));
+    return new RestClient(true, getESHost(), getESPort(), Optional.of(Tuple.from(name, password)));
   }
 
   public RestClient getAdminClient() {
-    return new RestClient(getESHost(), getESPort(), Optional.of(Tuple.from(ADMIN_LOGIN, ADMIN_PASSWORD)));
+    return new RestClient(true, getESHost(), getESPort(), Optional.of(Tuple.from(ADMIN_LOGIN, ADMIN_PASSWORD)));
   }
 
   private WaitStrategy waitStrategy(Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {

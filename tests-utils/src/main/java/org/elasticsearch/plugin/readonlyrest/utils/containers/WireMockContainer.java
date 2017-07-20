@@ -47,22 +47,22 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   public static WireMockContainer create(String... mappings) {
     ImageFromDockerfile dockerfile = new ImageFromDockerfile();
     List<File> mappingFiles = Lists.newArrayList(mappings).stream()
-                                   .map(ContainerUtils::getResourceFile)
-                                   .collect(Collectors.toList());
+      .map(ContainerUtils::getResourceFile)
+      .collect(Collectors.toList());
     mappingFiles.forEach(mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
     WireMockContainer container = new WireMockContainer(
-        dockerfile.withDockerfileFromBuilder(builder -> {
-          DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
-          mappingFiles.forEach(mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
-          b.build();
-        }));
+      dockerfile.withDockerfileFromBuilder(builder -> {
+        DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
+        mappingFiles.forEach(mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
+        b.build();
+      }));
     return container
-        .withExposedPorts(WIRE_MOCK_PORT)
-        .waitingFor(
-            container.waitStrategy()
-                     .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
-        );
+      .withExposedPorts(WIRE_MOCK_PORT)
+      .waitingFor(
+        container.waitStrategy()
+          .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
+      );
   }
 
   public String getWireMockHost() {
@@ -74,7 +74,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   }
 
   private RestClient getClient() {
-    return new RestClient(getWireMockHost(), getWireMockPort());
+    return new RestClient(false, getWireMockHost(), getWireMockPort());
   }
 
   private WaitStrategy waitStrategy() {
@@ -85,7 +85,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         try {
           RestClient client = getClient();
           return client.execute(new HttpGet(client.from("/__admin/")))
-              .getStatusLine().getStatusCode() == 200;
+            .getStatusLine().getStatusCode() == 200;
         } catch (IOException | URISyntaxException e) {
           return false;
         }

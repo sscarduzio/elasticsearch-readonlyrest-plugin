@@ -109,7 +109,7 @@ public class MockedESContext implements ESContext {
 
     @Override
     public CompletableFuture<RRHttpResponse> send(RRHttpRequest request) {
-      RestClient client = new RestClient(request.getUrl().getHost(), request.getUrl().getPort());
+      RestClient client = new RestClient(true, request.getUrl().getHost(), request.getUrl().getPort());
       return CompletableFuture
         .supplyAsync(() -> {
           try {

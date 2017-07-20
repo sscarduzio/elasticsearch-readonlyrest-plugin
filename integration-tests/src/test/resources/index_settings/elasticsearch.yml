@@ -6,13 +6,21 @@ xpack:
     graph.enabled: false
     watcher.enabled: false
 
+http.type: ssl_netty4
+transport.type: local
 readonlyrest:
-    access_control_rules:
+  ssl:
+    enable: true
+    keystore_file: "config/keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
 
-    - name: "CONTAINER ADMIN"
-      type: allow
-      auth_key: admin:container
+  access_control_rules:
 
-    - name: "User 1"
-      type: allow
-      auth_key: user1:dev
+  - name: "CONTAINER ADMIN"
+    type: allow
+    auth_key: admin:container
+
+  - name: "User 1"
+    type: allow
+    auth_key: user1:dev
