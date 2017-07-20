@@ -40,7 +40,7 @@ public class RorSettings {
   public static final String AUDIT_COLLECTOR = "audit_collector";
 
   // SSL
-  public static final String PREFIX_SSL = "readonlyrest.ssl.";
+  public static final String PREFIX_SSL = "ssl.";
   public static final String ATTRIBUTE_SSL_KEYSTORE_FILE = "keystore_file";
   public static final String ATTRIBUTE_SSL_KEYSTORE_PASS = "keystore_pass";
   public static final String ATTRIBUTE_SSL_KEY_PASS = "key_pass";
