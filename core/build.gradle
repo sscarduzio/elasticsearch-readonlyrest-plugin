@@ -66,7 +66,6 @@ dependencies {
         exclude group: 'com.google.code.gson', module: 'gson'
     }
     compile 'org.slf4j:slf4j-api:1.7.25'
-    compile 'org.slf4j:slf4j-simple:1.7.25'
 
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
 
