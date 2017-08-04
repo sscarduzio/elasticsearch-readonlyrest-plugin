@@ -25,6 +25,9 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.indices.close.CloseIndexAction;
+import org.elasticsearch.action.admin.indices.close.CloseIndexRequest;
+import org.elasticsearch.action.admin.indices.open.OpenIndexRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -241,7 +244,8 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   }
 
   public Set<String> getAllIndicesAndAliases() {
-    return clusterService.state().metaData().getAliasAndIndexLookup().keySet();
+    Set<String> allIndicesAndAliases = clusterService.state().metaData().getAliasAndIndexLookup().keySet();
+    return allIndicesAndAliases;
   }
 
   public Set<String> getIndexMetadata(String s) {
@@ -315,18 +319,32 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
 
+      if(!expanded.isEmpty() && !(actionRequest instanceof CloseIndexRequest) && !(actionRequest instanceof OpenIndexRequest)){
+          excludeClosed(newIndices);
+      }
+
       // When an index don't expand into one or more indices, it means it does not exist. This is fine.
       if (expanded.isEmpty()) {
         expanded = newIndices;
       }
       indices.mutate(expanded);
     }
+
     else {
+      excludeClosed(newIndices);
       indices.mutate(newIndices);
     }
 
   }
+  private void excludeClosed(Set<String> indexes){
+    // Remove all closed indices, as they cannot be read or written
+    String[] closedConcreteIndices = clusterService.state().metaData().getConcreteAllClosedIndices();
+    if(closedConcreteIndices.length == 0){
+      return;
+    }
+    indexes.removeAll(Sets.newHashSet(closedConcreteIndices));
 
+  }
   public Boolean hasSubRequests() {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
