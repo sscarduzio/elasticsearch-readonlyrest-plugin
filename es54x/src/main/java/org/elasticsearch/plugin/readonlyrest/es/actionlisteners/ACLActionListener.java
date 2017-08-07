@@ -85,7 +85,7 @@ public class ACLActionListener implements ActionListener<ActionResponse> {
       }
     }
     if (shouldContinue) {
-      if(e != null){
+      if (e != null) {
         baseListener.onFailure(e);
       }
     }

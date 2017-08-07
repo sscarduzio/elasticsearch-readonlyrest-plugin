@@ -1,0 +1,39 @@
+http.host: 0.0.0.0
+
+xpack:
+    monitoring.enabled: true
+    security.enabled: false
+    graph.enabled: false
+    watcher.enabled: false
+
+http.type: ssl_netty4
+transport.type: local
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "config/keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  enable: true
+
+  access_control_rules:
+
+  # ES container initializer need this rule to configure ES instance after startup
+  - name: "CONTAINER ADMIN"
+    auth_key: admin:container
+    verbosity: error
+
+  - name: passthrough
+    actions: ["cluster:monitor*", "indices:*/write*", "*create*"]
+
+  - name: Poller
+    api_keys: ["p"]
+    verbosity: error
+
+  - name: Getter
+    api_keys: ["g"]
+    indices:
+    - intentp1_*
+    - ".kibana"
+    - ".kibana_intentp1"

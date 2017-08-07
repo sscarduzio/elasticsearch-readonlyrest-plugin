@@ -25,13 +25,11 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.admin.indices.close.CloseIndexAction;
 import org.elasticsearch.action.admin.indices.close.CloseIndexRequest;
 import org.elasticsearch.action.admin.indices.open.OpenIndexRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
@@ -285,7 +283,11 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       //          IndicesOptions.lenientExpandOpen(), ixs
       //      );
       //      return Sets.newHashSet(concreteIdxNames);
-      return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
+      Set<String> i = new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
+      if (!i.isEmpty() && !(actionRequest instanceof CloseIndexRequest) && !(actionRequest instanceof OpenIndexRequest)) {
+        excludeClosed(i);
+      }
+      return i;
     }
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
@@ -319,10 +321,6 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
 
-      if(!expanded.isEmpty() && !(actionRequest instanceof CloseIndexRequest) && !(actionRequest instanceof OpenIndexRequest)){
-          excludeClosed(newIndices);
-      }
-
       // When an index don't expand into one or more indices, it means it does not exist. This is fine.
       if (expanded.isEmpty()) {
         expanded = newIndices;
@@ -336,15 +334,17 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     }
 
   }
-  private void excludeClosed(Set<String> indexes){
+
+  private void excludeClosed(Set<String> indexes) {
     // Remove all closed indices, as they cannot be read or written
     String[] closedConcreteIndices = clusterService.state().metaData().getConcreteAllClosedIndices();
-    if(closedConcreteIndices.length == 0){
+    if (closedConcreteIndices.length == 0) {
       return;
     }
     indexes.removeAll(Sets.newHashSet(closedConcreteIndices));
 
   }
+
   public Boolean hasSubRequests() {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
