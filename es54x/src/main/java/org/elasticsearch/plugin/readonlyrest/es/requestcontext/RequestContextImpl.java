@@ -103,6 +103,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       this.id = tmpID;
       this.taskId = null;
     }
+
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     request.getHeaders().keySet().forEach(k -> {
       if (request.getAllHeaderValues(k).isEmpty()) {
@@ -242,8 +243,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   }
 
   public Set<String> getAllIndicesAndAliases() {
-    Set<String> allIndicesAndAliases = clusterService.state().metaData().getAliasAndIndexLookup().keySet();
-    return allIndicesAndAliases;
+    return clusterService.state().metaData().getAliasAndIndexLookup().keySet();
   }
 
   public Set<String> getIndexMetadata(String s) {
@@ -327,9 +327,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       }
       indices.mutate(expanded);
     }
-
     else {
-      excludeClosed(newIndices);
       indices.mutate(newIndices);
     }
 

@@ -25,6 +25,8 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.indices.close.CloseIndexRequest;
+import org.elasticsearch.action.admin.indices.open.OpenIndexRequest;
 import org.elasticsearch.action.support.WriteRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
@@ -80,7 +82,6 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;
   private Transactional<Optional<LoggedUser>> loggedInUser;
-
 
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
                             ClusterService clusterService, ThreadPool threadPool, ESContext context) {
@@ -283,7 +284,11 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       //          IndicesOptions.lenientExpandOpen(), ixs
       //      );
       //      return Sets.newHashSet(concreteIdxNames);
-      return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
+      Set<String> i = new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
+      if (!i.isEmpty() && !(actionRequest instanceof CloseIndexRequest) && !(actionRequest instanceof OpenIndexRequest)) {
+        excludeClosed(i);
+      }
+      return i;
     }
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
@@ -326,6 +331,16 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     else {
       indices.mutate(newIndices);
     }
+
+  }
+
+  private void excludeClosed(Set<String> indexes) {
+    // Remove all closed indices, as they cannot be read or written
+    String[] closedConcreteIndices = clusterService.state().metaData().getConcreteAllClosedIndices();
+    if (closedConcreteIndices.length == 0) {
+      return;
+    }
+    indexes.removeAll(Sets.newHashSet(closedConcreteIndices));
 
   }
 
