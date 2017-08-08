@@ -26,6 +26,7 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
@@ -67,6 +68,7 @@ import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseConte
 @Singleton
 public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter, Consumer<RorSettings> {
 
+  private final IndexNameExpressionResolver indexResolver;
   private ThreadPool threadPool;
   private ClusterService clusterService;
 
@@ -83,12 +85,14 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
                                 TransportService transportService,
-                                ThreadPool threadPool)
+                                ThreadPool threadPool,
+                                IndexNameExpressionResolver indexResolver)
     throws IOException {
     super(settings);
 
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
+    this.indexResolver = indexResolver;
     this.threadPool = threadPool;
 
     ReadonlyRestPlugin.clientFuture.thenAccept(c -> {
@@ -199,7 +203,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
     }
 
-    RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, threadPool, context);
+    RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, threadPool, context, indexResolver);
 
     acl.check(rc)
       .exceptionally(throwable -> {
