@@ -25,10 +25,10 @@ import org.elasticsearch.ElasticsearchSecurityException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.admin.indices.close.CloseIndexRequest;
-import org.elasticsearch.action.admin.indices.open.OpenIndexRequest;
+import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
@@ -37,7 +37,6 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
@@ -77,13 +76,14 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   private final Long taskId;
   private final VariablesManager variablesManager;
   private final Date timestamp;
+  private final IndexNameExpressionResolver indexResolver;
   private String content = null;
   private Set<BlockHistory> history = Sets.newHashSet();
   private boolean doesInvolveIndices = false;
   private Transactional<Optional<LoggedUser>> loggedInUser;
 
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
-                            ClusterService clusterService, ThreadPool threadPool, ESContext context) {
+                            ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
     super("rc", context);
     this.timestamp = new Date();
     this.logger = context.logger(getClass());
@@ -91,6 +91,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
+    this.indexResolver = indexResolver;
     this.context = context;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     Long taskId = ThreadRepo.taskId.get();
@@ -232,14 +233,12 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     return content;
   }
 
-
   public String getType() {
     return actionRequest.getClass().getSimpleName();
   }
 
   public Optional<String> resolveVariable(String original) {
     return variablesManager.apply(original);
-
   }
 
   public Set<String> getAllIndicesAndAliases() {
@@ -276,18 +275,19 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
 
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (doesInvolveIndices) {
-      //     Index[] i = indexResolver.concreteIndices(clusterService.state(), IndicesOptions.lenientExpandOpen(), "a");
-      //      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
-      //      String[] concreteIdxNames = indexResolver.concreteIndexNames(
-      //          clusterService.state(),
-      //          IndicesOptions.lenientExpandOpen(), ixs
-      //      );
-      //      return Sets.newHashSet(concreteIdxNames);
-      Set<String> i = new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
-      if (!i.isEmpty() && !(actionRequest instanceof CloseIndexRequest) && !(actionRequest instanceof OpenIndexRequest)) {
-        excludeClosed(i);
+      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
+      IndicesOptions opts = IndicesOptions.lenientExpandOpen();
+
+      if (actionRequest instanceof IndicesRequest) {
+        opts = ((IndicesRequest) actionRequest).indicesOptions();
       }
-      return i;
+
+      String[] concreteIdxNames = indexResolver.concreteIndexNames(
+        clusterService.state(),
+        opts, ixs
+      );
+      return Sets.newHashSet(concreteIdxNames);
+      //return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
     }
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
@@ -318,6 +318,11 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       }
     }
 
+    if (newIndices.size() == indices.get().size() && indices.get().containsAll(newIndices)) {
+      logger.debug("the indices are the same, won't set anything...");
+      return;
+    }
+
     if (isReadRequest()) {
       Set<String> expanded = getExpandedIndices(newIndices);
 
@@ -330,23 +335,11 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     else {
       indices.mutate(newIndices);
     }
-
-  }
-
-  private void excludeClosed(Set<String> indexes) {
-    // Remove all closed indices, as they cannot be read or written
-    String[] closedConcreteIndices = clusterService.state().metaData().getConcreteAllClosedIndices();
-    if (closedConcreteIndices.length == 0) {
-      return;
-    }
-    indexes.removeAll(Sets.newHashSet(closedConcreteIndices));
-
   }
 
   public Boolean hasSubRequests() {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
-
 
   public void setResponseHeader(String name, String value) {
     Map<String, String> oldMap = responseHeaders.get();

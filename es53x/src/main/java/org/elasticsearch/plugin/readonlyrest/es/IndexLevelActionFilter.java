@@ -25,6 +25,7 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -76,6 +77,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ReloadableSettings reloadableSettings;
   private final NodeClient client;
   private final LoggerShim logger;
+  private final IndexNameExpressionResolver indexResolver;
   private AtomicReference<Optional<AuditSink>> audit;
 
   @Inject
@@ -84,7 +86,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                 TransportService transportService,
                                 NodeClient client,
                                 ThreadPool threadPool,
-                                ReloadableSettingsImpl reloadableSettings
+                                ReloadableSettingsImpl reloadableSettings,
+                                IndexNameExpressionResolver indexResolver
   )
     throws IOException {
     super(settings);
@@ -93,6 +96,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     this.reloadableSettings = reloadableSettings;
     this.clusterService = clusterService;
+    this.indexResolver = indexResolver;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
     this.audit = new AtomicReference<>(Optional.empty());
@@ -177,7 +181,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
     }
 
-    RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, threadPool, context);
+    RequestContextImpl rc = new RequestContextImpl(req, action, request, clusterService, threadPool, context, indexResolver);
 
     acl.check(rc)
       .exceptionally(throwable -> {

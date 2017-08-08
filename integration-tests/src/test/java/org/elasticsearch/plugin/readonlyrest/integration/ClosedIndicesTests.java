@@ -116,7 +116,7 @@ public class ClosedIndicesTests {
   }
 
   @Test
-  public void testReverseTotalWildcard() throws Exception {
+  public void testTotalWildcard() throws Exception {
     String body = search("/*/_search");
     assertTrue(body.contains("a1"));
     assertFalse(body.contains("a2"));
