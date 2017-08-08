@@ -95,7 +95,7 @@ public class RorSettings {
     Optional sslEnableOpt = raw.booleanOpt(PREFIX_SSL + "enable");
     Optional<String> ksOpt = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE);
 
-    if (!sslSettingsOpt.isPresent() || sslEnableOpt.get().equals(false) || !ksOpt.isPresent()) {
+    if (!sslSettingsOpt.isPresent() || (sslEnableOpt.isPresent() && sslEnableOpt.get().equals(false)) || !ksOpt.isPresent()) {
       this.sslEnabled = false;
     }
     else {
