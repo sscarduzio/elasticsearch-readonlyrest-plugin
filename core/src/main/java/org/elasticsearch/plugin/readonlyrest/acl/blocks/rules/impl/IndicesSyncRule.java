@@ -112,7 +112,6 @@ public class IndicesSyncRule extends SyncRule {
       logger.debug("Stage 1");
       if (indices.size() == 1) {
         if (matcher.match(indices.iterator().next())) {
-          src.setIndices(indices);
           return true;
         }
       }
