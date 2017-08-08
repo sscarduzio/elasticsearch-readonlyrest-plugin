@@ -109,6 +109,13 @@ public class ClosedIndicesTests {
   }
 
   @Test
+  public void testGetMappings() throws Exception {
+    String body = search("/" + IDX_PREFIX + "*/_mapping/field/*");
+    assertTrue(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+  }
+
+  @Test
   public void testReverseTotalWildcard() throws Exception {
     String body = search("/*/_search");
     assertTrue(body.contains("a1"));
