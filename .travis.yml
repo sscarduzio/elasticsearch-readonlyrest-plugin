@@ -8,6 +8,10 @@ services:
 jdk:
 - oraclejdk8
 
+branches:
+  except:
+    - /^v[0-9].*es/
+
 script: bin/build.sh
 
 deploy:
