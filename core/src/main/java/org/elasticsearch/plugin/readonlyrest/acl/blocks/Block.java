@@ -22,6 +22,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockPolicy;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.Rule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesOrdering;
@@ -134,7 +135,10 @@ public class Block {
                                                                Set<RuleExitResult> thisBlockHistory) {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
       rules,
-      rule -> rule.match(rc),
+      rule -> rule.match(rc).exceptionally(e -> {
+        logger.error(getName() + ": " + rule.getKey()  + " rule matching got an error", e);
+        return new RuleExitResult(false, rule);
+      }),
       ruleExitResult -> {
         thisBlockHistory.add(ruleExitResult);
         return !ruleExitResult.isMatch();

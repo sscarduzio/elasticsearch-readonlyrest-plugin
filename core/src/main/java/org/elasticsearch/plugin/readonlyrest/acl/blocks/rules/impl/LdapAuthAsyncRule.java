@@ -60,6 +60,10 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     return authentication.match(rc)
+      .exceptionally(e -> {
+        e.printStackTrace();
+        return NO_MATCH;
+      })
       .thenCompose(result -> result.isMatch()
         ? authorization.match(rc)
         : CompletableFuture.completedFuture(result)
