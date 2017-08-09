@@ -30,6 +30,7 @@ import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
@@ -274,16 +275,21 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (doesInvolveIndices) {
       String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
-      IndicesOptions opts = IndicesOptions.lenientExpandOpen();
+      IndicesOptions opts = IndicesOptions.strictExpand();
 
       if (actionRequest instanceof IndicesRequest) {
         opts = ((IndicesRequest) actionRequest).indicesOptions();
       }
-
-      String[] concreteIdxNames = indexResolver.concreteIndices(
-        clusterService.state(),
-        opts, ixs
-      );
+      String[] concreteIdxNames = {};
+      try {
+        concreteIdxNames = indexResolver.concreteIndices(clusterService.state(), opts, ixs);
+      } catch (IndexNotFoundException infe) {
+        if (logger.isDebugEnabled()) {
+          logger.debug(Joiner.on(",").join(ixs) + " expands to no known index!");
+        }
+      } catch (Throwable t) {
+        logger.error("error while resolving expanded indices", t);
+      }
       return Sets.newHashSet(concreteIdxNames);
       //return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
     }
