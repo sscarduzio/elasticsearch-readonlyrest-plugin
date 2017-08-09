@@ -20,16 +20,14 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
-import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
-import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
@@ -40,6 +38,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.Tuple;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -72,7 +71,7 @@ public class RestClient {
       try {
         SSLContextBuilder sslCtxBuilder = new SSLContextBuilder();
         sslCtxBuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
-        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslCtxBuilder.build(),SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslCtxBuilder.build(), SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
         builder = HttpClients.custom().setSSLSocketFactory(sslsf);
       } catch (Exception e) {
         e.printStackTrace();
@@ -81,13 +80,21 @@ public class RestClient {
     else {
       builder = HttpClientBuilder.create();
     }
+
     // Common ops
+
+
     if (basicAuth.isPresent()) {
-      CredentialsProvider provider = new BasicCredentialsProvider();
-      UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(basicAuth.get().v1(), basicAuth.get().v2());
-      provider.setCredentials(AuthScope.ANY, credentials);
-      builder.setDefaultCredentialsProvider(provider);
+      System.out.println("SETTING CREDENTIALS " + (basicAuth.isPresent() ? (basicAuth.get().v1() + ":" + basicAuth.get().v2()) : ""));
+      Header auth = BasicScheme.authenticate(
+        new UsernamePasswordCredentials(basicAuth.get().v1(), basicAuth.get().v2()), "US-ASCII", false);
+
+      Header[] tmp = Arrays.copyOf(headers, headers.length + 1);
+      tmp[tmp.length - 1] = auth;
+      headers = tmp;
+
     }
+
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
       .setDefaultHeaders(Lists.newArrayList(headers))
