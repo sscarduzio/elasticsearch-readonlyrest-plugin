@@ -270,7 +270,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
 
   @Override
   protected Transactional<Set<String>> extractTransactionalIndices() {
-    return null;
+    return RCTransactionalIndices.mkInstance(this, context);
   }
 
   @Override
