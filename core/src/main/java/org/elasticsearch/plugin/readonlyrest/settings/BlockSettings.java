@@ -25,7 +25,6 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCo
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.SessionMaxIdleRuleSettings;
 
 import java.util.List;
@@ -79,16 +78,15 @@ public class BlockSettings {
       .map(value -> Verbosity.fromString(value)
         .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
       .orElse(DEFAULT_VERBOSITY);
-    Set<String> filteredBlockAttributes = Sets.newHashSet(
-      NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
-      KibanaAccessRuleSettings.ATTRIBUTE_KIBANA_INDEX
+    Set<String> ruleModifiersToSkip = Sets.newHashSet(
+      NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER
     );
     return new BlockSettings(
       name,
       policy,
       verbosity,
       settings.getKeys().stream()
-        .filter(k -> !filteredBlockAttributes.contains(k))
+        .filter(k -> !ruleModifiersToSkip.contains(k))
         .map(registry::create)
         .collect(Collectors.toList())
     );

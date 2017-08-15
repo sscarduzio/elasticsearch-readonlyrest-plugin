@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.JwtAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
@@ -66,6 +67,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
 
       // Inspection rules next; these act based on properties of the request.
       KibanaAccessSyncRule.class,
+      KibanaIndexSyncRule.class,
       HostsSyncRule.class,
       XForwardedForSyncRule.class,
       ApiKeysSyncRule.class,

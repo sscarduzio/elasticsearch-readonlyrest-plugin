@@ -28,6 +28,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewrit
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
@@ -100,6 +101,10 @@ public class RulesFactory {
     this.creators.put(
       KibanaAccessRuleSettings.class,
       settings -> wrap(new KibanaAccessSyncRule((KibanaAccessRuleSettings) settings, context))
+    );
+    this.creators.put(
+      KibanaIndexSyncRule.Settings.class,
+      settings -> wrap(new KibanaIndexSyncRule((KibanaIndexSyncRule.Settings) settings))
     );
     this.creators.put(
       KibanaHideAppsRuleSettings.class,
