@@ -72,6 +72,11 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     }
   }
 
+  @Override
+  public Set<String> getAllIndicesAndAliases() {
+    return originalRC.getAllIndicesAndAliases();
+  }
+
   public Object getOriginalSubRequest() {
     return originalSubRequest;
   }
@@ -121,10 +126,6 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
   @Override
   public String getId() {
     return originalRC.getId() + "-sub-" + originalSubRequest.hashCode();
-  }
-
-  public Set<String> getAllIndicesAndAliases() {
-    return originalRC.getAllIndicesAndAliases();
   }
 
   public Boolean isReadRequest() {

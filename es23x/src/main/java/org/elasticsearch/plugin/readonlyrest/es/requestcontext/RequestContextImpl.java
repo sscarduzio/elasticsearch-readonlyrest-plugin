@@ -18,7 +18,6 @@
 package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ElasticsearchSecurityException;
@@ -33,23 +32,17 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
-import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
-import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.es.ThreadRepo;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RCUtils;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
-import org.elasticsearch.plugin.readonlyrest.requestcontext.VariablesManager;
 import org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.net.InetSocketAddress;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -69,26 +62,19 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   private final String action;
   private final ActionRequest actionRequest;
   private final String id;
-  private final Map<String, String> requestHeaders;
   private final ClusterService clusterService;
   private final ESContext context;
-  private final Transactional<Set<String>> indices;
-  private final Transactional<Map<String, String>> responseHeaders;
   private final Long taskId;
-  private final VariablesManager variablesManager;
-  private final Date timestamp;
   private final IndexNameExpressionResolver indexResolver;
+  private final ThreadPool threadPool;
   private String content = null;
-  private Set<BlockHistory> history = Sets.newHashSet();
-  private boolean doesInvolveIndices = false;
-  private Transactional<Optional<LoggedUser>> loggedInUser;
 
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
                             ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
     super("rc", context);
-    this.timestamp = new Date();
     this.logger = context.logger(getClass());
     this.request = request;
+    this.threadPool = threadPool;
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
@@ -106,80 +92,28 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       this.taskId = null;
     }
 
+    init();
+  }
+
+  @Override
+  protected Boolean extractDoesInvolveIndices() {
+    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
+  }
+
+  @Override
+  protected Transactional<Set<String>> extractTransactionalIndices() {
+    return RCTransactionalIndices.mkInstance(this, context);
+  }
+
+  @Override
+  protected Map<String, String> extractRequestHeaders() {
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     request.headers().forEach(k -> {
       h.put(k.getKey(), k.getValue());
     });
-
-    this.requestHeaders = h;
-
-    this.responseHeaders = new Transactional<Map<String, String>>("rc-resp-headers", context) {
-      @Override
-      public Map<String, String> initialize() {
-        return Maps.newHashMap();
-      }
-
-      @Override
-      public Map<String, String> copy(Map<String, String> initial) {
-        return Maps.newHashMap(initial);
-      }
-
-      @Override
-      public void onCommit(Map<String, String> hMap) {
-        // #TODO
-        //hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
-      }
-    };
-
-    this.loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
-      @Override
-      public Optional<LoggedUser> initialize() {
-        return Optional.empty();
-      }
-
-      @Override
-      public Optional<LoggedUser> copy(Optional<LoggedUser> initial) {
-        return initial.map((u) -> new LoggedUser(u.getId()));
-      }
-
-      @Override
-      public void onCommit(Optional<LoggedUser> value) {
-        value.ifPresent(loggedUser -> {
-          Map<String, String> theMap = responseHeaders.get();
-          theMap.put("X-RR-User", loggedUser.getId());
-          responseHeaders.mutate(theMap);
-        });
-
-      }
-    };
-
-    variablesManager = new VariablesManager(h, this, context);
-
-    doesInvolveIndices = actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
-
-    indices = RCTransactionalIndices.mkInstance(this, context);
-
-    // If we get to commit this transaction, put this header.
-    delay(() -> loggedInUser.get().ifPresent(loggedUser -> setResponseHeader("X-RR-User", loggedUser.getId())));
-
-    // Register transactional values to the main queue
-    responseHeaders.delegateTo(this);
-    loggedInUser.delegateTo(this);
-    indices.delegateTo(this);
+    return h;
   }
 
-  public LoggerShim getLogger() {
-    return logger;
-  }
-
-  public Set<BlockHistory> getHistory() {
-    return history;
-  }
-
-  public void addToHistory(Block block, Set<RuleExitResult> results) {
-    BlockHistory blockHistory = new BlockHistory(block.getName(), results);
-    history.add(blockHistory);
-  }
 
   @Override
   public String getClusterUUID() {
@@ -204,14 +138,12 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     return taskId;
   }
 
-  public boolean involvesIndices() {
-    return doesInvolveIndices;
-  }
-
+  @Override
   public Boolean isReadRequest() {
     return RCUtils.isReadRequest(action);
   }
 
+  @Override
   public String getRemoteAddress() {
     String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
     // Make sure we recognize localhost even when IPV6 is involved
@@ -221,6 +153,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     return remoteHost;
   }
 
+  @Override
   public String getContent() {
     if (content == null) {
       try {
@@ -232,23 +165,24 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     return content;
   }
 
+  @Override
   public String getType() {
     return actionRequest.getClass().getSimpleName();
   }
 
-  public Optional<String> resolveVariable(String original) {
-    return variablesManager.apply(original);
-  }
 
+  @Override
   public Set<String> getAllIndicesAndAliases() {
     return clusterService.state().metaData().getAliasAndIndexLookup().keySet();
   }
 
+  // Internal
   public Set<String> getIndexMetadata(String s) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
     return lookup.get(s).getIndices().stream().map(IndexMetaData::getIndexUUID).collect(Collectors.toSet());
   }
 
+  @Override
   public HttpMethod getMethod() {
     switch (request.method()) {
       case GET:
@@ -268,12 +202,14 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     }
   }
 
+  @Override
   public Set<String> getExpandedIndices() {
     return getExpandedIndices(indices.getInitial());
   }
 
+  @Override
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
-    if (doesInvolveIndices) {
+    if (involvesIndices()) {
       String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
       IndicesOptions opts = IndicesOptions.strictExpand();
 
@@ -296,15 +232,17 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
 
+  @Override
   public Set<String> getIndices() {
-    if (!doesInvolveIndices) {
+    if (!involvesIndices()) {
       throw context.rorException("cannot get indices of a request that doesn't involve indices" + this);
     }
     return indices.getInitial();
   }
 
+  @Override
   public void setIndices(final Set<String> newIndices) {
-    if (!doesInvolveIndices) {
+    if (!involvesIndices()) {
       throw context.rorException("cannot set indices of a request that doesn't involve indices: " + this);
     }
 
@@ -341,16 +279,12 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     }
   }
 
+  @Override
   public Boolean hasSubRequests() {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
-  public void setResponseHeader(String name, String value) {
-    Map<String, String> oldMap = responseHeaders.get();
-    oldMap.put(name, value);
-    responseHeaders.mutate(oldMap);
-  }
-
+  @Override
   public Integer scanSubRequests(final ReflecUtils.CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer) {
 
     List<Object> subRequests = SubRequestContext.extractNativeSubrequests(actionRequest);
@@ -358,7 +292,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     logger.debug("found " + subRequests.size() + " subrequests");
 
     // Composite request #TODO should we really prevent this?
-    if (!doesInvolveIndices) {
+    if (!involvesIndices()) {
       throw context.rorException("cannot replace indices of a composite request that doesn't involve indices: " + this);
     }
 
@@ -390,36 +324,19 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     return subRequests.size();
   }
 
-  public Map<String, String> getHeaders() {
-    return this.requestHeaders;
+  @Override
+  protected void commitResponseHeaders(Map<String, String> hmap) {
+    // #TODO I didn't found a way to inject response headers in 2.x yet.
+    return;
   }
 
+  @Override
   public String getUri() {
     return request.uri();
   }
 
+  @Override
   public String getAction() {
     return action;
-  }
-
-  public Optional<LoggedUser> getLoggedInUser() {
-    return loggedInUser.get();
-  }
-
-  public void setLoggedInUser(LoggedUser user) {
-    loggedInUser.mutate(Optional.of(user));
-  }
-
-  @Override
-  public Date getTimestamp() {
-    return timestamp;
-  }
-
-  public boolean isDebug() {
-    return logger.isDebugEnabled();
-  }
-
-  public Set<String> getTransientIndices() {
-    return indices.get();
   }
 }

@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.definitions;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthKeyProviderSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.AuthMethodCreatorsRegistry;
@@ -46,7 +47,8 @@ public class UserSettings {
       throw new SettingsMalformedException("No authentication method defined for user ['" + username + "']");
     }
     else if (attributes.size() > 1) {
-      throw new SettingsMalformedException("Only one authentication should be defined for user ['" + username + "']");
+      throw new SettingsMalformedException("Only one authentication should be defined for user ['" + username + "']. Found "
+                                             + Joiner.on(",").join(attributes));
     }
     this.authKeyProviderSettings = registry.create(attributes.get(0), settings);
   }
