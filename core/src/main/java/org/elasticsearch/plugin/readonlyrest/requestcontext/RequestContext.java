@@ -38,7 +38,7 @@ import java.util.Set;
 
 public abstract class RequestContext extends Delayed implements IndicesRequestContext {
 
-  final static String X_KIBANA_INDEX_HEADER = "x-ror-kibana_index";
+  private final static String X_KIBANA_INDEX_HEADER = "x-ror-kibana_index";
   protected Transactional<Set<String>> indices;
   private TxKibanaIndices kibanaIndices;
   private Boolean doesInvolveIndices = false;

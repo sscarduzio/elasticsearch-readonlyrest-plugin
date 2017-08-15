@@ -66,6 +66,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   private final ESContext context;
   private final Long taskId;
   private final IndexNameExpressionResolver indexResolver;
+  private final ThreadPool threadPool;
 
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
                             ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
@@ -74,6 +75,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
     this.request = request;
     this.action = action;
     this.actionRequest = actionRequest;
+    this.threadPool = threadPool;
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
     this.context = context;
@@ -301,8 +303,8 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   }
 
   @Override
-  protected void commitResponseHeaders(Map<String, String> hmap) {
-
+  protected void commitResponseHeaders(Map<String, String> hMap) {
+    hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
   }
 
   @Override

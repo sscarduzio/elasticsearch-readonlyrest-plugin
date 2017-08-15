@@ -327,7 +327,6 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   @Override
   protected void commitResponseHeaders(Map<String, String> hmap) {
     // #TODO I didn't found a way to inject response headers in 2.x yet.
-    return;
   }
 
   @Override
