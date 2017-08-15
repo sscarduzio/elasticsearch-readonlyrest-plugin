@@ -102,8 +102,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   public RuleExitResult match(RequestContext rc) {
     RuleExitResult res = doMatch(rc);
     if (res.isMatch()) {
-      rc.setResponseHeader("x-ror-kiban_access", settings.getKibanaAccess().name());
-      rc.setResponseHeader("x-ror-kibana_index", settings.getKibanaIndex().getValue(rc).orElse(".kibana"));
+      rc.setResponseHeader("x-ror-kibana_access", settings.getKibanaAccess().name().toLowerCase());
     }
     return res;
   }
@@ -124,7 +123,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     String resolvedKibanaIndex = kibanaIndex.getValue(rc).orElse(".kibana");
 
     // Save UI state in discover & Short urls
-    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create)/.*"
+    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create)/.*"
                                                       .replace("@kibana_index", resolvedKibanaIndex));
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(resolvedKibanaIndex);
