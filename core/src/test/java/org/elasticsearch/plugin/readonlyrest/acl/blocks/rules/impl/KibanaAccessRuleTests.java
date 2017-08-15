@@ -149,7 +149,7 @@ public class KibanaAccessRuleTests {
 
     System.out.println("trying " + action + " as RO");
     assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
-    assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertFalse(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
     assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
