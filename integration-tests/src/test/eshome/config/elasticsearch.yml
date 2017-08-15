@@ -36,6 +36,7 @@ readonlyrest:
       kibana_access: rw
       indices: [".kibana", ".kibana-devnull", "logstash-*"]
       kibana_hide_apps: ["readonlyrest_kbn", "timelion", "kibana:dev_tools", "kibana:management"]
+      kibana_index: ".kibana_@{user}"
 
     - name: "::ADMIN::"
       auth_key: admin:dev
