@@ -28,9 +28,13 @@ readonlyrest:
   - name: R2
     groups: ["testgroup"]
     uri_re: ".*nodes.*"
+    kibana_index: ".kibana_@{user}"
+    kibana_hide_apps: ["timelion"]
+    kibana_access: admin
 
   users:
   - username: user
     auth_key: user:passwd
     groups: ["testgroup"]
+
 
