@@ -57,26 +57,33 @@ public abstract class ReloadableSettings {
       CompletableFuture<Void> result = new CompletableFuture<>();
       ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 
-      ScheduledFuture scheduledJob = executor
-        .scheduleWithFixedDelay(() -> {
-          if (settingsManager.isClusterReady()) {
-            logger.info("[CLUSTERWIDE SETTINGS] Cluster is ready!");
-            result.complete(null);
-            reload();
-          }
-          else {
-            logger.info("[CLUSTERWIDE SETTINGS] Cluster not ready...");
-          }
-        }, 1, 1, TimeUnit.SECONDS);
+      if (System.getProperty("com.readonlyrest.reloadsettingsonboot") == null) {
+        ScheduledFuture scheduledJob = executor
+          .scheduleWithFixedDelay(() -> {
+            if (settingsManager.isClusterReady()) {
+              logger.info("[CLUSTERWIDE SETTINGS] Cluster is ready!");
+              result.complete(null);
+              reload();
+            }
+            else {
+              logger.info("[CLUSTERWIDE SETTINGS] Cluster not ready...");
+            }
+          }, 1, 1, TimeUnit.SECONDS);
 
-      // When the cluster is up, stop polling.
-      result.thenAccept((_x) -> {
-        logger.info("[CLUSTERWIDE SETTINGS] Stopping cluster poller..");
-        scheduledJob.cancel(false);
-        executor.shutdown();
-      });
+        // When the cluster is up, stop polling.
+        result.thenAccept((_x) -> {
+          logger.info("[CLUSTERWIDE SETTINGS] Stopping cluster poller..");
+          scheduledJob.cancel(false);
+          executor.shutdown();
+        });
 
-      this.clientReadyFuture = result;
+        this.clientReadyFuture = result;
+      }
+      else {
+        // Never going to complete
+        System.out.println(">> SKIPPING INDEX POLLER");
+        this.clientReadyFuture = new CompletableFuture<>();
+      }
     }
 
   }
@@ -110,8 +117,8 @@ public abstract class ReloadableSettings {
                            logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + th.getCause().getMessage());
                          }
                          else if (th.getMessage().contains(SETTINGS_NOT_FOUND_MESSAGE)) {
-                           logger.info("[CLUSTERWIDE SETTINGS] index settings not found, have you installed ReadonlyREST Kibana plugin?" +
-                                         " Will keep on using elasticearch.yml. Learn more at https://readonlyrest.com ");
+                           logger.info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using elasticearch.yml. " +
+                                         "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
                          }
                          return Optional.of(th);
                        })
