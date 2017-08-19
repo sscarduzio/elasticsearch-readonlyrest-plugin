@@ -81,7 +81,7 @@ public abstract class ReloadableSettings {
       }
       else {
         // Never going to complete
-        System.out.println(">> SKIPPING INDEX POLLER");
+        logger.info("Skipping settings index poller...");
         this.clientReadyFuture = new CompletableFuture<>();
       }
     }
