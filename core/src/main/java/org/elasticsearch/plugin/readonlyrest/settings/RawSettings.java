@@ -106,7 +106,7 @@ public class RawSettings {
   }
 
   public Integer intReq(String attr) {
-    return req(attr);
+    return Integer.parseInt(req(attr));
   }
 
   public Optional<List<?>> notEmptyListOpt(String attr) {
