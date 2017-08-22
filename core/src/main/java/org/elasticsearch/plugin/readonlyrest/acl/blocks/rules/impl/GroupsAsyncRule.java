@@ -17,6 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.AsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
@@ -42,6 +44,8 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
   private final GroupsRuleSettings settings;
   private final UserFactory userFactory;
+  private static final String CURRENT_GROUP_HEADER = "x-ror-current-group";
+  private static final String AVAILABLE_GROUPS_HEADER = "x-ror-available-groups";
 
   public GroupsAsyncRule(GroupsRuleSettings s, UserFactory userFactory) {
     this.settings = s;
@@ -50,6 +54,7 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
+    // All configured groups, contextualized
     Set<String> resolvedGroups = settings.getGroups().stream()
       .map(g -> g.getValue(rc))
       .filter(Optional::isPresent)
@@ -58,19 +63,45 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
 
+      // Iterator
       settings.getUsersSettings().iterator(),
 
+      // Async map
       uSettings -> userFactory.getUser(uSettings).getAuthKeyRule().match(rc)
         .exceptionally(e -> {
           e.printStackTrace();
           return NO_MATCH;
         }),
 
+      // Boolean decision
       (uSettings, ruleExit) -> {
-        Set<String> groups = Sets.intersection(resolvedGroups, uSettings.getGroups());
-        return !groups.isEmpty() && ruleExit.isMatch();
+        Set<String> groupsOfCurrentBlock = Sets.intersection(resolvedGroups, uSettings.getGroups());
+
+        // check preferred group from header.
+        String preferredGroup = rc.getHeaders().get(CURRENT_GROUP_HEADER);
+        if(!Strings.isNullOrEmpty(preferredGroup)){
+          try {
+            Set<String> tmp  = Sets.newHashSet();
+            if (groupsOfCurrentBlock.contains(preferredGroup)) {
+              groupsOfCurrentBlock = tmp;
+              groupsOfCurrentBlock.add(preferredGroup);
+              rc.setResponseHeader(CURRENT_GROUP_HEADER, preferredGroup);
+            }
+            else {
+              groupsOfCurrentBlock = tmp;
+            }
+          }catch(Throwable t) {
+            t.printStackTrace();
+          }
+        }
+
+        // #TODO add groups (with indices and kibana access and kibana index) to RC.
+        rc.setResponseHeader(AVAILABLE_GROUPS_HEADER, Joiner.on(",").join(uSettings.getGroups()));
+
+        return !groupsOfCurrentBlock.isEmpty() && ruleExit.isMatch();
       },
 
+      // If never true..
       nothing -> NO_MATCH
     );
   }
