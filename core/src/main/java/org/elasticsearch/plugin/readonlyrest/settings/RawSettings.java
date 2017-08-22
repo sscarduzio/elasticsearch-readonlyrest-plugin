@@ -127,12 +127,16 @@ public class RawSettings {
     Object value = req(attr);
     HashSet<Object> set = new HashSet<>();
     if (value instanceof List<?>) {
-      set.addAll((List<?>) value);
+      List<?> l = (List<?>) value;
+      set.addAll(l);
+      if(set.size() < l.size()){
+        throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot contain duplicates");
+      }
     }
     else if (value instanceof String) {
       set.add(value);
     }
-    if (set.isEmpty()) throw new SettingsMalformedException("Set value of'" + attr + "' attribute cannot be empty");
+    if (set.isEmpty()) throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot be empty");
     return set;
   }
 
