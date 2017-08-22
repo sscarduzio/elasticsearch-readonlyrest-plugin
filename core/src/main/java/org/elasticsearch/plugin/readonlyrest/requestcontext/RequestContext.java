@@ -186,7 +186,9 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
   }
 
   public void setResponseHeader(String name, String value) {
-    responseHeaders.get().put(name, value);
+    Map<String,String> copied = responseHeaders.copy(responseHeaders.get());
+    copied.put(name, value);
+    responseHeaders.mutate(copied);
   }
 
   public Optional<LoggedUser> getLoggedInUser() {
