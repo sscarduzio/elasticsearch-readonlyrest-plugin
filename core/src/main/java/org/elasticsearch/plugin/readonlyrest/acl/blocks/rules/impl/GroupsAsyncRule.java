@@ -44,7 +44,7 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
   private final GroupsRuleSettings settings;
   private final UserFactory userFactory;
-  private static final String CURRENT_GROUP_HEADER = "x-ror-current-group";
+  public static final String CURRENT_GROUP_HEADER = "x-ror-current-group";
   private static final String AVAILABLE_GROUPS_HEADER = "x-ror-available-groups";
 
   public GroupsAsyncRule(GroupsRuleSettings s, UserFactory userFactory) {

@@ -25,6 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.acl.BlockHistory;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.GroupsAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.HttpMethod;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.transactionals.TxKibanaIndices;
@@ -186,7 +187,7 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
   }
 
   public void setResponseHeader(String name, String value) {
-    Map<String,String> copied = responseHeaders.copy(responseHeaders.get());
+    Map<String, String> copied = responseHeaders.copy(responseHeaders.get());
     copied.put(name, value);
     responseHeaders.mutate(copied);
   }
@@ -258,8 +259,20 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
 
     Optional<LoggedUser> loggedInUser = getLoggedInUser();
 
+    String currentGroup;
+    if (getHeaders().containsKey(GroupsAsyncRule.CURRENT_GROUP_HEADER)) {
+      currentGroup = getHeaders().get(GroupsAsyncRule.CURRENT_GROUP_HEADER);
+      if (Strings.isNullOrEmpty(currentGroup)) {
+        currentGroup = "<empty>";
+      }
+    }
+    else {
+      currentGroup = "N/A";
+    }
+
     return "{ ID:" + getId() +
       ", TYP:" + getType() +
+      ", CGR:" + currentGroup +
       ", USR:" + (loggedInUser.isPresent()
       ? loggedInUser.get()
       : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
