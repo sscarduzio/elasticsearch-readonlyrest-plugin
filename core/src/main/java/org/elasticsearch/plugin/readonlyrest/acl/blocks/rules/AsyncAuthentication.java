@@ -44,14 +44,14 @@ public abstract class AsyncAuthentication extends AsyncRule implements Authentic
 
     if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {
       try {
-        logger.info("Attempting Login as: " + optBasicAuth.get().getUserName() + " rc: " + rc);
+        logger.debug("Attempting Login as: " + optBasicAuth.get().getUserName() + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
     }
 
     if (!optBasicAuth.isPresent()) {
-      logger.warn("Basic auth header not present!");
+      logger.debug("Basic auth header not present!");
       return CompletableFuture.completedFuture(NO_MATCH);
     }
 
