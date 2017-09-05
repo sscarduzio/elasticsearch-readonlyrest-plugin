@@ -17,8 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.BasicAuthentication;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyUnixRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.BasicAuthUtils.BasicAuth;
@@ -33,7 +33,7 @@ import static org.apache.commons.codec.digest.Crypt.crypt;
 
 public class AuthKeyUnixSyncRule extends BasicAuthentication {
 
-    private final Logger logger;
+    private final LoggerShim logger;
     private final AuthKeyUnixRuleSettings settings;
 
     public AuthKeyUnixSyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
