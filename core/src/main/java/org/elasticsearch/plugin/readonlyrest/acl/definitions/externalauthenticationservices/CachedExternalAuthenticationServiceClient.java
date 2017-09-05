@@ -32,19 +32,23 @@ public class CachedExternalAuthenticationServiceClient implements ExternalAuthen
   private final ExternalAuthenticationServiceClient underlying;
   private final Cache<String, String> cache;
 
-  public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
-                                                                                ExternalAuthenticationServiceClient client) {
-    return settings.getCacheTtl().isZero()
-        ? client
-        : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
-  }
-
   private CachedExternalAuthenticationServiceClient(ExternalAuthenticationServiceClient underlying,
                                                     Duration ttl) {
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
+  }
+
+  public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
+                                                                                ExternalAuthenticationServiceClient client) {
+    return settings.getCacheTtl().isZero()
+      ? client
+      : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
+  }
+
+  private static String hashFrom(String password) {
+    return Hashing.sha256().hashString(password, Charset.defaultCharset()).toString();
   }
 
   @Override
@@ -52,19 +56,15 @@ public class CachedExternalAuthenticationServiceClient implements ExternalAuthen
     String cachedUserHashedPass = cache.getIfPresent(user);
     if (cachedUserHashedPass == null) {
       return underlying.authenticate(user, password)
-          .thenApply(authenticated -> {
-            if (authenticated) {
-              cache.put(user, hashFrom(password));
-            }
-            return authenticated;
-          });
+        .thenApply(authenticated -> {
+          if (authenticated) {
+            cache.put(user, hashFrom(password));
+          }
+          return authenticated;
+        });
     }
     return CompletableFuture.completedFuture(
-        Objects.equals(cachedUserHashedPass, hashFrom(password))
+      Objects.equals(cachedUserHashedPass, hashFrom(password))
     );
-  }
-
-  private static String hashFrom(String password) {
-    return Hashing.sha256().hashString(password, Charset.defaultCharset()).toString();
   }
 }

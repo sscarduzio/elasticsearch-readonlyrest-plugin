@@ -39,16 +39,16 @@ public class GroupsProviderLdapClientCacheDecorator implements GroupsProviderLda
   public GroupsProviderLdapClientCacheDecorator(GroupsProviderLdapClient underlyingClient, Duration ttl) {
     this.underlyingClient = underlyingClient;
     this.ldapUserGroupsCache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
     authenticationLdapClientCacheDecorator = new AuthenticationLdapClientCacheDecorator(underlyingClient, ttl);
   }
 
   public static GroupsProviderLdapClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
                                                                      GroupsProviderLdapClient client) {
     return settings.getCacheTtl().isZero()
-        ? client
-        : new GroupsProviderLdapClientCacheDecorator(client, settings.getCacheTtl());
+      ? client
+      : new GroupsProviderLdapClientCacheDecorator(client, settings.getCacheTtl());
   }
 
   @Override
@@ -56,10 +56,10 @@ public class GroupsProviderLdapClientCacheDecorator implements GroupsProviderLda
     Set<LdapGroup> ldapUserGroup = ldapUserGroupsCache.getIfPresent(user.getUid());
     if (ldapUserGroup == null) {
       return underlyingClient.userGroups(user)
-          .thenApply(groups -> {
-            ldapUserGroupsCache.put(user.getUid(), groups);
-            return groups;
-          });
+        .thenApply(groups -> {
+          ldapUserGroupsCache.put(user.getUid(), groups);
+          return groups;
+        });
     }
     return CompletableFuture.completedFuture(ldapUserGroup);
   }

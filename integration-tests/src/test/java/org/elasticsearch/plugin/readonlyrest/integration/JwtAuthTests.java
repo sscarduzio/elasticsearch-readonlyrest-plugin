@@ -45,11 +45,11 @@ public class JwtAuthTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-      ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/jwt_auth/elasticsearch.yml",
-          Optional.empty()
-      );
+    ESWithReadonlyRestContainer.create(
+      RorPluginGradleProject.fromSystemProperty(),
+      "/jwt_auth/elasticsearch.yml",
+      Optional.empty()
+    );
 
   @Test
   public void rejectRequestWithoutAuthorizationHeader() throws Exception {
@@ -94,14 +94,14 @@ public class JwtAuthTests {
   }
 
   private Optional<String> makeToken(String key, Map<String, Object> claims) {
-     JwtBuilder builder = Jwts.builder()
-        .setSubject(SUBJECT)
-        .signWith(SignatureAlgorithm.valueOf(ALGO), key.getBytes());
-     claims.forEach(builder::claim);
-     return Optional.of(builder.compact());
+    JwtBuilder builder = Jwts.builder()
+      .setSubject(SUBJECT)
+      .signWith(SignatureAlgorithm.valueOf(ALGO), key.getBytes());
+    claims.forEach(builder::claim);
+    return Optional.of(builder.compact());
   }
 
-  private Map<String, Object> makeClaimMap(Object ...kvs) {
+  private Map<String, Object> makeClaimMap(Object... kvs) {
     assert kvs.length % 2 == 0;
     HashMap<String, Object> claims = Maps.newHashMap();
     for (int i = 0; i < kvs.length; i += 2)

@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 class UnboundidSearchResultListener
-    implements com.unboundid.ldap.sdk.AsyncSearchResultListener {
+  implements com.unboundid.ldap.sdk.AsyncSearchResultListener {
 
   private final CompletableFuture<List<SearchResultEntry>> futureToComplete;
   private final ArrayList<SearchResultEntry> searchResultEntries = Lists.newArrayList();
@@ -44,7 +44,7 @@ class UnboundidSearchResultListener
     }
     else {
       futureToComplete.completeExceptionally(
-          new LdapSearchError(searchResult.getResultCode(), searchResult.getResultString())
+        new LdapSearchError(searchResult.getResultCode(), searchResult.getResultString())
       );
     }
   }

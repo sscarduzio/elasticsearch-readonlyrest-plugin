@@ -2,8 +2,8 @@
   "request": {
     "method": "GET",
     "urlPath": "/auth1",
-    "basicAuthCredentials" : {
-      "username" : "morgan"
+    "basicAuthCredentials": {
+      "username": "morgan"
     }
   },
   "response": {

@@ -30,11 +30,11 @@ public class LdapAuthRuleSettingsTests {
   public void testRuleSettingsSuccessfulCreation() {
     LdapAuthRuleSettings settings = LdapAuthRuleSettings.from(
       TestUtils.fromYAMLString("" +
-            "ldap_auth:\n" +
-            "  name: ldap1\n" +
-            "  groups: [group1, group2]")
-            .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
-        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+                                 "ldap_auth:\n" +
+                                 "  name: ldap1\n" +
+                                 "  groups: [group1, group2]")
+        .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
+      LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
     assertEquals("ldap_auth", settings.getName());
   }
@@ -43,11 +43,11 @@ public class LdapAuthRuleSettingsTests {
   public void testRuleSettingsCreationFailsDueToNotFoundLdapWithGivenName() {
     LdapAuthRuleSettings.from(
       TestUtils.fromYAMLString("" +
-            "ldap_auth:\n" +
-            "  name: ldap3\n" +
-            "  groups: [group1, group2]")
-            .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
-        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+                                 "ldap_auth:\n" +
+                                 "  name: ldap3\n" +
+                                 "  groups: [group1, group2]")
+        .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
+      LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
   }
 
@@ -55,9 +55,9 @@ public class LdapAuthRuleSettingsTests {
   public void testRuleSettingsCreationFailsDueToNotSetLdapAuthName() {
     LdapAuthRuleSettings.from(
       TestUtils.fromYAMLString("" +
-            "ldap_auth:\n" +
-            "  groups: [group1, group2]")
-            .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
+                                 "ldap_auth:\n" +
+                                 "  groups: [group1, group2]")
+        .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
       LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
   }
@@ -66,11 +66,11 @@ public class LdapAuthRuleSettingsTests {
   public void testRuleSettingsCreationFailsDueToEmptyGroupsSet() {
     LdapAuthRuleSettings.from(
       TestUtils.fromYAMLString("" +
-            "ldap_auth:\n" +
-            "  name: ldap1\n" +
-            "  groups: []")
-            .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
-        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+                                 "ldap_auth:\n" +
+                                 "  name: ldap1\n" +
+                                 "  groups: []")
+        .inner(LdapAuthRuleSettings.ATTRIBUTE_NAME),
+      LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
   }
 }

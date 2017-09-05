@@ -24,7 +24,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
  */
 public class ResponseContext {
 
-  private static final SerializationTool serTool = new SerializationTool();
+  private static SerializationTool serTool;
   private final FinalState finalState;
   private final Long durationMillis;
   private final RequestContext rc;
@@ -32,6 +32,9 @@ public class ResponseContext {
   private final BlockExitResult result;
 
   public ResponseContext(FinalState finalState, RequestContext rc, Throwable error, BlockExitResult result) {
+    if (serTool == null) {
+      serTool = new SerializationTool();
+    }
     this.finalState = finalState;
     this.durationMillis = System.currentTimeMillis() - rc.getTimestamp().getTime();
     this.rc = rc;
@@ -59,14 +62,14 @@ public class ResponseContext {
     return finalState;
   }
 
+  public String toJson() throws JsonProcessingException {
+    return serTool.toJson(this);
+  }
+
   public enum FinalState {
     FORBIDDEN,
     ALLOWED,
     ERRORED,
     NOT_FOUND
-  }
-
-  public String toJson() throws JsonProcessingException {
-    return serTool.toJson(this);
   }
 }

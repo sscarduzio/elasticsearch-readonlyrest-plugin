@@ -1,0 +1,26 @@
+http.bind_host: _eth0:ipv4_
+network.host: _eth0:ipv4_
+xpack:
+    monitoring.enabled: false
+    security.enabled: false
+    graph.enabled: false
+    watcher.enabled: false
+
+http.type: ssl_netty4
+transport.type: local
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "config/keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+  - name: "CONTAINER ADMIN"
+    type: allow
+    auth_key: admin:container
+
+  - name: "User 1"
+    type: allow
+    auth_key: user1:dev

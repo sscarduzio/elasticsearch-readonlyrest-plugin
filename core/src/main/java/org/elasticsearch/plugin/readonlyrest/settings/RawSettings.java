@@ -76,10 +76,10 @@ public class RawSettings {
 
   public Optional<Boolean> booleanOpt(String attr) {
     return opt(attr).map(x -> {
-      if(x instanceof String){
-          return Boolean.parseBoolean((String) x);
+      if (x instanceof String) {
+        return Boolean.parseBoolean((String) x);
       }
-      return (Boolean)x;
+      return (Boolean) x;
     });
   }
 
@@ -92,15 +92,21 @@ public class RawSettings {
   }
 
   public String stringReq(String attr) {
-    return req(attr);
+    String s = req(attr);
+    return s;
   }
 
   public Optional<Integer> intOpt(String attr) {
-    return opt(attr);
+    return opt(attr).map(s -> {
+      if (s instanceof String) {
+        return Integer.parseInt((String) s);
+      }
+      return (Integer) s;
+    });
   }
 
   public Integer intReq(String attr) {
-    return req(attr);
+    return Integer.parseInt(req(attr));
   }
 
   public Optional<List<?>> notEmptyListOpt(String attr) {
@@ -121,12 +127,16 @@ public class RawSettings {
     Object value = req(attr);
     HashSet<Object> set = new HashSet<>();
     if (value instanceof List<?>) {
-      set.addAll((List<?>) value);
+      List<?> l = (List<?>) value;
+      set.addAll(l);
+      if(set.size() < l.size()){
+        throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot contain duplicates");
+      }
     }
     else if (value instanceof String) {
       set.add(value);
     }
-    if (set.isEmpty()) throw new SettingsMalformedException("Set value of'" + attr + "' attribute cannot be empty");
+    if (set.isEmpty()) throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot be empty");
     return set;
   }
 

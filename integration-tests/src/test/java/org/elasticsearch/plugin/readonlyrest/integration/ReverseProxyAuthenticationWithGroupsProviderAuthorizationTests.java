@@ -32,37 +32,38 @@ public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
-      ESWithReadonlyRestContainerUtils.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          new MultiContainer.Builder()
-              .add("GROUPS1", () -> WireMockContainer.create(
-                  "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
-                  "/rev_proxy_groups_provider/wiremock_service1_morgan.json"
-              ))
-              .add("GROUPS2", () -> WireMockContainer.create("/rev_proxy_groups_provider/wiremock_service2.json"))
-              .build(),
-          "/rev_proxy_groups_provider/elasticsearch.yml",
-          new ElasticsearchTweetsInitializer()
-      );
+    ESWithReadonlyRestContainerUtils.create(
+      RorPluginGradleProject.fromSystemProperty(),
+      new MultiContainer.Builder()
+        .add("GROUPS1", () -> WireMockContainer.create(
+          "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
+          "/rev_proxy_groups_provider/wiremock_service1_morgan.json"
+        ))
+        .add("GROUPS2", () -> WireMockContainer.create("/rev_proxy_groups_provider/wiremock_service2.json"))
+        .build(),
+      "/rev_proxy_groups_provider/elasticsearch.yml",
+      new ElasticsearchTweetsInitializer()
+    );
 
+  // #TODO doesnt pass
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
     assertions(container).assertReverseProxyUserHasAccessToIndex(
-        "X-Auth-Token", "cartman", "twitter"
+      "X-Auth-Token", "cartman", "twitter"
     );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationErrorWithService1() throws Exception {
     assertions(container).assertReverseProxyAccessToIndexForbidden(
-        "X-Auth-Token", "morgan", "twitter"
+      "X-Auth-Token", "morgan", "twitter"
     );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService2() throws Exception {
     assertions(container).assertReverseProxyUserHasAccessToIndex(
-        "X-Auth-Token", "29b3d166-1952-11e7-8b77-6c4008a76fc6", "facebook"
+      "X-Auth-Token", "29b3d166-1952-11e7-8b77-6c4008a76fc6", "facebook"
     );
   }
 }

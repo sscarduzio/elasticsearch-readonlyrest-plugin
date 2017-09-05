@@ -24,8 +24,8 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.UserRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
@@ -39,7 +39,7 @@ import java.util.Optional;
 
 public class JwtAuthSyncRule extends UserRule implements Authentication {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final JwtAuthRuleSettings settings;
 
   public JwtAuthSyncRule(JwtAuthRuleSettings settings, ESContext context) {
@@ -47,11 +47,21 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
     this.settings = settings;
   }
 
+  private static Optional<String> extractToken(String authHeader) {
+    if (authHeader.startsWith("Bearer ")) {
+      String token = authHeader.substring(7).trim();
+      return Optional.ofNullable(Strings.emptyToNull(token));
+    }
+    else {
+      return Optional.empty();
+    }
+  }
+
   @Override
   public RuleExitResult match(RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders())
-        .map(m -> m.get("Authorization"))
-        .flatMap(JwtAuthSyncRule::extractToken);
+      .map(m -> m.get("Authorization"))
+      .flatMap(JwtAuthSyncRule::extractToken);
 
     if (!token.isPresent()) {
       logger.debug("Authorization header is missing or does not contain a bearer token");
@@ -60,10 +70,10 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
 
     try {
       Jws<Claims> jws = AccessController.doPrivileged(
-          (PrivilegedAction<Jws<Claims>>) () ->
-              Jwts.parser()
-                  .setSigningKey(settings.getKey())
-                  .parseClaimsJws(token.get()));
+        (PrivilegedAction<Jws<Claims>>) () ->
+          Jwts.parser()
+            .setSigningKey(settings.getKey())
+            .parseClaimsJws(token.get()));
 
       Optional<String> user = settings.getUserClaim().map(claim -> jws.getBody().get(claim, String.class));
       if (settings.getUserClaim().isPresent())
@@ -79,14 +89,5 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
   @Override
   public String getKey() {
     return settings.getName();
-  }
-
-  private static Optional<String> extractToken(String authHeader) {
-    if (authHeader.startsWith("Bearer ")) {
-      String token = authHeader.substring(7).trim();
-      return Optional.ofNullable(Strings.emptyToNull(token));
-    } else {
-      return Optional.empty();
-    }
   }
 }

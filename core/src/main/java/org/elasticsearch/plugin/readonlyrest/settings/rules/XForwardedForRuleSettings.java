@@ -30,17 +30,23 @@ import java.util.stream.Collectors;
 public class XForwardedForRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "x_forwarded_for";
-
+  private static Function<String, IPMask> ipMaskFromString = value -> {
+    try {
+      return IPMask.getIPMask(value);
+    } catch (UnknownHostException e) {
+      throw new SettingsMalformedException("Cannot create IP address from string: " + value);
+    }
+  };
   private final Set<Value<IPMask>> allowedAddresses;
-
-  public static XForwardedForRuleSettings from(List<String> addresses) {
-    return new XForwardedForRuleSettings(addresses.stream()
-        .map(obj -> Value.fromString(obj, ipMaskFromString))
-        .collect(Collectors.toSet()));
-  }
 
   private XForwardedForRuleSettings(Set<Value<IPMask>> allowedAddresses) {
     this.allowedAddresses = allowedAddresses;
+  }
+
+  public static XForwardedForRuleSettings from(List<String> addresses) {
+    return new XForwardedForRuleSettings(addresses.stream()
+                                           .map(obj -> Value.fromString(obj, ipMaskFromString))
+                                           .collect(Collectors.toSet()));
   }
 
   public Set<Value<IPMask>> getAllowedAddresses() {
@@ -51,12 +57,4 @@ public class XForwardedForRuleSettings implements RuleSettings {
   public String getName() {
     return ATTRIBUTE_NAME;
   }
-
-  private static Function<String, IPMask> ipMaskFromString = value -> {
-    try {
-      return IPMask.getIPMask(value);
-    } catch (UnknownHostException e) {
-      throw new SettingsMalformedException("Cannot create IP address from string: " + value);
-    }
-  };
 }

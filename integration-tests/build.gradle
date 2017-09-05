@@ -15,12 +15,19 @@ buildscript {
     }
 }
 
+subprojects {
+    tasks.withType(Test) {
+        maxParallelForks = 1
+    }
+}
+
 apply plugin: 'java'
 apply plugin: 'license'
 
 repositories {
     mavenCentral()
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+    maven { url 'https://jitpack.io' }
 }
 
 test {
@@ -31,6 +38,12 @@ test {
         systemProperty "esModule", module
     }
     outputs.upToDateWhen { false }
+
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
 }
 
 dependencies {

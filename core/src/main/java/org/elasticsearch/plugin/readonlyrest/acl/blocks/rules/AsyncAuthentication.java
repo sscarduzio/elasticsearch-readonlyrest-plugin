@@ -17,8 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.phantomtypes.Authentication;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.LoggedUser;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthentication extends AsyncRule implements Authentication {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   protected AsyncAuthentication(ESContext context) {
     logger = context.logger(getClass());
@@ -44,26 +44,26 @@ public abstract class AsyncAuthentication extends AsyncRule implements Authentic
 
     if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {
       try {
-        logger.info("Attempting Login as: " + optBasicAuth.get().getUserName() + " rc: " + rc);
+        logger.debug("Attempting Login as: " + optBasicAuth.get().getUserName() + " rc: " + rc);
       } catch (IllegalArgumentException e) {
         e.printStackTrace();
       }
     }
 
     if (!optBasicAuth.isPresent()) {
-      logger.warn("Basic auth header not present!");
+      logger.debug("Basic auth header not present!");
       return CompletableFuture.completedFuture(NO_MATCH);
     }
 
     BasicAuth basicAuth = optBasicAuth.get();
     return authenticate(basicAuth.getUserName(), basicAuth.getPassword())
-        .thenApply(result -> {
-          RuleExitResult r = result != null && result ? MATCH : NO_MATCH;
-          if (r.isMatch()) {
-            rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
-          }
-          return r;
-        });
+      .thenApply(result -> {
+        RuleExitResult r = result != null && result ? MATCH : NO_MATCH;
+        if (r.isMatch()) {
+          rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
+        }
+        return r;
+      });
   }
 
 }

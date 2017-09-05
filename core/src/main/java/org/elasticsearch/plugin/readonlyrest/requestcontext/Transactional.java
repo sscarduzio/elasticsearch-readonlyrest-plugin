@@ -17,8 +17,8 @@
 
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 import java.util.Objects;
 
@@ -36,7 +36,7 @@ import java.util.Objects;
 
 public abstract class Transactional<T> extends Delayed {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   private Boolean initialized = false;
   private T initialValue;
@@ -49,17 +49,17 @@ public abstract class Transactional<T> extends Delayed {
 
   @Override
   public void commit() {
-   delay( () -> {
-     if (!initialized) {
-       lazyLoad();
-     }
-     if (transientValue == null && initialValue == null || Objects.equals(transientValue, initialValue)) {
-       logger.trace(name + " > nothing to be committed..");
-       return;
-     }
-     logger.trace(name + " > committing final req " + transientValue);
-     onCommit(transientValue);
-   });
+    delay(() -> {
+      if (!initialized) {
+        lazyLoad();
+      }
+      if (transientValue == null && initialValue == null || Objects.equals(transientValue, initialValue)) {
+        logger.trace(name + " > nothing to be committed..");
+        return;
+      }
+      logger.trace(name + " > committing final req " + transientValue);
+      onCommit(transientValue);
+    });
     super.commit();
   }
 

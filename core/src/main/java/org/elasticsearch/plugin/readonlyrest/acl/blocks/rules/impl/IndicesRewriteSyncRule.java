@@ -18,8 +18,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
  */
 public class IndicesRewriteSyncRule extends SyncRule {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final Set<Pattern> targetPatterns;
   private final Value<String> replacement;
   private final IndicesRewriteRuleSettings settings;
@@ -56,20 +56,22 @@ public class IndicesRewriteSyncRule extends SyncRule {
     }
 
     final Optional<String> theReplacementOpt = this.replacement.getValue(rc);
-    if(theReplacementOpt.isPresent()) {
+    if (theReplacementOpt.isPresent()) {
       final String theReplacement = theReplacementOpt.get();
       if (rc.hasSubRequests()) {
         rc.scanSubRequests((src) -> {
           rewrite(src, theReplacement);
           return Optional.of(src);
         });
-      } else {
+      }
+      else {
         rewrite(rc, theReplacement);
       }
 
       // This is a side-effect only rule, will always match
       return MATCH;
-    } else {
+    }
+    else {
       return NO_MATCH;
     }
   }
@@ -91,8 +93,8 @@ public class IndicesRewriteSyncRule extends SyncRule {
       // If asked for non-existent indices, let's show them to the rewriter
       Set<String> available = rc.getAllIndicesAndAliases();
       rc.getIndices().stream()
-          .filter(i -> !available.contains(i))
-          .forEach(oldIndices::add);
+        .filter(i -> !available.contains(i))
+        .forEach(oldIndices::add);
     }
 
     Set<String> newIndices = Sets.newHashSet();

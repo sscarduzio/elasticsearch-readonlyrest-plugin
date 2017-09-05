@@ -18,6 +18,7 @@ package org.elasticsearch.plugin.readonlyrest.integration;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
@@ -26,7 +27,7 @@ import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.testcontainers.shaded.jersey.repackaged.com.google.common.collect.Lists;
+import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 import java.util.Optional;
 
@@ -35,18 +36,57 @@ import static org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReado
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class IndicesReverseWildcardTests  {
+public class IndicesReverseWildcardTests {
 
+
+  private static RestClient adminClient;
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-      create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/indices_reverse_wildcards/elasticsearch.yml",
-          Optional.of(client -> {
-            Lists.newArrayList("a1", "a2", "b1", "b2")
-                .forEach(doc -> insertDoc(doc, client));
-          })
-      );
+    create(
+      RorPluginGradleProject.fromSystemProperty(),
+      "/indices_reverse_wildcards/elasticsearch.yml",
+      Optional.of(client -> {
+        Lists.newArrayList("a1", "a2", "b1", "b2").forEach(doc -> insertDoc(doc, client));
+      })
+    );
+
+  private static void insertDoc(String docName, RestClient restClient) {
+    if (adminClient == null) {
+      adminClient = restClient;
+    }
+
+    try {
+      HttpPut request = new HttpPut(restClient.from(
+        "/logstash-" + docName + "/documents/doc-" + docName
+      ));
+      request.setHeader("refresh", "true");
+      request.setHeader("timeout", "50s");
+      request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));
+      System.out.println(body(restClient.execute(request)));
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new IllegalStateException("Test problem", e);
+    }
+
+    // Polling phase.. #TODO is there a better way?
+    try {
+      HttpResponse response;
+      do {
+        Thread.sleep(200);
+        HttpHead request = new HttpHead(restClient.from("/logstash-" + docName + "/documents/doc-" + docName));
+        response = restClient.execute(request);
+        System.out.println("polling for " + docName + ".. result: " + response.getStatusLine().getReasonPhrase());
+      } while (response.getStatusLine().getStatusCode() != 200);
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new IllegalStateException("Cannot configure test case", e);
+    }
+  }
+
+  private static String body(HttpResponse r) throws Exception {
+    return EntityUtils.toString(r.getEntity());
+  }
 
   @Test
   public void testDirectSingleIdx() throws Exception {
@@ -94,31 +134,15 @@ public class IndicesReverseWildcardTests  {
     assertFalse(body.contains("b2"));
   }
 
-  private static void insertDoc(String docName, RestClient client) {
-    try {
-      HttpPut request = new HttpPut(client.from(
-          "/logstash-" + docName + "/documents/doc-" + docName
-      ));
-      request.setHeader("refresh", "true");
-      request.setHeader("timeout", "50s");
-      request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));
-      System.out.println(body(client.execute(request)));
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new IllegalStateException("Test problem", e);
-    }
-  }
-
-  private static String body(HttpResponse r) throws Exception {
-    return EntityUtils.toString(r.getEntity());
-  }
-
   private String search(String endpoint) throws Exception {
-    RestClient client = container.getAdminClient();
-    HttpGet request = new HttpGet(client.from(endpoint));
+    String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
+    HttpGet request = new HttpGet(adminClient.from(endpoint));
     request.setHeader("timeout", "50s");
-    HttpResponse resp = client.execute(request);
+    request.setHeader("x-caller-" + caller, "true");
+    HttpResponse resp = adminClient.execute(request);
+    String body = body(resp);
+    System.out.println("SEARCH RESPONSE for " + caller + ": " + body);
     assertEquals(200, resp.getStatusLine().getStatusCode());
-    return body(resp);
+    return body;
   }
 }

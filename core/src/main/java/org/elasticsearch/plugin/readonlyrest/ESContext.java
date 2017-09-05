@@ -16,11 +16,17 @@
  */
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.apache.logging.log4j.Logger;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientFactory;
+import org.elasticsearch.plugin.readonlyrest.httpclient.ApacheHttpCoreClient;
+import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
 
 public interface ESContext {
-  Logger logger(Class<?> clazz);
+  LoggerShim logger(Class<?> clazz);
+
   RuntimeException rorException(String message);
-  HttpClientFactory httpClientFactory();
+
+  default HttpClient mkHttpClient() {
+    return new ApacheHttpCoreClient(this);
+  }
+
+  ESVersion getVersion();
 }

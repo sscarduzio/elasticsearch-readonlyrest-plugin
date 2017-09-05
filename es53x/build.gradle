@@ -50,7 +50,6 @@ dependencies {
     compile project(':core')
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
-    compile 'org.elasticsearch.client:rest:' + esVersion
 }
 
 license {
@@ -78,6 +77,7 @@ configurations {
         exclude group: 'lucene-analyzers-common'
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
 }
 

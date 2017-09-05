@@ -1,19 +1,28 @@
 http.bind_host: _eth0:ipv4_
 network.host: _eth0:ipv4_
 xpack:
-    monitoring.enabled: false
-    security.enabled: false
-    graph.enabled: false
-    watcher.enabled: false
+  monitoring.enabled: false
+  security.enabled: false
+  graph.enabled: false
+  watcher.enabled: false
+
+http.type: ssl_netty4
+transport.type: local
 
 readonlyrest:
-    access_control_rules:
-      - name: Container housekeeping is allowed
-        type: allow
-        auth_key: admin:container
+  ssl:
+    enable: true
+    keystore_file: "config/keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
 
-      - name: Valid JWT token is present
-        type: allow
-        jwt_auth:
-          signature_key: "123456"
-          user_claim: user
+  access_control_rules:
+    - name: Container housekeeping is allowed
+      type: allow
+      auth_key: admin:container
+
+    - name: Valid JWT token is present
+      type: allow
+      jwt_auth:
+        signature_key: "123456"
+        user_claim: user

@@ -31,17 +31,6 @@ public class YamlEnabledSslSettings implements EnabledSslSettings {
   private final Optional<File> privkeyPem;
   private final Optional<File> certchainPem;
 
-  public static EnabledSslSettings from(RawSettings settings) {
-    return new YamlEnabledSslSettings(
-        new File(settings.stringReq(ATTRIBUTE_KEYSTORE_FILE)),
-        settings.stringOpt(ATTRIBUTE_KEYSTORE_PASS),
-        settings.stringOpt(ATTRIBUTE_KEY_PASS),
-        settings.stringOpt(ATTRIBUTE_KEY_ALIAS),
-        settings.stringOpt(ATTRIBUTE_PRIVKEY_PEM).map(File::new),
-        settings.stringOpt(ATTRIBUTE_CERTCHAIN_PEM).map(File::new)
-    );
-  }
-
   private YamlEnabledSslSettings(File keystoreFile, Optional<String> keystorePass, Optional<String> keyPass,
                                  Optional<String> keyAlias, Optional<File> privkeyPem, Optional<File> certchainPem) {
     this.keystoreFile = keystoreFile;
@@ -50,6 +39,17 @@ public class YamlEnabledSslSettings implements EnabledSslSettings {
     this.keyAlias = keyAlias;
     this.privkeyPem = privkeyPem;
     this.certchainPem = certchainPem;
+  }
+
+  public static EnabledSslSettings from(RawSettings settings) {
+    return new YamlEnabledSslSettings(
+      new File(settings.stringReq(ATTRIBUTE_KEYSTORE_FILE)),
+      settings.stringOpt(ATTRIBUTE_KEYSTORE_PASS),
+      settings.stringOpt(ATTRIBUTE_KEY_PASS),
+      settings.stringOpt(ATTRIBUTE_KEY_ALIAS),
+      settings.stringOpt(ATTRIBUTE_PRIVKEY_PEM).map(File::new),
+      settings.stringOpt(ATTRIBUTE_CERTCHAIN_PEM).map(File::new)
+    );
   }
 
   public File getKeystoreFile() {

@@ -33,10 +33,10 @@ public class RuleActionListenersProvider {
 
   public RuleActionListenersProvider(ESContext context) {
     this.ruleActionListenerMap = ImmutableMap.<Class<? extends Rule>, RuleActionListener<?>>builder()
-        .put(IndexLevelSecuritySyncRule.class, new IndexLevelSecuritySyncRuleActionListener())
-        .put(SearchlogSyncRule.class, new SearchlogSyncRuleActionListener(context))
-        .put(IndicesRewriteSyncRule.class, new IndicesRewriteSyncRuleActionListener(context))
-        .build();
+      .put(IndexLevelSecuritySyncRule.class, new IndexLevelSecuritySyncRuleActionListener())
+      .put(SearchlogSyncRule.class, new SearchlogSyncRuleActionListener(context))
+      .put(IndicesRewriteSyncRule.class, new IndicesRewriteSyncRuleActionListener(context))
+      .build();
   }
 
   public Optional<RuleActionListener<?>> getActionListenerOf(Rule rule) {

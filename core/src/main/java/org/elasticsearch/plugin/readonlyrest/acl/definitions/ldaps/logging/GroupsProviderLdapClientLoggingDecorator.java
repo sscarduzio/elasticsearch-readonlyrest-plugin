@@ -17,8 +17,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.logging;
 
 import com.google.common.base.Joiner;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 public class GroupsProviderLdapClientLoggingDecorator implements GroupsProviderLdapClient {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final GroupsProviderLdapClient underlying;
   private final String name;
   private final AuthenticationLdapClientLoggingDecorator authenticationLdapClientLoggingDecorator;
@@ -46,19 +46,19 @@ public class GroupsProviderLdapClientLoggingDecorator implements GroupsProviderL
   public static GroupsProviderLdapClient wrapInLoggingIfIsLoggingEnabled(String name, ESContext context,
                                                                          GroupsProviderLdapClient client) {
     return context.logger(GroupsProviderLdapClientLoggingDecorator.class).isDebugEnabled()
-        ? new GroupsProviderLdapClientLoggingDecorator(name, context, client)
-        : client;
+      ? new GroupsProviderLdapClientLoggingDecorator(name, context, client)
+      : client;
   }
 
   @Override
   public CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user) {
     logger.debug("Trying to fetch user [id=" + user.getUid() + ", dn" + user.getDN() + "] groups from LDAP [" + name + "]");
     return underlying.userGroups(user)
-        .thenApply(groups -> {
-          logger.debug("LDAP [" + name + "] returned for user [" + user.getUid() + "] following groups: " +
-              "[" + Joiner.on(", ").join(groups.stream().map(LdapGroup::getName).collect(Collectors.toSet())) + "]");
-          return groups;
-        });
+      .thenApply(groups -> {
+        logger.debug("LDAP [" + name + "] returned for user [" + user.getUid() + "] following groups: " +
+                       "[" + Joiner.on(", ").join(groups.stream().map(LdapGroup::getName).collect(Collectors.toSet())) + "]");
+        return groups;
+      });
   }
 
   @Override

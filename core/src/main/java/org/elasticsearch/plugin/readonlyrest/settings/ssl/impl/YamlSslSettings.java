@@ -25,7 +25,7 @@ public class YamlSslSettings {
 
   static SslSettings from(RawSettings settings) {
     return settings.booleanReq(ATTRIBUTE_ENABLE)
-        ? YamlEnabledSslSettings.from(settings)
-        : YamlDisabledSslSettings.INSTANCE;
+      ? YamlEnabledSslSettings.from(settings)
+      : YamlDisabledSslSettings.INSTANCE;
   }
 }

@@ -32,9 +32,9 @@ public class RequestContextMock {
   public static RequestContext mockedRequestContext(String user, String pass) {
     RequestContext mock = mock(RequestContext.class);
     when(mock.getHeaders()).thenReturn(
-        Maps.newHashMap(ImmutableMap.<String, String>builder()
-            .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
-            .build()));
+      Maps.newHashMap(ImmutableMap.<String, String>builder()
+                        .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
+                        .build()));
     when(mock.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser(user)));
     return mock;
   }

@@ -17,11 +17,11 @@
 
 package org.elasticsearch.plugin.readonlyrest.es;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.tasks.Task;
-import org.elasticsearch.tasks.TaskAwareRequest;
 import org.elasticsearch.tasks.TaskManager;
+import org.elasticsearch.transport.TransportRequest;
 
 import java.lang.reflect.Field;
 import java.security.AccessController;
@@ -40,22 +40,22 @@ public class TaskManagerWrapper extends TaskManager {
   }
 
   @Override
-  public Task register(String type, String action, TaskAwareRequest request) {
+  public Task register(String type, String action, TransportRequest request) {
     Task t = super.register(type, action, request);
-   if(!action.startsWith("internal")) {
-     ThreadRepo.taskId.set(t.getId());
-   }
+    if (!action.startsWith("internal")) {
+      ThreadRepo.taskId.set(t.getId());
+    }
     return t;
   }
 
-  public  boolean injectIntoTransportService(Object o,  Logger logger) {
+  public boolean injectIntoTransportService(Object o, LoggerShim logger) {
 
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")
       Set<Field> indexFields = getAllFields(
         o.getClass(),
-        (Field field) -> field != null &&  field.getType().equals(TaskManager.class)
+        (Field field) -> field != null && field.getType().equals(TaskManager.class)
       );
       for (Field f : indexFields) {
         f.setAccessible(true);

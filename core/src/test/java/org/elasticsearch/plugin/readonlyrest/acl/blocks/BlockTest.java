@@ -34,7 +34,7 @@ import org.junit.Test;
 import java.util.Iterator;
 import java.util.List;
 
-public class BlockTest  {
+public class BlockTest {
 
   @Test
   public void testRulesShallFollowAuthInspectMutateOrder() {
@@ -42,20 +42,20 @@ public class BlockTest  {
     DefinitionsFactory definitionsFactory = new DefinitionsFactory(MockedESContext.INSTANCE, MockedACL.getMock());
     RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, MockedESContext.INSTANCE);
     Block block = new Block(
-        BlockSettings.from(
-          TestUtils.fromYAMLString("" +
-                "name: Dummy block\n" +
-                "type: allow\n" +
-                "proxy_auth: \"*\"\n" +
-                "indices_rewrite: [\"needle\", \"replacement\"]\n" +
-                "indices: [\"allowed-index\"]"
-            ),
-          new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty()), null),
-          null, null,
-          null, null
+      BlockSettings.from(
+        TestUtils.fromYAMLString("" +
+                                   "name: Dummy block\n" +
+                                   "type: allow\n" +
+                                   "proxy_auth: \"*\"\n" +
+                                   "indices_rewrite: [\"needle\", \"replacement\"]\n" +
+                                   "indices: [\"allowed-index\"]"
         ),
-        rulesFactory,
-        MockedESContext.INSTANCE
+        new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty()), null),
+        null, null,
+        null, null
+      ),
+      rulesFactory,
+      MockedESContext.INSTANCE
     );
 
     List<AsyncRule> rules = block.getRules();

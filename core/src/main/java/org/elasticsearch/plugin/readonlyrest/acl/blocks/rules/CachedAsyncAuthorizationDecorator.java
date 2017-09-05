@@ -35,16 +35,16 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
     super(context);
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
-        .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-        .build();
+      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
+      .build();
   }
 
   public static AsyncAuthorization wrapInCacheIfCacheIsEnabled(AsyncAuthorization authorization,
                                                                CacheSettings settings,
                                                                ESContext context) {
     return settings.getCacheTtl().isZero()
-        ? authorization
-        : new CachedAsyncAuthorizationDecorator(authorization, settings.getCacheTtl(), context);
+      ? authorization
+      : new CachedAsyncAuthorizationDecorator(authorization, settings.getCacheTtl(), context);
   }
 
   @Override
@@ -52,10 +52,10 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
     Boolean authorizationResult = cache.getIfPresent(user.getId());
     if (authorizationResult == null) {
       return underlying.authorize(user)
-          .thenApply(result -> {
-            cache.put(user.getId(), result);
-            return result;
-          });
+        .thenApply(result -> {
+          cache.put(user.getId(), result);
+          return result;
+        });
     }
     return CompletableFuture.completedFuture(authorizationResult);
   }

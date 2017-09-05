@@ -29,12 +29,12 @@ public class ConnectionConfig {
   private final boolean trustAllCerts;
 
   public ConnectionConfig(String host,
-      int port,
-      int poolSize,
-      Duration connectionTimeout,
-      Duration requestTimeout,
-      boolean sslEnabled,
-      boolean trustAllCerts) {
+                          int port,
+                          int poolSize,
+                          Duration connectionTimeout,
+                          Duration requestTimeout,
+                          boolean sslEnabled,
+                          boolean trustAllCerts) {
 
     this.host = host;
     this.port = port;

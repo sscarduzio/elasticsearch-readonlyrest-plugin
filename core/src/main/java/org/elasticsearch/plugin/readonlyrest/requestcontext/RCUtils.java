@@ -33,19 +33,19 @@ public class RCUtils {
   public static final String LOCALHOST = "127.0.0.1";
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");
   private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/*",
-      "cluster:*get*",
-      "cluster:*search*",
-      "indices:admin/aliases/exsists",
-      "indices:admin/aliases/get",
-      "indices:admin/exists*",
-      "indices:admin/get*",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
-      "indices:admin/refresh*",
-      "indices:admin/types/exists",
-      "indices:admin/validate/*",
-      "indices:data/read/*"
+    "cluster:monitor/*",
+    "cluster:*get*",
+    "cluster:*search*",
+    "indices:admin/aliases/exsists",
+    "indices:admin/aliases/get",
+    "indices:admin/exists*",
+    "indices:admin/get*",
+    "indices:admin/mappings/fields/get*",
+    "indices:admin/mappings/get*",
+    "indices:admin/refresh*",
+    "indices:admin/types/exists",
+    "indices:admin/validate/*",
+    "indices:data/read/*"
   ));
 
   public static boolean isReadRequest(String action) {

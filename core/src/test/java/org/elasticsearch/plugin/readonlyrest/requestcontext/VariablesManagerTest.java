@@ -36,9 +36,9 @@ public class VariablesManagerTest {
   @Test
   public void testSimple() {
     VariablesManager vm = new VariablesManager(
-        ImmutableMap.<String, String>builder().put("key1", "x").build(),
-        getMock(Optional.of("simone")),
-        MockedESContext.INSTANCE
+      ImmutableMap.<String, String>builder().put("key1", "x").build(),
+      getMock(Optional.of("simone")),
+      MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("x"), vm.apply("@{key1}"));
   }
@@ -46,9 +46,9 @@ public class VariablesManagerTest {
   @Test
   public void testSimpleWithUser() {
     VariablesManager vm = new VariablesManager(
-        ImmutableMap.<String, String>builder().build(),
-        getMock(Optional.of("simone")),
-        MockedESContext.INSTANCE
+      ImmutableMap.<String, String>builder().build(),
+      getMock(Optional.of("simone")),
+      MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("simone"), vm.apply("@{user}"));
   }
@@ -56,9 +56,9 @@ public class VariablesManagerTest {
   @Test
   public void testNoReplacement() {
     VariablesManager vm = new VariablesManager(
-        ImmutableMap.<String, String>builder().put("key1", "x").build(),
-        getMock(Optional.of("simone")),
-        MockedESContext.INSTANCE
+      ImmutableMap.<String, String>builder().put("key1", "x").build(),
+      getMock(Optional.of("simone")),
+      MockedESContext.INSTANCE
     );
     assertEquals(Optional.empty(), vm.apply("@{nonexistent}"));
   }
@@ -66,9 +66,9 @@ public class VariablesManagerTest {
   @Test
   public void testUpperHeadersLowerVar() {
     VariablesManager vm = new VariablesManager(
-        ImmutableMap.<String, String>builder().put("KEY1", "x").build(),
-        getMock(Optional.of("simone")),
-        MockedESContext.INSTANCE
+      ImmutableMap.<String, String>builder().put("KEY1", "x").build(),
+      getMock(Optional.of("simone")),
+      MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("x"), vm.apply("@{key1}"));
   }
@@ -76,9 +76,9 @@ public class VariablesManagerTest {
   @Test
   public void testMessyOriginal() {
     VariablesManager vm = new VariablesManager(
-        ImmutableMap.<String, String>builder().put("key1", "x").build(),
-        getMock(Optional.of("simone")),
-        MockedESContext.INSTANCE
+      ImmutableMap.<String, String>builder().put("key1", "x").build(),
+      getMock(Optional.of("simone")),
+      MockedESContext.INSTANCE
     );
     assertEquals(Optional.of("@@@x"), vm.apply("@@@@{key1}"));
     assertEquals(Optional.of("@one@twox@three@@@"), vm.apply("@one@two@{key1}@three@@@"));

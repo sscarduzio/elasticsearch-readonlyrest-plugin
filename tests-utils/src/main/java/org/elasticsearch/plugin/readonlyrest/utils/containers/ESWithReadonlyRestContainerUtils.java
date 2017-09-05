@@ -33,35 +33,38 @@ import java.util.regex.Pattern;
 public class ESWithReadonlyRestContainerUtils {
 
   public static MultiContainerDependent<ESWithReadonlyRestContainer> create(
-      RorPluginGradleProject project,
-      MultiContainer externalDependencies,
-      String elasticsearchConfig) {
+    RorPluginGradleProject project,
+    MultiContainer externalDependencies,
+    String elasticsearchConfig) {
     return create(project, externalDependencies, elasticsearchConfig, Optional.empty());
   }
 
   public static MultiContainerDependent<ESWithReadonlyRestContainer> create(
-      RorPluginGradleProject project,
-      MultiContainer externalDependencies,
-      String elasticsearchConfig,
-      ESInitalizer initalizer) {
+    RorPluginGradleProject project,
+    MultiContainer externalDependencies,
+    String elasticsearchConfig,
+    ESInitalizer initalizer) {
     return create(project, externalDependencies, elasticsearchConfig, Optional.of(initalizer));
   }
 
   private static MultiContainerDependent<ESWithReadonlyRestContainer> create(
-      RorPluginGradleProject project,
-      MultiContainer externalDependencies,
-      String elasticsearchConfig,
-      Optional<ESInitalizer> initalizer) {
+    RorPluginGradleProject project,
+    MultiContainer externalDependencies,
+    String elasticsearchConfig,
+    Optional<ESInitalizer> initalizer) {
     return new MultiContainerDependent<>(
-        externalDependencies,
-        multiContainer -> {
-          File adjustedEsConfig = copyAndAdjustConfig(
-              ContainerUtils.getResourceFile(elasticsearchConfig),
-              createTempFile(),
-              multiContainer.containers()
-          );
-          return ESWithReadonlyRestContainer.create(project, adjustedEsConfig, initalizer);
-        }
+      externalDependencies,
+      multiContainer -> {
+        File adjustedEsConfig = copyAndAdjustConfig(
+          ContainerUtils.getResourceFile(elasticsearchConfig),
+          createTempFile(),
+          multiContainer.containers()
+        );
+        System.out.println(
+          "RUNNING WITH ADJUSTED CONFIGURATION (try run this manually if you get 'command returned non-zero code') >>> "
+            + adjustedEsConfig);
+        return ESWithReadonlyRestContainer.create(project, adjustedEsConfig, initalizer);
+      }
     );
   }
 
@@ -76,8 +79,8 @@ public class ESWithReadonlyRestContainerUtils {
   }
 
   private static File copyAndAdjustConfig(File sourceConfig,
-      File destConfig,
-      ImmutableList<MultiContainer.NamedContainer> externalDependencyContainers) {
+                                          File destConfig,
+                                          ImmutableList<MultiContainer.NamedContainer> externalDependencyContainers) {
     try {
       try (BufferedReader br = new BufferedReader(new FileReader(sourceConfig))) {
         try (FileWriter fw = new FileWriter(destConfig)) {
@@ -87,8 +90,8 @@ public class ESWithReadonlyRestContainerUtils {
             for (MultiContainer.NamedContainer container : externalDependencyContainers) {
               if (container.getIpAddress().isPresent()) {
                 replaced = replaced.replaceAll(
-                    Pattern.compile("\\{" + container.getName() + "\\}").pattern(),
-                    container.getIpAddress().get()
+                  Pattern.compile("\\{" + container.getName() + "\\}").pattern(),
+                  container.getIpAddress().get()
                 );
               }
             }

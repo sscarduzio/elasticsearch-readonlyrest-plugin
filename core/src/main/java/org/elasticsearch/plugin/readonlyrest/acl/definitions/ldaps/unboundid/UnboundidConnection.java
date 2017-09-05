@@ -37,7 +37,7 @@ public class UnboundidConnection {
   private LDAPConnectionPool connectionPool;
 
   public UnboundidConnection(ConnectionConfig connectionConfig,
-      Optional<SearchingUserConfig> searchingUserConfig) {
+                             Optional<SearchingUserConfig> searchingUserConfig) {
     connect(connectionConfig, searchingUserConfig);
   }
 
@@ -57,16 +57,16 @@ public class UnboundidConnection {
           connection = new LDAPConnection(options);
         }
         connection.connect(
-            connectionConfig.getHost(),
-            connectionConfig.getPort(),
-            (int) connectionConfig.getConnectionTimeout().toMillis()
+          connectionConfig.getHost(),
+          connectionConfig.getPort(),
+          (int) connectionConfig.getConnectionTimeout().toMillis()
         );
         searchingUserConfig.ifPresent(config -> {
           try {
             BindResult result = connection.bind(config.getDn(), config.getPassword());
             if (!ResultCode.SUCCESS.equals(result.getResultCode())) {
               throw new LdapClientException.InitializationException("LDAP binding problem - returned [" +
-                  result.getResultString() + "]");
+                                                                      result.getResultString() + "]");
             }
           } catch (LDAPException e) {
             throw new LdapClientException.InitializationException("LDAP binding problem", e);

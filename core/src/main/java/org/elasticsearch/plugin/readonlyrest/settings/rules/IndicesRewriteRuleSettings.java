@@ -34,22 +34,22 @@ public class IndicesRewriteRuleSettings implements RuleSettings {
   private final Set<Pattern> targetPatterns;
   private final Value<String> replacement;
 
-  public static IndicesRewriteRuleSettings from(List<String> list) {
-    if (list.size() < 2) throw new SettingsMalformedException("Minimum two arguments required for " + ATTRIBUTE_NAME +
-        ". I.e. [target1, target2, replacement]");
-    return new IndicesRewriteRuleSettings(
-        list.subList(0, list.size() - 1).stream()
-            .distinct()
-            .filter(v -> !Strings.isNullOrEmpty(v))
-            .map(Pattern::compile)
-            .collect(Collectors.toSet()),
-        list.get(list.size() - 1)
-    );
-  }
-
   private IndicesRewriteRuleSettings(Set<Pattern> targetPatterns, String replacement) {
     this.targetPatterns = targetPatterns;
     this.replacement = Value.fromString(replacement, Function.identity());
+  }
+
+  public static IndicesRewriteRuleSettings from(List<String> list) {
+    if (list.size() < 2) throw new SettingsMalformedException("Minimum two arguments required for " + ATTRIBUTE_NAME +
+                                                                ". I.e. [target1, target2, replacement]");
+    return new IndicesRewriteRuleSettings(
+      list.subList(0, list.size() - 1).stream()
+        .distinct()
+        .filter(v -> !Strings.isNullOrEmpty(v))
+        .map(Pattern::compile)
+        .collect(Collectors.toSet()),
+      list.get(list.size() - 1)
+    );
   }
 
   public Set<Pattern> getTargetPatterns() {

@@ -16,13 +16,10 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings.rules;
 
-import org.elasticsearch.plugin.readonlyrest.acl.domain.IPMask;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.Value;
 import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
-import java.net.UnknownHostException;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,24 +31,24 @@ public class HostsRuleSettings implements RuleSettings {
 
   private static final boolean DEFAULT_ACCEPT_X_FOWARDED_FOR = false;
 
-  private final Set<Value<IPMask>> allowedAddresses;
+  private final Set<Value<String>> allowedAddresses;
   private final boolean acceptXForwardedForHeader;
 
-  public static HostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
-    return new HostsRuleSettings(
-        blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
-            .map(obj -> Value.fromString((String) obj, ipMaskFromString))
-            .collect(Collectors.toSet()),
-        blockSettings.booleanOpt(ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER).orElse(DEFAULT_ACCEPT_X_FOWARDED_FOR)
-    );
-  }
-
-  private HostsRuleSettings(Set<Value<IPMask>> allowedAddresses, boolean acceptXForwardedForHeader) {
+  private HostsRuleSettings(Set<Value<String>> allowedAddresses, boolean acceptXForwardedForHeader) {
     this.allowedAddresses = allowedAddresses;
     this.acceptXForwardedForHeader = acceptXForwardedForHeader;
   }
 
-  public Set<Value<IPMask>> getAllowedAddresses() {
+  public static HostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
+    return new HostsRuleSettings(
+      blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
+        .map(obj -> Value.fromString((String) obj, Function.identity()))
+        .collect(Collectors.toSet()),
+      blockSettings.booleanOpt(ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER).orElse(DEFAULT_ACCEPT_X_FOWARDED_FOR)
+    );
+  }
+
+  public Set<Value<String>> getAllowedAddresses() {
     return allowedAddresses;
   }
 
@@ -64,11 +61,5 @@ public class HostsRuleSettings implements RuleSettings {
     return ATTRIBUTE_NAME;
   }
 
-  private static Function<String, IPMask> ipMaskFromString = value -> {
-    try {
-      return IPMask.getIPMask(value);
-    } catch (UnknownHostException e) {
-      throw new SettingsMalformedException("Cannot create IP address from string: " + value);
-    }
-  };
+
 }

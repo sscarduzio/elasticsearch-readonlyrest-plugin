@@ -18,8 +18,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
@@ -36,36 +36,36 @@ import java.util.regex.Pattern;
 public class KibanaAccessSyncRule extends SyncRule {
 
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/exists",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/validate/query",
-      "indices:data/read/field_stats",
-      "indices:data/read/search",
-      "indices:data/read/msearch",
-      "indices:admin/get",
-      "indices:admin/refresh*",
-      "indices:data/read/*"
+    "indices:admin/exists",
+    "indices:admin/mappings/fields/get*",
+    "indices:admin/validate/query",
+    "indices:data/read/field_stats",
+    "indices:data/read/search",
+    "indices:data/read/msearch",
+    "indices:admin/get",
+    "indices:admin/refresh*",
+    "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
-      "indices:admin/create",
-      "indices:admin/mapping/put",
-      "indices:data/write/delete",
-      "indices:data/write/index",
-      "indices:data/write/update",
-      "indices:data/write/bulk*"
+    "indices:admin/create",
+    "indices:admin/mapping/put",
+    "indices:data/write/delete",
+    "indices:data/write/index",
+    "indices:data/write/update",
+    "indices:data/write/bulk*"
   ));
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:admin/rradmin/*",
-      "indices:data/write/*",
-      "indices:admin/create"
+    "cluster:admin/rradmin/*",
+    "indices:data/write/*",
+    "indices:admin/create"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
-      "cluster:monitor/nodes/info",
-      "cluster:monitor/main",
-      "cluster:monitor/health"
+    "cluster:monitor/nodes/info",
+    "cluster:monitor/main",
+    "cluster:monitor/health"
   ));
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final Value<String> kibanaIndex;
   private final Boolean canModifyKibana;
   private final KibanaAccessRuleSettings settings;
@@ -101,12 +101,12 @@ public class KibanaAccessSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     RuleExitResult res = doMatch(rc);
-    if(res.isMatch()){
-      rc.setResponseHeader("x-ror-kiban_access", settings.getKibanaAccess().name());
-      rc.setResponseHeader("x-ror-kibana_index", settings.getKibanaIndex().getValue(rc).orElse(".kibana"));
+    if (res.isMatch()) {
+      rc.setResponseHeader("x-ror-kibana_access", settings.getKibanaAccess().name().toLowerCase());
     }
     return res;
   }
+
   private RuleExitResult doMatch(RequestContext rc) {
     Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
 
@@ -123,17 +123,17 @@ public class KibanaAccessSyncRule extends SyncRule {
     String resolvedKibanaIndex = kibanaIndex.getValue(rc).orElse(".kibana");
 
     // Save UI state in discover & Short urls
-    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(index-pattern|url|config/.*/_create)/.*"
-        .replace("@kibana_index", resolvedKibanaIndex));
+    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create)/.*"
+                                                      .replace("@kibana_index", resolvedKibanaIndex));
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(resolvedKibanaIndex);
 
     // Ro non-strict cases to pass through
     if (
-        targetsKibana && !roStrict && !canModifyKibana &&
-            nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
-            rc.getAction().startsWith("indices:data/write/")
-        ) {
+      targetsKibana && !roStrict && !canModifyKibana &&
+        nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
+        rc.getAction().startsWith("indices:data/write/")
+      ) {
       return MATCH;
     }
 

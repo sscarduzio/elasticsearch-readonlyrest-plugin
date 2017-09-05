@@ -16,6 +16,7 @@
  */
 package org.elasticsearch.plugin.readonlyrest.settings;
 
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
@@ -39,16 +40,26 @@ public class RulesSettingsCreatorsRegistry {
                                 ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
                                 UserSettingsCollection userSettingsCollection) {
     Map<String, Supplier<RuleSettings>> creators = new HashMap<>();
-    creators.put(LdapAuthRuleSettings.ATTRIBUTE_NAME,
-        ldapAuthRuleSettingsCreator(blockSettings, ldapSettingsCollection));
-    creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME,
-        ldapAuthenticationRuleSettingsCreator(blockSettings, ldapSettingsCollection));
-    creators.put(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME,
-        ldapAuthorizationRuleSettingsCreator(blockSettings, ldapSettingsCollection));
-    creators.put(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME,
-        groupsProviderAuthorizationRuleSettingsCreator(blockSettings, groupsProviderSettingsGroup));
-    creators.put(ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME,
-        externalAuthenticationSettingsCreator(blockSettings, externalAuthenticationServiceSettingsCollection));
+    creators.put(
+      LdapAuthRuleSettings.ATTRIBUTE_NAME,
+      ldapAuthRuleSettingsCreator(blockSettings, ldapSettingsCollection)
+    );
+    creators.put(
+      LdapAuthenticationRuleSettings.ATTRIBUTE_NAME,
+      ldapAuthenticationRuleSettingsCreator(blockSettings, ldapSettingsCollection)
+    );
+    creators.put(
+      LdapAuthorizationRuleSettings.ATTRIBUTE_NAME,
+      ldapAuthorizationRuleSettingsCreator(blockSettings, ldapSettingsCollection)
+    );
+    creators.put(
+      GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME,
+      groupsProviderAuthorizationRuleSettingsCreator(blockSettings, groupsProviderSettingsGroup)
+    );
+    creators.put(
+      ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME,
+      externalAuthenticationSettingsCreator(blockSettings, externalAuthenticationServiceSettingsCollection)
+    );
     creators.put(IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
     creators.put(IndicesRewriteRuleSettings.ATTRIBUTE_NAME, indicesRewriteSettingsCreator(blockSettings));
     creators.put(MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
@@ -61,6 +72,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
+    creators.put(KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
     creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
     creators.put(ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
     creators.put(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
@@ -92,66 +104,70 @@ public class RulesSettingsCreatorsRegistry {
     return () -> {
       Object settings = blockSettings.req(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String
-          ? LdapAuthenticationRuleSettings.from((String) settings, ldapSettingsCollection)
-          : LdapAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings), ldapSettingsCollection);
+        ? LdapAuthenticationRuleSettings.from((String) settings, ldapSettingsCollection)
+        : LdapAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings), ldapSettingsCollection);
     };
   }
 
   private Supplier<RuleSettings> ldapAuthorizationRuleSettingsCreator(RawSettings blockSettings,
                                                                       LdapSettingsCollection ldapSettingsCollection) {
     return () -> LdapAuthorizationRuleSettings.from(
-        blockSettings.inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
-        ldapSettingsCollection
+      blockSettings.inner(LdapAuthorizationRuleSettings.ATTRIBUTE_NAME),
+      ldapSettingsCollection
     );
   }
 
   private Supplier<RuleSettings> groupsProviderAuthorizationRuleSettingsCreator(
-      RawSettings blockSettings,
-      UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection) {
+    RawSettings blockSettings,
+    UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection) {
     return () -> GroupsProviderAuthorizationRuleSettings.from(
-        blockSettings.inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
-        userGroupsProviderSettingsCollection
+      blockSettings.inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
+      userGroupsProviderSettingsCollection
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> externalAuthenticationSettingsCreator(RawSettings blockSettings,
-                ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+                                                                       ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
     return () -> {
       Object settings = blockSettings.req(ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String
-          ? ExternalAuthenticationRuleSettings.from((String) settings,
-          externalAuthenticationServiceSettingsCollection)
-          : ExternalAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings),
-          externalAuthenticationServiceSettingsCollection);
+        ? ExternalAuthenticationRuleSettings.from(
+        (String) settings,
+        externalAuthenticationServiceSettingsCollection
+      )
+        : ExternalAuthenticationRuleSettings.from(
+        new RawSettings((Map<String, ?>) settings),
+        externalAuthenticationServiceSettingsCollection
+      );
     };
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> indicesSettingsCreator(RawSettings blockSettings) {
     return () -> IndicesRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(IndicesRuleSettings.ATTRIBUTE_NAME)
+      (Set<String>) blockSettings.notEmptySetReq(IndicesRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> indicesRewriteSettingsCreator(RawSettings blockSettings) {
     return () -> IndicesRewriteRuleSettings.from(
-        (List<String>) blockSettings.notEmptyListReq(IndicesRewriteRuleSettings.ATTRIBUTE_NAME)
+      (List<String>) blockSettings.notEmptyListReq(IndicesRewriteRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> methodsSettingsCreator(RawSettings blockSettings) {
     return () -> MethodsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(MethodsRuleSettings.ATTRIBUTE_NAME)
+      (Set<String>) blockSettings.notEmptySetReq(MethodsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> actionsSettingsCreator(RawSettings blockSettings) {
     return () -> ActionsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(ActionsRuleSettings.ATTRIBUTE_NAME)
+      (Set<String>) blockSettings.notEmptySetReq(ActionsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
@@ -202,51 +218,56 @@ public class RulesSettingsCreatorsRegistry {
   }
 
   @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> kibanaIndexSettingsCreator(RawSettings blockSettings) {
+    return () -> KibanaIndexSyncRule.Settings.fromBlockSettings(blockSettings);
+  }
+
+  @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaHideAppsSettingsCreator(RawSettings blockSettings) {
     return () -> KibanaHideAppsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME)
+      (Set<String>) blockSettings.notEmptySetReq(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> apiKeysSettingsCreator(RawSettings blockSettings) {
     return () -> ApiKeysRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(ApiKeysRuleSettings.ATTRIBUTE_NAME)
+      (Set<String>) blockSettings.notEmptySetReq(ApiKeysRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> maxBodyLengthSettingsCreator(RawSettings blockSettings) {
     return () -> MaxBodyLengthRuleSettings.from(
-        blockSettings.intReq(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME)
+      blockSettings.intReq(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> searchlogSettingsCreator(RawSettings blockSettings) {
     return () -> SearchlogRuleSettings.from(
-        blockSettings.booleanReq(SearchlogRuleSettings.ATTRIBUTE_NAME)
+      blockSettings.booleanReq(SearchlogRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> sessionMaxIdleSettingsCreator(RawSettings blockSettings) {
     return () -> SessionMaxIdleRuleSettings.from(
-        blockSettings.stringReq(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
+      blockSettings.stringReq(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> uriReSettingsCreator(RawSettings blockSettings) {
     return () -> UriReRuleSettings.from(
-        blockSettings.stringReq(UriReRuleSettings.ATTRIBUTE_NAME)
+      blockSettings.stringReq(UriReRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> xForwardedForSettingsCreator(RawSettings blockSettings) {
     return () -> XForwardedForRuleSettings.from(
-        (List<String>) blockSettings.notEmptyListReq(XForwardedForRuleSettings.ATTRIBUTE_NAME)
+      (List<String>) blockSettings.notEmptyListReq(XForwardedForRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
@@ -254,8 +275,8 @@ public class RulesSettingsCreatorsRegistry {
   private Supplier<RuleSettings> groupsSettingsCreator(RawSettings blockSettings,
                                                        UserSettingsCollection userSettingsCollection) {
     return () -> GroupsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(GroupsRuleSettings.ATTRIBUTE_NAME),
-        userSettingsCollection
+      (Set<String>) blockSettings.notEmptySetReq(GroupsRuleSettings.ATTRIBUTE_NAME),
+      userSettingsCollection
     );
   }
 

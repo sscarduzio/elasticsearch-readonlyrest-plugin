@@ -37,12 +37,17 @@ public class LdapAuthenticationRuleSettings implements RuleSettings, CacheSettin
   private final Duration cacheTtl;
   private final AuthenticationLdapSettings ldapSettings;
 
+  private LdapAuthenticationRuleSettings(LdapSettings settings, Duration cacheTtl) {
+    this.cacheTtl = cacheTtl;
+    this.ldapSettings = (AuthenticationLdapSettings) settings;
+  }
+
   @SuppressWarnings("unchecked")
   public static LdapAuthenticationRuleSettings from(RawSettings settings, LdapSettingsCollection ldapSettingsCollection) {
     String ldapName = settings.stringReq(LDAP_NAME);
     return new LdapAuthenticationRuleSettings(
-        ldapSettingsCollection.get(ldapName),
-        settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
+      ldapSettingsCollection.get(ldapName),
+      settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
   }
 
@@ -52,11 +57,6 @@ public class LdapAuthenticationRuleSettings implements RuleSettings, CacheSettin
 
   public static LdapAuthenticationRuleSettings from(LdapAuthRuleSettings settings) {
     return new LdapAuthenticationRuleSettings(settings.getLdapSettings(), settings.getCacheTtl());
-  }
-
-  private LdapAuthenticationRuleSettings(LdapSettings settings, Duration cacheTtl) {
-    this.cacheTtl = cacheTtl;
-    this.ldapSettings = (AuthenticationLdapSettings) settings;
   }
 
   @Override

@@ -33,21 +33,21 @@ public class UserGroupsProviderSettingsCollection {
 
   private final Map<String, UserGroupsProviderSettings> userGroupsProviderSettingsMap;
 
-  @SuppressWarnings("unchecked")
-  public static UserGroupsProviderSettingsCollection from(RawSettings data) {
-    return data.notEmptyListOpt(ATTRIBUTE_NAME)
-        .map(list ->
-            list.stream()
-                .map(l -> new UserGroupsProviderSettings(new RawSettings((Map<String, ?>) l)))
-                .collect(Collectors.toList())
-        )
-        .map(UserGroupsProviderSettingsCollection::new)
-        .orElse(new UserGroupsProviderSettingsCollection(Lists.newArrayList()));
-  }
-
   private UserGroupsProviderSettingsCollection(List<UserGroupsProviderSettings> groupsProviderSettingsList) {
     validate(groupsProviderSettingsList);
     this.userGroupsProviderSettingsMap = seq(groupsProviderSettingsList).toMap(UserGroupsProviderSettings::getName, Function.identity());
+  }
+
+  @SuppressWarnings("unchecked")
+  public static UserGroupsProviderSettingsCollection from(RawSettings data) {
+    return data.notEmptyListOpt(ATTRIBUTE_NAME)
+      .map(list ->
+             list.stream()
+               .map(l -> new UserGroupsProviderSettings(new RawSettings((Map<String, ?>) l)))
+               .collect(Collectors.toList())
+      )
+      .map(UserGroupsProviderSettingsCollection::new)
+      .orElse(new UserGroupsProviderSettingsCollection(Lists.newArrayList()));
   }
 
   public UserGroupsProviderSettings get(String name) {
@@ -58,7 +58,7 @@ public class UserGroupsProviderSettingsCollection {
 
   private void validate(List<UserGroupsProviderSettings> grouspProviderSettings) {
     List<String> names = seq(grouspProviderSettings).map(UserGroupsProviderSettings::getName).collect(Collectors.toList());
-    if(names.stream().distinct().count() != names.size()) {
+    if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated User Groups Provider name in '" + ATTRIBUTE_NAME + "' section");
     }
   }

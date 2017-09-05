@@ -34,20 +34,20 @@ public class UserSettingsCollection {
 
   private final Map<String, UserSettings> usersSettingsMap;
 
+  private UserSettingsCollection(List<UserSettings> userSettings) {
+    this.usersSettingsMap = seq(userSettings).toMap(UserSettings::getUsername, Function.identity());
+  }
+
   @SuppressWarnings("unchecked")
   public static UserSettingsCollection from(RawSettings data, AuthMethodCreatorsRegistry registry) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
-        .map(list ->
-            list.stream()
-                .map(l -> new UserSettings(new RawSettings((Map<String, ?>) l), registry))
-                .collect(Collectors.toList())
-        )
-        .map(UserSettingsCollection::new)
-        .orElse(new UserSettingsCollection(Lists.newArrayList()));
-  }
-
-  private UserSettingsCollection(List<UserSettings> userSettings) {
-    this.usersSettingsMap = seq(userSettings).toMap(UserSettings::getUsername, Function.identity());
+      .map(list ->
+             list.stream()
+               .map(l -> new UserSettings(new RawSettings((Map<String, ?>) l), registry))
+               .collect(Collectors.toList())
+      )
+      .map(UserSettingsCollection::new)
+      .orElse(new UserSettingsCollection(Lists.newArrayList()));
   }
 
   public UserSettings get(String name) {

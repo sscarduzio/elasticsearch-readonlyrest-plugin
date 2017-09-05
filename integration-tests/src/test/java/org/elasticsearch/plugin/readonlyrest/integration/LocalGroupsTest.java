@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.integration;
 import com.google.common.collect.ImmutableMap;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.util.EntityUtils;
 import org.elasticsearch.plugin.readonlyrest.utils.containers.ESWithReadonlyRestContainer;
 import org.elasticsearch.plugin.readonlyrest.utils.gradle.RorPluginGradleProject;
 import org.elasticsearch.plugin.readonlyrest.utils.httpclient.RestClient;
@@ -27,59 +28,67 @@ import org.junit.Test;
 
 import java.util.Optional;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 public class LocalGroupsTest {
 
-  private static final String matchingEndpoint = "/_cat/nodes";
-  
+  private static final String matchingEndpoint = "/_nodes/local";
+
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-      ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/local_groups/elasticsearch.yml",
-          Optional.empty()
-      );
+    ESWithReadonlyRestContainer.create(
+      RorPluginGradleProject.fromSystemProperty(),
+      "/local_groups/elasticsearch.yml",
+      Optional.empty()
+    );
 
   @Test
   public void testOK_GoodCredsWithGoodRule() throws Exception {
+    HttpResponse r = mkRequest("user", "passwd", matchingEndpoint);
     assertEquals(
-        200,
-        mkRequest("user", "passwd", matchingEndpoint).getStatusLine().getStatusCode()
+      200,
+      r.getStatusLine().getStatusCode()
     );
+
+    // Piggy back response headers testing (too long to spin up another container)
+    assertTrue(r.getHeaders("x-rr-user")[0].getValue().equals("user"));
+    assertTrue(r.getHeaders("x-ror-kibana_index")[0].getValue().equals(".kibana_user"));
+    assertTrue(r.getHeaders("x-kibana-hide-apps")[0].getValue().equals("timelion"));
+    assertTrue(r.getHeaders("x-ror-kibana_access")[0].getValue().equals("admin"));
   }
 
   @Test
   public void testFail_BadCredsGoodRule() throws Exception {
     assertNotEquals(
-        200,
-        mkRequest("user", "wrong", matchingEndpoint).getStatusLine().getStatusCode()
+      200,
+      mkRequest("user", "wrong", matchingEndpoint).getStatusLine().getStatusCode()
     );
   }
 
   @Test
   public void testFail_BadCredsBadRule() throws Exception {
     assertNotEquals(
-        200,
-        mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode()
-        );
+      200,
+      mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode()
+    );
   }
 
   @Test
   public void testFail_GoodCredsBadRule() throws Exception {
     assertNotEquals(
-        200,
-        mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
+      200,
+      mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
     );
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {
     RestClient rcl = container.getBasicAuthClient(user, pass);
     return rcl.execute(new HttpGet(rcl.from(
-        endpoint,
-        new ImmutableMap.Builder<String, String>()
-            .build()
+      endpoint,
+      new ImmutableMap.Builder<String, String>()
+        .build()
     )));
   }
 

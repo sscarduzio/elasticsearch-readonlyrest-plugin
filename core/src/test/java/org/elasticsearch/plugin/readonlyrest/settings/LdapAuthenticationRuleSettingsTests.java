@@ -30,10 +30,10 @@ public class LdapAuthenticationRuleSettingsTests {
   public void testRuleSettginsSuccessfulCreation() {
     LdapAuthenticationRuleSettings settings = LdapAuthenticationRuleSettings.from(
       TestUtils.fromYAMLString("" +
-            "ldap_authentication:\n" +
-            "  name: ldap1")
-            .inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
-        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+                                 "ldap_authentication:\n" +
+                                 "  name: ldap1")
+        .inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
+      LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
     assertEquals("ldap_authentication", settings.getName());
   }
@@ -42,7 +42,7 @@ public class LdapAuthenticationRuleSettingsTests {
   public void testRuleSettingsSuccessfulCreationFromShortenedVersion() {
     LdapAuthenticationRuleSettings settings = LdapAuthenticationRuleSettings.from(
       TestUtils.fromYAMLString("ldap_authentication: ldap1")
-            .stringReq(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
+        .stringReq(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
       LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
     assertEquals("ldap_authentication", settings.getName());
@@ -52,10 +52,10 @@ public class LdapAuthenticationRuleSettingsTests {
   public void testRuleSettingsCreationFailsDueToNotFoundLdapWithGivenName() {
     LdapAuthenticationRuleSettings.from(
       TestUtils.fromYAMLString("" +
-            "ldap_authentication:\n" +
-            "  name: ldap3")
-            .inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
-        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+                                 "ldap_authentication:\n" +
+                                 "  name: ldap3")
+        .inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
+      LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
     );
   }
 

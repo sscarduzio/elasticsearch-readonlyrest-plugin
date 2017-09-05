@@ -22,8 +22,8 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.BaseLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapClientException;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
@@ -35,10 +35,10 @@ import java.util.concurrent.CompletableFuture;
 
 public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
 
-  private final Logger logger;
-  private final UserSearchFilterConfig userSearchFilterConfig;
   protected final Duration requestTimeout;
   protected final UnboundidConnection connection;
+  private final LoggerShim logger;
+  private final UserSearchFilterConfig userSearchFilterConfig;
 
   UnboundidBaseLdapClient(UnboundidConnection connection,
                           Duration requestTimeout,
@@ -55,33 +55,33 @@ public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
     try {
       CompletableFuture<List<SearchResultEntry>> searchUser = new CompletableFuture<>();
       connection.getConnectionPool().processRequestsAsync(
-          Lists.newArrayList(
-              new SearchRequest(
-                  new UnboundidSearchResultListener(searchUser),
-                  userSearchFilterConfig.getSearchUserBaseDN(),
-                  SearchScope.SUB,
-                  String.format("(%s=%s)", userSearchFilterConfig.getUidAttribute(), Filter.encodeValue(userId))
-              )),
-          requestTimeout.toMillis()
+        Lists.newArrayList(
+          new SearchRequest(
+            new UnboundidSearchResultListener(searchUser),
+            userSearchFilterConfig.getSearchUserBaseDN(),
+            SearchScope.SUB,
+            String.format("(%s=%s)", userSearchFilterConfig.getUidAttribute(), Filter.encodeValue(userId))
+          )),
+        requestTimeout.toMillis()
       );
       return searchUser
-          .thenApply(userSearchResult -> {
-            if (userSearchResult != null && userSearchResult.size() > 0) {
-              return Optional.of(new LdapUser(userId, userSearchResult.get(0).getDN()));
-            }
-            else {
-              logger.debug("LDAP getting user CN returned no entries");
-              return Optional.<LdapUser>empty();
-            }
-          })
-          .exceptionally(t -> {
-            if (t.getCause() instanceof LdapSearchError) {
-              LdapSearchError error = (LdapSearchError) t.getCause();
-              logger.debug(String.format("LDAP getting user CN returned error [%s]", error.getResultString()));
-              return Optional.empty();
-            }
-            throw new LdapClientException.SearchException(t);
-          });
+        .thenApply(userSearchResult -> {
+          if (userSearchResult != null && userSearchResult.size() > 0) {
+            return Optional.of(new LdapUser(userId, userSearchResult.get(0).getDN()));
+          }
+          else {
+            logger.debug("LDAP getting user CN returned no entries");
+            return Optional.<LdapUser>empty();
+          }
+        })
+        .exceptionally(t -> {
+          if (t.getCause() instanceof LdapSearchError) {
+            LdapSearchError error = (LdapSearchError) t.getCause();
+            logger.debug(String.format("LDAP getting user CN returned error [%s]", error.getResultString()));
+            return Optional.empty();
+          }
+          throw new LdapClientException.SearchException(t);
+        });
     } catch (LDAPException e) {
       logger.error("LDAP getting user operation failed", e);
       return CompletableFuture.completedFuture(Optional.empty());

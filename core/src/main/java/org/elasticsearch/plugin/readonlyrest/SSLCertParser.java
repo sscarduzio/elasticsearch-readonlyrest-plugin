@@ -17,12 +17,10 @@
 
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.settings.SettingsMalformedException;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.Key;
@@ -35,16 +33,16 @@ import java.util.Base64;
  */
 public class SSLCertParser {
   private final SSLContextCreator creator;
-  private final Logger logger;
+  private final LoggerShim logger;
 
-  public SSLCertParser(RorSettings settings, ESContext esContext, SSLContextCreator creator) {
+  public SSLCertParser(RorSettings settings, LoggerShim logger, SSLContextCreator creator) {
     this.creator = creator;
-    this.logger = esContext.logger(getClass());
+    this.logger = logger;
     createContext(settings);
   }
 
   private void createContext(RorSettings settings) {
-    if(!settings.isSSLEnabled()){
+    if (!settings.isSSLEnabled()) {
       logger.info("SSL is disabled");
       return;
     }
@@ -116,7 +114,7 @@ public class SSLCertParser {
 
     } catch (Throwable t) {
       logger.error("Failed to load SSL certs and keys from JKS Keystore!");
-      if( t instanceof AccessControlException){
+      if (t instanceof AccessControlException) {
         logger.error("Check the JKS Keystore path is correct: " + settings.getKeystoreFile());
       }
       t.printStackTrace();

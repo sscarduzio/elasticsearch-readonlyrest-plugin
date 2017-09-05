@@ -34,18 +34,18 @@ public class KibanaAccessRuleSettings implements RuleSettings {
   private final KibanaAccess kibanaAccess;
   private final Value<String> kibanaIndex;
 
-  public static KibanaAccessRuleSettings fromBlockSettings(RawSettings blockSettings) {
-    String value = blockSettings.stringReq(ATTRIBUTE_NAME);
-    return new KibanaAccessRuleSettings(
-        KibanaAccess.fromString(value)
-            .orElseThrow(() -> new SettingsMalformedException("Unknown kibana_access value: " + value)),
-        blockSettings.stringOpt(ATTRIBUTE_KIBANA_INDEX).orElse(DEFAULT_KIBANA_INDEX)
-    );
-  }
-
   public KibanaAccessRuleSettings(KibanaAccess kibanaAccess, String kibanaIndex) {
     this.kibanaAccess = kibanaAccess;
     this.kibanaIndex = Value.fromString(kibanaIndex, Function.identity());
+  }
+
+  public static KibanaAccessRuleSettings fromBlockSettings(RawSettings blockSettings) {
+    String value = blockSettings.stringReq(ATTRIBUTE_NAME);
+    return new KibanaAccessRuleSettings(
+      KibanaAccess.fromString(value)
+        .orElseThrow(() -> new SettingsMalformedException("Unknown kibana_access value: " + value)),
+      blockSettings.stringOpt(ATTRIBUTE_KIBANA_INDEX).orElse(DEFAULT_KIBANA_INDEX)
+    );
   }
 
   public KibanaAccess getKibanaAccess() {

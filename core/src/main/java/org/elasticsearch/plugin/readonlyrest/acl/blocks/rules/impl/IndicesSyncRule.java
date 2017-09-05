@@ -18,8 +18,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public class IndicesSyncRule extends SyncRule {
 
   private final IndicesRuleSettings settings;
-  private final Logger logger;
+  private final LoggerShim logger;
 
   public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
@@ -84,11 +84,11 @@ public class IndicesSyncRule extends SyncRule {
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends IndicesRequestContext> boolean canPass(T src) {
     MatcherWithWildcards matcher = new MatcherWithWildcards(
-        settings.getIndices().stream()
-            .map(v -> v.getValue(src))
-            .filter(Optional::isPresent)
-            .map(Optional::get)
-            .collect(Collectors.toSet())
+      settings.getIndices().stream()
+        .map(v -> v.getValue(src))
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .collect(Collectors.toSet())
     );
 
     Set<String> indices = Sets.newHashSet(src.getIndices());
@@ -112,7 +112,6 @@ public class IndicesSyncRule extends SyncRule {
       logger.debug("Stage 1");
       if (indices.size() == 1) {
         if (matcher.match(indices.iterator().next())) {
-          src.setIndices(indices);
           return true;
         }
       }

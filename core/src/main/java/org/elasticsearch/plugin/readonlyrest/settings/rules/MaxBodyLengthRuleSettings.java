@@ -24,12 +24,12 @@ public class MaxBodyLengthRuleSettings implements RuleSettings {
 
   private final Integer maxBodyLength;
 
-  public static MaxBodyLengthRuleSettings from(Integer value) {
-    return new MaxBodyLengthRuleSettings(value);
-  }
-
   private MaxBodyLengthRuleSettings(Integer maxBodyLength) {
     this.maxBodyLength = maxBodyLength;
+  }
+
+  public static MaxBodyLengthRuleSettings from(Integer value) {
+    return new MaxBodyLengthRuleSettings(value);
   }
 
   public Integer getMaxBodyLength() {

@@ -43,7 +43,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
     return client.fetchGroupsFor(user)
-        .thenApply(this::checkUserGroups);
+      .thenApply(this::checkUserGroups);
   }
 
   private boolean checkUserGroups(Set<String> groups) {

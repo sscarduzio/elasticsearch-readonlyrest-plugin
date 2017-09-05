@@ -33,13 +33,13 @@ public class GroupsRuleSettings implements RuleSettings {
   private final List<UserSettings> usersSettings;
   private final Set<Value<String>> groups;
 
-  public static GroupsRuleSettings from(Set<String> groups, UserSettingsCollection userSettingsCollection) {
-    return new GroupsRuleSettings(groups, userSettingsCollection.getAll());
-  }
-
   private GroupsRuleSettings(Set<String> groups, List<UserSettings> usersSettings) {
     this.usersSettings = usersSettings;
     this.groups = groups.stream().map(g -> Value.fromString(g, Function.identity())).collect(Collectors.toSet());
+  }
+
+  public static GroupsRuleSettings from(Set<String> groups, UserSettingsCollection userSettingsCollection) {
+    return new GroupsRuleSettings(groups, userSettingsCollection.getAll());
   }
 
   public List<UserSettings> getUsersSettings() {

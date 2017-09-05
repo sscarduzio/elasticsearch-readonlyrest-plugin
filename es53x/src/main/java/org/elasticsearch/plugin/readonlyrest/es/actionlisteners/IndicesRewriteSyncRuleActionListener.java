@@ -17,7 +17,6 @@
 package org.elasticsearch.plugin.readonlyrest.es.actionlisteners;
 
 import com.google.common.collect.Sets;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -31,6 +30,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
@@ -44,7 +44,7 @@ import java.util.Set;
 
 public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<IndicesRewriteSyncRule> {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   public IndicesRewriteSyncRuleActionListener(ESContext context) {
     super(IndicesRewriteSyncRule.class);
@@ -89,10 +89,10 @@ public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<Ind
       for (BulkItemResponse i : bsr.getResponses()) {
         if (!i.isFailed()) {
           ReflecUtils.setIndices(
-              i.getResponse().getShardId().getIndex(),
-              Sets.newHashSet("name"),
-              originalIndex,
-              logger
+            i.getResponse().getShardId().getIndex(),
+            Sets.newHashSet("name"),
+            originalIndex,
+            logger
           );
         }
       }
@@ -100,6 +100,7 @@ public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<Ind
 
     return true;
   }
+
   @Override
   protected boolean onFailure(BlockExitResult result,
                               RequestContext rc,
@@ -117,9 +118,11 @@ public class IndicesRewriteSyncRuleActionListener extends RuleActionListener<Ind
 
   // Translate the search results indices
   private void handleSearchResponse(SearchResponse sr, RequestContext rc) {
-    for (SearchHit h : sr.getHits().getHits()) {
-      ReflecUtils.setIndices(h, Sets.newHashSet("index"),
-          Sets.newHashSet(rc.getIndices().iterator().next()), logger);
+    if (rc.getIndices().size() > 0) {
+      String replacement = rc.getIndices().iterator().next();
+      for (SearchHit h : sr.getHits().getHits()) {
+        ReflecUtils.setIndices(h, Sets.newHashSet("index"), Sets.newHashSet(replacement), logger);
+      }
     }
   }
 

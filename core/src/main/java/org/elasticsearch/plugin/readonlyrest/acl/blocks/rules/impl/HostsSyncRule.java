@@ -19,6 +19,7 @@ package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.domain.IPMask;
@@ -36,15 +37,29 @@ import java.util.Set;
 public class HostsSyncRule extends SyncRule {
 
   private final HostsRuleSettings settings;
-  private final Set<Value<IPMask>> allowedAddresses;
+  private final LoggerShim logger;
+  private final Set<Value<String>> allowedAddressesStrings;
   private final ESContext context;
   private final Boolean acceptXForwardedForHeader;
 
   public HostsSyncRule(HostsRuleSettings s, ESContext context) {
     this.acceptXForwardedForHeader = s.isAcceptXForwardedForHeader();
-    this.allowedAddresses = s.getAllowedAddresses();
+    this.allowedAddressesStrings = s.getAllowedAddresses();
+
     this.context = context;
+    this.logger = context.logger(getClass());
     this.settings = s;
+  }
+
+  private static String getXForwardedForHeader(Map<String, String> headers) {
+    String header = headers.get("X-Forwarded-For");
+    if (!Strings.isNullOrEmpty(header)) {
+      String[] parts = header.split(",");
+      if (!Strings.isNullOrEmpty(parts[0])) {
+        return parts[0];
+      }
+    }
+    return null;
   }
 
   public RuleExitResult match(RequestContext rc) {
@@ -64,7 +79,7 @@ public class HostsSyncRule extends SyncRule {
     if (address == null) {
       throw context.rorException("For some reason the origin address of this call could not be determined. Abort!");
     }
-    if (allowedAddresses.isEmpty()) {
+    if (allowedAddressesStrings.isEmpty()) {
       return true;
     }
 
@@ -76,31 +91,22 @@ public class HostsSyncRule extends SyncRule {
       }
     }
 
-    return allowedAddresses.stream()
-        .anyMatch(value ->
-            value.getValue(rc)
-                .map(ip -> ipMatchesAddress(ip, address))
-                .orElse(false)
-        );
+    return allowedAddressesStrings.stream()
+      .anyMatch(value ->
+                  value.getValue(rc)
+                    .map(ip -> ipMatchesAddress(ip, address))
+                    .orElse(false)
+      );
   }
 
-  private boolean ipMatchesAddress(IPMask ip, String address) {
+  private boolean ipMatchesAddress(String hostString, String address) {
     try {
+      IPMask ip = IPMask.getIPMask(hostString);
       return ip.matches(address);
     } catch (UnknownHostException e) {
+      logger.warn("Cannot resolve configured host name! " + e.getClass().getSimpleName() + ": " + hostString);
       return false;
     }
-  }
-
-  private static String getXForwardedForHeader(Map<String, String> headers) {
-    String header = headers.get("X-Forwarded-For");
-    if (!Strings.isNullOrEmpty(header)) {
-      String[] parts = header.split(",");
-      if (!Strings.isNullOrEmpty(parts[0])) {
-        return parts[0];
-      }
-    }
-    return null;
   }
 
 }

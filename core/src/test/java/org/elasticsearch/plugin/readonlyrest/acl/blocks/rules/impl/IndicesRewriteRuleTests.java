@@ -59,90 +59,90 @@ public class IndicesRewriteRuleTests {
   @Test
   public void testNOOP() {
     match(
-        asList("public-asd", "replacement"),
-        singletonList("x"),
-        singletonList("x")
+      asList("public-asd", "replacement"),
+      singletonList("x"),
+      singletonList("x")
     );
   }
 
   @Test
   public void testSimpleIndex() {
     match(
-        asList("public-asd", "replacement"),
-        singletonList("public-asd"),
-        singletonList("replacement")
+      asList("public-asd", "replacement"),
+      singletonList("public-asd"),
+      singletonList("replacement")
     );
   }
 
   @Test
   public void testRegexIndex() {
     match(
-        asList("public-.*", "replacement"),
-        singletonList("public-asd"),
-        singletonList("replacement")
+      asList("public-.*", "replacement"),
+      singletonList("public-asd"),
+      singletonList("replacement")
     );
   }
 
   @Test
   public void testBigRegexIndex() {
     match(
-        asList("^public-.*$", "replacement"),
-        singletonList("public-asd"),
-        singletonList("replacement")
+      asList("^public-.*$", "replacement"),
+      singletonList("public-asd"),
+      singletonList("replacement")
     );
   }
 
   @Test
   public void testBigRegexIndexMultiIndex() {
     match(
-        asList("^public-.*$", "replacement"),
-        asList("public-asd", "quack"),
-        asList("replacement", "quack")
+      asList("^public-.*$", "replacement"),
+      asList("public-asd", "quack"),
+      asList("replacement", "quack")
     );
   }
 
   @Test
   public void testBigRegexIndexMultiIndexMultiRule() {
     match(
-        asList("^public-.*$", ".*ack", "replacement"),
-        asList("public-asd", "quack", "ack"),
-        singletonList("replacement")
+      asList("^public-.*$", ".*ack", "replacement"),
+      asList("public-asd", "quack", "ack"),
+      singletonList("replacement")
     );
   }
 
   @Test
   public void testNOOPBigRegexIndexMultiIndexMultiRule() {
     match(
-        asList("^public-.*$", ".*ack", "replacement"),
-        asList("x", "y", "z"),
-        asList("x", "y", "z")
+      asList("^public-.*$", ".*ack", "replacement"),
+      asList("x", "y", "z"),
+      asList("x", "y", "z")
     );
   }
 
   @Test
   public void testBigRegexIndexMultiIndexMultiRuleWithOutlier() {
     match(
-        asList("^public-.*$", ".*ack", "replacement"),
-        asList("public-asd", "quack", "ack", "outlier"),
-        asList("replacement", "outlier")
+      asList("^public-.*$", ".*ack", "replacement"),
+      asList("public-asd", "quack", "ack", "outlier"),
+      asList("replacement", "outlier")
     );
   }
 
   @Test
   public void testKibanaAndLogstash() {
     match(
-        asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
-        asList(".kibana", "logstash-2001-01-01"),
-        asList(".kibana_user1", "logstash-2001-01-01_user1")
+      asList("(^\\.kibana.*|^logstash.*)", "$1_user1"),
+      asList(".kibana", "logstash-2001-01-01"),
+      asList(".kibana_user1", "logstash-2001-01-01_user1")
     );
   }
 
   @Test
   public void testUserReplacement() {
     match(
-        asList("(^\\.kibana.*|^logstash.*)", "$1_@{user}"),
-        asList(".kibana", "logstash-2001-01-01"),
-        asList(".kibana_simone", "logstash-2001-01-01_simone")
+      asList("(^\\.kibana.*|^logstash.*)", "$1_@{user}"),
+      asList(".kibana", "logstash-2001-01-01"),
+      asList(".kibana_simone", "logstash-2001-01-01_simone")
     );
   }
 
@@ -159,10 +159,10 @@ public class IndicesRewriteRuleTests {
 
     when(rc.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser("simone")));
     when(rc.resolveVariable(anyString())).thenAnswer(i ->
-        Optional.of(
-            ((String) i.getArguments()[0])
-                .replaceAll("@\\{user}", "simone")
-        )
+                                                       Optional.of(
+                                                         ((String) i.getArguments()[0])
+                                                           .replaceAll("@\\{user}", "simone")
+                                                       )
     );
 
     SyncRule r = new IndicesRewriteSyncRule(IndicesRewriteRuleSettings.from(configured), MockedESContext.INSTANCE);

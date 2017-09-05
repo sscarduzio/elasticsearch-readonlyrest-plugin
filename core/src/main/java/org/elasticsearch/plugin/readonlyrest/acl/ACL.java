@@ -18,8 +18,8 @@
 package org.elasticsearch.plugin.readonlyrest.acl;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.Block;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.BlockExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RulesFactory;
@@ -43,7 +43,7 @@ import static org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseConte
 
 public class ACL {
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final RorSettings settings;
   // list because it preserves the insertion order
   private final ImmutableList<Block> blocks;
@@ -66,7 +66,7 @@ public class ACL {
       settings.getBlocksSettings().stream()
         .map(blockSettings -> {
           Block block = new Block(blockSettings, rulesFactory, context);
-          logger.info("ADDING BLOCK #" + blockSettings.getName() + ":\t" + block.toString());
+          logger.info("ADDING BLOCK:\t" + block.toString());
           return block;
         })
         .collect(Collectors.toList())
@@ -90,11 +90,17 @@ public class ACL {
           }
           return true;
         }
-        audit.log(new ResponseContext( FORBIDDEN, rc, null, checkResult), logger);
         return false;
       },
-      nothing -> BlockExitResult.noMatch()
-    );
+      nothing -> {
+        audit.log(new ResponseContext(FORBIDDEN, rc, null, BlockExitResult.match(null)), logger);
+        return BlockExitResult.noMatch();
+      }
+    )
+      .exceptionally(t -> {
+        //t.printStackTrace();
+        return BlockExitResult.noMatch();
+      });
   }
 
   public RorSettings getSettings() {

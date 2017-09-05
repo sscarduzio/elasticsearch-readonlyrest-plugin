@@ -16,8 +16,8 @@
  */
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,7 +34,7 @@ public class VariablesManager {
   private static final char DELIMITER_END_CHAR = '}';
   private static final String VAR_DETECTOR = String.valueOf(ESCAPE_CHAR) + DELIMITER_BEGIN_CHAR;
 
-  private final Logger logger;
+  private final LoggerShim logger;
   private final IndicesRequestContext rc;
   private Map<String, String> headers;
 

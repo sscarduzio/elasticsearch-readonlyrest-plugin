@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.IndicesSyncRu
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.JwtAuthSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
@@ -51,46 +52,47 @@ public class RulesOrdering implements Comparator<AsyncRule> {
 
   public RulesOrdering() {
     this.ordering = ImmutableList.of(
-        // Authentication rules must come first because they set the user information which further rules might rely on.
-        AuthKeySyncRule.class,
-        AuthKeySha1SyncRule.class,
-        AuthKeySha256SyncRule.class,
-        ProxyAuthSyncRule.class,
-        JwtAuthSyncRule.class,
-        
-        // then we could check potentially slow async rules
-        LdapAuthAsyncRule.class,
-        LdapAuthenticationAsyncRule.class,
-        ExternalAuthenticationAsyncRule.class,
-        GroupsAsyncRule.class,
+      // Authentication rules must come first because they set the user information which further rules might rely on.
+      AuthKeySyncRule.class,
+      AuthKeySha1SyncRule.class,
+      AuthKeySha256SyncRule.class,
+      ProxyAuthSyncRule.class,
+      JwtAuthSyncRule.class,
 
-        // Inspection rules next; these act based on properties of the request.
-        KibanaAccessSyncRule.class,
-        HostsSyncRule.class,
-        XForwardedForSyncRule.class,
-        ApiKeysSyncRule.class,
-        SessionMaxIdleSyncRule.class,
-        UriReSyncRule.class,
-        MaxBodyLengthSyncRule.class,
-        MethodsSyncRule.class,
-        IndicesSyncRule.class,
-        ActionsSyncRule.class,
-        SearchlogSyncRule.class,
+      // then we could check potentially slow async rules
+      LdapAuthAsyncRule.class,
+      LdapAuthenticationAsyncRule.class,
+      ExternalAuthenticationAsyncRule.class,
+      GroupsAsyncRule.class,
 
-        // all authorization rules should be placed before any authentication rule
-        LdapAuthorizationAsyncRule.class,
-        GroupsProviderAuthorizationAsyncRule.class,
-        // At the end the sync rule chain are those that can mutate the client request.
-        IndicesRewriteSyncRule.class,
-        KibanaHideAppsSyncRule.class
+      // Inspection rules next; these act based on properties of the request.
+      KibanaAccessSyncRule.class,
+      KibanaIndexSyncRule.class,
+      HostsSyncRule.class,
+      XForwardedForSyncRule.class,
+      ApiKeysSyncRule.class,
+      SessionMaxIdleSyncRule.class,
+      UriReSyncRule.class,
+      MaxBodyLengthSyncRule.class,
+      MethodsSyncRule.class,
+      IndicesSyncRule.class,
+      ActionsSyncRule.class,
+      SearchlogSyncRule.class,
+
+      // all authorization rules should be placed before any authentication rule
+      LdapAuthorizationAsyncRule.class,
+      GroupsProviderAuthorizationAsyncRule.class,
+      // At the end the sync rule chain are those that can mutate the client request.
+      IndicesRewriteSyncRule.class,
+      KibanaHideAppsSyncRule.class
     );
   }
 
   @Override
   public int compare(AsyncRule r1, AsyncRule r2) {
     return Integer.compare(
-        indexOfRuleClass(RulesUtils.classOfRule(r1)),
-        indexOfRuleClass(RulesUtils.classOfRule(r2))
+      indexOfRuleClass(RulesUtils.classOfRule(r1)),
+      indexOfRuleClass(RulesUtils.classOfRule(r2))
     );
   }
 
@@ -98,7 +100,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
     int index = ordering.indexOf(ruleClass);
     if (index < 0)
       throw new IllegalStateException("Cannot find class '" + ruleClass.getName() + "' in rules ordering " +
-          "list in '" + RulesOrdering.class.getName() + "' class");
+                                        "list in '" + RulesOrdering.class.getName() + "' class");
     return index;
   }
 }

@@ -23,6 +23,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.Maps;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -45,7 +47,7 @@ public class SerializationTool {
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
       "SimpleModule",
-      new Version(1, 0, 0, null)
+      new Version(1, 0, 0, null, "com.readonlyrest", "readonlyrest")
     );
     mapper.registerModule(simpleModule);
     this.mapper = mapper;
@@ -91,7 +93,23 @@ public class SerializationTool {
     map.put("indices", req.involvesIndices() ? req.getIndices() : Collections.emptySet());
     map.put("acl_history", req.getHistory().toString());
 
-    return mapper.writeValueAsString(map);
+    // The cumbersome, awkward security handling in Java. (TM) #securityAgainstProductivity
+    final String[] res = new String[1];
+    try {
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+        try {
+          res[0] = mapper.writeValueAsString(map);
+        } catch (JsonProcessingException e) {
+          throw new RuntimeException("JsonProcessingException", e);
+        }
+        return null;
+      });
+    }
+    // The stupidity of checked exceptions. (TM)
+    catch (RuntimeException e) {
+      throw (JsonProcessingException) e.getCause();
+    }
+    return res[0];
   }
 
 }

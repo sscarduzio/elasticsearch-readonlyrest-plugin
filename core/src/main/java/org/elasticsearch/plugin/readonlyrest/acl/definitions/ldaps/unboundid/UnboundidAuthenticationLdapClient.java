@@ -21,8 +21,8 @@ import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SimpleBindRequest;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.AuthenticationLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapCredentials;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
@@ -33,14 +33,15 @@ import java.util.concurrent.CompletableFuture;
 
 public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient implements AuthenticationLdapClient {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   public UnboundidAuthenticationLdapClient(ConnectionConfig connectionConfig,
                                            UserSearchFilterConfig userSearchFilterConfig,
                                            Optional<SearchingUserConfig> searchingUserConfig,
                                            ESContext context) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
-        connectionConfig.getRequestTimeout(), userSearchFilterConfig, context);
+          connectionConfig.getRequestTimeout(), userSearchFilterConfig, context
+    );
     this.logger = context.logger(getClass());
   }
 
@@ -55,10 +56,10 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
   @Override
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
     return userById(credentials.getUserName())
-        .thenApply(user ->
-            user.map(u -> authenticate(u, credentials.getPassword()))
-                .flatMap(isAuthenticated -> isAuthenticated ? user : Optional.empty())
-        );
+      .thenApply(user ->
+                   user.map(u -> authenticate(u, credentials.getPassword()))
+                     .flatMap(isAuthenticated -> isAuthenticated ? user : Optional.empty())
+      );
   }
 
   private Boolean authenticate(LdapUser user, String password) {

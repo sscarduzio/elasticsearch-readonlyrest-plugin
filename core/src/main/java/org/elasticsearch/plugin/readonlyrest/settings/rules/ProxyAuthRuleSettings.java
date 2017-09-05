@@ -35,23 +35,23 @@ public class ProxyAuthRuleSettings implements RuleSettings, AuthKeyProviderSetti
   private final List<String> users;
   private final String userIdHeader;
 
+  private ProxyAuthRuleSettings(List<String> users, String userIdHeader) {
+    this.users = users;
+    this.userIdHeader = userIdHeader;
+  }
+
   @SuppressWarnings("unchecked")
   public static ProxyAuthRuleSettings from(RawSettings settings,
                                            ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     String providerName = settings.stringReq(PROXY_AUTH_CONFIG);
     return new ProxyAuthRuleSettings(
-        (List<String>) settings.notEmptyListReq(USERS),
-        proxyAuthDefinitionSettingsCollection.get(providerName).getUserIdHeader()
+      (List<String>) settings.notEmptyListReq(USERS),
+      proxyAuthDefinitionSettingsCollection.get(providerName).getUserIdHeader()
     );
   }
 
   public static ProxyAuthRuleSettings from(List<String> users) {
     return new ProxyAuthRuleSettings(users, DEFAULT_HEADER_NAME);
-  }
-
-  private ProxyAuthRuleSettings(List<String> users, String userIdHeader) {
-    this.users = users;
-    this.userIdHeader = userIdHeader;
   }
 
   public List<String> getUsers() {

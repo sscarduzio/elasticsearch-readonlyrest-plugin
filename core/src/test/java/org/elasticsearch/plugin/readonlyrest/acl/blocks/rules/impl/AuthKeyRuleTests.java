@@ -53,8 +53,8 @@ public class AuthKeyRuleTests {
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-        "logstash:logstash",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+      "logstash:logstash",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }
@@ -62,8 +62,8 @@ public class AuthKeyRuleTests {
   @Test
   public void testInvalid() {
     RuleExitResult res = match(
-        "logstash:logstash",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:".getBytes())
+      "logstash:logstash",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:".getBytes())
     );
     assertFalse(res.isMatch());
   }

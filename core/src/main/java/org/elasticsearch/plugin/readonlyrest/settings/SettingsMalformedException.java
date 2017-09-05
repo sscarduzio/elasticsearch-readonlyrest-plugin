@@ -21,6 +21,7 @@ public class SettingsMalformedException extends RuntimeException {
   public SettingsMalformedException(String msg) {
     super(msg);
   }
+
   public SettingsMalformedException(String msg, Throwable t) {
     super(msg, t);
   }

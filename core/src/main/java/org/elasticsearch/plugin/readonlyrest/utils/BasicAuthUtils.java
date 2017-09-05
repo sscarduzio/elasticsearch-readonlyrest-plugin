@@ -32,8 +32,8 @@ public class BasicAuthUtils {
 
   public static Optional<BasicAuth> getBasicAuthFromHeaders(Map<String, String> headers) {
     return Optional.ofNullable(headers.get("Authorization"))
-            .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
-            .flatMap(BasicAuth::fromBase64Value);
+      .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
+      .flatMap(BasicAuth::fromBase64Value);
   }
 
   private static Optional<String> getInterestingPartOfBasicAuthValue(String basicAuthValue) {

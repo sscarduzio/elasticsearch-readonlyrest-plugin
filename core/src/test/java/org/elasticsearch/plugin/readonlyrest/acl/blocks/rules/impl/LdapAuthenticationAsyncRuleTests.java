@@ -36,14 +36,14 @@ public class LdapAuthenticationAsyncRuleTests {
   @Test
   public void testUserShouldBeNotAuthenticatedIfLdapReturnError() throws Exception {
     LdapAuthenticationAsyncRule rule = new LdapAuthenticationAsyncRule(
-        LdapAuthenticationRuleSettings.from(
-          TestUtils.fromYAMLString("" +
-                "ldap_authentication:\n" +
-                "  name: ldap1").inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
-          LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
-        ),
-        MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient()),
-        MockedESContext.INSTANCE
+      LdapAuthenticationRuleSettings.from(
+        TestUtils.fromYAMLString("" +
+                                   "ldap_authentication:\n" +
+                                   "  name: ldap1").inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
+        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      ),
+      MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient()),
+      MockedESContext.INSTANCE
     );
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(false, match.isMatch());
@@ -52,20 +52,20 @@ public class LdapAuthenticationAsyncRuleTests {
   @Test
   public void testUserShouldBeAuthenticatedIfLdapReturnSuccess() throws Exception {
     LdapAuthenticationAsyncRule rule = new LdapAuthenticationAsyncRule(
-        LdapAuthenticationRuleSettings.from(
-          TestUtils.fromYAMLString("" +
-                "ldap_authentication:\n" +
-                "  name: ldap2").inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
-            LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      LdapAuthenticationRuleSettings.from(
+        TestUtils.fromYAMLString("" +
+                                   "ldap_authentication:\n" +
+                                   "  name: ldap2").inner(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME),
+        LdapSettingsCollection.from(MockLdapClientHelper.mockLdapsCollection())
+      ),
+      MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
+        new LdapUser(
+          "user",
+          "cn=Example user,ou=People,dc=example,dc=com"
         ),
-        MockLdapClientHelper.simpleFactory(MockLdapClientHelper.mockLdapClient(
-            new LdapUser(
-                "user",
-                "cn=Example user,ou=People,dc=example,dc=com"
-            ),
-            Sets.newHashSet(new LdapGroup("group2"))
-        )),
-        MockedESContext.INSTANCE
+        Sets.newHashSet(new LdapGroup("group2"))
+      )),
+      MockedESContext.INSTANCE
     );
     RuleExitResult match = rule.match(mockedRequestContext("user", "pass")).get();
     assertEquals(true, match.isMatch());

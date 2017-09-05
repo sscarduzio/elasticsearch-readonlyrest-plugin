@@ -19,15 +19,64 @@ package org.elasticsearch.plugin.readonlyrest.es;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
-import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClientFactory;
+import org.elasticsearch.plugin.readonlyrest.ESVersion;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
 public class ESContextImpl implements ESContext {
 
+  public static LoggerShim mkLoggerShim(Logger l) {
+    return new LoggerShim() {
+
+      @Override
+      public void trace(String message) {
+        l.trace(message);
+      }
+
+      @Override
+      public void info(String message) {
+        l.info(message);
+      }
+
+      @Override
+      public void debug(String message) {
+        l.debug(message);
+      }
+
+      @Override
+      public void warn(String message) {
+        l.warn(message);
+      }
+
+      @Override
+      public void warn(String message, Throwable t) {
+        l.warn(message);
+        t.printStackTrace();
+      }
+
+      @Override
+      public void error(String message, Throwable t) {
+        l.error(message);
+        t.printStackTrace();
+      }
+
+      @Override
+      public void error(String message) {
+        l.error(message);
+      }
+
+      @Override
+      public boolean isDebugEnabled() {
+        return l.isDebugEnabled();
+      }
+    };
+  }
+
   @Override
-  public Logger logger(Class<?> clazz) {
-    return Loggers.getLogger(clazz);
+  public LoggerShim logger(Class<?> clazz) {
+    return mkLoggerShim(Loggers.getLogger(clazz));
   }
 
   @Override
@@ -36,7 +85,8 @@ public class ESContextImpl implements ESContext {
   }
 
   @Override
-  public HttpClientFactory httpClientFactory() {
-    return ESHttpClientFactory.INSTANCE;
+  public ESVersion getVersion() {
+    return new ESVersion(Version.CURRENT.id);
   }
+
 }

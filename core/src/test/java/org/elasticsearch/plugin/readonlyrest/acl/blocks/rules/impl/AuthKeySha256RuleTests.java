@@ -52,8 +52,8 @@ public class AuthKeySha256RuleTests {
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-        "280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+      "280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }

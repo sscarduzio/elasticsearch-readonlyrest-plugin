@@ -73,11 +73,11 @@ public class CachedAsyncAuthenticationDecoratorTests {
     when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
     when(requestContext.getHeaders()).thenReturn(
-        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
+      ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
     );
 
     CacheSettings settings = () -> Duration.ofSeconds(10);
-    AsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
+    AsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule, settings, MockedESContext.INSTANCE);
     CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
     CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);
 
@@ -96,11 +96,11 @@ public class CachedAsyncAuthenticationDecoratorTests {
     when(rule.authenticate(any(), any())).thenReturn(CompletableFuture.completedFuture(true));
     RequestContext requestContext = Mockito.mock(RequestContext.class);
     when(requestContext.getHeaders()).thenReturn(
-        ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
+      ImmutableMap.<String, String>builder().put("Authorization", "Basic dGVzdGVyOnBhc3N3b3Jk").build()
     );
 
     CacheSettings settings = () -> ttl;
-    AsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule,settings, MockedESContext.INSTANCE);
+    AsyncAuthentication cachedAuthenticationRule = wrapInCacheIfCacheIsEnabled(rule, settings, MockedESContext.INSTANCE);
     CompletableFuture<RuleExitResult> firstAttemptMatch = cachedAuthenticationRule.match(requestContext);
     Thread.sleep((long) (ttl.toMillis() * 1.5));
     CompletableFuture<RuleExitResult> secondAttemptMatch = cachedAuthenticationRule.match(requestContext);

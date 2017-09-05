@@ -23,8 +23,8 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.GroupsProviderLdapClient;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapGroup;
 import org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.LdapUser;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLdapClient implements GroupsProviderLdapClient {
 
-  private final Logger logger;
+  private final LoggerShim logger;
 
   private final UserGroupsSearchFilterConfig userGroupsSearchFilterConfig;
 
@@ -48,7 +48,8 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
                                            Optional<SearchingUserConfig> searchingUserConfig,
                                            ESContext context) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
-        connectionConfig.getRequestTimeout(), userSearchFilterConfig, context);
+          connectionConfig.getRequestTimeout(), userSearchFilterConfig, context
+    );
     this.userGroupsSearchFilterConfig = userGroupsSearchFilterConfig;
     this.logger = context.logger(getClass());
   }
@@ -68,32 +69,32 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
     try {
       CompletableFuture<List<SearchResultEntry>> searchGroups = new CompletableFuture<>();
       connection.getConnectionPool().processRequestsAsync(
-          Lists.newArrayList(
-              new SearchRequest(
-                  new UnboundidSearchResultListener(searchGroups),
-                  userGroupsSearchFilterConfig.getSearchGroupBaseDN(),
-                  SearchScope.SUB,
-                  String.format(
-                      "(&(cn=*)(%s=%s))", userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
-                      Filter.encodeValue(user.getDN())
-                  )
-              )),
-          requestTimeout.toMillis()
+        Lists.newArrayList(
+          new SearchRequest(
+            new UnboundidSearchResultListener(searchGroups),
+            userGroupsSearchFilterConfig.getSearchGroupBaseDN(),
+            SearchScope.SUB,
+            String.format(
+              "(&(cn=*)(%s=%s))", userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
+              Filter.encodeValue(user.getDN())
+            )
+          )),
+        requestTimeout.toMillis()
       );
       return searchGroups
-          .thenApply(groupSearchResult -> groupSearchResult.stream()
-              .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
-              .filter(Optional::isPresent)
-              .map(Optional::get)
-              .map(LdapGroup::new)
-              .collect(Collectors.toSet()))
-          .exceptionally(t -> {
-            if (t instanceof LdapSearchError) {
-              LdapSearchError error = (LdapSearchError) t;
-              logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
-            }
-            return Sets.newHashSet();
-          });
+        .thenApply(groupSearchResult -> groupSearchResult.stream()
+          .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .map(LdapGroup::new)
+          .collect(Collectors.toSet()))
+        .exceptionally(t -> {
+          if (t instanceof LdapSearchError) {
+            LdapSearchError error = (LdapSearchError) t;
+            logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
+          }
+          return Sets.newHashSet();
+        });
     } catch (LDAPException e) {
       logger.error("LDAP getting user groups operation failed", e);
       return CompletableFuture.completedFuture(Sets.newHashSet());

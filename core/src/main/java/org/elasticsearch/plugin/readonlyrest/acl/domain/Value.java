@@ -21,13 +21,13 @@ import java.util.function.Function;
 
 public interface Value<T> {
 
-  Optional<T> getValue(VariableResolver resolver);
-
   static <T> Value<T> fromString(String value, Function<String, T> creator) {
     return value.contains("@")
-        ? new Variable<>(value, creator)
-        : new Const<>(creator.apply(value));
+      ? new Variable<>(value, creator)
+      : new Const<>(creator.apply(value));
   }
+
+  Optional<T> getValue(VariableResolver resolver);
 
   interface VariableResolver {
     Optional<String> resolveVariable(String original);

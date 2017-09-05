@@ -94,7 +94,8 @@ public class JwtAuthRuleTests {
   @Test
   public void shouldAcceptAUserClaimSetting() {
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET,
-                                        SETTINGS_USER_CLAIM, USER_CLAIM);
+                                        SETTINGS_USER_CLAIM, USER_CLAIM
+    );
     Optional<SyncRule> rule = makeRule(settings);
     assertTrue(rule.isPresent());
   }
@@ -102,11 +103,12 @@ public class JwtAuthRuleTests {
   @Test
   public void shouldRejectTokensWithoutTheConfiguredUserClaim() {
     String token = Jwts.builder()
-        .setSubject(SUBJECT)
-        .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
-        .compact();
+      .setSubject(SUBJECT)
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET,
-                                        SETTINGS_USER_CLAIM, USER_CLAIM);
+                                        SETTINGS_USER_CLAIM, USER_CLAIM
+    );
     RequestContext rc = getMock(token);
 
     Optional<SyncRule> rule = makeRule(settings);
@@ -121,12 +123,13 @@ public class JwtAuthRuleTests {
   @Test
   public void shouldSetUserPresentInTokenWhenUserClaimIsConfigured() {
     String token = Jwts.builder()
-        .setSubject(SUBJECT)
-        .claim(USER_CLAIM, USER1)
-        .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
-        .compact();
+      .setSubject(SUBJECT)
+      .claim(USER_CLAIM, USER1)
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET,
-                                        SETTINGS_USER_CLAIM, USER_CLAIM);
+                                        SETTINGS_USER_CLAIM, USER_CLAIM
+    );
     RequestContext rc = getMock(token);
 
     Optional<SyncRule> rule = makeRule(settings);
@@ -142,10 +145,10 @@ public class JwtAuthRuleTests {
   @Test
   public void shouldNotSetUserWhenUserClaimIsNotConfigured() {
     String token = Jwts.builder()
-        .setSubject(SUBJECT)
-        .claim(USER_CLAIM, USER1)
-        .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
-        .compact();
+      .setSubject(SUBJECT)
+      .claim(USER_CLAIM, USER1)
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET);
     RequestContext rc = getMock(token);
 
@@ -170,11 +173,11 @@ public class JwtAuthRuleTests {
   public void shouldSupportReadingKeyFromEnvironmentUsingEnvPrefix() {
     /* FIXME : figure a better way to test for variable substitution */
     Entry<String, String> vars = System.getenv()
-        .entrySet()
-        .stream()
-        .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
-        .findAny()
-        .get();
+      .entrySet()
+      .stream()
+      .filter(e -> !Strings.isNullOrEmpty(e.getValue()))
+      .findAny()
+      .get();
     String variable = vars.getKey();
     String value = vars.getValue();
     /* ************************************************************* */
@@ -184,19 +187,19 @@ public class JwtAuthRuleTests {
     assertArrayEquals(value.getBytes(), settings.getKey());
   }
 
-  @Test(expected=SettingsMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeytIsEmpty() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "");
     JwtAuthRuleSettings.from(raw);
   }
 
-  @Test(expected=SettingsMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeyFromEnvironmentIsEmpty() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "env:" + EMPTY_VAR);
     JwtAuthRuleSettings.from(raw);
   }
 
-  @Test(expected=SettingsMalformedException.class)
+  @Test(expected = SettingsMalformedException.class)
   public void shouldFailInAControlledFashionWhenKeyIsNotAString() {
     RawSettings raw = makeSettings(false, SETTINGS_SIGNATURE_KEY, "123456");
     JwtAuthRuleSettings.from(raw);
@@ -208,11 +211,11 @@ public class JwtAuthRuleTests {
     return mock;
   }
 
-  private RawSettings makeSettings(String ...kvp) {
+  private RawSettings makeSettings(String... kvp) {
     return makeSettings(true, kvp);
   }
 
-  private RawSettings makeSettings(boolean escapeValues, String ...kvp) {
+  private RawSettings makeSettings(boolean escapeValues, String... kvp) {
     assert kvp.length % 2 == 0;
 
     StringBuilder sb = new StringBuilder();
@@ -229,11 +232,11 @@ public class JwtAuthRuleTests {
   }
 
   private Optional<SyncRule> makeRule(RawSettings settings) {
-      try {
-        return Optional.of(new JwtAuthSyncRule(JwtAuthRuleSettings.from(settings), MockedESContext.INSTANCE));
-      } catch (Exception e) {
-        e.printStackTrace();
-        return Optional.empty();
-      }
+    try {
+      return Optional.of(new JwtAuthSyncRule(JwtAuthRuleSettings.from(settings), MockedESContext.INSTANCE));
+    } catch (Exception e) {
+      e.printStackTrace();
+      return Optional.empty();
+    }
   }
 }

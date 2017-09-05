@@ -26,12 +26,12 @@ public class KibanaHideAppsRuleSettings implements RuleSettings {
 
   private final Set<String> kibanaHideApps;
 
-  public static KibanaHideAppsRuleSettings from(Set<String> kibanaHideApps) {
-    return new KibanaHideAppsRuleSettings(kibanaHideApps);
-  }
-
   private KibanaHideAppsRuleSettings(Set<String> kibanaHideApps) {
     this.kibanaHideApps = kibanaHideApps;
+  }
+
+  public static KibanaHideAppsRuleSettings from(Set<String> kibanaHideApps) {
+    return new KibanaHideAppsRuleSettings(kibanaHideApps);
   }
 
   public Set<String> getKibanaHideApps() {
