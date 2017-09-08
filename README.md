@@ -115,7 +115,7 @@ readonlyrest:
       indices: [".kibana", ".kibana-devnull", "logstash-2017*"]
 
 ```
-**Now activate authentication in Kibana server**: let the Kibana daemon connect to ElasticSearch in privileged mode.
+**Now activate authentication in Kibana server**: let the Kibana daemon connect to Elasticsearch in privileged mode.
 
 * edit the kibana configuration file: `kibana.yml` and add the following:
 
@@ -387,12 +387,12 @@ Other security plugins are replacing the high performance, Netty based, embedded
 
 This plugin instead is just a lightweight pure-Java filtering layer. Even the SSL layer is provided as an extra Netty transport handler.
 
-#### Less moving parts
+#### Fewer moving parts
 Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES and clients to filter out malicious access with regular expressions on HTTP methods and paths. This is a **bad idea** for two reasons:
 - You're introducing more complexity in your architecture.
-- Reasoning about security at HTTP level is risky, flaky and less granular than controlling access at the internal ElasticSearch protocol level.
+- Reasoning about security at HTTP level is risky, flaky and less granular than controlling access at the internal Elasticsearch protocol level.
 
-**The only clean way to do the access control is AFTER ElasticSearch has parsed the queries.**
+**The only clean way to do the access control is AFTER Elasticsearch has parsed the queries.**
 
 Just set a few rules with this plugin and confidently open it up to the external world.
 
@@ -409,9 +409,9 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```auth_key_sha1``` HTTP Basic auth (credentials stored as hashed strings).
 * ```uri_re``` Match the URI path as a regex.
 
-##### ElasticSearch internal protocol level rules
+##### Elasticsearch internal protocol level rules
 * ```indices``` indices (aliases and wildcards work)
-* ```actions``` list of ES [actions](https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/wiki/Supported-Rules#actions-and-apis) (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
+* ```actions``` list of ES [actions](https://readonlyrest.com/documentation/#Rules--Rules--Elasticsearch_level--Action_rule) (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
 
 ##### ElasticSearh level macro-rules
 * ```kibana_access``` captures the read-only, read-only + new visualizations/dashboards, read-write use cases of Kibana.
