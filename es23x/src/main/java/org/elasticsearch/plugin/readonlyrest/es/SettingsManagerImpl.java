@@ -23,11 +23,13 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.settings.SettingsException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.configuration.SettingsManager;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Map;
 
 /**
@@ -47,8 +49,13 @@ public class SettingsManagerImpl implements SettingsManager {
     this.client = client;
   }
 
-  public Map<String, ?> getCurrentSettings() {
-    return settings.getAsStructuredMap();
+  public Map<String, ?> getCurrentSettings(String path) {
+    try {
+      return Settings.builder().loadFromPath(Paths.get(path)).build().getAsStructuredMap();
+    } catch (SettingsException e) {
+      getContext().logger(getClass()).info("Could not find settings in " + path + ", falling back to elasticsearch.yml");
+      return settings.getAsStructuredMap();
+    }
   }
 
   public Map<String, ?> reloadSettingsFromIndex() {

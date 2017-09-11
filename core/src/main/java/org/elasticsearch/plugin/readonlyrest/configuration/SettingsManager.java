@@ -25,7 +25,7 @@ import java.util.Map;
  * Created by sscarduzio on 25/06/2017.
  */
 public interface SettingsManager {
-  Map<String, ?> getCurrentSettings();
+  Map<String, ?> getCurrentSettings(String path);
 
 
   Map<String, ?> reloadSettingsFromIndex();
