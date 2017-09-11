@@ -26,7 +26,7 @@ import java.util.Map;
  */
 public interface SettingsManager {
   Map<String, ?> getCurrentSettings(String path);
-  
+
   Map<String, ?> reloadSettingsFromIndex();
 
   boolean isClusterReady();

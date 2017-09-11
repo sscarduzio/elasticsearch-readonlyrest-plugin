@@ -43,7 +43,7 @@ public class MockedESContext implements ESContext {
 
   @Override
   public LoggerShim logger(Class<?> clazz) {
-    Logger l = LogManager.getLogger(clazz);
+    Logger l = LogManager.getLogger(clazz.getSimpleName());
     return new LoggerShim() {
 
       @Override
