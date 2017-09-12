@@ -75,7 +75,7 @@ public class ESContextImpl implements ESContext {
 
   @Override
   public LoggerShim logger(Class<?> clazz) {
-    ESLogger l = Loggers.getLogger(clazz);
+    ESLogger l = Loggers.getLogger(clazz.getName());
     return mkLoggerShim(l);
   }
 
