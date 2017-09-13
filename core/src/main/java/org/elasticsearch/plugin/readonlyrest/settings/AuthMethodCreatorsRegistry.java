@@ -20,12 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.ProxyAuthDefinitionSettingsCollection;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +40,8 @@ public class AuthMethodCreatorsRegistry {
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator());
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator());
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
+    creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator());
+    creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator());
     creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
     creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME, ldapAuthenticationRuleSettingsCreator(ldapSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator());
@@ -71,6 +68,16 @@ public class AuthMethodCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeySha256SettingsCreator() {
     return settings -> AuthKeySha256RuleSettings.from(settings.stringReq(AuthKeySha256RuleSettings.ATTRIBUTE_NAME));
+  }
+
+  @SuppressWarnings("unchecked")
+  private Function<RawSettings, AuthKeyProviderSettings> authKeySha512SettingsCreator() {
+    return settings -> AuthKeySha512RuleSettings.from(settings.stringReq(AuthKeySha512RuleSettings.ATTRIBUTE_NAME));
+  }
+
+  @SuppressWarnings("unchecked")
+  private Function<RawSettings, AuthKeyProviderSettings> authKeyUnixSettingsCreator() {
+    return settings -> AuthKeyUnixRuleSettings.from(settings.stringReq(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME));
   }
 
   @SuppressWarnings("unchecked")

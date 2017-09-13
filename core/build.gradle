@@ -52,6 +52,7 @@ test {
     }
 }
 dependencies {
+    compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'
     compile 'com.unboundid:unboundid-ldapsdk:3.2.0'

@@ -21,30 +21,7 @@ import org.elasticsearch.plugin.readonlyrest.settings.definitions.ExternalAuthen
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.LdapSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserGroupsProviderSettingsCollection;
 import org.elasticsearch.plugin.readonlyrest.settings.definitions.UserSettingsCollection;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.ActionsRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.ApiKeysRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeyPlainTextRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha1RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.AuthKeySha256RuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.ExternalAuthenticationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsProviderAuthorizationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.GroupsRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.HostsRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRewriteRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.JwtAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaAccessRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.KibanaHideAppsRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthenticationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.LdapAuthorizationRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.MaxBodyLengthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.MethodsRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.ProxyAuthRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.SearchlogRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.SessionMaxIdleRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.UriReRuleSettings;
-import org.elasticsearch.plugin.readonlyrest.settings.rules.XForwardedForRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.settings.rules.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -92,6 +69,8 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
     creators.put(KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
     creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
@@ -219,6 +198,18 @@ public class RulesSettingsCreatorsRegistry {
   private Supplier<RuleSettings> authKeySha256SettingsCreator(RawSettings blockSettings,
                                                               AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
     return authRuleFrom(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> authKeySha512SettingsCreator(RawSettings blockSettings,
+                                                              AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
+    return authRuleFrom(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> authKeyUnixSettingsCreator(RawSettings blockSettings,
+                                                              AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
+    return authRuleFrom(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")

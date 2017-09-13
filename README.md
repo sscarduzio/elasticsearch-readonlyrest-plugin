@@ -75,6 +75,66 @@ readonlyrest:
       indices: ["product_catalogue-*"] # index aliases are taken in account!
 ```
 
+###  USE CASE: Unix Authentication
+
+This method is based on /etc/shadow file syntax. 
+
+For example if you configured sha512 encryption with 65535 rounds on your system the hash in /etc/shadow for the account
+`test:test` will be `test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0` 
+
+```yml
+readonlyrest:
+    access_control_rules:
+    - name: Accept requests from users in group team1 on index1
+      groups: ["team1"]
+      indices: ["index1"]
+    
+    users:
+    - username: test
+      auth_key_unix: test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0 #test:test
+      groups: ["team1"]
+
+```
+
+You can generate the hash with **mkpasswd** command, you need whois package `apt-get install whois`
+
+`mkpasswd -m sha-512 -R 65534`
+
+Also you can generate the hash with a python or perl script:
+```python
+#!/usr/bin/python
+import crypt
+import random
+import sys
+import string
+
+
+
+def sha512_crypt(password, salt=None, rounds=None):
+    if salt is None:
+        rand = random.SystemRandom()
+        salt = ''.join([rand.choice(string.ascii_letters + string.digits)
+                        for _ in range(8)])
+
+    prefix = '$6$'
+    if rounds is not None:
+        rounds = max(1000, min(999999999, rounds or 5000))
+        prefix += 'rounds={0}$'.format(rounds)
+    return crypt.crypt(password, prefix + salt)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        print sha512_crypt(sys.argv[1], rounds=65635)
+    else:
+        print "Argument is missing, <password>"
+```
+**Finally you have to put your username at the begining of the hash with ":" separator**
+`test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0`
+
+For example, `test` is the username and `$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0` is the hash
+
+
 ###  USE CASE: Multi-user Kibana + Authenticated Logstash
 ```yml
 
