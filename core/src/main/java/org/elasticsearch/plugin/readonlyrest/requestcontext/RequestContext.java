@@ -40,14 +40,15 @@ import java.util.Set;
 public abstract class RequestContext extends Delayed implements IndicesRequestContext {
 
   private final static String X_KIBANA_INDEX_HEADER = "x-ror-kibana_index";
-  private static Boolean ENABLE_SUBREQ_INTROSPECTION;
+  private static Boolean ENABLE_SUBREQ_INTROSPECTION = true;
 
   static {
     try {
-      ENABLE_SUBREQ_INTROSPECTION = Boolean.parseBoolean(System.getProperty("com.readonlyrest.subreq.introspection"));
+      String s = System.getProperty("com.readonlyrest.subreq.introspection");
+      if(s != null && !s.equalsIgnoreCase("false")){
+        ENABLE_SUBREQ_INTROSPECTION = false;
+      }
     } catch (Throwable t) {
-      // By default, use the feature
-      ENABLE_SUBREQ_INTROSPECTION = true;
     }
   }
 
