@@ -46,7 +46,7 @@ public class BasicAuthUtilsTests {
 		String passwd = "";
 		byte[] authToken = ((String) user + ":" + passwd).getBytes();
 		String base64Value = new String(Base64.getEncoder().encodeToString(authToken));
-		Optional<BasicAuth> basicAuth = BasicAuthUtils.getBasicAuthFromString(base64Value);
+		BasicAuthUtils.getBasicAuthFromString(base64Value);
 	}
 
 
