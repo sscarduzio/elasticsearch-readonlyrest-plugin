@@ -119,7 +119,7 @@ public abstract class ReloadableSettings {
                            logger.error("[CLUSTERWIDE SETTINGS] configuration error: " + th.getCause().getMessage());
                          }
                          else if (th.getMessage().contains(SETTINGS_NOT_FOUND_MESSAGE)) {
-                           logger.info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using elasticearch.yml. " +
+                           logger.info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using the local YAML file. " +
                                          "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
                          }
                          return Optional.of(th);
