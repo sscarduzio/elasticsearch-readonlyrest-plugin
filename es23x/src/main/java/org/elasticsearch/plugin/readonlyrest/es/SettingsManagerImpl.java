@@ -23,11 +23,11 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.settings.SettingsException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.configuration.SettingsManager;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -49,11 +49,18 @@ public class SettingsManagerImpl implements SettingsManager {
     this.client = client;
   }
 
-  public Map<String, ?> getCurrentSettings(String path) {
+  public Map<String, ?> getCurrentSettings(String fileName) {
+    String filePath = settings.get("path.conf", "conf" + File.separator);
+    if (!filePath.endsWith(File.separator)) {
+      filePath += File.separator;
+    }
+    filePath += fileName;
     try {
-      return Settings.builder().loadFromPath(Paths.get(path)).build().getAsStructuredMap();
-    } catch (SettingsException e) {
-      getContext().logger(getClass()).info("Could not find settings in " + path + ", falling back to elasticsearch.yml");
+      return Settings.builder().loadFromPath(Paths.get(filePath)).build().getAsStructuredMap();
+    } catch (Throwable t) {
+      getContext().logger(getClass()).info(
+        "Could not find settings in "
+          + filePath + ", falling back to elasticsearch.yml (" + t.getMessage() + ")");
       return settings.getAsStructuredMap();
     }
   }

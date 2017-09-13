@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 public abstract class ReloadableSettings {
 
   public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
-  private static final String SETTINGS_PATH = "config/readonlyrest.yml";
+  private static final String SETTINGS_FILENAME = "readonlyrest.yml";
   private final AtomicReference<RorSettings> rorSettings = new AtomicReference<>();
   private final SettingsManager settingsManager;
   private final LoggerShim logger;
@@ -47,7 +47,7 @@ public abstract class ReloadableSettings {
 
   public ReloadableSettings(SettingsManager settingsManager) throws IOException {
 
-    this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.getCurrentSettings(SETTINGS_PATH))));
+    this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.getCurrentSettings(SETTINGS_FILENAME))));
 
     this.settingsManager = settingsManager;
     this.logger = settingsManager.getContext().logger(getClass());
