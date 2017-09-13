@@ -40,6 +40,17 @@ import java.util.Set;
 public abstract class RequestContext extends Delayed implements IndicesRequestContext {
 
   private final static String X_KIBANA_INDEX_HEADER = "x-ror-kibana_index";
+  private static Boolean ENABLE_SUBREQ_INTROSPECTION;
+
+  static {
+    try {
+      ENABLE_SUBREQ_INTROSPECTION = Boolean.parseBoolean(System.getProperty("com.readonlyrest.subreq.introspection"));
+    } catch (Throwable t) {
+      // By default, use the feature
+      ENABLE_SUBREQ_INTROSPECTION = true;
+    }
+  }
+
   protected Transactional<Set<String>> indices;
   private TxKibanaIndices kibanaIndices;
   private Boolean doesInvolveIndices = false;
@@ -145,7 +156,14 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
 
   abstract protected Transactional<Set<String>> extractTransactionalIndices();
 
-  abstract public Boolean hasSubRequests();
+  abstract protected Boolean doesHaveSubRequests();
+
+  public Boolean hasSubRequests() {
+    if (!ENABLE_SUBREQ_INTROSPECTION) {
+      return false;
+    }
+    return doesHaveSubRequests();
+  }
 
   abstract public Integer scanSubRequests(CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer);
 

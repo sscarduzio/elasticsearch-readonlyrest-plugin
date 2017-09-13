@@ -280,7 +280,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   }
 
   @Override
-  public Boolean hasSubRequests() {
+  public Boolean doesHaveSubRequests() {
     return !SubRequestContext.extractNativeSubrequests(actionRequest).isEmpty();
   }
 
