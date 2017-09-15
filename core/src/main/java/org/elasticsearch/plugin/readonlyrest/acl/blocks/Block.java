@@ -148,12 +148,12 @@ public class Block {
   }
 
   private BlockExitResult finishWithMatchResult() {
-    logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
+    if(logger.isDebugEnabled()) logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
     return BlockExitResult.match(this);
   }
 
   private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
-    logger.debug(ANSI_YELLOW + "[" + settings.getName() + "] the request matches no rules in this block: " + rc + ANSI_RESET);
+    if(logger.isDebugEnabled()) logger.debug(ANSI_YELLOW + "[" + settings.getName() + "] the request matches no rules in this block: " + rc + ANSI_RESET);
     return BlockExitResult.noMatch();
   }
 

@@ -28,21 +28,31 @@ public class IndicesRuleSettings implements RuleSettings {
   public static final String ATTRIBUTE_NAME = "indices";
 
   private final Set<Value<String>> indices;
+  private final Set<String> indicesUnwrapped;
+  private boolean containsVariables;
 
-  private IndicesRuleSettings(Set<Value<String>> indices) {
-    this.indices = indices;
+  private IndicesRuleSettings(Set<String> indices) {
+    this.indicesUnwrapped = indices;
+    containsVariables = indices.stream().filter(i -> i.contains("@{")).findFirst().isPresent();
+    this.indices = indices.stream()
+      .map(i -> Value.fromString(i, Function.identity()))
+      .collect(Collectors.toSet());
   }
 
   public static IndicesRuleSettings from(Set<String> indices) {
-    return new IndicesRuleSettings(
-      indices.stream()
-        .map(i -> Value.fromString(i, Function.identity()))
-        .collect(Collectors.toSet())
-    );
+    return new IndicesRuleSettings(indices);
+  }
+
+  public boolean hasVariables() {
+    return containsVariables;
   }
 
   public Set<Value<String>> getIndices() {
     return indices;
+  }
+
+  public Set<String> getIndicesUnwrapped() {
+    return indicesUnwrapped;
   }
 
   @Override

@@ -78,10 +78,12 @@ public class RCTransactionalIndices {
         String restRequestId = rc.getId().split("-")[0];
         Set<String> initialIndices = restLevelIndicesCache.get(restRequestId);
         if (initialIndices != null && !initialIndices.isEmpty()) {
-          logger.debug("Finding cached indices for: " + rc.getId() + " "
-                         + rc.getUnderlyingRequest().getClass().getSimpleName()
-                         + ": " + Joiner.on(",").join(initialIndices)
-          );
+          if (logger.isDebugEnabled()) {
+            logger.debug("Finding cached indices for: " + rc.getId() + " "
+                           + rc.getUnderlyingRequest().getClass().getSimpleName()
+                           + ": " + Joiner.on(",").join(initialIndices)
+            );
+          }
           return initialIndices;
         }
         else {

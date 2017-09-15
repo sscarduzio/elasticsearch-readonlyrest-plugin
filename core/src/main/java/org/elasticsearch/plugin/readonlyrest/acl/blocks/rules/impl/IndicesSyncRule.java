@@ -39,10 +39,17 @@ public class IndicesSyncRule extends SyncRule {
 
   private final IndicesRuleSettings settings;
   private final LoggerShim logger;
+  private final MatcherWithWildcards matcherNoVar;
 
   public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = s;
+    if(!s.hasVariables()){
+      this.matcherNoVar = new MatcherWithWildcards(s.getIndicesUnwrapped());
+    }
+    else {
+      this.matcherNoVar = null;
+    }
   }
 
   @Override
@@ -83,7 +90,8 @@ public class IndicesSyncRule extends SyncRule {
 
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends IndicesRequestContext> boolean canPass(T src) {
-    MatcherWithWildcards matcher = new MatcherWithWildcards(
+
+    MatcherWithWildcards matcher = matcherNoVar != null ? matcherNoVar : new MatcherWithWildcards(
       settings.getIndices().stream()
         .map(v -> v.getValue(src))
         .filter(Optional::isPresent)
