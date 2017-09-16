@@ -26,3 +26,10 @@ readonlyrest:
       jwt_auth:
         signature_key: "123456"
         user_claim: user
+
+    - name: Valid JWT token is present in custom header
+      type: allow
+      jwt_auth:
+        header_name: x-custom-header
+        signature_key: "123456"
+        user_claim: user

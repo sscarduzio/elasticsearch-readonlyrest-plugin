@@ -76,12 +76,29 @@ public class JwtAuthTests {
   }
 
   @Test
+  public void acceptValidTokentWithUserClaimAndCustomHeader() throws Exception {
+    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user")), Optional.of("x-custom-header"), false);
+    assertEquals(200, sc);
+  }
+
+  @Test
+  public void rejectTokentWithUserClaimAndCustomHeader() throws Exception {
+    int sc = test(makeToken(KEY, makeClaimMap("inexistent_claim", "user")), Optional.of("x-custom-header"), false);
+    assertEquals(401, sc);
+  }
+
+  @Test
   public void rejectExpiredToken() throws Exception {
     int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user", EXP, 0)));
     assertEquals(401, sc);
   }
 
+
   private int test(Optional<String> token) throws Exception {
+    return test(token, Optional.empty(), true);
+  }
+
+  private int test(Optional<String> token, Optional<String> headerName, boolean withBearer) throws Exception {
     RestClient rc = container.getClient();
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
     token.ifPresent(t -> req.addHeader("Authorization", "Bearer " + t));
