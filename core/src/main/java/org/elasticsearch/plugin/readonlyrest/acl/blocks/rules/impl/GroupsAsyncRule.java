@@ -42,10 +42,12 @@ import java.util.stream.Collectors;
  */
 public class GroupsAsyncRule extends AsyncRule implements Authorization, Authentication {
 
+  public static final String CURRENT_GROUP_HEADER = "x-ror-current-group";
+  private static final boolean ROR_KIBANA_METADATA_ENABLED =
+    !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
+  private static final String AVAILABLE_GROUPS_HEADER = "x-ror-available-groups";
   private final GroupsRuleSettings settings;
   private final UserFactory userFactory;
-  public static final String CURRENT_GROUP_HEADER = "x-ror-current-group";
-  private static final String AVAILABLE_GROUPS_HEADER = "x-ror-available-groups";
 
   public GroupsAsyncRule(GroupsRuleSettings s, UserFactory userFactory) {
     this.settings = s;
@@ -77,26 +79,28 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
       (uSettings, ruleExit) -> {
         Set<String> groupsOfCurrentBlock = Sets.intersection(resolvedGroups, uSettings.getGroups());
 
-        // check preferred group from header.
-        String preferredGroup = rc.getHeaders().get(CURRENT_GROUP_HEADER);
-        if(!Strings.isNullOrEmpty(preferredGroup)){
-          try {
-            Set<String> tmp  = Sets.newHashSet();
-            if (groupsOfCurrentBlock.contains(preferredGroup)) {
-              groupsOfCurrentBlock = tmp;
-              groupsOfCurrentBlock.add(preferredGroup);
-              rc.setResponseHeader(CURRENT_GROUP_HEADER, preferredGroup);
+        if (ROR_KIBANA_METADATA_ENABLED) {
+          // check preferred group from header.
+          String preferredGroup = rc.getHeaders().get(CURRENT_GROUP_HEADER);
+          if (!Strings.isNullOrEmpty(preferredGroup)) {
+            try {
+              Set<String> tmp = Sets.newHashSet();
+              if (groupsOfCurrentBlock.contains(preferredGroup)) {
+                groupsOfCurrentBlock = tmp;
+                groupsOfCurrentBlock.add(preferredGroup);
+                rc.setResponseHeader(CURRENT_GROUP_HEADER, preferredGroup);
+              }
+              else {
+                groupsOfCurrentBlock = tmp;
+              }
+            } catch (Throwable t) {
+              t.printStackTrace();
             }
-            else {
-              groupsOfCurrentBlock = tmp;
-            }
-          }catch(Throwable t) {
-            t.printStackTrace();
           }
-        }
 
-        // #TODO add groups (with indices and kibana access and kibana index) to RC.
-        rc.setResponseHeader(AVAILABLE_GROUPS_HEADER, Joiner.on(",").join(uSettings.getGroups()));
+          // #TODO add groups (with indices and kibana access and kibana index) to RC.
+          rc.setResponseHeader(AVAILABLE_GROUPS_HEADER, Joiner.on(",").join(uSettings.getGroups()));
+        }
 
         return !groupsOfCurrentBlock.isEmpty() && ruleExit.isMatch();
       },

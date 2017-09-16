@@ -34,6 +34,8 @@ import java.util.regex.Pattern;
  * Created by sscarduzio on 26/03/2016.
  */
 public class KibanaAccessSyncRule extends SyncRule {
+  private static final boolean ROR_KIBANA_METADATA_ENABLED =
+    !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
 
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
     "indices:admin/exists",
@@ -101,7 +103,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     RuleExitResult res = doMatch(rc);
-    if (res.isMatch()) {
+    if (ROR_KIBANA_METADATA_ENABLED && res.isMatch()) {
       rc.setResponseHeader("x-ror-kibana_access", settings.getKibanaAccess().name().toLowerCase());
     }
     return res;
