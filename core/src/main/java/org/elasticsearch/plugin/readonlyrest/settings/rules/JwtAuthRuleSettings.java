@@ -29,22 +29,27 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   public static final String ATTRIBUTE_NAME = "jwt_auth";
   public static final String SIGNATURE_KEY = "signature_key";
   public static final String USER_CLAIM = "user_claim";
+  public static final String HEADER_NAME = "header_name";
+  public static final String DEFAULT_HEADER_NAME = "Authorization";
 
   private final byte[] key;
   private final Optional<String> userClaim;
+  private final String headerName;
 
-  private JwtAuthRuleSettings(String key, Optional<String> userClaim) {
+  private JwtAuthRuleSettings(String key, Optional<String> userClaim, Optional<String> headerName) {
     if (Strings.isNullOrEmpty(key))
       throw new SettingsMalformedException(
         "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string");
     this.key = key.getBytes();
     this.userClaim = userClaim;
+    this.headerName = headerName.orElse(DEFAULT_HEADER_NAME);
   }
 
   public static JwtAuthRuleSettings from(RawSettings settings) {
     return new JwtAuthRuleSettings(
       evalPrefixedSignatureKey(ensureString(settings, SIGNATURE_KEY)),
-      settings.opt(USER_CLAIM)
+      settings.stringOpt(USER_CLAIM),
+      settings.stringOpt(HEADER_NAME)
     );
   }
 
@@ -69,6 +74,10 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
 
   public Optional<String> getUserClaim() {
     return userClaim;
+  }
+
+  public String getHeaderName() {
+    return headerName;
   }
 
   @Override

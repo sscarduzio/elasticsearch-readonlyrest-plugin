@@ -52,15 +52,15 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
       String token = authHeader.substring(7).trim();
       return Optional.ofNullable(Strings.emptyToNull(token));
     }
-    else {
-      return Optional.empty();
-    }
+
+    return Optional.ofNullable(Strings.emptyToNull(authHeader));
+
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders())
-      .map(m -> m.get("Authorization"))
+      .map(m -> m.get(settings.getHeaderName()))
       .flatMap(JwtAuthSyncRule::extractToken);
 
     if (!token.isPresent()) {
