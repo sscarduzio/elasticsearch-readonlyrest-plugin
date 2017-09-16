@@ -101,7 +101,7 @@ public class JwtAuthTests {
   private int test(Optional<String> token, Optional<String> headerName, boolean withBearer) throws Exception {
     RestClient rc = container.getClient();
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
-    token.ifPresent(t -> req.addHeader("Authorization", "Bearer " + t));
+    token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), (withBearer ? "Bearer " : "") + t));
     HttpResponse resp = rc.execute(req);
     return resp.getStatusLine().getStatusCode();
   }
