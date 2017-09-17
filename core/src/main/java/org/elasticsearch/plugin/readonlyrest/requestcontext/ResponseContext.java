@@ -26,7 +26,7 @@ public class ResponseContext {
 
   private static SerializationTool serTool;
   private final FinalState finalState;
-  private final Long durationMillis;
+  private final Long finishedHandling;
   private final RequestContext rc;
   private final Throwable error;
   private final BlockExitResult result;
@@ -36,14 +36,14 @@ public class ResponseContext {
       serTool = new SerializationTool();
     }
     this.finalState = finalState;
-    this.durationMillis = System.currentTimeMillis() - rc.getTimestamp().getTime();
+    this.finishedHandling = System.currentTimeMillis();
     this.rc = rc;
     this.result = result;
     this.error = error;
   }
 
   public Long getDurationMillis() {
-    return durationMillis;
+    return finishedHandling  - rc.getTimestamp().getTime();
   }
 
   public Throwable getError() {
