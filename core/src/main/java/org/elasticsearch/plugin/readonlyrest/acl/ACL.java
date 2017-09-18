@@ -31,6 +31,7 @@ import org.elasticsearch.plugin.readonlyrest.requestcontext.ResponseContext;
 import org.elasticsearch.plugin.readonlyrest.settings.RorSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.FuturesSequencer;
 
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -65,10 +66,16 @@ public class ACL {
     this.blocks = ImmutableList.copyOf(
       settings.getBlocksSettings().stream()
         .map(blockSettings -> {
-          Block block = new Block(blockSettings, rulesFactory, context);
-          logger.info("ADDING BLOCK:\t" + block.toString());
-          return block;
+          try {
+            Block block = new Block(blockSettings, rulesFactory, context);
+            logger.info("ADDING BLOCK:\t" + block.toString());
+            return block;
+          }catch(Throwable t){
+            logger.error("Impossible to add block to ACL: " + blockSettings.getName(), t);
+            return null;
+          }
         })
+        .filter(Objects::nonNull)
         .collect(Collectors.toList())
     );
   }
