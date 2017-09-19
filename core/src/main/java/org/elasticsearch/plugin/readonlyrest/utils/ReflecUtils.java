@@ -25,14 +25,18 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.HashMap;
 import java.util.Set;
 
+import static org.elasticsearch.plugin.readonlyrest.Constants.CACHE_WATERMARK;
 import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Created by sscarduzio on 24/03/2017.
  */
 public class ReflecUtils {
+
+  private static final HashMap<String, Method> methodsCache = new HashMap<>(128);
 
   public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, ESContext context) {
     final String[][] result = {new String[]{}};
@@ -71,13 +75,22 @@ public class ReflecUtils {
     return result[0];
   }
 
-
   private static Method exploreClassMethods(Class<?> c, String methodName, Class<?> returnClass) {
     // Explore methods without the performance cost of throwing field not found exceptions..
     // The native implementation is O(n), so we do likewise, but without the exception object creation.
+    String cacheKey = c.getName() + methodName + returnClass.getName();
+    Method theMethod = methodsCache.get(cacheKey);
+    if (theMethod != null) {
+      return theMethod;
+    }
     for (Method m : c.getDeclaredMethods()) {
-      m.setAccessible(true);
       if (methodName.equals(m.getName()) && m.getReturnType().equals(returnClass)) {
+        if (methodsCache.size() > CACHE_WATERMARK) {
+          new Exception("Method cache has exceeded the watermark of " + CACHE_WATERMARK +
+                          " keys, currently at " + methodsCache.size()).printStackTrace();
+        }
+        m.setAccessible(true);
+        methodsCache.put(cacheKey, m);
         return m;
       }
     }
