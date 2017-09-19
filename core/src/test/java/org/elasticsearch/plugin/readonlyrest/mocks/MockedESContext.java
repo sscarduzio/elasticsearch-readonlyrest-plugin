@@ -23,6 +23,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.plugin.readonlyrest.AbstractESContext;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ESVersion;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
@@ -37,7 +38,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
 
-public class MockedESContext extends ESContext {
+public class MockedESContext extends AbstractESContext {
 
   public static final ESContext INSTANCE = new MockedESContext();
 
