@@ -21,11 +21,11 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.plugin.readonlyrest.ESContext;
+import org.elasticsearch.plugin.readonlyrest.AbstractESContext;
 import org.elasticsearch.plugin.readonlyrest.ESVersion;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
-public class ESContextImpl extends ESContext {
+public class ESContextImpl extends AbstractESContext {
 
   public static LoggerShim mkLoggerShim(Logger l) {
     return new LoggerShim() {

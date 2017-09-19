@@ -16,37 +16,15 @@
  */
 package org.elasticsearch.plugin.readonlyrest;
 
-import org.elasticsearch.plugin.readonlyrest.httpclient.ApacheHttpCoreClient;
 import org.elasticsearch.plugin.readonlyrest.httpclient.HttpClient;
 
-import java.util.HashMap;
+public interface ESContext {
 
-import static org.elasticsearch.plugin.readonlyrest.Constants.CACHE_WATERMARK;
+  LoggerShim logger(Class<?> clazz);
 
-public abstract class ESContext {
-  private HashMap<Class<?>, LoggerShim> loggerCache = new HashMap<>(128);
+  RuntimeException rorException(String message);
 
-  public LoggerShim logger(Class<?> clazz) {
-    LoggerShim shim = loggerCache.get(clazz);
-    if (shim != null) {
-      return shim;
-    }
-    shim = mkLogger(clazz);
-    if (loggerCache.size() > CACHE_WATERMARK) {
-      shim.error("Possible logger cache leak, we hit the watermark of " +
-                   CACHE_WATERMARK + ", now cache size="+ loggerCache.size());
-    }
-    loggerCache.put(clazz, shim);
-    return shim;
-  }
+  HttpClient mkHttpClient();
 
-  protected abstract LoggerShim mkLogger(Class<?> clazz);
-
-  public abstract RuntimeException rorException(String message);
-
-  public HttpClient mkHttpClient() {
-    return new ApacheHttpCoreClient(this);
-  }
-
-  public abstract ESVersion getVersion();
+  ESVersion getVersion();
 }
