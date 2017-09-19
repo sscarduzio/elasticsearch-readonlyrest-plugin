@@ -196,11 +196,12 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (involvesIndices()) {
       String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
-      IndicesOptions opts = IndicesOptions.strictExpand();
 
+      IndicesOptions opts = IndicesOptions.strictExpand();
       if (actionRequest instanceof IndicesRequest) {
         opts = ((IndicesRequest) actionRequest).indicesOptions();
       }
+
       String[] concreteIdxNames = {};
       try {
         concreteIdxNames = indexResolver.concreteIndexNames(clusterService.state(), opts, ixs);
