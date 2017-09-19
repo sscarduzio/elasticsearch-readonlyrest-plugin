@@ -3,18 +3,21 @@ http.type: ssl_netty4
 
 readonlyrest:
 
-    ssl:
-      enable: true
-      keystore_file: "plugins/readonlyrest/keystore.jks"
-      keystore_pass: readonlyrest
-      key_pass: readonlyrest
-
     # IMPORTANT FOR LOGIN/LOGOUT TO WORK
     prompt_for_basic_auth: false
 
     audit_collector: true
 
+    ssl:
+      keystore_file: "plugins/readonlyrest/keystore.jks"
+      keystore_pass: readonlyrest
+      key_pass: readonlyrest
+
     access_control_rules:
+
+    # MACHINES ##################
+    - name: "::Kafka::"
+      auth_key: kafka:kafka123
 
     - name: "::LOGSTASH::"
       auth_key: logstash:logstash
@@ -25,24 +28,37 @@ readonlyrest:
       auth_key: kibana:kibana
       verbosity: error
 
-    - name: "::RO::"
-      auth_key: ro:dev
-      kibana_access: ro
-      indices: [ ".kibana", ".kibana-devnull", "logstash-*"]
-      kibana_hide_apps: ["readonlyrest_kbn", "timelion", "kibana:dev_tools", "kibana:management"]
 
-    - name: "::RW::"
-      auth_key: rw:dev
+    # GROUPS ####################
+
+    - name: "::PERSONAL_GRP::"
+      groups: ["Personal"]
       kibana_access: rw
-      indices: [".kibana", ".kibana-devnull", "logstash-*"]
-      kibana_hide_apps: ["readonlyrest_kbn", "timelion", "kibana:dev_tools", "kibana:management"]
+      kibana_hide_apps: ["readonlyrest_kbn", "timelion"]
       kibana_index: ".kibana_@{user}"
 
-    - name: "::ADMIN::"
-      auth_key: admin:dev
-      # KIBANA ADMIN ACCESS NEEDED TO EDIT SECURITY SETTINGS IN ROR KIBANA APP!
+    - name: "::ADMIN_GRP::"
+      groups: ["ROR (admin)"]
       kibana_access: admin
 
-    - name: "::WEBSITE SEARCH BOX::"
-      indices: ["public"]
-      actions: ["indices:data/read/*"]
+    - name: "::Infosec::"
+      groups: ["Infosec RW"]
+      kibana_access: rw
+      kibana_hide_apps: ["readonlyrest_kbn", "timelion"]
+      kibana_index: ".kibana_infosec"
+
+    - name: "::Infosec::"
+      groups: ["Infosec RO"]
+      kibana_access: ro
+      kibana_hide_apps: ["readonlyrest_kbn", "timelion"]
+      kibana_index: ".kibana_infosec"
+
+    # USERS TO GROUPS ############
+    users:
+    - username: admin
+      auth_key: admin:dev
+      groups: ["ROR (admin)", "Infosec"]
+
+    - username: simone
+      auth_key: simone:dev
+      groups: ["ROR (admin)", "Personal", "Infosec RW", "Infosec RO"]
