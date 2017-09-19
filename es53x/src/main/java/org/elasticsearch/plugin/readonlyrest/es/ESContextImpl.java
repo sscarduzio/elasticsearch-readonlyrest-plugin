@@ -25,7 +25,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.ESVersion;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 
-public class ESContextImpl implements ESContext {
+public class ESContextImpl extends ESContext {
 
   public static LoggerShim mkLoggerShim(Logger l) {
     return new LoggerShim() {
