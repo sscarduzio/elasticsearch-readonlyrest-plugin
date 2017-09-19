@@ -37,12 +37,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
 
-public class MockedESContext implements ESContext {
+public class MockedESContext extends ESContext {
 
   public static final ESContext INSTANCE = new MockedESContext();
 
   @Override
-  public LoggerShim logger(Class<?> clazz) {
+  public LoggerShim mkLogger(Class<?> clazz) {
     Logger l = LogManager.getLogger(clazz.getSimpleName());
     return new LoggerShim() {
 
