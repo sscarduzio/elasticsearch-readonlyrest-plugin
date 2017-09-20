@@ -130,11 +130,7 @@ public class RCTransactionalIndices {
           BulkRequest cir = (BulkRequest) ar;
 
           for (DocWriteRequest<?> ir : cir.requests()) {
-            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, es);
-            if (docIndices.length == 0) {
-              docIndices = extractStringArrayFromPrivateMethod("index", ir, es);
-            }
-            indices = ArrayUtils.concat(indices, docIndices, String.class);
+            indices = ArrayUtils.concat(indices, ir.indices(), String.class);
           }
         }
         else if (ar instanceof IndexRequest) {

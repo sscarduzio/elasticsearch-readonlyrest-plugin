@@ -33,6 +33,7 @@ import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
+import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
@@ -127,9 +128,21 @@ public class RCTransactionalIndices {
           BulkRequest cir = (BulkRequest) ar;
 
           for (ActionRequest ir : cir.requests()) {
-            String[] docIndices = extractStringArrayFromPrivateMethod("indices", ir, es);
-            if (docIndices.length == 0) {
-              docIndices = extractStringArrayFromPrivateMethod("index", ir, es);
+            String[] docIndices;
+            if (ir instanceof IndexRequest) {
+              docIndices = ((IndexRequest) ir).indices();
+            }
+            else if (ir instanceof UpdateRequest) {
+              docIndices = ((UpdateRequest) ir).indices();
+            }
+            else if (ir instanceof DeleteRequest) {
+              docIndices = ((DeleteRequest) ir).indices();
+            }
+            else {
+              docIndices = extractStringArrayFromPrivateMethod("indices", ir, es);
+              if (docIndices.length == 0) {
+                docIndices = extractStringArrayFromPrivateMethod("index", ir, es);
+              }
             }
             indices = ArrayUtils.concat(indices, docIndices, String.class);
           }
