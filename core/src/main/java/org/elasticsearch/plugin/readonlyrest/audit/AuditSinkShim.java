@@ -38,10 +38,10 @@ public abstract class AuditSinkShim {
   public abstract Boolean isAuditCollectorEnabled();
 
   public void log(ResponseContext res, LoggerShim logger) {
-      if(res == null){
-        logger.error("trying to log with null response context", new Throwable());
-      }
-      doLog(res, logger);
+    if (res == null) {
+      logger.error("trying to log with null response context", new Throwable());
+    }
+    doLog(res, logger);
   }
 
   private void doLog(ResponseContext res, LoggerShim logger) {
@@ -55,7 +55,6 @@ public abstract class AuditSinkShim {
     }
     String color;
     switch (fState) {
-
       case FORBIDDEN:
         color = Constants.ANSI_PURPLE;
         break;
@@ -71,9 +70,18 @@ public abstract class AuditSinkShim {
       default:
         color = Constants.ANSI_WHITE;
     }
-    logger.info(color + fState.name() + " by " +
-                  (res.getResult().isMatch() ? ("'" + res.getResult().toString() + "'") : "default") +
-                  " req=" + res.getRequestContext() + " " + Constants.ANSI_RESET);
+    StringBuilder sb = new StringBuilder();
+    sb
+      .append(color)
+      .append(fState.name())
+      .append(" by ")
+      .append(res.getResult().isMatch() ? ("'" + res.getResult().toString() + "'") : "default")
+      .append(" req=")
+      .append(res.getRequestContext())
+      .append(" ")
+      .append(Constants.ANSI_RESET);
+
+    logger.info(sb.toString());
 
     if (!isAuditCollectorEnabled()) {
       return;
