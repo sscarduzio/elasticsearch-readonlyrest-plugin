@@ -35,7 +35,6 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
