@@ -56,7 +56,7 @@ public class MaxBodyLengthRuleTests {
   }
 
   private RuleExitResult match(Integer configured, String found, RequestContext rc) {
-    when(rc.getContent()).thenReturn(found);
+    when(rc.getContentLength()).thenReturn(found.length());
 
     SyncRule r = new MaxBodyLengthSyncRule(MaxBodyLengthRuleSettings.from(configured));
 
