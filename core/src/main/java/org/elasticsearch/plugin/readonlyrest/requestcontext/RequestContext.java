@@ -167,6 +167,8 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
 
   abstract public String getContent();
 
+  abstract public Integer getContentLength();
+
   abstract public HttpMethod getMethod();
 
   abstract public String getUri();
@@ -252,10 +254,17 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
       theIndices = Joiner.on(",").skipNulls().join(getTransientIndices());
     }
 
-    String content = getContent();
-    if (Strings.isNullOrEmpty(content)) {
+    String content;
+    if (getContentLength() == 0) {
       content = "<N/A>";
     }
+    else if(isDebug()){
+      content = getContent();
+    }
+    else {
+      content = "<OMITTED, LENGTH=" + getContentLength() + ">";
+    }
+
     String theHeaders;
     if (!isDebug()) {
       theHeaders = Joiner.on(",").join(getHeaders().keySet());
@@ -292,7 +301,7 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
       ", IDX:" + theIndices +
       ", MET:" + getMethod() +
       ", PTH:" + getUri() +
-      ", CNT:" + (isDebug() ? content : "<OMITTED, LENGTH=" + getContent().length() + ">") +
+      ", CNT:" + content +
       ", HDR:" + theHeaders +
       ", HIS:" + hist +
       " }";

@@ -77,8 +77,8 @@ public class SerializationTool {
 
     RequestContext req = rc.getRequestContext();
 
-    map.put("content_len", req.getContent() == null ? 0 : req.getContent().length());
-    map.put("content_len_kb", req.getContent() == null ? 0 : req.getContent().length() / 1024);
+    map.put("content_len", req.getContentLength());
+    map.put("content_len_kb", req.getContentLength() / 1024);
     map.put("type", req.getType());
     map.put("origin", req.getRemoteAddress());
     map.put("task_id", req.getTaskId());

@@ -37,7 +37,7 @@ public class MaxBodyLengthSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return (rc.getContent().length() > maxBodyLength) ? NO_MATCH : MATCH;
+    return (rc.getContentLength() > maxBodyLength) ? NO_MATCH : MATCH;
   }
 
   @Override

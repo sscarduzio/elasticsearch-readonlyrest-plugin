@@ -30,6 +30,7 @@ import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
@@ -70,6 +71,7 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   private final IndexNameExpressionResolver indexResolver;
   private final ThreadPool threadPool;
   private String content = null;
+  private Integer contentLength;
 
   public RequestContextImpl(RestRequest request, String action, ActionRequest actionRequest,
                             ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
@@ -155,6 +157,20 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
       }
     }
     return content;
+  }
+
+  @Override
+  public Integer getContentLength() {
+    if (contentLength == null) {
+      BytesReference cnt = request.content();
+      if (cnt == null) {
+        contentLength = 0;
+      }
+      else {
+        contentLength = request.content().length();
+      }
+    }
+    return contentLength;
   }
 
   @Override
