@@ -38,7 +38,6 @@ import java.util.function.Consumer;
 public abstract class ReloadableSettings {
 
   public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
-  private static final String SETTINGS_FILENAME = "readonlyrest.yml";
   private final AtomicReference<RorSettings> rorSettings = new AtomicReference<>();
   private final SettingsManager settingsManager;
   private final LoggerShim logger;
@@ -47,7 +46,7 @@ public abstract class ReloadableSettings {
 
   public ReloadableSettings(SettingsManager settingsManager) throws IOException {
 
-    this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.getCurrentSettings(SETTINGS_FILENAME))));
+    this.rorSettings.set(RorSettings.from(new RawSettings(settingsManager.getSettings())));
 
     this.settingsManager = settingsManager;
     this.logger = settingsManager.getContext().logger(getClass());
@@ -109,7 +108,7 @@ public abstract class ReloadableSettings {
                                                      RawSettings raw = new RawSettings(fromIndex);
                                                      RorSettings ror = RorSettings.from(raw);
                                                      this.rorSettings.set(ror);
-                                                     logger.info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding elasticsearch.yml");
+                                                     logger.info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding local YAML file");
                                                      notifyListeners();
                                                      return Optional.<Throwable>empty();
                                                    }

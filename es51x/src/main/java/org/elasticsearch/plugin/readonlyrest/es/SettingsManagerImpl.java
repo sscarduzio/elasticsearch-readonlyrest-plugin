@@ -29,9 +29,7 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.configuration.ReloadableSettings;
 import org.elasticsearch.plugin.readonlyrest.configuration.SettingsManager;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.Map;
 
 /**
@@ -50,22 +48,16 @@ public class SettingsManagerImpl implements SettingsManager {
     this.client = client;
   }
 
-  public Map<String, ?> getCurrentSettings(String fileName) {
-    String filePath = settings.get("path.conf", "conf" + File.separator);
-    if (!filePath.endsWith(File.separator)) {
-      filePath += File.separator;
-    }
-    filePath += fileName;
-    try {
-      return Settings.builder().loadFromPath(Paths.get(filePath)).build().getAsStructuredMap();
-    } catch (Throwable t) {
-      getContext().logger(getClass()).info(
-        "Could not find settings in "
-          + filePath + ", falling back to elasticsearch.yml (" + t.getMessage() + ")");
-      return settings.getAsStructuredMap();
-    }
+  @Override
+  public Map<String, ?> getSettingsFromES() {
+    return settings.getAsStructuredMap();
   }
-  
+
+  @Override
+  public Map<String, ?> mkSettingsFromYAMLString(String yamlString) {
+    return Settings.builder().loadFromSource(yamlString).build().getAsStructuredMap();
+  }
+
   public Map<String, ?> reloadSettingsFromIndex() {
     GetResponse resp = null;
     try {
