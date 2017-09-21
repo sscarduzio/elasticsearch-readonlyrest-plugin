@@ -103,7 +103,9 @@ public class DefinitionsFactory implements LdapClientFactory,
             ),
             new UserGroupsSearchFilterConfig(
               settings.getSearchGroupBaseDn(),
-              settings.getUniqueMemberAttribute()
+              settings.getUniqueMemberAttribute(),
+              settings.getGroupSearchFilter(),
+              settings.getGroupNameAttribute()
             ),
             settings.getSearchingUserSettings().map(s ->
                                                       new SearchingUserConfig(s.getDn(), s.getPassword())

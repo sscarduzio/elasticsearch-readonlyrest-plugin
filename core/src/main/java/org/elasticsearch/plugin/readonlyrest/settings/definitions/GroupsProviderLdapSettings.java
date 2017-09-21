@@ -22,20 +22,28 @@ public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
 
   public static final String SEARCH_GROUPS = "search_groups_base_DN";
   private static final String UNIQUE_MEMBER = "unique_member_attribute";
-
-  private static final String DEFAULT_UNIQUE_MEMBER_ATTRIBUTE = "uniqueMember";
+  private static final String GROUP_SEARCH_FILTER = "group_search_filter";
+  private static final String GROUP_NAME_ATTRIBUTE = "group_name_attribute";
 
   private final String searchGroupBaseDn;
   private final String uniqueMemberAttribute;
+  private final String groupSearchFilter;
+  private final String groupNameAttribute;
 
   public GroupsProviderLdapSettings(RawSettings settings) {
     super(settings);
     this.searchGroupBaseDn = settings.stringReq(SEARCH_GROUPS);
-    this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse(DEFAULT_UNIQUE_MEMBER_ATTRIBUTE);
+    this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse("uniqueMember");
+    this.groupSearchFilter = settings.stringOpt(GROUP_SEARCH_FILTER).orElse("cn=*");
+    this.groupNameAttribute = settings.stringOpt(GROUP_SEARCH_FILTER).orElse("cn");
   }
 
   public static boolean canBeCreated(RawSettings settings) {
     return settings.stringOpt(SEARCH_GROUPS).isPresent();
+  }
+
+  public String getGroupNameAttribute() {
+    return groupNameAttribute;
   }
 
   public String getSearchGroupBaseDn() {
@@ -44,5 +52,9 @@ public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
 
   public String getUniqueMemberAttribute() {
     return uniqueMemberAttribute;
+  }
+
+  public String getGroupSearchFilter() {
+    return groupSearchFilter;
   }
 }

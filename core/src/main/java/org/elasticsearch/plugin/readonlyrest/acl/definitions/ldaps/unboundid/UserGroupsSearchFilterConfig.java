@@ -20,10 +20,23 @@ public class UserGroupsSearchFilterConfig {
 
   private final String searchGroupBaseDN;
   private final String uniqueMemberAttribute;
+  private final String groupSearchFilter;
+  private final String groupNameAttribute;
 
-  public UserGroupsSearchFilterConfig(String searchGroupBaseDN, String uniqueMemberAttribute) {
+  public UserGroupsSearchFilterConfig(String searchGroupBaseDN, String uniqueMemberAttribute,
+                                      String groupSearchFilter, String groupNameAttribute) {
     this.searchGroupBaseDN = searchGroupBaseDN;
     this.uniqueMemberAttribute = uniqueMemberAttribute;
+    this.groupSearchFilter = groupSearchFilter;
+    this.groupNameAttribute = groupNameAttribute;
+  }
+
+  public String getGroupNameAttribute() {
+    return groupNameAttribute;
+  }
+
+  public String getGroupSearchFilter() {
+    return groupSearchFilter;
   }
 
   public String getSearchGroupBaseDN() {
@@ -36,10 +49,10 @@ public class UserGroupsSearchFilterConfig {
 
   public static class Builder {
 
-    public static String DEFAULT_UNIQUE_MEMBER_ATTRIBUTE = "uniqueMember";
-
     private final String searchGroupBaseDN;
-    private String uniqueMemberAttribute = DEFAULT_UNIQUE_MEMBER_ATTRIBUTE;
+    private String uniqueMemberAttribute = "uniqueMember";
+    private String groupSearchFilter = "cn=*";
+    private String groupNameAttribute;
 
     public Builder(String searchGroupBaseDN) {
       this.searchGroupBaseDN = searchGroupBaseDN;
@@ -50,8 +63,18 @@ public class UserGroupsSearchFilterConfig {
       return this;
     }
 
+    public Builder setGroupSearchFilter(String groupSearchFilter) {
+      this.groupSearchFilter = groupSearchFilter;
+      return this;
+    }
+
+    public Builder setGroupNameAttribute(String groupNameAttribute) {
+      this.groupNameAttribute = groupNameAttribute;
+      return this;
+    }
+
     public UserGroupsSearchFilterConfig build() {
-      return new UserGroupsSearchFilterConfig(searchGroupBaseDN, uniqueMemberAttribute);
+      return new UserGroupsSearchFilterConfig(searchGroupBaseDN, uniqueMemberAttribute, groupSearchFilter, groupNameAttribute);
     }
   }
 }
