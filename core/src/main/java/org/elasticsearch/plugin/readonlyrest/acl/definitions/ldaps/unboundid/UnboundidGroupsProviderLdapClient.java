@@ -75,7 +75,7 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
             userGroupsSearchFilterConfig.getSearchGroupBaseDN(),
             SearchScope.SUB,
             String.format(
-              "(&(%s)(%s=%s))",
+              "(&%s(%s=%s))",
               userGroupsSearchFilterConfig.getGroupSearchFilter(),
               userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
               Filter.encodeValue(user.getDN())
