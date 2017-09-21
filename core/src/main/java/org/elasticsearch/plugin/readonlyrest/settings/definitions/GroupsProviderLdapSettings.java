@@ -35,7 +35,7 @@ public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
     this.searchGroupBaseDn = settings.stringReq(SEARCH_GROUPS);
     this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse("uniqueMember");
     this.groupSearchFilter = settings.stringOpt(GROUP_SEARCH_FILTER).orElse("cn=*");
-    this.groupNameAttribute = settings.stringOpt(GROUP_SEARCH_FILTER).orElse("cn");
+    this.groupNameAttribute = settings.stringOpt(GROUP_NAME_ATTRIBUTE).orElse("cn");
   }
 
   public static boolean canBeCreated(RawSettings settings) {
