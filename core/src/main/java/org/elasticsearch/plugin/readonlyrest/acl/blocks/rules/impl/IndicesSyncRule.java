@@ -22,10 +22,10 @@ import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.RuleExitResult;
 import org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.SyncRule;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.IndicesRequestContext;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
+import org.elasticsearch.plugin.readonlyrest.utils.MatcherWithWildcards;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -40,7 +40,6 @@ public class IndicesSyncRule extends SyncRule {
   private final IndicesRuleSettings settings;
   private final LoggerShim logger;
   private final MatcherWithWildcards matcherNoVar;
-
   public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = s;

@@ -15,10 +15,9 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package org.elasticsearch.plugin.readonlyrest.acl.blocks.rules.impl;
+package org.elasticsearch.plugin.readonlyrest.utils;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
 import org.junit.Test;
 
 import static junit.framework.TestCase.assertFalse;

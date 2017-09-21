@@ -18,7 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.requestcontext;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.plugin.readonlyrest.acl.domain.MatcherWithWildcards;
+import org.elasticsearch.plugin.readonlyrest.utils.MatcherWithWildcards;
 
 import java.util.regex.Pattern;
 
