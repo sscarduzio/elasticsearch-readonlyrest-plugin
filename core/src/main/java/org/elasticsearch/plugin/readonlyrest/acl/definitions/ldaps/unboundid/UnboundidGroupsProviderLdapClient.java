@@ -67,6 +67,17 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
   @Override
   public CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user) {
     try {
+
+      // Compose the search string
+      String searchString = String.format(
+        "(&%s(%s=%s))",
+        userGroupsSearchFilterConfig.getGroupSearchFilter(),
+        userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
+        Filter.encodeValue(user.getDN())
+      );
+      logger.debug("LDAP search string: " + searchString + "  |  groupNameAttr: " + userGroupsSearchFilterConfig.getGroupNameAttribute());
+
+      // Request formulation
       CompletableFuture<List<SearchResultEntry>> searchGroups = new CompletableFuture<>();
       connection.getConnectionPool().processRequestsAsync(
         Lists.newArrayList(
@@ -74,19 +85,16 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
             new UnboundidSearchResultListener(searchGroups),
             userGroupsSearchFilterConfig.getSearchGroupBaseDN(),
             SearchScope.SUB,
-            String.format(
-              "(&(%s)(%s=%s))",
-              userGroupsSearchFilterConfig.getGroupSearchFilter(),
-              userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
-              Filter.encodeValue(user.getDN())
-            )
-           // , userGroupsSearchFilterConfig.getGroupNameAttribute()
+            searchString,
+            userGroupsSearchFilterConfig.getGroupNameAttribute()
           )),
         requestTimeout.toMillis()
       );
+
+      // Response adaptation
       return searchGroups
         .thenApply(groupSearchResult -> groupSearchResult.stream()
-          .map(it -> Optional.ofNullable(it.getAttributeValue("cn")))
+          .map(it -> Optional.ofNullable(it.getAttributeValue(userGroupsSearchFilterConfig.getGroupNameAttribute())))
           .filter(Optional::isPresent)
           .map(Optional::get)
           .map(LdapGroup::new)

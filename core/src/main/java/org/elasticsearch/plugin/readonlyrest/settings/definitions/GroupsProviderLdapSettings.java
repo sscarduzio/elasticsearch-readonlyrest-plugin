@@ -20,11 +20,13 @@ import org.elasticsearch.plugin.readonlyrest.settings.RawSettings;
 
 public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
 
+  public static final String UNIQUE_MEMBER_DEFAULT = "uniqueMember";
+  public static final String GROUP_SEARCH_FILTER_DEFAULT = "(cn=*)";
+  public static final String GROUP_NAME_ATTRIBUTE_DEFAULT = "cn";
   public static final String SEARCH_GROUPS = "search_groups_base_DN";
   private static final String UNIQUE_MEMBER = "unique_member_attribute";
   private static final String GROUP_SEARCH_FILTER = "group_search_filter";
   private static final String GROUP_NAME_ATTRIBUTE = "group_name_attribute";
-
   private final String searchGroupBaseDn;
   private final String uniqueMemberAttribute;
   private final String groupSearchFilter;
@@ -33,9 +35,9 @@ public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
   public GroupsProviderLdapSettings(RawSettings settings) {
     super(settings);
     this.searchGroupBaseDn = settings.stringReq(SEARCH_GROUPS);
-    this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse("uniqueMember");
-    this.groupSearchFilter = settings.stringOpt(GROUP_SEARCH_FILTER).orElse("cn=*");
-    this.groupNameAttribute = settings.stringOpt(GROUP_NAME_ATTRIBUTE).orElse("cn");
+    this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse(UNIQUE_MEMBER_DEFAULT);
+    this.groupSearchFilter = settings.stringOpt(GROUP_SEARCH_FILTER).orElse(GROUP_SEARCH_FILTER_DEFAULT);
+    this.groupNameAttribute = settings.stringOpt(GROUP_NAME_ATTRIBUTE).orElse(GROUP_NAME_ATTRIBUTE_DEFAULT);
   }
 
   public static boolean canBeCreated(RawSettings settings) {

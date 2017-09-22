@@ -16,6 +16,8 @@
  */
 package org.elasticsearch.plugin.readonlyrest.acl.definitions.ldaps.unboundid;
 
+import org.elasticsearch.plugin.readonlyrest.settings.definitions.GroupsProviderLdapSettings;
+
 public class UserGroupsSearchFilterConfig {
 
   private final String searchGroupBaseDN;
@@ -50,9 +52,9 @@ public class UserGroupsSearchFilterConfig {
   public static class Builder {
 
     private final String searchGroupBaseDN;
-    private String uniqueMemberAttribute = "uniqueMember";
-    private String groupSearchFilter = "cn=*";
-    private String groupNameAttribute;
+    private String uniqueMemberAttribute = GroupsProviderLdapSettings.UNIQUE_MEMBER_DEFAULT;
+    private String groupSearchFilter = GroupsProviderLdapSettings.GROUP_SEARCH_FILTER_DEFAULT;
+    private String groupNameAttribute = GroupsProviderLdapSettings.GROUP_NAME_ATTRIBUTE_DEFAULT;
 
     public Builder(String searchGroupBaseDN) {
       this.searchGroupBaseDN = searchGroupBaseDN;
