@@ -70,8 +70,9 @@ public class ACL {
             Block block = new Block(blockSettings, rulesFactory, context);
             logger.info("ADDING BLOCK:\t" + block.toString());
             return block;
-          }catch(Throwable t){
-            logger.error("Impossible to add block to ACL: " + blockSettings.getName(), t);
+          } catch (Throwable t) {
+            logger.error("Impossible to add block to ACL: " + blockSettings.getName() +
+                            " Reason: [" + t.getClass().getSimpleName() + "] "+ t.getMessage(), t);
             return null;
           }
         })
