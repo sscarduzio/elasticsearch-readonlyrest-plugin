@@ -24,7 +24,7 @@ In other words... no more proxies! Yay Ponies!
 
 ### 1. Install the plugin 
 
-[Download](https://readonlyrest.com) the binary release for your Elasticsearch version from the official website.
+[Download](https://readonlyrest.com/download.html) the binary release for your Elasticsearch version from the official website.
 
 
 ### 2. Configuration
