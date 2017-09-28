@@ -146,6 +146,11 @@ public class RequestContextImpl extends RequestContext implements IndicesRequest
   }
 
   @Override
+  public boolean isComposite() {
+    return actionRequest instanceof CompositeIndicesRequest;
+  }
+
+  @Override
   public String getRemoteAddress() {
     String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
     // Make sure we recognize localhost even when IPV6 is involved

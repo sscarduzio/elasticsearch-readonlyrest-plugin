@@ -46,4 +46,5 @@ public interface IndicesRequestContext extends Value.VariableResolver {
 
   void delegateTo(Delayed ambassador);
 
+  boolean isComposite();
 }

@@ -27,7 +27,6 @@ import org.elasticsearch.plugin.readonlyrest.requestcontext.RequestContext;
 import org.elasticsearch.plugin.readonlyrest.settings.rules.IndicesRuleSettings;
 import org.elasticsearch.plugin.readonlyrest.utils.MatcherWithWildcards;
 
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -40,10 +39,11 @@ public class IndicesSyncRule extends SyncRule {
   private final IndicesRuleSettings settings;
   private final LoggerShim logger;
   private final MatcherWithWildcards matcherNoVar;
+
   public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = s;
-    if(!s.hasVariables()){
+    if (!s.hasVariables()) {
       this.matcherNoVar = new MatcherWithWildcards(s.getIndicesUnwrapped());
     }
     else {
@@ -132,13 +132,25 @@ public class IndicesSyncRule extends SyncRule {
       }
 
       logger.debug("Stage 2.1");
-      // 2.1 Detect non-wildcard requested indices that do not exist and return 404 (compatibility with vanilla ES)
+      // 2.1 Detect at least 1 non-wildcard requested indices that do not exist, ES will naturally return 404, our job is done.
+      Set<String> nonExistent = Sets.newHashSet();
       Set<String> real = src.getAllIndicesAndAliases();
       for (final String idx : indices) {
         if (!idx.contains("*") && !real.contains(idx)) {
-          Set<String> nonExistingIndex = new HashSet<>(1);
-          nonExistingIndex.add(idx);
-          src.setIndices(nonExistingIndex);
+          nonExistent.add(idx);
+        }
+      }
+      if (!nonExistent.isEmpty()) {
+        if (!src.isComposite()) {
+          // This goes to 404 naturally, so let it through
+          return true;
+        }
+
+        // Continue evaluation ignoring non-existent indices
+        indices.removeAll(nonExistent);
+
+        // This is going to be a natural 200 with zero results, let through safely
+        if (indices.isEmpty()) {
           return true;
         }
       }

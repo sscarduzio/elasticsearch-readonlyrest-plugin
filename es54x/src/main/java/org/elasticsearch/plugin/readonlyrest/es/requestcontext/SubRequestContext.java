@@ -18,6 +18,7 @@
 package org.elasticsearch.plugin.readonlyrest.es.requestcontext;
 
 import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -145,6 +146,11 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
       throw context.rorException(
         "Cannot detect if read or write request " + originalSubRequest.getClass().getSimpleName());
     }
+  }
+
+  @Override
+  public boolean isComposite() {
+    return originalSubRequest instanceof CompositeIndicesRequest;
   }
 
   @Override
