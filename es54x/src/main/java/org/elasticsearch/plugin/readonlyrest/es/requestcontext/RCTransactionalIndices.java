@@ -36,6 +36,7 @@ import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
+import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+import static org.elasticsearch.plugin.readonlyrest.utils.ReflecUtils.invokeMethodCached;
 
 /**
  * Created by sscarduzio on 14/04/2017.
@@ -140,6 +142,16 @@ public class RCTransactionalIndices {
         else if (ar instanceof DeleteRequest) {
           DeleteRequest ir = (DeleteRequest) ar;
           indices = ir.indices();
+        }
+        else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
+          // Using reflection otherwise need to create another sub-project
+          try {
+            SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(),"getSearchRequest");
+            IndexRequest ir = (IndexRequest)  invokeMethodCached(ar, ar.getClass(),"getDestination");
+            indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
         }
         else if (ar instanceof CompositeIndicesRequest) {
           logger.error(
