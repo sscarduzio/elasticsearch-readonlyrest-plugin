@@ -36,7 +36,6 @@ import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
-import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.plugin.readonlyrest.ESContext;
 import org.elasticsearch.plugin.readonlyrest.LoggerShim;
 import org.elasticsearch.plugin.readonlyrest.requestcontext.Transactional;
@@ -146,8 +145,8 @@ public class RCTransactionalIndices {
         else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
           // Using reflection otherwise need to create another sub-project
           try {
-            SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(),"getSearchRequest");
-            IndexRequest ir = (IndexRequest)  invokeMethodCached(ar, ar.getClass(),"getDestination");
+            SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(), "getSearchRequest");
+            IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
             indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
           } catch (Exception e) {
             e.printStackTrace();
