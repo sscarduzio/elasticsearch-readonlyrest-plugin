@@ -47,6 +47,7 @@ apply plugin: 'maven'
 apply plugin: 'license'
 
 dependencies {
+    compile project(':commons')
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.6.2'
     compile 'log4j:log4j:1.2.17'
 
