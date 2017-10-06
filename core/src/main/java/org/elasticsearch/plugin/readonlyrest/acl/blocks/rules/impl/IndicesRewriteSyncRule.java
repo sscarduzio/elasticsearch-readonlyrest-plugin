@@ -88,7 +88,7 @@ public class IndicesRewriteSyncRule extends SyncRule {
     if (rc.isReadRequest()) {
       // Translate all the wildcards
       oldIndices.clear();
-      oldIndices.addAll(rc.getExpandedIndices());
+      oldIndices.addAll(rc.getExpandedIndices(rc.getIndices()));
 
       // If asked for non-existent indices, let's show them to the rewriter
       Set<String> available = rc.getAllIndicesAndAliases();

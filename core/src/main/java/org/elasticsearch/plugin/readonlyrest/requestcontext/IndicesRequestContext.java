@@ -32,7 +32,7 @@ public interface IndicesRequestContext extends Value.VariableResolver {
 
   Set<String> getAllIndicesAndAliases();
 
-  Set<String> getExpandedIndices();
+  Set<String> getExpandedIndices(Set<String> indices);
 
   Set<String> getIndices();
 

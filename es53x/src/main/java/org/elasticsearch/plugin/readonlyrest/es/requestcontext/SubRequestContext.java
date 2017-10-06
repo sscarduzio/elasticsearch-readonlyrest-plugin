@@ -119,8 +119,8 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
     return true;
   }
 
-  public Set<String> getExpandedIndices() {
-    return originalRC.getExpandedIndices(indices.getInitial());
+  public Set<String> getExpandedIndices(Set<String> indices) {
+    return originalRC.getExpandedIndices(indices);
   }
 
   @Override
