@@ -77,8 +77,9 @@ public class IndicesRuleTests {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.isReadRequest()).thenReturn(true);
     when(rc.involvesIndices()).thenReturn(true);
+    when(rc.isComposite()).thenReturn(false);
     when(rc.getLoggedInUser()).thenReturn(Optional.empty());
-    when(rc.getExpandedIndices()).thenReturn(Sets.newHashSet(singletonList("another_index")));
+    when(rc.getExpandedIndices(Sets.newHashSet( "another_index"))).thenReturn(Sets.newHashSet(singletonList("another_index")));
     when(rc.getAllIndicesAndAliases())
       .thenReturn(Sets.newHashSet(Lists.newArrayList("perfmon-bfarm", "another_index")));
 
