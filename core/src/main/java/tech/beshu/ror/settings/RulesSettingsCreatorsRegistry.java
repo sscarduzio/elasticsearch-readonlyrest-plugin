@@ -34,7 +34,6 @@ import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
-import tech.beshu.ror.settings.rules.IndicesRewriteRuleSettings;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
@@ -88,7 +87,6 @@ public class RulesSettingsCreatorsRegistry {
       externalAuthenticationSettingsCreator(blockSettings, externalAuthenticationServiceSettingsCollection)
     );
     creators.put(IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
-    creators.put(IndicesRewriteRuleSettings.ATTRIBUTE_NAME, indicesRewriteSettingsCreator(blockSettings));
     creators.put(MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
     creators.put(ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
@@ -177,12 +175,6 @@ public class RulesSettingsCreatorsRegistry {
     );
   }
 
-  @SuppressWarnings("unchecked")
-  private Supplier<RuleSettings> indicesRewriteSettingsCreator(RawSettings blockSettings) {
-    return () -> IndicesRewriteRuleSettings.from(
-      (List<String>) blockSettings.notEmptyListReq(IndicesRewriteRuleSettings.ATTRIBUTE_NAME)
-    );
-  }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> methodsSettingsCreator(RawSettings blockSettings) {

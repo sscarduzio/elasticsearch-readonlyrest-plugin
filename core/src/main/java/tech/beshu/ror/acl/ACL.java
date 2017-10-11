@@ -18,24 +18,30 @@
 package tech.beshu.ror.acl;
 
 import com.google.common.collect.ImmutableList;
-import tech.beshu.ror.AuditSinkCore;
 import tech.beshu.ror.acl.blocks.Block;
 import tech.beshu.ror.acl.blocks.BlockExitResult;
 import tech.beshu.ror.acl.blocks.rules.Rule;
 import tech.beshu.ror.acl.blocks.rules.RulesFactory;
 import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
-import tech.beshu.ror.commons.BasicSettings;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.ResponseContext;
+import tech.beshu.ror.commons.ResponseContext.FinalState;
 import tech.beshu.ror.commons.SecurityPermissionException;
+import tech.beshu.ror.commons.Verbosity;
+import tech.beshu.ror.commons.shims.es.ACLHandler;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.shims.request.RequestInfoShim;
+import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.SerializationTool;
 import tech.beshu.ror.settings.RorSettings;
-import tech.beshu.ror.commons.shims.ACLHandler;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
-import tech.beshu.ror.commons.shims.ResponseContext;
 import tech.beshu.ror.utils.FuturesSequencer;
 
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -46,7 +52,6 @@ import java.util.stream.Collectors;
 public class ACL {
 
   private final LoggerShim logger;
-  private final BasicSettings settings;
   // list because it preserves the insertion order
   private final ImmutableList<Block> blocks;
 
@@ -54,16 +59,16 @@ public class ACL {
 
   private final DefinitionsFactory definitionsFactory;
   private final RorSettings rorSettings;
-  private AuditSinkCore audit;
+  private ESContext context;
+  private final SerializationTool serTool;
 
-  public ACL(BasicSettings settings, ESContext context, AuditSinkCore audit) {
-    this.rorSettings = new RorSettings(settings.getRaw());
-    this.settings = settings;
+  public ACL(ESContext context) {
+    serTool = context.getSettings().isAuditorCollectorEnabled() ? new SerializationTool() : null;
+    this.rorSettings = new RorSettings(context.getSettings().getRaw());
     this.logger = context.logger(getClass());
-
+    this.context = context;
     this.userRuleFactory = new UserRuleFactory(context, this);
     this.definitionsFactory = new DefinitionsFactory(context, this);
-    this.audit = audit;
     final RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, context);
 
     this.blocks = ImmutableList.copyOf(
@@ -104,31 +109,223 @@ public class ACL {
     return false;
   }
 
-  public void check(RequestContext rc, ACLHandler h) {
-    doCheck(rc)
+  private void doLog(ResponseContext res) {
+
+    FinalState fState = res.finalState();
+    boolean skipLog = fState.equals(FinalState.ALLOWED) &&
+      !Verbosity.INFO.equals(res.getVerbosity());
+
+    if (skipLog) {
+      return;
+    }
+
+    String color;
+    switch (fState) {
+      case FORBIDDEN:
+        color = Constants.ANSI_PURPLE;
+        break;
+      case ALLOWED:
+        color = Constants.ANSI_CYAN;
+        break;
+      case ERRORED:
+        color = Constants.ANSI_RED;
+        break;
+      case NOT_FOUND:
+        color = Constants.ANSI_YELLOW;
+        break;
+      default:
+        color = Constants.ANSI_WHITE;
+    }
+    StringBuilder sb = new StringBuilder();
+    sb
+      .append(color)
+      .append(fState.name())
+      .append(" by ")
+      .append(res.getReason())
+      .append(" req=")
+      .append(res.getRequestContext())
+      .append(" ")
+      .append(Constants.ANSI_RESET);
+
+    logger.info(sb.toString());
+
+    // Audit logs in index
+    if (context.getSettings().isAuditorCollectorEnabled()) {
+      context.submit(serTool.mkIndexName(), res.getRequestContext().getId(), serTool.toJson(res));
+    }
+  }
+
+  public void check(RequestInfoShim rInfo, ACLHandler h) {
+    RequestContext rc = mkRequestContext(rInfo);
+
+    // Run the blocks through
+    doCheck(rc, h)
+
+      // Handle different exceptions meanings
       .exceptionally(throwable -> {
         if (h.isNotFound(throwable)) {
           logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
           h.onNotFound(throwable);
-          audit.log(new ResponseContext(ResponseContext.FinalState.NOT_FOUND, rc, throwable, null, "not found", false), logger);
+          doLog(new ResponseContext(FinalState.NOT_FOUND, rc, throwable, null, "not found", false));
 
           return null;
         }
         throwable.printStackTrace();
         h.onErrored(throwable);
-        audit.log(new ResponseContext(ResponseContext.FinalState.ERRORED, rc, throwable, null, "error", false), logger);
+        doLog(new ResponseContext(FinalState.ERRORED, rc, throwable, null, "error", false));
         return null;
       })
+
+      // FINAL stage: either is match or it isn't.
       .thenApply(result -> {
         assert result != null;
 
-        if (result.isMatch() && BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
-          h.onAllow(result);
+        // NO MATCH
+        if (!result.isMatch()) {
+          h.onForbidden();
+          doLog(new ResponseContext(FinalState.FORBIDDEN, rc, null, null, "default", false));
           return null;
         }
-        h.onForbidden();
-        return null;
-      });
+
+        // MATCH AN ALLOW BLOCK
+        if (BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
+          h.onAllow(result);
+          doLog(new ResponseContext(FinalState.ALLOWED, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
+          return null;
+        }
+
+        // MATCH A FORBIDDEN BLOCK
+        else {
+          doLog(new ResponseContext(FinalState.FORBIDDEN, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
+
+          h.onForbidden();
+          return null;
+        }
+      })
+    .exceptionally(th -> {
+      h.onErrored(th);
+      th.printStackTrace();
+      doLog(new ResponseContext(FinalState.ERRORED, rc, th, null, "error", false));
+      return null;
+    });
+  }
+
+  private CompletableFuture<BlockExitResult> doCheck(RequestContext rc, ACLHandler h) {
+    logger.debug("checking request:" + rc.getId());
+    return FuturesSequencer.runInSeqUntilConditionIsUndone(
+      blocks.iterator(),
+      block -> {
+        rc.reset();
+        return block.check(rc);
+      },
+      (block, checkResult) -> {
+        if (checkResult.isMatch()) {
+          boolean isAllowed = checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW);
+          if (isAllowed) {
+            rc.commit();
+          }
+          return true;
+        }
+        return false;
+      },
+      nothing -> BlockExitResult.noMatch()
+
+    );
+  }
+
+  private RequestContext mkRequestContext(RequestInfoShim rInfo) {
+    return new RequestContext("rc", context) {
+      @Override
+      public Set<String> getExpandedIndices(Set<String> i) {
+        return rInfo.getExpandedIndices(i);
+      }
+
+      @Override
+      public Set<String> getAllIndicesAndAliases() {
+        return rInfo.extractAllIndicesAndAliases();
+      }
+
+      @Override
+      protected Boolean extractDoesInvolveIndices() {
+        return rInfo.involvesIndices();
+      }
+
+      @Override
+      protected void commitResponseHeaders(Map<String, String> hmap) {
+        rInfo.writeResponseHeaders(hmap);
+      }
+
+      @Override
+      public String getAction() {
+        return rInfo.extractAction();
+      }
+
+      @Override
+      public String getId() {
+        return rInfo.extractId();
+      }
+
+      @Override
+      public String getContent() {
+        return rInfo.extractContent();
+      }
+
+      @Override
+      public Integer getContentLength() {
+        return rInfo.extractContentLength();
+      }
+
+      @Override
+      public HttpMethod getMethod() {
+        return HttpMethod.fromString(rInfo.extractMethod())
+          .orElseThrow(() -> context.rorException("unrecognised HTTP method " + rInfo.extractMethod()));
+      }
+
+      @Override
+      public String getUri() {
+        return rInfo.extractURI();
+      }
+
+      @Override
+      public String getType() {
+        return rInfo.extractType();
+      }
+
+      @Override
+      public Long getTaskId() {
+        return rInfo.extractTaskId();
+      }
+
+      @Override
+      public String getRemoteAddress() {
+        return rInfo.extractRemoteAddress();
+      }
+
+      @Override
+      protected Map<String, String> extractRequestHeaders() {
+        return rInfo.extractRequestHeaders();
+      }
+
+      @Override
+      public void writeIndices(Set<String> newIndices) {
+        rInfo.writeIndices(newIndices);
+      }
+
+      @Override
+      protected Set<String> extractIndices() {
+        return rInfo.extractIndices();
+      }
+
+      @Override
+      public Boolean extractIsReadRequest() {
+        return rInfo.extractIsReadRequest();
+      }
+
+      @Override
+      protected Boolean extractIsCompositeRequest() {
+        return rInfo.extractIsCompositeRequest();
+      }
+    };
   }
 
   public boolean responseOkHook(RequestContext rc, Object blockExitResult, Object actionRsponse) {
@@ -141,45 +338,6 @@ public class ACL {
     return true; // #TODO or false
   }
 
-  private CompletableFuture<BlockExitResult> doCheck(RequestContext rc) {
-    logger.debug("checking request:" + rc.getId());
-    return FuturesSequencer.runInSeqUntilConditionIsUndone(
-      blocks.iterator(),
-      block -> {
-        rc.reset();
-        return block.check(rc);
-      },
-      (block, checkResult) -> {
-        if (checkResult.isMatch()) {
-          boolean isAllowed = checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW);
-          audit.log(
-            new ResponseContext(
-              isAllowed ? ResponseContext.FinalState.ALLOWED : ResponseContext.FinalState.FORBIDDEN,
-              rc,
-              null,
-              checkResult.getBlock().getVerbosity(),
-              checkResult.getBlock().toString(),
-              true
-            ),
-            logger
-          );
-          if (isAllowed) {
-            rc.commit();
-          }
-          return true;
-        }
-        return false;
-      },
-      nothing -> {
-        audit.log(new ResponseContext(ResponseContext.FinalState.FORBIDDEN, rc, null, null, "default", false), logger);
-        return BlockExitResult.noMatch();
-      }
-    )
-      .exceptionally(t -> {
-        //t.printStackTrace();
-        return BlockExitResult.noMatch();
-      });
-  }
 
   public RorSettings getSettings() {
     return rorSettings;
@@ -194,6 +352,6 @@ public class ACL {
   }
 
   public boolean doesRequirePassword() {
-    return blocks.stream().anyMatch(Block::isAuthHeaderAccepted) && settings.isPromptForBasicAuth();
+    return blocks.stream().anyMatch(Block::isAuthHeaderAccepted) && rorSettings.isPromptForBasicAuth();
   }
 }

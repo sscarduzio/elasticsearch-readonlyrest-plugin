@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.ImmutableMap;
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.CacheSettings;

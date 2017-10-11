@@ -36,10 +36,10 @@ import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.Transactional;
-import tech.beshu.ror.utils.ReflecUtils;
+import tech.beshu.ror.commons.utils.ReflecUtils;
 import org.reflections.ReflectionUtils;
 
 import java.lang.reflect.Field;
@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+import static tech.beshu.ror.commons.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
 /**
  * Created by sscarduzio on 14/04/2017.

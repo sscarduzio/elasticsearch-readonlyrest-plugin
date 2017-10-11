@@ -21,9 +21,9 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.logging.Loggers;
-import tech.beshu.ror.AbstractESContext;
-import tech.beshu.ror.commons.shims.ESVersion;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.AbstractESContext;
+import tech.beshu.ror.commons.shims.es.ESVersion;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 public class ESContextImpl extends AbstractESContext {
 

@@ -27,17 +27,18 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
-import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
-import tech.beshu.ror.commons.SSLCertParser;
-import tech.beshu.ror.commons.RawSettings;
 import org.elasticsearch.threadpool.ThreadPool;
+import tech.beshu.ror.commons.BasicSettings;
+import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.SSLCertParser;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -48,10 +49,10 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private final BasicSettings basicSettings;
   private final LoggerShim logger;
 
-  public SSLTransportNetty4(ESContext esContext, Settings settings, NetworkService networkService, BigArrays bigArrays,
+  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
                             ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.logger = esContext.logger(getClass());
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
     this.basicSettings = new BasicSettings(new RawSettings(settings.getAsStructuredMap()));
 
     if (basicSettings.isSSLEnabled()) {

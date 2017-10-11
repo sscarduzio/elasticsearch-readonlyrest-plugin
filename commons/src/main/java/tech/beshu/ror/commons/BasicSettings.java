@@ -99,7 +99,7 @@ public class BasicSettings {
     return ImmutableList.copyOf(blocksSettings);
   }
 
-  public Boolean getAuditCollector() {
+  public Boolean isAuditorCollectorEnabled() {
     return auditCollector;
   }
 

@@ -18,14 +18,14 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.domain.Value;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
-import tech.beshu.ror.utils.MatcherWithWildcards;
 
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -149,7 +149,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       return NO_MATCH;
     }
 
-    if (indices.contains(".readonlyrest") && isAdmin && ADMIN.match(rc.getAction())) {
+    if ((indices.contains(".readonlyrest") || indices.isEmpty()) && isAdmin && ADMIN.match(rc.getAction())) {
       return MATCH;
     }
 

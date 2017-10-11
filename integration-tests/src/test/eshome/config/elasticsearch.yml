@@ -1,4 +1,4 @@
-discovery.type: single-node
+#discovery.type: single-node
 transport.type: local
 http.type: ssl_netty4
 
@@ -10,6 +10,7 @@ readonlyrest:
     audit_collector: true
 
     ssl:
+      enable: true
       keystore_file: "plugins/readonlyrest/keystore.jks"
       keystore_pass: readonlyrest
       key_pass: readonlyrest

@@ -20,12 +20,12 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.jayway.jsonpath.JsonPath;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.domain.LoggedUser;
-import tech.beshu.ror.commons.shims.HttpClient;
-import tech.beshu.ror.commons.shims.RRHttpRequest;
-import tech.beshu.ror.commons.shims.RRHttpResponse;
+import tech.beshu.ror.httpclient.HttpClient;
+import tech.beshu.ror.httpclient.RRHttpRequest;
+import tech.beshu.ror.httpclient.RRHttpResponse;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
 
 import java.net.URI;

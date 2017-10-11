@@ -32,8 +32,8 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.AuditSinkCore;
-import tech.beshu.ror.commons.shims.ResponseContext;
+import tech.beshu.ror.commons.shims.es.AuditSinkCore;
+import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.settings.RorSettings;
 
 import java.text.SimpleDateFormat;

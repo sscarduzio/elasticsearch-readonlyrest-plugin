@@ -23,13 +23,14 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.domain.LoggedUser;
 import tech.beshu.ror.requestcontext.Delayed;
 import tech.beshu.ror.requestcontext.IndicesRequestContext;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -122,6 +123,11 @@ public class SubRequestContext extends Delayed implements IndicesRequestContext 
 
   public Set<String> getExpandedIndices() {
     return originalRC.getExpandedIndices(indices.getInitial());
+  }
+
+  @Override
+  public Date getTimestamp() {
+    return originalRC.getTimestamp();
   }
 
   @Override

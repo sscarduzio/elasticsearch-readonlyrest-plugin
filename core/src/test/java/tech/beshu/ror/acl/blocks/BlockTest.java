@@ -47,7 +47,6 @@ public class BlockTest {
                                    "name: Dummy block\n" +
                                    "type: allow\n" +
                                    "proxy_auth: \"*\"\n" +
-                                   "indices_rewrite: [\"needle\", \"replacement\"]\n" +
                                    "indices: [\"allowed-index\"]"
         ),
         new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty()), null),
@@ -62,11 +61,9 @@ public class BlockTest {
     Iterator<AsyncRule> it = rules.iterator();
     AsyncRule auth = it.next();
     AsyncRule inspect = it.next();
-    AsyncRule mutate = it.next();
 
     Assert.assertEquals("proxy_auth", auth.getKey());
     Assert.assertEquals("indices", inspect.getKey());
-    Assert.assertEquals("indices_rewrite", mutate.getKey());
   }
 
 }

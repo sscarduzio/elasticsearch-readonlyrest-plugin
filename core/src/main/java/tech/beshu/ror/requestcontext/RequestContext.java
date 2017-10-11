@@ -25,22 +25,22 @@ import tech.beshu.ror.acl.blocks.Block;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.acl.domain.Value;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.request.RequestContextShim;
+import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.transactionals.TxKibanaIndices;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.HttpMethod;
 import tech.beshu.ror.utils.BasicAuthUtils;
-import tech.beshu.ror.utils.ReflecUtils;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public abstract class RequestContext extends Delayed implements IndicesRequestContext {
+public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 
   private final static String X_KIBANA_INDEX_HEADER = "x-ror-kibana_index";
-  private static Boolean ENABLE_SUBREQ_INTROSPECTION = !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.subreq.introspection"));
-
 
   protected Transactional<Set<String>> indices;
   private TxKibanaIndices kibanaIndices;
@@ -56,6 +56,7 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
   public RequestContext(String name, ESContext context) {
     super(name, context);
     this.context = context;
+    init();
   }
 
   public void init() {
@@ -105,7 +106,22 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
       }
     };
 
-    this.indices = extractTransactionalIndices();
+    this.indices = new Transactional<Set<String>>("rc-indices", context) {
+      @Override
+      public Set<String> initialize() {
+        return involvesIndices() ? extractIndices() : Collections.emptySet();
+      }
+
+      @Override
+      public Set<String> copy(Set<String> initial) {
+        return Sets.newHashSet(initial);
+      }
+
+      @Override
+      public void onCommit(Set<String> value) {
+        writeIndices(value);
+      }
+    };
 
 
     // If we get to commit this transaction, put this header.
@@ -135,6 +151,10 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
     return indices.getInitial();
   }
 
+  public void setIndices(Set<String> newIndices) {
+    indices.mutate(newIndices);
+  }
+
   public Map<String, String> getHeaders() {
     return this.requestHeaders;
   }
@@ -145,18 +165,15 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
 
   abstract protected Boolean extractDoesInvolveIndices();
 
-  abstract protected Transactional<Set<String>> extractTransactionalIndices();
+  abstract protected Set<String> extractIndices();
 
-  abstract protected Boolean doesHaveSubRequests();
+  abstract protected Boolean extractIsReadRequest();
 
-  public Boolean hasSubRequests() {
-    if (!ENABLE_SUBREQ_INTROSPECTION) {
-      return false;
-    }
-    return doesHaveSubRequests();
-  }
+  abstract protected Boolean extractIsCompositeRequest();
 
-  abstract public Integer scanSubRequests(ReflecUtils.CheckedFunction<IndicesRequestContext, Optional<IndicesRequestContext>> replacer);
+
+  abstract protected void writeIndices(Set<String> indices);
+
 
   abstract protected void commitResponseHeaders(Map<String, String> hmap);
 
@@ -173,10 +190,6 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
   abstract public String getUri();
 
   abstract public String getType();
-
-  abstract public String getClusterUUID();
-
-  abstract public String getNodeUUID();
 
   abstract public Long getTaskId();
 
@@ -302,4 +315,11 @@ public abstract class RequestContext extends Delayed implements IndicesRequestCo
   }
 
 
+  public boolean isReadRequest() {
+    return extractIsReadRequest();
+  }
+
+  public boolean isComposite() {
+    return extractIsCompositeRequest();
+  }
 }

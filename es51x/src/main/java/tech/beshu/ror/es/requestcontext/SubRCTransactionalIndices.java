@@ -21,14 +21,14 @@ import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.Transactional;
-import tech.beshu.ror.utils.ReflecUtils;
+import tech.beshu.ror.commons.utils.ReflecUtils;
 
 import java.util.Set;
 
-import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+import static tech.beshu.ror.commons.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
 /**
  * Created by sscarduzio on 14/04/2017.

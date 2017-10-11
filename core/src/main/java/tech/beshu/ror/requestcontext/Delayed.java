@@ -17,8 +17,8 @@
 
 package tech.beshu.ror.requestcontext;
 
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.util.Iterator;
 import java.util.LinkedList;

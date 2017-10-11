@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.requestcontext;
 
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,10 +35,10 @@ public class VariablesManager {
   private static final String VAR_DETECTOR = String.valueOf(ESCAPE_CHAR) + DELIMITER_BEGIN_CHAR;
 
   private final LoggerShim logger;
-  private final IndicesRequestContext rc;
+  private final RequestContext rc;
   private Map<String, String> headers;
 
-  public VariablesManager(Map<String, String> headers, IndicesRequestContext rc, ESContext context) {
+  public VariablesManager(Map<String, String> headers, RequestContext rc, ESContext context) {
     this.logger = context.logger(getClass());
     this.rc = rc;
     Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);

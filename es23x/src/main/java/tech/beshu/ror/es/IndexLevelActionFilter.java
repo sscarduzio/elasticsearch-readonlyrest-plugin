@@ -42,13 +42,13 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.shims.ACLHandler;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.shims.es.ACLHandler;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.configuration.ReloadableSettings;
 import tech.beshu.ror.es.actionlisteners.RuleActionListenersProvider;
 import tech.beshu.ror.es.requestcontext.RequestContextImpl;
-import tech.beshu.ror.settings.RorSettings;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -73,6 +73,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private AtomicReference<Optional<AuditSinkImpl>> audit = new AtomicReference<>(Optional.empty());
   private NodeClient client;
   private LoggerShim logger;
+  private BasicSettings basicSettings;
 
 
   @Inject
@@ -84,6 +85,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     throws IOException {
     super(settings);
 
+    this.basicSettings = new BasicSettings(new RawSettings(settings.getAsStructuredMap()));
     this.context = new ESContextImpl();
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
@@ -109,12 +111,13 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   }
 
-  private void initialize(BasicSettings rorSettings) {
-    if (rorSettings.isEnabled()) {
+  private void initialize(BasicSettings basicsSettings) {
+    this.basicSettings = basicsSettings;
+    if (basicsSettings.isEnabled()) {
       try {
-        AuditSinkImpl audit = new AuditSinkImpl(client, rorSettings);
+        AuditSinkImpl audit = new AuditSinkImpl(client, basicsSettings);
         this.audit.set(Optional.of(audit));
-        ACL acl = new ACL(rorSettings, this.context, audit);
+        ACL acl = new ACL(basicsSettings, this.context, audit);
         this.acl.set(Optional.of(acl));
       } catch (Exception ex) {
         logger.error("Cannot initialize ReadonlyREST settings!", ex);
@@ -128,11 +131,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   }
 
   @Override
-  public void accept(BasicSettings baseSettings) {
-    if (!baseSettings.isEnabled()) {
+  public void accept(BasicSettings basicSettings) {
+    if (!basicSettings.isEnabled()) {
       logger.info("ReadonlyREST Settings reloaded - ReadonlyREST ENABLED");
     }
-    initialize(baseSettings);
+    initialize(basicSettings);
     logger.info("ReadonlyREST Settings reloaded - ReadonlyREST DISABLED");
   }
 
@@ -182,7 +185,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     acl.check(rc, new ACLHandler() {
       @Override
       public void onForbidden() {
-
+          sendNotAuthResponse(channel, basicSettings);
       }
 
       @Override
@@ -208,23 +211,22 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       @Override
       public void onErrored(Throwable t) {
-        sendNotAuthResponse(channel, acl.getSettings());
+        sendNotAuthResponse(channel, basicSettings);
       }
     });
 
-
   }
 
-  private void sendNotAuthResponse(RestChannel channel, RorSettings rorSettings) {
+  private void sendNotAuthResponse(RestChannel channel, BasicSettings basicSettings) {
     BytesRestResponse resp;
     boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
     if (doesRequirePassword) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, basicSettings.getForbiddenMessage());
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
     }
     else {
-      resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
+      resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, basicSettings.getForbiddenMessage());
     }
 
     channel.sendResponse(resp);

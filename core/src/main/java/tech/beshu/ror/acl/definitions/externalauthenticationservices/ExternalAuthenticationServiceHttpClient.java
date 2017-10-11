@@ -17,8 +17,8 @@
 package tech.beshu.ror.acl.definitions.externalauthenticationservices;
 
 import com.google.common.collect.ImmutableMap;
-import tech.beshu.ror.commons.shims.HttpClient;
-import tech.beshu.ror.commons.shims.RRHttpRequest;
+import tech.beshu.ror.httpclient.HttpClient;
+import tech.beshu.ror.httpclient.RRHttpRequest;
 import tech.beshu.ror.utils.BasicAuthUtils;
 
 import java.net.URI;

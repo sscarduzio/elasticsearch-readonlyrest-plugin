@@ -20,7 +20,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
-import tech.beshu.ror.commons.shims.SettingsContentProvider;
+import tech.beshu.ror.commons.shims.es.SettingsContentProvider;
 
 import java.util.concurrent.CompletableFuture;
 

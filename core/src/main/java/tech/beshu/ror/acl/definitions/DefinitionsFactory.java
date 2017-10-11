@@ -39,14 +39,15 @@ import tech.beshu.ror.acl.definitions.ldaps.unboundid.UserGroupsSearchFilterConf
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
 import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
+import tech.beshu.ror.httpclient.ApacheHttpCoreClient;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
 import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.rules.NamedSettings;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.HttpClient;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.httpclient.HttpClient;
 
 import java.util.function.Supplier;
 
@@ -69,7 +70,7 @@ public class DefinitionsFactory implements LdapClientFactory,
 
   public DefinitionsFactory(ESContext context, ACL acl) {
     this.acl = acl;
-    this.httpClient = context.mkHttpClient();
+    this.httpClient = new ApacheHttpCoreClient(context);
     this.context = context;
     this.groupsProviderLdapClientsCache = CacheBuilder.newBuilder().build();
     this.authenticationLdapClientsCache = CacheBuilder.newBuilder().build();

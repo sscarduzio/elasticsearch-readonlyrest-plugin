@@ -27,7 +27,7 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import tech.beshu.ror.configuration.ReloadableSettings;
-import tech.beshu.ror.commons.shims.SettingsContentProvider;
+import tech.beshu.ror.commons.shims.es.SettingsContentProvider;
 import tech.beshu.ror.es.ESClientSettingsContentProvider;
 import tech.beshu.ror.es.ReloadableSettingsImpl;
 import org.elasticsearch.threadpool.ThreadPool;

@@ -17,6 +17,7 @@
 package tech.beshu.ror.configuration;
 
 import com.google.common.collect.ImmutableMap;
+import tech.beshu.ror.commons.BasicSettings;
 import tech.beshu.ror.settings.BlockSettings;
 import tech.beshu.ror.settings.RorSettings;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
@@ -24,8 +25,6 @@ import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
-import tech.beshu.ror.settings.ssl.EnabledSslSettings;
-import tech.beshu.ror.settings.ssl.SslSettings;
 
 import java.util.Map;
 
@@ -33,7 +32,7 @@ public abstract class AllowedSettings {
 
   public static Map<String, SettingType> list() {
     String prefix = RorSettings.ATTRIBUTE_NAME + ".";
-    String sslPrefix = prefix + SslSettings.ATTRIBUTE_NAME + ".";
+    String sslPrefix = prefix + "ssl" + ".";
     String rule_prefix = prefix + BlockSettings.ATTRIBUTE_NAME + ".";
     String users_prefix = prefix + UserSettingsCollection.ATTRIBUTE_NAME + ".";
     String ldaps_prefix = prefix + LdapSettingsCollection.ATTRIBUTE_NAME + ".";
@@ -52,13 +51,11 @@ public abstract class AllowedSettings {
       .put(prefix + RorSettings.AUDIT_COLLECTOR, SettingType.BOOL)
 
       // SSL
-      .put(sslPrefix + SslSettings.ATTRIBUTE_ENABLE, SettingType.BOOL)
-      .put(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEYSTORE_FILE, SettingType.STRING)
-      .put(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEYSTORE_PASS, SettingType.STRING)
-      .put(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEY_PASS, SettingType.STRING)
-      .put(sslPrefix + EnabledSslSettings.ATTRIBUTE_KEY_ALIAS, SettingType.STRING)
-      .put(sslPrefix + EnabledSslSettings.ATTRIBUTE_PRIVKEY_PEM, SettingType.STRING)
-      .put(sslPrefix + EnabledSslSettings.ATTRIBUTE_CERTCHAIN_PEM, SettingType.STRING)
+      .put(sslPrefix + "enable", SettingType.BOOL)
+      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEYSTORE_FILE, SettingType.STRING)
+      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEYSTORE_PASS, SettingType.STRING)
+      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEY_PASS, SettingType.STRING)
+      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEY_ALIAS, SettingType.STRING)
 
       // Groups
       .put(rule_prefix, SettingType.GROUP)

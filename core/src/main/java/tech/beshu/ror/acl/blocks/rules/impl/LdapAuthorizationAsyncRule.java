@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthorization;
 import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapClientFactory;

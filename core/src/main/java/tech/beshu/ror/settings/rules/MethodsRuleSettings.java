@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.commons.shims.HttpMethod;
+import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.commons.SettingsMalformedException;
 

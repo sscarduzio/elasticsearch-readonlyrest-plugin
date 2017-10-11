@@ -19,6 +19,7 @@ package tech.beshu.ror.utils;
 
 import com.google.common.collect.Sets;
 import org.apache.commons.lang.RandomStringUtils;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 
 import java.util.Set;
 

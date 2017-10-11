@@ -24,11 +24,8 @@ import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.message.BasicNameValuePair;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.HttpClient;
-import tech.beshu.ror.commons.shims.LoggerShim;
-import tech.beshu.ror.commons.shims.RRHttpRequest;
-import tech.beshu.ror.commons.shims.RRHttpResponse;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.IOException;
 import java.net.URI;

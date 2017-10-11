@@ -18,7 +18,7 @@
 package tech.beshu.ror.es;
 
 import org.elasticsearch.common.settings.Settings;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.tasks.TaskManager;
 import org.elasticsearch.transport.TransportRequest;

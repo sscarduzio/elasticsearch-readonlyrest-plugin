@@ -26,7 +26,6 @@ import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
@@ -83,7 +82,6 @@ public class RulesOrdering implements Comparator<AsyncRule> {
       LdapAuthorizationAsyncRule.class,
       GroupsProviderAuthorizationAsyncRule.class,
       // At the end the sync rule chain are those that can mutate the client request.
-      IndicesRewriteSyncRule.class,
       KibanaHideAppsSyncRule.class
     );
   }

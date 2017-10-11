@@ -20,7 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.shims.HttpMethod;
+import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import org.junit.Test;

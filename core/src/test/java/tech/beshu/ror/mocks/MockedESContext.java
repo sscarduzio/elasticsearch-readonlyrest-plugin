@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.mocks;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -23,13 +24,14 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import tech.beshu.ror.AbstractESContext;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.ESVersion;
-import tech.beshu.ror.commons.shims.LoggerShim;
-import tech.beshu.ror.commons.shims.HttpClient;
-import tech.beshu.ror.commons.shims.RRHttpRequest;
-import tech.beshu.ror.commons.shims.RRHttpResponse;
+import tech.beshu.ror.commons.BasicSettings;
+import tech.beshu.ror.commons.shims.es.AbstractESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.ESVersion;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.httpclient.HttpClient;
+import tech.beshu.ror.httpclient.RRHttpRequest;
+import tech.beshu.ror.httpclient.RRHttpResponse;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.IOException;
@@ -97,6 +99,10 @@ public class MockedESContext extends AbstractESContext {
   }
 
   @Override
+  public void submit(String indexName, String documentId, String jsonRecord) {
+    throw new NotImplementedException();
+  }
+
   public HttpClient mkHttpClient() {
     return new HttpClientAdapter();
   }
@@ -104,6 +110,11 @@ public class MockedESContext extends AbstractESContext {
   @Override
   public ESVersion getVersion() {
     return ESVersion.V_5_4_0;
+  }
+
+  @Override
+  public BasicSettings getSettings() {
+    throw new NotImplementedException();
   }
 
   private static class HttpClientAdapter implements HttpClient {

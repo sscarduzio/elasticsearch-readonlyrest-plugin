@@ -18,8 +18,8 @@
 package tech.beshu.ror.acl.blocks;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.BlockPolicy;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;

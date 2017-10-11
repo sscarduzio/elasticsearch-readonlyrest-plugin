@@ -23,9 +23,9 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.settings.Settings;
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.configuration.ReloadableSettings;
-import tech.beshu.ror.commons.shims.SettingsManager;
+import tech.beshu.ror.commons.shims.es.SettingsManager;
 
 import java.io.IOException;
 import java.util.Map;

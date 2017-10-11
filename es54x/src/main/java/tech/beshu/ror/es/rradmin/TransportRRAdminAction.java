@@ -26,43 +26,35 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import tech.beshu.ror.configuration.ReloadableSettings;
-import tech.beshu.ror.commons.shims.SettingsContentProvider;
-import tech.beshu.ror.es.ESClientSettingsContentProvider;
-import tech.beshu.ror.es.ReloadableSettingsImpl;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
+import tech.beshu.ror.commons.SettingsObservable;
+import tech.beshu.ror.es.SettingsObservableImpl;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-  private final SettingsContentProvider client;
-  private final ReloadableSettings reloadableSettings;
+
+  private final NodeClient client;
+  private final SettingsObservable settingsObservable;
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
                                 ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-                                NodeClient client, ReloadableSettingsImpl reloadableSettings) {
+                                NodeClient client, SettingsObservableImpl settingsObservable) {
     super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
           RRAdminRequest::new
     );
-    this.client = new ESClientSettingsContentProvider(client);
-    this.reloadableSettings = reloadableSettings;
+    this.client = client;
+    this.settingsObservable = settingsObservable;
   }
 
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
-      reloadableSettings.reload().thenAccept(th -> {
-        if (th.isPresent()) {
-          listener.onResponse(new RRAdminResponse(th.get()));
-        }
-        else {
-          listener.onResponse(new RRAdminResponse(null));
-        }
-      });
+      settingsObservable.updateFromIndex();
+      listener.onResponse(new RRAdminResponse(null));
     } catch (Exception e) {
       listener.onResponse(new RRAdminResponse(e));
     }
-
   }
 }

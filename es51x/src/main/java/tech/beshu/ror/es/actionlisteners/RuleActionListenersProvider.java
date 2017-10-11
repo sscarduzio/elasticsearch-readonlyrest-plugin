@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.actionlisteners;
 
 import com.google.common.collect.ImmutableMap;
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.blocks.rules.Rule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndexLevelSecuritySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesRewriteSyncRule;

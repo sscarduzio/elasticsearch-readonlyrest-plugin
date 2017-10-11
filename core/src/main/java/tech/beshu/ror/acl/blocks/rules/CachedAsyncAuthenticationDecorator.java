@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
 import java.nio.charset.Charset;

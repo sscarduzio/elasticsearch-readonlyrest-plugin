@@ -42,32 +42,27 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.configuration.ReloadableSettings;
-import tech.beshu.ror.es.actionlisteners.ACLActionListener;
-import tech.beshu.ror.es.requestcontext.RequestContextImpl;
-import tech.beshu.ror.settings.RorSettings;
-import tech.beshu.ror.commons.shims.ACLHandler;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.shims.es.ACLHandler;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 
 /**
  * Created by sscarduzio on 19/12/2015.
  */
 @Singleton
-public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter, Consumer<BasicSettings> {
+public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
 
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
   private final AtomicReference<Optional<ACL>> acl;
-  private final ESContext context;
-  private final ReloadableSettings reloadableSettings;
+  private final AtomicReference<ESContext> context;
   private final NodeClient client;
   private final LoggerShim logger;
   private final IndexNameExpressionResolver indexResolver;
@@ -78,44 +73,49 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                 TransportService transportService,
                                 NodeClient client,
                                 ThreadPool threadPool,
-                                ReloadableSettingsImpl reloadableSettings,
+                                SettingsObservableImpl settingsObservable,
                                 IndexNameExpressionResolver indexResolver
   )
     throws IOException {
     super(settings);
-    this.context = new ESContextImpl();
-    this.logger = context.logger(getClass());
 
-    this.reloadableSettings = reloadableSettings;
+    this.context = new AtomicReference<>(new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent()))));
+    this.logger = context.get().logger(getClass());
+
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
     this.client = client;
-    this.reloadableSettings.addListener(this);
 
     new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
 
+    settingsObservable.addObserver((o, arg) -> {
+      logger.info("Settings observer refreshing...");
+      ESContext newContext = new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent())));
+
+      if (newContext.getSettings().isEnabled()) {
+        try {
+          ACL newAcl = new ACL(newContext);
+          acl.set(Optional.of(newAcl));
+          logger.info("Configuration reloaded - ReadonlyREST enabled");
+        } catch (Exception ex) {
+          logger.error("Cannot configure ReadonlyREST plugin", ex);
+        }
+      }
+      else {
+        acl.set(Optional.empty());
+        logger.info("Configuration reloaded - ReadonlyREST disabled");
+      }
+    });
+
+    settingsObservable.forceRefresh();
     logger.info("Readonly REST plugin was loaded...");
+
+    settingsObservable.pollForIndex(context.get());
+
   }
 
-  @Override
-  public void accept(BasicSettings bsettings) {
-    if (bsettings.isEnabled()) {
-      try {
-        AuditSinkImpl audit = new AuditSinkImpl(client, bsettings);
-        ACL acl = new ACL(bsettings, this.context, audit);
-        this.acl.set(Optional.of(acl));
-        logger.info("Configuration reloaded - ReadonlyREST enabled");
-      } catch (Exception ex) {
-        logger.error("Cannot configure ReadonlyREST plugin", ex);
-      }
-    }
-    else {
-      this.acl.set(Optional.empty());
-      logger.info("Configuration reloaded - ReadonlyREST disabled");
-    }
-  }
 
   @Override
   public int order() {
@@ -128,6 +128,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                                                                      Request request,
                                                                                      ActionListener<Response> listener,
                                                                                      ActionFilterChain<Request, Response> chain) {
+
     Optional<ACL> acl = this.acl.get();
     if (acl.isPresent()) {
       handleRequest(acl.get(), task, action, request, listener, chain);
@@ -144,30 +145,33 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                                                                               ActionListener<Response> listener,
                                                                                               ActionFilterChain<Request, Response> chain) {
     RestChannel channel = ThreadRepo.channel.get();
+    if (channel != null) {
+      ThreadRepo.channel.remove();
+    }
     boolean chanNull = channel == null;
     boolean reqNull = channel == null ? true : channel.request() == null;
     if (ACL.shouldSkipACL(chanNull, reqNull)) {
       chain.proceed(task, action, request, listener);
       return;
     }
-
-    RequestContextImpl rc = new RequestContextImpl(channel.request(), action, request, clusterService, threadPool, context, indexResolver);
-
-    acl.check(rc, new ACLHandler() {
+    RequestInfo requestInfo = new RequestInfo(channel, action, request, clusterService, threadPool, context.get(), indexResolver);
+    acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {
-        sendNotAuthResponse(channel, acl.getSettings());
+        sendNotAuthResponse(channel, context.get().getSettings());
       }
 
       @Override
       public void onAllow(Object blockExitResult) {
         boolean hasProceeded = false;
         try {
-          @SuppressWarnings("unchecked")
-          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
-            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl
-          );
-          chain.proceed(task, action, request, aclActionListener);
+          //         @SuppressWarnings("unchecked")
+//          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
+//            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl
+//          );
+//          chain.proceed(task, action, request, aclActionListener);
+
+          chain.proceed(task, action, request, listener);
           hasProceeded = true;
           return;
         } catch (Throwable e) {
@@ -190,22 +194,22 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       @Override
       public void onErrored(Throwable t) {
-        sendNotAuthResponse(channel, acl.getSettings());
+        sendNotAuthResponse(channel, context.get().getSettings());
       }
     });
 
   }
 
-  private void sendNotAuthResponse(RestChannel channel, RorSettings rorSettings) {
+  private void sendNotAuthResponse(RestChannel channel, BasicSettings basicSettings) {
     BytesRestResponse resp;
     boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
     if (doesRequirePassword) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
+      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, basicSettings.getForbiddenMessage());
       logger.debug("Sending login prompt header...");
       resp.addHeader("WWW-Authenticate", "Basic");
     }
     else {
-      resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, rorSettings.getForbiddenMessage());
+      resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, basicSettings.getForbiddenMessage());
     }
 
     channel.sendResponse(resp);

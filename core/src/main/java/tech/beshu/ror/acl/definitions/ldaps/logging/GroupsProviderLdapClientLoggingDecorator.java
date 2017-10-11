@@ -17,8 +17,8 @@
 package tech.beshu.ror.acl.definitions.ldaps.logging;
 
 import com.google.common.base.Joiner;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapCredentials;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;

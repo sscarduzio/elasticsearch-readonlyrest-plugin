@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.commons;
 
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.FileInputStream;
 import java.security.AccessControlException;

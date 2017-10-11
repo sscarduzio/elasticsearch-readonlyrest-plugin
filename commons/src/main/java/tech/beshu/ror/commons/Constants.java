@@ -29,9 +29,11 @@ public class Constants {
   public static final String ANSI_WHITE = "\u001B[37m";
 
 
-
   public static final Integer AUDIT_SINK_MAX_ITEMS = 100;
   public static final Integer AUDIT_SINK_MAX_KB = 100;
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
+
+  public static final String SETTINGS_YAML_FILE = "readonlyrest.yml";
+
 }

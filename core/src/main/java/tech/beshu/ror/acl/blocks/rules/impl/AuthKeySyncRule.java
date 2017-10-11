@@ -17,8 +17,8 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.blocks.rules.BasicAuthentication;
 import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;

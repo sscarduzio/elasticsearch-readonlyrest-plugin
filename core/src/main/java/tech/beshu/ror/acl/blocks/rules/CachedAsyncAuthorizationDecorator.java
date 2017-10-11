@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.domain.LoggedUser;
 import tech.beshu.ror.settings.rules.CacheSettings;
 

@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -31,10 +30,9 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.AuditSinkCore;
+import tech.beshu.ror.commons.shims.es.AuditSinkCore;
 import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.shims.ResponseContext;
+import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.requestcontext.SerializationTool;
 
 import java.util.Arrays;
@@ -123,14 +121,13 @@ public class AuditSinkImpl extends AuditSinkCore {
       "ror_audit_evt",
       rc.getRequestContext().getId()
     ).source(
-      serTool.toJson(rc),
-      XContentType.JSON
+      serTool.toJson(rc)
     );
     bulkProcessor.add(ir);
   }
 
   @Override
   public Boolean isAuditCollectorEnabled() {
-    return settings.getAuditCollector();
+    return settings.isAuditorCollectorEnabled();
   }
 }

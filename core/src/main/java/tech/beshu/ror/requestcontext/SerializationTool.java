@@ -22,11 +22,12 @@ import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.Maps;
-import tech.beshu.ror.commons.shims.ResponseContext;
+import tech.beshu.ror.commons.ResponseContext;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -37,12 +38,12 @@ import java.util.TimeZone;
  */
 public class SerializationTool {
   private final static SimpleDateFormat zuluFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+  private final static SimpleDateFormat indexNameFormatter = new SimpleDateFormat("yyyy-MM-dd");
+  private static ObjectMapper mapper;
 
   static {
     zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
   }
-
-  private final ObjectMapper mapper;
 
   public SerializationTool() {
     ObjectMapper mapper = new ObjectMapper();
@@ -54,12 +55,8 @@ public class SerializationTool {
     this.mapper = mapper;
   }
 
-  public String toJson(RequestContext rc) {
-    try {
-      return mapper.writeValueAsString(rc);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+  public String mkIndexName() {
+    return "readonlyrest_audit-" + indexNameFormatter.format(Calendar.getInstance().getTime());
   }
 
   public String toJson(ResponseContext rc) {
@@ -88,7 +85,7 @@ public class SerializationTool {
     map.put("origin", req.getRemoteAddress());
     map.put("task_id", req.getTaskId());
 
-    map.put("req_method", req.getMethod().name());
+    map.put("req_method", req.getMethod());
     map.put("headers", req.getHeaders().keySet());
     map.put("path", req.getUri());
 
@@ -113,6 +110,14 @@ public class SerializationTool {
     // The stupidity of checked exceptions. (TM)
 
     return res[0];
+  }
+
+  public String toJson(RequestContext rc) {
+    try {
+      return mapper.writeValueAsString(rc);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }

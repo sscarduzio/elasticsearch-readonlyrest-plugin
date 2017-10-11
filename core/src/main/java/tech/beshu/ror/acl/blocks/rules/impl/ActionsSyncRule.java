@@ -17,13 +17,13 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.ActionsRuleSettings;
-import tech.beshu.ror.utils.MatcherWithWildcards;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 
 /**
  * Created by sscarduzio on 14/02/2016.

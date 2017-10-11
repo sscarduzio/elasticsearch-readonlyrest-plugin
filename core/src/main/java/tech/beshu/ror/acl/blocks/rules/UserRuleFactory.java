@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;

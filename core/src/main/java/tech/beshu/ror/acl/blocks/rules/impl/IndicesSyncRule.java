@@ -18,14 +18,13 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.requestcontext.IndicesRequestContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
-import tech.beshu.ror.utils.MatcherWithWildcards;
 
 import java.util.Optional;
 import java.util.Set;
@@ -68,7 +67,7 @@ public class IndicesSyncRule extends SyncRule {
   }
 
   // Is a request or sub-request free from references to any forbidden indices?
-  private <T extends IndicesRequestContext> boolean canPass(T src) {
+  private <T extends RequestContext> boolean canPass(T src) {
 
     MatcherWithWildcards matcher = matcherNoVar != null ? matcherNoVar : new MatcherWithWildcards(
       settings.getIndices().stream()

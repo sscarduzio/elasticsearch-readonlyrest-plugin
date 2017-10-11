@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.acl.definitions.ldaps.logging;
 
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.definitions.ldaps.AuthenticationLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapCredentials;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;

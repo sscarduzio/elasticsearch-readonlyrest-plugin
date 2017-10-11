@@ -17,14 +17,12 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
-import tech.beshu.ror.commons.shims.ESContext;
 import tech.beshu.ror.acl.blocks.rules.impl.ActionsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ApiKeysSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
@@ -39,6 +37,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.rules.ActionsRuleSettings;
@@ -47,7 +46,6 @@ import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
-import tech.beshu.ror.settings.rules.IndicesRewriteRuleSettings;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
@@ -89,10 +87,6 @@ public class RulesFactory {
     this.creators.put(
       IndicesRuleSettings.class,
       settings -> AsyncRuleAdapter.wrap(new IndicesSyncRule((IndicesRuleSettings) settings, context))
-    );
-    this.creators.put(
-      IndicesRewriteRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new IndicesRewriteSyncRule((IndicesRewriteRuleSettings) settings, context))
     );
     this.creators.put(
       KibanaAccessRuleSettings.class,

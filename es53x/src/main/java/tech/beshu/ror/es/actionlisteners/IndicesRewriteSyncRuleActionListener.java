@@ -29,12 +29,12 @@ import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.get.GetResult;
-import tech.beshu.ror.commons.shims.ESContext;
-import tech.beshu.ror.commons.shims.LoggerShim;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.blocks.BlockExitResult;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesRewriteSyncRule;
 import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.utils.ReflecUtils;
+import tech.beshu.ror.commons.utils.ReflecUtils;
 import org.elasticsearch.search.SearchHit;
 
 import java.lang.reflect.Field;

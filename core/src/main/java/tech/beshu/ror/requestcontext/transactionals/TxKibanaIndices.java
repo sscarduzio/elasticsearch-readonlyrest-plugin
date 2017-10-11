@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.requestcontext.transactionals;
 
-import tech.beshu.ror.commons.shims.ESContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.requestcontext.Transactional;
 
 import java.util.HashSet;
