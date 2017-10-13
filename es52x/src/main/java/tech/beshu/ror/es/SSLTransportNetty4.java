@@ -27,17 +27,18 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.SSLCertParser;
-import tech.beshu.ror.commons.RawSettings;
-import tech.beshu.ror.settings.RorSettings;
 import org.elasticsearch.threadpool.ThreadPool;
+import tech.beshu.ror.commons.BasicSettings;
+import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.SSLCertParser;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -45,16 +46,16 @@ import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
-  private final RorSettings sslSettings;
+  private final BasicSettings basicSettings;
   private final LoggerShim logger;
 
-  public SSLTransportNetty4(ESContext esContext, Settings settings, final NetworkService networkService,
-                            final BigArrays bigArrays, final ThreadPool threadPool,
-                            final NamedXContentRegistry namedXContentRegistry) {
-    super(settings, networkService, bigArrays, threadPool, namedXContentRegistry);
-    this.logger = esContext.logger(getClass());
-    this.sslSettings = new RorSettings(new RawSettings(settings.getAsStructuredMap()));
-    if (sslSettings.isSSLEnabled()) {
+  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
+                            ThreadPool threadPool, NamedXContentRegistry xContentRegistry) {
+    super(settings, networkService, bigArrays, threadPool, xContentRegistry);
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    this.basicSettings = new BasicSettings(new RawSettings(settings.getAsStructuredMap()));
+
+    if (basicSettings.isSSLEnabled()) {
       logger.info("creating SSL transport");
     }
   }
@@ -83,7 +84,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
 
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+      new SSLCertParser(basicSettings, logger, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           context = Optional.of(SslContextBuilder.forServer(

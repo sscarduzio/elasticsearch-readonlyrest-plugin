@@ -29,7 +29,7 @@ import org.elasticsearch.http.netty.NettyHttpServerTransport;
 import tech.beshu.ror.commons.BasicSettings;
 import tech.beshu.ror.commons.SSLCertParser;
 import tech.beshu.ror.commons.RawSettings;
-import tech.beshu.ror.settings.RorSettings;
+import tech.beshu.ror.commons.utils.TempFile;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.handler.ssl.SslContext;

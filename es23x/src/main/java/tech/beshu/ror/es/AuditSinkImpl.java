@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -30,13 +31,11 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
-import tech.beshu.ror.commons.shims.es.AuditSinkCore;
+import org.elasticsearch.common.xcontent.XContentType;
 import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.ResponseContext;
-import tech.beshu.ror.requestcontext.SerializationTool;
 
 import java.util.Arrays;
-import java.util.Calendar;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -50,22 +49,17 @@ import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_SECONDS;
  */
 
 @Singleton
-public class AuditSinkImpl extends AuditSinkCore {
+public class AuditSinkImpl {
 
   private static final ESLogger logger = Loggers.getLogger(AuditSinkImpl.class);
   private final BulkProcessor bulkProcessor;
   private final BasicSettings settings;
-  private SerializationTool serTool;
 
   @Inject
   public AuditSinkImpl(Client client, BasicSettings settings) {
     this.settings = settings;
 
-    if (serTool == null) {
-      serTool = new SerializationTool();
-    }
-
-    if (!isAuditCollectorEnabled()) {
+    if (!settings.isAuditorCollectorEnabled()) {
       bulkProcessor = null;
       return;
     }
@@ -111,23 +105,29 @@ public class AuditSinkImpl extends AuditSinkCore {
       .build();
   }
 
-  public void submit(ResponseContext rc) {
-    if (!isAuditCollectorEnabled()) {
+  public void submit(String indexName, String documentId, String jsonRecord) {
+    if (!settings.isAuditorCollectorEnabled()) {
       return;
     }
-    String indexName = "readonlyrest_audit-" + formatter.format(Calendar.getInstance().getTime());
+
     IndexRequest ir = new IndexRequest(
       indexName,
       "ror_audit_evt",
-      rc.getRequestContext().getId()
+      documentId
     ).source(
-      serTool.toJson(rc)
+      jsonRecord,
+      XContentType.JSON
     );
     bulkProcessor.add(ir);
   }
 
-  @Override
-  public Boolean isAuditCollectorEnabled() {
-    return settings.isAuditorCollectorEnabled();
+  public void stop() {
+    //#TODO do off-thread
+    try {
+      bulkProcessor.awaitClose(1, TimeUnit.MINUTES);
+    } catch (InterruptedException ie) {
+      ie.printStackTrace();
+    }
   }
+
 }

@@ -17,8 +17,9 @@
 
 package tech.beshu.ror.commons.utils;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.Sets;
+
+import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 
 import java.util.HashSet;
 import java.util.LinkedList;

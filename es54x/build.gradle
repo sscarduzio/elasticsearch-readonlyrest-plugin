@@ -47,7 +47,6 @@ apply plugin: 'maven'
 apply plugin: 'license'
 
 dependencies {
-    //compile project(':core')
     compile project(':core')
     compile project(':commons')
     compile 'org.elasticsearch:elasticsearch:' + esVersion

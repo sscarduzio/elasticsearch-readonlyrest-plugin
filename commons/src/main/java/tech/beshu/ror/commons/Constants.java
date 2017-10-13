@@ -16,6 +16,10 @@
  */
 package tech.beshu.ror.commons;
 
+import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
+
+import java.io.File;
+
 public class Constants {
   public static final Integer CACHE_WATERMARK = 1024;
   public static final String ANSI_RESET = "\u001B[0m";
@@ -27,13 +31,21 @@ public class Constants {
   public static final String ANSI_PURPLE = "\u001B[35m";
   public static final String ANSI_CYAN = "\u001B[36m";
   public static final String ANSI_WHITE = "\u001B[37m";
-
-
   public static final Integer AUDIT_SINK_MAX_ITEMS = 100;
   public static final Integer AUDIT_SINK_MAX_KB = 100;
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
-
   public static final String SETTINGS_YAML_FILE = "readonlyrest.yml";
+  private static final String esHomePath = System.getProperty("es.path.home");
+
+  public static String makeAbsolutePath(String path) {
+    if (Strings.isNullOrEmpty(esHomePath)) {
+      new Exception("Cannot find property es.path.home!").printStackTrace();
+    }
+    if (path != null && !path.startsWith(File.separator)) {
+      return esHomePath + File.separator + path;
+    }
+    return path;
+  }
 
 }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package tech.beshu.ror.es;
+package tech.beshu.ror.commons.utils;
 
 import java.io.BufferedWriter;
 import java.io.File;

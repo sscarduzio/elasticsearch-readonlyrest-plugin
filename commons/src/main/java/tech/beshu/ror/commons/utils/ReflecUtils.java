@@ -17,10 +17,11 @@
 
 package tech.beshu.ror.commons.utils;
 
+import org.reflections.ReflectionUtils;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.SecurityPermissionException;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.SecurityPermissionException;
-import tech.beshu.ror.commons.Constants;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -28,8 +29,8 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.function.Function;
 
-import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Created by sscarduzio on 24/03/2017.
@@ -131,12 +132,16 @@ public class ReflecUtils {
     return null;
   }
 
+  public static Set<Field> getAllFields(Object o, Function<Field, Boolean> pred) {
+    return ReflectionUtils.getAllFields(o.getClass(), (Field field) -> pred.apply(field));
+  }
+
   public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, LoggerShim logger) {
 
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")
-      Set<Field> indexFields = getAllFields(
+      Set<Field> indexFields = ReflectionUtils.getAllFields(
         o.getClass(),
         (Field field) -> field != null && fieldNames.contains(field.getName()) &&
           (field.getType().equals(String.class) || field.getType().equals(String[].class))

@@ -22,13 +22,13 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.tasks.TaskManager;
 import org.elasticsearch.transport.TransportRequest;
+import tech.beshu.ror.commons.utils.ReflecUtils;
 
 import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Set;
 
-import static org.reflections.ReflectionUtils.getAllFields;
 
 /**
  * Created by sscarduzio on 14/06/2017.
@@ -53,7 +53,7 @@ public class TaskManagerWrapper extends TaskManager {
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")
-      Set<Field> indexFields = getAllFields(
+      Set<Field> indexFields = ReflecUtils.getAllFields(
         o.getClass(),
         (Field field) -> field != null && field.getType().equals(TaskManager.class)
       );

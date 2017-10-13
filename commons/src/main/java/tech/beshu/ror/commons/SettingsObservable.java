@@ -21,6 +21,12 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.ESVersion;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Observable;
 import java.util.concurrent.CompletableFuture;
@@ -29,10 +35,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
+
 abstract public class SettingsObservable extends Observable {
+  protected static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
 
   protected Map<String, ?> current;
-  private CompletableFuture<Void> clientReadyFuture;
 
   void updateSettings(Map<String, ?> newSettings) {
     this.current = newSettings;
@@ -46,13 +54,44 @@ abstract public class SettingsObservable extends Observable {
 
   public void updateFromLocalNode() {
     // Includes fallback to ES
-    updateSettings(getFromFile()
-    );
+    updateSettings(getFromFile());
   }
 
   protected abstract boolean isClusterReady();
 
-  protected abstract Map<String, ?> getFromFile();
+  protected Map<String, ?> getFromFile() {
+    LoggerShim logger = getLogger();
+
+    String filePath = Constants.makeAbsolutePath("config" + File.separator);
+
+    if (!filePath.endsWith(File.separator)) {
+      filePath += File.separator;
+    }
+    filePath += SETTINGS_YAML_FILE;
+
+    String finalFilePath = filePath;
+
+    final Map<String, Object> settingsMap = new HashMap<>();
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        String slurped = new String(Files.readAllBytes(Paths.get(finalFilePath)));
+        settingsMap.putAll(mkSettingsFromYAMLString(slurped));
+
+        logger.info("Loaded good settings from " + finalFilePath);
+      } catch (Throwable t) {
+        logger.info(
+          "Could not find settings in "
+            + finalFilePath + ", falling back to elasticsearch.yml (" + t.getMessage() + ")");
+        settingsMap.putAll(getFomES());
+      }
+      return null;
+    });
+    return settingsMap;
+  }
+
+  protected abstract Map<? extends String, ?> mkSettingsFromYAMLString(String slurped);
+
+  protected abstract LoggerShim getLogger();
 
   protected abstract Map<String, ?> getFomES();
 
@@ -60,9 +99,17 @@ abstract public class SettingsObservable extends Observable {
 
   public void updateFromIndex() {
     try {
+      getLogger().debug("[CLUSTERWIDE SETTINGS] checking index..");
       updateSettings(getFromIndex());
-    } catch (Exception e) {
-      e.printStackTrace();
+      getLogger().info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding local YAML file");
+    } catch (Throwable t) {
+      if (SETTINGS_NOT_FOUND_MESSAGE.equals(t.getMessage())) {
+        getLogger().info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using the local YAML file. " +
+                           "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
+      }
+      else {
+        t.printStackTrace();
+      }
     }
   }
 
@@ -82,7 +129,16 @@ abstract public class SettingsObservable extends Observable {
           if (isClusterReady()) {
             logger.info("[CLUSTERWIDE SETTINGS] Cluster is ready!");
             result.complete(null);
-            updateFromIndex();
+            try {
+              updateFromIndex();
+            } catch (Exception e) {
+              if (e.getMessage().equals(SETTINGS_NOT_FOUND_MESSAGE)) {
+                logger.info("[CLUSTERWIDE SETTINGS] Settings not found in index .readonlyrest, defaulting to local node setting...");
+              }
+              else {
+                e.printStackTrace();
+              }
+            }
           }
           else {
             logger.info("[CLUSTERWIDE SETTINGS] Cluster not ready...");
@@ -96,12 +152,10 @@ abstract public class SettingsObservable extends Observable {
         executor.shutdown();
       });
 
-      this.clientReadyFuture = result;
     }
     else {
       // Never going to complete
       logger.info("Skipping settings index poller...");
-      this.clientReadyFuture = new CompletableFuture<>();
     }
   }
 }

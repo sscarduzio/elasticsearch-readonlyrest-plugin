@@ -19,12 +19,16 @@ package tech.beshu.ror.commons;
 
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivilegedAction;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.util.Base64;
 
 /**
@@ -54,8 +58,19 @@ public class SSLCertParser {
       }
 
       // Load the JKS keystore
+      final char[] finKeystoerPassBa = keyStorePassBa;
       java.security.KeyStore ks = java.security.KeyStore.getInstance("JKS");
-      ks.load(new FileInputStream(settings.getKeystoreFile()), keyStorePassBa);
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+
+        try {
+          String keystoreFile = Constants.makeAbsolutePath(settings.getKeystoreFile());
+          ks.load(new FileInputStream(keystoreFile), finKeystoerPassBa);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+        return null;
+      });
+
 
       char[] keyPassBa = null;
       if (settings.getKeyPass().isPresent()) {

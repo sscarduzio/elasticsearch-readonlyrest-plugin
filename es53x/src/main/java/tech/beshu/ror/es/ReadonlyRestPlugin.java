@@ -35,11 +35,6 @@ import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.configuration.AllowedSettings;
-import tech.beshu.ror.es.rradmin.RRAdminAction;
-import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
 import org.elasticsearch.plugins.NetworkPlugin;
@@ -48,6 +43,10 @@ import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+import tech.beshu.ror.configuration.AllowedSettings;
+import tech.beshu.ror.es.rradmin.RRAdminAction;
+import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
+import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 
 import java.util.Collections;
 import java.util.List;
@@ -59,10 +58,7 @@ import java.util.stream.Collectors;
 public class ReadonlyRestPlugin extends Plugin
   implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final ESContext context;
-
   public ReadonlyRestPlugin(Settings s) {
-    this.context = new ESContextImpl();
   }
 
   @Override
@@ -80,16 +76,17 @@ public class ReadonlyRestPlugin extends Plugin
     NamedXContentRegistry xContentRegistry,
     NetworkService networkService,
     HttpServerTransport.Dispatcher dispatcher) {
-
     return Collections.singletonMap(
       "ssl_netty4", () ->
         new SSLTransportNetty4(
-          context, settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+          settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
         ));
   }
 
   @Override
   public List<Setting<?>> getSettings() {
+    // No need, we have settings in config/readonlyrest.yml
+    //return super.getSettings();
     return AllowedSettings.list().entrySet().stream().map((e) -> {
       Setting<?> theSetting = null;
       switch (e.getValue()) {

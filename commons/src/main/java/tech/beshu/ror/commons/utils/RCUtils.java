@@ -17,7 +17,8 @@
 
 package tech.beshu.ror.commons.utils;
 
-import com.google.common.collect.Sets;
+
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 
 import java.util.regex.Pattern;
 

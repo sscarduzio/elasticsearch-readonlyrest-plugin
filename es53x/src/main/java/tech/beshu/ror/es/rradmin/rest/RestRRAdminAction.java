@@ -43,6 +43,11 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
     controller.registerHandler(RestRequest.Method.POST, "/_readonlyrest/admin/refreshconfig", this);
   }
 
+
+  public String getName() {
+    return "ror-admin-handler";
+  }
+
   @Override
   protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
     return (channel) -> {

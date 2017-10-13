@@ -30,6 +30,7 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -46,102 +47,99 @@ import tech.beshu.ror.commons.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.configuration.ReloadableSettings;
-import tech.beshu.ror.es.actionlisteners.RuleActionListenersProvider;
-import tech.beshu.ror.es.requestcontext.RequestContextImpl;
 
 import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 
 /**
  * Created by sscarduzio on 19/12/2015.
  */
 @Singleton
-public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter, Consumer<BasicSettings> {
+public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
 
+  private final ThreadPool threadPool;
+  private final ClusterService clusterService;
+
+  private final AtomicReference<Optional<ACL>> acl;
+  private final AtomicReference<ESContext> context = new AtomicReference<>();
+  private final LoggerShim logger;
   private final IndexNameExpressionResolver indexResolver;
-  private ThreadPool threadPool;
-  private ClusterService clusterService;
-
-  private AtomicReference<Optional<ACL>> acl = new AtomicReference<>(Optional.empty());
-  private ESContext context;
-  private RuleActionListenersProvider ruleActionListenersProvider;
-  private ReloadableSettings reloadableSettings;
-  private AtomicReference<Optional<AuditSinkImpl>> audit = new AtomicReference<>(Optional.empty());
   private NodeClient client;
-  private LoggerShim logger;
-  private BasicSettings basicSettings;
-
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
                                 TransportService transportService,
                                 ThreadPool threadPool,
-                                IndexNameExpressionResolver indexResolver)
+                                SettingsObservableImpl settingsObservable,
+                                IndexNameExpressionResolver indexResolver
+  )
     throws IOException {
     super(settings);
 
-    this.basicSettings = new BasicSettings(new RawSettings(settings.getAsStructuredMap()));
-    this.context = new ESContextImpl();
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
     this.threadPool = threadPool;
+    this.acl = new AtomicReference<>(Optional.empty());
+
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+
 
     ReadonlyRestPlugin.clientFuture.thenAccept(c -> {
-      try {
-        this.client = c;
-        reloadableSettings = new ReloadableSettingsImpl(new SettingsManagerImpl(settings, client));
 
-        this.ruleActionListenersProvider = new RuleActionListenersProvider(context);
-        this.logger = ESContextImpl.mkLoggerShim(super.logger);
-        new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+      // Have to do this because guice goes crazy otherwise..
+      settingsObservable.setClient(c);
 
-        reloadableSettings.addListener(s -> accept(s));
+      settingsObservable.addObserver((o, arg) -> {
+        logger.info("Settings observer refreshing...");
+        ESContext newContext = new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent())));
 
-        logger.info("Readonly REST plugin was loaded...");
-      } catch (Throwable e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+        if (newContext.getSettings().isEnabled()) {
+          try {
+            ACL newAcl = new ACL(newContext);
+            acl.set(Optional.of(newAcl));
+            logger.info("Configuration reloaded - ReadonlyREST enabled");
+          } catch (Exception ex) {
+            logger.error("Cannot configure ReadonlyREST plugin", ex);
+          }
+        }
+        else {
+          acl.set(Optional.empty());
+          logger.info("Configuration reloaded - ReadonlyREST disabled");
+        }
+
+        try {
+          this.client = c;
+          settingsObservable.pollForIndex(context.get());
+          logger.info("Readonly REST plugin was loaded...");
+        } catch (Throwable e) {
+          e.printStackTrace();
+          throw new RuntimeException(e);
+        }
+      });
+
+
     });
 
-  }
-
-  private void initialize(BasicSettings basicsSettings) {
-    this.basicSettings = basicsSettings;
-    if (basicsSettings.isEnabled()) {
-      try {
-        AuditSinkImpl audit = new AuditSinkImpl(client, basicsSettings);
-        this.audit.set(Optional.of(audit));
-        ACL acl = new ACL(basicsSettings, this.context, audit);
-        this.acl.set(Optional.of(acl));
-      } catch (Exception ex) {
-        logger.error("Cannot initialize ReadonlyREST settings!", ex);
-      }
-    }
-    else {
-      this.acl.set(Optional.empty());
-      logger.info("ReadonlyREST Settings initialized - ReadonlyREST disabled");
-    }
+    settingsObservable.forceRefresh();
+    logger.info("Readonly REST plugin was loaded...");
 
   }
 
-  @Override
-  public void accept(BasicSettings basicSettings) {
-    if (!basicSettings.isEnabled()) {
-      logger.info("ReadonlyREST Settings reloaded - ReadonlyREST ENABLED");
-    }
-    initialize(basicSettings);
-    logger.info("ReadonlyREST Settings reloaded - ReadonlyREST DISABLED");
-  }
 
   @Override
   public int order() {
     return 0;
+  }
+
+
+  @Override
+  public void apply(String action, ActionResponse response, ActionListener listener, ActionFilterChain chain) {
+    chain.proceed(action, response, listener);
   }
 
   @Override
@@ -157,14 +155,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       handleRequest(acl.get(), task, action, request, listener, chain);
     }
     else {
-      // The ACL was not yet set, or the plugin is not enabled..
       chain.proceed(task, action, request, listener);
     }
-  }
-
-  @Override
-  public void apply(String action, ActionResponse response, ActionListener listener, ActionFilterChain chain) {
-    chain.proceed(action, response, listener);
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,
@@ -174,29 +166,41 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                                                                               ActionListener<Response> listener,
                                                                                               ActionFilterChain chain) {
     RestChannel channel = ThreadRepo.channel.get();
+    if (channel != null) {
+      ThreadRepo.channel.remove();
+    }
     boolean chanNull = channel == null;
     boolean reqNull = channel == null ? true : channel.request() == null;
     if (ACL.shouldSkipACL(chanNull, reqNull)) {
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestContextImpl rc = new RequestContextImpl(channel.request(), action, request, clusterService, threadPool, context, indexResolver);
-
-    acl.check(rc, new ACLHandler() {
+    RequestInfo requestInfo = new RequestInfo(channel, action, request, clusterService, threadPool, context.get(), indexResolver);
+    acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {
-          sendNotAuthResponse(channel, basicSettings);
+        sendNotAuthResponse(channel, context.get().getSettings());
       }
 
       @Override
       public void onAllow(Object blockExitResult) {
-
-//          @SuppressWarnings("unchecked")
+        boolean hasProceeded = false;
+        try {
+          //         @SuppressWarnings("unchecked")
 //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
-//            request, (ActionListener<ActionResponse>) listener, ruleActionListenersProvider, rc, result, context
+//            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl
 //          );
-        chain.proceed(task, action, request, listener);
+//          chain.proceed(task, action, request, aclActionListener);
 
+          chain.proceed(task, action, request, listener);
+          hasProceeded = true;
+          return;
+        } catch (Throwable e) {
+          e.printStackTrace();
+        }
+        if (!hasProceeded) {
+          chain.proceed(task, action, request, listener);
+        }
       }
 
       @Override
@@ -205,13 +209,13 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
 
       @Override
-      public void onNotFound(Throwable t) {
-        sendNotFound((ResourceNotFoundException) t.getCause(), channel);
+      public void onNotFound(Throwable throwable) {
+        sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
       }
 
       @Override
       public void onErrored(Throwable t) {
-        sendNotAuthResponse(channel, basicSettings);
+        sendNotAuthResponse(channel, context.get().getSettings());
       }
     });
 

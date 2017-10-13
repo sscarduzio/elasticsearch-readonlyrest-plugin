@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.commons;
 
-import com.google.common.collect.Maps;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Maps;
 
 import java.net.URI;
 import java.net.URISyntaxException;

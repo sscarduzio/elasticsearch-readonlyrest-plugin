@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.commons;
 
-import com.google.common.collect.ImmutableList;
+
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,7 @@ public class BasicSettings {
 
   @SuppressWarnings("unchecked")
   public BasicSettings(RawSettings raw_global) {
+
     this.raw = raw_global.inner(ATTRIBUTE_NAME);
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt("access_control_rules").orElse(new ArrayList<>(0));
@@ -79,7 +81,7 @@ public class BasicSettings {
     }
 
     if (sslEnabled) {
-      this.keystoreFile = raw.stringReq(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE);
+      this.keystoreFile = Constants.makeAbsolutePath(raw.stringReq(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE));
       this.keyAlias = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_ALIAS);
       this.keyPass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_PASS);
       this.keystorePass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_PASS);

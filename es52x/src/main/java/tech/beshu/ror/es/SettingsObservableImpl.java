@@ -26,9 +26,10 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.common.settings.loader.YamlSettingsLoader;
 import tech.beshu.ror.commons.SettingsObservable;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.SettingsUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -102,7 +103,13 @@ public class SettingsObservableImpl extends SettingsObservable {
 
   @Override
   public Map<String, ?> mkSettingsFromYAMLString(String yamlString) {
-    return Settings.builder().loadFromSource(yamlString, XContentType.YAML).build().getAsStructuredMap();
+    Map<String, ?> flat = null;
+    try {
+      flat = SettingsUtils.getAsStructuredMap(new YamlSettingsLoader(true).load(yamlString));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return flat;
   }
 
   @Override
@@ -124,10 +131,8 @@ public class SettingsObservableImpl extends SettingsObservable {
       throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
-    Settings settingsFromIndex = Settings.builder().loadFromSource(yamlString, XContentType.YAML).build();
-    return settingsFromIndex.getAsStructuredMap();
+    return mkSettingsFromYAMLString(yamlString);
   }
-
 
   @Override
   public boolean isClusterReady() {

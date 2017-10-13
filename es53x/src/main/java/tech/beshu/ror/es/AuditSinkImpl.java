@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
@@ -32,32 +31,34 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.shims.es.AuditSinkCore;
-import tech.beshu.ror.commons.ResponseContext;
-import tech.beshu.ror.settings.RorSettings;
+import tech.beshu.ror.commons.BasicSettings;
 
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Calendar;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_ITEMS;
+import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_KB;
+import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_RETRIES;
+import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_SECONDS;
 
 /**
  * Created by sscarduzio on 14/06/2017.
  */
 
 @Singleton
-public class AuditSink extends AuditSinkCore {
-  private static final Logger logger = Loggers.getLogger(AuditSink.class);
-  private final static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+public class AuditSinkImpl {
+
+  private static final Logger logger = Loggers.getLogger(AuditSinkImpl.class);
   private final BulkProcessor bulkProcessor;
-  private final RorSettings settings;
+  private final BasicSettings settings;
 
   @Inject
-  public AuditSink(Client client, RorSettings settings) {
+  public AuditSinkImpl(Client client, BasicSettings settings) {
     this.settings = settings;
 
-    if (!isAuditCollectorEnabled()) {
+    if (!settings.isAuditorCollectorEnabled()) {
       bulkProcessor = null;
       return;
     }
@@ -94,33 +95,38 @@ public class AuditSink extends AuditSinkCore {
         }
       }
     )
-      .setBulkActions(MAX_ITEMS)
-      .setBulkSize(new ByteSizeValue(MAX_KB, ByteSizeUnit.KB))
-      .setFlushInterval(TimeValue.timeValueSeconds(MAX_SECONDS))
+      .setBulkActions(AUDIT_SINK_MAX_ITEMS)
+      .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
+      .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
       .setConcurrentRequests(1)
       .setBackoffPolicy(
-        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), MAX_RETRIES))
+        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
       .build();
   }
 
-  public void submit(ResponseContext rc) throws JsonProcessingException {
-    if (!isAuditCollectorEnabled()) {
+  public void submit(String indexName, String documentId, String jsonRecord) {
+    if (!settings.isAuditorCollectorEnabled()) {
       return;
     }
-    String indexName = "readonlyrest_audit-" + formatter.format(Calendar.getInstance().getTime());
+
     IndexRequest ir = new IndexRequest(
       indexName,
       "ror_audit_evt",
-      rc.getRequestContext().getId()
+      documentId
     ).source(
-      rc.toJson(),
+      jsonRecord,
       XContentType.JSON
     );
     bulkProcessor.add(ir);
   }
 
-  @Override
-  public Boolean isAuditCollectorEnabled() {
-    return settings.getAuditCollector();
+  public void stop() {
+    //#TODO do off-thread
+    try {
+      bulkProcessor.awaitClose(1, TimeUnit.MINUTES);
+    } catch (InterruptedException ie) {
+      ie.printStackTrace();
+    }
   }
+
 }

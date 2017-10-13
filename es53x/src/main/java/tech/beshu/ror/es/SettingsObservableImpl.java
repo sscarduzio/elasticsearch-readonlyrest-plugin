@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.es;
 
 import org.elasticsearch.ElasticsearchException;
@@ -23,34 +24,80 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.configuration.ReloadableSettings;
-import tech.beshu.ror.commons.shims.es.SettingsManager;
+import tech.beshu.ror.commons.SettingsObservable;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+
+import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
 
 /**
  * Created by sscarduzio on 25/06/2017.
  */
 
 @Singleton
-public class SettingsManagerImpl implements SettingsManager {
+public class SettingsObservableImpl extends SettingsObservable {
+  private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
   private Settings settings;
 
   @Inject
-  public SettingsManagerImpl(Settings settings, NodeClient client) throws IOException {
+  public SettingsObservableImpl(Settings settings, NodeClient client) throws IOException {
     this.settings = settings;
     this.client = client;
+    current = this.getFromFile();
   }
 
   @Override
-  public Map<String, ?> getSettingsFromES() {
+  protected Map<String, ?> getFomES() {
     return settings.getAsStructuredMap();
+  }
+
+  @Override
+  protected Map<String, ?> getFromFile() {
+    Map<String, ?> fromES = getFomES();
+
+    String filePath = Optional.ofNullable((String) fromES.get("path.conf")).orElse("config" + File.separator);
+    if (!filePath.endsWith(File.separator)) {
+      filePath += File.separator;
+    }
+    filePath += SETTINGS_YAML_FILE;
+
+    String finalFilePath = filePath;
+
+    final Map<String, Object> settingsMap = new HashMap<>();
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        String slurped = new String(Files.readAllBytes(Paths.get(finalFilePath)));
+        settingsMap.putAll(mkSettingsFromYAMLString(slurped));
+
+        logger.info("Loaded good settings from " + finalFilePath);
+      } catch (Throwable t) {
+        logger.info(
+          "Could not find settings in "
+            + finalFilePath + ", falling back to elasticsearch.yml (" + t.getMessage() + ")");
+        settingsMap.putAll(getFomES());
+      }
+      return null;
+    });
+    return settingsMap;
+  }
+
+  public void forceRefresh() {
+    setChanged();
+    notifyObservers();
   }
 
   @Override
@@ -58,23 +105,29 @@ public class SettingsManagerImpl implements SettingsManager {
     return Settings.builder().loadFromSource(yamlString, XContentType.YAML).build().getAsStructuredMap();
   }
 
-  public Map<String, ?> reloadSettingsFromIndex() {
+  @Override
+  protected LoggerShim getLogger() {
+    return logger;
+  }
+
+  protected Map<String, ?> getFromIndex() {
     GetResponse resp = null;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
     } catch (Throwable t) {
       if (t instanceof ResourceNotFoundException) {
-        throw new ElasticsearchException(ReloadableSettings.SETTINGS_NOT_FOUND_MESSAGE);
+        throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
       }
       throw new ElasticsearchException(t.getMessage());
     }
     if (resp == null || !resp.isExists()) {
-      throw new ElasticsearchException(ReloadableSettings.SETTINGS_NOT_FOUND_MESSAGE);
+      throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
     Settings settingsFromIndex = Settings.builder().loadFromSource(yamlString, XContentType.YAML).build();
     return settingsFromIndex.getAsStructuredMap();
   }
+
 
   @Override
   public boolean isClusterReady() {
@@ -85,11 +138,6 @@ public class SettingsManagerImpl implements SettingsManager {
     } catch (Throwable e) {
       return false;
     }
-  }
-
-  @Override
-  public ESContext getContext() {
-    return new ESContextImpl();
   }
 
 }
