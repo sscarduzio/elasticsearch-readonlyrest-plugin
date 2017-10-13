@@ -22,9 +22,9 @@ package tech.beshu.ror.es.rradmin.rest;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import tech.beshu.ror.es.ThreadRepo;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.RRAdminRequest;
+import tech.beshu.ror.es.rradmin.RRAdminResponse;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
@@ -43,12 +43,15 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
     controller.registerHandler(RestRequest.Method.POST, "/_readonlyrest/admin/refreshconfig", this);
   }
 
+
+  public String getName() {
+    return "ror-admin-handler";
+  }
+
   @Override
   protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
     return (channel) -> {
-      // Adding channel for ACL processing
-      ThreadRepo.channel.set(channel);
-      client.execute(RRAdminAction.INSTANCE, new RRAdminRequest(), new RestToXContentListener<>(channel));
+      client.execute(RRAdminAction.INSTANCE, new RRAdminRequest(), new RestToXContentListener<RRAdminResponse>(channel));
     };
   }
 }

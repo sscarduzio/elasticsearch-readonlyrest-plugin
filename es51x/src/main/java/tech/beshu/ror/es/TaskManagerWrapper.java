@@ -17,11 +17,12 @@
 
 package tech.beshu.ror.es;
 
+import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.transport.TransportRequest;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.tasks.TaskManager;
-import org.elasticsearch.transport.TransportRequest;
 
 import java.lang.reflect.Field;
 import java.security.AccessController;

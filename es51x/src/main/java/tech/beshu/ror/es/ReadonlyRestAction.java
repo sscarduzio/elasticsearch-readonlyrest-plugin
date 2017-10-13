@@ -1,3 +1,5 @@
+package tech.beshu.ror.es;
+
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -15,23 +17,21 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.es;
-
 /**
  * Created by sscarduzio on 19/07/2017.
  */
 
-import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.common.inject.Inject;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestController;
-import org.elasticsearch.rest.RestFilter;
-import org.elasticsearch.rest.RestFilterChain;
-import org.elasticsearch.rest.RestRequest;
+  import org.elasticsearch.client.node.NodeClient;
+  import org.elasticsearch.common.inject.Inject;
+  import org.elasticsearch.common.settings.Settings;
+  import org.elasticsearch.rest.BaseRestHandler;
+  import org.elasticsearch.rest.RestChannel;
+  import org.elasticsearch.rest.RestController;
+  import org.elasticsearch.rest.RestFilter;
+  import org.elasticsearch.rest.RestFilterChain;
+  import org.elasticsearch.rest.RestRequest;
 
-import java.io.IOException;
+  import java.io.IOException;
 
 public class ReadonlyRestAction extends BaseRestHandler {
 
