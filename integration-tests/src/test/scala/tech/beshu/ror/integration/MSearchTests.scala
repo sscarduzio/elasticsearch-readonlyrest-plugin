@@ -5,6 +5,8 @@ import java.util.Optional
 import com.jayway.jsonpath.JsonPath
 import com.mashape.unirest.http.{HttpResponse, Unirest}
 import org.junit.Assert.assertEquals
+import org.junit.runner.RunWith
+import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.{ClassRule, Test}
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.ESInitalizer
@@ -28,6 +30,7 @@ object TEST1 {
       |""".stripMargin
 }
 
+@RunWith(classOf[BlockJUnit4ClassRunner])
 class MSearchTests {
 
   import MSearchTests._
@@ -71,18 +74,51 @@ object MSearchTests {
 
   var url: String = null
 
-  @ClassRule def container = ESWithReadonlyRestContainer.create(RorPluginGradleProject.fromSystemProperty, "/dynamic_vars/elasticsearch.yml", Optional.of(new ESInitalizer {
-    override def initialize(adminClient: RestClient): Unit = {
-      Unirest.setHttpClient(adminClient.getUnderlyingClient)
-      url = adminClient.from("").toASCIIString
-      Unirest.put(url + ".kibana/documents/doc1")
-        .header("refresh", "wait_for")
-        .header("timeout", "50s")
-        .body("""{"id": "asd123"}""")
-        .asString()
+  @ClassRule def container = ESWithReadonlyRestContainer.create(RorPluginGradleProject.fromSystemProperty,
+    TempFile.newFile(getClass.getName, "elasticsearch.yml",
+      """
+        |http.bind_host: _eth0:ipv4_
+        |network.host: _eth0:ipv4_
+        |
+        |xpack:
+        |  monitoring.enabled: false
+        |  security.enabled: false
+        |  graph.enabled: false
+        |  watcher.enabled: false
+        |
+        |http.type: ssl_netty4
+        |transport.type: local
+        |
+        |readonlyrest:
+        |  ssl:
+        |    enable: true
+        |    keystore_file: "config/keystore.jks"
+        |    keystore_pass: readonlyrest
+        |    key_pass: readonlyrest
+        |
+        |  access_control_rules:
+        |
+        |  - name: "CONTAINER ADMIN"
+        |    type: allow
+        |    auth_key: admin:container
+        |
+        |  - name: "Kibana at user"
+        |    type: allow
+        |    auth_key: pablo:dev
+        |    indices: [".kibana_simone"]
+      """.stripMargin),
+    Optional.of(new ESInitalizer {
+      override def initialize(adminClient: RestClient): Unit = {
+        Unirest.setHttpClient(adminClient.getUnderlyingClient)
+        url = adminClient.from("").toASCIIString
+        Unirest.put(url + ".kibana/documents/doc1")
+          .header("refresh", "wait_for")
+          .header("timeout", "50s")
+          .body("""{"id": "asd123"}""")
+          .asString()
 
-      println("ES DOCUMENT WRITTEN IN .kibana! " + Unirest.get(url).asString())
-    }
-  }))
+        println("ES DOCUMENT WRITTEN IN .kibana! " + Unirest.get(url).asString())
+      }
+    }))
 
 }

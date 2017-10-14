@@ -22,6 +22,7 @@ subprojects {
 }
 
 apply plugin: 'java'
+apply plugin: 'scala'
 apply plugin: 'license'
 
 repositories {
