@@ -3,11 +3,13 @@ package tech.beshu.ror.integration
 import java.util.Optional
 
 import com.jayway.jsonpath.JsonPath
-import com.mashape.unirest.http.{HttpResponse, Unirest}
+import com.mashape.unirest.http.Unirest
 import org.junit.Assert.assertEquals
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.{ClassRule, Test}
+import org.testcontainers.shaded.com.google.common.net.HostAndPort
+import tech.beshu.ror.utils.Tuple
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.ESInitalizer
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
@@ -37,36 +39,45 @@ class MSearchTests {
 
   @Test
   def test274_1_notexist() = {
+    useCredentials("kibana", "kibana")
     assertEquals("[0]", msearchRequest(TEST1.NOT_EXISTS))
   }
 
   @Test
   def test274_1_queryworks() = {
+    useCredentials("kibana", "kibana")
     assertEquals("[1]", msearchRequest(TEST1.QUERY_WORKS))
   }
 
   @Test
   def test274_1_emptyindex() = {
+    useCredentials("kibana", "kibana")
     assertEquals("[0]", msearchRequest(TEST1.EMPTY_INDEX))
   }
 
   @Test
   def test274_1_all() = {
-    assertEquals("[0,1,0]", msearchRequest(TEST1.EMPTY_INDEX + TEST1.QUERY_WORKS + TEST1.EMPTY_INDEX))
+    useCredentials("kibana", "kibana")
+    assertEquals("[0,1,0]", msearchRequest(TEST1.NOT_EXISTS + TEST1.QUERY_WORKS + TEST1.EMPTY_INDEX))
   }
 }
 
 object MSearchTests {
 
+  def useCredentials(user: String, pass: String) = Unirest.setHttpClient(
+    new RestClient(
+      true,
+      endpoint.getHostText,
+      endpoint.getPort,
+      Optional.of(Tuple.from(user, pass))
+    ).getUnderlyingClient
+  )
+
   def msearchRequest(body: String) = {
-    val response = Unirest.post(url + "_msearch")
+    val resp = Unirest.post(url + "_msearch")
       .header("Content-Type", "application/x-ndjson")
       .body(body)
       .asString()
-    parseResults(response)
-  }
-
-  def parseResults(resp: HttpResponse[String]) = {
     System.out.println("MSEARCH RESPONSE: " + resp.getBody)
     assertEquals(200, resp.getStatus)
     JsonPath.parse(resp.getBody).read("$.responses[*].hits.total").toString
@@ -102,23 +113,34 @@ object MSearchTests {
         |    type: allow
         |    auth_key: admin:container
         |
-        |  - name: "Kibana at user"
-        |    type: allow
-        |    auth_key: pablo:dev
-        |    indices: [".kibana_simone"]
+        |  - name: "::KIBANA-SRV::"
+        |    auth_key: kibana:kibana
+        |    indices: [".kibana"]
+        |    verbosity: error
       """.stripMargin),
     Optional.of(new ESInitalizer {
-      override def initialize(adminClient: RestClient): Unit = {
-        Unirest.setHttpClient(adminClient.getUnderlyingClient)
-        url = adminClient.from("").toASCIIString
-        Unirest.put(url + ".kibana/documents/doc1")
+      override def initialize(client: RestClient): Unit = {
+        endpoint = HostAndPort.fromParts(client.getHost, client.getPort)
+
+        Unirest.setHttpClient(client.getUnderlyingClient)
+        url = client.from("").toASCIIString
+        println("Added empty index: " + Unirest.put(url + "emptyIndex")
+          .header("refresh", "wait_for")
+          .header("timeout", "50s")
+          .asString().getBody)
+
+        println("ES DOCUMENT WRITTEN IN .kibana! " + Unirest.put(url + ".kibana/documents/doc1")
           .header("refresh", "wait_for")
           .header("timeout", "50s")
           .body("""{"id": "asd123"}""")
-          .asString()
+          .asString().getBody)
 
-        println("ES DOCUMENT WRITTEN IN .kibana! " + Unirest.get(url).asString())
+        // #TODO Hack the refresh=wait_for is not working, fixing temporarily with this shit
+        Thread.sleep(600)
+
       }
+
     }))
 
+  var endpoint: HostAndPort = null
 }
