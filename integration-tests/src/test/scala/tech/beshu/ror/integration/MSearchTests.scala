@@ -16,20 +16,55 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
 
 object TEST1 {
-  val NOT_EXISTS =
+  val MSEAERCH_BODY_NOT_EXISTS =
     """{"index":["perfmon_index_does_not_exist"],"ignore_unavailable":true,"preference":1506497937939}
       |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
       |""".stripMargin
 
-  val QUERY_WORKS =
+  val MSEAERCH_BODY_QUERY_WORKS =
     """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
       |{"query":{"match_all":{}}, "size":0}
       |""".stripMargin
 
-  val EMPTY_INDEX =
+  val MSEAERCH_BODY_EMPTY_INDEX =
     """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
       |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
       |""".stripMargin
+
+  val settingsYaml =
+    """
+      |http.bind_host: _eth0:ipv4_
+      |network.host: _eth0:ipv4_
+      |
+      |xpack:
+      |  monitoring.enabled: false
+      |  security.enabled: false
+      |  graph.enabled: false
+      |  watcher.enabled: false
+      |
+      |http.type: ssl_netty4
+      |transport.type: local
+      |
+      |readonlyrest:
+      |  ssl:
+      |    enable: true
+      |    keystore_file: "config/keystore.jks"
+      |    keystore_pass: readonlyrest
+      |    key_pass: readonlyrest
+      |
+      |  access_control_rules:
+      |
+      |  - name: "CONTAINER ADMIN"
+      |    type: allow
+      |    auth_key: admin:container
+      |
+      |  - name: "::KIBANA-SRV::"
+      |    auth_key: kibana:kibana
+      |    indices: [".kibana"]
+      |    verbosity: error
+    """.stripMargin
+
+  val MSEAERCH_BODY_COMBO = MSEAERCH_BODY_NOT_EXISTS + MSEAERCH_BODY_QUERY_WORKS + MSEAERCH_BODY_EMPTY_INDEX
 }
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
@@ -40,25 +75,25 @@ class MSearchTests {
   @Test
   def test274_1_notexist() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0]", msearchRequest(TEST1.NOT_EXISTS))
+    assertEquals("[0]", msearchRequest(TEST1.MSEAERCH_BODY_NOT_EXISTS))
   }
 
   @Test
   def test274_1_queryworks() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[1]", msearchRequest(TEST1.QUERY_WORKS))
+    assertEquals("[1]", msearchRequest(TEST1.MSEAERCH_BODY_QUERY_WORKS))
   }
 
   @Test
   def test274_1_emptyindex() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0]", msearchRequest(TEST1.EMPTY_INDEX))
+    assertEquals("[0]", msearchRequest(TEST1.MSEAERCH_BODY_EMPTY_INDEX))
   }
 
   @Test
   def test274_1_all() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0,1,0]", msearchRequest(TEST1.NOT_EXISTS + TEST1.QUERY_WORKS + TEST1.EMPTY_INDEX))
+    assertEquals("[0,1,0]", msearchRequest(TEST1.MSEAERCH_BODY_COMBO))
   }
 }
 
@@ -86,38 +121,7 @@ object MSearchTests {
   var url: String = null
 
   @ClassRule def container = ESWithReadonlyRestContainer.create(RorPluginGradleProject.fromSystemProperty,
-    TempFile.newFile(getClass.getName, "elasticsearch.yml",
-      """
-        |http.bind_host: _eth0:ipv4_
-        |network.host: _eth0:ipv4_
-        |
-        |xpack:
-        |  monitoring.enabled: false
-        |  security.enabled: false
-        |  graph.enabled: false
-        |  watcher.enabled: false
-        |
-        |http.type: ssl_netty4
-        |transport.type: local
-        |
-        |readonlyrest:
-        |  ssl:
-        |    enable: true
-        |    keystore_file: "config/keystore.jks"
-        |    keystore_pass: readonlyrest
-        |    key_pass: readonlyrest
-        |
-        |  access_control_rules:
-        |
-        |  - name: "CONTAINER ADMIN"
-        |    type: allow
-        |    auth_key: admin:container
-        |
-        |  - name: "::KIBANA-SRV::"
-        |    auth_key: kibana:kibana
-        |    indices: [".kibana"]
-        |    verbosity: error
-      """.stripMargin),
+    TempFile.newFile(getClass.getName, "elasticsearch.yml", TEST1.settingsYaml),
     Optional.of(new ESInitalizer {
       override def initialize(client: RestClient): Unit = {
         endpoint = HostAndPort.fromParts(client.getHost, client.getPort)
@@ -139,7 +143,6 @@ object MSearchTests {
         Thread.sleep(600)
 
       }
-
     }))
 
   var endpoint: HostAndPort = null

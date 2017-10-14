@@ -61,13 +61,7 @@ dependencies {
     compile 'net.minidev:json-smart:2.3'
     compile 'org.apache.logging.log4j:log4j-core:2.9.0'
     compile 'org.jooq:jool:0.9.12'
-    compile('org.reflections:reflections:0.9.11') {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-        exclude group: 'org.slf4j', module: 'slf4j-simple'
-        exclude group: 'dom4j', module: 'dom4j'
-        exclude group: 'com.google.code.gson', module: 'gson'
-        exclude group: 'com.google.guava', module: 'guava'
-    }
+
     compile 'org.slf4j:slf4j-api:1.7.25'
 
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
