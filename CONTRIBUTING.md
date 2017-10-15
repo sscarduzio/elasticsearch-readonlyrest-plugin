@@ -1,7 +1,7 @@
 # Contribution License Agreement
 
 
-Thank you for your interest in ReadonlyREST (“Product”), managed by BeShu Tech, the owner the product (“We” or “Us”). We appreciate all the Contributions, made to our Product.
+Thank you for your interest in ReadonlyREST (“Product”), managed by Beshu Limited, a company duly established under the laws of United Kingdom, with registration number No. 10888034, and registered address at Office 32 13-21 Crawford Street, WH1 1PG, the owner the product (“We” or “Us”). We appreciate all the Contributions, made to our Product.
 
 The purpose of this Contribution License Agreement (“CLA”, or “Agreement”) is to clarify the intellectual property rights granted with the Contribution to the Product from any person or entity. This CLA serves as a protection for a Contributor, as well as the protection of Us, our Product and its users.
 
