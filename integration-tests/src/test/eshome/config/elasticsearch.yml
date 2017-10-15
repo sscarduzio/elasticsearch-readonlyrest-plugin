@@ -1,3 +1,4 @@
+#discovery.type: single-node
 transport.type: local
 http.type: ssl_netty4
 
@@ -9,7 +10,8 @@ readonlyrest:
     audit_collector: true
 
     ssl:
-      keystore_file: "plugins/readonlyrest/keystore.jks"
+      enable: true
+      keystore_file: "/me/elasticsearch-readonlyrest-plugin-5.x/integration-tests/src/test/eshome/plugins/readonlyrest/keystore.jks"
       keystore_pass: readonlyrest
       key_pass: readonlyrest
 
@@ -28,6 +30,11 @@ readonlyrest:
       auth_key: kibana:kibana
       verbosity: error
 
+
+    # GUEST #####################
+    - name: "guest lol"
+      auth_key: guest:dev
+      kibana_access: ro
 
     # GROUPS ####################
 
@@ -62,3 +69,4 @@ readonlyrest:
     - username: simone
       auth_key: simone:dev
       groups: ["ROR (admin)", "Personal", "Infosec RW", "Infosec RO"]
+

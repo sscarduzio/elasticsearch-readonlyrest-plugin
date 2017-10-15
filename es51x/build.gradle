@@ -47,6 +47,7 @@ apply plugin: 'maven'
 apply plugin: 'license'
 
 dependencies {
+    compile project(':commons')
     compile project(':core')
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
