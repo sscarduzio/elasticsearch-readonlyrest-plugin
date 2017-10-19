@@ -65,7 +65,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   }
 
   @Override
-  protected Map<String, ?> getFromFileWithFallbackToES() {
+  public Map<String, ?> getFromFileWithFallbackToES() {
     Map<String, ?> fromES = getFomES();
 
     String filePath = Optional.ofNullable((String) fromES.get("path.conf")).orElse("config" + File.separator);

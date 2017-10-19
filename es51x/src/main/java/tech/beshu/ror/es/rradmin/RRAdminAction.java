@@ -38,6 +38,6 @@ public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdm
 
   @Override
   public RRAdminResponse newResponse() {
-    return new RRAdminResponse(null);
+    return new RRAdminResponse("default");
   }
 }
