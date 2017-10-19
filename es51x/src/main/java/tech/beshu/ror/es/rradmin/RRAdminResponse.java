@@ -29,7 +29,12 @@ import java.io.IOException;
 
 public class RRAdminResponse extends ActionResponse implements ToXContent {
 
-  private final Throwable throwable;
+  private Throwable throwable;
+  private String body;
+
+  public RRAdminResponse(String body) {
+    this.body = body;
+  }
 
   public RRAdminResponse(Throwable t) {
     this.throwable = t;
@@ -52,7 +57,7 @@ public class RRAdminResponse extends ActionResponse implements ToXContent {
     // builder.startObject();
 
     if (throwable == null) {
-      builder.field("status", "ok").field("message", "settings refreshed");
+      builder.field("status", "ok").field("message", body);
     }
     else {
       builder.field("status", "ko").field("message", throwable.getMessage());

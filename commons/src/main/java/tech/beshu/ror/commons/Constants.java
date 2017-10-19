@@ -36,6 +36,9 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
   public static final String SETTINGS_YAML_FILE = "readonlyrest.yml";
+  public final static String REST_REFRESH_PATH = "/_readonlyrest/admin/refreshconfig";
+  public final static String REST_CONFIGURATION_PATH = "/_readonlyrest/admin/config";
+
   private static final String esHomePath = System.getProperty("es.path.home");
 
   public static String makeAbsolutePath(String path) {

@@ -28,14 +28,17 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
-import tech.beshu.ror.commons.SettingsObservable;
 import tech.beshu.ror.es.SettingsObservableImpl;
+
+import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
+import static tech.beshu.ror.commons.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
 
   private final NodeClient client;
-  private final SettingsObservable settingsObservable;
+
+  private final SettingsObservableImpl settingsObservable;
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
@@ -51,8 +54,39 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
-      settingsObservable.updateFromIndex();
-      listener.onResponse(new RRAdminResponse(null));
+      String method = request.getMethod().toUpperCase();
+      String body = request.getContent();
+      String path = request.getPath();
+
+      // POST
+      if ("POST".equals(method)) {
+        if (REST_REFRESH_PATH.equals(path)) {
+          settingsObservable.updateFromIndex();
+          listener.onResponse(new RRAdminResponse("ok refreshed"));
+          return;
+        }
+        if (REST_CONFIGURATION_PATH.equals(path)) {
+          if (body.length() == 0) {
+            listener.onFailure(new Exception("empty body"));
+            return;
+          }
+          // Can throw SettingsMalformedException
+          settingsObservable.updateFromString(body);
+          listener.onResponse(new RRAdminResponse("updated configuration"));
+          return;
+        }
+
+      }
+      // GET
+      if (REST_CONFIGURATION_PATH.equals(path)) {
+        String currentSettingsYAML = settingsObservable.getCurrentSettingsYAML();
+        System.out.println(currentSettingsYAML);
+        listener.onResponse(new RRAdminResponse(currentSettingsYAML));
+        return;
+      }
+
+      listener.onFailure(new Exception("Didn't find anything to handle this request"));
+
     } catch (Exception e) {
       listener.onResponse(new RRAdminResponse(e));
     }
