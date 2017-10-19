@@ -159,7 +159,7 @@ public class ACL {
     RequestContext rc = mkRequestContext(rInfo);
 
     // Run the blocks through
-    doCheck(rc, h)
+    doCheck(rc)
 
       // Handle different exceptions meanings
       .exceptionally(throwable -> {
@@ -197,7 +197,6 @@ public class ACL {
         // MATCH A FORBIDDEN BLOCK
         else {
           doLog(new ResponseContext(FinalState.FORBIDDEN, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
-
           h.onForbidden();
           return null;
         }
@@ -210,7 +209,7 @@ public class ACL {
     });
   }
 
-  private CompletableFuture<BlockExitResult> doCheck(RequestContext rc, ACLHandler h) {
+  private CompletableFuture<BlockExitResult> doCheck(RequestContext rc) {
     logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
       blocks.iterator(),
@@ -219,6 +218,7 @@ public class ACL {
         return block.check(rc);
       },
       (block, checkResult) -> {
+
         if (checkResult.isMatch()) {
           boolean isAllowed = checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW);
           if (isAllowed) {

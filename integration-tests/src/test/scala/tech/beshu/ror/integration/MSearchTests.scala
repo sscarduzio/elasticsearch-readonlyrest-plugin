@@ -15,61 +15,8 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.ESInitalizer
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
 
-object TEST1 {
-  val MSEAERCH_BODY_NOT_EXISTS =
-    """{"index":["perfmon_index_does_not_exist"],"ignore_unavailable":true,"preference":1506497937939}
-      |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
-      |""".stripMargin
-
-  val MSEAERCH_BODY_QUERY_WORKS =
-    """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
-      |{"query":{"match_all":{}}, "size":0}
-      |""".stripMargin
-
-  val MSEAERCH_BODY_EMPTY_INDEX =
-    """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
-      |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
-      |""".stripMargin
-
-  val settingsYaml =
-    """
-      |http.bind_host: _eth0:ipv4_
-      |network.host: _eth0:ipv4_
-      |
-      |xpack:
-      |  monitoring.enabled: false
-      |  security.enabled: false
-      |  graph.enabled: false
-      |  watcher.enabled: false
-      |
-      |http.type: ssl_netty4
-      |transport.type: local
-      |
-      |readonlyrest:
-      |  ssl:
-      |    enable: true
-      |    keystore_file: "config/keystore.jks"
-      |    keystore_pass: readonlyrest
-      |    key_pass: readonlyrest
-      |
-      |  access_control_rules:
-      |
-      |  - name: "CONTAINER ADMIN"
-      |    type: allow
-      |    auth_key: admin:container
-      |
-      |  - name: "::KIBANA-SRV::"
-      |    auth_key: kibana:kibana
-      |    indices: [".kibana"]
-      |    verbosity: error
-    """.stripMargin
-
-  val MSEAERCH_BODY_COMBO = MSEAERCH_BODY_NOT_EXISTS + MSEAERCH_BODY_QUERY_WORKS + MSEAERCH_BODY_EMPTY_INDEX
-}
-
 @RunWith(classOf[BlockJUnit4ClassRunner])
 class MSearchTests {
-
   import MSearchTests._
 
   @Test
@@ -98,6 +45,58 @@ class MSearchTests {
 }
 
 object MSearchTests {
+
+  object TEST1 {
+    val MSEAERCH_BODY_NOT_EXISTS =
+      """{"index":["perfmon_index_does_not_exist"],"ignore_unavailable":true,"preference":1506497937939}
+        |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
+        |""".stripMargin
+
+    val MSEAERCH_BODY_QUERY_WORKS =
+      """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
+        |{"query":{"match_all":{}}, "size":0}
+        |""".stripMargin
+
+    val MSEAERCH_BODY_EMPTY_INDEX =
+      """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
+        |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
+        |""".stripMargin
+
+    val settingsYaml =
+      """
+        |http.bind_host: _eth0:ipv4_
+        |network.host: _eth0:ipv4_
+        |
+        |xpack:
+        |  monitoring.enabled: false
+        |  security.enabled: false
+        |  graph.enabled: false
+        |  watcher.enabled: false
+        |
+        |http.type: ssl_netty4
+        |transport.type: local
+        |
+        |readonlyrest:
+        |  ssl:
+        |    enable: true
+        |    keystore_file: "config/keystore.jks"
+        |    keystore_pass: readonlyrest
+        |    key_pass: readonlyrest
+        |
+        |  access_control_rules:
+        |
+        |  - name: "CONTAINER ADMIN"
+        |    type: allow
+        |    auth_key: admin:container
+        |
+        |  - name: "::KIBANA-SRV::"
+        |    auth_key: kibana:kibana
+        |    indices: [".kibana"]
+        |    verbosity: error
+      """.stripMargin
+
+    val MSEAERCH_BODY_COMBO = MSEAERCH_BODY_NOT_EXISTS + MSEAERCH_BODY_QUERY_WORKS + MSEAERCH_BODY_EMPTY_INDEX
+  }
 
   def useCredentials(user: String, pass: String) = Unirest.setHttpClient(
     new RestClient(

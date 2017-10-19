@@ -34,7 +34,7 @@ public class HostsRuleSettings implements RuleSettings {
   private final Set<Value<String>> allowedAddresses;
   private final boolean acceptXForwardedForHeader;
 
-  private HostsRuleSettings(Set<Value<String>> allowedAddresses, boolean acceptXForwardedForHeader) {
+  public HostsRuleSettings(Set<Value<String>> allowedAddresses, boolean acceptXForwardedForHeader) {
     this.allowedAddresses = allowedAddresses;
     this.acceptXForwardedForHeader = acceptXForwardedForHeader;
   }
