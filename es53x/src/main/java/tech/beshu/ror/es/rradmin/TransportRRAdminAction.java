@@ -51,6 +51,10 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
     this.settingsObservable = settingsObservable;
   }
 
+  private String normalisePath(String s) {
+    return s.substring(0, s.length() - (s.endsWith("/") ? 1 : 0));
+  }
+
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
@@ -60,12 +64,12 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
 
       // POST
       if ("POST".equals(method)) {
-        if (REST_REFRESH_PATH.equals(path)) {
+        if (REST_REFRESH_PATH.equals(normalisePath(path))) {
           settingsObservable.updateFromIndex();
           listener.onResponse(new RRAdminResponse("ok refreshed"));
           return;
         }
-        if (REST_CONFIGURATION_PATH.equals(path)) {
+        if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
           if (body.length() == 0) {
             listener.onFailure(new Exception("empty body"));
             return;
@@ -78,7 +82,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
 
       }
       // GET
-      if (REST_CONFIGURATION_PATH.equals(path)) {
+      if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
         String currentSettingsYAML = settingsObservable.getCurrentSettingsYAML();
         System.out.println(currentSettingsYAML);
         listener.onResponse(new RRAdminResponse(currentSettingsYAML));
