@@ -55,10 +55,10 @@ public class SettingsObservableImpl extends SettingsObservable {
   private Settings settings;
 
   @Inject
-  public SettingsObservableImpl(Settings settings, NodeClient client) throws IOException {
+  public SettingsObservableImpl(Settings settings, NodeClient client) {
     this.settings = settings;
     this.client = client;
-    current = this.getFromFile();
+    current = this.getFromFileWithFallbackToES();
   }
 
   @Override
@@ -67,7 +67,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   }
 
   @Override
-  protected Map<String, ?> getFromFile() {
+  protected Map<String, ?> getFromFileWithFallbackToES() {
     Map<String, ?> fromES = getFomES();
 
     String filePath = Optional.ofNullable((String) fromES.get("path.conf")).orElse("config" + File.separator);
@@ -94,11 +94,6 @@ public class SettingsObservableImpl extends SettingsObservable {
       return null;
     });
     return settingsMap;
-  }
-
-  public void forceRefresh() {
-    setChanged();
-    notifyObservers();
   }
 
   @Override

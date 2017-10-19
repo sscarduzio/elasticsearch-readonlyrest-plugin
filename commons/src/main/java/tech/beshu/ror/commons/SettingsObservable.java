@@ -17,6 +17,8 @@
 
 package tech.beshu.ror.commons;
 
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.ESVersion;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -54,12 +56,12 @@ abstract public class SettingsObservable extends Observable {
 
   public void updateFromLocalNode() {
     // Includes fallback to ES
-    updateSettings(getFromFile());
+    updateSettings(getFromFileWithFallbackToES());
   }
 
   protected abstract boolean isClusterReady();
 
-  protected Map<String, ?> getFromFile() {
+  public Map<String, ?> getFromFileWithFallbackToES() {
     LoggerShim logger = getLogger();
 
     String filePath = Constants.makeAbsolutePath("config" + File.separator);
@@ -89,7 +91,7 @@ abstract public class SettingsObservable extends Observable {
     return settingsMap;
   }
 
-  protected abstract Map<? extends String, ?> mkSettingsFromYAMLString(String slurped);
+  protected abstract Map<String, ?> mkSettingsFromYAMLString(String slurped);
 
   protected abstract LoggerShim getLogger();
 
@@ -110,6 +112,23 @@ abstract public class SettingsObservable extends Observable {
       else {
         t.printStackTrace();
       }
+    }
+  }
+
+  public void forceRefresh() {
+    setChanged();
+    notifyObservers();
+  }
+
+  public void updateFromString(String stringYaml) {
+    Map<String, ?> oldSettings = current;
+    Map<String, ?> newSettings = mkSettingsFromYAMLString(stringYaml);
+    current = newSettings;
+    try {
+      forceRefresh();
+    } catch (Throwable t) {
+      current = oldSettings;
+      throw new SettingsMalformedException(t.getMessage());
     }
   }
 
@@ -157,5 +176,23 @@ abstract public class SettingsObservable extends Observable {
       // Never going to complete
       logger.info("Skipping settings index poller...");
     }
+  }
+
+  public String getCurrentSettingsYAML() {
+    return map2YAMLString(current);
+  }
+
+  protected String map2YAMLString(Map<String, ?> settingsMap) {
+    DumperOptions options = new DumperOptions();
+    options.setExplicitStart(false);
+    options.setExplicitEnd(false);
+    options.setDefaultFlowStyle(DumperOptions.FlowStyle.AUTO);
+    options.setIndent(2);
+    options.setWidth(360);
+    options.setCanonical(false);
+    options.setPrettyFlow(false);
+    Yaml yaml = new Yaml(options);
+    String result = yaml.dump(settingsMap);
+    return result;
   }
 }

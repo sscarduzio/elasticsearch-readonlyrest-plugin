@@ -29,7 +29,6 @@ import org.elasticsearch.common.settings.Settings;
 import tech.beshu.ror.commons.SettingsObservable;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
-import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -44,10 +43,10 @@ public class SettingsObservableImpl extends SettingsObservable {
   private Settings settings;
 
   @Inject
-  public SettingsObservableImpl(Settings settings) throws IOException {
+  public SettingsObservableImpl(Settings settings) {
     this.settings = settings;
 
-    current = this.getFromFile();
+    current = this.getFromFileWithFallbackToES();
   }
 
   @Override
@@ -62,12 +61,6 @@ public class SettingsObservableImpl extends SettingsObservable {
   @Override
   protected Map<String, ?> getFomES() {
     return settings.getAsStructuredMap();
-  }
-
-
-  public void forceRefresh() {
-    setChanged();
-    notifyObservers();
   }
 
   @Override

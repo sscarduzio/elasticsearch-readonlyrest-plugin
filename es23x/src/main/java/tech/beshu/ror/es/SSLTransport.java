@@ -44,7 +44,7 @@ public class SSLTransport extends NettyHttpServerTransport {
   @Inject
   public SSLTransport(Settings settings, NetworkService networkService, BigArrays bigArrays) {
     super(settings, networkService, bigArrays);
-    this.sslSettings = new BasicSettings(new RawSettings(settings.getAsStructuredMap()));
+    this.sslSettings = new BasicSettings(new RawSettings(new SettingsObservableImpl(settings).getFromFileWithFallbackToES()));
   }
 
   @Override
