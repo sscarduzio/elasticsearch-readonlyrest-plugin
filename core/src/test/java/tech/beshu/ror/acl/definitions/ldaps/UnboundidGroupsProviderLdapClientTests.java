@@ -38,28 +38,73 @@ public class UnboundidGroupsProviderLdapClientTests {
   @ClassRule
   public static LdapContainer ldapContainer = LdapContainer.create("/test_example.ldif");
 
+  private ConnectionConfig connectionConfig = new ConnectionConfig.Builder(ldapContainer.getLdapHost())
+    .setPort(ldapContainer.getLdapPort())
+    .setPoolSize(10)
+    .setConnectionTimeout(Duration.ofSeconds(1))
+    .setRequestTimeout(Duration.ofSeconds(1))
+    .setSslEnabled(false)
+    .setTrustAllCerts(false)
+    .build();
+
+  private UserSearchFilterConfig.Builder userSearchFilterConfigBuilder =
+      new UserSearchFilterConfig.Builder("ou=People,dc=example,dc=com");
+
+  private UserGroupsSearchFilterConfig.Builder userGroupsSearchFilterConfigBuilder =
+      new UserGroupsSearchFilterConfig.Builder("ou=Groups,dc=example,dc=com");
+
+  private Optional<SearchingUserConfig> searchingUserConfig = Optional.of(ldapContainer.getSearchingUserConfig()).map(t -> new SearchingUserConfig(t.v1(), t.v2()));
+
   private UnboundidGroupsProviderLdapClient client = new UnboundidGroupsProviderLdapClient(
-    new ConnectionConfig.Builder(ldapContainer.getLdapHost())
-      .setPort(ldapContainer.getLdapPort())
-      .setPoolSize(10)
-      .setConnectionTimeout(Duration.ofSeconds(1))
-      .setRequestTimeout(Duration.ofSeconds(1))
-      .setSslEnabled(false)
-      .setTrustAllCerts(false)
-      .build(),
-    new UserSearchFilterConfig.Builder("ou=People,dc=example,dc=com").build(),
-    new UserGroupsSearchFilterConfig.Builder("ou=Groups,dc=example,dc=com").build(),
-    Optional.of(ldapContainer.getSearchingUserConfig()).map(t -> new SearchingUserConfig(t.v1(), t.v2())),
-    MockedESContext.INSTANCE
+      connectionConfig,
+      userSearchFilterConfigBuilder.build(),
+      userGroupsSearchFilterConfigBuilder.build(),
+      searchingUserConfig,
+      MockedESContext.INSTANCE
+  );
+
+  private UnboundidGroupsProviderLdapClient clientGroupsFromUser = new UnboundidGroupsProviderLdapClient(
+      connectionConfig,
+      userSearchFilterConfigBuilder.build(),
+      userGroupsSearchFilterConfigBuilder.setIsGroupsFromUser(true).build(),
+      searchingUserConfig,
+      MockedESContext.INSTANCE
   );
 
   @Test
   public void testUserGroupsFetching() throws Exception {
+    Assert.assertTrue(doTestUserGroupFetching(client));
+  }
+
+  @Test
+  public void testUserGroupsFromUserFetching() throws Exception {
+    Assert.assertTrue(doTestUserGroupFetching(clientGroupsFromUser));
+  }
+
+  private boolean doTestUserGroupFetching(UnboundidGroupsProviderLdapClient client) throws Exception {
     CompletableFuture<Set<LdapGroup>> cartmanGroupsF = client.userGroups(
       new LdapUser("cartman", "cn=Eric Cartman,ou=People,dc=example,dc=com")
     );
     Set<LdapGroup> cartmanGroups = cartmanGroupsF.get();
-    Assert.assertEquals(2, cartmanGroups.size());
+    return cartmanGroups.size() == 2;
+  }
+
+  @Test
+  public void testEmptyUserGroupsFetching() throws Exception {
+    Assert.assertTrue(doTestEmptyGroupFetching(client));
+  }
+
+  @Test
+  public void testEmptyUserGroupsFromUserFetching() throws Exception {
+    Assert.assertTrue(doTestEmptyGroupFetching(clientGroupsFromUser));
+  }
+
+  private boolean doTestEmptyGroupFetching(UnboundidGroupsProviderLdapClient client) throws Exception {
+    CompletableFuture<Set<LdapGroup>> guserGroupsF = client.userGroups(
+        new LdapUser("guser", "cn=Groupless User,ou=People,dc=example,dc=com")
+    );
+    Set<LdapGroup> guserGroups = guserGroupsF.get();
+    return guserGroups.size() == 0;
   }
 
 }

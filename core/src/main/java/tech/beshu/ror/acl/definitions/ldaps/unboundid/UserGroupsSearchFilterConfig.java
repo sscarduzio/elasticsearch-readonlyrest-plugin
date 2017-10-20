@@ -24,13 +24,18 @@ public class UserGroupsSearchFilterConfig {
   private final String uniqueMemberAttribute;
   private final String groupSearchFilter;
   private final String groupNameAttribute;
+  private final boolean isGroupsFromUser;
+  private final String groupsFromUserAttribute;
 
   public UserGroupsSearchFilterConfig(String searchGroupBaseDN, String uniqueMemberAttribute,
-                                      String groupSearchFilter, String groupNameAttribute) {
+                                      String groupSearchFilter, String groupNameAttribute,
+                                      boolean isGroupsFromUser, String groupsFromUserAttribute) {
     this.searchGroupBaseDN = searchGroupBaseDN;
     this.uniqueMemberAttribute = uniqueMemberAttribute;
     this.groupSearchFilter = groupSearchFilter;
     this.groupNameAttribute = groupNameAttribute;
+    this.isGroupsFromUser = isGroupsFromUser;
+    this.groupsFromUserAttribute = groupsFromUserAttribute;
   }
 
   public String getGroupNameAttribute() {
@@ -49,12 +54,22 @@ public class UserGroupsSearchFilterConfig {
     return uniqueMemberAttribute;
   }
 
+  public boolean isGroupsFromUser () {
+    return isGroupsFromUser;
+  }
+
+  public String getGroupsFromUserAttribute() {
+    return groupsFromUserAttribute;
+  }
+
   public static class Builder {
 
     private final String searchGroupBaseDN;
     private String uniqueMemberAttribute = GroupsProviderLdapSettings.UNIQUE_MEMBER_DEFAULT;
     private String groupSearchFilter = GroupsProviderLdapSettings.GROUP_SEARCH_FILTER_DEFAULT;
     private String groupNameAttribute = GroupsProviderLdapSettings.GROUP_NAME_ATTRIBUTE_DEFAULT;
+    private boolean isGroupsFromUser = GroupsProviderLdapSettings.GROUPS_FROM_USER_DEFAULT;
+    private String groupsFromUserAttribute = GroupsProviderLdapSettings.GROUPS_FROM_USER_ATTRIBUTE_DEFAULT;
 
     public Builder(String searchGroupBaseDN) {
       this.searchGroupBaseDN = searchGroupBaseDN;
@@ -75,8 +90,18 @@ public class UserGroupsSearchFilterConfig {
       return this;
     }
 
+    public Builder setIsGroupsFromUser(boolean isGroupsFromUser) {
+      this.isGroupsFromUser = isGroupsFromUser;
+      return this;
+    }
+
+    public Builder setGroupsFromUserAttribute(String groupsFromUserAttribute) {
+      this.groupsFromUserAttribute = groupsFromUserAttribute;
+      return this;
+    }
+
     public UserGroupsSearchFilterConfig build() {
-      return new UserGroupsSearchFilterConfig(searchGroupBaseDN, uniqueMemberAttribute, groupSearchFilter, groupNameAttribute);
+      return new UserGroupsSearchFilterConfig(searchGroupBaseDN, uniqueMemberAttribute, groupSearchFilter, groupNameAttribute, isGroupsFromUser, groupsFromUserAttribute);
     }
   }
 }
