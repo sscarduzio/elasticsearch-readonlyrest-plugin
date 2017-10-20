@@ -16,12 +16,9 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.acl.domain.IPMask;
 import tech.beshu.ror.acl.domain.Value;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
 
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -30,26 +27,20 @@ import java.util.stream.Collectors;
 public class XForwardedForRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "x_forwarded_for";
-  private static Function<String, IPMask> ipMaskFromString = value -> {
-    try {
-      return IPMask.getIPMask(value);
-    } catch (UnknownHostException e) {
-      throw new SettingsMalformedException("Cannot create IP address from string: " + value);
-    }
-  };
-  private final Set<Value<IPMask>> allowedAddresses;
 
-  private XForwardedForRuleSettings(Set<Value<IPMask>> allowedAddresses) {
+  private final Set<Value<String>> allowedAddresses;
+
+  private XForwardedForRuleSettings(Set<Value<String>> allowedAddresses) {
     this.allowedAddresses = allowedAddresses;
   }
 
-  public static XForwardedForRuleSettings from(List<String> addresses) {
-    return new XForwardedForRuleSettings(addresses.stream()
-                                           .map(obj -> Value.fromString(obj, ipMaskFromString))
+  public static XForwardedForRuleSettings from(List<String> hosts) {
+    return new XForwardedForRuleSettings(hosts.stream()
+                                           .map(allowedHost -> Value.fromString(allowedHost, Function.identity()))
                                            .collect(Collectors.toSet()));
   }
 
-  public Set<Value<IPMask>> getAllowedAddresses() {
+  public Set<Value<String>> getAllowedAddresses() {
     return allowedAddresses;
   }
 

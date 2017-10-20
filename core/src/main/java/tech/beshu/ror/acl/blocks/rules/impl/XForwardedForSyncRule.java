@@ -25,6 +25,7 @@ import tech.beshu.ror.acl.domain.Value;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +35,7 @@ import java.util.Set;
  */
 public class XForwardedForSyncRule extends SyncRule {
 
-  private final Set<Value<IPMask>> allowedAddresses;
+  private final Set<Value<String>> allowedAddresses;
   private final XForwardedForRuleSettings settings;
 
   public XForwardedForSyncRule(XForwardedForRuleSettings s) {
@@ -86,9 +87,11 @@ public class XForwardedForSyncRule extends SyncRule {
       );
   }
 
-  private boolean ipMatchesAddress(IPMask ip, String address) {
+  private boolean ipMatchesAddress(String allowedHost, String address) {
     try {
-      return ip.matches(address);
+      // Late resolution of allowed hosts (so we pick up DNS changes)
+      allowedHost = InetAddress.getByName(allowedHost).getHostAddress();
+      return IPMask.getIPMask(allowedHost).matches(address);
     } catch (UnknownHostException e) {
       return false;
     }
