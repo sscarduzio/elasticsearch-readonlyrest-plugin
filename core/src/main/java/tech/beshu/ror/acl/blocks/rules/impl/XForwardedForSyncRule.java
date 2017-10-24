@@ -20,11 +20,11 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.acl.domain.IPMask;
 import tech.beshu.ror.acl.domain.Value;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
@@ -39,7 +39,7 @@ public class XForwardedForSyncRule extends SyncRule {
   private final XForwardedForRuleSettings settings;
 
   public XForwardedForSyncRule(XForwardedForRuleSettings s) {
-    this.allowedAddresses = s.getAllowedAddresses();
+    this.allowedAddresses = s.getAllowedIdentifiers();
     this.settings = s;
   }
 
@@ -48,7 +48,7 @@ public class XForwardedForSyncRule extends SyncRule {
     if (!Strings.isNullOrEmpty(header)) {
       String[] parts = header.split(",");
       if (!Strings.isNullOrEmpty(parts[0])) {
-        return parts[0];
+        return parts[0].trim();
       }
     }
     return null;
@@ -58,11 +58,38 @@ public class XForwardedForSyncRule extends SyncRule {
   public RuleExitResult match(RequestContext rc) {
     String header = getXForwardedForHeader(rc.getHeaders());
 
-    if (header == null) {
+    // Handle unknown case
+    if (header == null || "unknown".equals(header.toLowerCase())) {
       return NO_MATCH;
     }
 
-    boolean res = matchesAddress(rc, header);
+    // Handle header as anonimised identifier
+    if (settings.getAllowedIdentifiers().stream()
+      .anyMatch(v -> v.getValue(rc).filter(s -> s.equals(header)).isPresent())) {
+      return MATCH;
+    }
+
+    Inet4Address resolved = null;
+    try {
+      resolved = (Inet4Address) InetAddress.getByName(header);
+      if (resolved == null) {
+        return NO_MATCH;
+      }
+    } catch (UnknownHostException e) {
+      // This string cannot be resolved, useless to try match with numeric
+      return NO_MATCH;
+    }
+
+
+    // Handle header as IP
+    Inet4Address finalResolved = resolved;
+    boolean res = settings.getAllowedNumeric().stream()
+      .anyMatch(ip -> {
+        // This resolves names if necessary
+        return ip.matches(finalResolved);
+      });
+
+
     return res ? MATCH : NO_MATCH;
   }
 
@@ -71,29 +98,4 @@ public class XForwardedForSyncRule extends SyncRule {
     return settings.getName();
   }
 
-  /*
-   * All "matches" methods should return true if no explicit condition was configured
-   */
-  private boolean matchesAddress(RequestContext rc, String address) {
-    if (allowedAddresses == null) {
-      return true;
-    }
-
-    return allowedAddresses.stream()
-      .anyMatch(value ->
-                  value.getValue(rc)
-                    .map(ip -> ipMatchesAddress(ip, address))
-                    .orElse(false)
-      );
-  }
-
-  private boolean ipMatchesAddress(String allowedHost, String address) {
-    try {
-      // Late resolution of allowed hosts (so we pick up DNS changes)
-      allowedHost = InetAddress.getByName(allowedHost).getHostAddress();
-      return IPMask.getIPMask(allowedHost).matches(address);
-    } catch (UnknownHostException e) {
-      return false;
-    }
-  }
 }

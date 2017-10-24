@@ -17,19 +17,16 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import com.google.common.collect.Sets;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Lists;
 import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.acl.domain.Value;
-import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
 
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -39,18 +36,19 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class HostsRuleTests {
+public class XForwardedForSyncRuleTests {
 
   private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
   private RuleExitResult match(String configured, String found, RequestContext rc) {
-    when(rc.getRemoteAddress()).thenReturn(found);
+    Map<String, String> headers = new HashMap<>(1);
+    headers.put("X-Forwarded-For", found);
+    when(rc.getHeaders()).thenReturn(headers);
 
-    Set<Value<String>> configV = Sets.newHashSet(configured).stream().map(i -> Value.fromString(i, Function.identity())).collect(Collectors.toSet());
-    HostsRuleSettings hrset = new HostsRuleSettings(configV, false);
-    SyncRule r = new HostsSyncRule(hrset, new MockedESContext());
+    XForwardedForRuleSettings hrset = XForwardedForRuleSettings.from(Lists.newArrayList(configured));
+    SyncRule r = new XForwardedForSyncRule(hrset);
     return r.match(rc);
   }
 
@@ -76,5 +74,17 @@ public class HostsRuleTests {
   public void testKO() {
     RuleExitResult res = match("google.com", "x");
     assertFalse(res.isMatch());
+  }
+
+  @Test
+  public void testLocal() {
+    RuleExitResult res = match("localhost", "127.0.0.1");
+    assertFalse(res.isMatch());
+  }
+
+  @Test
+  public void testLocalReverse() {
+    RuleExitResult res = match("127.0.0.1", "localhost");
+    assertTrue(res.isMatch());
   }
 }
