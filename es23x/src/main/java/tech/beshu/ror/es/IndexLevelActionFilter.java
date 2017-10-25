@@ -96,7 +96,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       settingsObservable.addObserver((o, arg) -> {
         logger.info("Settings observer refreshing...");
-        ESContext newContext = new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent())));
+        ESContext newContext = new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent().asMap())));
 
         if (newContext.getSettings().isEnabled()) {
           try {
@@ -105,6 +105,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             logger.info("Configuration reloaded - ReadonlyREST enabled");
           } catch (Exception ex) {
             logger.error("Cannot configure ReadonlyREST plugin", ex);
+            throw ex;
           }
         }
         else {

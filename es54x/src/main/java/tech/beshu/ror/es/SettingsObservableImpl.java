@@ -17,8 +17,11 @@
 
 package tech.beshu.ror.es;
 
+import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
@@ -27,6 +30,7 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
+import tech.beshu.ror.commons.SettingsForStorage;
 import tech.beshu.ror.commons.SettingsObservable;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
@@ -53,63 +57,41 @@ public class SettingsObservableImpl extends SettingsObservable {
   private Settings settings;
 
   @Inject
-  public SettingsObservableImpl(Settings settings, NodeClient client){
-    this.settings = settings;
+  public SettingsObservableImpl(NodeClient client) {
+    super();
     this.client = client;
     current = this.getFromFileWithFallbackToES();
   }
 
   @Override
-  protected Map<String, ?> getFomES() {
-    return settings.getAsStructuredMap();
-  }
-
-  @Override
-  public Map<String, ?> getFromFileWithFallbackToES() {
-    Map<String, ?> fromES = getFomES();
-
-    String filePath = Optional.ofNullable((String) fromES.get("path.conf")).orElse("config" + File.separator);
-    if (!filePath.endsWith(File.separator)) {
-      filePath += File.separator;
-    }
-    filePath += SETTINGS_YAML_FILE;
-
-    String finalFilePath = filePath;
-
-    final Map<String, Object> settingsMap = new HashMap<>();
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      try {
-        String slurped = new String(Files.readAllBytes(Paths.get(finalFilePath)));
-        settingsMap.putAll(mkSettingsFromYAMLString(slurped));
-
-        logger.info("Loaded good settings from " + finalFilePath);
-      } catch (Throwable t) {
-        logger.info(
-          "Could not find settings in "
-            + finalFilePath + ", falling back to elasticsearch.yml (" + t.getMessage() + ")");
-        settingsMap.putAll(getFomES());
+  protected void writeToIndex(SettingsForStorage s4s, FutureCallback f) {
+    String jsonToCommit = s4s.toJsonStorage();
+    client.prepareBulk().add(
+      client.prepareIndex(".readonlyrest", "settings", "1")
+        .setSource(jsonToCommit, XContentType.JSON).request()
+    ).execute().addListener(new ActionListener<BulkResponse>() {
+      @Override
+      public void onResponse(BulkResponse bulkItemResponses) {
+        logger.info("all ok, written settings");
+        f.onSuccess(bulkItemResponses);
       }
-      return null;
+
+      @Override
+      public void onFailure(Exception e) {
+        logger.error("could not write settings to index: ", e);
+        f.onFailure(e);
+      }
     });
-    return settingsMap;
   }
 
-  public void forceRefresh() {
-    setChanged();
-    notifyObservers();
-  }
-
-  @Override
-  public Map<String, ?> mkSettingsFromYAMLString(String yamlString) {
-    return Settings.builder().loadFromSource(yamlString, XContentType.YAML).build().getAsStructuredMap();
-  }
 
   @Override
   protected LoggerShim getLogger() {
     return logger;
   }
 
-  protected Map<String, ?> getFromIndex() {
+  @Override
+  protected SettingsForStorage getFromIndex() {
     GetResponse resp = null;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
@@ -123,8 +105,7 @@ public class SettingsObservableImpl extends SettingsObservable {
       throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
-    Settings settingsFromIndex = Settings.builder().loadFromSource(yamlString, XContentType.YAML).build();
-    return settingsFromIndex.getAsStructuredMap();
+    return new SettingsForStorage(yamlString);
   }
 
 

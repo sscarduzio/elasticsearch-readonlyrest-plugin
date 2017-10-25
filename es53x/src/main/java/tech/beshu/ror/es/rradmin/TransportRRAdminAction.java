@@ -19,6 +19,7 @@
 
 package tech.beshu.ror.es.rradmin;
 
+import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.HandledTransportAction;
@@ -28,6 +29,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
+import tech.beshu.ror.commons.SettingsForStorage;
 import tech.beshu.ror.es.SettingsObservableImpl;
 
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
@@ -65,7 +67,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
       // POST
       if ("POST".equals(method)) {
         if (REST_REFRESH_PATH.equals(normalisePath(path))) {
-          settingsObservable.updateFromIndex();
+          settingsObservable.refreshFromIndex();
           listener.onResponse(new RRAdminResponse("ok refreshed"));
           return;
         }
@@ -75,15 +77,24 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
             return;
           }
           // Can throw SettingsMalformedException
-          settingsObservable.updateFromString(body);
-          listener.onResponse(new RRAdminResponse("updated configuration"));
+          settingsObservable.refreshFromStringAndPersist(new SettingsForStorage(body), new FutureCallback() {
+            @Override
+            public void onSuccess(Object result) {
+              listener.onResponse(new RRAdminResponse("updated settings"));
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+              listener.onFailure(new Exception("could not update settings ", t));
+            }
+          });
           return;
         }
 
       }
       // GET
       if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
-        String currentSettingsYAML = settingsObservable.getCurrentSettingsYAML();
+        String currentSettingsYAML = settingsObservable.getCurrent().toJsonStorage();
         System.out.println(currentSettingsYAML);
         listener.onResponse(new RRAdminResponse(currentSettingsYAML));
         return;

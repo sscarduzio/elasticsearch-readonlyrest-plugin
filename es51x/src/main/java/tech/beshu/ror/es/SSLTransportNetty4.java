@@ -51,7 +51,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
                             ThreadPool threadPool) {
     super(settings, networkService, bigArrays, threadPool);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
-    this.basicSettings = new BasicSettings(new RawSettings(new SettingsObservableImpl(settings, null).getFromFileWithFallbackToES()));
+    this.basicSettings = new BasicSettings(new RawSettings(new SettingsObservableImpl( null).getCurrent().asMap()));
 
     if (basicSettings.isSSLEnabled()) {
       logger.info("creating SSL transport");

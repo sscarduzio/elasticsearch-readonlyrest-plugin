@@ -26,13 +26,13 @@ import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.http.netty.NettyHttpServerTransport;
-import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.SSLCertParser;
-import tech.beshu.ror.commons.RawSettings;
-import tech.beshu.ror.commons.utils.TempFile;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.handler.ssl.SslContext;
+import tech.beshu.ror.commons.BasicSettings;
+import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.SSLCertParser;
+import tech.beshu.ror.commons.utils.TempFile;
 
 import java.io.File;
 import java.util.Optional;
@@ -44,7 +44,7 @@ public class SSLTransport extends NettyHttpServerTransport {
   @Inject
   public SSLTransport(Settings settings, NetworkService networkService, BigArrays bigArrays) {
     super(settings, networkService, bigArrays);
-    this.sslSettings = new BasicSettings(new RawSettings(new SettingsObservableImpl(settings).getFromFileWithFallbackToES()));
+    this.sslSettings = new BasicSettings(new RawSettings(new SettingsObservableImpl(null).getCurrent().asMap()));
   }
 
   @Override

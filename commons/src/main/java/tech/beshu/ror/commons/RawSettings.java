@@ -101,6 +101,9 @@ public class RawSettings {
       if (s instanceof String) {
         return Integer.parseInt((String) s);
       }
+      if (s instanceof Double) {
+        return ((Double) s).intValue();
+      }
       return (Integer) s;
     });
   }
@@ -129,7 +132,7 @@ public class RawSettings {
     if (value instanceof List<?>) {
       List<?> l = (List<?>) value;
       set.addAll(l);
-      if(set.size() < l.size()){
+      if (set.size() < l.size()) {
         throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot contain duplicates");
       }
     }

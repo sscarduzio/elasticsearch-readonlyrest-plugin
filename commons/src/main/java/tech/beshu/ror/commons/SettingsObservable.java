@@ -17,19 +17,17 @@
 
 package tech.beshu.ror.commons;
 
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
+import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.ESVersion;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Observable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -42,26 +40,23 @@ import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
 abstract public class SettingsObservable extends Observable {
   protected static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
 
-  protected Map<String, ?> current;
+  protected SettingsForStorage current;
 
-  void updateSettings(Map<String, ?> newSettings) {
+  void updateSettings(SettingsForStorage newSettings) {
     this.current = newSettings;
     setChanged();
     notifyObservers();
   }
 
-  public Map<String, ?> getCurrent() {
+  public SettingsForStorage getCurrent() {
     return current;
   }
 
-  public void updateFromLocalNode() {
-    // Includes fallback to ES
-    updateSettings(getFromFileWithFallbackToES());
-  }
+  // protected abstract void writeToIndex();
 
   protected abstract boolean isClusterReady();
 
-  public Map<String, ?> getFromFileWithFallbackToES() {
+  public SettingsForStorage getFromFileWithFallbackToES() {
     LoggerShim logger = getLogger();
 
     String filePath = Constants.makeAbsolutePath("config" + File.separator);
@@ -72,34 +67,39 @@ abstract public class SettingsObservable extends Observable {
     filePath += SETTINGS_YAML_FILE;
 
     String finalFilePath = filePath;
+    final String esFilePath = filePath + "elasticsearch.yml";
 
-    final Map<String, Object> settingsMap = new HashMap<>();
+    final SettingsForStorage[] s4s = new SettingsForStorage[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
         String slurped = new String(Files.readAllBytes(Paths.get(finalFilePath)));
-        settingsMap.putAll(mkSettingsFromYAMLString(slurped));
-
+        s4s[0] = new SettingsForStorage(slurped);
         logger.info("Loaded good settings from " + finalFilePath);
       } catch (Throwable t) {
         logger.info(
           "Could not find settings in "
             + finalFilePath + ", falling back to elasticsearch.yml (" + t.getMessage() + ")");
-        settingsMap.putAll(getFomES());
+        try {
+          String slurped = new String(Files.readAllBytes(Paths.get(esFilePath)));
+          s4s[0] = new SettingsForStorage(slurped);
+          logger.info("Loaded good settings from " + esFilePath);
+        } catch (IOException e) {
+          throw new RuntimeException("Cannot read elasticsearch.yml", e);
+        }
       }
       return null;
     });
-    return settingsMap;
+    return s4s[0];
   }
-
-  protected abstract Map<String, ?> mkSettingsFromYAMLString(String slurped);
 
   protected abstract LoggerShim getLogger();
 
-  protected abstract Map<String, ?> getFomES();
+  protected abstract SettingsForStorage getFromIndex();
 
-  protected abstract Map<String, ?> getFromIndex();
+  protected abstract void writeToIndex(SettingsForStorage s4s, FutureCallback f);
 
-  public void updateFromIndex() {
+
+  public void refreshFromIndex() {
     try {
       getLogger().debug("[CLUSTERWIDE SETTINGS] checking index..");
       updateSettings(getFromIndex());
@@ -120,12 +120,12 @@ abstract public class SettingsObservable extends Observable {
     notifyObservers();
   }
 
-  public void updateFromString(String stringYaml) {
-    Map<String, ?> oldSettings = current;
-    Map<String, ?> newSettings = mkSettingsFromYAMLString(stringYaml);
+  public void refreshFromStringAndPersist(SettingsForStorage newSettings, FutureCallback fut) {
+    SettingsForStorage oldSettings = current;
     current = newSettings;
     try {
       forceRefresh();
+      writeToIndex(newSettings, fut);
     } catch (Throwable t) {
       current = oldSettings;
       throw new SettingsMalformedException(t.getMessage());
@@ -146,16 +146,17 @@ abstract public class SettingsObservable extends Observable {
       ScheduledFuture scheduledJob = executor
         .scheduleWithFixedDelay(() -> {
           if (isClusterReady()) {
-            logger.info("[CLUSTERWIDE SETTINGS] Cluster is ready!");
+            logger.debug("[CLUSTERWIDE SETTINGS] Cluster is ready!");
             result.complete(null);
             try {
-              updateFromIndex();
+              refreshFromIndex();
             } catch (Exception e) {
               if (e.getMessage().equals(SETTINGS_NOT_FOUND_MESSAGE)) {
                 logger.info("[CLUSTERWIDE SETTINGS] Settings not found in index .readonlyrest, defaulting to local node setting...");
               }
               else {
                 e.printStackTrace();
+                throw e;
               }
             }
           }
@@ -178,21 +179,4 @@ abstract public class SettingsObservable extends Observable {
     }
   }
 
-  public String getCurrentSettingsYAML() {
-    return map2YAMLString(current);
-  }
-
-  protected String map2YAMLString(Map<String, ?> settingsMap) {
-    DumperOptions options = new DumperOptions();
-    options.setExplicitStart(false);
-    options.setExplicitEnd(false);
-    options.setDefaultFlowStyle(DumperOptions.FlowStyle.AUTO);
-    options.setIndent(2);
-    options.setWidth(360);
-    options.setCanonical(false);
-    options.setPrettyFlow(false);
-    Yaml yaml = new Yaml(options);
-    String result = yaml.dump(settingsMap);
-    return result;
-  }
 }

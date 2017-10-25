@@ -17,19 +17,21 @@
 
 package tech.beshu.ror.es;
 
+import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.XContentType;
+import tech.beshu.ror.commons.SettingsForStorage;
 import tech.beshu.ror.commons.SettingsObservable;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-
-import java.util.Map;
 
 /**
  * Created by sscarduzio on 25/06/2017.
@@ -39,13 +41,11 @@ import java.util.Map;
 public class SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
 
-  private NodeClient client;
-  private Settings settings;
+  private  NodeClient client;
 
   @Inject
-  public SettingsObservableImpl(Settings settings) {
-    this.settings = settings;
-
+  public SettingsObservableImpl(NodeClient client) {
+    this.client = client;
     current = this.getFromFileWithFallbackToES();
   }
 
@@ -54,21 +54,7 @@ public class SettingsObservableImpl extends SettingsObservable {
     return logger;
   }
 
-  public void setClient(NodeClient client) {
-    this.client = client;
-  }
-
-  @Override
-  protected Map<String, ?> getFomES() {
-    return settings.getAsStructuredMap();
-  }
-
-  @Override
-  public Map<String, ?> mkSettingsFromYAMLString(String yamlString) {
-    return Settings.builder().loadFromSource(yamlString).build().getAsStructuredMap();
-  }
-
-  protected Map<String, ?> getFromIndex() {
+  protected SettingsForStorage getFromIndex() {
     GetResponse resp = null;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
@@ -82,10 +68,29 @@ public class SettingsObservableImpl extends SettingsObservable {
       throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
-    Settings settingsFromIndex = Settings.builder().loadFromSource(yamlString).build();
-    return settingsFromIndex.getAsStructuredMap();
+    return new SettingsForStorage(yamlString);
   }
 
+  @Override
+  protected void writeToIndex(SettingsForStorage s4s, FutureCallback f) {
+    client.prepareBulk().add(
+      client.prepareIndex(".readonlyrest", "settings", "1")
+        .setSource(s4s.toJsonStorage(), XContentType.YAML).request()
+    ).execute().addListener(new ActionListener<BulkResponse>() {
+      @Override
+      public void onResponse(BulkResponse bulkItemResponses) {
+        logger.info("all ok, written settings");
+        f.onSuccess(bulkItemResponses);
+      }
+
+      @Override
+      public void onFailure(Throwable e) {
+        logger.error("could not write settings to index: ", e);
+        f.onFailure(e);
+      }
+    });
+
+  }
 
   @Override
   public boolean isClusterReady() {
@@ -98,4 +103,7 @@ public class SettingsObservableImpl extends SettingsObservable {
     }
   }
 
+  public void setClient(NodeClient client) {
+    this.client = client;
+  }
 }
