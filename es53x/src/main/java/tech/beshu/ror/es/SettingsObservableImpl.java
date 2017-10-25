@@ -21,7 +21,6 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureC
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.ListenableActionFuture;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.node.NodeClient;
@@ -29,22 +28,10 @@ import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import tech.beshu.ror.commons.SettingsForStorage;
 import tech.beshu.ror.commons.SettingsObservable;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
-import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
 
 /**
  * Created by sscarduzio on 25/06/2017.
@@ -57,7 +44,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   private final NodeClient client;
 
   @Inject
-  public SettingsObservableImpl( NodeClient client) {
+  public SettingsObservableImpl(NodeClient client) {
     this.client = client;
     current = this.getFromFileWithFallbackToES();
   }

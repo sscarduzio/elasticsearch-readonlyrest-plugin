@@ -42,7 +42,7 @@ abstract public class SettingsObservable extends Observable {
 
   protected SettingsForStorage current;
 
-  void updateSettings(SettingsForStorage newSettings) {
+  public void updateSettings(SettingsForStorage newSettings) {
     this.current = newSettings;
     setChanged();
     notifyObservers();
@@ -64,10 +64,12 @@ abstract public class SettingsObservable extends Observable {
     if (!filePath.endsWith(File.separator)) {
       filePath += File.separator;
     }
+    
+    final String esFilePath = filePath + "elasticsearch.yml";
+
     filePath += SETTINGS_YAML_FILE;
 
     String finalFilePath = filePath;
-    final String esFilePath = filePath + "elasticsearch.yml";
 
     final SettingsForStorage[] s4s = new SettingsForStorage[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
@@ -84,7 +86,7 @@ abstract public class SettingsObservable extends Observable {
           s4s[0] = new SettingsForStorage(slurped);
           logger.info("Loaded good settings from " + esFilePath);
         } catch (IOException e) {
-          throw new RuntimeException("Cannot read elasticsearch.yml", e);
+          throw new SettingsMalformedException("Cannot even read elasticsearch.yml, giving up", e);
         }
       }
       return null;
