@@ -29,16 +29,13 @@ import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Observable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
 
 abstract public class SettingsObservable extends Observable {
-  protected static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
+  public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
+
+  private boolean printedInfo = false;
 
   protected SettingsForStorage current;
 
@@ -64,7 +61,7 @@ abstract public class SettingsObservable extends Observable {
     if (!filePath.endsWith(File.separator)) {
       filePath += File.separator;
     }
-    
+
     final String esFilePath = filePath + "elasticsearch.yml";
 
     filePath += SETTINGS_YAML_FILE;
@@ -104,12 +101,18 @@ abstract public class SettingsObservable extends Observable {
   public void refreshFromIndex() {
     try {
       getLogger().debug("[CLUSTERWIDE SETTINGS] checking index..");
-      updateSettings(getFromIndex());
-      getLogger().info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding local YAML file");
+      SettingsForStorage fromIndex = getFromIndex();
+      if(!fromIndex.asRawYAML().equals(current.asRawYAML())) {
+        updateSettings(fromIndex);
+        getLogger().info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding local YAML file");
+      }
     } catch (Throwable t) {
-      if (SETTINGS_NOT_FOUND_MESSAGE.equals(t.getMessage())) {
-        getLogger().info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using the local YAML file. " +
-                           "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
+      if ( SETTINGS_NOT_FOUND_MESSAGE.equals(t.getMessage())) {
+        if(!printedInfo) {
+          getLogger().info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using the local YAML file. " +
+                             "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
+        }
+        printedInfo = true;
       }
       else {
         t.printStackTrace();
@@ -138,47 +141,7 @@ abstract public class SettingsObservable extends Observable {
     if (context.getVersion().before(ESVersion.V_5_0_0)) {
       return;
     }
-    LoggerShim logger = context.logger(getClass());
-
-    // When ReloadableSettings is created at boot time, wait the cluster to stabilise and read in-index settings.
-    CompletableFuture<Void> result = new CompletableFuture<>();
-    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-
-    if (System.getProperty("com.readonlyrest.reloadsettingsonboot") == null) {
-      ScheduledFuture scheduledJob = executor
-        .scheduleWithFixedDelay(() -> {
-          if (isClusterReady()) {
-            logger.debug("[CLUSTERWIDE SETTINGS] Cluster is ready!");
-            result.complete(null);
-            try {
-              refreshFromIndex();
-            } catch (Exception e) {
-              if (e.getMessage().equals(SETTINGS_NOT_FOUND_MESSAGE)) {
-                logger.info("[CLUSTERWIDE SETTINGS] Settings not found in index .readonlyrest, defaulting to local node setting...");
-              }
-              else {
-                e.printStackTrace();
-                throw e;
-              }
-            }
-          }
-          else {
-            logger.info("[CLUSTERWIDE SETTINGS] Cluster not ready...");
-          }
-        }, 1, 1, TimeUnit.SECONDS);
-
-      // When the cluster is up, stop polling.
-      result.thenAccept((_x) -> {
-        logger.info("[CLUSTERWIDE SETTINGS] Stopping cluster poller..");
-        scheduledJob.cancel(false);
-        executor.shutdown();
-      });
-
-    }
-    else {
-      // Never going to complete
-      logger.info("Skipping settings index poller...");
-    }
+    new SettingsPoller(this, context, 1, 5, true).poll();
   }
 
 }
