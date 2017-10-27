@@ -35,8 +35,8 @@ public class RawSettings {
 
   public RawSettings(Map<String, ?> raw) {
     this.raw = raw;
-    if(raw == null || raw.size() == 0){
-      throw new SettingsMalformedException("Received empty ROR settings: " + raw);
+    if(raw == null ){
+      throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
   }
