@@ -46,7 +46,7 @@ public class SettingsForStorage {
 
   public SettingsForStorage(String original) {
     try {
-      Map<String, ?> j = gson.fromJson(original, Map.class);
+      Map<String, ?> j = toMap(original);
       this.original = (String) j.get("settings");
     } catch (Exception e) {
       this.original = original;
@@ -66,8 +66,18 @@ public class SettingsForStorage {
   }
 
   public Map<String, ?> asMap() {
-    String j = toJson((Map) yaml.load(original));
-    return gson.fromJson(j, Map.class);
+    return toMap(original);
+  }
+
+  private Map<String, ?> toMap(String s) {
+    final Map[] m = new Map[1];
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+
+      String j = toJson((Map) yaml.load(s));
+      m[0] = gson.fromJson(j, Map.class);
+      return null;
+    });
+    return m[0];
   }
 
   private String toJson(Map m) {
