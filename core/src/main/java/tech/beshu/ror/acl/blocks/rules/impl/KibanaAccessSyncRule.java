@@ -46,6 +46,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     "indices:data/read/msearch",
     "indices:admin/get",
     "indices:admin/refresh*",
+    "indices:data/read/field_caps",
     "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
