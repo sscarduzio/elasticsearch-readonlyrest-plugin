@@ -41,12 +41,8 @@ public class KibanaAccessSyncRule extends SyncRule {
     "indices:admin/exists",
     "indices:admin/mappings/fields/get*",
     "indices:admin/validate/query",
-    "indices:data/read/field_stats",
-    "indices:data/read/search",
-    "indices:data/read/msearch",
     "indices:admin/get",
     "indices:admin/refresh*",
-    "indices:data/read/field_caps",
     "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
@@ -59,7 +55,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   ));
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
     "cluster:admin/rradmin/*",
-    "indices:data/write/*",
+    "indices:data/write/*", // <-- DEPRECATED!
     "indices:admin/create"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
