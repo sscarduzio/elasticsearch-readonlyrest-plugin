@@ -42,34 +42,54 @@ public class SettingsForStorage {
     options.setExplicitStart(false);
   }
 
-  private String original;
+  private String originalYamlString;
 
-  public SettingsForStorage(String original) {
-    try {
-      Map<String, ?> j = toMap(original);
-      this.original = (String) j.get("settings");
-    } catch (Exception e) {
-      this.original = original;
+  public SettingsForStorage(String originalYamlString) {
+    // Ensure it is YAML
+    try{
+      originalYamlString = SettingsForStorage.extractYAMLfromJSONStorage(originalYamlString);
     }
+    catch (Exception e){
+      // It's ok, maybe it's not wrapped in JSON.
+    }
+    try{
+      // Has to be parsable YAML now
+      yaml2Map(originalYamlString);
+    }
+    catch (Exception e){
+      e.printStackTrace();
+      throw e;
+    }
+
+    this.originalYamlString = originalYamlString;
+  }
+
+  private static String extractYAMLfromJSONStorage(String jsonWrappedYAML) {
+    final String[] s = new String[1];
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      s[0] = (String) gson.fromJson(jsonWrappedYAML, Map.class).get("settings");
+      return null;
+    });
+    return s[0];
   }
 
   public String asRawYAML() {
-    return original;
+    return originalYamlString;
   }
 
   public String toJsonStorage() {
 
     Map<String, String> tmpMap = Maps.newHashMap();
-    tmpMap.put("settings", original);
+    tmpMap.put("settings", originalYamlString);
     return toJson(tmpMap);
 
   }
 
   public Map<String, ?> asMap() {
-    return toMap(original);
+    return yaml2Map(originalYamlString);
   }
 
-  private Map<String, ?> toMap(String s) {
+  private Map<String, ?> yaml2Map(String s) {
     final Map[] m = new Map[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
