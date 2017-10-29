@@ -46,7 +46,7 @@ object HostsRuleIntegrationTests {
       |readonlyrest:
       |  ssl:
       |    enable: true
-      |    keystore_file: "config/keystore.jks"
+      |    keystore_file: "keystore.jks"
       |    keystore_pass: readonlyrest
       |    key_pass: readonlyrest
       |
