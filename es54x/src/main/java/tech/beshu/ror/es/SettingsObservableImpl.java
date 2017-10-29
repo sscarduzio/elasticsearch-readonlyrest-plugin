@@ -53,10 +53,14 @@ public class SettingsObservableImpl extends SettingsObservable {
 
   @Inject
   public SettingsObservableImpl(NodeClient client, Settings s) {
-
-    this.client = client;
-    current = BasicSettings.fromFile(logger, new Environment(s).configFile(), s.getAsStructuredMap()).getRaw();
-    this.initialSettings = s;
+    try {
+      this.client = client;
+      current = BasicSettings.fromFile(logger, new Environment(s).configFile(), s.getAsStructuredMap()).getRaw();
+      this.initialSettings = s;
+    } catch (Throwable t) {
+      new Exception("un-guice'ing exception").printStackTrace();
+      throw t;
+    }
   }
 
   @Override
