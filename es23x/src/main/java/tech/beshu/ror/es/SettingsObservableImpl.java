@@ -28,10 +28,17 @@ import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.SettingsForStorage;
-import tech.beshu.ror.commons.SettingsObservable;
+import org.elasticsearch.env.Environment;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsObservable;
+import tech.beshu.ror.commons.settings.SettingsUtils;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+
+import java.nio.file.Path;
+import java.util.Map;
 
 /**
  * Created by sscarduzio on 25/06/2017.
@@ -40,13 +47,21 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 @Singleton
 public class SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
-
-  private  NodeClient client;
+  private final Settings initialSettings;
+  private NodeClient client;
 
   @Inject
-  public SettingsObservableImpl(NodeClient client) {
+  public SettingsObservableImpl(NodeClient client, Settings s) {
+
     this.client = client;
-    current = this.getFromFileWithFallbackToES();
+    current = BasicSettings.fromFile(logger, new Environment(s).configFile(), s.getAsStructuredMap()).getRaw();
+    this.initialSettings = s;
+  }
+
+  @Override
+  protected Path getConfigPath() {
+    Environment environment = new Environment(initialSettings);
+    return environment.configFile();
   }
 
   @Override
@@ -54,7 +69,7 @@ public class SettingsObservableImpl extends SettingsObservable {
     return logger;
   }
 
-  protected SettingsForStorage getFromIndex() {
+  protected RawSettings getFromIndex() {
     GetResponse resp = null;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
@@ -68,14 +83,14 @@ public class SettingsObservableImpl extends SettingsObservable {
       throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
-    return new SettingsForStorage(yamlString);
+    return new RawSettings(yamlString);
   }
 
   @Override
-  protected void writeToIndex(SettingsForStorage s4s, FutureCallback f) {
+  protected void writeToIndex(RawSettings rawSettings, FutureCallback f) {
     client.prepareBulk().add(
       client.prepareIndex(".readonlyrest", "settings", "1")
-        .setSource(s4s.toJsonStorage(), XContentType.YAML).request()
+        .setSource(SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
     ).execute().addListener(new ActionListener<BulkResponse>() {
       @Override
       public void onResponse(BulkResponse bulkItemResponses) {
@@ -101,6 +116,11 @@ public class SettingsObservableImpl extends SettingsObservable {
     } catch (Throwable e) {
       return false;
     }
+  }
+
+  @Override
+  protected Map<String, ?> getNodeSettings() {
+    return initialSettings.getAsStructuredMap();
   }
 
   public void setClient(NodeClient client) {

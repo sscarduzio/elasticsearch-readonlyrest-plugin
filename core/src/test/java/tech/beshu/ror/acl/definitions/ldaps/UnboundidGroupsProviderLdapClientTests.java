@@ -17,6 +17,9 @@
 
 package tech.beshu.ror.acl.definitions.ldaps;
 
+import org.junit.Assert;
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.ConnectionConfig;
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.SearchingUserConfig;
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.UnboundidGroupsProviderLdapClient;
@@ -24,9 +27,6 @@ import tech.beshu.ror.acl.definitions.ldaps.unboundid.UserGroupsSearchFilterConf
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.utils.containers.LdapContainer;
-import org.junit.Assert;
-import org.junit.ClassRule;
-import org.junit.Test;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -48,27 +48,27 @@ public class UnboundidGroupsProviderLdapClientTests {
     .build();
 
   private UserSearchFilterConfig.Builder userSearchFilterConfigBuilder =
-      new UserSearchFilterConfig.Builder("ou=People,dc=example,dc=com");
+    new UserSearchFilterConfig.Builder("ou=People,dc=example,dc=com");
 
   private UserGroupsSearchFilterConfig.Builder userGroupsSearchFilterConfigBuilder =
-      new UserGroupsSearchFilterConfig.Builder("ou=Groups,dc=example,dc=com");
+    new UserGroupsSearchFilterConfig.Builder("ou=Groups,dc=example,dc=com");
 
   private Optional<SearchingUserConfig> searchingUserConfig = Optional.of(ldapContainer.getSearchingUserConfig()).map(t -> new SearchingUserConfig(t.v1(), t.v2()));
 
   private UnboundidGroupsProviderLdapClient client = new UnboundidGroupsProviderLdapClient(
-      connectionConfig,
-      userSearchFilterConfigBuilder.build(),
-      userGroupsSearchFilterConfigBuilder.build(),
-      searchingUserConfig,
-      MockedESContext.INSTANCE
+    connectionConfig,
+    userSearchFilterConfigBuilder.build(),
+    userGroupsSearchFilterConfigBuilder.build(),
+    searchingUserConfig,
+    MockedESContext.INSTANCE
   );
 
   private UnboundidGroupsProviderLdapClient clientGroupsFromUser = new UnboundidGroupsProviderLdapClient(
-      connectionConfig,
-      userSearchFilterConfigBuilder.build(),
-      userGroupsSearchFilterConfigBuilder.setIsGroupsFromUser(true).build(),
-      searchingUserConfig,
-      MockedESContext.INSTANCE
+    connectionConfig,
+    userSearchFilterConfigBuilder.build(),
+    userGroupsSearchFilterConfigBuilder.setIsGroupsFromUser(true).build(),
+    searchingUserConfig,
+    MockedESContext.INSTANCE
   );
 
   @Test
@@ -101,7 +101,7 @@ public class UnboundidGroupsProviderLdapClientTests {
 
   private boolean doTestEmptyGroupFetching(UnboundidGroupsProviderLdapClient client) throws Exception {
     CompletableFuture<Set<LdapGroup>> guserGroupsF = client.userGroups(
-        new LdapUser("guser", "cn=Groupless User,ou=People,dc=example,dc=com")
+      new LdapUser("guser", "cn=Groupless User,ou=People,dc=example,dc=com")
     );
     Set<LdapGroup> guserGroups = guserGroupsF.get();
     return guserGroups.size() == 0;

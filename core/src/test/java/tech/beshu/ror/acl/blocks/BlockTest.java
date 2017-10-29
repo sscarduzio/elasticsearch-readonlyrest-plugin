@@ -17,19 +17,19 @@
 
 package tech.beshu.ror.acl.blocks;
 
+import org.junit.Assert;
+import org.junit.Test;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RulesFactory;
 import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.settings.AuthMethodCreatorsRegistry;
 import tech.beshu.ror.settings.BlockSettings;
-import tech.beshu.ror.commons.RawSettings;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
-import org.junit.Assert;
-import org.junit.Test;
 
 import java.util.Iterator;
 import java.util.List;

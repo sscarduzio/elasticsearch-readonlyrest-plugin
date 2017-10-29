@@ -17,16 +17,16 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import org.junit.Test;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
 import tech.beshu.ror.mocks.MockLdapClientHelper;
 import tech.beshu.ror.mocks.MockedESContext;
+import tech.beshu.ror.mocks.RequestContextMock;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
-import org.junit.Test;
-import tech.beshu.ror.mocks.RequestContextMock;
 
 import static org.junit.Assert.assertEquals;
 

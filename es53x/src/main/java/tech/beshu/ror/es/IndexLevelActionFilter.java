@@ -34,6 +34,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
@@ -41,8 +42,8 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.acl.ACL;
-import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -62,10 +63,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ClusterService clusterService;
 
   private final AtomicReference<Optional<ACL>> acl;
-  private final AtomicReference<ESContext> context;
+  private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final NodeClient client;
   private final LoggerShim logger;
   private final IndexNameExpressionResolver indexResolver;
+  private final Environment env;
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
@@ -78,9 +80,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   )
     throws IOException {
     super(settings);
-
-    this.context = new AtomicReference<>(new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent().asMap()))));
     this.logger = context.get().logger(getClass());
+
+    this.env = new Environment(settings);
+    BasicSettings baseSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
+    this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
@@ -92,7 +96,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
-      ESContext newContext = new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent().asMap())));
+      RawSettings newRaw = new RawSettings(settingsObservable.getCurrent().asMap());
+      BasicSettings newBaseSettings = new BasicSettings(newRaw, env.configFile().toAbsolutePath());
+      ESContext newContext = new ESContextImpl(client, newBaseSettings);
+      this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
         try {

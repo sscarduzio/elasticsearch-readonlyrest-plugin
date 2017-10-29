@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.settings;
 
+import org.junit.Test;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
-import org.junit.Test;
 
 import java.net.URISyntaxException;
 

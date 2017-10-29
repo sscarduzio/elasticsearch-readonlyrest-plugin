@@ -25,11 +25,11 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.time.Duration;
 import java.util.List;
@@ -80,10 +80,10 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
   private CompletableFuture<Set<LdapGroup>> getGroups(LdapUser user) throws LDAPException {
     // Compose the search string
     String searchString = String.format(
-        "(&%s(%s=%s))",
-        userGroupsSearchFilterConfig.getGroupSearchFilter(),
-        userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
-        Filter.encodeValue(user.getDN())
+      "(&%s(%s=%s))",
+      userGroupsSearchFilterConfig.getGroupSearchFilter(),
+      userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
+      Filter.encodeValue(user.getDN())
     );
     logger.debug("LDAP search string: " + searchString + "  |  groupNameAttr: " + userGroupsSearchFilterConfig.getGroupNameAttribute());
 
@@ -124,15 +124,15 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
     // Request formulation
     CompletableFuture<List<SearchResultEntry>> searchGroups = new CompletableFuture<>();
     connection.getConnectionPool().processRequestsAsync(
-        Lists.newArrayList(
-            new SearchRequest(
-                new UnboundidSearchResultListener(searchGroups),
-                user.getDN(),
-                SearchScope.BASE,
-                "(objectClass=*)",
-                userGroupsSearchFilterConfig.getGroupsFromUserAttribute()
-            )),
-        requestTimeout.toMillis()
+      Lists.newArrayList(
+        new SearchRequest(
+          new UnboundidSearchResultListener(searchGroups),
+          user.getDN(),
+          SearchScope.BASE,
+          "(objectClass=*)",
+          userGroupsSearchFilterConfig.getGroupsFromUserAttribute()
+        )),
+      requestTimeout.toMillis()
     );
 
     // Response adaptation
@@ -159,9 +159,9 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
       DN dn = new DN(stringDn);
       if (dn.isDescendantOf(userGroupsSearchFilterConfig.getSearchGroupBaseDN(), false)) {
         return Stream.of(dn.getRDN().getAttributes())
-            .filter(attribute -> userGroupsSearchFilterConfig.getGroupNameAttribute().equals(attribute.getBaseName()))
-            .map(Attribute::getValue)
-            .findFirst();
+          .filter(attribute -> userGroupsSearchFilterConfig.getGroupNameAttribute().equals(attribute.getBaseName()))
+          .map(Attribute::getValue)
+          .findFirst();
       }
     } catch (Exception e) {
       /* ignore */

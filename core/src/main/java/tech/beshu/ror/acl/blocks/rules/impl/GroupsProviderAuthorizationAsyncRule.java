@@ -17,11 +17,11 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthorization;
 import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClient;
 import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClientFactory;
 import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 
 import java.util.Set;

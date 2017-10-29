@@ -18,8 +18,8 @@ package tech.beshu.ror.settings;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import tech.beshu.ror.commons.RawSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;

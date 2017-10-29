@@ -18,10 +18,10 @@
 package tech.beshu.ror.es;
 
 import org.elasticsearch.common.settings.Settings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.tasks.TaskAwareRequest;
 import org.elasticsearch.tasks.TaskManager;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.lang.reflect.Field;
 import java.security.AccessController;

@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.LdapSettings;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;

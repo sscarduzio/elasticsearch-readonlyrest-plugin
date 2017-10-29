@@ -17,8 +17,8 @@
 
 package tech.beshu.ror.requestcontext;
 
-import tech.beshu.ror.mocks.MockedESContext;
 import org.junit.Test;
+import tech.beshu.ror.mocks.MockedESContext;
 
 import static org.junit.Assert.assertEquals;
 

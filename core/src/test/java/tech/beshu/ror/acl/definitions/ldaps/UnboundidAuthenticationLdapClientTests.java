@@ -18,6 +18,9 @@
 package tech.beshu.ror.acl.definitions.ldaps;
 
 import com.google.common.collect.Sets;
+import org.junit.Assert;
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.ConnectionConfig;
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.SearchingUserConfig;
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.UnboundidGroupsProviderLdapClient;
@@ -25,9 +28,6 @@ import tech.beshu.ror.acl.definitions.ldaps.unboundid.UserGroupsSearchFilterConf
 import tech.beshu.ror.acl.definitions.ldaps.unboundid.UserSearchFilterConfig;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.utils.containers.LdapContainer;
-import org.junit.Assert;
-import org.junit.ClassRule;
-import org.junit.Test;
 
 import java.time.Duration;
 import java.util.Optional;

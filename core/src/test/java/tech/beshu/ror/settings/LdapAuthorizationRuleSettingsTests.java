@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.settings;
 
+import org.junit.Test;
 import tech.beshu.ror.TestUtils;
-import tech.beshu.ror.commons.SettingsMalformedException;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.mocks.MockLdapClientHelper;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
-import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 

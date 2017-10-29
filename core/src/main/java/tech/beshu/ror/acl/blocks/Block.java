@@ -18,8 +18,6 @@
 package tech.beshu.ror.acl.blocks;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.BlockPolicy;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
@@ -28,9 +26,11 @@ import tech.beshu.ror.acl.blocks.rules.RulesOrdering;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.commons.Verbosity;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.BlockSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
 import tech.beshu.ror.utils.FuturesSequencer;
 import tech.beshu.ror.utils.RulesUtils;
 
@@ -148,12 +148,13 @@ public class Block {
   }
 
   private BlockExitResult finishWithMatchResult() {
-    if(logger.isDebugEnabled()) logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
+    if (logger.isDebugEnabled()) logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
     return BlockExitResult.match(this);
   }
 
   private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
-    if(logger.isDebugEnabled()) logger.debug(ANSI_YELLOW + "[" + settings.getName() + "] the request matches no rules in this block: " + rc + ANSI_RESET);
+    if (logger.isDebugEnabled())
+      logger.debug(ANSI_YELLOW + "[" + settings.getName() + "] the request matches no rules in this block: " + rc + ANSI_RESET);
     return BlockExitResult.noMatch();
   }
 

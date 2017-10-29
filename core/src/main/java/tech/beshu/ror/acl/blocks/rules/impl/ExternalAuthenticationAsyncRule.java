@@ -16,10 +16,10 @@
  */
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthentication;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 
 import java.util.concurrent.CompletableFuture;

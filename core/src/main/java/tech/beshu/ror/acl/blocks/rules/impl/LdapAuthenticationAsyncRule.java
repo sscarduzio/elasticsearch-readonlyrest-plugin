@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthentication;
 import tech.beshu.ror.acl.definitions.ldaps.AuthenticationLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapClientFactory;
 import tech.beshu.ror.acl.definitions.ldaps.LdapCredentials;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 
 import java.util.Optional;

@@ -20,8 +20,8 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.domain.Value;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.commons.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.function.Function;

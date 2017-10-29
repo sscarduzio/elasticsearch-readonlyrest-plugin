@@ -52,11 +52,13 @@ public class MatcherWithWildcardsTests {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("c*"));
     assertFalse(m.match("xxxcxxx"));
   }
+
   @Test
   public void testAlessandro() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("streams_dev-*"));
     assertTrue(m.match("streams_dev-rfh"));
   }
+
   @Test
   public void testNoMatchStarPatternLeft() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("*c"));

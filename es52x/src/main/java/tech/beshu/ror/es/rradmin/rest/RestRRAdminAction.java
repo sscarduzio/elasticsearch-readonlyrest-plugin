@@ -22,16 +22,15 @@ package tech.beshu.ror.es.rradmin.rest;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
-import tech.beshu.ror.acl.domain.Const;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.es.rradmin.RRAdminAction;
-import tech.beshu.ror.es.rradmin.RRAdminRequest;
-import tech.beshu.ror.es.rradmin.RRAdminResponse;
 import org.elasticsearch.rest.BaseRestHandler;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.es.rradmin.RRAdminAction;
+import tech.beshu.ror.es.rradmin.RRAdminRequest;
+import tech.beshu.ror.es.rradmin.RRAdminResponse;
 
 import java.io.IOException;
 
@@ -57,8 +56,9 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
     return (channel) -> {
       client.execute(
         new RRAdminAction(),
-        new RRAdminRequest( request.method().name(), request.path(), request.content().utf8ToString()),
-        new RestToXContentListener<RRAdminResponse>(channel));
+        new RRAdminRequest(request.method().name(), request.path(), request.content().utf8ToString()),
+        new RestToXContentListener<RRAdminResponse>(channel)
+      );
     };
   }
 }

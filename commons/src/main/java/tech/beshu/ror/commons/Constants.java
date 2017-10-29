@@ -19,6 +19,8 @@ package tech.beshu.ror.commons;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class Constants {
   public static final Integer CACHE_WATERMARK = 1024;
@@ -39,16 +41,16 @@ public class Constants {
   public final static String REST_REFRESH_PATH = "/_readonlyrest/admin/refreshconfig";
   public final static String REST_CONFIGURATION_PATH = "/_readonlyrest/admin/config";
 
-  private static final String esHomePath = System.getProperty("es.path.home");
+  public static String makeAbsolutePath(String path, String basePath) {
 
-  public static String makeAbsolutePath(String path) {
-    if (Strings.isNullOrEmpty(esHomePath)) {
-      new Exception("Cannot find property es.path.home!").printStackTrace();
+    if (Strings.isNullOrEmpty(basePath)) {
+      new Exception("Cannot find readonlyrest plugin base path!").printStackTrace();
     }
     if (path != null && !path.startsWith(File.separator)) {
-      return esHomePath + File.separator + path;
+      return basePath + File.separator + path;
     }
     return path;
   }
+
 
 }

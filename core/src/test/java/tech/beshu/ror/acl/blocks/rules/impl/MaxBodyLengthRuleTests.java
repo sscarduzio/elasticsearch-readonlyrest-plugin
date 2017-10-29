@@ -17,12 +17,12 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;

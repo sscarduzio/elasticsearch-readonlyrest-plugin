@@ -29,7 +29,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
-import tech.beshu.ror.commons.SettingsForStorage;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.es.SettingsObservableImpl;
 
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
@@ -37,10 +37,9 @@ import static tech.beshu.ror.commons.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-
   private final NodeClient client;
-
   private final SettingsObservableImpl settingsObservable;
+
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
@@ -51,6 +50,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
     );
     this.client = client;
     this.settingsObservable = settingsObservable;
+
   }
 
   private String normalisePath(String s) {
@@ -77,7 +77,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
             return;
           }
           // Can throw SettingsMalformedException
-          settingsObservable.refreshFromStringAndPersist(new SettingsForStorage(body), new FutureCallback() {
+          settingsObservable.refreshFromStringAndPersist(new RawSettings(body), new FutureCallback() {
             @Override
             public void onSuccess(Object result) {
               listener.onResponse(new RRAdminResponse("updated settings"));
@@ -94,9 +94,8 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
       }
       // GET
       if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
-        String currentSettingsYAML = settingsObservable.getCurrent().toJsonStorage();
-        System.out.println(currentSettingsYAML);
-        listener.onResponse(new RRAdminResponse(currentSettingsYAML));
+        String currentSettingsJSON = settingsObservable.getCurrent().yaml();
+        listener.onResponse(new RRAdminResponse(currentSettingsJSON));
         return;
       }
 

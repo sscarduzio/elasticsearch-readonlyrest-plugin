@@ -17,9 +17,9 @@
 
 package tech.beshu.ror.acl.definitions.ldaps;
 
-import tech.beshu.ror.acl.definitions.ldaps.caching.GroupsProviderLdapClientCacheDecorator;
 import org.junit.Test;
 import org.mockito.Mockito;
+import tech.beshu.ror.acl.definitions.ldaps.caching.GroupsProviderLdapClientCacheDecorator;
 
 import java.time.Duration;
 import java.util.Optional;

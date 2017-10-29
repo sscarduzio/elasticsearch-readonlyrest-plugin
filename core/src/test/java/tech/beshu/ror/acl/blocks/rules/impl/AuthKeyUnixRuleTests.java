@@ -18,13 +18,13 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.ImmutableMap;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.Base64;
 
@@ -52,8 +52,8 @@ public class AuthKeyUnixRuleTests {
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-        "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
-        "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())
+      "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
+      "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())
     );
     assertTrue(res.isMatch());
   }

@@ -22,16 +22,19 @@ package tech.beshu.ror.es;
  */
 
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty.NettyHttpServerTransport;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.handler.ssl.SslContext;
-import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.RawSettings;
 import tech.beshu.ror.commons.SSLCertParser;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.TempFile;
 
 import java.io.File;
@@ -40,11 +43,18 @@ import java.util.Optional;
 public class SSLTransport extends NettyHttpServerTransport {
 
   private final BasicSettings sslSettings;
+  private final LoggerShim loggerShim;
 
   @Inject
   public SSLTransport(Settings settings, NetworkService networkService, BigArrays bigArrays) {
     super(settings, networkService, bigArrays);
-    this.sslSettings = new BasicSettings(new RawSettings(new SettingsObservableImpl(null).getCurrent().asMap()));
+    loggerShim = ESContextImpl.mkLoggerShim(logger);
+    Environment env = new Environment(settings);
+    BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
+    this.sslSettings = baseSettings;
+    if (sslSettings.isSSLEnabled()) {
+      logger.info("creating SSL transport");
+    }
   }
 
   @Override

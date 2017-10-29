@@ -16,25 +16,25 @@
  */
 package tech.beshu.ror.acl.blocks.rules;
 
-import tech.beshu.ror.commons.shims.es.ESContext;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.CacheSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-import static tech.beshu.ror.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static tech.beshu.ror.acl.blocks.rules.CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled;
 
 public class CachedAsyncAuthorizationDecoratorTests {
 

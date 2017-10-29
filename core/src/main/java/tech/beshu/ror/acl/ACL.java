@@ -59,8 +59,8 @@ public class ACL {
 
   private final DefinitionsFactory definitionsFactory;
   private final RorSettings rorSettings;
-  private ESContext context;
   private final SerializationTool serTool;
+  private ESContext context;
 
   public ACL(ESContext context) {
     serTool = context.getSettings().isAuditorCollectorEnabled() ? new SerializationTool() : null;
@@ -201,12 +201,12 @@ public class ACL {
           return null;
         }
       })
-    .exceptionally(th -> {
-      h.onErrored(th);
-      th.printStackTrace();
-      doLog(new ResponseContext(FinalState.ERRORED, rc, th, null, "error", false));
-      return null;
-    });
+      .exceptionally(th -> {
+        h.onErrored(th);
+        th.printStackTrace();
+        doLog(new ResponseContext(FinalState.ERRORED, rc, th, null, "error", false));
+        return null;
+      });
   }
 
   private CompletableFuture<BlockExitResult> doCheck(RequestContext rc) {

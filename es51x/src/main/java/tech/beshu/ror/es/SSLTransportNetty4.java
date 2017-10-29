@@ -31,11 +31,12 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.RawSettings;
 import tech.beshu.ror.commons.SSLCertParser;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
@@ -51,8 +52,10 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
                             ThreadPool threadPool) {
     super(settings, networkService, bigArrays, threadPool);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
-    this.basicSettings = new BasicSettings(new RawSettings(new SettingsObservableImpl( null).getCurrent().asMap()));
 
+    Environment env = new Environment(settings);
+    BasicSettings baseSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
+    this.basicSettings = baseSettings;
     if (basicSettings.isSSLEnabled()) {
       logger.info("creating SSL transport");
     }

@@ -17,10 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
-import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.acl.ACL;
-import tech.beshu.ror.settings.AuthKeyProviderSettings;
-import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
@@ -29,6 +26,9 @@ import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.settings.AuthKeyProviderSettings;
+import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
@@ -60,12 +60,12 @@ public class UserRuleFactory {
       settings -> AsyncRuleAdapter.wrap(new AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context))
     );
     this.creators.put(
-            AuthKeySha512RuleSettings.class,
-            settings ->AsyncRuleAdapter.wrap( new AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
+      AuthKeySha512RuleSettings.class,
+      settings -> AsyncRuleAdapter.wrap(new AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
     );
     this.creators.put(
-            AuthKeyUnixRuleSettings.class,
-            settings ->AsyncRuleAdapter.wrap( new AuthKeyUnixSyncRule((AuthKeyUnixRuleSettings) settings, context))
+      AuthKeyUnixRuleSettings.class,
+      settings -> AsyncRuleAdapter.wrap(new AuthKeyUnixSyncRule((AuthKeyUnixRuleSettings) settings, context))
     );
     this.creators.put(
       AuthKeyPlainTextRuleSettings.class,

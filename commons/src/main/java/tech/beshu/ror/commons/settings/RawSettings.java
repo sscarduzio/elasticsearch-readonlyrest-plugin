@@ -14,11 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.commons;
+package tech.beshu.ror.commons.settings;
 
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Maps;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -32,17 +31,27 @@ public class RawSettings {
 
   private final Map<String, ?> raw;
   private final DocumentContext jpathContext;
+  private final String rawYaml;
 
-  public RawSettings(Map<String, ?> raw) {
-    this.raw = raw;
+  public RawSettings(String rawYaml) {
+    this.rawYaml = rawYaml;
+    this.raw = SettingsUtils.yaml2Map(rawYaml);
     if(raw == null ){
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
   }
 
+  public RawSettings(Map<String, ?> raw) {
+    this.rawYaml = SettingsUtils.map2yaml(raw);
+    this.raw = raw;
+    if(raw == null ){
+      throw new SettingsMalformedException("Received null ROR settings: " + raw);
+    }
+    this.jpathContext = JsonPath.parse(raw);
+  }
   public static RawSettings empty() {
-    return new RawSettings(Maps.newHashMap());
+    return new RawSettings("readonlyrest:");
   }
 
   public Set<String> getKeys() {
@@ -165,11 +174,30 @@ public class RawSettings {
   }
 
   public RawSettings inner(String attr) {
-    return new RawSettings(req(attr));
+    return new RawSettings((Map<String, ?>) req(attr));
   }
 
   @SuppressWarnings("unchecked")
   public Optional<RawSettings> innerOpt(String attr) {
-    return opt(attr).map(r -> new RawSettings((Map<String, ?>) r));
+    return opt(attr).map(r -> RawSettings.fromMap((Map<String, ?>) r));
+  }
+
+  static RawSettings fromMap(Map<String, ?> r) {
+    String syntheticYaml = SettingsUtils.map2yaml(r);
+    return new RawSettings(syntheticYaml);
+  }
+
+  public Map<String, ?> asMap() {
+    return raw;
+  }
+
+
+  public String yaml() {
+    return rawYaml;
+  }
+
+  @Override
+  public String toString() {
+    return rawYaml;
   }
 }

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.definitions;
 
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 
 public class AuthenticationLdapSettings extends LdapSettings {
 

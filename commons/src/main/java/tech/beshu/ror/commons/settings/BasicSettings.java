@@ -14,14 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.commons;
+package tech.beshu.ror.commons.settings;
 
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableList;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.Verbosity;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+
+import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
 
 public class BasicSettings {
   public static final String ATTRIBUTE_NAME = "readonlyrest";
@@ -48,6 +59,8 @@ public class BasicSettings {
   private final boolean sslEnabled;
   private final List<?> blocksSettings;
   private final RawSettings raw;
+  private final Path configPath;
+  private final RawSettings raw_global;
   private Optional<String> keystorePass;
   private Optional<String> keyPass;
 
@@ -55,8 +68,9 @@ public class BasicSettings {
   private String keystoreFile;
 
   @SuppressWarnings("unchecked")
-  public BasicSettings(RawSettings raw_global) {
-
+  public BasicSettings(RawSettings raw_global, Path configPath) {
+    this.configPath = configPath;
+    this.raw_global = raw_global;
     this.raw = raw_global.inner(ATTRIBUTE_NAME);
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt("access_control_rules").orElse(new ArrayList<>(0));
@@ -81,13 +95,51 @@ public class BasicSettings {
     }
 
     if (sslEnabled) {
-      this.keystoreFile = Constants.makeAbsolutePath(raw.stringReq(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE));
+      this.keystoreFile = Constants.makeAbsolutePath(raw.stringReq(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE), configPath.toAbsolutePath().toString());
       this.keyAlias = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_ALIAS);
       this.keyPass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_PASS);
       this.keystorePass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_PASS);
     }
   }
 
+  private static String slurpFile(LoggerShim logger, String filePath) {
+
+    final String[] slurped = new String[1];
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        slurped[0] = new String(Files.readAllBytes(Paths.get(filePath)));
+        logger.info("Loaded good settings from " + filePath);
+      } catch (Throwable t) {
+        logger.info(
+          "Could not find settings in "
+            + filePath + " (" + t.getMessage() + ")");
+
+      }
+      return null;
+    });
+    return slurped[0];
+  }
+
+  public static BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String,?> fallback) {
+    try {
+      final String baseConfigDirPath = configPath.toAbsolutePath().toString();
+      final String rorSettingsFilePath = Constants.makeAbsolutePath(SETTINGS_YAML_FILE, baseConfigDirPath);
+
+      String s4s = slurpFile(logger, rorSettingsFilePath);
+      try {
+        if (SettingsUtils.yaml2Map(s4s).containsKey("readonlyrest")) {
+          return new BasicSettings(new RawSettings(s4s), configPath);
+        }
+        return new BasicSettings(new RawSettings(fallback), configPath);
+      } catch (Throwable t) {
+        return new BasicSettings(new RawSettings(fallback), configPath);
+      }
+
+    } catch (Throwable t) {
+      t.printStackTrace();
+      throw t;
+    }
+  }
 
   public boolean isEnabled() {
     return enable;
@@ -130,6 +182,10 @@ public class BasicSettings {
   }
 
   public RawSettings getRaw() {
-    return raw;
+    return raw_global;
+  }
+
+  public Map<String, ?> asMap() {
+    return raw.asMap();
   }
 }

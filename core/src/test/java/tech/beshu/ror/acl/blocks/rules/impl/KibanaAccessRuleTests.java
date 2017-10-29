@@ -19,19 +19,18 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import junit.framework.TestCase;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.domain.KibanaAccess;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.Optional;
 import java.util.Set;
 
-import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.definitions;
 
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 
 public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
 
@@ -24,13 +24,13 @@ public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
   public static final String GROUP_SEARCH_FILTER_DEFAULT = "(cn=*)";
   public static final String GROUP_NAME_ATTRIBUTE_DEFAULT = "cn";
   public static final String SEARCH_GROUPS = "search_groups_base_DN";
+  public static final boolean GROUPS_FROM_USER_DEFAULT = false;
+  public static final String GROUPS_FROM_USER_ATTRIBUTE_DEFAULT = "memberOf";
   private static final String UNIQUE_MEMBER = "unique_member_attribute";
   private static final String GROUP_SEARCH_FILTER = "group_search_filter";
   private static final String GROUP_NAME_ATTRIBUTE = "group_name_attribute";
   private static final String GROUPS_FROM_USER = "groups_from_user";
-  public static final boolean GROUPS_FROM_USER_DEFAULT = false;
   private static final String GROUPS_FROM_USER_ATTRIBUTE = "groups_from_user_attribute";
-  public static final String GROUPS_FROM_USER_ATTRIBUTE_DEFAULT = "memberOf";
   private final String searchGroupBaseDn;
   private final String uniqueMemberAttribute;
   private final String groupSearchFilter;

@@ -17,7 +17,7 @@
 package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.acl.domain.Value;
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.Set;

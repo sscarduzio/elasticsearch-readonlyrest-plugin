@@ -17,6 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
+import org.junit.Test;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
@@ -25,10 +26,9 @@ import tech.beshu.ror.mocks.MockLdapClientHelper;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
-import org.junit.Test;
 
-import static tech.beshu.ror.mocks.RequestContextMock.mockedRequestContext;
 import static org.junit.Assert.assertEquals;
+import static tech.beshu.ror.mocks.RequestContextMock.mockedRequestContext;
 
 
 public class LdapAuthenticationAsyncRuleTests {

@@ -17,9 +17,8 @@
 package tech.beshu.ror.commons.shims.es;
 
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.Verbosity;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.ResponseContext;
 
 import java.text.SimpleDateFormat;

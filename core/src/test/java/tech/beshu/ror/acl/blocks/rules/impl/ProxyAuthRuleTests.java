@@ -19,11 +19,11 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;

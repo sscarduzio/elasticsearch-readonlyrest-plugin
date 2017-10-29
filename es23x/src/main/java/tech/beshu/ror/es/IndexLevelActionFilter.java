@@ -35,6 +35,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
+import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
@@ -42,8 +43,8 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.acl.ACL;
-import tech.beshu.ror.commons.BasicSettings;
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -85,7 +86,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.indexResolver = indexResolver;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
-
     new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
 
 
@@ -96,7 +96,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       settingsObservable.addObserver((o, arg) -> {
         logger.info("Settings observer refreshing...");
-        ESContext newContext = new ESContextImpl(client, new BasicSettings(new RawSettings(settingsObservable.getCurrent().asMap())));
+        Environment env = new Environment(settings);
+        RawSettings raw = new RawSettings(settingsObservable.getCurrent().asMap());
+        BasicSettings baseSettings = new BasicSettings(raw, env.configFile().toAbsolutePath());
+        ESContext newContext = new ESContextImpl(client, baseSettings);
 
         if (newContext.getSettings().isEnabled()) {
           try {

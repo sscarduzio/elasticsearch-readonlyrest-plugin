@@ -18,9 +18,9 @@ package tech.beshu.ror.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import tech.beshu.ror.commons.RawSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
 import tech.beshu.ror.commons.Verbosity;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;

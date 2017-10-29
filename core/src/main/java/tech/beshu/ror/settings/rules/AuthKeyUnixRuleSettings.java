@@ -20,12 +20,12 @@ public class AuthKeyUnixRuleSettings extends AuthKeyRuleSettings {
 
   public static final String ATTRIBUTE_NAME = "auth_key_unix";
 
-  public static AuthKeyUnixRuleSettings from(String authKey) {
-    return new AuthKeyUnixRuleSettings(authKey);
-  }
-
   public AuthKeyUnixRuleSettings(String authKey) {
     super(authKey);
+  }
+
+  public static AuthKeyUnixRuleSettings from(String authKey) {
+    return new AuthKeyUnixRuleSettings(authKey);
   }
 
   @Override

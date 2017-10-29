@@ -22,9 +22,9 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.UserRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
-import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 
 import java.util.Map;
 import java.util.Optional;

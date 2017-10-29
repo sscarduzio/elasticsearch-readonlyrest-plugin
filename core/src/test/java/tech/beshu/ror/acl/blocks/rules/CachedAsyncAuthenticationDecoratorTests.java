@@ -17,12 +17,12 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.ImmutableMap;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.CacheSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;

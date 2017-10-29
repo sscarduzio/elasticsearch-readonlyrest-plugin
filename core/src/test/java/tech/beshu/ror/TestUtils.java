@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror;
 
-import tech.beshu.ror.commons.RawSettings;
 import org.yaml.snakeyaml.Yaml;
+import tech.beshu.ror.commons.settings.RawSettings;
 
 import java.util.Map;
 

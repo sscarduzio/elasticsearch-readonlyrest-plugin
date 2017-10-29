@@ -41,7 +41,7 @@ public class MicrobenchMatch {
       if (!matcher.match(haystack + i)) throw new RuntimeException("lol");
     }
     Long timeOld = System.currentTimeMillis() - start;
-    System.out.println("old: " + timeOld+ " ms");
+    System.out.println("old: " + timeOld + " ms");
 
 
     // NEW
@@ -53,7 +53,7 @@ public class MicrobenchMatch {
     Long timeNew = (System.currentTimeMillis() - start);
     System.out.println("new: " + (System.currentTimeMillis() - start) + " ms");
 
-    System.out.println("Gain: " +  (((timeOld-timeNew)*1f) / timeOld)*100 + "%");
+    System.out.println("Gain: " + (((timeOld - timeNew) * 1f) / timeOld) * 100 + "%");
 
   }
 }

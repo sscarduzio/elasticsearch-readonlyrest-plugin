@@ -17,10 +17,10 @@
 package tech.beshu.ror.settings.rules;
 
 import com.google.common.base.Strings;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
-import tech.beshu.ror.commons.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
 
 import java.util.Optional;
 

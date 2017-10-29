@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.commons;
+package tech.beshu.ror.commons.settings;
 
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
@@ -26,7 +26,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Map;
 
-public class SettingsForStorage {
+public class SettingsUtils {
 
   private final static Gson gson = new Gson();
   private static DumperOptions options = new DumperOptions();
@@ -42,29 +42,13 @@ public class SettingsForStorage {
     options.setExplicitStart(false);
   }
 
-  private String originalYamlString;
 
-  public SettingsForStorage(String originalYamlString) {
-    // Ensure it is YAML
-    try{
-      originalYamlString = SettingsForStorage.extractYAMLfromJSONStorage(originalYamlString);
-    }
-    catch (Exception e){
-      // It's ok, maybe it's not wrapped in JSON.
-    }
-    try{
-      // Has to be parsable YAML now
-      yaml2Map(originalYamlString);
-    }
-    catch (Exception e){
-      e.printStackTrace();
-      throw e;
-    }
 
-    this.originalYamlString = originalYamlString;
+  public static String map2yaml(Map<String, ?> map) {
+    return yaml.dump(map);
   }
 
-  private static String extractYAMLfromJSONStorage(String jsonWrappedYAML) {
+  public static String extractYAMLfromJSONStorage(String jsonWrappedYAML) {
     final String[] s = new String[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       s[0] = (String) gson.fromJson(jsonWrappedYAML, Map.class).get("settings");
@@ -73,40 +57,32 @@ public class SettingsForStorage {
     return s[0];
   }
 
-  public String asRawYAML() {
-    return originalYamlString;
-  }
 
-  public String toJsonStorage() {
-
-    Map<String, String> tmpMap = Maps.newHashMap();
-    tmpMap.put("settings", originalYamlString);
-    return toJson(tmpMap);
-
-  }
-
-  public Map<String, ?> asMap() {
-    return yaml2Map(originalYamlString);
-  }
-
-  private Map<String, ?> yaml2Map(String s) {
+  public static Map<String, ?> yaml2Map(String s) {
     final Map[] m = new Map[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
-      String j = toJson((Map) yaml.load(s));
-      m[0] = gson.fromJson(j, Map.class);
+      m[0] = yaml.load(s);
       return null;
     });
     return m[0];
   }
 
-  private String toJson(Map m) {
+  private static String map2Json(Map<String, ?> m) {
     final String[] jsonToCommit = new String[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       jsonToCommit[0] = gson.toJson(m);
       return null;
     });
     return jsonToCommit[0];
+  }
+
+
+  public static String toJsonStorage(String yaml) {
+
+    Map<String, String> tmpMap = Maps.newHashMap();
+    tmpMap.put("settings", yaml);
+    return map2Json(tmpMap);
+
   }
 
 }

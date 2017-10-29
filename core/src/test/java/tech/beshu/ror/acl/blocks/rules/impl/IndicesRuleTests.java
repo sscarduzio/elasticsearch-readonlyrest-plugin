@@ -19,13 +19,13 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.Optional;

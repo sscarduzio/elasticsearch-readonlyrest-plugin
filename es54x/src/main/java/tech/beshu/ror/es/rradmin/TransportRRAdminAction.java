@@ -29,7 +29,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
-import tech.beshu.ror.commons.SettingsForStorage;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.es.SettingsObservableImpl;
 
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
@@ -77,7 +77,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
             return;
           }
           // Can throw SettingsMalformedException
-          settingsObservable.refreshFromStringAndPersist(new SettingsForStorage(body), new FutureCallback() {
+          settingsObservable.refreshFromStringAndPersist(new RawSettings(body), new FutureCallback() {
             @Override
             public void onSuccess(Object result) {
               listener.onResponse(new RRAdminResponse("updated settings"));
@@ -94,7 +94,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
       }
       // GET
       if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
-        String currentSettingsJSON = settingsObservable.getCurrent().asRawYAML();
+        String currentSettingsJSON = settingsObservable.getCurrent().yaml();
         listener.onResponse(new RRAdminResponse(currentSettingsJSON));
         return;
       }

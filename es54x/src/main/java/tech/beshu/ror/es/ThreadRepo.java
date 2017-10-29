@@ -18,7 +18,6 @@
 package tech.beshu.ror.es;
 
 import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestRequest;
 
 /**
  * Created by sscarduzio on 25/11/2016.

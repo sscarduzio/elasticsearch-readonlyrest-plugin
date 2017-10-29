@@ -18,9 +18,9 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.hash.HashFunction;
+import tech.beshu.ror.acl.blocks.rules.BasicAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.acl.blocks.rules.BasicAuthentication;
 import tech.beshu.ror.settings.rules.AuthKeyRuleSettings;
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
 

@@ -18,6 +18,9 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
@@ -28,9 +31,6 @@ import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.utils.containers.WireMockContainer;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.Optional;

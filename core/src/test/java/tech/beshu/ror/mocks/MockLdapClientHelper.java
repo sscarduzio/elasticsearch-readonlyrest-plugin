@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapClientFactory;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
-import tech.beshu.ror.commons.RawSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.LdapSettings;

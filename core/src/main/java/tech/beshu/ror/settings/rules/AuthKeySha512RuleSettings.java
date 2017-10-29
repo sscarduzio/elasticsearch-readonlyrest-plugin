@@ -20,12 +20,12 @@ public class AuthKeySha512RuleSettings extends AuthKeyRuleSettings {
 
   public static final String ATTRIBUTE_NAME = "auth_key_sha512";
 
-  public static AuthKeySha512RuleSettings from(String authKey) {
-    return new AuthKeySha512RuleSettings(authKey);
-  }
-
   public AuthKeySha512RuleSettings(String authKey) {
     super(authKey);
+  }
+
+  public static AuthKeySha512RuleSettings from(String authKey) {
+    return new AuthKeySha512RuleSettings(authKey);
   }
 
   @Override

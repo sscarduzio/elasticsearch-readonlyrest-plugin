@@ -35,9 +35,9 @@ public class BasicAuthUtils {
       .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
       .flatMap(BasicAuth::fromBase64Value);
   }
-  
+
   public static Optional<BasicAuth> getBasicAuthFromString(String base64Value) {
-	  return BasicAuth.fromBase64Value(base64Value);
+    return BasicAuth.fromBase64Value(base64Value);
   }
 
   private static Optional<String> getInterestingPartOfBasicAuthValue(String basicAuthValue) {
@@ -68,12 +68,12 @@ public class BasicAuthUtils {
       if (index == -1 || index == decoded.length() - 1) {
         throw new IllegalArgumentException("Cannot extract user name from base auth header");
       }
-      this.userName = decoded.substring(0,index);
+      this.userName = decoded.substring(0, index);
       this.password = decoded.substring(index + 1);
     }
 
     public static Optional<BasicAuth> fromBase64Value(String base64Value) {
-        return Optional.of(new BasicAuth(base64Value));
+      return Optional.of(new BasicAuth(base64Value));
     }
 
     public String getBase64Value() {

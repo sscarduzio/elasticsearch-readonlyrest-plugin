@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.settings.rules;
 
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
 
 import java.util.Set;
 import java.util.stream.Collectors;

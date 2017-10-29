@@ -22,11 +22,11 @@ import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.acl.definitions.ldaps.BaseLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapClientException;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.time.Duration;
 import java.util.List;

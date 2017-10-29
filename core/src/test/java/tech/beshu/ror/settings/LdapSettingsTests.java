@@ -17,13 +17,13 @@
 
 package tech.beshu.ror.settings;
 
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.TestUtils;
-import tech.beshu.ror.commons.SettingsMalformedException;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.utils.containers.LdapContainer;
-import org.junit.ClassRule;
-import org.junit.Test;
 
 public class LdapSettingsTests {
 

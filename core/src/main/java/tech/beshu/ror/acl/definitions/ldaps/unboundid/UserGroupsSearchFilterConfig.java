@@ -54,7 +54,7 @@ public class UserGroupsSearchFilterConfig {
     return uniqueMemberAttribute;
   }
 
-  public boolean isGroupsFromUser () {
+  public boolean isGroupsFromUser() {
     return isGroupsFromUser;
   }
 

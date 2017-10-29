@@ -18,13 +18,13 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.ImmutableMap;
+import org.junit.Test;
+import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
-import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.Base64;
 
@@ -52,8 +52,8 @@ public class AuthKeySha512RuleTests {
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-        "3586d5752240fd09e967383d3f1bad025bbc6953ba7c6d2135670631b4e326fee0cc8bd81addb9f6de111b9c380505b5ea0531598c21b0906d8e726f24e0dbe2",
-        "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+      "3586d5752240fd09e967383d3f1bad025bbc6953ba7c6d2135670631b4e326fee0cc8bd81addb9f6de111b9c380505b5ea0531598c21b0906d8e726f24e0dbe2",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }

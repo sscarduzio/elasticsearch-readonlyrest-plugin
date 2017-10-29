@@ -30,20 +30,15 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.SettingsForStorage;
-import tech.beshu.ror.commons.SettingsObservable;
+import org.elasticsearch.env.Environment;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsObservable;
+import tech.beshu.ror.commons.settings.SettingsUtils;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.HashMap;
+import java.nio.file.Path;
 import java.util.Map;
-import java.util.Optional;
-
-import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
 
 /**
  * Created by sscarduzio on 25/06/2017.
@@ -54,44 +49,28 @@ public class SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
-  private Settings settings;
+  private final Settings initialSettings;
 
   @Inject
-  public SettingsObservableImpl(NodeClient client) {
-    super();
+  public SettingsObservableImpl(NodeClient client, Settings s) {
+
     this.client = client;
-    current = this.getFromFileWithFallbackToES();
+    current = BasicSettings.fromFile(logger, new Environment(s).configFile(), s.getAsStructuredMap()).getRaw();
+    this.initialSettings = s;
   }
 
   @Override
-  protected void writeToIndex(SettingsForStorage s4s, FutureCallback f) {
-    String jsonToCommit = s4s.toJsonStorage();
-    client.prepareBulk().add(
-      client.prepareIndex(".readonlyrest", "settings", "1")
-        .setSource(jsonToCommit, XContentType.JSON).request()
-    ).execute().addListener(new ActionListener<BulkResponse>() {
-      @Override
-      public void onResponse(BulkResponse bulkItemResponses) {
-        logger.info("all ok, written settings");
-        f.onSuccess(bulkItemResponses);
-      }
-
-      @Override
-      public void onFailure(Exception e) {
-        logger.error("could not write settings to index: ", e);
-        f.onFailure(e);
-      }
-    });
+  protected Path getConfigPath() {
+    Environment environment = new Environment(initialSettings);
+    return environment.configFile();
   }
-
 
   @Override
   protected LoggerShim getLogger() {
     return logger;
   }
 
-  @Override
-  protected SettingsForStorage getFromIndex() {
+  protected RawSettings getFromIndex() {
     GetResponse resp = null;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
@@ -105,9 +84,29 @@ public class SettingsObservableImpl extends SettingsObservable {
       throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
-    return new SettingsForStorage(yamlString);
+    return new RawSettings(yamlString);
   }
 
+  @Override
+  protected void writeToIndex(RawSettings rawSettings, FutureCallback f) {
+    client.prepareBulk().add(
+      client.prepareIndex(".readonlyrest", "settings", "1")
+        .setSource(SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
+    ).execute().addListener(new ActionListener<BulkResponse>() {
+      @Override
+      public void onResponse(BulkResponse bulkItemResponses) {
+        logger.info("all ok, written settings");
+        f.onSuccess(bulkItemResponses);
+      }
+
+      @Override
+      public void onFailure(Exception e) {
+        logger.error("could not write settings to index: ", e);
+        f.onFailure(e);
+      }
+    });
+
+  }
 
   @Override
   public boolean isClusterReady() {
@@ -118,6 +117,11 @@ public class SettingsObservableImpl extends SettingsObservable {
     } catch (Throwable e) {
       return false;
     }
+  }
+
+  @Override
+  protected Map<String, ?> getNodeSettings() {
+    return initialSettings.getAsStructuredMap();
   }
 
 }

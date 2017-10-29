@@ -15,37 +15,32 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.commons;
+package tech.beshu.ror.commons.settings;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.ESVersion;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.Observable;
 
-import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
-
 abstract public class SettingsObservable extends Observable {
-  public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
 
+  public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
+  protected RawSettings current;
   private boolean printedInfo = false;
 
-  protected SettingsForStorage current;
-
-  public void updateSettings(SettingsForStorage newSettings) {
+  public void updateSettings(RawSettings newSettings) {
     this.current = newSettings;
     setChanged();
     notifyObservers();
   }
 
-  public SettingsForStorage getCurrent() {
+  abstract protected Path getConfigPath();
+
+  public RawSettings getCurrent() {
     return current;
   }
 
@@ -53,62 +48,28 @@ abstract public class SettingsObservable extends Observable {
 
   protected abstract boolean isClusterReady();
 
-  public SettingsForStorage getFromFileWithFallbackToES() {
-    LoggerShim logger = getLogger();
 
-    String filePath = Constants.makeAbsolutePath("config" + File.separator);
-
-    if (!filePath.endsWith(File.separator)) {
-      filePath += File.separator;
-    }
-
-    final String esFilePath = filePath + "elasticsearch.yml";
-
-    filePath += SETTINGS_YAML_FILE;
-
-    String finalFilePath = filePath;
-
-    final SettingsForStorage[] s4s = new SettingsForStorage[1];
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      try {
-        String slurped = new String(Files.readAllBytes(Paths.get(finalFilePath)));
-        s4s[0] = new SettingsForStorage(slurped);
-        logger.info("Loaded good settings from " + finalFilePath);
-      } catch (Throwable t) {
-        logger.info(
-          "Could not find settings in "
-            + finalFilePath + ", falling back to elasticsearch.yml (" + t.getMessage() + ")");
-        try {
-          String slurped = new String(Files.readAllBytes(Paths.get(esFilePath)));
-          s4s[0] = new SettingsForStorage(slurped);
-          logger.info("Loaded good settings from " + esFilePath);
-        } catch (IOException e) {
-          throw new SettingsMalformedException("Cannot even read elasticsearch.yml, giving up", e);
-        }
-      }
-      return null;
-    });
-    return s4s[0];
-  }
+  protected abstract Map<String, ?> getNodeSettings();
 
   protected abstract LoggerShim getLogger();
 
-  protected abstract SettingsForStorage getFromIndex();
+  protected abstract RawSettings getFromIndex();
 
-  protected abstract void writeToIndex(SettingsForStorage s4s, FutureCallback f);
+  protected abstract void writeToIndex(RawSettings rawSettings, FutureCallback f);
 
 
   public void refreshFromIndex() {
     try {
       getLogger().debug("[CLUSTERWIDE SETTINGS] checking index..");
-      SettingsForStorage fromIndex = getFromIndex();
-      if(!fromIndex.asRawYAML().equals(current.asRawYAML())) {
+      RawSettings fromIndex = getFromIndex();
+
+      if (!fromIndex.asMap().equals(current.asMap())) {
         updateSettings(fromIndex);
         getLogger().info("[CLUSTERWIDE SETTINGS] good settings found in index, overriding local YAML file");
       }
     } catch (Throwable t) {
-      if ( SETTINGS_NOT_FOUND_MESSAGE.equals(t.getMessage())) {
-        if(!printedInfo) {
+      if (SETTINGS_NOT_FOUND_MESSAGE.equals(t.getMessage())) {
+        if (!printedInfo) {
           getLogger().info("[CLUSTERWIDE SETTINGS] index settings not found. Will keep on using the local YAML file. " +
                              "Learn more about clusterwide settings at https://readonlyrest.com/pro.html ");
         }
@@ -125,8 +86,8 @@ abstract public class SettingsObservable extends Observable {
     notifyObservers();
   }
 
-  public void refreshFromStringAndPersist(SettingsForStorage newSettings, FutureCallback fut) {
-    SettingsForStorage oldSettings = current;
+  public void refreshFromStringAndPersist(RawSettings newSettings, FutureCallback fut) {
+    RawSettings oldSettings = current;
     current = newSettings;
     try {
       forceRefresh();

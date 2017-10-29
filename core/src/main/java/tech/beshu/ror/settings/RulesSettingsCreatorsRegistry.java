@@ -17,8 +17,8 @@
 package tech.beshu.ror.settings;
 
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
-import tech.beshu.ror.commons.RawSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
@@ -227,7 +227,7 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeyUnixSettingsCreator(RawSettings blockSettings,
-                                                              AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
+                                                            AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
     return authRuleFrom(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 

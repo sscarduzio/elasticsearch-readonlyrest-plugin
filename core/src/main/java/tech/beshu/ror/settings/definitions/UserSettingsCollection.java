@@ -17,9 +17,9 @@
 package tech.beshu.ror.settings.definitions;
 
 import com.google.common.collect.Lists;
+import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.AuthMethodCreatorsRegistry;
-import tech.beshu.ror.commons.RawSettings;
-import tech.beshu.ror.commons.SettingsMalformedException;
 
 import java.util.List;
 import java.util.Map;

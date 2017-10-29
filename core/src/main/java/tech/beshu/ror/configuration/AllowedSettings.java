@@ -17,7 +17,7 @@
 package tech.beshu.ror.configuration;
 
 import com.google.common.collect.ImmutableMap;
-import tech.beshu.ror.commons.BasicSettings;
+import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.settings.BlockSettings;
 import tech.beshu.ror.settings.RorSettings;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
