@@ -65,7 +65,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final NodeClient client;
-  private final LoggerShim logger;
   private final IndexNameExpressionResolver indexResolver;
   private final Environment env;
 
@@ -80,23 +79,26 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   )
     throws IOException {
     super(settings);
-    this.logger = context.get().logger(getClass());
+    LoggerShim loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     this.env = new Environment(settings);
-    BasicSettings baseSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
+    BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
+
     this.context.set(new ESContextImpl(client, baseSettings));
+
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
     this.client = client;
 
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, loggerShim);
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
       RawSettings newRaw = new RawSettings(settingsObservable.getCurrent().asMap());
-      BasicSettings newBaseSettings = new BasicSettings(newRaw, env.configFile().toAbsolutePath());
+      Environment newEnv = new Environment(settings);
+      BasicSettings newBaseSettings = new BasicSettings(newRaw, newEnv.configFile().toAbsolutePath());
       ESContext newContext = new ESContextImpl(client, newBaseSettings);
       this.context.set(newContext);
 

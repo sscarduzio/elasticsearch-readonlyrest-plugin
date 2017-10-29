@@ -65,8 +65,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final LoggerShim logger;
+  private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
+
   private NodeClient client;
 
   @Inject
@@ -80,13 +81,19 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     throws IOException {
     super(settings);
 
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    loggerShim = ESContextImpl.mkLoggerShim(logger);
+
+    Environment env = new Environment(settings);
+    BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
+
+    this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, logger);
+
+    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, loggerShim);
 
 
     ReadonlyRestPlugin.clientFuture.thenAccept(c -> {
@@ -96,10 +103,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       settingsObservable.addObserver((o, arg) -> {
         logger.info("Settings observer refreshing...");
-        Environment env = new Environment(settings);
+        Environment newEnv = new Environment(settings);
         RawSettings raw = new RawSettings(settingsObservable.getCurrent().asMap());
-        BasicSettings baseSettings = new BasicSettings(raw, env.configFile().toAbsolutePath());
-        ESContext newContext = new ESContextImpl(client, baseSettings);
+        BasicSettings newBasicSettings = new BasicSettings(raw, newEnv.configFile().toAbsolutePath());
+        ESContext newContext = new ESContextImpl(client, newBasicSettings);
 
         if (newContext.getSettings().isEnabled()) {
           try {
