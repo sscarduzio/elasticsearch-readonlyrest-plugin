@@ -89,7 +89,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
             .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
             .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
             .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/")
-            .copy(elasticsearchConfigName, "/usr/share/elasticsearch/plugins/readonlyrest/readonlyrest.yml")
+            .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/readonlyrest.yml")
             .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
             .user("root")
             .run("chown elasticsearch:elasticsearch config/*")
