@@ -78,7 +78,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
             return;
           }
           // Can throw SettingsMalformedException
-          settingsObservable.refreshFromStringAndPersist(new RawSettings(body), new FutureCallback() {
+          settingsObservable.refreshFromStringAndPersist(new RawSettings(SettingsUtils.extractYAMLfromJSONStorage(body)), new FutureCallback() {
             @Override
             public void onSuccess(Object result) {
               listener.onResponse(new RRAdminResponse("updated settings"));
