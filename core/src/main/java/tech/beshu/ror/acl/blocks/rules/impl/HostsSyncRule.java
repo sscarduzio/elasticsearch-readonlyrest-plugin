@@ -105,14 +105,14 @@ public class HostsSyncRule extends SyncRule {
 
   private boolean ipMatchesAddress(String allowedHost, String address) {
     try {
-      String resolvedIp = address;
+      String allowedResolvedIp = allowedHost;
 
       if(!XForwardedForRuleSettings.isInetAddressOrBlock(allowedHost)) {
         // Super-late DNS resolution
-        resolvedIp = InetAddress.getByName(allowedHost).getHostAddress();
+        allowedResolvedIp = InetAddress.getByName(allowedHost).getHostAddress();
       }
 
-      IPMask ip = IPMask.getIPMask(resolvedIp);
+      IPMask ip = IPMask.getIPMask(allowedResolvedIp);
       return ip.matches(address);
     } catch (UnknownHostException e) {
       logger.warn("Cannot resolve configured host name! " + e.getClass().getSimpleName() + ": " + allowedHost);

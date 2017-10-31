@@ -67,6 +67,12 @@ public class HostsRuleTests {
   }
 
   @Test
+  public void testKOnet() {
+    RuleExitResult res = match("1.1.1.1/24", "2.2.2.2");
+    assertFalse(res.isMatch());
+  }
+
+  @Test
   public void testOKName() {
     RuleExitResult res = match("google.com", "google.com");
     assertTrue(res.isMatch());
