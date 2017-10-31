@@ -61,6 +61,12 @@ public class HostsRuleTests {
   }
 
   @Test
+  public void testOKnet() {
+    RuleExitResult res = match("1.1.1.1/16", "1.1.1.2");
+    assertTrue(res.isMatch());
+  }
+
+  @Test
   public void testOKName() {
     RuleExitResult res = match("google.com", "google.com");
     assertTrue(res.isMatch());

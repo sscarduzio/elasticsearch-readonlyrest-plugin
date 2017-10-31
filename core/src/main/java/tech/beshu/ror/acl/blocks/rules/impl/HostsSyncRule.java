@@ -18,6 +18,7 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
+import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.domain.IPMask;
@@ -26,7 +27,9 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
@@ -102,8 +105,13 @@ public class HostsSyncRule extends SyncRule {
 
   private boolean ipMatchesAddress(String allowedHost, String address) {
     try {
-      // Super-late address resolution
-      String resolvedIp = InetAddress.getByName(allowedHost).getHostAddress();
+      String resolvedIp = address;
+
+      if(!XForwardedForRuleSettings.isInetAddressOrBlock(allowedHost)) {
+        // Super-late DNS resolution
+        resolvedIp = InetAddress.getByName(allowedHost).getHostAddress();
+      }
+
       IPMask ip = IPMask.getIPMask(resolvedIp);
       return ip.matches(address);
     } catch (UnknownHostException e) {
