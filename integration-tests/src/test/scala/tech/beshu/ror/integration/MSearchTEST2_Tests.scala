@@ -16,49 +16,49 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
-class MSearchTests {
-  import MSearchTests._
+class MSearchTEST2_Tests {
+  import MSearchTEST2_Tests._
 
   @Test
-  def test274_1_notexist() = {
+  def test274_2_nomatch() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0]", msearchRequest(TEST1.MSEAERCH_BODY_NOT_EXISTS))
+    assertEquals("[0]", msearchRequest(TEST2.MSEAERCH_NO_MATCH))
   }
 
   @Test
-  def test274_1_queryworks() = {
+  def test274_2_broken() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[1]", msearchRequest(TEST1.MSEAERCH_BODY_QUERY_WORKS))
+    assertEquals("[1]", msearchRequest(TEST2.MSEAERCH_BROKEN))
   }
 
   @Test
-  def test274_1_emptyindex() = {
+  def test274_2_emptyindex() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0]", msearchRequest(TEST1.MSEAERCH_BODY_EMPTY_INDEX))
+    assertEquals("[0]", msearchRequest(TEST2.MSEAERCH_BODY_EMPTY_INDEX))
   }
 
   @Test
-  def test274_1_all() = {
+  def test274_2_combo() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0,1,0]", msearchRequest(TEST1.MSEAERCH_BODY_COMBO))
+    assertEquals("[0,1,0]", msearchRequest(TEST2.MSEAERCH_BODY_COMBO))
   }
 }
 
-object MSearchTests {
+object MSearchTEST2_Tests {
 
-  object TEST1 {
-    val MSEAERCH_BODY_NOT_EXISTS =
-      """{"index":["perfmon_index_does_not_exist"],"ignore_unavailable":true,"preference":1506497937939}
+  object TEST2 {
+    val MSEAERCH_NO_MATCH =
+      """{"index":["perfmon_logstash-apacheaccess*"]}
         |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
         |""".stripMargin
 
-    val MSEAERCH_BODY_QUERY_WORKS =
-      """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
-        |{"query":{"match_all":{}}, "size":0}
+    val MSEAERCH_BROKEN =
+      """{"index":["perfmon_endpoint_requests"]}
+        |{"query":{"query_string":{"analyze_wildcard":true,"query":"*"}},"size":0}
         |""".stripMargin
 
     val MSEAERCH_BODY_EMPTY_INDEX =
-      """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
+      """{"index":["emptyIndex"],"ignore_unavailable":true,"preference":1506497937939}
         |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
         |""".stripMargin
 
@@ -91,11 +91,11 @@ object MSearchTests {
         |
         |  - name: "::KIBANA-SRV::"
         |    auth_key: kibana:kibana
-        |    indices: [".kibana"]
+        |    indices: ["perfmon_endpoint_requests","perfmon_logstash-apacheaccess*"]
         |    verbosity: error
       """.stripMargin
 
-    val MSEAERCH_BODY_COMBO = MSEAERCH_BODY_NOT_EXISTS + MSEAERCH_BODY_QUERY_WORKS + MSEAERCH_BODY_EMPTY_INDEX
+    val MSEAERCH_BODY_COMBO = MSEAERCH_NO_MATCH + MSEAERCH_BROKEN + MSEAERCH_BODY_EMPTY_INDEX
   }
 
   def useCredentials(user: String, pass: String) = Unirest.setHttpClient(
@@ -120,11 +120,13 @@ object MSearchTests {
   var url: String = null
 
   @ClassRule def container = ESWithReadonlyRestContainer.create(RorPluginGradleProject.fromSystemProperty,
-    TempFile.newFile(getClass.getName, "elasticsearch.yml", TEST1.settingsYaml),
+    TempFile.newFile(getClass.getName, "elasticsearch.yml", TEST2.settingsYaml),
     Optional.of(new ESInitalizer {
       override def initialize(client: RestClient): Unit = {
         endpoint = HostAndPort.fromParts(client.getHost, client.getPort)
 
+
+        // Creating an empty index
         Unirest.setHttpClient(client.getUnderlyingClient)
         url = client.from("").toASCIIString
         println("Added empty index: " + Unirest.put(url + "emptyIndex")
@@ -132,7 +134,21 @@ object MSearchTests {
           .header("timeout", "50s")
           .asString().getBody)
 
-        println("ES DOCUMENT WRITTEN IN .kibana! " + Unirest.put(url + ".kibana/documents/doc1")
+        // Create "perfmon_endpoint_requests" index with 1 doc in it
+        println("ES DOCUMENT WRITTEN IN perfmon_endpoint_requests! " + Unirest.put(url + "perfmon_endpoint_requests/documents/doc1")
+          .header("refresh", "wait_for")
+          .header("timeout", "50s")
+          .body("""{"id": "asd123"}""")
+          .asString().getBody)
+
+        // Create "perfmon_logstash-apacheaccess1" index with 2 doc in it
+        println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (1/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc1")
+          .header("refresh", "wait_for")
+          .header("timeout", "50s")
+          .body("""{"id": "asd123"}""")
+          .asString().getBody)
+
+        println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (2/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc1")
           .header("refresh", "wait_for")
           .header("timeout", "50s")
           .body("""{"id": "asd123"}""")
