@@ -21,16 +21,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.google.common.collect.Maps;
+import org.reflections.Reflections;
+import tech.beshu.ror.AuditLogContext;
 import tech.beshu.ror.commons.ResponseContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 
 /**
@@ -45,7 +47,11 @@ public class SerializationTool {
     zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
   }
 
-  public SerializationTool() {
+  private final ESContext esContext;
+  private Optional<AuditLogSerializer> customSerializer;
+
+  public SerializationTool(ESContext esContext) {
+    this.esContext = esContext;
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
       "SimpleModule",
@@ -53,6 +59,31 @@ public class SerializationTool {
     );
     mapper.registerModule(simpleModule);
     this.mapper = mapper;
+
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      findCustomSerialiser(esContext);
+      return null;
+    });
+  }
+
+  private void findCustomSerialiser(ESContext esContext) {
+    Set<Class<? extends AuditLogSerializer>> resolvedSerialisers = new Reflections("").getSubTypesOf(AuditLogSerializer.class);
+    if (resolvedSerialisers.isEmpty()) {
+      esContext.logger(getClass()).info("no custom audit log serialisers found, proceeding with default.");
+      customSerializer = Optional.empty();
+      return;
+    }
+    if (resolvedSerialisers.size() == 1) {
+      try {
+        AuditLogSerializer s = (AuditLogSerializer) resolvedSerialisers.iterator().next().newInstance();
+        customSerializer = Optional.of(s);
+        return;
+      } catch (InstantiationException | IllegalAccessException e) {
+        esContext.logger(getClass()).error("Error picking the custom serializer, proceeding with default.", e);
+      }
+    }
+    esContext.logger(getClass()).error("Error picking the custom serializer, proceeding with default.");
+    customSerializer = Optional.empty();
   }
 
   public String mkIndexName() {
@@ -60,54 +91,41 @@ public class SerializationTool {
   }
 
   public String toJson(ResponseContext rc) {
-
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("match", rc.getIsMatch());
-    result.put("block", rc.getReason());
-
-    Map<String, Object> map = Maps.newHashMap();
-
-    map.put("id", rc.getRequestContext().getId());
-    map.put("final_state", rc.finalState().name());
-
-    map.put("@timestamp", zuluFormat.format(rc.getRequestContext().getTimestamp()));
-    map.put("processingMillis", rc.getDurationMillis());
-
-    map.put("error_type", rc.getError() != null ? rc.getError().getClass().getSimpleName() : null);
-    map.put("error_message", rc.getError() != null ? rc.getError().getMessage() : null);
-    //map.put("matched_block", rc.getResult() != null && rc.getResult().getBlock() != null ? rc.getResult().getBlock().getName() : null);
-
     RequestContext req = (RequestContext) rc.getRequestContext();
 
-    map.put("content_len", req.getContentLength());
-    map.put("content_len_kb", req.getContentLength() / 1024);
-    map.put("type", req.getType());
-    map.put("origin", req.getRemoteAddress());
-    map.put("task_id", req.getTaskId());
+    AuditLogContext logContext = new AuditLogContext()
+      .withId(req.getId())
+      .withAction(req.getAction())
+      .withPath(req.getUri())
+      .withHeaders(req.getHeaders().keySet())
+      .withAclHistory(req.getHistory().toString())
+      .withContentLen(req.getContentLength())
+      .withContentLenKb(req.getContentLength() == 0 ? 0 : req.getContentLength() / 1024)
+      .withOrigin(req.getRemoteAddress())
+      .withErrorType(rc.getError() != null ? rc.getError().getClass().getSimpleName() : null)
+      .withErrorMessage(rc.getError() != null ? rc.getError().getMessage() : null)
+      .withType(req.getType())
+      .withTaskId(Math.toIntExact(req.getTaskId()))
+      .withReqMethod(req.getMethod().name())
+      .withUser(req.getLoggedInUser().isPresent() ? req.getLoggedInUser().get().getId() : null)
+      .withIndices(req.involvesIndices() ? req.getIndices() : Collections.emptySet())
+      .withTimestamp(zuluFormat.format(rc.getRequestContext().getTimestamp()))
+      .withProcessingMillis(rc.getDurationMillis());
 
-    map.put("req_method", req.getMethod());
-    map.put("headers", req.getHeaders().keySet());
-    map.put("path", req.getUri());
 
-    map.put("user", req.getLoggedInUser().isPresent() ? req.getLoggedInUser().get().getId() : null);
-
-    map.put("action", req.getAction());
-    map.put("indices", req.involvesIndices() ? req.getIndices() : Collections.emptySet());
-    map.put("acl_history", req.getHistory().toString());
-
-    // The cumbersome, awkward security handling in Java. (TM) #securityAgainstProductivity
     final String[] res = new String[1];
 
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
-        res[0] = mapper.writeValueAsString(map);
+        if (customSerializer.isPresent()) {
+          mapper.writeValueAsString(customSerializer.get().createLoggableEntry(logContext));
+        }
+        res[0] = mapper.writeValueAsString(logContext);
       } catch (JsonProcessingException e) {
         throw new RuntimeException("JsonProcessingException", e);
       }
       return null;
     });
-
-    // The stupidity of checked exceptions. (TM)
 
     return res[0];
   }
@@ -119,5 +137,6 @@ public class SerializationTool {
       throw new RuntimeException(e);
     }
   }
+
 
 }
