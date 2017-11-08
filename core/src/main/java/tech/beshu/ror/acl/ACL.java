@@ -63,7 +63,7 @@ public class ACL {
   private ESContext context;
 
   public ACL(ESContext context) {
-    serTool = context.getSettings().isAuditorCollectorEnabled() ? new SerializationTool() : null;
+    serTool = context.getSettings().isAuditorCollectorEnabled() ? new SerializationTool(context) : null;
     this.rorSettings = new RorSettings(context.getSettings().getRaw());
     this.logger = context.logger(getClass());
     this.context = context;
