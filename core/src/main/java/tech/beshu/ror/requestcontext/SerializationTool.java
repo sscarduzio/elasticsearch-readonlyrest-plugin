@@ -25,6 +25,7 @@ import org.reflections.Reflections;
 import tech.beshu.ror.AuditLogContext;
 import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -42,6 +43,7 @@ public class SerializationTool {
   private final static SimpleDateFormat zuluFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
   private final static SimpleDateFormat indexNameFormatter = new SimpleDateFormat("yyyy-MM-dd");
   private static ObjectMapper mapper;
+  private static LoggerShim logger;
 
   static {
     zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -52,6 +54,7 @@ public class SerializationTool {
 
   public SerializationTool(ESContext esContext) {
     this.esContext = esContext;
+    this.logger = esContext.logger(getClass());
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
       "SimpleModule",
@@ -69,20 +72,20 @@ public class SerializationTool {
   private void findCustomSerialiser(ESContext esContext) {
     Set<Class<? extends AuditLogSerializer>> resolvedSerialisers = new Reflections("").getSubTypesOf(AuditLogSerializer.class);
     if (resolvedSerialisers.isEmpty()) {
-      esContext.logger(getClass()).info("no custom audit log serialisers found, proceeding with default.");
+      logger.info("no custom audit log serialisers found, proceeding with default.");
       customSerializer = Optional.empty();
       return;
     }
     if (resolvedSerialisers.size() == 1) {
       try {
-        AuditLogSerializer s = (AuditLogSerializer) resolvedSerialisers.iterator().next().newInstance();
+        AuditLogSerializer s = resolvedSerialisers.iterator().next().newInstance();
         customSerializer = Optional.of(s);
         return;
       } catch (InstantiationException | IllegalAccessException e) {
-        esContext.logger(getClass()).error("Error picking the custom serializer, proceeding with default.", e);
+        logger.error("Error picking the custom serializer, proceeding with default.", e);
       }
     }
-    esContext.logger(getClass()).error("Error picking the custom serializer, proceeding with default.");
+    logger.error("Error picking the custom serializer, proceeding with default.");
     customSerializer = Optional.empty();
   }
 
@@ -110,7 +113,9 @@ public class SerializationTool {
       .withUser(req.getLoggedInUser().isPresent() ? req.getLoggedInUser().get().getId() : null)
       .withIndices(req.involvesIndices() ? req.getIndices() : Collections.emptySet())
       .withTimestamp(zuluFormat.format(rc.getRequestContext().getTimestamp()))
-      .withProcessingMillis(rc.getDurationMillis());
+      .withProcessingMillis(rc.getDurationMillis())
+      .withMatchedBlock(rc.getReason())
+      .withFinalState(rc.finalState().name());
 
 
     final String[] res = new String[1];
@@ -118,9 +123,11 @@ public class SerializationTool {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
         if (customSerializer.isPresent()) {
-          mapper.writeValueAsString(customSerializer.get().createLoggableEntry(logContext));
+          res[0] = mapper.writeValueAsString(customSerializer.get().createLoggableEntry(logContext));
         }
-        res[0] = mapper.writeValueAsString(logContext);
+        else {
+          res[0] = mapper.writeValueAsString(logContext);
+        }
       } catch (JsonProcessingException e) {
         throw new RuntimeException("JsonProcessingException", e);
       }
