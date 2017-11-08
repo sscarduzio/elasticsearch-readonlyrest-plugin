@@ -21,19 +21,21 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import org.reflections.Reflections;
+import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 import tech.beshu.ror.AuditLogContext;
 import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.shims.request.RequestContextShim;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TimeZone;
 
 /**
@@ -70,23 +72,27 @@ public class SerializationTool {
   }
 
   private void findCustomSerialiser(ESContext esContext) {
-    Set<Class<? extends AuditLogSerializer>> resolvedSerialisers = new Reflections("").getSubTypesOf(AuditLogSerializer.class);
-    if (resolvedSerialisers.isEmpty()) {
+    Optional<String> configuredSerializer = esContext.getSettings().getCustomAuditSerializer().filter(s -> !Strings.isNullOrEmpty(s));
+
+    if (!configuredSerializer.isPresent()) {
       logger.info("no custom audit log serialisers found, proceeding with default.");
-      customSerializer = Optional.empty();
+      this.customSerializer = Optional.empty();
       return;
     }
-    if (resolvedSerialisers.size() == 1) {
-      try {
-        AuditLogSerializer s = resolvedSerialisers.iterator().next().newInstance();
-        customSerializer = Optional.of(s);
-        return;
-      } catch (InstantiationException | IllegalAccessException e) {
-        logger.error("Error picking the custom serializer, proceeding with default.", e);
-      }
+
+    try {
+      Class clazz = Class.forName(configuredSerializer.get());
+      Constructor constr = clazz.getConstructor(null);
+      constr.setAccessible(true);
+      AuditLogSerializer serializerInstance = (AuditLogSerializer) constr.newInstance(new Object[0]);
+      this.customSerializer = Optional.of(serializerInstance);
+      logger.info("Using custom serializer: " + serializerInstance.getClass().getName());
+      return;
+    } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | NoSuchMethodException | InvocationTargetException e) {
+      logger.error("Error picking the custom serializer, proceeding with default.", e);
+      this.customSerializer = Optional.empty();
+      return;
     }
-    logger.error("Error picking the custom serializer, proceeding with default.");
-    customSerializer = Optional.empty();
   }
 
   public String mkIndexName() {
@@ -94,14 +100,14 @@ public class SerializationTool {
   }
 
   public String toJson(ResponseContext rc) {
-    RequestContext req = (RequestContext) rc.getRequestContext();
+    RequestContextShim req = rc.getRequestContext();
 
     AuditLogContext logContext = new AuditLogContext()
       .withId(req.getId())
       .withAction(req.getAction())
       .withPath(req.getUri())
       .withHeaders(req.getHeaders().keySet())
-      .withAclHistory(req.getHistory().toString())
+      .withAclHistory(req.getHistoryString())
       .withContentLen(req.getContentLength())
       .withContentLenKb(req.getContentLength() == 0 ? 0 : req.getContentLength() / 1024)
       .withOrigin(req.getRemoteAddress())
@@ -109,8 +115,8 @@ public class SerializationTool {
       .withErrorMessage(rc.getError() != null ? rc.getError().getMessage() : null)
       .withType(req.getType())
       .withTaskId(Math.toIntExact(req.getTaskId()))
-      .withReqMethod(req.getMethod().name())
-      .withUser(req.getLoggedInUser().isPresent() ? req.getLoggedInUser().get().getId() : null)
+      .withReqMethod(req.getMethod())
+      .withUser(req.getLoggedInUserName().isPresent() ? req.getLoggedInUserName().get() : null)
       .withIndices(req.involvesIndices() ? req.getIndices() : Collections.emptySet())
       .withTimestamp(zuluFormat.format(rc.getRequestContext().getTimestamp()))
       .withProcessingMillis(rc.getDurationMillis())

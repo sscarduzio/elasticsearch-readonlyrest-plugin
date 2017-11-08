@@ -24,6 +24,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.mockito.Mockito;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.AbstractESContext;
 import tech.beshu.ror.commons.shims.es.ESContext;
@@ -38,11 +39,21 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class MockedESContext extends AbstractESContext {
 
   public static final ESContext INSTANCE = new MockedESContext();
+  private final String customSerializer;
+
+  public MockedESContext() {
+    this(null);
+  }
+
+  public MockedESContext(String customSerializer) {
+    this.customSerializer = customSerializer;
+  }
 
   @Override
   public LoggerShim mkLogger(Class<?> clazz) {
@@ -114,7 +125,10 @@ public class MockedESContext extends AbstractESContext {
 
   @Override
   public BasicSettings getSettings() {
-    throw new NotImplementedException();
+
+    BasicSettings bs = Mockito.mock(BasicSettings.class);
+    Mockito.when(bs.getCustomAuditSerializer()).thenReturn(Optional.of(customSerializer));
+    return bs;
   }
 
   private static class HttpClientAdapter implements HttpClient {

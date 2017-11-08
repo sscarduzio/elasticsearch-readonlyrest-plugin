@@ -17,6 +17,8 @@
 package tech.beshu.ror.commons.shims.request;
 
 import java.util.Date;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public interface RequestContextShim {
@@ -26,4 +28,27 @@ public interface RequestContextShim {
   Set<String> getIndices();
 
   Date getTimestamp();
+
+  String getAction();
+  Map<String,String> getHeaders();
+
+  String getUri();
+
+  String getHistoryString();
+
+  Integer getContentLength();
+
+  String getRemoteAddress();
+
+  String getType();
+
+  Long getTaskId();
+
+  String getMethod();
+
+  Optional<String> getLoggedInUserName();
+
+  boolean involvesIndices();
+
+
 }

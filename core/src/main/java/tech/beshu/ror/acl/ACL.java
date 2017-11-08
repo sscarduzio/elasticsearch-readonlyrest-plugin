@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.acl;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import tech.beshu.ror.acl.blocks.Block;
 import tech.beshu.ror.acl.blocks.BlockExitResult;
@@ -41,6 +42,7 @@ import tech.beshu.ror.utils.FuturesSequencer;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -276,14 +278,24 @@ public class ACL {
       }
 
       @Override
-      public HttpMethod getMethod() {
-        return HttpMethod.fromString(rInfo.extractMethod())
+      public String getMethod() {
+        return HttpMethod.fromString(rInfo.extractMethod()).map(m -> m.name())
           .orElseThrow(() -> context.rorException("unrecognised HTTP method " + rInfo.extractMethod()));
+      }
+
+      @Override
+      public Optional<String> getLoggedInUserName() {
+        return getLoggedInUser().map(u -> u.getId());
       }
 
       @Override
       public String getUri() {
         return rInfo.extractURI();
+      }
+
+      @Override
+      public String getHistoryString() {
+        return  Joiner.on(", ").join(getHistory());
       }
 
       @Override

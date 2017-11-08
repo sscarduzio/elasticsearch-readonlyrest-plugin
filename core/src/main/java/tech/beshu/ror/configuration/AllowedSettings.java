@@ -49,6 +49,7 @@ public abstract class AllowedSettings {
       .put(prefix + RorSettings.ATTRIBUTE_SEARCHLOG, SettingType.BOOL)
       .put(prefix + RorSettings.PROMPT_FOR_BASIC_AUTH, SettingType.BOOL)
       .put(prefix + RorSettings.AUDIT_COLLECTOR, SettingType.BOOL)
+      .put(prefix + BasicSettings.CUSTOM_AUDIT_SERIALIZER, SettingType.STRING)
 
       // SSL
       .put(sslPrefix + "enable", SettingType.BOOL)
