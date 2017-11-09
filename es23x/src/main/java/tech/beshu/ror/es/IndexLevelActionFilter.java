@@ -30,7 +30,6 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -80,13 +79,14 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   )
     throws IOException {
     super(settings);
+    System.out.println("IndexLevelActionFilter INIT");
 
     loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     Environment env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
 
-    this.context.set(new ESContextImpl(client, baseSettings));
+    //this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
@@ -100,6 +100,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       // Have to do this because guice goes crazy otherwise..
       settingsObservable.setClient(c);
+      this.client = c;
 
       settingsObservable.addObserver((o, arg) -> {
         logger.info("Settings observer refreshing...");
@@ -107,6 +108,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         RawSettings raw = new RawSettings(settingsObservable.getCurrent().asMap());
         BasicSettings newBasicSettings = new BasicSettings(raw, newEnv.configFile().toAbsolutePath());
         ESContext newContext = new ESContextImpl(client, newBasicSettings);
+        this.context.set(newContext);
 
         if (newContext.getSettings().isEnabled()) {
           try {
@@ -134,10 +136,17 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       });
 
 
-    });
+    })
+      .thenApply(x -> {
+        settingsObservable.forceRefresh();
+        logger.info("Readonly REST plugin was loaded...");
+        return null;
+      })
+      .exceptionally(e -> {
+        e.printStackTrace();
+        return null;
+      });
 
-    settingsObservable.forceRefresh();
-    logger.info("Readonly REST plugin was loaded...");
 
   }
 

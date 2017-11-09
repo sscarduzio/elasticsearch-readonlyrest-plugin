@@ -48,12 +48,12 @@ import java.util.Map;
 public class SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
   private final Settings initialSettings;
+
+  // To be set later because DI doesn't work
   private NodeClient client;
 
   @Inject
-  public SettingsObservableImpl(NodeClient client, Settings s) {
-
-    this.client = client;
+  public SettingsObservableImpl( Settings s) {
     current = BasicSettings.fromFile(logger, new Environment(s).configFile(), s.getAsStructuredMap()).getRaw();
     this.initialSettings = s;
   }

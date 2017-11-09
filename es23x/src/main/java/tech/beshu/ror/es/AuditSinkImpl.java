@@ -54,9 +54,11 @@ public class AuditSinkImpl {
   private final BulkProcessor bulkProcessor;
   private final BasicSettings settings;
 
-  @Inject
   public AuditSinkImpl(Client client, BasicSettings settings) {
     this.settings = settings;
+    if(client == null){
+      new Exception("client was null").printStackTrace();
+    }
 
     if (!settings.isAuditorCollectorEnabled()) {
       bulkProcessor = null;
