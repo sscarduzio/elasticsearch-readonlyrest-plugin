@@ -140,7 +140,7 @@ public class SerializationToolTests {
     SerializationTool st = new SerializationTool(new MockedESContext());
     String ser = st.toJson(new ResponseContext(ResponseContext.FinalState.ALLOWED, requestContextShim, null, Verbosity.INFO, "because", true));
     System.out.println(ser);
-    Map<String, Object> ours = gson.fromJson("{\"errorMessage\":null,\"headers\":[\"h1\"],\"aclHistory\":\"history\",\"origin\":\"OA\",\"finalState\":\"ALLOWED\",\"taskId\":0,\"type\":\"Object\",\"reqMethod\":null,\"path\":\"/_search\",\"indices\":[\"index1\"],\"timestamp\":\"1970-01-01T00:00:00Z\",\"contentLenKb\":0,\"errorType\":null,\"processingMillis\":1510179210456,\"action\":\"theAction\",\"matchedBlock\":\"because\",\"id\":\"123\",\"contentLen\":0,\"user\":\"user\"}\n", Map.class);
+    Map<String, Object> ours = gson.fromJson("{\"errorMessage\":null,\"headers\":[\"h1\"],\"aclHistory\":\"history\",\"origin\":\"OA\",\"finalState\":\"ALLOWED\",\"taskId\":0,\"type\":\"Object\",\"reqMethod\":GET,\"path\":\"/_search\",\"indices\":[\"index1\"],\"timestamp\":\"1970-01-01T00:00:00Z\",\"contentLenKb\":0,\"errorType\":null,\"processingMillis\":1510179210456,\"action\":\"theAction\",\"matchedBlock\":\"because\",\"id\":\"123\",\"contentLen\":0,\"user\":\"user\"}\n", Map.class);
     Map<String, Object> theirs = gson.fromJson(ser, Map.class);
 
     // The processing millis is calculated on the fly, cannot predict that
