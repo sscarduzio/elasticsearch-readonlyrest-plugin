@@ -63,7 +63,7 @@ public class MethodsRuleTests {
   }
 
   private RuleExitResult match(List<HttpMethod> configured, HttpMethod found, RequestContext rc) {
-    when(rc.getMethod()).thenReturn(found.name());
+    when(rc.getMethod()).thenReturn(found);
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new MethodsSyncRule(new MethodsRuleSettings(Sets.newHashSet(configured)));

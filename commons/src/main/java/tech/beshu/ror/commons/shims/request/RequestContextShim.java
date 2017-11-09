@@ -44,7 +44,7 @@ public interface RequestContextShim {
 
   Long getTaskId();
 
-  String getMethod();
+  String getMethodString();
 
   Optional<String> getLoggedInUserName();
 

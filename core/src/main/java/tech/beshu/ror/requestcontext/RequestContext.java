@@ -185,7 +185,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   abstract public Integer getContentLength();
 
-  abstract public String getMethod();
+  abstract public HttpMethod getMethod();
 
   abstract public String getUri();
 

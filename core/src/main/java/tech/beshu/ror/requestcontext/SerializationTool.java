@@ -115,7 +115,7 @@ public class SerializationTool {
       .withErrorMessage(rc.getError() != null ? rc.getError().getMessage() : null)
       .withType(req.getType())
       .withTaskId(Math.toIntExact(req.getTaskId()))
-      .withReqMethod(req.getMethod())
+      .withReqMethod(req.getMethodString())
       .withUser(req.getLoggedInUserName().isPresent() ? req.getLoggedInUserName().get() : null)
       .withIndices(req.involvesIndices() ? req.getIndices() : Collections.emptySet())
       .withTimestamp(zuluFormat.format(rc.getRequestContext().getTimestamp()))

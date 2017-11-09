@@ -278,9 +278,14 @@ public class ACL {
       }
 
       @Override
-      public String getMethod() {
-        return HttpMethod.fromString(rInfo.extractMethod()).map(m -> m.name())
+      public HttpMethod getMethod() {
+        return HttpMethod.fromString(rInfo.extractMethod())
           .orElseThrow(() -> context.rorException("unrecognised HTTP method " + rInfo.extractMethod()));
+      }
+
+      @Override
+      public String getMethodString() {
+        return getMethod().name();
       }
 
       @Override
