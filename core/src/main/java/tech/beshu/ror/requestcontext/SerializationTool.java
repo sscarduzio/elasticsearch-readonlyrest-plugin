@@ -82,7 +82,7 @@ public class SerializationTool {
 
     try {
       Class clazz = Class.forName(configuredSerializer.get());
-      Constructor constr = clazz.getConstructor(null);
+      Constructor constr = clazz.getConstructor(new Class[0]);
       constr.setAccessible(true);
       AuditLogSerializer serializerInstance = (AuditLogSerializer) constr.newInstance(new Object[0]);
       this.customSerializer = Optional.of(serializerInstance);

@@ -14,15 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-//package tech.beshu.ror.requestcontext;
-//
+
 //import tech.beshu.ror.AuditLogContext;
+//import tech.beshu.ror.requestcontext.AuditLogSerializer;
 //
 //import java.util.HashMap;
 //import java.util.Map;
 //
-//public class MyCustomSerializer implements AuditLogSerializer{
-//  MyCustomSerializer(){
+//public class MyCustomSerializer implements AuditLogSerializer {
+//  public MyCustomSerializer(){
 //    System.out.println("MY CUSTOM SERIALIZER INSTANTIATED");
 //  }
 //  @Override
