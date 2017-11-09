@@ -23,7 +23,6 @@ import tech.beshu.ror.AuditLogContext;
 import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
-import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.AuditLogSerializer;
 import tech.beshu.ror.requestcontext.SerializationTool;
