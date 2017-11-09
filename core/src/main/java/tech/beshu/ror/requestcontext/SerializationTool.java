@@ -45,17 +45,15 @@ public class SerializationTool {
   private final static SimpleDateFormat zuluFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
   private final static SimpleDateFormat indexNameFormatter = new SimpleDateFormat("yyyy-MM-dd");
   private static ObjectMapper mapper;
-  private static LoggerShim logger;
+  private final LoggerShim logger;
 
   static {
     zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
   }
 
-  private final ESContext esContext;
   private Optional<AuditLogSerializer> customSerializer;
 
   public SerializationTool(ESContext esContext) {
-    this.esContext = esContext;
     this.logger = esContext.logger(getClass());
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(

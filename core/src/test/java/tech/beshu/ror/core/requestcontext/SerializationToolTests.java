@@ -114,24 +114,14 @@ public class SerializationToolTests {
     }
   };
 
-  public static class MyCustomSerializer implements AuditLogSerializer {
-      public MyCustomSerializer(){}
-      @Override
-      public Map<String, ?> createLoggableEntry(AuditLogContext context) {
-        Map<String, Object > theMap = new HashMap<>(2);
-        theMap.put("indices", context.getIndices());
-        return theMap;
-      }
-  }
-
   @Test
-  public void customSerializer(){
+  public void customSerializer() {
 
     SerializationTool st = new SerializationTool(new MockedESContext(MyCustomSerializer.class.getName()));
 
     String jString = st.toJson(new ResponseContext(ResponseContext.FinalState.ALLOWED, requestContextShim, null, Verbosity.INFO, "because", true));
     System.out.println(jString);
-    assertEquals(jString,"{\"indices\":[\"index1\"]}");
+    assertEquals(jString, "{\"indices\":[\"index1\"]}");
   }
 
   @Test
@@ -148,5 +138,17 @@ public class SerializationToolTests {
     theirs.put("processingMillis", ours.get("processingMillis"));
 
     assertEquals(ours, theirs);
+  }
+
+  public static class MyCustomSerializer implements AuditLogSerializer {
+    public MyCustomSerializer() {
+    }
+
+    @Override
+    public Map<String, ?> createLoggableEntry(AuditLogContext context) {
+      Map<String, Object> theMap = new HashMap<>(2);
+      theMap.put("indices", context.getIndices());
+      return theMap;
+    }
   }
 }
