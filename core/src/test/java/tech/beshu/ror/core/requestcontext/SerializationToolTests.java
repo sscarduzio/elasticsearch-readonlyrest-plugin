@@ -116,7 +116,7 @@ public class SerializationToolTests {
   @Test
   public void customSerializer() {
 
-    SerializationTool st = new SerializationTool(new MockedESContext(MyCustomSerializer.class.getName()));
+    SerializationTool st = new SerializationTool(new MockedESContext(MyTestSerializer.class.getName()));
 
     String jString = st.toJson(new ResponseContext(ResponseContext.FinalState.ALLOWED, requestContextShim, null, Verbosity.INFO, "because", true));
     System.out.println(jString);
@@ -139,9 +139,7 @@ public class SerializationToolTests {
     assertEquals(ours, theirs);
   }
 
-  public static class MyCustomSerializer implements AuditLogSerializer {
-    public MyCustomSerializer() {
-    }
+  public static class MyTestSerializer implements AuditLogSerializer {
 
     @Override
     public Map<String, ?> createLoggableEntry(AuditLogContext context) {
