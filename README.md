@@ -35,9 +35,6 @@ Append either of these snippets to `conf/elasticsearch.yml`
 ```yml
 readonlyrest:
     access_control_rules: 
-    
-    - name: "Accept all requests from localhost"
-      hosts: [127.0.0.1]
 
     - name: "::PUBLIC SEARCHBOX::"
       indices: ["public"]
