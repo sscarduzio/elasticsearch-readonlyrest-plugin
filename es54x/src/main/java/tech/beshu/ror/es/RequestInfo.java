@@ -352,7 +352,6 @@ public class RequestInfo implements RequestInfoShim {
       });
     }
 
-
     if (actionRequest instanceof MultiSearchRequest) {
       // If it's an empty MSR, we are ok
       MultiSearchRequest msr = (MultiSearchRequest) actionRequest;

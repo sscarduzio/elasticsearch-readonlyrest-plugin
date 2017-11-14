@@ -45,10 +45,12 @@ import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.shims.request.RequestInfoShim;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.commons.utils.RCUtils;
 import tech.beshu.ror.commons.utils.ReflecUtils;
 
@@ -135,9 +137,6 @@ public class RequestInfo implements RequestInfoShim {
         opts = ((IndicesRequest) actionRequest).indicesOptions();
       }
 
-      if (actionRequest instanceof IndicesRequest) {
-        opts = ((IndicesRequest) actionRequest).indicesOptions();
-      }
       String[] concreteIdxNames = {};
       try {
         concreteIdxNames = indexResolver.concreteIndices(clusterService.state(), opts, ixs);
@@ -351,17 +350,38 @@ public class RequestInfo implements RequestInfoShim {
       });
     }
 
-    // Optimistic reflection attempt
-    boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
-
-    if (!okSetResult && actionRequest instanceof MultiSearchRequest) {
+    if (actionRequest instanceof MultiSearchRequest) {
       // If it's an empty MSR, we are ok
-      okSetResult = true;
       MultiSearchRequest msr = (MultiSearchRequest) actionRequest;
       for (SearchRequest sr : msr.requests()) {
-        okSetResult &= ReflecUtils.setIndices(sr, Sets.newHashSet("indices"), newIndices, logger);
+
+        // This contains global indices
+        if (sr.indices().length == 0 || com.google.common.collect.Sets.newHashSet(sr.indices()).contains("*")) {
+          sr.indices(newIndices.toArray(new String[newIndices.size()]));
+          continue;
+        }
+
+        Set<String> srIndices = com.google.common.collect.Sets.newHashSet(sr.indices());
+        MatcherWithWildcards m = new MatcherWithWildcards(srIndices);
+        Set<String> remaining = m.filter(newIndices);
+
+        if (remaining.size() == 0) {
+          // contained just forbidden indices, should return zero results
+          sr.source(new SearchSourceBuilder().size(0));
+          continue;
+        }
+        if (remaining.size() == srIndices.size()) {
+          // contained all allowed indices
+          continue;
+        }
+        // some allowed indices were there, restrict query to those
+        sr.indices(remaining.toArray(new String[remaining.size()]));
       }
     }
+
+
+    // Optimistic reflection attempt
+    boolean okSetResult = ReflecUtils.setIndices(actionRequest, com.google.common.collect.Sets.newHashSet("index", "indices"), newIndices, logger);
 
     if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
