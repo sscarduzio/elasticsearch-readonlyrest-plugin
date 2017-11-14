@@ -19,7 +19,6 @@ package tech.beshu.ror.core.requestcontext;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import org.junit.Test;
-import tech.beshu.ror.AuditLogContext;
 import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
