@@ -29,15 +29,12 @@ In other words... no more proxies! Yay Ponies!
 
 ### 2. Configuration
 
-Append either of these snippets to `conf/elasticsearch.yml`
+Append either of these snippets to `config/readonlyrest.yml`
 
 ### USE CASE: Secure public searchbox from [ransomware](http://code972.com/blog/2017/01/107-dont-be-ransacked-securing-your-elasticsearch-cluster-properly)
 ```yml
 readonlyrest:
     access_control_rules: 
-    
-    - name: "Accept all requests from localhost"
-      hosts: [127.0.0.1]
 
     - name: "::PUBLIC SEARCHBOX::"
       indices: ["public"]
@@ -47,7 +44,11 @@ readonlyrest:
 ### USE CASE: Enable HTTPS globally
 Remember to enable SSL whenever you use HTTP basic auth or API keys so your credentials can't be stolen.
 ```yml
-http.type: ssl_netty4
+http.type: ssl_netty4   # <-- add this to config/elasticsearch.yml
+```
+
+And add to `conf/readonlyrest.yml`
+```yml
 readonlyrest:
     enable: true # optional, defaults=true if at least 1 "access_control_rules" block
     
