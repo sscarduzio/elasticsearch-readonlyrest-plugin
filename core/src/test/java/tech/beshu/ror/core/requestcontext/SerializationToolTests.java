@@ -115,9 +115,7 @@ public class SerializationToolTests {
 
   @Test
   public void customSerializer() {
-
     SerializationTool st = new SerializationTool(new MockedESContext(MyTestSerializer.class.getName()));
-
     String jString = st.toJson(new ResponseContext(ResponseContext.FinalState.ALLOWED, requestContextShim, null, Verbosity.INFO, "because", true));
     System.out.println(jString);
     assertEquals(jString, "{\"indices\":[\"index1\"]}");
@@ -129,7 +127,7 @@ public class SerializationToolTests {
     SerializationTool st = new SerializationTool(new MockedESContext());
     String ser = st.toJson(new ResponseContext(ResponseContext.FinalState.ALLOWED, requestContextShim, null, Verbosity.INFO, "because", true));
     System.out.println(ser);
-    Map<String, Object> ours = gson.fromJson("{\"errorMessage\":null,\"headers\":[\"h1\"],\"aclHistory\":\"history\",\"origin\":\"OA\",\"finalState\":\"ALLOWED\",\"taskId\":0,\"type\":\"Object\",\"reqMethod\":GET,\"path\":\"/_search\",\"indices\":[\"index1\"],\"timestamp\":\"1970-01-01T00:00:00Z\",\"contentLenKb\":0,\"errorType\":null,\"processingMillis\":1510179210456,\"action\":\"theAction\",\"matchedBlock\":\"because\",\"id\":\"123\",\"contentLen\":0,\"user\":\"user\"}\n", Map.class);
+    Map<String, Object> ours = gson.fromJson("{\"error_message\":null,\"headers\":[\"h1\"],\"acl_history\":\"history\",\"origin\":\"OA\",\"final_state\":\"ALLOWED\",\"task_id\":0,\"type\":\"Object\",\"req_method\":\"GET\",\"path\":\"/_search\",\"indices\":[\"index1\"],\"@timestamp\":\"1970-01-01T00:00:00Z\",\"content_len_kb\":0,\"error_type\":null,\"processingMillis\":1510699696944,\"action\":\"theAction\",\"id\":\"123\",\"content_len\":0,\"user\":\"user\"}", Map.class);
     Map<String, Object> theirs = gson.fromJson(ser, Map.class);
 
     // The processing millis is calculated on the fly, cannot predict that
@@ -142,9 +140,9 @@ public class SerializationToolTests {
   public static class MyTestSerializer implements AuditLogSerializer {
 
     @Override
-    public Map<String, ?> createLoggableEntry(AuditLogContext context) {
+    public Map<String, ?> createLoggableEntry(ResponseContext context) {
       Map<String, Object> theMap = new HashMap<>(2);
-      theMap.put("indices", context.getIndices());
+      theMap.put("indices", context.getRequestContext().getIndices());
       return theMap;
     }
   }

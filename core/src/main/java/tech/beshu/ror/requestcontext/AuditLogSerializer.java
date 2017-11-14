@@ -17,11 +17,10 @@
 
 package tech.beshu.ror.requestcontext;
 
-import tech.beshu.ror.AuditLogContext;
+import tech.beshu.ror.commons.ResponseContext;
 
-import java.util.Map;
 
-public interface AuditLogSerializer {
+public interface AuditLogSerializer<T> {
 
-  Map<String, ?> createLoggableEntry(AuditLogContext context);
+  T createLoggableEntry(ResponseContext context);
 }

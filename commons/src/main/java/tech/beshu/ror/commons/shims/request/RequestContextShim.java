@@ -50,5 +50,4 @@ public interface RequestContextShim {
 
   boolean involvesIndices();
 
-
 }
