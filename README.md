@@ -43,11 +43,13 @@ readonlyrest:
 
 ### USE CASE: Enable HTTPS globally
 Remember to enable SSL whenever you use HTTP basic auth or API keys so your credentials can't be stolen.
+
+add this to `config/elasticsearch.yml`:
 ```yml
-http.type: ssl_netty4   # <-- add this to config/elasticsearch.yml
+http.type: ssl_netty4 
 ```
 
-And add to `conf/readonlyrest.yml`
+And then add this to `conf/readonlyrest.yml`
 ```yml
 readonlyrest:
     enable: true # optional, defaults=true if at least 1 "access_control_rules" block
