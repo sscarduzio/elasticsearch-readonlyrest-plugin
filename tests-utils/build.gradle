@@ -31,7 +31,8 @@ dependencies {
     compile 'org.gradle:gradle-tooling-api:2.13'
     compile 'org.apache.logging.log4j:log4j-core:2.7'
     compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
-    compile 'com.github.testcontainers.testcontainers-java:testcontainers:master-SNAPSHOT'
+    //compile 'com.github.testcontainers.testcontainers-java:testcontainers:master-SNAPSHOT'
+    compile 'org.testcontainers:testcontainers:1.4.3'
     compile 'log4j:log4j:1.2.17'
     compile 'org.slf4j:slf4j-simple:1.6.2'
 }
