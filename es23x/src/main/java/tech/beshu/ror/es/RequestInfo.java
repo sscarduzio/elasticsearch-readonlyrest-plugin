@@ -356,12 +356,12 @@ public class RequestInfo implements RequestInfoShim {
       for (SearchRequest sr : msr.requests()) {
 
         // This contains global indices
-        if (sr.indices().length == 0 || com.google.common.collect.Sets.newHashSet(sr.indices()).contains("*")) {
+        if (sr.indices().length == 0 || Sets.newHashSet(sr.indices()).contains("*")) {
           sr.indices(newIndices.toArray(new String[newIndices.size()]));
           continue;
         }
 
-        Set<String> srIndices = com.google.common.collect.Sets.newHashSet(sr.indices());
+        Set<String> srIndices = Sets.newHashSet(sr.indices());
         MatcherWithWildcards m = new MatcherWithWildcards(srIndices);
         Set<String> remaining = m.filter(newIndices);
 
@@ -381,7 +381,7 @@ public class RequestInfo implements RequestInfoShim {
 
 
     // Optimistic reflection attempt
-    boolean okSetResult = ReflecUtils.setIndices(actionRequest, com.google.common.collect.Sets.newHashSet("index", "indices"), newIndices, logger);
+    boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
 
     if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
