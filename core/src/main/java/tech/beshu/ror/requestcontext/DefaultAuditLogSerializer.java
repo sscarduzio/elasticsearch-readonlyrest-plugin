@@ -26,7 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
 
-public class DefaultAuditLogSerializer implements AuditLogSerializer {
+public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String, ?>> {
   private final static SimpleDateFormat zuluFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
   static {
