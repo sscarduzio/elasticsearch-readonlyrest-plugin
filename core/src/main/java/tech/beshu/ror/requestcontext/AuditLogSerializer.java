@@ -14,40 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.commons.shims.request;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+package tech.beshu.ror.requestcontext;
 
-public interface RequestContextShim {
+import tech.beshu.ror.commons.ResponseContext;
 
-  String getId();
 
-  Set<String> getIndices();
+public interface AuditLogSerializer<T> {
 
-  Date getTimestamp();
-
-  String getAction();
-  Map<String,String> getHeaders();
-
-  String getUri();
-
-  String getHistoryString();
-
-  Integer getContentLength();
-
-  String getRemoteAddress();
-
-  String getType();
-
-  Long getTaskId();
-
-  String getMethodString();
-
-  Optional<String> getLoggedInUserName();
-
-  boolean involvesIndices();
-
+  T createLoggableEntry(ResponseContext context);
 }

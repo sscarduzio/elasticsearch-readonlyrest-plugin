@@ -21,31 +21,30 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.google.common.collect.Maps;
+import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 import tech.beshu.ror.commons.ResponseContext;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.Optional;
 
 /**
  * Created by sscarduzio on 28/06/2017.
  */
 public class SerializationTool {
-  private final static SimpleDateFormat zuluFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
   private final static SimpleDateFormat indexNameFormatter = new SimpleDateFormat("yyyy-MM-dd");
   private static ObjectMapper mapper;
+  private final AuditLogSerializer auditLogSerializer;
+  private final LoggerShim logger;
 
-  static {
-    zuluFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-  }
-
-  public SerializationTool() {
+  public SerializationTool(ESContext esContext) {
+    this.logger = esContext.logger(getClass());
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
       "SimpleModule",
@@ -53,6 +52,36 @@ public class SerializationTool {
     );
     mapper.registerModule(simpleModule);
     this.mapper = mapper;
+
+    final AuditLogSerializer[] als = new AuditLogSerializer[1];
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      Optional<AuditLogSerializer> custSer = findCustomSerialiser(esContext);
+      als[0] = custSer.orElse(new DefaultAuditLogSerializer());
+      return null;
+    });
+    auditLogSerializer = als[0];
+  }
+
+  private Optional<AuditLogSerializer> findCustomSerialiser(ESContext esContext) {
+    Optional<String> configuredSerializer = esContext.getSettings().getCustomAuditSerializer().filter(s -> !Strings.isNullOrEmpty(s));
+
+    if (!configuredSerializer.isPresent()) {
+      logger.info("no custom audit log serialisers found, proceeding with default.");
+      return Optional.empty();
+    }
+
+    try {
+      Class clazz = Class.forName(configuredSerializer.get());
+      Constructor constr = clazz.getConstructor(new Class[0]);
+      constr.setAccessible(true);
+      AuditLogSerializer serializerInstance = (AuditLogSerializer) constr.newInstance(new Object[0]);
+      logger.info("Using custom serializer: " + serializerInstance.getClass().getName());
+      return Optional.of(serializerInstance);
+
+    } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | NoSuchMethodException | InvocationTargetException e) {
+      logger.error("Error picking the custom serializer, proceeding with default.", e);
+      return Optional.empty();
+    }
   }
 
   public String mkIndexName() {
@@ -60,64 +89,19 @@ public class SerializationTool {
   }
 
   public String toJson(ResponseContext rc) {
-
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("match", rc.getIsMatch());
-    result.put("block", rc.getReason());
-
-    Map<String, Object> map = Maps.newHashMap();
-
-    map.put("id", rc.getRequestContext().getId());
-    map.put("final_state", rc.finalState().name());
-
-    map.put("@timestamp", zuluFormat.format(rc.getRequestContext().getTimestamp()));
-    map.put("processingMillis", rc.getDurationMillis());
-
-    map.put("error_type", rc.getError() != null ? rc.getError().getClass().getSimpleName() : null);
-    map.put("error_message", rc.getError() != null ? rc.getError().getMessage() : null);
-    //map.put("matched_block", rc.getResult() != null && rc.getResult().getBlock() != null ? rc.getResult().getBlock().getName() : null);
-
-    RequestContext req = (RequestContext) rc.getRequestContext();
-
-    map.put("content_len", req.getContentLength());
-    map.put("content_len_kb", req.getContentLength() / 1024);
-    map.put("type", req.getType());
-    map.put("origin", req.getRemoteAddress());
-    map.put("task_id", req.getTaskId());
-
-    map.put("req_method", req.getMethod());
-    map.put("headers", req.getHeaders().keySet());
-    map.put("path", req.getUri());
-
-    map.put("user", req.getLoggedInUser().isPresent() ? req.getLoggedInUser().get().getId() : null);
-
-    map.put("action", req.getAction());
-    map.put("indices", req.involvesIndices() ? req.getIndices() : Collections.emptySet());
-    map.put("acl_history", req.getHistory().toString());
-
-    // The cumbersome, awkward security handling in Java. (TM) #securityAgainstProductivity
     final String[] res = new String[1];
 
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
-        res[0] = mapper.writeValueAsString(map);
+        res[0] = mapper.writeValueAsString(auditLogSerializer.createLoggableEntry(rc));
       } catch (JsonProcessingException e) {
         throw new RuntimeException("JsonProcessingException", e);
       }
       return null;
     });
 
-    // The stupidity of checked exceptions. (TM)
-
     return res[0];
   }
 
-  public String toJson(RequestContext rc) {
-    try {
-      return mapper.writeValueAsString(rc);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
 }

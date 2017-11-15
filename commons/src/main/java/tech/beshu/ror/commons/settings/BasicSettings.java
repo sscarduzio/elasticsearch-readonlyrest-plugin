@@ -42,6 +42,7 @@ public class BasicSettings {
   public static final String PROMPT_FOR_BASIC_AUTH = "prompt_for_basic_auth";
   public static final String VERBOSITY = "verbosity";
   public static final String AUDIT_COLLECTOR = "audit_collector";
+  public static final String CUSTOM_AUDIT_SERIALIZER = "audit_serializer";
 
   // SSL
   public static final String PREFIX_SSL = "ssl.";
@@ -61,6 +62,7 @@ public class BasicSettings {
   private final RawSettings raw;
   private final Path configPath;
   private final RawSettings raw_global;
+  private final Optional<String> customAuditSerializer;
   private Optional<String> keystorePass;
   private Optional<String> keyPass;
 
@@ -81,6 +83,7 @@ public class BasicSettings {
         .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
       .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
+    this.customAuditSerializer = raw.opt(CUSTOM_AUDIT_SERIALIZER);
 
     // SSL
     Optional<RawSettings> sslSettingsOpt = raw.innerOpt(PREFIX_SSL.replaceFirst(".$", ""));
@@ -120,7 +123,7 @@ public class BasicSettings {
     return slurped[0];
   }
 
-  public static BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String,?> fallback) {
+  public static BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String, ?> fallback) {
     try {
       final String baseConfigDirPath = configPath.toAbsolutePath().toString();
       final String rorSettingsFilePath = Constants.makeAbsolutePath(SETTINGS_YAML_FILE, baseConfigDirPath);
@@ -155,6 +158,10 @@ public class BasicSettings {
 
   public Boolean isAuditorCollectorEnabled() {
     return auditCollector;
+  }
+
+  public Optional<String> getCustomAuditSerializer() {
+    return customAuditSerializer;
   }
 
   public Boolean isPromptForBasicAuth() {
