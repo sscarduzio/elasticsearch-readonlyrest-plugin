@@ -73,10 +73,11 @@ public class SettingsObservableImpl extends SettingsObservable {
     GetResponse resp = null;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
-    } catch (Throwable t) {
-      if (t instanceof ResourceNotFoundException) {
-        throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
-      }
+    }
+    catch (ResourceNotFoundException rnfe){
+      throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
+    }
+    catch (Throwable t) {
       throw new ElasticsearchException(t.getMessage());
     }
     if (resp == null || !resp.isExists()) {
