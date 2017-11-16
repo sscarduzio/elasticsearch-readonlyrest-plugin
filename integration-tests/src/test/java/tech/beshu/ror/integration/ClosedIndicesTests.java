@@ -70,7 +70,9 @@ public class ClosedIndicesTests {
 
     String path = "/" + IDX_PREFIX + docName + "/documents/doc-" + docName;
     try {
+
       HttpPut request = new HttpPut(restClient.from(path));
+      request.setHeader("Content-Type", "application/json");
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
       request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));

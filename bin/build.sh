@@ -14,6 +14,9 @@ echo ">>> Running unit tests.."
 ./gradlew --stacktrace test ror
 
 
+echo ">>> es60x => Running testcontainers.."
+./gradlew integration-tests:test '-PesModule=es60x' || ( find . |grep hs_err |xargs cat && exit 1 )
+
 echo ">>> es54x => Running testcontainers.."
 ./gradlew integration-tests:test '-PesModule=es54x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
@@ -30,6 +33,8 @@ echo ">>> es51x => Running testcontainers.."
 
 
 echo ">>> ($0) additional build of ES module for specified ES version"
+
+./gradlew --stacktrace es60x:ror '-PesVersion=6.0.0'
 
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.6.0'
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.6.1'

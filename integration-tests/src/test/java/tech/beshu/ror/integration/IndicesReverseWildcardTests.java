@@ -60,6 +60,7 @@ public class IndicesReverseWildcardTests {
       ));
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
+      request.setHeader("Content-Type", "application/json");
       request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));
       System.out.println(body(restClient.execute(request)));
 

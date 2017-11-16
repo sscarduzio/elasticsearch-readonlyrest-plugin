@@ -1,13 +1,7 @@
 http.host: 0.0.0.0
 
-xpack:
-  monitoring.enabled: true
-  security.enabled: false
-  graph.enabled: false
-  watcher.enabled: false
-
 http.type: ssl_netty4
-transport.type: local
+#transport.type: local
 
 readonlyrest:
   ssl:

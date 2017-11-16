@@ -66,15 +66,8 @@ object MSearchTEST2_Tests {
       """
         |http.bind_host: _eth0:ipv4_
         |network.host: _eth0:ipv4_
-        |
-        |xpack:
-        |  monitoring.enabled: false
-        |  security.enabled: false
-        |  graph.enabled: false
-        |  watcher.enabled: false
-        |
         |http.type: ssl_netty4
-        |transport.type: local
+        |#transport.type: local
         |
         |readonlyrest:
         |  ssl:
@@ -138,18 +131,21 @@ object MSearchTEST2_Tests {
         println("ES DOCUMENT WRITTEN IN perfmon_endpoint_requests! " + Unirest.put(url + "perfmon_endpoint_requests/documents/doc1")
           .header("refresh", "wait_for")
           .header("timeout", "50s")
+          .header("Content-Type", "application/json")
           .body("""{"id": "asd123"}""")
           .asString().getBody)
 
         // Create "perfmon_logstash-apacheaccess1" index with 2 doc in it
         println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (1/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc1")
-          .header("refresh", "wait_for")
+          .header("refresh", "wait_for")            .header("Content-Type", "application/json")
+
           .header("timeout", "50s")
           .body("""{"id": "asd123"}""")
           .asString().getBody)
 
         println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (2/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc1")
           .header("refresh", "wait_for")
+          .header("Content-Type", "application/json")
           .header("timeout", "50s")
           .body("""{"id": "asd123"}""")
           .asString().getBody)

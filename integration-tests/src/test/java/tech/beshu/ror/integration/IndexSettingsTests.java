@@ -52,7 +52,7 @@ public class IndexSettingsTests {
               HttpPut request = new HttpPut(adminClient.from("/.readonlyrest/settings/1"));
               request.setHeader("refresh", "true");
               request.setHeader("timeout", "50s");
-              request.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
+              request.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
               request.setEntity(new StringEntity("{\"settings\":\"" + NEW_CONFIGURATION + "\" }"));
               System.out.println(body(adminClient.execute(request)));
 
@@ -70,7 +70,7 @@ public class IndexSettingsTests {
               } while (response.getStatusLine().getStatusCode() != 200);
 
               HttpPost refreshReq = new HttpPost(adminClient.from("/_readonlyrest/admin/refreshconfig"));
-              refreshReq.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjso");
+              refreshReq.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
               response = adminClient.execute(refreshReq);
               System.out.println(body(response));
               assert (200 == response.getStatusLine().getStatusCode());

@@ -1,3 +1,3 @@
 #discovery.type: single-node
-transport.type: local
+#transport.type: local
 http.type: ssl_netty4

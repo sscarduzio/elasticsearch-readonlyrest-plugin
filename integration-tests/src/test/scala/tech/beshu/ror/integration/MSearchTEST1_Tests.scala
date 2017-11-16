@@ -17,6 +17,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 @RunWith(classOf[BlockJUnit4ClassRunner])
 class MSearchTEST1_Tests {
+
   import MSearchTEST1_Tests._
 
   @Test
@@ -67,14 +68,8 @@ object MSearchTEST1_Tests {
         |http.bind_host: _eth0:ipv4_
         |network.host: _eth0:ipv4_
         |
-        |xpack:
-        |  monitoring.enabled: false
-        |  security.enabled: false
-        |  graph.enabled: false
-        |  watcher.enabled: false
-        |
         |http.type: ssl_netty4
-        |transport.type: local
+        |#transport.type: local
         |
         |readonlyrest:
         |  ssl:
@@ -127,16 +122,19 @@ object MSearchTEST1_Tests {
 
         Unirest.setHttpClient(client.getUnderlyingClient)
         url = client.from("").toASCIIString
-        println("Added empty index: " + Unirest.put(url + "emptyIndex")
-          .header("refresh", "wait_for")
-          .header("timeout", "50s")
-          .asString().getBody)
+        println("Added empty index: " +
+          Unirest.put(url + "emptyIndex")
+            .header("refresh", "wait_for")
+            .header("timeout", "50s")
+            .asString().getBody)
 
-        println("ES DOCUMENT WRITTEN IN .kibana! " + Unirest.put(url + ".kibana/documents/doc1")
-          .header("refresh", "wait_for")
-          .header("timeout", "50s")
-          .body("""{"id": "asd123"}""")
-          .asString().getBody)
+        println("ES DOCUMENT WRITTEN IN .kibana! " +
+          Unirest.put(url + ".kibana/documents/doc1")
+            .header("refresh", "wait_for")
+            .header("Content-Type", "application/json")
+            .header("timeout", "50s")
+            .body("""{"id": "asd123"}""")
+            .asString().getBody)
 
         // #TODO Hack the refresh=wait_for is not working, fixing temporarily with this shit
         Thread.sleep(600)

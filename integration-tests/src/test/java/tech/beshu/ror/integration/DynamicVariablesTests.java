@@ -59,6 +59,7 @@ public class DynamicVariablesTests {
       HttpPut request = new HttpPut(restClient.from(
         docPath
       ));
+      request.setHeader("Content-Type", "application/json");
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
       request.setEntity(new StringEntity("{\"title\": \"" + indexName + "\"}"));

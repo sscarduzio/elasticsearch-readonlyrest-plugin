@@ -4,4 +4,5 @@ grant {
   permission java.lang.RuntimePermission "accessDeclaredMembers";
   permission java.util.PropertyPermission "*", "read,write";
   permission java.lang.RuntimePermission "getClassLoader";
+  permission java.net.SocketPermission "*", "accept, resolve, connect";
 };

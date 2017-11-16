@@ -53,6 +53,7 @@ public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContain
   private void createMessage(RestClient client, String endpoint, String id, String user, String message) {
     try {
       HttpPut httpPut = new HttpPut(client.from(endpoint + id));
+      httpPut.setHeader("Content-Type", "application/json");
       httpPut.setEntity(new StringEntity(
           "{\n" +
               "\"user\" : \"" + user + "\",\n" +
