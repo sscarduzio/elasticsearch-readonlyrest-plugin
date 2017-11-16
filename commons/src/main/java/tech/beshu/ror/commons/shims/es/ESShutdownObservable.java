@@ -1,4 +1,4 @@
-package tech.beshu.ror.commons.settings;
+package tech.beshu.ror.commons.shims.es;
 
 import java.util.Observable;
 

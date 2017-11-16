@@ -52,6 +52,7 @@ import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -74,6 +75,11 @@ public class ReadonlyRestPlugin extends Plugin
   @Override
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService, ScriptService scriptService, NamedXContentRegistry xContentRegistry) {
     return super.createComponents(client, clusterService, threadPool, resourceWatcherService, scriptService, xContentRegistry);
+  }
+
+  @Override
+  public void close() throws IOException {
+    ESContextImpl.shutDownObservable.shutDown();
   }
 
   @Override

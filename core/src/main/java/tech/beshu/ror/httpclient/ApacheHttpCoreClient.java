@@ -30,6 +30,8 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -38,15 +40,30 @@ import java.util.stream.Collectors;
  * Created by sscarduzio on 03/07/2017.
  */
 public class ApacheHttpCoreClient implements HttpClient {
-  private final CloseableHttpAsyncClient hcHttpClient;
+  private  CloseableHttpAsyncClient hcHttpClient;
   private final LoggerShim logger;
   private final ESContext context;
 
   public ApacheHttpCoreClient(ESContext esContext) {
-    this.hcHttpClient = HttpAsyncClients.createDefault();
-    this.hcHttpClient.start();
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      this.hcHttpClient = HttpAsyncClients.createDefault();
+      this.hcHttpClient.start();
+      return null;
+    });
     this.logger = esContext.logger(getClass());
     this.context = esContext;
+    ESContext.shutDownObservable.addObserver((x,y) -> {
+      try {
+        hcHttpClient.close();
+      } catch (IOException e) {
+        logger.error("cannot shut down Apache HTTP Core client.. ", e);
+      }
+    });
+  }
+
+  @Override
+  protected void finalize() throws Throwable {
+    hcHttpClient.close();
   }
 
   @Override
@@ -69,23 +86,27 @@ public class ApacheHttpCoreClient implements HttpClient {
     final HttpGet hcRequest = new HttpGet(uri);
     request.getHeaders().entrySet().forEach(e -> hcRequest.addHeader(e.getKey(), e.getValue()));
 
-    hcHttpClient.execute(hcRequest, new FutureCallback<HttpResponse>() {
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-      public void completed(final HttpResponse hcResponse) {
-        int statusCode = hcResponse.getStatusLine().getStatusCode();
-        logger.debug("HTTP REQ SUCCESS with status: " + statusCode + " " + request);
-        promise.complete(hcResponse);
-      }
+      hcHttpClient.execute(hcRequest, new FutureCallback<HttpResponse>() {
 
-      public void failed(final Exception ex) {
-        logger.debug("HTTP REQ FAILED " + request);
-        logger.info("HTTP client failed to connect: " + request + " reason: " + ex.getMessage());
-        promise.completeExceptionally(ex);
-      }
+        public void completed(final HttpResponse hcResponse) {
+          int statusCode = hcResponse.getStatusLine().getStatusCode();
+          logger.debug("HTTP REQ SUCCESS with status: " + statusCode + " " + request);
+          promise.complete(hcResponse);
+        }
 
-      public void cancelled() {
-        promise.completeExceptionally(new RuntimeException("HTTP REQ CANCELLED: " + request));
-      }
+        public void failed(final Exception ex) {
+          logger.debug("HTTP REQ FAILED " + request);
+          logger.info("HTTP client failed to connect: " + request + " reason: " + ex.getMessage());
+          promise.completeExceptionally(ex);
+        }
+
+        public void cancelled() {
+          promise.completeExceptionally(new RuntimeException("HTTP REQ CANCELLED: " + request));
+        }
+      });
+      return null;
     });
 
     return promise.thenApply(hcResp -> new RRHttpResponse(hcResp.getStatusLine().getStatusCode(), () -> {

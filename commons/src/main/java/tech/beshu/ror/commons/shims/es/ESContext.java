@@ -20,6 +20,8 @@ import tech.beshu.ror.commons.settings.BasicSettings;
 
 public interface ESContext {
 
+  ESShutdownObservable shutDownObservable = new ESShutdownObservable();
+
   LoggerShim logger(Class<?> clazz);
 
   RuntimeException rorException(String message);

@@ -48,6 +48,7 @@ import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,11 @@ public class ReadonlyRestPlugin extends Plugin
   implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   public ReadonlyRestPlugin(Settings s) {
+  }
+
+  @Override
+  public void close() throws IOException {
+    ESContextImpl.shutDownObservable.shutDown();
   }
 
   @Override
