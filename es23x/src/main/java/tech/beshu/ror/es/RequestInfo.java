@@ -362,8 +362,11 @@ public class RequestInfo implements RequestInfoShim {
         }
 
         Set<String> srIndices = Sets.newHashSet(sr.indices());
-        MatcherWithWildcards m = new MatcherWithWildcards(srIndices);
-        Set<String> remaining = m.filter(newIndices);
+        // This transforms wildcards and aliases in concrete indices
+        srIndices = getExpandedIndices(srIndices);
+
+        Set<String> remaining = srIndices;
+        remaining.retainAll(newIndices);
 
         if (remaining.size() == 0) {
           // contained just forbidden indices, should return zero results
