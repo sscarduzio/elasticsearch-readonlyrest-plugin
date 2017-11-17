@@ -20,7 +20,14 @@ import java.util.Observable;
 
 public class ESShutdownObservable extends Observable{
 
+  private final ESContext ctx;
+
+  ESShutdownObservable(ESContext ctx){
+    this.ctx = ctx;
+  }
+
   public void shutDown(){
+    ctx.logger(getClass()).info("Shutting down ROR resources...");
     setChanged();
     notifyObservers();
   }
