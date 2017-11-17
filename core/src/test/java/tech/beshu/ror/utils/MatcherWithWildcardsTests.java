@@ -78,4 +78,11 @@ public class MatcherWithWildcardsTests {
     );
     assertTrue(m.match(".kibana"));
   }
+
+
+  @Test
+  public void testZeroCharGlob() {
+    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("perf*mon_my_test*"));
+    assertTrue(m.match("perfmon_my_test1"));
+  }
 }
