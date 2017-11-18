@@ -20,7 +20,7 @@ import tech.beshu.ror.commons.settings.BasicSettings;
 
 public interface ESContext {
 
-  ESShutdownObservable shutDownObservable = new ESShutdownObservable();
+  ESShutdownObservable getShutDownObservable();
 
   LoggerShim logger(Class<?> clazz);
 

@@ -136,7 +136,7 @@ public class RequestInfo implements RequestInfoShim {
       if (actionRequest instanceof IndicesRequest) {
         opts = ((IndicesRequest) actionRequest).indicesOptions();
       }
-      
+
       String[] concreteIdxNames = {};
       try {
         concreteIdxNames = indexResolver.concreteIndexNames(clusterService.state(), opts, ixs);

@@ -16,15 +16,28 @@
  */
 package tech.beshu.ror.commons.shims.es;
 
-import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.settings.BasicSettings;
 
 import java.util.HashMap;
 
 public abstract class AbstractESContext implements ESContext {
   private HashMap<Class<?>, LoggerShim> loggerCache = new HashMap<>(128);
+  public static  ESShutdownObservable shutDownObservable;
+
+  protected AbstractESContext(){
+    if(shutDownObservable == null){
+      shutDownObservable = new ESShutdownObservable(this);
+    }
+  }
+
+  @Override
+  public ESShutdownObservable getShutDownObservable() {
+    return shutDownObservable;
+  }
 
   public LoggerShim logger(Class<?> clazz) {
+
     LoggerShim shim = loggerCache.get(clazz);
     if (shim != null) {
       return shim;

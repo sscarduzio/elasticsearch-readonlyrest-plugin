@@ -43,6 +43,7 @@ import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+import tech.beshu.ror.commons.shims.es.AbstractESContext;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
@@ -64,7 +65,7 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public void close() throws IOException {
-    ESContextImpl.shutDownObservable.shutDown();
+    AbstractESContext.shutDownObservable.shutDown();
   }
 
   @Override

@@ -19,7 +19,6 @@ package tech.beshu.ror.es;
 
 import org.elasticsearch.action.ActionModule;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Module;
@@ -43,30 +42,14 @@ public class ReadonlyRestPlugin extends Plugin {
   static CompletableFuture<NodeClient> clientFuture = new CompletableFuture<>();
   private final Settings settings;
 
-  @Inject
-  ReadonlyRestPlugin(Settings settings) {
+  public ReadonlyRestPlugin(Settings settings) {
     this.settings = settings;
   }
 
   @Override
   public Collection<Class<? extends LifecycleComponent>> nodeServices() {
     List l = new ArrayList(1);
-    l.add(new AbstractLifecycleComponent(settings, getClass()) {
-      @Override
-      protected void doStart() {
-
-      }
-
-      @Override
-      protected void doStop() {
-        ESContextImpl.shutDownObservable.shutDown();
-      }
-
-      @Override
-      protected void doClose() {
-
-      }
-    });
+    l.add(ESShutdownListener.class);
     return l;
   }
 

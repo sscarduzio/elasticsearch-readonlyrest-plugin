@@ -52,7 +52,7 @@ public class ApacheHttpCoreClient implements HttpClient {
     });
     this.logger = esContext.logger(getClass());
     this.context = esContext;
-    ESContext.shutDownObservable.addObserver((x,y) -> {
+    esContext.getShutDownObservable().addObserver((x,y) -> {
       try {
         hcHttpClient.close();
       } catch (IOException e) {
