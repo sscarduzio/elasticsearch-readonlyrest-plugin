@@ -341,7 +341,7 @@ public class RequestInfo implements RequestInfoShim {
       String uuid = extractIndexMetadata(singleIndex).iterator().next();
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
         @SuppressWarnings("unchecked")
-        Set<Field> fields = ReflectionUtils.getAllFields(bsr.shardId().getClass(), ReflectionUtils.withName("index"));
+        Set<Field> fields = ReflecUtils.getAllFields(bsr.shardId().getClass(), field -> field != null && field.getName().equals("index"));
         fields.stream().forEach(f -> {
           f.setAccessible(true);
           try {
