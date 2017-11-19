@@ -338,7 +338,7 @@ public class RequestInfo implements RequestInfoShim {
     if (actionRequest instanceof BulkShardRequest) {
       BulkShardRequest bsr = (BulkShardRequest) actionRequest;
       String singleIndex = newIndices.iterator().next();
-      String uuid = extractIndexMetadata(singleIndex).iterator().next();
+
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
         @SuppressWarnings("unchecked")
         Set<Field> fields = ReflecUtils.getAllFields(bsr.shardId().getClass(), field -> field != null && field.getName().equals("index"));
