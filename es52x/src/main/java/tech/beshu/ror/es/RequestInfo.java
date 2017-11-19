@@ -48,7 +48,6 @@ import org.reflections.ReflectionUtils;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.shims.request.RequestInfoShim;
-import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.commons.utils.RCUtils;
 import tech.beshu.ror.commons.utils.ReflecUtils;
 
@@ -56,7 +55,7 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -323,6 +322,7 @@ public class RequestInfo implements RequestInfoShim {
       return;
     }
 
+    // This should not be necessary anymore because nowadays we either allow or forbid write requests.
     if (actionRequest instanceof BulkShardRequest) {
       BulkShardRequest bsr = (BulkShardRequest) actionRequest;
       String singleIndex = newIndices.iterator().next();
@@ -372,28 +372,55 @@ public class RequestInfo implements RequestInfoShim {
         // some allowed indices were there, restrict query to those
         sr.indices(remaining.toArray(new String[remaining.size()]));
       }
+      // All the work is done - no need for reflection
+      return;
     }
 
+    if (actionRequest instanceof MultiGetRequest) {
+      MultiGetRequest mgr = (MultiGetRequest) actionRequest;
+      Iterator<MultiGetRequest.Item> it = mgr.getItems().iterator();
+      while (it.hasNext()) {
+        MultiGetRequest.Item item = it.next();
+        // One item contains just an index, but can be an alias
+        Set<String> indices = getExpandedIndices(Sets.newHashSet(item.indices()));
+        Set<String> remaining = indices;
+        remaining.retainAll(newIndices);
+        if (remaining.isEmpty()) {
+          it.remove();
+        }
+      }
+      // All the work is done - no need for reflection
+      return;
+    }
+
+    if (actionRequest instanceof IndicesAliasesRequest) {
+      IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
+      Iterator<IndicesAliasesRequest.AliasActions> it = iar.getAliasActions().iterator();
+      while (it.hasNext()) {
+        IndicesAliasesRequest.AliasActions act = it.next();
+        Set<String> indices = getExpandedIndices(Sets.newHashSet(act.indices()));
+        Set<String> remaining = indices;
+        remaining.retainAll(newIndices);
+        if (remaining.isEmpty()) {
+          it.remove();
+          continue;
+        }
+        act.indices(remaining.toArray(new String[remaining.size()]));
+      }
+      // All the work is done - no need for reflection
+      return;
+    }
 
     // Optimistic reflection attempt
     boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
 
-    if (!okSetResult && actionRequest instanceof IndicesAliasesRequest) {
-      IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
-      List<IndicesAliasesRequest.AliasActions> actions = iar.getAliasActions();
-      okSetResult = true;
-      for (IndicesAliasesRequest.AliasActions act : actions) {
-        act.index(newIndices.iterator().next());
-      }
-    }
-
     if (okSetResult) {
       if (logger.isDebugEnabled()) {
-        logger.debug("success changing indices: " + newIndices + " correctly set as " + extractIndices());
+        logger.debug("REFLECTION: success changing indices: " + newIndices + " correctly set as " + extractIndices());
       }
     }
     else {
-      logger.error("Failed to set indices for type " + actionRequest.getClass().getSimpleName() +
+      logger.error("REFLECTION: Failed to set indices for type " + actionRequest.getClass().getSimpleName() +
                      "  in req id: " + extractId());
     }
   }
