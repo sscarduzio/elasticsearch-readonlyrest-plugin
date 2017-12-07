@@ -45,7 +45,7 @@ public class ExternalAuthenticationServiceSettings implements CacheSettings, Nam
     this.endpoint = settings.uriReq(ENDPOINT);
     this.successStatusCode = settings.intOpt(SUCCESS_STATUS_CODE).orElse(DEFAULT_SUCCESS_STATUS_CODE);
     this.cacheTtl = settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL);
-    this.validate = settings.booleanOpt(VALIDATE).orElse(false);
+    this.validate = settings.booleanOpt(VALIDATE).orElse(true);
   }
 
   @Override
