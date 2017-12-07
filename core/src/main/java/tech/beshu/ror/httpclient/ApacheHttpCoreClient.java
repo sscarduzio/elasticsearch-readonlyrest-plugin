@@ -17,23 +17,30 @@
 
 package tech.beshu.ror.httpclient;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.concurrent.FutureCallback;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.apache.http.impl.nio.client.HttpAsyncClients;
-import org.apache.http.message.BasicNameValuePair;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.AccessController;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivilegedAction;
+import java.security.cert.X509Certificate;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.concurrent.FutureCallback;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.ssl.SSLContexts;
+
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 
 /**
@@ -44,9 +51,17 @@ public class ApacheHttpCoreClient implements HttpClient {
   private final LoggerShim logger;
   private final ESContext context;
 
-  public ApacheHttpCoreClient(ESContext esContext) {
+  private CloseableHttpAsyncClient getNonValidatedHttpClient() {
+	  try {
+		return HttpAsyncClients.custom().setSSLHostnameVerifier(new NoopHostnameVerifier()).setSSLContext(SSLContexts.custom().loadTrustMaterial(null, (X509Certificate[] chain, String authType) -> true).build()).build();
+	} catch (KeyManagementException | NoSuchAlgorithmException | KeyStoreException e) {
+		logger.error("cannot create non-validating Apache HTTP Core client.. ", e);
+		return HttpAsyncClients.createDefault() ;
+	} 
+  }
+  public ApacheHttpCoreClient(ESContext esContext, boolean validate) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      this.hcHttpClient = HttpAsyncClients.createDefault();
+      this.hcHttpClient = validate?HttpAsyncClients.createDefault():getNonValidatedHttpClient();
       this.hcHttpClient.start();
       return null;
     });

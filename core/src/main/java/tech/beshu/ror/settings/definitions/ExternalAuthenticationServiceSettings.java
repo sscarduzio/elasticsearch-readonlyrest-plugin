@@ -29,7 +29,8 @@ public class ExternalAuthenticationServiceSettings implements CacheSettings, Nam
   private static final String ENDPOINT = "authentication_endpoint";
   private static final String SUCCESS_STATUS_CODE = "success_status_code";
   private static final String CACHE = "cache_ttl_in_sec";
-
+  private static final String VALIDATE = "validate" ;
+  
   private static final int DEFAULT_SUCCESS_STATUS_CODE = 204;
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
 
@@ -37,12 +38,14 @@ public class ExternalAuthenticationServiceSettings implements CacheSettings, Nam
   private final URI endpoint;
   private final int successStatusCode;
   private final Duration cacheTtl;
-
+  private final boolean validate ;
+  
   public ExternalAuthenticationServiceSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
     this.endpoint = settings.uriReq(ENDPOINT);
     this.successStatusCode = settings.intOpt(SUCCESS_STATUS_CODE).orElse(DEFAULT_SUCCESS_STATUS_CODE);
     this.cacheTtl = settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL);
+    this.validate = settings.booleanOpt(VALIDATE).orElse(false);
   }
 
   @Override
@@ -56,6 +59,10 @@ public class ExternalAuthenticationServiceSettings implements CacheSettings, Nam
 
   public int getSuccessStatusCode() {
     return successStatusCode;
+  }
+
+  public boolean getValidate() {
+	return validate;
   }
 
   @Override
