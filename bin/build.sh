@@ -34,12 +34,15 @@ echo ">>> es51x => Running testcontainers.."
 
 echo ">>> ($0) additional build of ES module for specified ES version"
 
+./gradlew --stacktrace es60x:ror '-PesVersion=6.0.1'
 ./gradlew --stacktrace es60x:ror '-PesVersion=6.0.0'
 
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.6.0'
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.6.1'
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.6.2'
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.6.3'
+./gradlew --stacktrace es54x:ror '-PesVersion=5.6.4'
+./gradlew --stacktrace es54x:ror '-PesVersion=5.6.5'
 
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.5.0'
 ./gradlew --stacktrace es54x:ror '-PesVersion=5.5.1'
