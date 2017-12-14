@@ -365,11 +365,10 @@ public class RequestInfo implements RequestInfoShim {
           continue;
         }
 
-        Set<String> srIndices = Sets.newHashSet(sr.indices());
         // This transforms wildcards and aliases in concrete indices
-        srIndices = getExpandedIndices(srIndices);
+        Set<String> expandedSrIndices = getExpandedIndices(Sets.newHashSet(sr.indices()));
 
-        Set<String> remaining = srIndices;
+        Set<String> remaining = Sets.newHashSet(expandedSrIndices);
         remaining.retainAll(newIndices);
 
         if (remaining.size() == 0) {
@@ -377,7 +376,7 @@ public class RequestInfo implements RequestInfoShim {
           sr.source(new SearchSourceBuilder().size(0));
           continue;
         }
-        if (remaining.size() == srIndices.size()) {
+        if (remaining.size() == expandedSrIndices.size()) {
           // contained all allowed indices
           continue;
         }

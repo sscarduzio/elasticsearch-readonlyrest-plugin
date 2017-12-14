@@ -19,7 +19,7 @@ class MSearchTEST3_Tests {
   import MSearchTEST3_Tests._
 
   @Test
-  def test274_3_nomatch() = {
+  def testMgetWildcard() = {
     restUtils.useCredentials("justOverrideAdminCredentials", "random09310+23")
     assertEquals("[1]", restUtils.msearchRequest(TEST3.MSEARCH_BODY_TRY_MATCH_BOTH, Map("X-Forwarded-For" -> "es-timber-hammercloud")))
   }

@@ -377,17 +377,33 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     if (actionRequest instanceof MultiGetRequest) {
-      MultiGetRequest mgr = (MultiGetRequest) actionRequest;
-      Iterator<MultiGetRequest.Item> it = mgr.getItems().iterator();
-      while (it.hasNext()) {
-        MultiGetRequest.Item item = it.next();
-        // One item contains just an index, but can be an alias
-        Set<String> indices = getExpandedIndices(Sets.newHashSet(item.indices()));
-        Set<String> remaining = indices;
-        remaining.retainAll(newIndices);
-        if (remaining.isEmpty()) {
-          it.remove();
+      // If it's an empty MSR, we are ok
+      MultiSearchRequest msr = (MultiSearchRequest) actionRequest;
+      for (SearchRequest sr : msr.requests()) {
+
+        // This contains global indices
+        if (sr.indices().length == 0 || Sets.newHashSet(sr.indices()).contains("*")) {
+          sr.indices(newIndices.toArray(new String[newIndices.size()]));
+          continue;
         }
+
+        // This transforms wildcards and aliases in concrete indices
+        Set<String> expandedSrIndices = getExpandedIndices(Sets.newHashSet(sr.indices()));
+
+        Set<String> remaining = Sets.newHashSet(expandedSrIndices);
+        remaining.retainAll(newIndices);
+
+        if (remaining.size() == 0) {
+          // contained just forbidden indices, should return zero results
+          sr.source(new SearchSourceBuilder().size(0));
+          continue;
+        }
+        if (remaining.size() == expandedSrIndices.size()) {
+          // contained all allowed indices
+          continue;
+        }
+        // some allowed indices were there, restrict query to those
+        sr.indices(remaining.toArray(new String[remaining.size()]));
       }
       // All the work is done - no need for reflection
       return;
