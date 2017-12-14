@@ -33,11 +33,13 @@ public class ExternalAuthenticationSettingsTests {
                                  "      authentication_endpoint: \"http://localhost:8080/auth1\"\n" +
                                  "      success_status_code: 200\n" +
                                  "      cache_ttl_in_sec: 60\n" +
+                                 "      validate: true\n" +
                                  "\n" +
                                  "    - name: \"ext2\"\n" +
                                  "      authentication_endpoint: \"http://192.168.0.1:8080/auth2\"\n" +
                                  "      success_status_code: 204\n" +
-                                 "      cache_ttl_in_sec: 60"
+                                 "      cache_ttl_in_sec: 60\n" +
+                                 "      validate: false"
       )
     );
   }
