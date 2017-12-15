@@ -357,7 +357,7 @@ public class RequestInfo implements RequestInfoShim {
         // This transforms wildcards and aliases in concrete indices
         srIndices = getExpandedIndices(srIndices);
 
-        Set<String> remaining = srIndices;
+        Set<String> remaining = Sets.newHashSet(srIndices);
         remaining.retainAll(newIndices);
 
         if (remaining.size() == 0) {
@@ -415,7 +415,7 @@ public class RequestInfo implements RequestInfoShim {
       while (it.hasNext()) {
         IndicesAliasesRequest.AliasActions act = it.next();
         Set<String> indices = getExpandedIndices(Sets.newHashSet(act.indices()));
-        Set<String> remaining = indices;
+        Set<String> remaining = Sets.newHashSet(indices);
         remaining.retainAll(newIndices);
         if (remaining.isEmpty()) {
           it.remove();

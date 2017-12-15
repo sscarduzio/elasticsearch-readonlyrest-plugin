@@ -394,7 +394,7 @@ public class RequestInfo implements RequestInfoShim {
         MultiGetRequest.Item item = it.next();
         // One item contains just an index, but can be an alias
         Set<String> indices = getExpandedIndices(Sets.newHashSet(item.indices()));
-        Set<String> remaining = indices;
+        Set<String> remaining = Sets.newHashSet(indices);
         remaining.retainAll(newIndices);
         if (remaining.isEmpty()) {
           it.remove();
@@ -410,7 +410,7 @@ public class RequestInfo implements RequestInfoShim {
       while (it.hasNext()) {
         IndicesAliasesRequest.AliasActions act = it.next();
         Set<String> indices = getExpandedIndices(Sets.newHashSet(act.indices()));
-        Set<String> remaining = indices;
+        Set<String> remaining = Sets.newHashSet(indices);
         remaining.retainAll(newIndices);
         if (remaining.isEmpty()) {
           it.remove();
