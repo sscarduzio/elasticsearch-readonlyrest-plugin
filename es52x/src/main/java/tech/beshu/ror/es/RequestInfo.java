@@ -409,19 +409,34 @@ public class RequestInfo implements RequestInfoShim {
       return;
     }
 
+    if (actionRequest instanceof MultiGetRequest) {
+      MultiGetRequest mgr = (MultiGetRequest) actionRequest;
+      Iterator<MultiGetRequest.Item> it = mgr.getItems().iterator();
+      while (it.hasNext()) {
+        MultiGetRequest.Item item = it.next();
+        // One item contains just an index, but can be an alias
+        Set<String> indices = getExpandedIndices(Sets.newHashSet(item.indices()));
+        indices.retainAll(newIndices);
+        if (indices.isEmpty()) {
+          it.remove();
+        }
+      }
+      // All the work is done - no need for reflection
+      return;
+    }
+
     if (actionRequest instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest iar = (IndicesAliasesRequest) actionRequest;
       Iterator<IndicesAliasesRequest.AliasActions> it = iar.getAliasActions().iterator();
       while (it.hasNext()) {
         IndicesAliasesRequest.AliasActions act = it.next();
         Set<String> indices = getExpandedIndices(Sets.newHashSet(act.indices()));
-        Set<String> remaining = Sets.newHashSet(indices);
-        remaining.retainAll(newIndices);
-        if (remaining.isEmpty()) {
+        indices.retainAll(newIndices);
+        if (indices.isEmpty()) {
           it.remove();
           continue;
         }
-        act.indices(remaining.toArray(new String[remaining.size()]));
+        act.indices(indices.toArray(new String[indices.size()]));
       }
       // All the work is done - no need for reflection
       return;

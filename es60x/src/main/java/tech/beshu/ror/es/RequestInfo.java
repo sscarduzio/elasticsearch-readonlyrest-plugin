@@ -392,9 +392,8 @@ public class RequestInfo implements RequestInfoShim {
         MultiGetRequest.Item item = it.next();
         // One item contains just an index, but can be an alias
         Set<String> indices = getExpandedIndices(Sets.newHashSet(item.indices()));
-        Set<String> remaining = Sets.newHashSet(indices);
-        remaining.retainAll(newIndices);
-        if (remaining.isEmpty()) {
+        indices.retainAll(newIndices);
+        if (indices.isEmpty()) {
           it.remove();
         }
       }
@@ -408,18 +407,16 @@ public class RequestInfo implements RequestInfoShim {
       while (it.hasNext()) {
         IndicesAliasesRequest.AliasActions act = it.next();
         Set<String> indices = getExpandedIndices(Sets.newHashSet(act.indices()));
-        Set<String> remaining = Sets.newHashSet(indices);
-        remaining.retainAll(newIndices);
-        if (remaining.isEmpty()) {
+        indices.retainAll(newIndices);
+        if (indices.isEmpty()) {
           it.remove();
           continue;
         }
-        act.indices(remaining.toArray(new String[remaining.size()]));
+        act.indices(indices.toArray(new String[indices.size()]));
       }
       // All the work is done - no need for reflection
       return;
     }
-
     // Optimistic reflection attempt
     boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
 
