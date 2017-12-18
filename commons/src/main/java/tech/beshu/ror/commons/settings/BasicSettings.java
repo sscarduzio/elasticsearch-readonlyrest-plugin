@@ -21,6 +21,7 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableList;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.ReflecUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -121,6 +122,10 @@ public class BasicSettings {
       return null;
     });
     return slurped[0];
+  }
+
+  public static BasicSettings fromFileObj(LoggerShim logger, Path configPath, Object settingsObject) {
+    return fromFile(logger, configPath, (Map<String, ?>) ReflecUtils.invokeMethodCached(settingsObject, settingsObject.getClass(), "getAsStructuredMap"));
   }
 
   public static BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String, ?> fallback) {

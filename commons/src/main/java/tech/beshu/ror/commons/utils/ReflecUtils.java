@@ -28,6 +28,7 @@ import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -40,25 +41,26 @@ public class ReflecUtils {
   private static final HashMap<String, Method> methodsCache = new HashMap<>(128);
 
   public static Object invokeMethodCached(Object o, Class c, String method) {
+    System.out.println(c.getSimpleName());
     final Object[] result = new Object[1];
-    String cacheKey = c.getName() + method;
+    String cacheKey = c.getName() + "#" + method;
 
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
       try {
         Method m = methodsCache.get(cacheKey);
         if (m != null) {
           result[0] = m.invoke(o);
           return null;
         }
-        m = c.getMethod(method);
+        m = c.getDeclaredMethod(method);
+        m.setAccessible(true);
         methodsCache.put(cacheKey, m);
-        result[0] = m.invoke(o);
+        return  m.invoke(o);
       } catch (Exception e) {
         e.printStackTrace();
+        return null;
       }
-      return null;
     });
-    return result[0];
   }
 
   public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, ESContext context) {
