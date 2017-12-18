@@ -17,13 +17,8 @@ echo ">>> Running unit tests.."
 echo ">>> es60x => Running testcontainers.."
 ./gradlew integration-tests:test '-PesModule=es60x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
-echo ">>> es54x => Running testcontainers.."
-./gradlew integration-tests:test '-PesModule=es54x' || ( find . |grep hs_err |xargs cat && exit 1 )
-
-
 echo ">>> es53x => Running testcontainers.."
 ./gradlew  integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
-
 
 echo ">>> es52x => Running testcontainers.."
 ./gradlew  integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
