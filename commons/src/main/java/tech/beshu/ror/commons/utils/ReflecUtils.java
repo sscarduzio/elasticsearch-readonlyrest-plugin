@@ -28,7 +28,6 @@ import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -55,7 +54,7 @@ public class ReflecUtils {
         m = c.getDeclaredMethod(method);
         m.setAccessible(true);
         methodsCache.put(cacheKey, m);
-        return  m.invoke(o);
+        return m.invoke(o);
       } catch (Exception e) {
         e.printStackTrace();
         return null;

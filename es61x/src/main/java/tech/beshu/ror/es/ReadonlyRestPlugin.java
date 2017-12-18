@@ -73,7 +73,7 @@ public class ReadonlyRestPlugin extends Plugin
 
   private final Settings settings;
 
-  IndexLevelActionFilter ilaf;
+  private IndexLevelActionFilter ilaf;
   private SettingsObservableImpl settingsObservable;
   private Environment environment;
 

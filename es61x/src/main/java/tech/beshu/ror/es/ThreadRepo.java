@@ -17,22 +17,13 @@
 
 package tech.beshu.ror.es;
 
-import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.transport.TransportService;
 
 /**
  * Created by sscarduzio on 25/11/2016.
  */
 public class ThreadRepo {
 
-  public static TransportService transportService;
   public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
-
-  @Inject
-  public ThreadRepo(TransportService ts) {
-    transportService = ts;
-    System.out.println(ts.getClass().getSimpleName());
-  }
 
 }
