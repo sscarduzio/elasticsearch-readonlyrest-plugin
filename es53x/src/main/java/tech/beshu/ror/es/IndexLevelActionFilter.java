@@ -43,7 +43,6 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -64,23 +63,19 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final NodeClient client;
+  private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
   private final Environment env;
-  private final LoggerShim loggerShim;
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
-                                TransportService transportService,
                                 NodeClient client,
                                 ThreadPool threadPool,
-                                SettingsObservableImpl settingsObservable,
-                                IndexNameExpressionResolver indexResolver
+                                SettingsObservableImpl settingsObservable
   )
     throws IOException {
     super(settings);
-
     loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     this.env = new Environment(settings);
@@ -89,20 +84,15 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
+    this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
-    this.client = client;
-
-
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, loggerShim);
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
-      RawSettings newRaw = new RawSettings(settingsObservable.getCurrent().asMap());
       Environment newEnv = new Environment(settings);
-      BasicSettings newBaseSettings = new BasicSettings(newRaw, newEnv.configFile().toAbsolutePath());
-      ESContext newContext = new ESContextImpl(client, newBaseSettings);
+      BasicSettings newBasicSettings = new BasicSettings(settingsObservable.getCurrent(), newEnv.configFile().toAbsolutePath());
+      ESContext newContext = new ESContextImpl(client, newBasicSettings);
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
@@ -166,7 +156,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, action, request, clusterService, threadPool, context.get(), indexResolver);
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
     acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {
