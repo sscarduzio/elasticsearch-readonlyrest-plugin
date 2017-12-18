@@ -39,7 +39,6 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
@@ -62,36 +61,28 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final NodeClient client;
   private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
-  private final Environment env;
 
   public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
-                                TransportService transportService,
                                 NodeClient client,
                                 ThreadPool threadPool,
                                 SettingsObservableImpl settingsObservable,
-                                IndexNameExpressionResolver indexResolver,
                                 Environment env
   )
     throws IOException {
     super(settings);
     loggerShim = ESContextImpl.mkLoggerShim(logger);
 
-    this.env = env;
     BasicSettings baseSettings = BasicSettings.fromFileObj(loggerShim, env.configFile().toAbsolutePath(), settings);
 
     this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
+    this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
-    this.client = client;
-
-    //new TaskManagerWrapper(settings).injectIntoTransportService(ThreadRepo.transportService, loggerShim);
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");

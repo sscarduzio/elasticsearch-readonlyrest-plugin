@@ -89,7 +89,7 @@ public class ReadonlyRestPlugin extends Plugin
     try {
       this.environment = environment;
       this.settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, null, (NodeClient) client, threadPool, settingsObservable, new IndexNameExpressionResolver(settings), environment);
+      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
     } catch (IOException e) {
       e.printStackTrace();
     }
