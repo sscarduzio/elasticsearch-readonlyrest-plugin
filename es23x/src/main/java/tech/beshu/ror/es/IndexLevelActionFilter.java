@@ -40,7 +40,6 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;
@@ -48,7 +47,6 @@ import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -59,7 +57,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Singleton
 public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
 
-  private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
   private final AtomicReference<Optional<ACL>> acl;
@@ -72,12 +69,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   @Inject
   public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
-                                TransportService transportService,
-                                ThreadPool threadPool,
-                                SettingsObservableImpl settingsObservable,
-                                IndexNameExpressionResolver indexResolver
-  )
-    throws IOException {
+                                SettingsObservableImpl settingsObservable
+  ) {
     super(settings);
     System.out.println("IndexLevelActionFilter INIT");
 
@@ -88,12 +81,9 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     //this.context.set(new ESContextImpl(client, baseSettings));
 
+    this.indexResolver = new IndexNameExpressionResolver(settings);
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
-    this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
-
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, loggerShim);
 
 
     ReadonlyRestPlugin.clientFuture.thenAccept(c -> {
@@ -195,7 +185,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, action, request, clusterService, threadPool, context.get(), indexResolver);
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, context.get(), indexResolver);
     acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {

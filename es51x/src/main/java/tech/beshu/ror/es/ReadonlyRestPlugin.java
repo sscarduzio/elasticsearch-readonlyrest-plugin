@@ -55,7 +55,7 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
 

@@ -64,35 +64,31 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final NodeClient client;
-  private final IndexNameExpressionResolver indexResolver;
   private final Environment env;
+  private final IndexNameExpressionResolver indexResolver;
+
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
                                 ClusterService clusterService,
-                                TransportService transportService,
                                 NodeClient client,
                                 ThreadPool threadPool,
-                                SettingsObservableImpl settingsObservable,
-                                IndexNameExpressionResolver indexResolver
+                                SettingsObservableImpl settingsObservable
   )
-    throws IOException {
+  {
     super(settings);
     LoggerShim loggerShim = ESContextImpl.mkLoggerShim(logger);
 
+    indexResolver = new IndexNameExpressionResolver(settings);
     this.env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
 
     this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
-    this.client = client;
 
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, loggerShim);
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
@@ -168,7 +164,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, action, request, clusterService, threadPool, context.get(), indexResolver);
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
     acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {

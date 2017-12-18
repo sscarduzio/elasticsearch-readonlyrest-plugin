@@ -82,8 +82,8 @@ public class RequestInfo implements RequestInfoShim {
   private ESContext context;
 
   RequestInfo(
-    RestChannel channel, String action, ActionRequest actionRequest,
-    ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
+    RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
+    ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexNameExpressionResolver) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -92,12 +92,10 @@ public class RequestInfo implements RequestInfoShim {
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
+    this.indexResolver = indexNameExpressionResolver;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
-    Long taskId = ThreadRepo.taskId.get();
     if (taskId != null) {
       this.id = tmpID + "#" + taskId;
-      ThreadRepo.taskId.remove();
       this.taskId = taskId;
     }
     else {

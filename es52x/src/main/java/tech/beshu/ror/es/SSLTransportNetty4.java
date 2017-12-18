@@ -37,7 +37,6 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.commons.SSLCertParser;
 import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
