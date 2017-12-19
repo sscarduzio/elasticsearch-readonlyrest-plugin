@@ -51,6 +51,9 @@ public class BasicSettings {
   public static final String ATTRIBUTE_SSL_KEYSTORE_PASS = "keystore_pass";
   public static final String ATTRIBUTE_SSL_KEY_PASS = "key_pass";
   public static final String ATTRIBUTE_SSL_KEY_ALIAS = "key_alias";
+  public static final String ATTRIBUTE_SSL_ALLOWED_CIPHERS = "allowed_ciphers";
+  public static final String ATTRIBUTE_SSL_ALLOWED_PROTOCOLS = "allowed_protocols";
+
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
   private final boolean enable;
@@ -66,6 +69,8 @@ public class BasicSettings {
   private final Optional<String> customAuditSerializer;
   private Optional<String> keystorePass;
   private Optional<String> keyPass;
+  private Optional<List<String>> allowedSSLCiphers = Optional.empty();
+  private Optional<List<String>> allowedSSLProtocols = Optional.empty();
 
   private Optional<String> keyAlias;
   private String keystoreFile;
@@ -103,6 +108,8 @@ public class BasicSettings {
       this.keyAlias = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_ALIAS);
       this.keyPass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_PASS);
       this.keystorePass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_PASS);
+      this.allowedSSLCiphers = raw.opt(PREFIX_SSL + ATTRIBUTE_SSL_ALLOWED_CIPHERS);
+      this.allowedSSLProtocols = raw.opt(PREFIX_SSL + ATTRIBUTE_SSL_ALLOWED_PROTOCOLS);
     }
   }
 
@@ -199,5 +206,13 @@ public class BasicSettings {
 
   public Map<String, ?> asMap() {
     return raw.asMap();
+  }
+
+  public Optional<List<String>> getAllowedSSLCiphers() {
+    return allowedSSLCiphers;
+  }
+
+  public Optional<List<String>> getAllowedSSLProtocols() {
+    return allowedSSLProtocols;
   }
 }

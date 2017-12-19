@@ -21,6 +21,7 @@ package tech.beshu.ror.es;
  * Created by sscarduzio on 28/11/2016.
  */
 
+import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -37,7 +38,6 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.commons.SSLCertParser;
 import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
@@ -77,7 +77,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   }
 
   public ChannelHandler configureServerChannelHandler() {
-    return new SSLHandler(this);
+    SSLHandler handler = new SSLHandler(this);
+    logger.info("ROR SSL accepted ciphers: " + Joiner.on(",").join(handler.context.get().cipherSuites()));
+    return handler;
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
@@ -89,11 +91,25 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       new SSLCertParser(basicSettings, logger, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          context = Optional.of(SslContextBuilder.forServer(
+          SslContextBuilder sslcb = SslContextBuilder.forServer(
             new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
-          ).build());
+          );
+
+          if (basicSettings.getAllowedSSLCiphers().isPresent()) {
+            sslcb.ciphers(basicSettings.getAllowedSSLCiphers().get());
+          }
+
+          if (basicSettings.getAllowedSSLProtocols().isPresent()) {
+            logger.error("ROR SSL: setting accepted protocols not available for ES < 6.0!");
+//            List<String> protocols = basicSettings.getAllowedSSLProtocols().get();
+//            sslcb.protocols(basicSettings.getAllowedSSLProtocols().get().toArray(new String[protocols.size()]));
+//            logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protocols));
+          }
+          SslContext sslContext = sslcb.build();
+          context = Optional.of(sslContext);
+
         } catch (Exception e) {
           context = Optional.empty();
           logger.error("Failed to load SSL CertChain & private key from Keystore!");

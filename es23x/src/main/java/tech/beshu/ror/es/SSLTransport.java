@@ -73,6 +73,13 @@ public class SSLTransport extends NettyHttpServerTransport {
           File chainFile = TempFile.newFile("fullchain", "pem", certChain);
           File privatekeyFile = TempFile.newFile("privkey", "pem", privateKey);
 
+          if (sslSettings.getAllowedSSLProtocols().isPresent() ||sslSettings.getAllowedSSLCiphers().isPresent()) {
+            logger.error("ROR SSL: setting accepted protocols or ciphers not available for ES < 6.0!");
+//            List<String> protocols = basicSettings.getAllowedSSLProtocols().get();
+//            sslcb.protocols(basicSettings.getAllowedSSLProtocols().get().toArray(new String[protocols.size()]));
+//            logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protocols));
+          }
+
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           context = Optional.of(SslContext.newServerContext(chainFile, privatekeyFile, null));
 
