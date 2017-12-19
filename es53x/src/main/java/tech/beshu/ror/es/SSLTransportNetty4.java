@@ -25,6 +25,7 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -42,6 +43,7 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
@@ -102,11 +104,17 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           }
 
           if (basicSettings.getAllowedSSLProtocols().isPresent()) {
-            logger.error("ROR SSL: setting accepted protocols not available for ES < 6.0!");
-//            List<String> protocols = basicSettings.getAllowedSSLProtocols().get();
-//            sslcb.protocols(basicSettings.getAllowedSSLProtocols().get().toArray(new String[protocols.size()]));
-//            logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protocols));
+            List<String> protocols = basicSettings.getAllowedSSLProtocols().get();
+            sslcb.applicationProtocolConfig(new ApplicationProtocolConfig(
+              ApplicationProtocolConfig.Protocol.NPN_AND_ALPN,
+              ApplicationProtocolConfig.SelectorFailureBehavior.CHOOSE_MY_LAST_PROTOCOL,
+              ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+              protocols
+            ));
+
+            logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protocols));
           }
+
           SslContext sslContext = sslcb.build();
           context = Optional.of(sslContext);
 
