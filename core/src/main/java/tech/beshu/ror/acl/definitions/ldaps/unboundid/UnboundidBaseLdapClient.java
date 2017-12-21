@@ -83,7 +83,7 @@ public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
           throw new LdapClientException.SearchException(t);
         });
     } catch (LDAPException e) {
-      logger.error("LDAP getting user operation failed", e);
+      logger.error("LDAP getting user operation failed.  " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
       return CompletableFuture.completedFuture(Optional.empty());
     }
   }
