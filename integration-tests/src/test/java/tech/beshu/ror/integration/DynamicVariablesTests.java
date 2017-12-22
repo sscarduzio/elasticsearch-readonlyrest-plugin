@@ -56,9 +56,7 @@ public class DynamicVariablesTests {
 
     String docPath = "/" + indexName + "/documents/doc-asd";
     try {
-      HttpPut request = new HttpPut(restClient.from(
-        docPath
-      ));
+      HttpPut request = new HttpPut(restClient.from(docPath) + "?refresh=true");
       request.setHeader("Content-Type", "application/json");
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
