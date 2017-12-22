@@ -67,20 +67,7 @@ public class DynamicVariablesTests {
       e.printStackTrace();
       throw new IllegalStateException("Test problem", e);
     }
-
-    // Polling phase.. #TODO is there a better way?
-    try {
-      HttpResponse response;
-      do {
-        Thread.sleep(200);
-        HttpHead request = new HttpHead(restClient.from(docPath));
-        response = restClient.execute(request);
-        System.out.println("polling for " + indexName + ".. result: " + response.getStatusLine().getReasonPhrase());
-      } while (response.getStatusLine().getStatusCode() != 200);
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new IllegalStateException("Cannot configure test case", e);
-    }
+    
   }
 
   private static String body(HttpResponse r) throws Exception {
@@ -92,7 +79,6 @@ public class DynamicVariablesTests {
     String body = search("/.kibana_simone/_search");
     assertTrue(body.contains("asd"));
   }
-
 
   private String search(String endpoint) throws Exception {
     String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
