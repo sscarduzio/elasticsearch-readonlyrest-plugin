@@ -99,8 +99,8 @@ public class SSLTransport extends NettyHttpServerTransport {
 
         } catch (Exception e) {
           context = Optional.empty();
-          logger.error("Failed to load SSL CertChain & private key from Keystore!");
-          e.printStackTrace();
+          logger.error("Failed to load SSL CertChain & private key from Keystore! "
+                         + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
       });
 

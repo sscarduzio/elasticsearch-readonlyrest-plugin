@@ -99,26 +99,23 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
             null
           );
 
-          if (basicSettings.getAllowedSSLCiphers().isPresent()) {
-            sslcb.ciphers(basicSettings.getAllowedSSLCiphers().get());
-          }
+          basicSettings.getAllowedSSLCiphers().ifPresent(sslcb::ciphers);
 
-          if (basicSettings.getAllowedSSLProtocols().isPresent()) {
-            List<String> protocols = basicSettings.getAllowedSSLProtocols().get();
+          basicSettings.getAllowedSSLProtocols().ifPresent(allowedProtos -> {
             sslcb.applicationProtocolConfig(new ApplicationProtocolConfig(
               ApplicationProtocolConfig.Protocol.NPN_AND_ALPN,
               ApplicationProtocolConfig.SelectorFailureBehavior.CHOOSE_MY_LAST_PROTOCOL,
               ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
-              protocols
+              allowedProtos
             ));
-            logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protocols));
-          }
+            logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(allowedProtos));
+          });
 
           context = Optional.of(sslcb.build());
         } catch (Exception e) {
           context = Optional.empty();
-          logger.error("Failed to load SSL CertChain & private key from Keystore!");
-          e.printStackTrace();
+          logger.error("Failed to load SSL CertChain & private key from Keystore! "
+                         + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
       });
     }

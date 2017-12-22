@@ -42,7 +42,6 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
@@ -98,23 +97,21 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
             null
           );
 
-          if (basicSettings.getAllowedSSLCiphers().isPresent()) {
-            sslcb.ciphers(basicSettings.getAllowedSSLCiphers().get());
-          }
+          basicSettings.getAllowedSSLCiphers().ifPresent(sslcb::ciphers);
 
-          if (basicSettings.getAllowedSSLProtocols().isPresent()) {
-            List<String> protocols = basicSettings.getAllowedSSLProtocols().get();
-            sslcb.protocols(basicSettings.getAllowedSSLProtocols().get().toArray(new String[protocols.size()]));
-            logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protocols));
-          }
-
+          basicSettings.getAllowedSSLProtocols()
+            .map(protoList -> {
+              logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protoList));
+              return protoList.toArray(new String[protoList.size()]);
+            })
+            .ifPresent(sslcb::protocols);
 
           context = Optional.of(sslcb.build());
 
         } catch (Exception e) {
           context = Optional.empty();
-          logger.error("Failed to load SSL CertChain & private key from Keystore!");
-          e.printStackTrace();
+          logger.error("Failed to load SSL CertChain & private key from Keystore! "
+                         + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
       });
     }

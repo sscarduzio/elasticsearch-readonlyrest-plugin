@@ -67,7 +67,7 @@ public class DynamicVariablesTests {
       e.printStackTrace();
       throw new IllegalStateException("Test problem", e);
     }
-    
+
   }
 
   private static String body(HttpResponse r) throws Exception {
