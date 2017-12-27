@@ -27,8 +27,7 @@ deploy:
     tags: false
 
 env:
-- GH_USER_EMAIL=scarduzio+travisci@gmail.com
-- GH_USER_NAME=Travis CI
+  - GH_USER_EMAIL=scarduzio+travisci@gmail.com
 
 before_script:
   - sudo sysctl -w vm.max_map_count=262144
