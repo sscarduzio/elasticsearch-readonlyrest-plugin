@@ -29,6 +29,7 @@ import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslProvider;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
@@ -91,18 +92,21 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
       new SSLCertParser(basicSettings, logger, (certChain, privateKey) -> {
         try {
+          SslProvider provider = SslContext.defaultServerProvider();
+          logger.info("SSL: using provider " + provider.toString());
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslcb = SslContextBuilder.forServer(
             new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
-          );
+          )
+            .sslProvider(provider);
 
           basicSettings.getAllowedSSLCiphers().ifPresent(sslcb::ciphers);
 
           basicSettings.getAllowedSSLProtocols().ifPresent(allowedProtos -> {
             sslcb.applicationProtocolConfig(new ApplicationProtocolConfig(
-              ApplicationProtocolConfig.Protocol.NPN_AND_ALPN,
+              ApplicationProtocolConfig.Protocol.NONE,
               ApplicationProtocolConfig.SelectorFailureBehavior.CHOOSE_MY_LAST_PROTOCOL,
               ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
               allowedProtos

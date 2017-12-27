@@ -103,7 +103,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
           basicSettings.getAllowedSSLProtocols().ifPresent(allowedProtos -> {
             sslcb.applicationProtocolConfig(new ApplicationProtocolConfig(
-              ApplicationProtocolConfig.Protocol.NPN_AND_ALPN,
+              ApplicationProtocolConfig.Protocol.NONE,
               ApplicationProtocolConfig.SelectorFailureBehavior.CHOOSE_MY_LAST_PROTOCOL,
               ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
               allowedProtos

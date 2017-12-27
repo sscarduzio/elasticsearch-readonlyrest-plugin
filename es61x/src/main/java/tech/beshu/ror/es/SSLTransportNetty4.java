@@ -42,7 +42,6 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
