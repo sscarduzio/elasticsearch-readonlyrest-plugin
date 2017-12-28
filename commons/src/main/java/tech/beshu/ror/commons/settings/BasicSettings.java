@@ -54,7 +54,7 @@ public class BasicSettings {
   public static final String ATTRIBUTE_SSL_ALLOWED_CIPHERS = "allowed_ciphers";
   public static final String ATTRIBUTE_SSL_ALLOWED_PROTOCOLS = "allowed_protocols";
 
-  private static final String DEFAULT_FORBIDDEN_MESSAGE = "";
+  private static final String DEFAULT_FORBIDDEN_MESSAGE = "forbidden";
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
   private final boolean enable;
   private final String forbiddenMessage;

@@ -190,6 +190,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       @Override
       public void onForbidden() {
         sendNotAuthResponse(channel, context.get().getSettings());
+        try {
+          listener.onFailure(null);
+        }
+        catch (Exception e){
+          // Hack so we cancel the task
+        }
       }
 
       @Override
@@ -226,6 +232,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       @Override
       public void onErrored(Throwable t) {
         sendNotAuthResponse(channel, context.get().getSettings());
+        try {
+          listener.onFailure(null);
+        }
+        catch (Exception e){
+          // Hack so we cancel the task
+        }
       }
     });
 

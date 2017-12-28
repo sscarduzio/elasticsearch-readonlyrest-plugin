@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.es;
 
-import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
@@ -30,11 +30,7 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.ToXContent;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.env.Environment;
-import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
@@ -157,7 +153,14 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {
-        sendNotAuthResponse(channel, context.get().getSettings());
+        ElasticsearchStatusException exc = new ElasticsearchStatusException(
+          context.get().getSettings().getForbiddenMessage(),
+          acl.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN
+        );
+        if (acl.doesRequirePassword()) {
+          exc.addHeader("WWW-Authenticate", "Basic");
+        }
+        listener.onFailure(exc);
       }
 
       @Override
@@ -189,44 +192,15 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       @Override
       public void onNotFound(Throwable throwable) {
-        sendNotFound((ResourceNotFoundException) throwable.getCause(), channel);
+        listener.onFailure((ResourceNotFoundException) throwable.getCause());
       }
 
       @Override
       public void onErrored(Throwable t) {
-        sendNotAuthResponse(channel, context.get().getSettings());
+        listener.onFailure((Exception) t);
       }
     });
 
-  }
-
-  private void sendNotAuthResponse(RestChannel channel, BasicSettings basicSettings) {
-    BytesRestResponse resp;
-    boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
-    if (doesRequirePassword) {
-      resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, basicSettings.getForbiddenMessage());
-      logger.debug("Sending login prompt header...");
-      resp.addHeader("WWW-Authenticate", "Basic");
-    }
-    else {
-      resp = new BytesRestResponse(RestStatus.FORBIDDEN, BytesRestResponse.TEXT_CONTENT_TYPE, basicSettings.getForbiddenMessage());
-    }
-
-    channel.sendResponse(resp);
-  }
-
-  private void sendNotFound(ResourceNotFoundException e, RestChannel channel) {
-    try {
-      XContentBuilder b = JsonXContent.contentBuilder();
-      b.startObject();
-      ElasticsearchException.generateFailureXContent(b, ToXContent.EMPTY_PARAMS, e, true);
-      b.endObject();
-      BytesRestResponse resp;
-      resp = new BytesRestResponse(RestStatus.NOT_FOUND, "application/json", b.string());
-      channel.sendResponse(resp);
-    } catch (Exception e1) {
-      e1.printStackTrace();
-    }
   }
 
 }
