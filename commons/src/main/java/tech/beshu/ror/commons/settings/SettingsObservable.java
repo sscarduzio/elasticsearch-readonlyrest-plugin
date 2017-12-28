@@ -32,6 +32,7 @@ abstract public class SettingsObservable extends Observable {
   protected RawSettings current;
   private boolean printedInfo = false;
 
+
   public void updateSettings(RawSettings newSettings) {
     this.current = newSettings;
     setChanged();
@@ -44,10 +45,8 @@ abstract public class SettingsObservable extends Observable {
     return current;
   }
 
-  // protected abstract void writeToIndex();
 
   protected abstract boolean isClusterReady();
-
 
   protected abstract Map<String, ?> getNodeSettings();
 
@@ -57,6 +56,10 @@ abstract public class SettingsObservable extends Observable {
 
   protected abstract void writeToIndex(RawSettings rawSettings, FutureCallback f);
 
+  public RawSettings getFromFile(){
+    getLogger().info("reading settings from file");
+    return BasicSettings.fromFile(getLogger(), getConfigPath(), current.asMap()).getRaw();
+  }
 
   public void refreshFromIndex() {
     try {

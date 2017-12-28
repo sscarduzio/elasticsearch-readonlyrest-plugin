@@ -40,6 +40,7 @@ public class Constants {
   public static final String SETTINGS_YAML_FILE = "readonlyrest.yml";
   public final static String REST_REFRESH_PATH = "/_readonlyrest/admin/refreshconfig";
   public final static String REST_CONFIGURATION_PATH = "/_readonlyrest/admin/config";
+  public final static String REST_CONFIGURATION_FILE_PATH = "/_readonlyrest/admin/config/file";
 
   public static String makeAbsolutePath(String path, String basePath) {
 

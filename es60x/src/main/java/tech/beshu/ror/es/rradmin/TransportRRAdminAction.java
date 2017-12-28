@@ -33,6 +33,7 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsUtils;
 import tech.beshu.ror.es.SettingsObservableImpl;
 
+import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_FILE_PATH;
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
 import static tech.beshu.ror.commons.Constants.REST_REFRESH_PATH;
 
@@ -65,7 +66,6 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
       String body = request.getContent();
       String path = request.getPath();
 
-      // POST
       if ("POST".equals(method)) {
         if (REST_REFRESH_PATH.equals(normalisePath(path))) {
           settingsObservable.refreshFromIndex();
@@ -91,13 +91,24 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
           });
           return;
         }
-
       }
-      // GET
-      if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
-        String currentSettingsJSON = settingsObservable.getCurrent().yaml();
-        listener.onResponse(new RRAdminResponse(currentSettingsJSON));
-        return;
+
+      if ("GET".equals(method)) {
+        if (REST_CONFIGURATION_FILE_PATH.equals(normalisePath(path))) {
+          try {
+            String currentSettingsJSON = settingsObservable.getFromFile().yaml();
+            listener.onResponse(new RRAdminResponse(currentSettingsJSON));
+          } catch (Exception e) {
+            listener.onFailure(e);
+          }
+          return;
+        }
+        if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
+          String currentSettingsYAML = SettingsUtils.toJsonStorage(settingsObservable.getCurrent().yaml());
+          System.out.println(currentSettingsYAML);
+          listener.onResponse(new RRAdminResponse(currentSettingsYAML));
+          return;
+        }
       }
 
       listener.onFailure(new Exception("Didn't find anything to handle this request"));
