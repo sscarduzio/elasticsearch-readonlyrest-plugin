@@ -96,15 +96,16 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
       if ("GET".equals(method)) {
         if (REST_CONFIGURATION_FILE_PATH.equals(normalisePath(path))) {
           try {
-            String currentSettingsJSON = settingsObservable.getFromFile().yaml();
-            listener.onResponse(new RRAdminResponse(currentSettingsJSON));
+            String currentSettingsYAML = settingsObservable.getFromFile().yaml();
+            listener.onResponse(new RRAdminResponse(currentSettingsYAML));
+            System.out.println(currentSettingsYAML);
           } catch (Exception e) {
             listener.onFailure(e);
           }
           return;
         }
         if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
-          String currentSettingsYAML = SettingsUtils.toJsonStorage(settingsObservable.getCurrent().yaml());
+          String currentSettingsYAML = settingsObservable.getCurrent().yaml();
           System.out.println(currentSettingsYAML);
           listener.onResponse(new RRAdminResponse(currentSettingsYAML));
           return;
