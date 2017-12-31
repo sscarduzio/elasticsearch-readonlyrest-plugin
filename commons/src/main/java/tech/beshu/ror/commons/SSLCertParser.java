@@ -45,10 +45,10 @@ public class SSLCertParser {
 
   private void createContext(BasicSettings settings) {
     if (!settings.isSSLEnabled()) {
-      logger.info("SSL is disabled");
+      logger.info("ROR SSL: SSL is disabled");
       return;
     }
-    logger.info("SSL: attempting with JKS keystore..");
+    logger.info("ROR SSL: attempting with JKS keystore..");
     try {
       char[] keyStorePassBa = null;
       if (settings.getKeystorePass().isPresent()) {
@@ -80,7 +80,7 @@ public class SSLCertParser {
       if (!settings.getKeyAlias().isPresent()) {
         if (ks.aliases().hasMoreElements()) {
           String inferredAlias = ks.aliases().nextElement();
-          logger.info("SSL ssl.key_alias not configured, took first alias in keystore: " + inferredAlias);
+          logger.info("ROR SSL: ssl.key_alias not configured, took first alias in keystore: " + inferredAlias);
           sslKeyAlias = inferredAlias;
         }
         else {
@@ -103,7 +103,7 @@ public class SSLCertParser {
       sb.append("\n");
       sb.append("---END PRIVATE KEY---");
       String privateKey = sb.toString();
-      logger.info("Discovered key from JKS");
+      logger.info("ROR SSL: Discovered key from JKS");
 
       // Get CertChain from keystore
       Certificate[] cchain = ks.getCertificateChain(sslKeyAlias);
@@ -117,7 +117,7 @@ public class SSLCertParser {
         sb.append("-----END CERTIFICATE-----\n");
       }
       String certChain = sb.toString();
-      logger.info("Discovered cert chain from JKS");
+      logger.info("ROR SSL: Discovered cert chain from JKS");
 
 
       AccessController.doPrivileged(
@@ -127,9 +127,9 @@ public class SSLCertParser {
         });
 
     } catch (Throwable t) {
-      logger.error("Failed to load SSL certs and keys from JKS Keystore!");
+      logger.error("ROR SSL: Failed to load SSL certs and keys from JKS Keystore!");
       if (t instanceof AccessControlException) {
-        logger.error("Check the JKS Keystore path is correct: " + settings.getKeystoreFile());
+        logger.error("ROR SSL: Check the JKS Keystore path is correct: " + settings.getKeystoreFile());
       }
       t.printStackTrace();
     }
