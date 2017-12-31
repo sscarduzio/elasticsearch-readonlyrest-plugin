@@ -30,6 +30,11 @@ echo ">>> es51x => Running testcontainers.."
 ./gradlew  integration-tests:test '-PesModule=es51x' || ( find . |grep hs_err |xargs cat && exit 1 )
 
 
+if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
+    echo ">>> won't try to create builds because this is a PR"
+    exit 0
+fi
+
 echo ">>> ($0) additional build of ES module for specified ES version"
 
 ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.0'

@@ -20,6 +20,11 @@ if [ ! -z "$TRAVIS_TAG" ]; then
   exit 0
 fi
 
+if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
+    echo ">>> won't try to tag and upload builds because this is a PR"
+    exit 0
+fi
+
 echo "Entering release uploader.."
 
 
