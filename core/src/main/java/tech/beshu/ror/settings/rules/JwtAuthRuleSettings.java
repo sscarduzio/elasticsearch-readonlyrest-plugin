@@ -27,6 +27,7 @@ import java.util.Optional;
 public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
 
   public static final String ATTRIBUTE_NAME = "jwt_auth";
+  public static final String SIGNATURE_ALGO = "signature_algo";
   public static final String SIGNATURE_KEY = "signature_key";
   public static final String USER_CLAIM = "user_claim";
   public static final String HEADER_NAME = "header_name";
@@ -34,13 +35,15 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
 
   private final byte[] key;
   private final Optional<String> userClaim;
+  private final Optional<String> algo;
   private final String headerName;
 
-  private JwtAuthRuleSettings(String key, Optional<String> userClaim, Optional<String> headerName) {
+  private JwtAuthRuleSettings(String key,  Optional<String> algo, Optional<String> userClaim, Optional<String> headerName) {
     if (Strings.isNullOrEmpty(key))
       throw new SettingsMalformedException(
         "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string");
     this.key = key.getBytes();
+    this.algo = algo;
     this.userClaim = userClaim;
     this.headerName = headerName.orElse(DEFAULT_HEADER_NAME);
   }
@@ -48,6 +51,7 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   public static JwtAuthRuleSettings from(RawSettings settings) {
     return new JwtAuthRuleSettings(
       evalPrefixedSignatureKey(ensureString(settings, SIGNATURE_KEY)),
+      settings.stringOpt(SIGNATURE_ALGO),
       settings.stringOpt(USER_CLAIM),
       settings.stringOpt(HEADER_NAME)
     );
@@ -70,6 +74,10 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
 
   public byte[] getKey() {
     return key;
+  }
+
+  public Optional<String> getAlgo() {
+   return algo;
   }
 
   public Optional<String> getUserClaim() {

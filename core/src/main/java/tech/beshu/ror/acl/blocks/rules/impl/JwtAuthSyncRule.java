@@ -20,6 +20,7 @@ import com.google.common.base.Strings;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
@@ -34,17 +35,23 @@ import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 
 import java.security.AccessController;
+import java.security.Key;
+import java.security.KeyFactory;
 import java.security.PrivilegedAction;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.Optional;
 
 public class JwtAuthSyncRule extends UserRule implements Authentication {
 
   private final LoggerShim logger;
   private final JwtAuthRuleSettings settings;
+  private final Optional<Key> signingKeyForAlgo;
 
   public JwtAuthSyncRule(JwtAuthRuleSettings settings, ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = settings;
+    this.signingKeyForAlgo = getSigningKeyForAlgo();
   }
 
   private static Optional<String> extractToken(String authHeader) {
@@ -55,6 +62,20 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
 
     return Optional.ofNullable(Strings.emptyToNull(authHeader));
 
+  }
+
+  private Optional<Key> getSigningKeyForAlgo() {
+    if (settings.getAlgo().isPresent()) {
+      try {
+        byte[] decoded = Base64.getDecoder().decode(settings.getKey());
+        X509EncodedKeySpec X509publicKey = new X509EncodedKeySpec(decoded);
+        KeyFactory kf = KeyFactory.getInstance(settings.getAlgo().get());
+        return Optional.of(kf.generatePublic(X509publicKey));
+      } catch (Exception e) {
+        logger.error(e.getMessage());
+      }
+    }
+    return Optional.empty();
   }
 
   @Override
@@ -70,10 +91,16 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
 
     try {
       Jws<Claims> jws = AccessController.doPrivileged(
-        (PrivilegedAction<Jws<Claims>>) () ->
-          Jwts.parser()
-            .setSigningKey(settings.getKey())
-            .parseClaimsJws(token.get()));
+        (PrivilegedAction<Jws<Claims>>) () -> {
+          JwtParser parser = Jwts.parser();
+          if (signingKeyForAlgo.isPresent()) {
+            parser.setSigningKey(signingKeyForAlgo.get());
+          } else {
+            parser.setSigningKey(settings.getKey());
+          }
+          return parser.parseClaimsJws(token.get());
+        }
+      );
 
       Optional<String> user = settings.getUserClaim().map(claim -> jws.getBody().get(claim, String.class));
       if (settings.getUserClaim().isPresent())

@@ -32,6 +32,11 @@ import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 
+import java.security.KeyException;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
 import java.util.Map.Entry;
 import java.util.Optional;
 
@@ -46,6 +51,7 @@ import static org.mockito.Mockito.when;
 public class JwtAuthRuleTests {
 
   private static final String SETTINGS_SIGNATURE_KEY = JwtAuthRuleSettings.SIGNATURE_KEY;
+  private static final String SETTINGS_SIGNATURE_ALGO = JwtAuthRuleSettings.SIGNATURE_ALGO;
   private static final String SETTINGS_USER_CLAIM = JwtAuthRuleSettings.USER_CLAIM;
   private static final String ALGO = "HS256";
   private static final String SECRET = "123456";
@@ -74,12 +80,52 @@ public class JwtAuthRuleTests {
   }
 
   @Test
+  public void shouldAcceptTokenWithValidRSASignature() throws KeyException {
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .signWith(SignatureAlgorithm.valueOf("RS256"), getRsaPrivateKey())
+      .compact();
+
+    RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, getRsaPublicKey(), SETTINGS_SIGNATURE_ALGO, "RSA");
+
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertTrue(res.get().isMatch());
+  }
+
+  @Test
   public void shouldRejectTokenWithInvalidSignature() {
     String token = Jwts.builder()
       .setSubject(SUBJECT)
       .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
       .compact();
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, BAD_SECRET);
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertFalse(res.get().isMatch());
+  }
+
+  @Test
+  public void shouldRejectRSATokenWithInvalidSignature() throws KeyException {
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .signWith(SignatureAlgorithm.valueOf("RS256"), getRsaPrivateKey())
+      .compact();
+
+    RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, getInvalidPublicKey(), SETTINGS_SIGNATURE_ALGO, "RSA");
+
     RequestContext rc = getMock(token);
 
     Optional<SyncRule> rule = makeRule(settings);
@@ -239,4 +285,49 @@ public class JwtAuthRuleTests {
       return Optional.empty();
     }
   }
+
+  private PrivateKey getRsaPrivateKey() throws KeyException {
+    try {
+      byte[] decoded = Base64.getMimeDecoder().decode("MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCzBElX1jA8I8K7\n" +
+        "TXvdKV+nkvu+/qJOab50asTpDT/WlRVsL+wZLgi1+R6t5Qu4thWI3SmqEY3E0A9l\n" +
+        "puM4vlICUiqrmPTm+UY41oQFMz4XwoP4cQh/E/g5nBykL3YPqkzYUoJhRknH+lna\n" +
+        "wzEUafupH0N0Kc8eruG+9pM0BkLDweUFrHzXzY3C423LQSm5mYeglMYJlFcmJ9vo\n" +
+        "MnCUmDPY4qTNlFy8U4ksBFBA1+q/ppFqeeOasAlHh7lnLAtR78I/rGLhVDBqAgO0\n" +
+        "W2sOMDMLP584ll0zryYrulA7OEsQGYqQepSmUS9pm0243dl0gwsuGYbc0m5LP24B\n" +
+        "F/RLQ2pJAgMBAAECggEAAPS+54cvTsLqIVHynWXBKwXv7j8x4rVR3RFM5+m4M48s\n" +
+        "RB2lZyUFyuL/tPIKM/xU9RwpQs1BMpHh4ysW/5CUo4qIy83PUQR3yYnrvpNde4cA\n" +
+        "aW1BHFyg8L3SsVXHjaHdMzKNm7NiZX0CydZNBsziGS8fjxlCD+njLr/mXVrDNIRs\n" +
+        "SVQ+rZjnNIjflX7KnIYmLtN6a64mC/UPDobtmmadvyAf8Hc/o7JX1Iqy4wtIuEFb\n" +
+        "qf82+xXPcEJqST0fFfWcMp3WEU0cyWNfFZWlmmqzMrJPqCJaRJMMFwawxHI4GQMW\n" +
+        "W/3OyYT4ySdD/Lt/+rQRkR4BbI8J5h9CfNSrhYryeQKBgQDWlsXVQdgsVsC4pXay\n" +
+        "LxjMf5zbcFxg+Jdp3koHpJS5my8cWTRFcRxyTFf8KDesKb/fEhYVV40CurZv4vKU\n" +
+        "jHJYf+72QjAVWN6Wyjmxa9Ctc6n1OdZ4gHwBdYNnJJHXhihAbzT4kzF8uccFg6Oj\n" +
+        "Es8csXdPnJ4huNN38FWhnfdpQwKBgQDVkCh6WkmjqYSh3F+Zr/sYCc+B42hvhIbt\n" +
+        "OLr3U1PTqgv9DRtCfPcR1oJS0kilUo2Fd+4P3xV6EJTpOJbZdIYTRkxIrl6ORDkF\n" +
+        "0Lp01Vnzv3DVjhpL4oMdWAVTC7BLJCN8inmz+Pf6RndJrBgLz2HQXMN3NCm5b+21\n" +
+        "ojK0iGHvgwKBgFrdl0H5UrdbuNm3Pu6uoLqfYuVMy+FIAp2SwhhAabW6b5V6dHbf\n" +
+        "MaN4jl05DnH5b8TenLlGzHAWbgAswnmCizzMV3yxhDjV29NQKGPneoKoEpTDe/yk\n" +
+        "s13Oy+iWBKeVqF+4d162vWLKK+s61cTMxySoRRRSBmfTIsCL5Ua9ZDGPAoGAcn8X\n" +
+        "NIGzeUspEJ5Vos/2jqyz069YDnG+5O/FTVQfXRuN0d10//B/hdC7jiuvRvM7bJMf\n" +
+        "zuKLYSYCsAbm2S7fsvW9cDoL97ob2EJPtNOtpkC8/cFx171ZDiJiuGNL4P0/CUY0\n" +
+        "eYjBaizdR2I8ghhtGIijQwV0WTbo+rg69w8ncoECgYBmf4xoW03WYtzGkinhN6FQ\n" +
+        "SZt3/ATmJR0iLFzcvMncP+4xGq1J1oL7v0ArUX1mWGfJRS27zgH7k/qJprABnJnI\n" +
+        "0TXjhBObmkicvOm11rYK2he2g+eW5RbZpr7FfrNuiZjMOmJn8dWHuwtboNcuEF3A\n" +
+        "6Mzj9h2krlUiyKMi0IKLHw==");
+      PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
+      KeyFactory kf = KeyFactory.getInstance("RSA");
+      return kf.generatePrivate(spec);
+    } catch (Exception e) {
+      throw new KeyException(e);
+    }
+  }
+
+  private String getRsaPublicKey() {
+    return "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAswRJV9YwPCPCu0173Slfp5L7vv6iTmm+dGrE6Q0/1pUVbC/sGS4ItfkereULuLYViN0pqhGNxNAPZabjOL5SAlIqq5j05vlGONaEBTM+F8KD+HEIfxP4OZwcpC92D6pM2FKCYUZJx/pZ2sMxFGn7qR9DdCnPHq7hvvaTNAZCw8HlBax8182NwuNty0EpuZmHoJTGCZRXJifb6DJwlJgz2OKkzZRcvFOJLARQQNfqv6aRannjmrAJR4e5ZywLUe/CP6xi4VQwagIDtFtrDjAzCz+fOJZdM68mK7pQOzhLEBmKkHqUplEvaZtNuN3ZdIMLLhmG3NJuSz9uARf0S0NqSQIDAQAB";
+  }
+
+  private String getInvalidPublicKey() {
+    return getRsaPublicKey().replace("QAB", "QAC");
+  }
+
 }
