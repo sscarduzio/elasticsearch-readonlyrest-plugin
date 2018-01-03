@@ -22,6 +22,7 @@ package tech.beshu.ror.es;
  */
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -77,9 +78,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   }
 
   public ChannelHandler configureServerChannelHandler() {
-    SSLHandler handler = new SSLHandler(this);
-    logger.info("ROR SSL accepted ciphers: " + Joiner.on(",").join(handler.context.get().cipherSuites()));
-    return handler;
+    return new SSLHandler(this);
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
@@ -91,22 +90,22 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       new SSLCertParser(basicSettings, logger, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslcb = SslContextBuilder.forServer(
+          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
             new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
           );
 
-          basicSettings.getAllowedSSLCiphers().ifPresent(sslcb::ciphers);
+          logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, basicSettings);
+
+          basicSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
           basicSettings.getAllowedSSLProtocols()
-            .map(protoList -> {
-              logger.info("ROR SSL accepted protocols: " + Joiner.on(",").join(protoList));
-              return protoList.toArray(new String[protoList.size()]);
-            })
-            .ifPresent(sslcb::protocols);
+            .map(protoList -> protoList.toArray(new String[protoList.size()]))
+            .ifPresent(sslCtxBuilder::protocols);
 
-          context = Optional.of(sslcb.build());
+          context = Optional.of(sslCtxBuilder.build());
 
         } catch (Exception e) {
           context = Optional.empty();

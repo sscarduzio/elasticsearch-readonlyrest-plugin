@@ -21,7 +21,6 @@ package tech.beshu.ror.es;
  * Created by sscarduzio on 28/11/2016.
  */
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -80,20 +79,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         // Creating one SSL engine just for protocol/cipher validation and logging
         sslContext = sslcb.build();
         SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
-        String[] defaultProtocols = eng.getEnabledProtocols();
 
         logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-
-        logger.info("ROR SSL: Available ciphers: " + Joiner.on(",").join(sslContext.cipherSuites()));
-        baseSettings.getAllowedSSLProtocols()
-          .ifPresent(_x -> logger.info("ROR SSL: Restricting to ciphers: " + Joiner.on(",").join(eng.getEnabledProtocols())));
-
-        logger.info("ROR SSL: Avaliable SSL protocols: " + Joiner.on(",").join(defaultProtocols));
-        baseSettings.getAllowedSSLCiphers()
-          .ifPresent(_x -> logger.info("ROR SSL: Restricting to SSL protocols: " + Joiner.on(",").join(eng.getEnabledProtocols())));
-
-        logger.info("ROR SSL: Available ciphers: " + Joiner.on(",").join(sslContext.cipherSuites()));
-
+        SSLCertParser.validateProtocolAndCiphers(eng, logger, basicSettings);
       } catch (Exception e) {
         logger.error("Failed to load SSL CertChain & private key from Keystore! "
                        + e.getClass().getSimpleName() + ": " + e.getMessage(), e);

@@ -17,10 +17,12 @@
 
 package tech.beshu.ror.commons;
 
+import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import javax.net.ssl.SSLEngine;
 import java.io.FileInputStream;
 import java.security.AccessControlException;
 import java.security.AccessController;
@@ -41,6 +43,32 @@ public class SSLCertParser {
     this.creator = creator;
     this.logger = logger;
     createContext(settings);
+  }
+
+  public static boolean validateProtocolAndCiphers(SSLEngine eng, LoggerShim logger, BasicSettings basicSettings) {
+    try {
+      String[] defaultProtocols = eng.getEnabledProtocols();
+
+      logger.info("ROR SSL: Available ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
+      basicSettings.getAllowedSSLCiphers()
+        .map(x -> x.toArray(new String[x.size()]))
+        .ifPresent(p -> {
+          eng.setEnabledCipherSuites(p);
+          logger.info("ROR SSL: Restricting to ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
+        });
+
+      logger.info("ROR SSL: Available SSL protocols: " + Joiner.on(",").join(defaultProtocols));
+      basicSettings.getAllowedSSLProtocols()
+        .map(x -> x.toArray(new String[x.size()]))
+        .ifPresent(p -> {
+          eng.setEnabledProtocols(p);
+          logger.info("ROR SSL: Restricting to SSL protocols: " + Joiner.on(",").join(eng.getEnabledProtocols()));
+        });
+      return true;
+    } catch (Exception e) {
+      logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+      return false;
+    }
   }
 
   private void createContext(BasicSettings settings) {
