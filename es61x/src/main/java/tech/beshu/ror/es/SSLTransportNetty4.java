@@ -21,7 +21,6 @@ package tech.beshu.ror.es;
  * Created by sscarduzio on 28/11/2016.
  */
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;

@@ -6,4 +6,5 @@ grant {
   permission java.io.FilePermission "<<ALL FILES>>", "read";
   permission java.lang.RuntimePermission "getClassLoader";
   permission java.net.SocketPermission "*", "accept, resolve, connect";
+  permission java.io.FilePermission "/proc/sys/net/core/somaxconn","read";
 };
