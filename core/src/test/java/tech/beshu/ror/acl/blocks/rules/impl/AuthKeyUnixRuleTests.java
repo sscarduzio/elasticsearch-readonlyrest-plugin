@@ -48,10 +48,29 @@ public class AuthKeyUnixRuleTests {
 
     return r.match(rc);
   }
+  private RuleExitResult matchTwice(String configured, String found) {
+    RequestContext rc = Mockito.mock(RequestContext.class);
+    when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
+
+    SyncRule r = new AuthKeyUnixSyncRule(new AuthKeyUnixRuleSettings(configured), MockedESContext.INSTANCE);
+    RuleExitResult res1 = r.match(rc);
+    RuleExitResult res2 = r.match(rc);
+    assertTrue(res1.isMatch() == res2.isMatch());
+    assertTrue(res1.getCondition().getKey() == res2.getCondition().getKey());
+    return r.match(rc);
+  }
 
   @Test
   public void testSimple() {
     RuleExitResult res = match(
+      "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
+      "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())
+    );
+    assertTrue(res.isMatch());
+  }
+  @Test
+  public void testSimpleCached() {
+    RuleExitResult res = matchTwice(
       "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
       "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())
     );

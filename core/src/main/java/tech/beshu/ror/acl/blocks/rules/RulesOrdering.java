@@ -61,7 +61,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
       AuthKeyUnixSyncRule.class,
       ProxyAuthSyncRule.class,
       JwtAuthSyncRule.class,
-      
+
       // then we could check potentially slow async rules
       LdapAuthAsyncRule.class,
       LdapAuthenticationAsyncRule.class,

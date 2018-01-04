@@ -17,6 +17,8 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import cz.seznam.euphoria.shaded.guava.com.google.common.cache.Cache;
+import cz.seznam.euphoria.shaded.guava.com.google.common.cache.CacheBuilder;
 import tech.beshu.ror.acl.blocks.rules.BasicAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -24,6 +26,7 @@ import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,6 +38,8 @@ public class AuthKeyUnixSyncRule extends BasicAuthentication {
 
   private final LoggerShim logger;
   private final AuthKeyUnixRuleSettings settings;
+  private final Cache<AbstractMap.SimpleEntry<String, String>, String> cachedCrypt =
+    CacheBuilder.newBuilder().maximumSize(5000).build();
 
   public AuthKeyUnixSyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
     super(s, context);
@@ -59,7 +64,13 @@ public class AuthKeyUnixSyncRule extends BasicAuthentication {
     Matcher m = p.matcher(key[1]);
     String result = "";
     if (m.find()) {
-      result = login[0] + ":" + crypt(login[1], m.group(1));
+      AbstractMap.SimpleEntry<String, String> cryptArgs = new AbstractMap.SimpleEntry<>(login[1], m.group(1));
+      String cryptRes = cachedCrypt.getIfPresent(cryptArgs);
+      if (cryptRes == null) {
+        cryptRes = crypt(cryptArgs.getKey(), cryptArgs.getValue());
+        cachedCrypt.put(cryptArgs, cryptRes);
+      }
+      result = login[0] + ":" + cryptRes;
     }
     return result;
   }
