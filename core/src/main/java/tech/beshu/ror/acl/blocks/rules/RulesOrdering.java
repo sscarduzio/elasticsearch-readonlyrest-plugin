@@ -21,7 +21,9 @@ import tech.beshu.ror.acl.blocks.rules.impl.ActionsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ApiKeysSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
@@ -55,9 +57,11 @@ public class RulesOrdering implements Comparator<AsyncRule> {
       AuthKeySyncRule.class,
       AuthKeySha1SyncRule.class,
       AuthKeySha256SyncRule.class,
+      AuthKeySha512SyncRule.class,
+      AuthKeyUnixSyncRule.class,
       ProxyAuthSyncRule.class,
       JwtAuthSyncRule.class,
-
+      
       // then we could check potentially slow async rules
       LdapAuthAsyncRule.class,
       LdapAuthenticationAsyncRule.class,
