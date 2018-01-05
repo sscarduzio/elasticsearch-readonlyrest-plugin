@@ -51,7 +51,6 @@ dependencies {
         exclude group: 'com.google.guava', module: 'guava'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
-    compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.6.2'
     compile 'log4j:log4j:1.2.17'
 
     compile(project(':core')) {

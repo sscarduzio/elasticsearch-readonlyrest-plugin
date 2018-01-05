@@ -34,7 +34,7 @@ dependencies {
     compile 'com.github.testcontainers.testcontainers-java:testcontainers:master-SNAPSHOT'
     // compile 'org.testcontainers:testcontainers:1.4.3'
     compile 'log4j:log4j:1.2.17'
-    compile 'org.slf4j:slf4j-simple:1.6.2'
+    compile 'org.slf4j:slf4j-nop:1.7.25'
 }
 
 license {
