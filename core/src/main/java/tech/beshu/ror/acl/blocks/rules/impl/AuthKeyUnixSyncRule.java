@@ -39,7 +39,7 @@ public class AuthKeyUnixSyncRule extends BasicAuthentication {
   private final LoggerShim logger;
   private final AuthKeyUnixRuleSettings settings;
   private final Cache<AbstractMap.SimpleEntry<String, String>, String> cachedCrypt =
-    CacheBuilder.newBuilder().maximumSize(5000).build();
+    CacheBuilder.newBuilder().maximumSize(5000).concurrencyLevel(Runtime.getRuntime().availableProcessors()).build();
 
   public AuthKeyUnixSyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
     super(s, context);

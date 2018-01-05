@@ -37,6 +37,7 @@ public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
     super(context);
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
+      .concurrencyLevel(Runtime.getRuntime().availableProcessors())
       .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
       .build();
   }
