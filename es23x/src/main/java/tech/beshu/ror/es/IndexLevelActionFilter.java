@@ -72,7 +72,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                 SettingsObservableImpl settingsObservable
   ) {
     super(settings);
-    System.out.println("IndexLevelActionFilter INIT");
 
     loggerShim = ESContextImpl.mkLoggerShim(logger);
 
