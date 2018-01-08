@@ -40,7 +40,6 @@ public class ReflecUtils {
   private static final HashMap<String, Method> methodsCache = new HashMap<>(128);
 
   public static Object invokeMethodCached(Object o, Class c, String method) {
-    System.out.println(c.getSimpleName());
     final Object[] result = new Object[1];
     String cacheKey = c.getName() + "#" + method;
 
