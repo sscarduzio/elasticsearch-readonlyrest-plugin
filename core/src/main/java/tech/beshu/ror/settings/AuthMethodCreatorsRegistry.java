@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
+import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
@@ -42,7 +43,8 @@ public class AuthMethodCreatorsRegistry {
 
   public AuthMethodCreatorsRegistry(
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection,
-    LdapSettingsCollection ldapSettingsCollection
+    LdapSettingsCollection ldapSettingsCollection,
+    JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection
   ) {
 
     HashMap<String, Function<RawSettings, AuthKeyProviderSettings>> creators = Maps.newHashMap();
@@ -53,7 +55,7 @@ public class AuthMethodCreatorsRegistry {
     creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator());
     creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
     creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME, ldapAuthenticationRuleSettingsCreator(ldapSettingsCollection));
-    creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator());
+    creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(jwtAuthDefinitionSettingsCollection));
     this.authKeyProviderCreators = creators;
   }
 
@@ -106,10 +108,13 @@ public class AuthMethodCreatorsRegistry {
     };
   }
 
-  private Function<RawSettings, AuthKeyProviderSettings> jwtAuthSettingsCreator() {
+  private Function<RawSettings, AuthKeyProviderSettings> jwtAuthSettingsCreator(
+    JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection) {
     return settings -> {
-      RawSettings conf = settings.inner(JwtAuthRuleSettings.ATTRIBUTE_NAME);
-      return JwtAuthRuleSettings.from(conf);
+      Object conf = settings.req(JwtAuthRuleSettings.ATTRIBUTE_NAME);
+      return conf instanceof String
+        ? JwtAuthRuleSettings.from((String)conf, jwtAuthDefinitionSettingsCollection)
+        : JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf), jwtAuthDefinitionSettingsCollection);
     };
   }
 

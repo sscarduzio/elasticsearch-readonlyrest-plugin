@@ -135,7 +135,21 @@ public class RawSettings {
   }
 
   public Optional<Set<?>> notEmptySetOpt(String attr) {
-    return opt(attr).flatMap(obj -> ((Set<?>) obj).isEmpty() ? Optional.empty() : Optional.of((Set<?>) obj));
+    return opt(attr).flatMap(value -> {
+      HashSet<Object> set = new HashSet<>();
+      if (value instanceof List<?>) {
+        List<?> l = (List<?>) value;
+        set.addAll(l);
+        if (set.size() < l.size()) {
+          throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot contain duplicates");
+        }
+      }
+      else if (value instanceof String) {
+        set.add(value);
+      }
+      if (set.isEmpty()) return Optional.empty();
+      return Optional.of(set);
+    });
   }
 
   public Set<?> notEmptySetReq(String attr) {

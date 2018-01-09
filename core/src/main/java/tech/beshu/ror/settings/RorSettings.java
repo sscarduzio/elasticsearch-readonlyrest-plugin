@@ -22,6 +22,7 @@ import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
@@ -69,10 +70,13 @@ public class RorSettings {
     LdapSettingsCollection ldapSettingsCollection = LdapSettingsCollection.from(raw);
     UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = UserGroupsProviderSettingsCollection.from(raw);
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
-    ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection =
-      ExternalAuthenticationServiceSettingsCollection.from(raw);
-    AuthMethodCreatorsRegistry authMethodCreatorsRegistry =
-      new AuthMethodCreatorsRegistry(proxyAuthDefinitionSettingsCollection, ldapSettingsCollection);
+    ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection = ExternalAuthenticationServiceSettingsCollection.from(raw);
+    JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection = JwtAuthDefinitionSettingsCollection.from(raw);
+    AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(
+      proxyAuthDefinitionSettingsCollection, 
+      ldapSettingsCollection,
+      jwtAuthDefinitionSettingsCollection
+    );
 
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
