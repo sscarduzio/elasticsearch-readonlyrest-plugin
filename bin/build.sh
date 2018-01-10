@@ -35,19 +35,25 @@ if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; the
     exit 0
 fi
 
-echo ">>> ($0) additional build of ES module for specified ES version"
+echo ">>> ($0) additional builds of ES module for specified ES version"
 
+# es61
 ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.0'
+#./gradlew --stacktrace es60x:ror '-PesVersion=6.1.1'
 
-./gradlew --stacktrace es60x:ror '-PesVersion=6.0.1'
+
+# es60
 ./gradlew --stacktrace es60x:ror '-PesVersion=6.0.0'
+#./gradlew --stacktrace es60x:ror '-PesVersion=6.0.1'
 
+
+# es53
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.0'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.1'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.2'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.3'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.4'
-./gradlew --stacktrace es53x:ror '-PesVersion=5.6.5'
+#./gradlew --stacktrace es53x:ror '-PesVersion=5.6.5'
 
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.5.0'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.5.1'
@@ -59,19 +65,28 @@ echo ">>> ($0) additional build of ES module for specified ES version"
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.2'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.3'
 
-
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.0'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.1'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.2'
+./gradlew --stacktrace es53x:ror '-PesVersion=5.3.3'
 
+
+# es52
+./gradlew --stacktrace es52x:ror '-PesVersion=5.2.0'
+./gradlew --stacktrace es52x:ror '-PesVersion=5.2.1'
+#./gradlew --stacktrace es52x:ror '-PesVersion=5.2.2'
+
+
+# es51
+./gradlew --stacktrace es51x:ror '-PesVersion=5.1.1'
+#./gradlew --stacktrace es51x:ror '-PesVersion=5.1.2'
+
+# es23x
 ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.0'
 ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.1'
+#./gradlew --stacktrace es23x:ror '-PesVersion=2.4.2'
+#./gradlew --stacktrace es23x:ror '-PesVersion=2.4.3'
 ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.4'
 ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.5'
-./gradlew --stacktrace es23x:ror '-PesVersion=2.4.6'
+#./gradlew --stacktrace es23x:ror '-PesVersion=2.4.6'
 
-./gradlew --stacktrace es52x:ror '-PesVersion=5.2.2'
-./gradlew --stacktrace es52x:ror '-PesVersion=5.2.1'
-./gradlew --stacktrace es52x:ror '-PesVersion=5.2.0'
-
-./gradlew --stacktrace es51x:ror '-PesVersion=5.1.1'

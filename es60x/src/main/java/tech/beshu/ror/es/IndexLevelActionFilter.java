@@ -88,8 +88,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.acl = new AtomicReference<>(Optional.empty());
     this.client = client;
 
-    new TaskManagerWrapper(settings).injectIntoTransportService(transportService, loggerShim);
-
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
       Environment newEnv = new Environment(settings);
@@ -158,7 +156,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, action, request, clusterService, threadPool, context.get(), indexResolver);
+    RequestInfo requestInfo = new RequestInfo(channel,  task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
     acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {

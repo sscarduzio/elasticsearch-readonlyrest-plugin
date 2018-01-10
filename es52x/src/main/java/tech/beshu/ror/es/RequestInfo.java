@@ -93,14 +93,13 @@ public class RequestInfo implements RequestInfoShim {
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.indexResolver = indexResolver;
+    this.taskId = taskId;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     if (taskId != null) {
       this.id = tmpID + "#" + taskId;
-      this.taskId = taskId;
     }
     else {
       this.id = tmpID;
-      this.taskId = null;
     }
   }
 
