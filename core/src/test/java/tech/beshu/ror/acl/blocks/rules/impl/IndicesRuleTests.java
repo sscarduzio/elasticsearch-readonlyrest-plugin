@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
@@ -33,6 +34,7 @@ import java.util.Set;
 
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -41,6 +43,36 @@ import static org.mockito.Mockito.when;
  */
 
 public class IndicesRuleTests {
+
+  @Test
+  public void test1() {
+    MatcherWithWildcards matcher = new MatcherWithWildcards(Sets.newHashSet("a*"));
+
+    Set<String> res = new ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("*"), matcher);
+    assertNotNull(res);
+    assertTrue(res.contains("a*"));
+    res = new ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("b"), matcher);
+    assertNotNull(res);
+    assertTrue(res.isEmpty());
+
+  }
+
+  @Test
+  public void test2() {
+    Set<String> res =new  ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("a*"), new MatcherWithWildcards(Sets.newHashSet("a1*")));
+    assertNotNull(res);
+    assertTrue(res.contains("a1*"));
+    assertFalse(res.contains("a*"));
+  }
+
+  @Test
+  public void test3() {
+    MatcherWithWildcards matcher = new MatcherWithWildcards(Sets.newHashSet("b:*", "a*"));
+    Set<String> res = new ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("*"), matcher);
+    assertNotNull(res);
+    assertTrue(res.contains("a*"));
+    assertFalse(res.contains("b:*"));
+  }
 
   @Test
   public void testSimpleIndex() {
