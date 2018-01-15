@@ -93,7 +93,7 @@ public class ZeroKnowledgeIndexFilter {
         shouldReplace = true;
       }
     }
-    if (shouldReplace) {
+    if (shouldReplace || ! Sets.symmetricDifference(newIndices,indices).isEmpty()) {
       return newIndices;
     }
     else {
