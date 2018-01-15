@@ -85,20 +85,25 @@ public class IndicesSyncRule extends SyncRule {
       // Scatter gather for local and remote indices barring algorithms
       if (!crossClusterIndices.isEmpty()) {
 
+        Set<String> processedLocalIndices = localIndices;
         // Run the local algorithm
-        src.setIndices(Sets.newHashSet(localIndices));
-        if (!canPass(src, matcher)) {
-          return NO_MATCH;
+        if (localIndices.isEmpty() && !crossClusterIndices.isEmpty()) {
+          // Don't run locally if only have crossCluster, otherwise you'll get the equivalent of "*"
         }
-
+        else {
+          src.setIndices(Sets.newHashSet(localIndices));
+          if (!canPass(src, matcher)) {
+            return NO_MATCH;
+          }
+          processedLocalIndices = src.getTransientIndices();
+        }
         // Run the remote algorithm (without knowing the remote list of indices)
-        Set<String> processedLocalIndices = src.getIndices();
         if (!zKindexFilter.alterIndicesIfNecessaryAndCheck(crossClusterIndices, matcher, src::setIndices)) {
           return NO_MATCH;
         }
 
         // Merge the result without duplicates only if we have green light from both algorithms.
-        Set<String> processedRemoteIndices = src.getIndices();
+        Set<String> processedRemoteIndices = src.getTransientIndices();
         processedLocalIndices.addAll(processedRemoteIndices);
         src.setIndices(processedLocalIndices);
         return MATCH;
@@ -119,7 +124,7 @@ public class IndicesSyncRule extends SyncRule {
 
     // if ("indices:data/read/search".equals(src.getAction()) && src.shouldConsiderRemoteClustersSearch()) {
 
-    Set<String> indices = Sets.newHashSet(src.getIndices());
+    Set<String> indices = Sets.newHashSet(src.getTransientIndices());
 
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist.
