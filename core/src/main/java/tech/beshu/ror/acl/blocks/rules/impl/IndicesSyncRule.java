@@ -38,10 +38,14 @@ public class IndicesSyncRule extends SyncRule {
   private final IndicesRuleSettings settings;
   private final LoggerShim logger;
   private final MatcherWithWildcards matcherNoVar;
+  private final ZeroKnowledgeIndexFilter zKindexFilter;
 
   public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = s;
+    //this.zKindexFilter = new ZeroKnowledgeIndexFilter(context.isCrossClusterSearchEnabled());
+    this.zKindexFilter = new ZeroKnowledgeIndexFilter(true); // Experiment
+
     if (!s.hasVariables()) {
       this.matcherNoVar = new MatcherWithWildcards(s.getIndicesUnwrapped());
     }
@@ -49,6 +53,7 @@ public class IndicesSyncRule extends SyncRule {
       this.matcherNoVar = null;
     }
   }
+
 
   @Override
   public RuleExitResult match(RequestContext rc) {
@@ -77,7 +82,13 @@ public class IndicesSyncRule extends SyncRule {
         .collect(Collectors.toSet())
     );
 
+   // if ("indices:data/read/search".equals(src.getAction()) && src.shouldConsiderRemoteClustersSearch()) {
+    if (src.isReadRequest()) {
+      return zKindexFilter.alterIndicesIfNecessaryAndCheck(src.getIndices(), matcher, src::setIndices);
+    }
+
     Set<String> indices = Sets.newHashSet(src.getIndices());
+
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist.
     logger.debug("Stage 0");
