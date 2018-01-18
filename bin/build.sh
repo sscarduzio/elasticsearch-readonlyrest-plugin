@@ -1,5 +1,8 @@
 #!/bin/sh
 
+echo " :: TRYING IF DOCKER WORKS HERE"
+docker run hello-world
+
 set -xe
 
 echo ">>> ($0) RUNNINIG CONTINUOUS INTEGRATION"
