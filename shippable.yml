@@ -1,0 +1,23 @@
+language: java
+services:
+  - docker
+
+jdk:
+- oraclejdk8
+
+before_script:
+  - sudo sysctl -w vm.max_map_count=262144
+
+script: bin/build.sh
+
+deploy:
+  provider: script
+  script: ci/ci-deploy.sh
+  skip_cleanup: true
+  on:
+    all_branches: true
+    tags: false
+
+#branches:
+#  only:
+#    - master
