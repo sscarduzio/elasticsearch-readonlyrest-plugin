@@ -17,10 +17,7 @@
 
 package tech.beshu.ror.settings.definitions;
 
-import java.util.Collections;
 import java.util.Optional;
-import java.util.Set;
-
 import com.google.common.base.Strings;
 
 import tech.beshu.ror.commons.settings.RawSettings;
@@ -46,7 +43,6 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
     private final Optional<String> algo;
     private final String headerName;
 
-    @SuppressWarnings("unchecked")
     public JwtAuthDefinitionSettings(RawSettings settings) {
         this.name = settings.stringReq(NAME);
 

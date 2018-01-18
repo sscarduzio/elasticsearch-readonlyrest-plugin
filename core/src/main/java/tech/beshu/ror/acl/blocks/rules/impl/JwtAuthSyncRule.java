@@ -27,9 +27,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 
@@ -114,16 +112,16 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
           rc.setLoggedInUser(new LoggedUser(user.get()));
 
       Optional<Set<String>> roles = this.extractRoles(jws);
-      if (settings.getRolesClaim().isPresent()) {
-        if (!roles.isPresent())
-          return NO_MATCH; 
-      }
+      if (settings.getRolesClaim().isPresent() && !roles.isPresent())
+          return NO_MATCH;
       if (!settings.getRoles().isEmpty()) {
-        if (!roles.isPresent())
+        if (!roles.isPresent()) {
           return NO_MATCH;
-        Set<String> r = roles.get();
-        if (r.isEmpty() || Sets.intersection(r, settings.getRoles()).isEmpty())
-          return NO_MATCH;
+        } else {
+          Set<String> r = roles.get();
+          if (r.isEmpty() || Sets.intersection(r, settings.getRoles()).isEmpty())
+            return NO_MATCH;
+        }
       }
 
       return MATCH;
