@@ -20,7 +20,9 @@ Expose the high performance HTTP server embedded in Elasticsearch directly to th
 In other words... no more proxies! Yay Ponies!
 ![](http://i.imgur.com/8CLtS1Z.jpg)
 
-## Getting started
+## Quick start
+
+This is a quck guide. For more detailed documentation see our [Elasticsearch plugin documentation](https://github.com/beshu-tech/readonlyrest-docs/blob/master/elasticsearch.md) 
 
 ### 1. Install the plugin 
 
@@ -29,7 +31,7 @@ In other words... no more proxies! Yay Ponies!
 
 ### 2. Configuration
 
-Append either of these snippets to `config/readonlyrest.yml`
+Append either of these snippets to `readonlyrest.yml`. This file should reside right on the same path with `elasticsearch.yml`.
 
 ### USE CASE: Secure public searchbox from [ransomware](http://code972.com/blog/2017/01/107-dont-be-ransacked-securing-your-elasticsearch-cluster-properly)
 ```yml
