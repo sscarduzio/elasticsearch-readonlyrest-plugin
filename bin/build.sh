@@ -39,7 +39,8 @@ echo ">>> ($0) additional builds of ES module for specified ES version"
 
 # es61
 ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.0'
-#./gradlew --stacktrace es60x:ror '-PesVersion=6.1.1'
+./gradlew --stacktrace es60x:ror '-PesVersion=6.1.1'
+#./gradlew --stacktrace es60x:ror '-PesVersion=6.1.2'
 
 
 # es60
@@ -53,7 +54,8 @@ echo ">>> ($0) additional builds of ES module for specified ES version"
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.2'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.3'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.6.4'
-#./gradlew --stacktrace es53x:ror '-PesVersion=5.6.5'
+./gradlew --stacktrace es53x:ror '-PesVersion=5.6.5'
+#./gradlew --stacktrace es53x:ror '-PesVersion=5.6.6'
 
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.5.0'
 ./gradlew --stacktrace es53x:ror '-PesVersion=5.5.1'
