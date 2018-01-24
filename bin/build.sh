@@ -39,8 +39,8 @@ echo ">>> ($0) additional builds of ES module for specified ES version"
 
 # es61
 ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.0'
-./gradlew --stacktrace es60x:ror '-PesVersion=6.1.1'
-#./gradlew --stacktrace es60x:ror '-PesVersion=6.1.2'
+./gradlew --stacktrace es61x:ror '-PesVersion=6.1.1'
+#./gradlew --stacktrace es61x:ror '-PesVersion=6.1.2'
 
 
 # es60
