@@ -119,7 +119,7 @@ task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDe
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('elasticsearch') {
-        from configurations.distJars
+        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
         from 'build/libs/' + pluginFullName + '.jar'
         from 'build/tmp/' + pluginFullName
     }
