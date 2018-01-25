@@ -2,7 +2,7 @@
 
 set -xe
 
-echo ">>> ($0) RUNNINIG CONTINUOUS INTEGRATION"
+echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 
 # Log file friendly Gradle output
 export TERM=dumb

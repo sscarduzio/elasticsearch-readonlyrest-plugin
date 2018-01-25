@@ -38,9 +38,11 @@ public class JwtAuthTests {
 
   private static final String ALGO = "HS256";
   private static final String KEY = "123456";
+  private static final String KEY_ROLE = "123456789";
   private static final String WRONG_KEY = "abcdef";
   private static final String SUBJECT = "test";
   private static final String USER_CLAIM = "user";
+  private static final String ROLES_CLAIM = "roles";
   private static final String EXP = "exp";
 
   @ClassRule
@@ -93,6 +95,23 @@ public class JwtAuthTests {
     assertEquals(401, sc);
   }
 
+  @Test
+  public void rejectTokenWithoutRolesClaim() throws Exception {
+    int sc = test(makeToken(KEY_ROLE));
+    assertEquals(401, sc);
+  }
+
+  @Test
+  public void rejectTokenWithWrongRolesClaim() throws Exception {
+    int sc = test(makeToken(KEY_ROLE, makeClaimMap(ROLES_CLAIM, "role_wrong")));
+    assertEquals(401, sc);
+  }
+
+  @Test
+  public void acceptValidTokentWithRolesClaim() throws Exception {
+    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "role_viewer")));
+    assertEquals(200, sc);
+  }
 
   private int test(Optional<String> token) throws Exception {
     return test(token, Optional.empty(), true);
