@@ -18,10 +18,13 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+
 import org.junit.Test;
 import org.mockito.Mockito;
+
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
@@ -30,6 +33,7 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 
 import java.security.KeyException;
@@ -37,6 +41,8 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 
@@ -50,15 +56,18 @@ import static org.mockito.Mockito.when;
 
 public class JwtAuthRuleTests {
 
-  private static final String SETTINGS_SIGNATURE_KEY = JwtAuthRuleSettings.SIGNATURE_KEY;
-  private static final String SETTINGS_SIGNATURE_ALGO = JwtAuthRuleSettings.SIGNATURE_ALGO;
-  private static final String SETTINGS_USER_CLAIM = JwtAuthRuleSettings.USER_CLAIM;
+  private static final String JWT_NAME = "test-jwt";;
+  private static final String SETTINGS_SIGNATURE_KEY = "signature_key";
+  private static final String SETTINGS_SIGNATURE_ALGO = "signature_algo";
+  private static final String SETTINGS_USER_CLAIM = "user_claim";
+  private static final String SETTINGS_ROLES_CLAIM = "roles_claim";
   private static final String ALGO = "HS256";
   private static final String SECRET = "123456";
   private static final String BAD_SECRET = "abcdef";
   private static final String SUBJECT = "test";
   private static final String USER_CLAIM = "user";
   private static final String USER1 = "user1";
+  private static final String ROLES_CLAIM = "roles";
   private static final String EMPTY_VAR = "HOPE_THIS_VARIABLE_IS_NOT_IN_THE_ENVIRONMENT";
 
   @Test
@@ -211,7 +220,7 @@ public class JwtAuthRuleTests {
   @Test
   public void shouldSupportTextPrefixInSignatureKey() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "text:" + SECRET);
-    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(raw);
+    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
     assertArrayEquals(SECRET.getBytes(), settings.getKey());
   }
 
@@ -229,26 +238,174 @@ public class JwtAuthRuleTests {
     /* ************************************************************* */
 
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "env:" + variable);
-    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(raw);
+    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
     assertArrayEquals(value.getBytes(), settings.getKey());
   }
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeytIsEmpty() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "");
-    JwtAuthRuleSettings.from(raw);
+    JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
   }
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeyFromEnvironmentIsEmpty() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "env:" + EMPTY_VAR);
-    JwtAuthRuleSettings.from(raw);
+    JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
   }
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailInAControlledFashionWhenKeyIsNotAString() {
-    RawSettings raw = makeSettings(false, SETTINGS_SIGNATURE_KEY, "123456");
-    JwtAuthRuleSettings.from(raw);
+    RawSettings raw = makeSettings(JWT_NAME, false, SETTINGS_SIGNATURE_KEY, "123456");
+    JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
+  }
+
+  @Test
+  public void shouldAcceptRolesClaimSetting() {
+    RawSettings settings = makeSettings(
+      SETTINGS_SIGNATURE_KEY, SECRET, 
+      SETTINGS_ROLES_CLAIM, ROLES_CLAIM
+    );
+    Optional<SyncRule> rule = makeRule(settings);
+    assertTrue(rule.isPresent());
+  }
+
+  @Test
+  public void shouldRejectTokenWithoutTheConfiguredRolesClaim() {
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
+    RawSettings settings = makeSettings(
+      SETTINGS_SIGNATURE_KEY, SECRET,
+      SETTINGS_ROLES_CLAIM, ROLES_CLAIM
+    );
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertFalse(res.get().isMatch());
+  }
+
+  @Test
+  public void shouldAuthorizeWithASimpleRole() {
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .claim(ROLES_CLAIM, "role_test")
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
+    RawSettings settings = makeSettings(
+      SETTINGS_SIGNATURE_KEY, SECRET,
+      SETTINGS_ROLES_CLAIM, ROLES_CLAIM
+    );
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertTrue(res.get().isMatch());
+  }
+
+  @Test
+  public void shouldAuthorizeWithAnArrayOfRoles() {
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .claim(ROLES_CLAIM, new String[] { "role_1", "role_2", "role_test" })
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
+    RawSettings settings = makeSettings(
+      SETTINGS_SIGNATURE_KEY, SECRET,
+      SETTINGS_ROLES_CLAIM, ROLES_CLAIM
+    );
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertTrue(res.get().isMatch());
+  }
+
+  @Test
+  public void shouldAuthorizeWithIntersectRoles() {
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .claim(ROLES_CLAIM, new String[] { "role_1", "role_2", "role_test" })
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
+
+    RawSettings settings = makeSettings(
+      SETTINGS_SIGNATURE_KEY, SECRET,
+      SETTINGS_ROLES_CLAIM, ROLES_CLAIM
+    );
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(JWT_NAME, "role_3,role_test", settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertTrue(res.get().isMatch());
+  }
+
+  @Test
+  public void shouldRejectTokenWithWrongPath() {
+    Map<String, String> m = new HashMap<>();
+    m.put("subpath", "role_test");
+
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .claim("roles", m)
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
+    RawSettings settings = makeSettings(
+      SETTINGS_SIGNATURE_KEY, SECRET,
+      SETTINGS_ROLES_CLAIM, "roles.wrong_path"
+    );
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertFalse(res.get().isMatch());
+  }
+
+  @Test
+  public void shouldAuthorizeWithRolePath() {
+    Map<String, String> m = new HashMap<>();
+    m.put("subpath", "role_test");
+
+    String token = Jwts.builder()
+      .setSubject(SUBJECT)
+      .claim("roles", m)
+      .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
+      .compact();
+    RawSettings settings = makeSettings(
+      SETTINGS_SIGNATURE_KEY, SECRET,
+      SETTINGS_ROLES_CLAIM, "roles.subpath"
+    );
+    RequestContext rc = getMock(token);
+
+    Optional<SyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
+    Optional<RuleExitResult> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    assertTrue(res.get().isMatch());
   }
 
   private RequestContext getMock(String token) {
@@ -258,16 +415,18 @@ public class JwtAuthRuleTests {
   }
 
   private RawSettings makeSettings(String... kvp) {
-    return makeSettings(true, kvp);
+    return makeSettings(JWT_NAME, true, kvp);
   }
 
-  private RawSettings makeSettings(boolean escapeValues, String... kvp) {
+  private RawSettings makeSettings(String jwtName, boolean escapeValues, String... kvp) {
     assert kvp.length % 2 == 0;
 
     StringBuilder sb = new StringBuilder();
+    sb.append("jwt:\n");
+    sb.append(" - name: ").append(jwtName).append("\n");
+
     for (int i = 0; i < kvp.length; i += 2) {
-      sb.append(kvp[i]);
-      sb.append(": ");
+      sb.append("   ").append(kvp[i]).append(": ");
       if (escapeValues) sb.append('"');
       sb.append(kvp[i + 1]);
       if (escapeValues) sb.append('"');
@@ -278,8 +437,36 @@ public class JwtAuthRuleTests {
   }
 
   private Optional<SyncRule> makeRule(RawSettings settings) {
+   return makeRule(JWT_NAME, null, settings);
+  }
+
+  private Optional<SyncRule> makeRule(String jwtName, String forRoles, RawSettings settings) {
     try {
-      return Optional.of(new JwtAuthSyncRule(JwtAuthRuleSettings.from(settings), MockedESContext.INSTANCE));
+      StringBuilder sb = new StringBuilder();
+      sb.append("jwt_auth:\n");
+      sb.append("  name: \"").append(jwtName).append("\"\n");
+      if (forRoles != null) {
+        sb.append("  roles: ");
+        String[] roles = forRoles.split(",");
+        if (roles.length > 1) 
+          sb.append("[");
+        for (int i = 0; i < roles.length; i ++) {
+          sb.append('"')
+            .append(roles[i])
+            .append('"')
+            .append(", ");
+        }
+        sb.setLength(sb.length() - 2);  // remove last ", "
+        if (roles.length > 1) 
+          sb.append("]");
+        sb.append("\n");
+      }
+
+      return Optional.of(new JwtAuthSyncRule(
+        JwtAuthRuleSettings.from(TestUtils.fromYAMLString(sb.toString()).inner(JwtAuthRuleSettings.ATTRIBUTE_NAME),
+        JwtAuthDefinitionSettingsCollection.from(settings)), 
+        MockedESContext.INSTANCE
+      ));
     } catch (Exception e) {
       e.printStackTrace();
       return Optional.empty();
@@ -329,5 +516,4 @@ public class JwtAuthRuleTests {
   private String getInvalidPublicKey() {
     return getRsaPublicKey().replace("QAB", "QAC");
   }
-
 }

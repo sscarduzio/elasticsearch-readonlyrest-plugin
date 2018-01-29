@@ -49,7 +49,7 @@ public class BlockTest {
                                    "proxy_auth: \"*\"\n" +
                                    "indices: [\"allowed-index\"]"
         ),
-        new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty()), null),
+        new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(RawSettings.empty()), null, null),
         null, null,
         null, null
       ),

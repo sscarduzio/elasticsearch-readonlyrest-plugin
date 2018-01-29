@@ -18,13 +18,31 @@ readonlyrest:
 
     - name: Valid JWT token is present
       type: allow
-      jwt_auth:
-        signature_key: "123456"
-        user_claim: user
+      jwt_auth: "jwt1"
 
     - name: Valid JWT token is present in custom header
       type: allow
-      jwt_auth:
-        header_name: x-custom-header
-        signature_key: "123456"
-        user_claim: user
+      jwt_auth: "jwt2"
+
+    - name: Valid JWT token is present with roles
+      type: allow
+      jwt_auth: 
+        name: "jwt3"
+        roles: ["role_viewer"]
+
+  jwt:
+    - name: jwt1
+      signature_key: "123456"
+      user_claim: user
+
+    - name: jwt2
+      header_name: x-custom-header
+      signature_key: "123456"
+      user_claim: user
+
+    - name: jwt3
+      signature_key: "123456789"
+      user_claim: user
+      roles_claim: roles
+
+
