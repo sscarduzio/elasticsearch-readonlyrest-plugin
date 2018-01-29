@@ -20,6 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 import org.mockito.Mockito;
+import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
@@ -27,6 +28,7 @@ import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 
 import java.util.Base64;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -38,26 +40,30 @@ import static org.mockito.Mockito.when;
 public class AuthKeyUnixRuleTests {
 
   private RuleExitResult match(String configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    try {
+      return match(configured, found, Mockito.mock(RequestContext.class));
+    } catch (Throwable t){
+      throw new Error(t);
+    }
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) {
+  private RuleExitResult match(String configured, String found, RequestContext rc) throws ExecutionException, InterruptedException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new AuthKeyUnixSyncRule(new AuthKeyUnixRuleSettings(configured), MockedESContext.INSTANCE);
+    AsyncRule r = new AuthKeyUnixAsyncRule(new AuthKeyUnixRuleSettings(configured), MockedESContext.INSTANCE);
 
-    return r.match(rc);
+    return r.match(rc).get();
   }
-  private RuleExitResult matchTwice(String configured, String found) {
+  private RuleExitResult matchTwice(String configured, String found) throws ExecutionException, InterruptedException {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new AuthKeyUnixSyncRule(new AuthKeyUnixRuleSettings(configured), MockedESContext.INSTANCE);
-    RuleExitResult res1 = r.match(rc);
-    RuleExitResult res2 = r.match(rc);
+    AsyncRule r = new AuthKeyUnixAsyncRule(new AuthKeyUnixRuleSettings(configured), MockedESContext.INSTANCE);
+    RuleExitResult res1 = r.match(rc).get();
+    RuleExitResult res2 = r.match(rc).get();
     assertTrue(res1.isMatch() == res2.isMatch());
     assertTrue(res1.getCondition().getKey() == res2.getCondition().getKey());
-    return r.match(rc);
+    return r.match(rc).get();
   }
 
   @Test
@@ -69,7 +75,7 @@ public class AuthKeyUnixRuleTests {
     assertTrue(res.isMatch());
   }
   @Test
-  public void testSimpleCached() {
+  public void testSimpleCached() throws ExecutionException, InterruptedException {
     RuleExitResult res = matchTwice(
       "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
       "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())

@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
@@ -67,10 +67,10 @@ public class UserRuleFactory {
 
     // Infinitely cached because the crypto is super heavy; the in-mem cache has salt+hashed keys for security.
     this.creators.put(
-      AuthKeyUnixSyncRule.class,
+      AuthKeyUnixRuleSettings.class,
       settings -> {
         AuthKeyUnixRuleSettings ruleSettings = (AuthKeyUnixRuleSettings) settings;
-        AuthKeyUnixSyncRule rule = new AuthKeyUnixSyncRule(ruleSettings, context);
+        AuthKeyUnixAsyncRule rule = new AuthKeyUnixAsyncRule(ruleSettings, context);
         return CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(rule, (CacheSettings)settings, context);
       }
     );

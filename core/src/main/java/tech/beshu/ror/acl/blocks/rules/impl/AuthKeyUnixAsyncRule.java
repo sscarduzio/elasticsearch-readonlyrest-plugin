@@ -30,14 +30,14 @@ import java.util.regex.Pattern;
 import static org.apache.commons.codec.digest.Crypt.crypt;
 
 
-public class AuthKeyUnixSyncRule extends AsyncAuthentication implements RuleSettings {
+public class AuthKeyUnixAsyncRule extends AsyncAuthentication {
 
   private final LoggerShim logger;
   private final AuthKeyUnixRuleSettings settings;
 
-  public AuthKeyUnixSyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
+  public AuthKeyUnixAsyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
     super(context);
-    this.logger = context.logger(AuthKeyUnixSyncRule.class);
+    this.logger = context.logger(AuthKeyUnixAsyncRule.class);
     this.settings = s;
   }
 
@@ -71,8 +71,4 @@ public class AuthKeyUnixSyncRule extends AsyncAuthentication implements RuleSett
     return CompletableFuture.completedFuture(authenticateSync( username, password));
   }
 
-  @Override
-  public String getName() {
-    return settings.getName();
-  }
 }
