@@ -34,6 +34,7 @@ import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.CacheSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
@@ -63,10 +64,17 @@ public class UserRuleFactory {
       AuthKeySha512RuleSettings.class,
       settings -> AsyncRuleAdapter.wrap(new AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
     );
+
+    // Infinitely cached because the crypto is super heavy; the in-mem cache has salt+hashed keys for security.
     this.creators.put(
-      AuthKeyUnixRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new AuthKeyUnixSyncRule((AuthKeyUnixRuleSettings) settings, context))
+      AuthKeyUnixSyncRule.class,
+      settings -> {
+        AuthKeyUnixRuleSettings ruleSettings = (AuthKeyUnixRuleSettings) settings;
+        AuthKeyUnixSyncRule rule = new AuthKeyUnixSyncRule(ruleSettings, context);
+        return CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(rule, (CacheSettings)settings, context);
+      }
     );
+
     this.creators.put(
       AuthKeyPlainTextRuleSettings.class,
       settings -> AsyncRuleAdapter.wrap(new AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context))

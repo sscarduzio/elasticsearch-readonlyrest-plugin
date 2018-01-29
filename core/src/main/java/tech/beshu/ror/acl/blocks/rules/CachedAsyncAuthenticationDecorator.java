@@ -20,6 +20,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
 import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.utils.SecureInMemCache;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
 import java.nio.charset.Charset;
@@ -31,15 +32,12 @@ import java.util.concurrent.TimeUnit;
 public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
 
   private final AsyncAuthentication underlying;
-  private final Cache<String, String> cache;
+  private final SecureInMemCache<String> cache;
 
   public CachedAsyncAuthenticationDecorator(AsyncAuthentication underlying, Duration ttl, ESContext context) {
     super(context);
     this.underlying = underlying;
-    this.cache = CacheBuilder.newBuilder()
-      .concurrencyLevel(Runtime.getRuntime().availableProcessors())
-      .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
-      .build();
+    this.cache =new SecureInMemCache<>(ttl);
   }
 
   public static AsyncAuthentication wrapInCacheIfCacheIsEnabled(AsyncAuthentication authentication,

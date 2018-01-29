@@ -17,42 +17,34 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.cache.Cache;
-import cz.seznam.euphoria.shaded.guava.com.google.common.cache.CacheBuilder;
-import tech.beshu.ror.acl.blocks.rules.BasicAuthentication;
+import tech.beshu.ror.acl.blocks.rules.AsyncAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
 
-import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
-import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.apache.commons.codec.digest.Crypt.crypt;
 
 
-public class AuthKeyUnixSyncRule extends BasicAuthentication {
+public class AuthKeyUnixSyncRule extends AsyncAuthentication implements RuleSettings {
 
   private final LoggerShim logger;
   private final AuthKeyUnixRuleSettings settings;
-  private final Cache<AbstractMap.SimpleEntry<String, String>, String> cachedCrypt =
-    CacheBuilder.newBuilder().maximumSize(5000).concurrencyLevel(Runtime.getRuntime().availableProcessors()).build();
 
   public AuthKeyUnixSyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
-    super(s, context);
+    super(context);
     this.logger = context.logger(AuthKeyUnixSyncRule.class);
     this.settings = s;
   }
 
-  @Override
-  protected boolean authenticate(String configuredAuthKey, BasicAuth basicAuth) {
+  public boolean authenticateSync( String username, String password) {
     try {
-      String decodedProvided = new String(Base64.getDecoder().decode(basicAuth.getBase64Value()), StandardCharsets.UTF_8);
-      decodedProvided = roundHash(configuredAuthKey.split(":"), decodedProvided.split(":"));
-      return decodedProvided.equals(configuredAuthKey);
+      String decodedProvided = roundHash(settings.getAuthKey().split(":"), new String[]{username, password});
+      return decodedProvided.equals(settings.getAuthKey());
     } catch (Throwable e) {
       logger.warn("Exception while authentication", e);
       return false;
@@ -64,19 +56,23 @@ public class AuthKeyUnixSyncRule extends BasicAuthentication {
     Matcher m = p.matcher(key[1]);
     String result = "";
     if (m.find()) {
-      AbstractMap.SimpleEntry<String, String> cryptArgs = new AbstractMap.SimpleEntry<>(login[1], m.group(1));
-      String cryptRes = cachedCrypt.getIfPresent(cryptArgs);
-      if (cryptRes == null) {
-        cryptRes = crypt(cryptArgs.getKey(), cryptArgs.getValue());
-        cachedCrypt.put(cryptArgs, cryptRes);
-      }
-      result = login[0] + ":" + cryptRes;
+      result = login[0] + ":" + crypt(login[1], m.group(1));
     }
     return result;
   }
 
   @Override
   public String getKey() {
+    return settings.getName();
+  }
+
+  @Override
+  protected CompletableFuture<Boolean> authenticate(String username, String password) {
+    return CompletableFuture.completedFuture(authenticateSync( username, password));
+  }
+
+  @Override
+  public String getName() {
     return settings.getName();
   }
 }
