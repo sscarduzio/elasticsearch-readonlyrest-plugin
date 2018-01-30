@@ -35,6 +35,7 @@ public class SecureInMemCache<T extends Serializable> {
   public SecureInMemCache(Duration ttl) {
     this.cache = CacheBuilder.newBuilder()
       .concurrencyLevel(Runtime.getRuntime().availableProcessors())
+      .maximumSize(5000)
       .expireAfterWrite(ttl.toMillis(), TimeUnit.MILLISECONDS)
       .build();
   }
