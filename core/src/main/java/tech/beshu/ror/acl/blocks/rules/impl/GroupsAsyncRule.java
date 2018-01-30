@@ -77,6 +77,13 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
       // Boolean decision
       (uSettings, ruleExit) -> {
+        // Let run some rules until you discover the logged in user is discovered
+        // but as soon as we know it, let's skip user settings that we know are not ours
+        Boolean rightSetting = rc.getLoggedInUser().map(liu -> liu.getId()).filter(x-> uSettings.getUsername().equals(x)).isPresent();
+        if(!rightSetting && rc.getLoggedInUser().isPresent()){
+          return false;
+        }
+
         Set<String> groupsOfCurrentBlock = Sets.intersection(resolvedGroups, uSettings.getGroups());
 
         if (ROR_KIBANA_METADATA_ENABLED) {
