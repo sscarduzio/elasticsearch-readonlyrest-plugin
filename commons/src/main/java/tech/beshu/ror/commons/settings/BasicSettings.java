@@ -44,6 +44,7 @@ public class BasicSettings {
   public static final String VERBOSITY = "verbosity";
   public static final String AUDIT_COLLECTOR = "audit_collector";
   public static final String CUSTOM_AUDIT_SERIALIZER = "audit_serializer";
+  public static final String CACHE_HASHING_ALGO = "cache_hashing_algo";
 
   // SSL
   public static final String PREFIX_SSL = "ssl.";
@@ -67,6 +68,7 @@ public class BasicSettings {
   private final Path configPath;
   private final RawSettings raw_global;
   private final Optional<String> customAuditSerializer;
+  private final Optional<String> cacheHashingAlgo;
   private Optional<String> keystorePass;
   private Optional<String> keyPass;
   private Optional<List<String>> allowedSSLCiphers = Optional.empty();
@@ -90,6 +92,7 @@ public class BasicSettings {
       .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
     this.customAuditSerializer = raw.opt(CUSTOM_AUDIT_SERIALIZER);
+    this.cacheHashingAlgo = raw.stringOpt(CACHE_HASHING_ALGO);
 
     // SSL
     Optional<RawSettings> sslSettingsOpt = raw.innerOpt(PREFIX_SSL.replaceFirst(".$", ""));
@@ -175,6 +178,7 @@ public class BasicSettings {
   public Optional<String> getCustomAuditSerializer() {
     return customAuditSerializer;
   }
+  public Optional<String> getCacheHashingAlgo() {return cacheHashingAlgo;}
 
   public Boolean isPromptForBasicAuth() {
     return promptForBasicAuth;

@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.acl.blocks.rules;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.hash.Hashing;
+
+import cz.seznam.euphoria.shaded.guava.com.google.common.cache.Cache;
+import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.utils.SecureInMemCache;
 import tech.beshu.ror.settings.rules.CacheSettings;
@@ -26,18 +26,24 @@ import tech.beshu.ror.settings.rules.CacheSettings;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
 
   private final AsyncAuthentication underlying;
-  private final SecureInMemCache<String> cache;
+  private final Cache<String, String> cache;
 
   public CachedAsyncAuthenticationDecorator(AsyncAuthentication underlying, Duration ttl, ESContext context) {
     super(context);
     this.underlying = underlying;
-    this.cache =new SecureInMemCache<>(ttl);
+    Optional<String> algo = context.getSettings().getCacheHashingAlgo();
+    if (algo.isPresent()) {
+      this.cache = new SecureInMemCache<>(ttl, algo.get());
+    }
+    else {
+      this.cache = SecureInMemCache.createInsecureCache(ttl);
+    }
   }
 
   public static AsyncAuthentication wrapInCacheIfCacheIsEnabled(AsyncAuthentication authentication,

@@ -32,6 +32,7 @@ import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +89,11 @@ public class AuthMethodCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeyUnixSettingsCreator() {
-    return settings -> AuthKeyUnixRuleSettings.from(settings.stringReq(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME));
+    return settings -> AuthKeyUnixRuleSettings.from(
+      settings.stringReq(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME),
+      Duration.ofSeconds(settings.intOpt(AuthKeyUnixRuleSettings.CACHE)
+                           .orElse(AuthKeyUnixRuleSettings.DEFAULT_CACHE_TTL))
+    );
   }
 
   @SuppressWarnings("unchecked")
@@ -113,7 +118,7 @@ public class AuthMethodCreatorsRegistry {
     return settings -> {
       Object conf = settings.req(JwtAuthRuleSettings.ATTRIBUTE_NAME);
       return conf instanceof String
-        ? JwtAuthRuleSettings.from((String)conf, jwtAuthDefinitionSettingsCollection)
+        ? JwtAuthRuleSettings.from((String) conf, jwtAuthDefinitionSettingsCollection)
         : JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf), jwtAuthDefinitionSettingsCollection);
     };
   }

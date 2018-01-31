@@ -21,13 +21,18 @@ import java.time.Duration;
 public class AuthKeyUnixRuleSettings extends AuthKeyRuleSettings implements CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "auth_key_unix";
+  public static final String CACHE = "cache_ttl_in_sec";
 
-  public AuthKeyUnixRuleSettings(String authKey) {
+  public static final Integer DEFAULT_CACHE_TTL = 10;
+  private final Duration ttl;
+
+  public AuthKeyUnixRuleSettings(String authKey, Duration ttl) {
     super(authKey);
+    this.ttl = ttl;
   }
 
-  public static AuthKeyUnixRuleSettings from(String authKey) {
-    return new AuthKeyUnixRuleSettings(authKey);
+  public static AuthKeyUnixRuleSettings from(String authKey, Duration ttl) {
+    return new AuthKeyUnixRuleSettings(authKey, ttl);
   }
 
   @Override
@@ -37,6 +42,6 @@ public class AuthKeyUnixRuleSettings extends AuthKeyRuleSettings implements Cach
 
   @Override
   public Duration getCacheTtl() {
-    return Duration.ofDays(Long.MAX_VALUE);
+    return ttl;
   }
 }
