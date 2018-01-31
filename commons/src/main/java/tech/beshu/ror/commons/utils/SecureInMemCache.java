@@ -26,7 +26,6 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.hash.HashFunction;
 import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing;
 import cz.seznam.euphoria.shaded.guava.com.google.common.io.BaseEncoding;
 import cz.seznam.euphoria.shaded.guava.com.google.common.primitives.Bytes;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -108,7 +107,7 @@ public class SecureInMemCache<K, T> implements Cache<K, T> {
 
   @Override
   public ImmutableMap<K, T> getAllPresent(Iterable<?> keys) {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   public void put(K key, T value) {
@@ -117,7 +116,7 @@ public class SecureInMemCache<K, T> implements Cache<K, T> {
 
   @Override
   public void putAll(Map<? extends K, ? extends T> m) {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -147,7 +146,7 @@ public class SecureInMemCache<K, T> implements Cache<K, T> {
 
   @Override
   public ConcurrentMap<K, T> asMap() {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   @Override
