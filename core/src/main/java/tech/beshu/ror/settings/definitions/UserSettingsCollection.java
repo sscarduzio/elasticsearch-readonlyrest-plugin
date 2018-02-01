@@ -17,6 +17,7 @@
 package tech.beshu.ror.settings.definitions;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.AuthMethodCreatorsRegistry;
@@ -35,7 +36,8 @@ public class UserSettingsCollection {
   private final Map<String, UserSettings> usersSettingsMap;
 
   private UserSettingsCollection(List<UserSettings> userSettings) {
-    this.usersSettingsMap = seq(userSettings).toMap(UserSettings::getUsername, Function.identity());
+    this.usersSettingsMap= Maps.newLinkedHashMap();
+    userSettings.forEach(x -> this.usersSettingsMap.put(x.getUsername(), x));
   }
 
   @SuppressWarnings("unchecked")
