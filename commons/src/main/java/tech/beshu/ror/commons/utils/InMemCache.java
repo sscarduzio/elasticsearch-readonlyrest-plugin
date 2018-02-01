@@ -39,7 +39,6 @@ public class InMemCache {
   }
 
   public boolean isHit(String key, String value) {
-    System.out.println("check if hit: " + key + ":" + value + " -> "  + cache.getIfPresent(hasher.hash(key)) == hasher.hash(value));
-    return cache.getIfPresent(hasher.hash(key)) == hasher.hash(value);
+    return hasher.hash(value).equals(cache.getIfPresent(hasher.hash(key)));
   }
 }
