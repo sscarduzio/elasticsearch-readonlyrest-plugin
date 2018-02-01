@@ -19,19 +19,23 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
+import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -47,15 +51,19 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
     !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
   private static final String AVAILABLE_GROUPS_HEADER = "x-ror-available-groups";
   private final GroupsRuleSettings settings;
-  private final UserFactory userFactory;
+  private final Map<String, User> users;
+
 
   public GroupsAsyncRule(GroupsRuleSettings s, UserFactory userFactory) {
     this.settings = s;
-    this.userFactory = userFactory;
+    this.users = settings.getUsersSettings().stream()
+      .map(uSettings -> userFactory.getUser(uSettings))
+      .collect(Collectors.toMap(User::getUsername, Function.identity()));
   }
 
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
+
     // All configured groups, contextualized
     Set<String> resolvedGroups = settings.getGroups().stream()
       .map(g -> g.getValue(rc))
@@ -66,23 +74,19 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
 
       // Iterator
-      settings.getUsersSettings().iterator(),
+      settings.getUsersSettings().stream().filter(us -> !Sets.intersection(us.getGroups(), resolvedGroups).isEmpty()).iterator(),
 
       // Async map
-      uSettings -> userFactory.getUser(uSettings).getAuthKeyRule().match(rc)
-        .exceptionally(e -> {
-          e.printStackTrace();
-          return NO_MATCH;
-        }),
+      uSettings -> {
+        return users.get(uSettings.getUsername()).getAuthKeyRule().match(rc)
+          .exceptionally(e -> {
+            e.printStackTrace();
+            return NO_MATCH;
+          });
+      },
 
       // Boolean decision
       (uSettings, ruleExit) -> {
-        // Let run some rules until you discover the logged in user is discovered
-        // but as soon as we know it, let's skip user settings that we know are not ours
-        Boolean rightSetting = rc.getLoggedInUser().map(liu -> liu.getId()).filter(x-> uSettings.getUsername().equals(x)).isPresent();
-        if(!rightSetting && rc.getLoggedInUser().isPresent()){
-          return false;
-        }
 
         Set<String> groupsOfCurrentBlock = Sets.intersection(resolvedGroups, uSettings.getGroups());
 
