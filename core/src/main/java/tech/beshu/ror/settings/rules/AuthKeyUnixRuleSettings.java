@@ -21,7 +21,7 @@ import java.time.Duration;
 public class AuthKeyUnixRuleSettings extends AuthKeyRuleSettings implements CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "auth_key_unix";
-  public static final String CACHE = "cache_ttl_in_sec";
+  public static final String ATTRIBUTE_AUTH_CACHE_TTL = "auth_cache_ttl_sec";
 
   public static final Integer DEFAULT_CACHE_TTL = 10;
   private final Duration ttl;

@@ -128,7 +128,7 @@ public class MockedESContext extends AbstractESContext {
 
     BasicSettings bs = Mockito.mock(BasicSettings.class);
     Mockito.when(bs.getCustomAuditSerializer()).thenReturn(Optional.ofNullable(customSerializer));
-    Mockito.when(bs.getCacheHashingAlgo()).thenReturn(Optional.ofNullable("none"));
+    Mockito.when(bs.getCacheHashingAlgo()).thenReturn("none");
     return bs;
   }
 

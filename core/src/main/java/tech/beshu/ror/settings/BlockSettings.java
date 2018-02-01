@@ -26,6 +26,7 @@ import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
 
@@ -40,10 +41,12 @@ public class BlockSettings {
   private static final String NAME = "name";
   private static final String POLICY = "type";
   private static final String VERBOSITY = "verbosity";
-
+  public static final Set<String> ruleModifiersToSkip = Sets.newHashSet(
+    NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
+    AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
+  );
   private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
-
   private final String name;
   private final BlockPolicy policy;
   private final List<RuleSettings> rules;
@@ -80,9 +83,7 @@ public class BlockSettings {
       .map(value -> Verbosity.fromString(value)
         .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
       .orElse(DEFAULT_VERBOSITY);
-    Set<String> ruleModifiersToSkip = Sets.newHashSet(
-      NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER
-    );
+
     return new BlockSettings(
       name,
       policy,

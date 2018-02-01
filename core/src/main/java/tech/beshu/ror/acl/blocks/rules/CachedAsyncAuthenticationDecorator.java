@@ -17,33 +17,28 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.cache.Cache;
-import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing;
 import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.utils.SecureInMemCache;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.InMemCache;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
-import java.nio.charset.Charset;
 import java.time.Duration;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
 
   private final AsyncAuthentication underlying;
-  private final Cache<String, String> cache;
+  private final InMemCache cache;
+  private final LoggerShim logger;
 
   public CachedAsyncAuthenticationDecorator(AsyncAuthentication underlying, Duration ttl, ESContext context) {
     super(context);
     this.underlying = underlying;
-    Optional<String> algo = context.getSettings().getCacheHashingAlgo();
-    if (algo.isPresent()) {
-      this.cache = new SecureInMemCache<>(ttl, algo.get());
-    }
-    else {
-      this.cache = SecureInMemCache.createInsecureCache(ttl);
-    }
+    this.logger = context.logger(getClass());
+    String algo = context.getSettings().getCacheHashingAlgo();
+    InMemCache sCache = new InMemCache(ttl, algo);
+    logger.info("Initialized " + underlying.getKey() + " with cache (hashing algorithm " + sCache.getAlgo() + ", TTL: " + ttl.getSeconds() + "s)");
+    this.cache = sCache;
   }
 
   public static AsyncAuthentication wrapInCacheIfCacheIsEnabled(AsyncAuthentication authentication,
@@ -54,24 +49,20 @@ public class CachedAsyncAuthenticationDecorator extends AsyncAuthentication {
       : new CachedAsyncAuthenticationDecorator(authentication, settings.getCacheTtl(), context);
   }
 
-  private static String hashPassword(String password) {
-    return Hashing.sha256().hashString(password, Charset.defaultCharset()).toString();
-  }
-
   @Override
   protected CompletableFuture<Boolean> authenticate(String user, String password) {
-    String hashedPassword = cache.getIfPresent(user);
-    String providedHashedPassword = hashPassword(password);
-    if (hashedPassword == null) {
+
+    boolean hit = cache.isHit(user, password);
+    if (!hit) {
       return underlying.authenticate(user, password)
         .thenApply(result -> {
           if (result) {
-            cache.put(user, providedHashedPassword);
+            cache.put(user, password);
           }
           return result;
         });
     }
-    return CompletableFuture.completedFuture(Objects.equals(hashedPassword, providedHashedPassword));
+    return CompletableFuture.completedFuture(hit);
   }
 
   @Override

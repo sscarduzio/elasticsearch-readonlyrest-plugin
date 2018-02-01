@@ -55,17 +55,6 @@ public class AuthKeyUnixRuleTests {
 
     return r.match(rc).get();
   }
-  private RuleExitResult matchTwice(String configured, String found) throws ExecutionException, InterruptedException {
-    RequestContext rc = Mockito.mock(RequestContext.class);
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
-
-    AsyncRule r = new AuthKeyUnixAsyncRule(new AuthKeyUnixRuleSettings(configured, Duration.ZERO), MockedESContext.INSTANCE);
-    RuleExitResult res1 = r.match(rc).get();
-    RuleExitResult res2 = r.match(rc).get();
-    assertTrue(res1.isMatch() == res2.isMatch());
-    assertTrue(res1.getCondition().getKey() == res2.getCondition().getKey());
-    return r.match(rc).get();
-  }
 
   @Test
   public void testSimple() {
@@ -75,12 +64,5 @@ public class AuthKeyUnixRuleTests {
     );
     assertTrue(res.isMatch());
   }
-  @Test
-  public void testSimpleCached() throws ExecutionException, InterruptedException {
-    RuleExitResult res = matchTwice(
-      "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
-      "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())
-    );
-    assertTrue(res.isMatch());
-  }
+
 }

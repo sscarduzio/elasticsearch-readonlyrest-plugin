@@ -91,7 +91,7 @@ public class AuthMethodCreatorsRegistry {
   private Function<RawSettings, AuthKeyProviderSettings> authKeyUnixSettingsCreator() {
     return settings -> AuthKeyUnixRuleSettings.from(
       settings.stringReq(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME),
-      Duration.ofSeconds(settings.intOpt(AuthKeyUnixRuleSettings.CACHE)
+      Duration.ofSeconds(settings.intOpt(AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL)
                            .orElse(AuthKeyUnixRuleSettings.DEFAULT_CACHE_TTL))
     );
   }

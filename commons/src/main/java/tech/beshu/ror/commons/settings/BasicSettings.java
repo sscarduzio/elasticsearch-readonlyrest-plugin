@@ -178,7 +178,7 @@ public class BasicSettings {
   public Optional<String> getCustomAuditSerializer() {
     return customAuditSerializer;
   }
-  public Optional<String> getCacheHashingAlgo() {return cacheHashingAlgo;}
+  public String getCacheHashingAlgo() {return cacheHashingAlgo.orElse("none");}
 
   public Boolean isPromptForBasicAuth() {
     return promptForBasicAuth;

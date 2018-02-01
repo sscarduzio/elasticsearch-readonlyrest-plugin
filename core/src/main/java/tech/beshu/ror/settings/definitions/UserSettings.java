@@ -22,6 +22,7 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.AuthMethodCreatorsRegistry;
+import tech.beshu.ror.settings.BlockSettings;
 
 import java.util.List;
 import java.util.Set;
@@ -41,7 +42,7 @@ public class UserSettings {
     this.username = settings.stringReq(USERNAME);
     this.groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     List<String> attributes = settings.getKeys().stream()
-      .filter(k -> !Sets.newHashSet(USERNAME, GROUPS).contains(k))
+      .filter(k -> !Sets.newHashSet(USERNAME, GROUPS).contains(k) && !BlockSettings.ruleModifiersToSkip.contains(k))
       .collect(Collectors.toList());
     if (attributes.size() == 0) {
       throw new SettingsMalformedException("No authentication method defined for user ['" + username + "']");
