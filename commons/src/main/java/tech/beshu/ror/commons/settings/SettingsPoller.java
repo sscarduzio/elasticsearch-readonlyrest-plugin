@@ -41,6 +41,12 @@ public class SettingsPoller {
     this.intervalSeconds = intervalSeconds;
     this.subsequentAttemptsIntervalSeconds = subsequentAttemptsIntervalSeconds;
     this.forever = forever;
+
+    // Shut this down otherwise windows won't kill the process.
+    context.getShutDownObservable().addObserver((o, arg) -> {
+      context.logger(this.getClass()).info("Shutting down settings poller executor...");
+      if (!executor.isShutdown()) executor.shutdown();
+    });
   }
 
   public void poll() {
