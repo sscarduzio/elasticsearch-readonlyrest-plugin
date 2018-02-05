@@ -48,9 +48,9 @@ public class KibanaAccessSyncRule extends SyncRule {
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
     "indices:admin/create",
     "indices:admin/mapping/put",
-    "indices:data/write/delete",
+    "indices:data/write/delete*",
     "indices:data/write/index",
-    "indices:data/write/update",
+    "indices:data/write/update*",
     "indices:data/write/bulk*"
   ));
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
