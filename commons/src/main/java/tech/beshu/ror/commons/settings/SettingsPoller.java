@@ -54,7 +54,6 @@ public class SettingsPoller {
 
     // When ReloadableSettings is created at boot time, wait the cluster to stabilise and read in-index settings.
 
-
     Runnable job = () -> {
       if (obs.isClusterReady()) {
         logger.debug("[CLUSTERWIDE SETTINGS] Cluster is ready!");

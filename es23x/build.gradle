@@ -121,11 +121,18 @@ task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) 
                     'name'         : pluginName,
                     'pluginVersion': project.properties['pluginVersion'],
                     'esVersion'    : project.properties['esVersion']
+
             ]
     ])
 }
 
-task ror(type: Zip, dependsOn: [cleanOldData, jar, resolvePluginDescriptorTemplate]) {
+task resolvePluginSecurityPolicyFile(type: Copy, dependsOn: resolvePluginDescriptorTemplate) {
+    outputs.upToDateWhen { false }
+    from 'plugin-metadata'
+    into 'build/tmp/' + pluginFullName
+}
+
+task ror(type: Zip, dependsOn: [cleanOldData, jar, resolvePluginSecurityPolicyFile]) {
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('elasticsearch') {
