@@ -42,7 +42,7 @@ public class ActionsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (matcher.getMatchers().contains("*") || matcher.match(rc.getAction())) {
+    if (settings.getActions().contains("*") || matcher.match(rc.getAction())) {
       return MATCH;
     }
     logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");
