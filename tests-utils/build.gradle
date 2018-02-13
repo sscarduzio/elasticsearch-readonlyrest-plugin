@@ -35,6 +35,9 @@ dependencies {
     // compile 'org.testcontainers:testcontainers:1.4.3'
     compile 'log4j:log4j:1.2.17'
     compile 'org.slf4j:slf4j-nop:1.7.25'
+    compile 'commons-lang:commons-lang:2.6'
+    compile 'commons-io:commons-io:2.6'
+
 }
 
 license {
