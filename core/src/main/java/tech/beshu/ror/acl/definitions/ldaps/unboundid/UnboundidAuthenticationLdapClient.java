@@ -27,6 +27,8 @@ import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -63,18 +65,20 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
   }
 
   private Boolean authenticate(LdapUser user, String password) {
-    LDAPConnection ldapConnection = null;
-    try {
-      ldapConnection = connection.getConnectionPool().getConnection();
-      BindResult result = ldapConnection.bind(new SimpleBindRequest(user.getDN(), password));
-      return ResultCode.SUCCESS.equals(result.getResultCode());
-    } catch (LDAPException e) {
-      logger.error("LDAP authenticate operation failed: " + e.getMessage());
-      return false;
-    } finally {
-      if (ldapConnection != null) {
-        connection.getConnectionPool().releaseAndReAuthenticateConnection(ldapConnection);
+    return AccessController.doPrivileged((PrivilegedAction<Boolean>) () -> {
+      LDAPConnection ldapConnection = null;
+      try {
+        ldapConnection = connection.getConnectionPool().getConnection();
+        BindResult result = ldapConnection.bind(new SimpleBindRequest(user.getDN(), password));
+        return ResultCode.SUCCESS.equals(result.getResultCode());
+      } catch (LDAPException e) {
+        logger.error("LDAP authenticate operation failed: " + e.getMessage());
+        return false;
+      } finally {
+        if (ldapConnection != null) {
+          connection.getConnectionPool().releaseAndReAuthenticateConnection(ldapConnection);
+        }
       }
-    }
+    });
   }
 }
