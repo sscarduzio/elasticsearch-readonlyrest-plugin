@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.mocks;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -111,7 +110,7 @@ public class MockedESContext extends AbstractESContext {
 
   @Override
   public void submit(String indexName, String documentId, String jsonRecord) {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   public HttpClient mkHttpClient() {
