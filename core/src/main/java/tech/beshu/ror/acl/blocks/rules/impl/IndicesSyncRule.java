@@ -54,7 +54,7 @@ public class IndicesSyncRule extends SyncRule {
   public RuleExitResult match(RequestContext rc) {
 
     logger.debug("Stage -1");
-    if (!rc.involvesIndices()) {
+    if (!rc.involvesIndices() || matcherNoVar.getMatchers().contains("*")) {
       return MATCH;
     }
 
