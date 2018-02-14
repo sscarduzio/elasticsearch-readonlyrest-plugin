@@ -20,7 +20,6 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 
 import java.util.concurrent.CompletableFuture;
@@ -41,8 +40,13 @@ public class AuthKeyUnixAsyncRule extends AsyncAuthentication {
     this.settings = s;
   }
 
-  public boolean authenticateSync( String username, String password) {
+  public boolean authenticateSync(String username, String password) {
+
     try {
+      // Fast exit if the username is wrong
+      if (!settings.getAuthKey().startsWith(username + ":")) {
+        return false;
+      }
       String decodedProvided = roundHash(settings.getAuthKey().split(":"), new String[]{username, password});
       return decodedProvided.equals(settings.getAuthKey());
     } catch (Throwable e) {
@@ -68,7 +72,7 @@ public class AuthKeyUnixAsyncRule extends AsyncAuthentication {
 
   @Override
   protected CompletableFuture<Boolean> authenticate(String username, String password) {
-    return CompletableFuture.completedFuture(authenticateSync( username, password));
+    return CompletableFuture.completedFuture(authenticateSync(username, password));
   }
 
 }
