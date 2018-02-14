@@ -24,6 +24,7 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
@@ -46,8 +47,6 @@ import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.threadpool.ThreadPool;
-import org.reflections.ReflectionUtils;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.shims.request.RequestInfoShim;
@@ -206,6 +205,12 @@ public class RequestInfo implements RequestInfoShim {
     String[] indices = new String[0];
     ActionRequest ar = actionRequest;
 
+    // The most common case first
+    if (ar instanceof IndexRequest) {
+      IndexRequest ir = (IndexRequest) ar;
+      indices = ir.indices();
+    }
+
     // CompositeIndicesRequests
     if (ar instanceof MultiGetRequest) {
       MultiGetRequest cir = (MultiGetRequest) ar;
@@ -214,6 +219,7 @@ public class RequestInfo implements RequestInfoShim {
         indices = ObjectArrays.concat(indices, ir.indices(), String.class);
       }
     }
+
     else if (ar instanceof MultiSearchRequest) {
       MultiSearchRequest cir = (MultiSearchRequest) ar;
 
@@ -221,6 +227,7 @@ public class RequestInfo implements RequestInfoShim {
         indices = ObjectArrays.concat(indices, ir.indices(), String.class);
       }
     }
+
     else if (ar instanceof MultiTermVectorsRequest) {
       MultiTermVectorsRequest cir = (MultiTermVectorsRequest) ar;
 
@@ -228,10 +235,7 @@ public class RequestInfo implements RequestInfoShim {
         indices = ObjectArrays.concat(indices, ir.indices(), String.class);
       }
     }
-    else if (ar instanceof DeleteRequest) {
-      DeleteRequest ir = (DeleteRequest) ar;
-      indices = ir.indices();
-    }
+
     else if (ar instanceof BulkRequest) {
       BulkRequest cir = (BulkRequest) ar;
 
@@ -255,19 +259,21 @@ public class RequestInfo implements RequestInfoShim {
         indices = ObjectArrays.concat(indices, docIndices, String.class);
       }
     }
-    else if (ar instanceof IndexRequest) {
-      IndexRequest ir = (IndexRequest) ar;
-      indices = ir.indices();
-    }
-    else if (ar instanceof DeleteRequest) {
-      DeleteRequest ir = (DeleteRequest) ar;
-      indices = ir.indices();
-    }
+
+    // CompositeIndicesRequests
     else if (ar instanceof CompositeIndicesRequest) {
       logger.error(
         "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
           + ar.getClass().getSimpleName());
     }
+
+    // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
+    else if (ar instanceof RestoreSnapshotRequest) {
+      RestoreSnapshotRequest rsr = (RestoreSnapshotRequest) ar;
+      indices = rsr.indices();
+    }
+
+    // Last resort
     else {
       indices = extractStringArrayFromPrivateMethod("indices", ar, context);
       if (indices == null || indices.length == 0) {
@@ -444,7 +450,10 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean involvesIndices() {
-    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
+    return actionRequest instanceof IndicesRequest ||
+      actionRequest instanceof CompositeIndicesRequest ||
+      // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
+      actionRequest instanceof RestoreSnapshotRequest;
   }
 
   @Override

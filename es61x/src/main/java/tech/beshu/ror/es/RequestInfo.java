@@ -23,12 +23,10 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.IndicesRequest;
-import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
-import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
@@ -44,6 +42,7 @@ import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -254,8 +253,8 @@ public class RequestInfo implements RequestInfoShim {
           + ar.getClass().getSimpleName());
     }
 
-    // Buggy cases here
-    else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
+    // Buggy cases here onwards
+    else if (ar instanceof ReindexRequest) {
       // Using reflection otherwise need to create another sub-project
       try {
         SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(), "getSearchRequest");
@@ -267,9 +266,9 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
-    else if (ar instanceof RestoreSnapshotRequest){
+    else if (ar instanceof RestoreSnapshotRequest) {
       RestoreSnapshotRequest rsr = (RestoreSnapshotRequest) ar;
-       indices = rsr.indices();
+      indices = rsr.indices();
     }
 
     // Last resort

@@ -22,6 +22,7 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
@@ -63,7 +64,6 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static tech.beshu.ror.commons.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
-import static tech.beshu.ror.commons.utils.ReflecUtils.invokeMethodCached;
 
 public class RequestInfo implements RequestInfoShim {
 
@@ -205,6 +205,12 @@ public class RequestInfo implements RequestInfoShim {
     String[] indices = new String[0];
     ActionRequest ar = actionRequest;
 
+    // The most common case first
+    if (ar instanceof IndexRequest) {
+      IndexRequest ir = (IndexRequest) ar;
+      indices = ir.indices();
+    }
+
     // CompositeIndicesRequests
     if (ar instanceof MultiGetRequest) {
       MultiGetRequest cir = (MultiGetRequest) ar;
@@ -235,25 +241,28 @@ public class RequestInfo implements RequestInfoShim {
       }
     }
 
-    else if (ar instanceof IndicesRequest) {
-      IndicesRequest ir = (IndicesRequest) ar;
-      indices = ir.indices();
-    }
 
-    else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
-      // Using reflection otherwise need to create another sub-project
-      try {
-        SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(), "getSearchRequest");
-        IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
-        indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
+//    else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
+//      // Using reflection otherwise need to create another sub-project
+//      try {
+//        SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(), "getSearchRequest");
+//        IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
+//        indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
+//      } catch (Exception e) {
+//        e.printStackTrace();
+//      }
+//    }
+
     else if (ar instanceof CompositeIndicesRequest) {
       logger.error(
         "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
           + ar.getClass().getSimpleName());
+    }
+
+    // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
+    else if (ar instanceof RestoreSnapshotRequest) {
+      RestoreSnapshotRequest rsr = (RestoreSnapshotRequest) ar;
+      indices = rsr.indices();
     }
 
     else {
@@ -465,7 +474,10 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean involvesIndices() {
-    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
+    return actionRequest instanceof IndicesRequest ||
+      actionRequest instanceof CompositeIndicesRequest ||
+      // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
+      actionRequest instanceof RestoreSnapshotRequest;
   }
 
   @Override
