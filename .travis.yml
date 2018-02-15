@@ -27,9 +27,6 @@ deploy:
     tags: false
 
 env:
-  global:
-    - GH_USER_EMAIL=scarduzio+travisci@gmail.com
-    - GH_USER_NAME=Travis CI
   - ROR_TASK="license"
   - ROR_TASK="unit"
   - ROR_TASK="integration"
