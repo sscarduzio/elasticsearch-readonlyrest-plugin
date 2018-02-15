@@ -28,7 +28,7 @@ import static org.junit.Assert.assertEquals;
 public class LdapAuthenticationRuleSettingsTests {
 
   @Test
-  public void testRuleSettginsSuccessfulCreation() {
+  public void testRuleSettingsSuccessfulCreation() {
     LdapAuthenticationRuleSettings settings = LdapAuthenticationRuleSettings.from(
       TestUtils.fromYAMLString("" +
                                  "ldap_authentication:\n" +
