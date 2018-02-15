@@ -40,6 +40,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
     "indices:admin/exists",
     "indices:admin/mappings/fields/get*",
+    "indices:admin/mappings/get*",
     "indices:admin/validate/query",
     "indices:admin/get",
     "indices:admin/refresh*",
