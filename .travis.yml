@@ -29,7 +29,11 @@ deploy:
 env:
   - ROR_TASK="license"
   - ROR_TASK="unit"
-  - ROR_TASK="integration"
+  - ROR_TASK="integration_es61x"
+  - ROR_TASK="integration_es60x"
+  - ROR_TASK="integration_es53x"
+  - ROR_TASK="integration_es52x"
+  - ROR_TASK="integration_es51x"
   - ROR_TASK="package"
 
 before_script:
