@@ -8,7 +8,7 @@ echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 export TERM=dumb
 
 
-if [[ TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then
 
     echo  ">>> Check all license headers are in place"
     ./gradlew license
@@ -16,14 +16,14 @@ if [[ TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then
 fi
 
 
-if [[ TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
 
     echo ">>> Running unit tests.."
     ./gradlew --stacktrace test ror
 
 fi
 
-if [[ TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration" ]]; then
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration" ]]; then
 
     echo ">>> es61x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es61x' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -49,7 +49,7 @@ if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; the
 fi
 
 
-if [[ TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
