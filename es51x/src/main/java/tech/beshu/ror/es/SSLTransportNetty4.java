@@ -118,6 +118,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
+      if(!basicSettings.isSSLEnabled()) {
+        return;
+      }
       SSLEngine eng = sslContext.newEngine(ch.alloc());
 
       basicSettings.getAllowedSSLProtocols()
