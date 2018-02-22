@@ -429,17 +429,6 @@ As usual, the cache behaviour can be defined at service level or/and at rule lev
 
 **For other use cases and finer access control** have a look at the official documentation to see [the full list of supported rules](https://readonlyrest.com/documentation)
 
-### Important!
-Before going to production, read this.
-
-#### disallow explicit indices 
-When you want to restrict access to certain indices, in order to prevent the user from overriding the index which has been specified in the URL, add this setting to the config.yml file:
-
-```yml
-rest.action.multi.allow_explicit_index: false
-```
-
-The default value is true, but when set to false, Elasticsearch will reject requests that have an explicit index specified in the request body.
 
 #### Use hashed credentials
 Plain text `auth_key` is is great for testing, but remember to replace it with [`auth_key_sha256`](https://readonlyrest.com/documentation)! 
