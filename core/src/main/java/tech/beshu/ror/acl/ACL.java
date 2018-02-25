@@ -81,8 +81,12 @@ public class ACL {
             logger.info("ADDING BLOCK:\t" + block.toString());
             return block;
           } catch (Throwable t) {
-            logger.error("Impossible to add block to ACL: " + blockSettings.getName() +
+            logger.error("> Impossible to add block to ACL: " + blockSettings.getName() +
                            " Reason: [" + t.getClass().getSimpleName() + "] " + t.getMessage(), t);
+            t.printStackTrace();
+            if(t.getCause() != null){
+              logger.error("caused by " + t.getCause().getClass().getSimpleName() + " " + t.getCause().getMessage());
+            }
             return null;
           }
         })
