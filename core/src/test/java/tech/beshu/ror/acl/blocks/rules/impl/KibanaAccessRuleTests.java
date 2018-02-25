@@ -149,7 +149,20 @@ public class KibanaAccessRuleTests {
 
     System.out.println("trying " + action + " as RO");
     TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
-    TestCase.assertFalse(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
+  }
+
+  @Test
+  public void testRONonStrictOperations2() {
+    String customKibanaIndex = ".kibana-custom";
+    Set<String> indices = Sets.newHashSet(customKibanaIndex);
+    String action = "indices:data/write/delete";
+    String uri = "/" + customKibanaIndex + "/index-pattern/nilb-auh-filebeat-*";
+
+    System.out.println("trying " + action + " as RO");
+    TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
     assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
