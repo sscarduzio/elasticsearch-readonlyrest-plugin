@@ -139,7 +139,7 @@ public class KibanaAccessSyncRule extends SyncRule {
 
     // Kibana index, write op
     if (targetsKibana && canModifyKibana) {
-      if (RO.match(rc.getAction()) || RW.match(rc.getAction())) {
+      if (RO.match(rc.getAction()) || RW.match(rc.getAction()) || rc.getAction().startsWith("indices:data/write")) {
         logger.debug("RW access to Kibana index: " + rc.getId());
         return MATCH;
       }
