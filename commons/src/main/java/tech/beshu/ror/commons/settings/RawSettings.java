@@ -45,7 +45,7 @@ public class RawSettings {
   }
 
   public RawSettings(Map<String, ?> raw) {
-    this.rawYaml = SettingsUtils.map2yaml(raw);
+    this.rawYaml = replaceEnvVars(SettingsUtils.map2yaml(raw));
     this.raw = raw;
     if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
