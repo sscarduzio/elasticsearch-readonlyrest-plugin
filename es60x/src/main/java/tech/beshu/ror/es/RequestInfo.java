@@ -57,6 +57,7 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -244,10 +245,20 @@ public class RequestInfo implements RequestInfoShim {
       IndexRequest ir = (IndexRequest) ar;
       indices = ir.indices();
     }
+
     else if (ar instanceof DeleteRequest) {
       DeleteRequest ir = (DeleteRequest) ar;
       indices = ir.indices();
     }
+
+    else if (ar instanceof IndicesAliasesRequest) {
+      IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
+      Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toSet());
+      indices = (String[]) indicesSet.toArray();
+    }
+
     else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
       // Using reflection otherwise need to create another sub-project
       try {

@@ -26,6 +26,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotR
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
+import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
@@ -56,6 +57,7 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -212,7 +214,7 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     // CompositeIndicesRequests
-    if (ar instanceof MultiGetRequest) {
+    else if (ar instanceof MultiGetRequest) {
       MultiGetRequest cir = (MultiGetRequest) ar;
       for (MultiGetRequest.Item ir : cir.getItems()) {
         indices = ArrayUtils.concat(indices, ir.indices(), String.class);
@@ -239,6 +241,19 @@ public class RequestInfo implements RequestInfoShim {
           indices = ArrayUtils.concat(indices, ir.indices(), String.class);
         }
       }
+    }
+
+    else if (ar instanceof DeleteRequest) {
+      DeleteRequest ir = (DeleteRequest) ar;
+      indices = ir.indices();
+    }
+
+    else if (ar instanceof IndicesAliasesRequest) {
+      IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
+      Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
+        .flatMap(Collection::stream)
+        .collect(Collectors.toSet());
+      indices = (String[]) indicesSet.toArray();
     }
 
     else if (ar instanceof CompositeIndicesRequest) {
