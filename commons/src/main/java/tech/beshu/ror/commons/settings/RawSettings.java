@@ -46,11 +46,11 @@ public class RawSettings {
 
   public RawSettings(Map<String, ?> raw) {
     this.rawYaml = replaceEnvVars(SettingsUtils.map2yaml(raw));
-    this.raw = raw;
+    this.raw = SettingsUtils.yaml2Map(rawYaml);
     if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
-    this.jpathContext = JsonPath.parse(raw);
+    this.jpathContext = JsonPath.parse(this.raw);
   }
 
   private static String replaceEnvVars(String rawYaml) {
