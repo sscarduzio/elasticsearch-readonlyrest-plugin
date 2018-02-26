@@ -42,6 +42,8 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -122,14 +124,18 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                                                                      Request request,
                                                                                      ActionListener<Response> listener,
                                                                                      ActionFilterChain<Request, Response> chain) {
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-    Optional<ACL> acl = this.acl.get();
-    if (acl.isPresent()) {
-      handleRequest(acl.get(), task, action, request, listener, chain);
-    }
-    else {
-      chain.proceed(task, action, request, listener);
-    }
+      Optional<ACL> acl = this.acl.get();
+      if (acl.isPresent()) {
+        handleRequest(acl.get(), task, action, request, listener, chain);
+      }
+      else {
+        chain.proceed(task, action, request, listener);
+      }
+      return null;
+
+    });
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,

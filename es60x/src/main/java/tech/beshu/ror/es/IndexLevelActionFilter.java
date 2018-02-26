@@ -44,6 +44,8 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -75,6 +77,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   )
     throws IOException {
     super(settings);
+
     loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     this.env = new Environment(settings);
@@ -88,33 +91,40 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.acl = new AtomicReference<>(Optional.empty());
     this.client = client;
 
-    settingsObservable.addObserver((o, arg) -> {
-      logger.info("Settings observer refreshing...");
-      Environment newEnv = new Environment(settings);
-      BasicSettings newBasicSettings = new BasicSettings(settingsObservable.getCurrent(), newEnv.configFile().toAbsolutePath());
-      ESContext newContext = new ESContextImpl(client, newBasicSettings);
-      this.context.set(newContext);
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-      if (newContext.getSettings().isEnabled()) {
-        try {
-          ACL newAcl = new ACL(newContext);
-          acl.set(Optional.of(newAcl));
-          logger.info("Configuration reloaded - ReadonlyREST enabled");
-        } catch (Exception ex) {
-          logger.error("Cannot configure ReadonlyREST plugin", ex);
-          throw ex;
+      settingsObservable.addObserver((o, arg) -> {
+        logger.info("Settings observer refreshing...");
+        Environment newEnv = new Environment(settings);
+        BasicSettings newBasicSettings = new BasicSettings(settingsObservable.getCurrent(), newEnv.configFile().toAbsolutePath());
+        ESContext newContext = new ESContextImpl(client, newBasicSettings);
+        this.context.set(newContext);
+
+        if (newContext.getSettings().isEnabled()) {
+          try {
+            ACL newAcl = new ACL(newContext);
+            acl.set(Optional.of(newAcl));
+            logger.info("Configuration reloaded - ReadonlyREST enabled");
+          } catch (Exception ex) {
+            logger.error("Cannot configure ReadonlyREST plugin", ex);
+            throw ex;
+          }
         }
-      }
-      else {
-        acl.set(Optional.empty());
-        logger.info("Configuration reloaded - ReadonlyREST disabled");
-      }
+        else {
+          acl.set(Optional.empty());
+          logger.info("Configuration reloaded - ReadonlyREST disabled");
+        }
+      });
+
+      settingsObservable.forceRefresh();
+      logger.info("Readonly REST plugin was loaded...");
+
+      settingsObservable.pollForIndex(context.get());
+
+      return null;
+
     });
 
-    settingsObservable.forceRefresh();
-    logger.info("Readonly REST plugin was loaded...");
-
-    settingsObservable.pollForIndex(context.get());
 
   }
 
@@ -130,14 +140,19 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                                                                      Request request,
                                                                                      ActionListener<Response> listener,
                                                                                      ActionFilterChain<Request, Response> chain) {
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-    Optional<ACL> acl = this.acl.get();
-    if (acl.isPresent()) {
-      handleRequest(acl.get(), task, action, request, listener, chain);
-    }
-    else {
-      chain.proceed(task, action, request, listener);
-    }
+      Optional<ACL> acl = this.acl.get();
+      if (acl.isPresent()) {
+        handleRequest(acl.get(), task, action, request, listener, chain);
+      }
+      else {
+        chain.proceed(task, action, request, listener);
+      }
+
+      return null;
+
+    });
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,
@@ -156,7 +171,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel,  task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
     acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {

@@ -43,6 +43,8 @@ import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -82,36 +84,40 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
 
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-    settingsObservable.addObserver((o, arg) -> {
-      logger.info("Settings observer refreshing...");
-      RawSettings newRaw = new RawSettings(settingsObservable.getCurrent().asMap());
-      Environment newEnv = new Environment(settings);
-      BasicSettings newBaseSettings = new BasicSettings(newRaw, newEnv.configFile().toAbsolutePath());
-      ESContext newContext = new ESContextImpl(client, newBaseSettings);
-      this.context.set(newContext);
 
-      if (newContext.getSettings().isEnabled()) {
-        try {
-          ACL newAcl = new ACL(newContext);
-          acl.set(Optional.of(newAcl));
-          logger.info("Configuration reloaded - ReadonlyREST enabled");
-        } catch (Exception ex) {
-          logger.error("Cannot configure ReadonlyREST plugin", ex);
-          throw ex;
+      settingsObservable.addObserver((o, arg) -> {
+        logger.info("Settings observer refreshing...");
+        RawSettings newRaw = new RawSettings(settingsObservable.getCurrent().asMap());
+        Environment newEnv = new Environment(settings);
+        BasicSettings newBaseSettings = new BasicSettings(newRaw, newEnv.configFile().toAbsolutePath());
+        ESContext newContext = new ESContextImpl(client, newBaseSettings);
+        this.context.set(newContext);
+
+        if (newContext.getSettings().isEnabled()) {
+          try {
+            ACL newAcl = new ACL(newContext);
+            acl.set(Optional.of(newAcl));
+            logger.info("Configuration reloaded - ReadonlyREST enabled");
+          } catch (Exception ex) {
+            logger.error("Cannot configure ReadonlyREST plugin", ex);
+            throw ex;
+          }
         }
-      }
-      else {
-        acl.set(Optional.empty());
-        logger.info("Configuration reloaded - ReadonlyREST disabled");
-      }
+        else {
+          acl.set(Optional.empty());
+          logger.info("Configuration reloaded - ReadonlyREST disabled");
+        }
+      });
+
+      settingsObservable.forceRefresh();
+      logger.info("Readonly REST plugin was loaded...");
+
+      settingsObservable.pollForIndex(context.get());
+
+      return null;
     });
-
-    settingsObservable.forceRefresh();
-    logger.info("Readonly REST plugin was loaded...");
-
-    settingsObservable.pollForIndex(context.get());
-
   }
 
 
@@ -126,14 +132,19 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                                                                                      Request request,
                                                                                      ActionListener<Response> listener,
                                                                                      ActionFilterChain<Request, Response> chain) {
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-    Optional<ACL> acl = this.acl.get();
-    if (acl.isPresent()) {
-      handleRequest(acl.get(), task, action, request, listener, chain);
-    }
-    else {
-      chain.proceed(task, action, request, listener);
-    }
+      Optional<ACL> acl = this.acl.get();
+      if (acl.isPresent()) {
+        handleRequest(acl.get(), task, action, request, listener, chain);
+      }
+      else {
+        chain.proceed(task, action, request, listener);
+      }
+
+      return null;
+    });
+
   }
 
   @Override

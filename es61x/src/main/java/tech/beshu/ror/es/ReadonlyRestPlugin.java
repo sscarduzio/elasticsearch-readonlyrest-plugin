@@ -59,6 +59,8 @@ import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -85,15 +87,21 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService, ScriptService scriptService, NamedXContentRegistry xContentRegistry, Environment environment, NodeEnvironment nodeEnvironment, NamedWriteableRegistry namedWriteableRegistry) {
-    List<Object> components = new ArrayList<>(3);
-    try {
-      this.environment = environment;
-      this.settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-    components.add(settingsObservable);
+    final List<Object> components = new ArrayList<>(3);
+
+    // Wrap all ROR logic into privileged action
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        this.environment = environment;
+        settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
+        this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      components.add(settingsObservable);
+      return null;
+    });
+
     return components;
   }
 
