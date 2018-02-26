@@ -18,6 +18,7 @@ package tech.beshu.ror.commons.settings;
 
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
+import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class RawSettings {
 
@@ -34,9 +36,9 @@ public class RawSettings {
   private final String rawYaml;
 
   public RawSettings(String rawYaml) {
-    this.rawYaml = rawYaml;
+    this.rawYaml = replaceEnvVars(rawYaml);
     this.raw = SettingsUtils.yaml2Map(rawYaml);
-    if(raw == null ){
+    if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
@@ -45,13 +47,27 @@ public class RawSettings {
   public RawSettings(Map<String, ?> raw) {
     this.rawYaml = SettingsUtils.map2yaml(raw);
     this.raw = raw;
-    if(raw == null ){
+    if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
   }
+
+  private static String replaceEnvVars(String rawYaml) {
+    String out = rawYaml;
+    for (String key : System.getenv().keySet()) {
+      out = out.replaceAll(Pattern.quote("${ENV:" + key + "}"), System.getenv(key));
+    }
+    return out;
+  }
+
   public static RawSettings empty() {
     return new RawSettings("readonlyrest:");
+  }
+
+  static RawSettings fromMap(Map<String, ?> r) {
+    String syntheticYaml = SettingsUtils.map2yaml(r);
+    return new RawSettings(syntheticYaml);
   }
 
   public Set<String> getKeys() {
@@ -81,7 +97,7 @@ public class RawSettings {
       val = null;
     }
     if (val == null) {
-      throw new SettingsMalformedException("Could not find required attribute '" + attr + "'");
+      throw new SettingsMalformedException("Could not find required attribute '" + attr + "' in file " + Joiner.on(",").withKeyValueSeparator(":").join(raw));
     }
     return (T) val;
   }
@@ -194,11 +210,6 @@ public class RawSettings {
   @SuppressWarnings("unchecked")
   public Optional<RawSettings> innerOpt(String attr) {
     return opt(attr).map(r -> RawSettings.fromMap((Map<String, ?>) r));
-  }
-
-  static RawSettings fromMap(Map<String, ?> r) {
-    String syntheticYaml = SettingsUtils.map2yaml(r);
-    return new RawSettings(syntheticYaml);
   }
 
   public Map<String, ?> asMap() {

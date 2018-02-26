@@ -85,6 +85,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         .withDockerfileFromBuilder(builder -> logger.info(
           builder
             .from("docker.elastic.co/elasticsearch/elasticsearch:" + project.getESVersion())
+            .env("TEST_VAR", "dev")
             .copy(pluginFile.getAbsolutePath(), "/tmp/")
             .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
             .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
