@@ -56,7 +56,7 @@ public class RawSettings {
   private static String replaceEnvVars(String rawYaml) {
     String out = rawYaml;
     for (String key : System.getenv().keySet()) {
-      out = out.replaceAll(Pattern.quote("${ENV:" + key + "}"), System.getenv(key));
+      out = out.replaceAll(Pattern.quote("${" + key + "}"), System.getenv(key));
     }
     return out;
   }
