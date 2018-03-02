@@ -18,6 +18,7 @@ package tech.beshu.ror.requestcontext;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.BlockHistory;
@@ -34,6 +35,7 @@ import tech.beshu.ror.utils.BasicAuthUtils;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -49,7 +51,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   private Map<String, String> requestHeaders;
   private Transactional<Optional<LoggedUser>> loggedInUser;
   private Transactional<Map<String, String>> responseHeaders;
-  private Set<BlockHistory> history = Sets.newHashSet();
+  private List<BlockHistory> history = Lists.newArrayList();
   private Date timestamp = new Date();
   private ESContext context;
 
@@ -201,7 +203,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     return context;
   }
 
-  public Set<BlockHistory> getHistory() {
+  public List<BlockHistory> getHistory() {
     return history;
   }
 
@@ -225,7 +227,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   }
 
   public boolean isDebug() {
-    return getContext().logger(this.getClass()).isDebugEnabled();
+    return true;
+//    return getContext().logger(this.getClass()).isDebugEnabled();
   }
 
 
