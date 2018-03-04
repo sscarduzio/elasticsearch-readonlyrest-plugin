@@ -71,7 +71,7 @@ public class UserRuleFactory {
       settings -> {
         AuthKeyUnixRuleSettings ruleSettings = (AuthKeyUnixRuleSettings) settings;
         AuthKeyUnixAsyncRule rule = new AuthKeyUnixAsyncRule(ruleSettings, context);
-        return CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(rule, (CacheSettings)settings, context);
+        return CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(rule, (CacheSettings) settings, context);
       }
     );
 

@@ -178,7 +178,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       return null;
     });
-    
+
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,

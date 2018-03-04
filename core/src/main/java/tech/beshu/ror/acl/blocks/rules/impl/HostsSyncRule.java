@@ -18,7 +18,6 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
-import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.domain.IPMask;
@@ -29,7 +28,6 @@ import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
@@ -107,7 +105,7 @@ public class HostsSyncRule extends SyncRule {
     try {
       String allowedResolvedIp = allowedHost;
 
-      if(!XForwardedForRuleSettings.isInetAddressOrBlock(allowedHost)) {
+      if (!XForwardedForRuleSettings.isInetAddressOrBlock(allowedHost)) {
         // Super-late DNS resolution
         allowedResolvedIp = InetAddress.getByName(allowedHost).getHostAddress();
       }

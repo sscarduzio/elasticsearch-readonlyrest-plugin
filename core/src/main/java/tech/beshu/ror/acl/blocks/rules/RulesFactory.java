@@ -35,6 +35,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
@@ -58,6 +59,7 @@ import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.SnapshotsRuleSettings;
 import tech.beshu.ror.settings.rules.UriReRuleSettings;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
@@ -89,6 +91,10 @@ public class RulesFactory {
     this.creators.put(
       LocalHostsRuleSettings.class,
       settings -> AsyncRuleAdapter.wrap(new LocalHostsSyncRule((LocalHostsRuleSettings) settings, context))
+    );
+    this.creators.put(
+      SnapshotsRuleSettings.class,
+      settings -> AsyncRuleAdapter.wrap(new SnapshotsSyncRule((SnapshotsRuleSettings) settings, context))
     );
     this.creators.put(
       IndicesRuleSettings.class,

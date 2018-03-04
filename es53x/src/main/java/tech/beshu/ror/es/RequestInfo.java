@@ -23,7 +23,11 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest;
+import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest;
+import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest;
+import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
@@ -59,6 +63,7 @@ import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -304,6 +309,31 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     return indicesSet;
+  }
+
+  @Override
+  public Set<String> extractSnapshots() {
+    if (actionRequest instanceof GetSnapshotsRequest) {
+      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
+      return Sets.newHashSet(rsr.snapshots());
+    }
+    else if(actionRequest instanceof CreateSnapshotRequest){
+      CreateSnapshotRequest r = (CreateSnapshotRequest) actionRequest;
+      return Sets.newHashSet(r.snapshot());
+    }
+    else if(actionRequest instanceof DeleteSnapshotRequest){
+      DeleteSnapshotRequest r = (DeleteSnapshotRequest) actionRequest;
+      return Sets.newHashSet(r.snapshot());
+    }
+    else if(actionRequest instanceof RestoreSnapshotRequest){
+      RestoreSnapshotRequest r = (RestoreSnapshotRequest) actionRequest;
+      return Sets.newHashSet(r.snapshot());
+    }
+    else if(actionRequest instanceof SnapshotsStatusRequest){
+      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
+      return Sets.newHashSet(r.snapshots());
+    }
+    return Collections.emptySet();
   }
 
   @Override

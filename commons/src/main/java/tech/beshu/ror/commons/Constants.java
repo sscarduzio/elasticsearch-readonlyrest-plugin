@@ -19,8 +19,6 @@ package tech.beshu.ror.commons;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 
 import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
 
 public class Constants {
   public static final Integer CACHE_WATERMARK = 1024;

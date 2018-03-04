@@ -16,21 +16,8 @@
  */
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import java.security.AccessController;
-import java.security.Key;
-import java.security.KeyFactory;
-import java.security.PrivilegedAction;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
@@ -47,6 +34,18 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
+
+import java.security.AccessController;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.PrivilegedAction;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 public class JwtAuthSyncRule extends UserRule implements Authentication {
 
@@ -86,7 +85,7 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
   @Override
   public RuleExitResult match(RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
-        .flatMap(JwtAuthSyncRule::extractToken);
+      .flatMap(JwtAuthSyncRule::extractToken);
 
     if (!token.isPresent()) {
       logger.debug("Authorization header is missing or does not contain a bearer token");
@@ -98,7 +97,8 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
         JwtParser parser = Jwts.parser();
         if (signingKeyForAlgo.isPresent()) {
           parser.setSigningKey(signingKeyForAlgo.get());
-        } else {
+        }
+        else {
           parser.setSigningKey(settings.getKey());
         }
         return parser.parseClaimsJws(token.get());
@@ -113,11 +113,12 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
 
       Optional<Set<String>> roles = this.extractRoles(jws);
       if (settings.getRolesClaim().isPresent() && !roles.isPresent())
-          return NO_MATCH;
+        return NO_MATCH;
       if (!settings.getRoles().isEmpty()) {
         if (!roles.isPresent()) {
           return NO_MATCH;
-        } else {
+        }
+        else {
           Set<String> r = roles.get();
           if (r.isEmpty() || Sets.intersection(r, settings.getRoles()).isEmpty())
             return NO_MATCH;
@@ -155,12 +156,13 @@ public class JwtAuthSyncRule extends UserRule implements Authentication {
     });
 
     // Casting
-    return rolesObj.flatMap(value ->{
+    return rolesObj.flatMap(value -> {
       Set<String> set = new HashSet<>();
 
       if (value instanceof Collection<?>) {
         set.addAll((Collection<String>) value);
-      } else if (value instanceof String) {
+      }
+      else if (value instanceof String) {
         set.add((String) value);
       }
       if (set.isEmpty()) return Optional.empty();

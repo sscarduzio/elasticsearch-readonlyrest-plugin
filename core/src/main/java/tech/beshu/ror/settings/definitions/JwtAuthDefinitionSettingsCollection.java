@@ -32,36 +32,36 @@ import static org.jooq.lambda.Seq.seq;
  * @author Datasweet <contact@datasweet.fr>
  */
 public class JwtAuthDefinitionSettingsCollection {
-    public static final String ATTRIBUTE_NAME = "jwt";
+  public static final String ATTRIBUTE_NAME = "jwt";
 
-    private final Map<String, JwtAuthDefinitionSettings> jwtAuthConfigsSettingsMap;
+  private final Map<String, JwtAuthDefinitionSettings> jwtAuthConfigsSettingsMap;
 
-    private JwtAuthDefinitionSettingsCollection(List<JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
-        validate(jwtAuthConfigsSettings);
-        this.jwtAuthConfigsSettingsMap = seq(jwtAuthConfigsSettings).toMap(JwtAuthDefinitionSettings::getName, Function.identity());
+  private JwtAuthDefinitionSettingsCollection(List<JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
+    validate(jwtAuthConfigsSettings);
+    this.jwtAuthConfigsSettingsMap = seq(jwtAuthConfigsSettings).toMap(JwtAuthDefinitionSettings::getName, Function.identity());
+  }
+
+  @SuppressWarnings("unchecked")
+  public static JwtAuthDefinitionSettingsCollection from(RawSettings data) {
+    return data.notEmptyListOpt(ATTRIBUTE_NAME)
+      .map(list -> list.stream().map(l -> new JwtAuthDefinitionSettings(new RawSettings((Map<String, ?>) l)))
+        .collect(Collectors.toList()))
+      .map(JwtAuthDefinitionSettingsCollection::new)
+      .orElse(new JwtAuthDefinitionSettingsCollection(Lists.newArrayList()));
+  }
+
+  public JwtAuthDefinitionSettings get(String name) {
+    if (!jwtAuthConfigsSettingsMap.containsKey(name))
+      throw new SettingsMalformedException("Cannot find Jwt Auth Config definition with name '" + name + "'");
+    return jwtAuthConfigsSettingsMap.get(name);
+  }
+
+  private void validate(List<JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
+    List<String> names = seq(jwtAuthConfigsSettings)
+      .map(JwtAuthDefinitionSettings::getName)
+      .collect(Collectors.toList());
+    if (names.stream().distinct().count() != names.size()) {
+      throw new SettingsMalformedException("Duplicated Jwt Auth Config name in '" + ATTRIBUTE_NAME + "' section");
     }
-
-    @SuppressWarnings("unchecked")
-    public static JwtAuthDefinitionSettingsCollection from(RawSettings data) {
-        return data.notEmptyListOpt(ATTRIBUTE_NAME)
-                .map(list -> list.stream().map(l -> new JwtAuthDefinitionSettings(new RawSettings((Map<String, ?>) l)))
-                        .collect(Collectors.toList()))
-                .map(JwtAuthDefinitionSettingsCollection::new)
-                .orElse(new JwtAuthDefinitionSettingsCollection(Lists.newArrayList()));
-    }
-
-    public JwtAuthDefinitionSettings get(String name) {
-        if (!jwtAuthConfigsSettingsMap.containsKey(name))
-            throw new SettingsMalformedException("Cannot find Jwt Auth Config definition with name '" + name + "'");
-        return jwtAuthConfigsSettingsMap.get(name);
-    }
-
-    private void validate(List<JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
-        List<String> names = seq(jwtAuthConfigsSettings)
-                            .map(JwtAuthDefinitionSettings::getName)
-                            .collect(Collectors.toList());
-        if (names.stream().distinct().count() != names.size()) {
-            throw new SettingsMalformedException("Duplicated Jwt Auth Config name in '" + ATTRIBUTE_NAME + "' section");
-        }
-    }
+  }
 }

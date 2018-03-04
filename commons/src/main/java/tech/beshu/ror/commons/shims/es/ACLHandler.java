@@ -19,8 +19,12 @@ package tech.beshu.ror.commons.shims.es;
 
 public interface ACLHandler {
   void onForbidden();
+
   void onAllow(Object blockExitResult);
+
   boolean isNotFound(Throwable t);
+
   void onNotFound(Throwable t);
+
   void onErrored(Throwable t);
 }

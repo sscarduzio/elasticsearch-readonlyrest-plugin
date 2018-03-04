@@ -43,7 +43,6 @@ public class SettingsUtils {
   }
 
 
-
   public static String map2yaml(Map<String, ?> map) {
     return yaml.dump(map);
   }

@@ -23,7 +23,6 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
@@ -56,7 +55,7 @@ public class AuditSinkImpl {
 
   public AuditSinkImpl(Client client, BasicSettings settings) {
     this.settings = settings;
-    if(client == null){
+    if (client == null) {
       new Exception("client was null").printStackTrace();
     }
 

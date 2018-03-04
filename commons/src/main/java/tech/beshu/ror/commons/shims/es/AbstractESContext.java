@@ -22,11 +22,11 @@ import tech.beshu.ror.commons.settings.BasicSettings;
 import java.util.HashMap;
 
 public abstract class AbstractESContext implements ESContext {
+  public static ESShutdownObservable shutDownObservable;
   private HashMap<Class<?>, LoggerShim> loggerCache = new HashMap<>(128);
-  public static  ESShutdownObservable shutDownObservable;
 
-  protected AbstractESContext(){
-    if(shutDownObservable == null){
+  protected AbstractESContext() {
+    if (shutDownObservable == null) {
       shutDownObservable = new ESShutdownObservable(this);
     }
   }

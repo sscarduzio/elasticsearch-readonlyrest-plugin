@@ -18,13 +18,10 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
-
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-
 import org.junit.Test;
 import org.mockito.Mockito;
-
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
@@ -56,7 +53,8 @@ import static org.mockito.Mockito.when;
 
 public class JwtAuthRuleTests {
 
-  private static final String JWT_NAME = "test-jwt";;
+  private static final String JWT_NAME = "test-jwt";
+  ;
   private static final String SETTINGS_SIGNATURE_KEY = "signature_key";
   private static final String SETTINGS_SIGNATURE_ALGO = "signature_algo";
   private static final String SETTINGS_USER_CLAIM = "user_claim";
@@ -263,7 +261,7 @@ public class JwtAuthRuleTests {
   @Test
   public void shouldAcceptRolesClaimSetting() {
     RawSettings settings = makeSettings(
-      SETTINGS_SIGNATURE_KEY, SECRET, 
+      SETTINGS_SIGNATURE_KEY, SECRET,
       SETTINGS_ROLES_CLAIM, ROLES_CLAIM
     );
     Optional<SyncRule> rule = makeRule(settings);
@@ -317,7 +315,7 @@ public class JwtAuthRuleTests {
   public void shouldAuthorizeWithAnArrayOfRoles() {
     String token = Jwts.builder()
       .setSubject(SUBJECT)
-      .claim(ROLES_CLAIM, new String[] { "role_1", "role_2", "role_test" })
+      .claim(ROLES_CLAIM, new String[]{"role_1", "role_2", "role_test"})
       .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
       .compact();
     RawSettings settings = makeSettings(
@@ -339,7 +337,7 @@ public class JwtAuthRuleTests {
   public void shouldAuthorizeWithIntersectRoles() {
     String token = Jwts.builder()
       .setSubject(SUBJECT)
-      .claim(ROLES_CLAIM, new String[] { "role_1", "role_2", "role_test" })
+      .claim(ROLES_CLAIM, new String[]{"role_1", "role_2", "role_test"})
       .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
       .compact();
 
@@ -437,7 +435,7 @@ public class JwtAuthRuleTests {
   }
 
   private Optional<SyncRule> makeRule(RawSettings settings) {
-   return makeRule(JWT_NAME, null, settings);
+    return makeRule(JWT_NAME, null, settings);
   }
 
   private Optional<SyncRule> makeRule(String jwtName, String forRoles, RawSettings settings) {
@@ -448,23 +446,25 @@ public class JwtAuthRuleTests {
       if (forRoles != null) {
         sb.append("  roles: ");
         String[] roles = forRoles.split(",");
-        if (roles.length > 1) 
+        if (roles.length > 1)
           sb.append("[");
-        for (int i = 0; i < roles.length; i ++) {
+        for (int i = 0; i < roles.length; i++) {
           sb.append('"')
             .append(roles[i])
             .append('"')
             .append(", ");
         }
         sb.setLength(sb.length() - 2);  // remove last ", "
-        if (roles.length > 1) 
+        if (roles.length > 1)
           sb.append("]");
         sb.append("\n");
       }
 
       return Optional.of(new JwtAuthSyncRule(
-        JwtAuthRuleSettings.from(TestUtils.fromYAMLString(sb.toString()).inner(JwtAuthRuleSettings.ATTRIBUTE_NAME),
-        JwtAuthDefinitionSettingsCollection.from(settings)), 
+        JwtAuthRuleSettings.from(
+          TestUtils.fromYAMLString(sb.toString()).inner(JwtAuthRuleSettings.ATTRIBUTE_NAME),
+          JwtAuthDefinitionSettingsCollection.from(settings)
+        ),
         MockedESContext.INSTANCE
       ));
     } catch (Exception e) {
@@ -476,31 +476,31 @@ public class JwtAuthRuleTests {
   private PrivateKey getRsaPrivateKey() throws KeyException {
     try {
       byte[] decoded = Base64.getMimeDecoder().decode("MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCzBElX1jA8I8K7\n" +
-        "TXvdKV+nkvu+/qJOab50asTpDT/WlRVsL+wZLgi1+R6t5Qu4thWI3SmqEY3E0A9l\n" +
-        "puM4vlICUiqrmPTm+UY41oQFMz4XwoP4cQh/E/g5nBykL3YPqkzYUoJhRknH+lna\n" +
-        "wzEUafupH0N0Kc8eruG+9pM0BkLDweUFrHzXzY3C423LQSm5mYeglMYJlFcmJ9vo\n" +
-        "MnCUmDPY4qTNlFy8U4ksBFBA1+q/ppFqeeOasAlHh7lnLAtR78I/rGLhVDBqAgO0\n" +
-        "W2sOMDMLP584ll0zryYrulA7OEsQGYqQepSmUS9pm0243dl0gwsuGYbc0m5LP24B\n" +
-        "F/RLQ2pJAgMBAAECggEAAPS+54cvTsLqIVHynWXBKwXv7j8x4rVR3RFM5+m4M48s\n" +
-        "RB2lZyUFyuL/tPIKM/xU9RwpQs1BMpHh4ysW/5CUo4qIy83PUQR3yYnrvpNde4cA\n" +
-        "aW1BHFyg8L3SsVXHjaHdMzKNm7NiZX0CydZNBsziGS8fjxlCD+njLr/mXVrDNIRs\n" +
-        "SVQ+rZjnNIjflX7KnIYmLtN6a64mC/UPDobtmmadvyAf8Hc/o7JX1Iqy4wtIuEFb\n" +
-        "qf82+xXPcEJqST0fFfWcMp3WEU0cyWNfFZWlmmqzMrJPqCJaRJMMFwawxHI4GQMW\n" +
-        "W/3OyYT4ySdD/Lt/+rQRkR4BbI8J5h9CfNSrhYryeQKBgQDWlsXVQdgsVsC4pXay\n" +
-        "LxjMf5zbcFxg+Jdp3koHpJS5my8cWTRFcRxyTFf8KDesKb/fEhYVV40CurZv4vKU\n" +
-        "jHJYf+72QjAVWN6Wyjmxa9Ctc6n1OdZ4gHwBdYNnJJHXhihAbzT4kzF8uccFg6Oj\n" +
-        "Es8csXdPnJ4huNN38FWhnfdpQwKBgQDVkCh6WkmjqYSh3F+Zr/sYCc+B42hvhIbt\n" +
-        "OLr3U1PTqgv9DRtCfPcR1oJS0kilUo2Fd+4P3xV6EJTpOJbZdIYTRkxIrl6ORDkF\n" +
-        "0Lp01Vnzv3DVjhpL4oMdWAVTC7BLJCN8inmz+Pf6RndJrBgLz2HQXMN3NCm5b+21\n" +
-        "ojK0iGHvgwKBgFrdl0H5UrdbuNm3Pu6uoLqfYuVMy+FIAp2SwhhAabW6b5V6dHbf\n" +
-        "MaN4jl05DnH5b8TenLlGzHAWbgAswnmCizzMV3yxhDjV29NQKGPneoKoEpTDe/yk\n" +
-        "s13Oy+iWBKeVqF+4d162vWLKK+s61cTMxySoRRRSBmfTIsCL5Ua9ZDGPAoGAcn8X\n" +
-        "NIGzeUspEJ5Vos/2jqyz069YDnG+5O/FTVQfXRuN0d10//B/hdC7jiuvRvM7bJMf\n" +
-        "zuKLYSYCsAbm2S7fsvW9cDoL97ob2EJPtNOtpkC8/cFx171ZDiJiuGNL4P0/CUY0\n" +
-        "eYjBaizdR2I8ghhtGIijQwV0WTbo+rg69w8ncoECgYBmf4xoW03WYtzGkinhN6FQ\n" +
-        "SZt3/ATmJR0iLFzcvMncP+4xGq1J1oL7v0ArUX1mWGfJRS27zgH7k/qJprABnJnI\n" +
-        "0TXjhBObmkicvOm11rYK2he2g+eW5RbZpr7FfrNuiZjMOmJn8dWHuwtboNcuEF3A\n" +
-        "6Mzj9h2krlUiyKMi0IKLHw==");
+                                                        "TXvdKV+nkvu+/qJOab50asTpDT/WlRVsL+wZLgi1+R6t5Qu4thWI3SmqEY3E0A9l\n" +
+                                                        "puM4vlICUiqrmPTm+UY41oQFMz4XwoP4cQh/E/g5nBykL3YPqkzYUoJhRknH+lna\n" +
+                                                        "wzEUafupH0N0Kc8eruG+9pM0BkLDweUFrHzXzY3C423LQSm5mYeglMYJlFcmJ9vo\n" +
+                                                        "MnCUmDPY4qTNlFy8U4ksBFBA1+q/ppFqeeOasAlHh7lnLAtR78I/rGLhVDBqAgO0\n" +
+                                                        "W2sOMDMLP584ll0zryYrulA7OEsQGYqQepSmUS9pm0243dl0gwsuGYbc0m5LP24B\n" +
+                                                        "F/RLQ2pJAgMBAAECggEAAPS+54cvTsLqIVHynWXBKwXv7j8x4rVR3RFM5+m4M48s\n" +
+                                                        "RB2lZyUFyuL/tPIKM/xU9RwpQs1BMpHh4ysW/5CUo4qIy83PUQR3yYnrvpNde4cA\n" +
+                                                        "aW1BHFyg8L3SsVXHjaHdMzKNm7NiZX0CydZNBsziGS8fjxlCD+njLr/mXVrDNIRs\n" +
+                                                        "SVQ+rZjnNIjflX7KnIYmLtN6a64mC/UPDobtmmadvyAf8Hc/o7JX1Iqy4wtIuEFb\n" +
+                                                        "qf82+xXPcEJqST0fFfWcMp3WEU0cyWNfFZWlmmqzMrJPqCJaRJMMFwawxHI4GQMW\n" +
+                                                        "W/3OyYT4ySdD/Lt/+rQRkR4BbI8J5h9CfNSrhYryeQKBgQDWlsXVQdgsVsC4pXay\n" +
+                                                        "LxjMf5zbcFxg+Jdp3koHpJS5my8cWTRFcRxyTFf8KDesKb/fEhYVV40CurZv4vKU\n" +
+                                                        "jHJYf+72QjAVWN6Wyjmxa9Ctc6n1OdZ4gHwBdYNnJJHXhihAbzT4kzF8uccFg6Oj\n" +
+                                                        "Es8csXdPnJ4huNN38FWhnfdpQwKBgQDVkCh6WkmjqYSh3F+Zr/sYCc+B42hvhIbt\n" +
+                                                        "OLr3U1PTqgv9DRtCfPcR1oJS0kilUo2Fd+4P3xV6EJTpOJbZdIYTRkxIrl6ORDkF\n" +
+                                                        "0Lp01Vnzv3DVjhpL4oMdWAVTC7BLJCN8inmz+Pf6RndJrBgLz2HQXMN3NCm5b+21\n" +
+                                                        "ojK0iGHvgwKBgFrdl0H5UrdbuNm3Pu6uoLqfYuVMy+FIAp2SwhhAabW6b5V6dHbf\n" +
+                                                        "MaN4jl05DnH5b8TenLlGzHAWbgAswnmCizzMV3yxhDjV29NQKGPneoKoEpTDe/yk\n" +
+                                                        "s13Oy+iWBKeVqF+4d162vWLKK+s61cTMxySoRRRSBmfTIsCL5Ua9ZDGPAoGAcn8X\n" +
+                                                        "NIGzeUspEJ5Vos/2jqyz069YDnG+5O/FTVQfXRuN0d10//B/hdC7jiuvRvM7bJMf\n" +
+                                                        "zuKLYSYCsAbm2S7fsvW9cDoL97ob2EJPtNOtpkC8/cFx171ZDiJiuGNL4P0/CUY0\n" +
+                                                        "eYjBaizdR2I8ghhtGIijQwV0WTbo+rg69w8ncoECgYBmf4xoW03WYtzGkinhN6FQ\n" +
+                                                        "SZt3/ATmJR0iLFzcvMncP+4xGq1J1oL7v0ArUX1mWGfJRS27zgH7k/qJprABnJnI\n" +
+                                                        "0TXjhBObmkicvOm11rYK2he2g+eW5RbZpr7FfrNuiZjMOmJn8dWHuwtboNcuEF3A\n" +
+                                                        "6Mzj9h2krlUiyKMi0IKLHw==");
       PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
       KeyFactory kf = KeyFactory.getInstance("RSA");
       return kf.generatePrivate(spec);

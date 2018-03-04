@@ -41,7 +41,6 @@ import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.httpclient.ApacheHttpCoreClient;
-import tech.beshu.ror.httpclient.HttpClient;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;

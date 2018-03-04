@@ -19,7 +19,6 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;

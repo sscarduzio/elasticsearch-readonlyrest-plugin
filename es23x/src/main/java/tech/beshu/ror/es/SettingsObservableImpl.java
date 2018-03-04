@@ -53,7 +53,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   private NodeClient client;
 
   @Inject
-  public SettingsObservableImpl( Settings s) {
+  public SettingsObservableImpl(Settings s) {
     current = BasicSettings.fromFile(logger, new Environment(s).configFile(), s.getAsStructuredMap()).getRaw();
     this.initialSettings = s;
   }

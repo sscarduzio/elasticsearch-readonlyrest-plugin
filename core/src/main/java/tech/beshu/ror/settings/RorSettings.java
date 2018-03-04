@@ -73,7 +73,7 @@ public class RorSettings {
     ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection = ExternalAuthenticationServiceSettingsCollection.from(raw);
     JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection = JwtAuthDefinitionSettingsCollection.from(raw);
     AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(
-      proxyAuthDefinitionSettingsCollection, 
+      proxyAuthDefinitionSettingsCollection,
       ldapSettingsCollection,
       jwtAuthDefinitionSettingsCollection
     );

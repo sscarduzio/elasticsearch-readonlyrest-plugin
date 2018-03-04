@@ -22,15 +22,15 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
+import tech.beshu.ror.settings.rules.SnapshotsRuleSettings;
 
-public class LocalHostsSyncRule extends SyncRule {
+public class SnapshotsSyncRule extends SyncRule {
 
   private final ESContext context;
-  private final LocalHostsRuleSettings settings;
+  private final SnapshotsRuleSettings settings;
   private final LoggerShim logger;
 
-  public LocalHostsSyncRule(LocalHostsRuleSettings s, ESContext context) {
+  public SnapshotsSyncRule(SnapshotsRuleSettings s, ESContext context) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.settings = s;

@@ -84,7 +84,7 @@ public class ACL {
             logger.error("> Impossible to add block to ACL: " + blockSettings.getName() +
                            " Reason: [" + t.getClass().getSimpleName() + "] " + t.getMessage(), t);
             t.printStackTrace();
-            if(t.getCause() != null){
+            if (t.getCause() != null) {
               logger.error("caused by " + t.getCause().getClass().getSimpleName() + " " + t.getCause().getMessage());
             }
             return null;
@@ -241,6 +241,12 @@ public class ACL {
 
   private RequestContext mkRequestContext(RequestInfoShim rInfo) {
     return new RequestContext("rc", context) {
+
+      @Override
+      public Set<String> getSnapshots() {
+        return rInfo.extractSnapshots();
+      }
+
       @Override
       public Set<String> getExpandedIndices(Set<String> i) {
         return rInfo.getExpandedIndices(i);
@@ -304,7 +310,7 @@ public class ACL {
 
       @Override
       public String getHistoryString() {
-        return  Joiner.on(", ").join(getHistory());
+        return Joiner.on(", ").join(getHistory());
       }
 
       @Override

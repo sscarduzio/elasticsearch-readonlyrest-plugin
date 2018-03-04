@@ -24,10 +24,7 @@ import tech.beshu.ror.settings.AuthMethodCreatorsRegistry;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.jooq.lambda.Seq.seq;
 
 public class UserSettingsCollection {
 
@@ -36,7 +33,7 @@ public class UserSettingsCollection {
   private final Map<String, UserSettings> usersSettingsMap;
 
   private UserSettingsCollection(List<UserSettings> userSettings) {
-    this.usersSettingsMap= Maps.newLinkedHashMap();
+    this.usersSettingsMap = Maps.newLinkedHashMap();
     userSettings.forEach(x -> this.usersSettingsMap.put(x.getUsername(), x));
   }
 

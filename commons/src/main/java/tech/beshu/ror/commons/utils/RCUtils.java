@@ -27,8 +27,8 @@ import java.util.regex.Pattern;
  */
 public class RCUtils {
   /*
-    * A regular expression to match the various representations of "localhost"
-    */
+   * A regular expression to match the various representations of "localhost"
+   */
 
   public static final String LOCALHOST = "127.0.0.1";
   private static final Pattern localhostRe = Pattern.compile("^(127(\\.\\d+){1,3}|[0:]+1)$");

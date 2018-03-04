@@ -17,5 +17,5 @@
 package tech.beshu.ror.commons.utils;
 
 public interface Hasher {
-   String hash(String str);
+  String hash(String str);
 }

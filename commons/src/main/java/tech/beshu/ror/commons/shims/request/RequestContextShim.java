@@ -30,7 +30,8 @@ public interface RequestContextShim {
   Date getTimestamp();
 
   String getAction();
-  Map<String,String> getHeaders();
+
+  Map<String, String> getHeaders();
 
   String getUri();
 

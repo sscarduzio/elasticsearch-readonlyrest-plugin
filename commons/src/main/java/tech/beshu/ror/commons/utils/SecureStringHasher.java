@@ -24,7 +24,7 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.primitives.Bytes;
 
 import java.security.SecureRandom;
 
-public class SecureStringHasher implements Hasher{
+public class SecureStringHasher implements Hasher {
 
   private static byte[] salt;
   private final HashFunction hf;

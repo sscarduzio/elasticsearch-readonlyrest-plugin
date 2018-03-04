@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
-
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettings;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
+
+import java.util.Collections;
+import java.util.Optional;
+import java.util.Set;
 
 public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
 
@@ -44,7 +44,7 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   @SuppressWarnings("unchecked")
   public static JwtAuthRuleSettings from(RawSettings settings, JwtAuthDefinitionSettingsCollection jwtSettingsCollection) {
     String jwtName = settings.stringReq(JWT_NAME);
-    Set<String> roles = (Set<String>)(settings.notEmptySetOpt(ROLES).orElse(Collections.emptySet()));
+    Set<String> roles = (Set<String>) (settings.notEmptySetOpt(ROLES).orElse(Collections.emptySet()));
     return new JwtAuthRuleSettings(
       jwtSettingsCollection.get(jwtName),
       roles
@@ -53,7 +53,7 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
 
   public static JwtAuthRuleSettings from(String jwtName, JwtAuthDefinitionSettingsCollection jwtSettingsCollection) {
     return new JwtAuthRuleSettings(
-      jwtSettingsCollection.get(jwtName), 
+      jwtSettingsCollection.get(jwtName),
       Collections.emptySet()
     );
   }
@@ -63,7 +63,7 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   }
 
   public Optional<String> getAlgo() {
-   return jwtAuthSettings.getAlgo();
+    return jwtAuthSettings.getAlgo();
   }
 
   public Optional<String> getUserClaim() {

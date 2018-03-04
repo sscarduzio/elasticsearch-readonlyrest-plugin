@@ -157,6 +157,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     indices.mutate(newIndices);
   }
 
+  abstract public Set<String> getSnapshots();
+
   public Map<String, String> getHeaders() {
     return this.requestHeaders;
   }

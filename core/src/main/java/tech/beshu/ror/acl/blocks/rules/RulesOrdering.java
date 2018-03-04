@@ -42,6 +42,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.utils.RulesUtils;
@@ -74,6 +75,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
       KibanaIndexSyncRule.class,
       HostsSyncRule.class,
       LocalHostsSyncRule.class,
+      SnapshotsSyncRule.class,
       XForwardedForSyncRule.class,
       ApiKeysSyncRule.class,
       SessionMaxIdleSyncRule.class,

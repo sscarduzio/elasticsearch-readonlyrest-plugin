@@ -22,7 +22,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
@@ -43,7 +42,7 @@ public class AuthKeyUnixRuleTests {
   private RuleExitResult match(String configured, String found) {
     try {
       return match(configured, found, Mockito.mock(RequestContext.class));
-    } catch (Throwable t){
+    } catch (Throwable t) {
       throw new Error(t);
     }
   }

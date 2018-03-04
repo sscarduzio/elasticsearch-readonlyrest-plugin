@@ -61,6 +61,8 @@ public interface RequestInfoShim {
 
   Set<String> extractIndices();
 
+  Set<String> extractSnapshots();
+
   String extractAction();
 
   Map<String, String> extractRequestHeaders();
