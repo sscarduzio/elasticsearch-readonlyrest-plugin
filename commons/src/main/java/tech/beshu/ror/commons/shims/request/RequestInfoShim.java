@@ -67,6 +67,8 @@ public interface RequestInfoShim {
 
   String extractRemoteAddress();
 
+  String extractLocalAddress();
+
   String extractId();
 
   void writeIndices(Set<String> newIndices);

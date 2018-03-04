@@ -41,6 +41,7 @@ import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
+import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
 import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
@@ -90,6 +91,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
     creators.put(ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
+    creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
     creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
@@ -193,6 +195,11 @@ public class RulesSettingsCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> hostsSettingsCreator(RawSettings blockSettings) {
     return () -> HostsRuleSettings.fromBlockSettings(blockSettings);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> localHostsSettingsCreator(RawSettings blockSettings) {
+    return () -> LocalHostsRuleSettings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")

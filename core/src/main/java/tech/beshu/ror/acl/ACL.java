@@ -323,6 +323,11 @@ public class ACL {
       }
 
       @Override
+      public String getLocalAddress() {
+        return rInfo.extractLocalAddress();
+      }
+
+      @Override
       protected Map<String, String> extractRequestHeaders() {
         return rInfo.extractRequestHeaders();
       }

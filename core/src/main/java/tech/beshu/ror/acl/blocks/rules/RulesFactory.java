@@ -30,6 +30,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
@@ -52,6 +53,7 @@ import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
+import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
 import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
@@ -83,6 +85,10 @@ public class RulesFactory {
     this.creators.put(
       HostsRuleSettings.class,
       settings -> AsyncRuleAdapter.wrap(new HostsSyncRule((HostsRuleSettings) settings, context))
+    );
+    this.creators.put(
+      LocalHostsRuleSettings.class,
+      settings -> AsyncRuleAdapter.wrap(new LocalHostsSyncRule((LocalHostsRuleSettings) settings, context))
     );
     this.creators.put(
       IndicesRuleSettings.class,

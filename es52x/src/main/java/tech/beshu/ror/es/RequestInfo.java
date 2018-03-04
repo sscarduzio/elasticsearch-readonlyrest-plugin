@@ -331,6 +331,12 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
+  public String extractLocalAddress() {
+    String remoteHost = ((InetSocketAddress) request.getLocalAddress()).getAddress().getHostAddress();
+    return remoteHost;
+  }
+
+  @Override
   public void writeIndices(Set<String> newIndices) {
     // Setting indices by reflection..
     newIndices.remove("<no-index>");

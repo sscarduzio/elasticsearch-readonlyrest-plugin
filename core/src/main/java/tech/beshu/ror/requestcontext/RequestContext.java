@@ -173,9 +173,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   abstract protected Boolean extractIsCompositeRequest();
 
-
   abstract protected void writeIndices(Set<String> indices);
-
 
   abstract protected void commitResponseHeaders(Map<String, String> hmap);
 
@@ -196,6 +194,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   abstract public Long getTaskId();
 
   abstract public String getRemoteAddress();
+
+  abstract public String getLocalAddress();
 
   abstract protected Map<String, String> extractRequestHeaders();
 
@@ -308,6 +308,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       ", BRS:" + !Strings.isNullOrEmpty(getHeaders().get("User-Agent")) +
       ", ACT:" + getAction() +
       ", OA:" + getRemoteAddress() +
+      ", DA:" + getLocalAddress() +
       ", IDX:" + theIndices +
       ", MET:" + getMethod() +
       ", PTH:" + getUri() +

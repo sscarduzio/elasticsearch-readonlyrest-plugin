@@ -36,6 +36,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
@@ -72,6 +73,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
       KibanaAccessSyncRule.class,
       KibanaIndexSyncRule.class,
       HostsSyncRule.class,
+      LocalHostsSyncRule.class,
       XForwardedForSyncRule.class,
       ApiKeysSyncRule.class,
       SessionMaxIdleSyncRule.class,

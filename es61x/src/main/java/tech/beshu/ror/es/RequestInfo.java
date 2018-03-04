@@ -332,6 +332,12 @@ public class RequestInfo implements RequestInfoShim {
 
 
   @Override
+  public String extractLocalAddress() {
+    String remoteHost = ((InetSocketAddress) request.getLocalAddress()).getAddress().getHostAddress();
+    return remoteHost;
+  }
+
+  @Override
   public String extractRemoteAddress() {
     String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
     // Make sure we recognize localhost even when IPV6 is involved
