@@ -17,11 +17,18 @@
 
 package tech.beshu.ror.es;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.search.MultiSearchRequest;
+import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.node.NodeClient;
@@ -36,17 +43,16 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
+
 import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.blocks.BlockExitResult;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
+import tech.beshu.ror.commons.utils.FilterTransient;
 
 
 /**
@@ -186,6 +192,29 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       public void onAllow(Object blockExitResult) {
         boolean hasProceeded = false;
         try {
+        	// Cache disabling for those 2 kind of request is crucial for
+        	// document level security to work. Otherwise we'd get an answer from
+        	// the cache some times and would not be filtered
+        	if (request instanceof SearchRequest) {
+				((SearchRequest)request).requestCache(Boolean.FALSE);
+			} else if (request instanceof MultiSearchRequest) {
+				for (SearchRequest sr : ((MultiSearchRequest)request).requests()) {
+					sr.requestCache(Boolean.FALSE);
+				}
+			}
+
+        	if (blockExitResult instanceof BlockExitResult) {
+        		BlockExitResult ber = (BlockExitResult) blockExitResult;
+        		Optional<String> filter = ber.getBlock().getFilter();
+        		if (filter.isPresent()) {
+        			String encodedUser = FilterTransient.CreateFromFilter(filter.get()).serialize();
+        			if (encodedUser == null) 
+						logger.error("Error while serializing user transient");
+					if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {
+						threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, encodedUser);
+					}
+        		}
+        	}
           //         @SuppressWarnings("unchecked")
 //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
 //            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl

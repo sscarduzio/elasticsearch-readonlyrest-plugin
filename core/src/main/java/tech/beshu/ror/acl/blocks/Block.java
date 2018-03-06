@@ -17,7 +17,20 @@
 
 package tech.beshu.ror.acl.blocks;
 
+import static tech.beshu.ror.commons.Constants.ANSI_CYAN;
+import static tech.beshu.ror.commons.Constants.ANSI_RESET;
+import static tech.beshu.ror.commons.Constants.ANSI_YELLOW;
+
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+
 import com.google.common.collect.Sets;
+
 import tech.beshu.ror.acl.BlockPolicy;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
@@ -33,17 +46,6 @@ import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.BlockSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
 import tech.beshu.ror.utils.RulesUtils;
-
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-
-import static tech.beshu.ror.commons.Constants.ANSI_CYAN;
-import static tech.beshu.ror.commons.Constants.ANSI_RESET;
-import static tech.beshu.ror.commons.Constants.ANSI_YELLOW;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -97,6 +99,10 @@ public class Block {
 
   public Verbosity getVerbosity() {
     return settings.getVerbosity();
+  }
+  
+  public Optional<String> getFilter() {
+	  return settings.getFilter();
   }
 
   public boolean isAuthHeaderAccepted() {
