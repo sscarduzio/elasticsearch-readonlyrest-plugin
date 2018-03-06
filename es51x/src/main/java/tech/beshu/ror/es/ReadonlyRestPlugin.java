@@ -17,7 +17,12 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.collect.Lists;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -27,7 +32,9 @@ import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.HttpServerTransport;
+import org.elasticsearch.index.IndexModule;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
@@ -36,22 +43,24 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+
+import com.google.common.collect.Lists;
+
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
+import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
 public class ReadonlyRestPlugin extends Plugin
   implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
+  private Settings settings;
+  private Environment environment;
+  
   public ReadonlyRestPlugin(Settings s) {
+	  this.settings = s;
+	  this.environment = new Environment(s);
   }
 
   @Override
@@ -111,4 +120,15 @@ public class ReadonlyRestPlugin extends Plugin
     return Lists.newArrayList(ReadonlyRestAction.class, RestRRAdminAction.class);
   }
 
+  @Override
+  public void onIndexModule(IndexModule module) {
+	module.setSearcherWrapper(indexService -> {
+		try {
+			return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	});
+  }
 }
