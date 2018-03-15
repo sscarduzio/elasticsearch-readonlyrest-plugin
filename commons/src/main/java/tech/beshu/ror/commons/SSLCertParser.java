@@ -155,7 +155,7 @@ public class SSLCertParser {
         });
 
     } catch (Throwable t) {
-      logger.error("ROR SSL: Failed to load SSL certs and keys from JKS Keystore!");
+      logger.error("ROR SSL: Failed to load SSL certs and keys from JKS Keystore! " + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
       if (t instanceof AccessControlException) {
         logger.error("ROR SSL: Check the JKS Keystore path is correct: " + settings.getKeystoreFile());
       }
