@@ -71,7 +71,7 @@ public class AuthenticationLdapClientCacheDecorator implements AuthenticationLda
   @Override
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
     LdapUserWithHashedPassword cachedUser = ldapUsersWithPasswordCache.getIfPresent(credentials.getUserName());
-    if(badCredentialsCache.getIfPresent(credentials)){
+    if(badCredentialsCache.getIfPresent(credentials) != null){
       return CompletableFuture.completedFuture(Optional.empty());
     }
     if (cachedUser == null) {
