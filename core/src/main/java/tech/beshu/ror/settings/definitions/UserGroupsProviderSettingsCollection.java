@@ -43,7 +43,7 @@ public class UserGroupsProviderSettingsCollection {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new UserGroupsProviderSettings(new RawSettings((Map<String, ?>) l)))
+               .map(l -> new UserGroupsProviderSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
                .collect(Collectors.toList())
       )
       .map(UserGroupsProviderSettingsCollection::new)

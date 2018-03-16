@@ -122,8 +122,9 @@ public class BasicSettings {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
         slurped[0] = new String(Files.readAllBytes(Paths.get(filePath)));
-        logger.info("Loaded good settings from " + filePath);
-      } catch (Throwable t) {
+        logger.info("Read data from " + filePath);
+      }
+      catch (Throwable t) {
         logger.info(
           "Could not find settings in "
             + filePath + " (" + t.getMessage() + ")");
@@ -145,15 +146,18 @@ public class BasicSettings {
 
       String s4s = slurpFile(logger, rorSettingsFilePath);
       try {
-        if (SettingsUtils.yaml2Map(s4s).containsKey("readonlyrest")) {
-          return new BasicSettings(new RawSettings(s4s), configPath);
+        if (SettingsUtils.yaml2Map(s4s, logger).containsKey("readonlyrest")) {
+          return new BasicSettings(new RawSettings(s4s, logger), configPath);
         }
-        return new BasicSettings(new RawSettings(fallback), configPath);
-      } catch (Throwable t) {
-        return new BasicSettings(new RawSettings(fallback), configPath);
+        return new BasicSettings(new RawSettings(fallback, logger), configPath);
+      }
+      catch (Throwable t) {
+        logger.error("cannot parse settings file ", t);
+        return new BasicSettings(new RawSettings(fallback, logger), configPath);
       }
 
-    } catch (Throwable t) {
+    }
+    catch (Throwable t) {
       t.printStackTrace();
       throw t;
     }
@@ -178,7 +182,10 @@ public class BasicSettings {
   public Optional<String> getCustomAuditSerializer() {
     return customAuditSerializer;
   }
-  public String getCacheHashingAlgo() {return cacheHashingAlgo.orElse("none");}
+
+  public String getCacheHashingAlgo() {
+    return cacheHashingAlgo.orElse("none");
+  }
 
   public Boolean isPromptForBasicAuth() {
     return promptForBasicAuth;

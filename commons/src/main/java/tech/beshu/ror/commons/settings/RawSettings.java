@@ -19,6 +19,8 @@ package tech.beshu.ror.commons.settings;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
+import sun.rmi.runtime.Log;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -34,19 +36,26 @@ public class RawSettings {
   private final Map<String, ?> raw;
   private final DocumentContext jpathContext;
   private final String rawYaml;
+  private final LoggerShim logger;
 
-  public RawSettings(String rawYaml) {
+  public RawSettings(String rawYaml, LoggerShim logger) {
+    this.logger = logger;
     this.rawYaml = replaceEnvVars(rawYaml);
-    this.raw = SettingsUtils.yaml2Map(rawYaml);
+    this.raw = SettingsUtils.yaml2Map(rawYaml, logger);
     if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
   }
 
-  public RawSettings(Map<String, ?> raw) {
+  public LoggerShim getLogger() {
+    return logger;
+  }
+
+  public RawSettings(Map<String, ?> raw, LoggerShim logger) {
+    this.logger = logger;
     this.rawYaml = replaceEnvVars(SettingsUtils.map2yaml(raw));
-    this.raw = SettingsUtils.yaml2Map(rawYaml);
+    this.raw = SettingsUtils.yaml2Map(rawYaml, logger);
     if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
@@ -62,12 +71,12 @@ public class RawSettings {
   }
 
   public static RawSettings empty() {
-    return new RawSettings("readonlyrest:");
+    return new RawSettings("readonlyrest:", LoggerShim.dummy());
   }
 
-  static RawSettings fromMap(Map<String, ?> r) {
+  static RawSettings fromMap(Map<String, ?> r, LoggerShim logger) {
     String syntheticYaml = SettingsUtils.map2yaml(r);
-    return new RawSettings(syntheticYaml);
+    return new RawSettings(syntheticYaml, logger);
   }
 
   public Set<String> getKeys() {
@@ -204,12 +213,12 @@ public class RawSettings {
   }
 
   public RawSettings inner(String attr) {
-    return new RawSettings((Map<String, ?>) req(attr));
+    return new RawSettings((Map<String, ?>) req(attr), logger);
   }
 
   @SuppressWarnings("unchecked")
   public Optional<RawSettings> innerOpt(String attr) {
-    return opt(attr).map(r -> RawSettings.fromMap((Map<String, ?>) r));
+    return opt(attr).map(r -> RawSettings.fromMap((Map<String, ?>) r, logger));
   }
 
   public Map<String, ?> asMap() {

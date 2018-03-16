@@ -43,7 +43,7 @@ public class ProxyAuthDefinitionSettingsCollection {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new ProxyAuthDefinitionSettings(new RawSettings((Map<String, ?>) l)))
+               .map(l -> new ProxyAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
                .collect(Collectors.toList())
       )
       .map(ProxyAuthDefinitionSettingsCollection::new)

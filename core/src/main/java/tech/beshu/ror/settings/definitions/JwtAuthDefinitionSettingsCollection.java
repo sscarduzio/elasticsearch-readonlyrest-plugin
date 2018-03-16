@@ -44,7 +44,7 @@ public class JwtAuthDefinitionSettingsCollection {
   @SuppressWarnings("unchecked")
   public static JwtAuthDefinitionSettingsCollection from(RawSettings data) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
-      .map(list -> list.stream().map(l -> new JwtAuthDefinitionSettings(new RawSettings((Map<String, ?>) l)))
+      .map(list -> list.stream().map(l -> new JwtAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
         .collect(Collectors.toList()))
       .map(JwtAuthDefinitionSettingsCollection::new)
       .orElse(new JwtAuthDefinitionSettingsCollection(Lists.newArrayList()));

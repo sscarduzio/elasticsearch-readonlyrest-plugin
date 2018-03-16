@@ -21,6 +21,7 @@ import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -56,11 +57,14 @@ public class SettingsUtils {
     return s[0];
   }
 
-
-  public static Map<String, ?> yaml2Map(String s) {
+  public static Map<String, ?> yaml2Map(String s, LoggerShim logger) {
     final Map[] m = new Map[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      m[0] = yaml.load(s);
+      try {
+        m[0] = yaml.load(s);
+      } catch (Exception e) {
+        logger.error("Cannot parse YAML: " + e.getClass().getSimpleName() + ":" + e.getMessage() + "\n " + s, e);
+      }
       return null;
     });
     return m[0];

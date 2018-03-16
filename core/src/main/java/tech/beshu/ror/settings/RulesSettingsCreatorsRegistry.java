@@ -134,7 +134,7 @@ public class RulesSettingsCreatorsRegistry {
       Object settings = blockSettings.req(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String
         ? LdapAuthenticationRuleSettings.from((String) settings, ldapSettingsCollection)
-        : LdapAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings), ldapSettingsCollection);
+        : LdapAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings, blockSettings.getLogger()), ldapSettingsCollection);
     };
   }
 
@@ -166,7 +166,7 @@ public class RulesSettingsCreatorsRegistry {
         externalAuthenticationServiceSettingsCollection
       )
         : ExternalAuthenticationRuleSettings.from(
-        new RawSettings((Map<String, ?>) settings),
+        new RawSettings((Map<String, ?>) settings, blockSettings.getLogger()),
         externalAuthenticationServiceSettingsCollection
       );
     };

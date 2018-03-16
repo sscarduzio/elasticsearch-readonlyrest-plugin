@@ -81,7 +81,7 @@ public class RorSettings {
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
       .map(block -> BlockSettings.from(
-        new RawSettings((Map<String, ?>) block),
+        new RawSettings((Map<String, ?>) block, raw.getLogger()),
         authMethodCreatorsRegistry,
         ldapSettingsCollection,
         userGroupsProviderSettingsCollection,

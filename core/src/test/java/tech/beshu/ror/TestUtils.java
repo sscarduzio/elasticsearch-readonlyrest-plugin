@@ -18,6 +18,7 @@ package tech.beshu.ror;
 
 import org.yaml.snakeyaml.Yaml;
 import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.util.Map;
 
@@ -30,6 +31,6 @@ public class TestUtils {
     Yaml yaml = new Yaml();
     Map<String, ?> parsedData = (Map<String, ?>) yaml.load(yamlContent);
 
-    return new RawSettings(parsedData);
+    return new RawSettings(parsedData, LoggerShim.dummy());
   }
 }

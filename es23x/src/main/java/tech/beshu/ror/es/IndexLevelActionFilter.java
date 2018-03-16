@@ -98,7 +98,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         settingsObservable.addObserver((o, arg) -> {
           logger.info("Settings observer refreshing...");
           Environment newEnv = new Environment(settings);
-          RawSettings raw = new RawSettings(settingsObservable.getCurrent().asMap());
+          RawSettings raw = new RawSettings(settingsObservable.getCurrent().asMap(), loggerShim);
           BasicSettings newBasicSettings = new BasicSettings(raw, newEnv.configFile().toAbsolutePath());
           ESContext newContext = new ESContextImpl(client, newBasicSettings);
           this.context.set(newContext);

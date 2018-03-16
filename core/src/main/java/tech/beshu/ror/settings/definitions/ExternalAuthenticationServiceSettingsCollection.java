@@ -45,7 +45,7 @@ public class ExternalAuthenticationServiceSettingsCollection {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new ExternalAuthenticationServiceSettings(new RawSettings((Map<String, ?>) l)))
+               .map(l -> new ExternalAuthenticationServiceSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
                .collect(Collectors.toList())
       )
       .map(ExternalAuthenticationServiceSettingsCollection::new)

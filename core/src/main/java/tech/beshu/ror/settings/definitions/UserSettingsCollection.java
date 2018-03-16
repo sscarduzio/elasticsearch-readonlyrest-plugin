@@ -42,7 +42,7 @@ public class UserSettingsCollection {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new UserSettings(new RawSettings((Map<String, ?>) l), registry))
+               .map(l -> new UserSettings(new RawSettings((Map<String, ?>) l, data.getLogger()), registry))
                .collect(Collectors.toList())
       )
       .map(UserSettingsCollection::new)

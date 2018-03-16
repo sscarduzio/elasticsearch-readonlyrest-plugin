@@ -108,7 +108,7 @@ public class AuthMethodCreatorsRegistry {
         return ProxyAuthRuleSettings.from(Lists.newArrayList((String) s));
       }
       else {
-        return ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s), proxyAuthDefinitionSettingsCollection);
+        return ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s, settings.getLogger()), proxyAuthDefinitionSettingsCollection);
       }
     };
   }
@@ -119,7 +119,7 @@ public class AuthMethodCreatorsRegistry {
       Object conf = settings.req(JwtAuthRuleSettings.ATTRIBUTE_NAME);
       return conf instanceof String
         ? JwtAuthRuleSettings.from((String) conf, jwtAuthDefinitionSettingsCollection)
-        : JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf), jwtAuthDefinitionSettingsCollection);
+        : JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), jwtAuthDefinitionSettingsCollection);
     };
   }
 
@@ -130,7 +130,7 @@ public class AuthMethodCreatorsRegistry {
       Object settings = rawSettings.req(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String
         ? LdapAuthenticationRuleSettings.from((String) settings, ldapSettingsCollection)
-        : LdapAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings), ldapSettingsCollection);
+        : LdapAuthenticationRuleSettings.from(new RawSettings((Map<String, ?>) settings, rawSettings.getLogger()), ldapSettingsCollection);
     };
 
   }

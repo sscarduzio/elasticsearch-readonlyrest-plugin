@@ -88,7 +88,7 @@ public class SettingsObservableImpl extends SettingsObservable {
       throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
-    return new RawSettings(yamlString);
+    return new RawSettings(yamlString, logger);
   }
 
   @Override

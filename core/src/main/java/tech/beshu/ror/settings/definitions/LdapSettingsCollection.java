@@ -44,7 +44,7 @@ public class LdapSettingsCollection {
       .map(list ->
              list.stream()
                .map(l -> {
-                 RawSettings s = new RawSettings((Map<String, ?>) l);
+                 RawSettings s = new RawSettings((Map<String, ?>) l, data.getLogger());
                  return (LdapSettings) (GroupsProviderLdapSettings.canBeCreated(s)
                    ? new GroupsProviderLdapSettings(s)
                    : new AuthenticationLdapSettings(s));
