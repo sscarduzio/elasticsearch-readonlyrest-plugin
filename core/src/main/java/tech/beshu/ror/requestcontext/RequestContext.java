@@ -30,22 +30,16 @@ import tech.beshu.ror.acl.domain.Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
 import tech.beshu.ror.httpclient.HttpMethod;
-import tech.beshu.ror.requestcontext.transactionals.TxKibanaIndices;
 import tech.beshu.ror.utils.BasicAuthUtils;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 
   private final static String X_KIBANA_INDEX_HEADER = "x-ror-kibana_index";
 
   protected Transactional<Set<String>> indices;
-  private TxKibanaIndices kibanaIndices;
+  private Transactional<String> kibanaIndex;
   private Boolean doesInvolveIndices = false;
   private VariablesManager variablesManager;
   private Map<String, String> requestHeaders;
@@ -64,7 +58,27 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   public void init() {
     this.doesInvolveIndices = extractDoesInvolveIndices();
 
-    this.kibanaIndices = new TxKibanaIndices(context, s -> setResponseHeader(X_KIBANA_INDEX_HEADER, Joiner.on(",").join(s)));
+    this.kibanaIndex = new Transactional<String>("tx_kibana_index", context) {
+      @Override
+      public String initialize() {
+        return null;
+      }
+
+      @Override
+      public String copy(String initial) {
+        return initial;
+      }
+
+      @Override
+      public void onCommit(String value) {
+        setResponseHeader(X_KIBANA_INDEX_HEADER, value);
+      }
+
+      @Override
+      public void reset() {
+        super.reset();
+      }
+    };
 
     this.requestHeaders = extractRequestHeaders();
     variablesManager = new VariablesManager(this.requestHeaders, this, context);
@@ -214,6 +228,10 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     history.add(blockHistory);
   }
 
+  public Map<String, String> getResponseHeaders() {
+    return Maps.newHashMap(responseHeaders.get());
+  }
+
   public void setResponseHeader(String name, String value) {
     Map<String, String> copied = responseHeaders.copy(responseHeaders.get());
     copied.put(name, value);
@@ -245,11 +263,6 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   public boolean involvesIndices() {
     return doesInvolveIndices;
-  }
-
-
-  public Set<String> getKibanaIndices() {
-    return kibanaIndices.get();
   }
 
 
@@ -308,6 +321,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       ? loggedInUser.get()
       : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
       ", BRS:" + !Strings.isNullOrEmpty(getHeaders().get("User-Agent")) +
+      ", KDX:" + kibanaIndex.get() +
       ", ACT:" + getAction() +
       ", OA:" + getRemoteAddress() +
       ", DA:" + getLocalAddress() +

@@ -38,7 +38,7 @@ public class KibanaIndexSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    rc.getKibanaIndices().add(settings.kibanaIndex.getValue(rc).orElse(".kibana"));
+    rc.setKibanaIndex(settings.kibanaIndex.getValue(rc).orElse(null));
     return MATCH;
   }
 
