@@ -19,7 +19,6 @@ package tech.beshu.ror.commons.settings;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
-import sun.rmi.runtime.Log;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.net.URI;
@@ -46,10 +45,6 @@ public class RawSettings {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
-  }
-
-  public LoggerShim getLogger() {
-    return logger;
   }
 
   public RawSettings(Map<String, ?> raw, LoggerShim logger) {
@@ -79,6 +74,10 @@ public class RawSettings {
     return new RawSettings(syntheticYaml, logger);
   }
 
+  public LoggerShim getLogger() {
+    return logger;
+  }
+
   public Set<String> getKeys() {
     return raw.keySet();
   }
@@ -89,7 +88,8 @@ public class RawSettings {
     Object val;
     try {
       val = jpathContext.read("$." + attr);
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       val = null;
     }
 
@@ -102,7 +102,8 @@ public class RawSettings {
     Object val;
     try {
       val = (T) jpathContext.read("$." + attr);
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       val = null;
     }
     if (val == null) {
@@ -198,7 +199,8 @@ public class RawSettings {
     return stringOpt(attr).flatMap(s -> {
       try {
         return Optional.of(new URI(s));
-      } catch (URISyntaxException e) {
+      }
+      catch (URISyntaxException e) {
         return Optional.empty();
       }
     });
@@ -207,7 +209,8 @@ public class RawSettings {
   public URI uriReq(String attr) {
     try {
       return new URI(stringReq(attr));
-    } catch (URISyntaxException e) {
+    }
+    catch (URISyntaxException e) {
       throw new SettingsMalformedException("Cannot convert '" + attr + "' to URI");
     }
   }

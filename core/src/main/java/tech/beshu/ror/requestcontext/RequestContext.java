@@ -32,7 +32,12 @@ import tech.beshu.ror.commons.shims.request.RequestContextShim;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.utils.BasicAuthUtils;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 
@@ -147,7 +152,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     // Register for cascading effects
     this.indices.delegateTo(this);
     this.loggedInUser.delegateTo(this);
-    this.kibanaIndices.delegateTo(this);
+    this.kibanaIndex.delegateTo(this);
     this.responseHeaders.delegateTo(this);
   }
 
@@ -341,5 +346,13 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   public boolean isComposite() {
     return extractIsCompositeRequest();
+  }
+
+  public String getKibanaIndex() {
+    return kibanaIndex.get();
+  }
+
+  public void setKibanaIndex(String kibanaIndex) {
+    this.kibanaIndex.mutate(kibanaIndex);
   }
 }
