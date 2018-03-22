@@ -130,12 +130,6 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
             }
           }
 
-          // ############# KIBANA INDEX HEADER
-          if (rc.getKibanaIndex() == null) {
-            // Can be overridden later
-            rc.setKibanaIndex(".kibana");
-          }
-
           // ############# AVAILABLE GROUPS HEADER
           // #TODO add groups (with indices and kibana access and kibana index) to RC.
           rc.setResponseHeader(AVAILABLE_GROUPS_HEADER, Joiner.on(",").join(uSettings.getGroups()));
