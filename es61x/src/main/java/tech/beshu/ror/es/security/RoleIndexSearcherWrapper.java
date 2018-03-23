@@ -106,8 +106,8 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
             QueryBuilder queryBuilder = queryShardContext.parseInnerQueryBuilder(parser);
             ParsedQuery parsedQuery = queryShardContext.toFilter(queryBuilder);
 			boolQuery.add(parsedQuery.query(), BooleanClause.Occur.SHOULD);
-            reader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
-			return reader;
+            DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
+			return wrappedReader;
 		} catch (IOException e) {
 			this.logger.error("Unable to setup document security");
 			throw ExceptionsHelper.convertToElastic((Exception) e);

@@ -34,7 +34,7 @@ public class FilterTransient implements Serializable {
 	private static final long serialVersionUID = -8866625802695512997L;
     private final String _filter;
     
-    public static FilterTransient CreateFromFilter(String filter) {
+    public static FilterTransient createFromFilter(String filter) {
     	return new FilterTransient(filter);
     }
     

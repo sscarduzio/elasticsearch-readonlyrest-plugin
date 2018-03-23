@@ -202,7 +202,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         		BlockExitResult ber = (BlockExitResult) blockExitResult;
         		Optional<String> filter = ber.getBlock().getFilter();
         		if (filter.isPresent()) {
-        			String encodedUser = FilterTransient.CreateFromFilter(filter.get()).serialize();
+        			String encodedUser = FilterTransient.createFromFilter(filter.get()).serialize();
         			if (encodedUser == null)
 						logger.error("Error while serializing user transient");
 					if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {

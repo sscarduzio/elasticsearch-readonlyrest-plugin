@@ -35,7 +35,6 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.IndexService;
-import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.engine.EngineException;
 import org.elasticsearch.index.query.ParsedQuery;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -107,8 +106,8 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
             QueryBuilder queryBuilder = queryShardContext.newParseContext(parser).parseInnerQueryBuilder().get();
             ParsedQuery parsedQuery = queryShardContext.toFilter(queryBuilder);
 			boolQuery.add(parsedQuery.query(), BooleanClause.Occur.SHOULD);
-            reader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
-			return reader;
+            DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
+			return wrappedReader;
 		} catch (IOException e) {
 			this.logger.error("Unable to setup document security");
 			throw ExceptionsHelper.convertToElastic((Exception) e);
