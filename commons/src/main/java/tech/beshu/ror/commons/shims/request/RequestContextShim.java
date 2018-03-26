@@ -41,6 +41,8 @@ public interface RequestContextShim {
 
   String getRemoteAddress();
 
+  String getLocalAddress();
+
   String getType();
 
   Long getTaskId();

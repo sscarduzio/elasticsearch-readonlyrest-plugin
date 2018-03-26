@@ -216,7 +216,6 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   abstract public String getRemoteAddress();
 
-  abstract public String getLocalAddress();
 
   abstract protected Map<String, String> extractRequestHeaders();
 
@@ -252,8 +251,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   }
 
   public boolean isDebug() {
-    return true;
-//    return getContext().logger(this.getClass()).isDebugEnabled();
+    return getContext().logger(this.getClass()).isDebugEnabled();
   }
 
 
@@ -297,7 +295,12 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
     String theHeaders;
     if (!isDebug()) {
-      theHeaders = Joiner.on(",").join(getHeaders().keySet());
+      Map<String,String> hdrs = getHeaders();
+      if(hdrs.containsKey("Authorization")){
+        hdrs = Maps.newHashMap(hdrs);
+        hdrs.put("Authorization", "<OMITTED>");
+      }
+      theHeaders = hdrs.toString();
     }
     else {
       theHeaders = getHeaders().toString();
@@ -319,24 +322,23 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       currentGroup = "N/A";
     }
 
-    return "{ ID:" + getId() +
-      ", TYP:" + getType() +
-      ", CGR:" + currentGroup +
-      ", USR:" + (loggedInUser.isPresent()
-      ? loggedInUser.get()
-      : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]"))) +
-      ", BRS:" + !Strings.isNullOrEmpty(getHeaders().get("User-Agent")) +
-      ", KDX:" + kibanaIndex.get() +
-      ", ACT:" + getAction() +
-      ", OA:" + getRemoteAddress() +
-      ", DA:" + getLocalAddress() +
-      ", IDX:" + theIndices +
-      ", MET:" + getMethod() +
-      ", PTH:" + getUri() +
-      ", CNT:" + content +
-      ", HDR:" + theHeaders +
-      ", HIS:" + hist +
-      " }";
+    return new StringBuilder()
+      .append("{ ID:").append(getId())
+      .append(", TYP:").append(getType())
+      .append(", CGR:").append(currentGroup)
+      .append(", USR:").append(loggedInUser.isPresent() ? loggedInUser.get() : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]")))
+      .append(", BRS:").append(!Strings.isNullOrEmpty(getHeaders().get("User-Agent")))
+      .append(", KDX:").append(kibanaIndex.get())
+      .append(", ACT:").append(getAction()).append(", OA:")
+      .append(getRemoteAddress())
+      .append(", DA:").append(getLocalAddress())
+      .append(", IDX:").append(theIndices)
+      .append(", MET:").append(getMethod())
+      .append(", PTH:").append(getUri())
+      .append(", CNT:").append(content)
+      .append(", HDR:").append(theHeaders)
+      .append(", HIS:").append(hist)
+      .append(" }").toString();
   }
 
 

@@ -87,6 +87,11 @@ public class SerializationToolTests {
     }
 
     @Override
+    public String getLocalAddress() {
+      return "DA";
+    }
+
+    @Override
     public String getType() {
       return "Object";
     }

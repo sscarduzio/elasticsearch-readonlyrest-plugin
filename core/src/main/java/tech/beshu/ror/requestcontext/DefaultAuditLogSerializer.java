@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.requestcontext;
 
+import com.google.common.base.Strings;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Maps;
 import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
@@ -57,6 +58,13 @@ public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String,
     map.put("content_len_kb", req.getContentLength() / 1024);
     map.put("type", req.getType());
     map.put("origin", req.getRemoteAddress());
+    map.put("destination", req.getLocalAddress());
+
+    String xff = req.getHeaders().get("X-Forwarded-For");
+    if(!Strings.isNullOrEmpty(xff)){
+      map.put("xff", xff);
+    }
+
     map.put("task_id", req.getTaskId());
 
     map.put("req_method", req.getMethodString());
