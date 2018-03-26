@@ -62,7 +62,8 @@ public class SerializationToolTests {
     @Override
     public Map<String, String> getHeaders() {
       Map<String, String> m = new HashMap<>();
-      m.put("h1", "v1");
+      m.put("Authorization", "SECRET!!!");
+      m.put("X-Forwarded-For", "123");
       return m;
     }
 
@@ -131,7 +132,7 @@ public class SerializationToolTests {
     SerializationTool st = new SerializationTool(new MockedESContext());
     String ser = st.toJson(new ResponseContext(ResponseContext.FinalState.ALLOWED, requestContextShim, null, Verbosity.INFO, "because", true));
     System.out.println(ser);
-    Map<String, Object> ours = gson.fromJson("{\"error_message\":null,\"headers\":[\"h1\"],\"acl_history\":\"history\",\"origin\":\"OA\",\"final_state\":\"ALLOWED\",\"task_id\":0,\"type\":\"Object\",\"req_method\":\"GET\",\"path\":\"/_search\",\"indices\":[\"index1\"],\"@timestamp\":\"1970-01-01T00:00:00Z\",\"content_len_kb\":0,\"error_type\":null,\"processingMillis\":1510699696944,\"action\":\"theAction\",\"id\":\"123\",\"content_len\":0,\"user\":\"user\"}", Map.class);
+    Map<String, Object> ours = gson.fromJson("{\"error_message\":null,\"headers\":[\"Authorization\", \"X-Forwarded-For\"],\"acl_history\":\"history\",\"origin\":\"OA\",\"final_state\":\"ALLOWED\",\"destination\"=\"DA\",\"task_id\":0,\"type\":\"Object\",\"req_method\":\"GET\",\"path\":\"/_search\",\"indices\":[\"index1\"],\"@timestamp\":\"1970-01-01T00:00:00Z\",\"content_len_kb\":0,\"error_type\":null,\"processingMillis\":1510699696944,\"xff\"=\"123\",\"action\":\"theAction\",\"id\":\"123\",\"content_len\":0,\"user\":\"user\"}", Map.class);
     Map<String, Object> theirs = gson.fromJson(ser, Map.class);
 
     // The processing millis is calculated on the fly, cannot predict that
