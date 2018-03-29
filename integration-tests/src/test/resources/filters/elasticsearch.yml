@@ -1,0 +1,41 @@
+http.host: 0.0.0.0
+
+http.type: ssl_netty4
+#transport.type: local
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  enable: true
+
+  access_control_rules:
+
+  - name: Gettera
+    api_keys: ["g"]
+    indices: ["testfiltera"]
+    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
+    
+  - name: Getterbandc
+    api_keys: ["g"]
+    indices: ["testfilterbandc"]
+    filter: "{\"bool\": {\"should\": [{\"term\": {\"title\": {\"value\": \"b1\"}}},{\"term\": {\"title\": {\"value\": \"c2\"}}}]}}"
+    
+  - name: Getterbandc
+    api_keys: ["g"]
+    indices: ["testfilterd"]
+    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"d1\"}}}]}}"
+    
+  # ES container initializer need this rule to configure ES instance after startup
+  - name: "CONTAINER ADMIN"
+    auth_key: admin:container
+    verbosity: error
+
+  - name: passthrough
+    actions: ["cluster:monitor*", "indices:*/write*", "*create*"]
+
+  - name: Poller
+    api_keys: ["p"]
+    verbosity: error

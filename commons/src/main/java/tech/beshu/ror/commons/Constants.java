@@ -39,7 +39,8 @@ public class Constants {
   public final static String REST_REFRESH_PATH = "/_readonlyrest/admin/refreshconfig";
   public final static String REST_CONFIGURATION_PATH = "/_readonlyrest/admin/config";
   public final static String REST_CONFIGURATION_FILE_PATH = "/_readonlyrest/admin/config/file";
-
+  public final static String FILTER_TRANSIENT = "_filter";
+  
   public static String makeAbsolutePath(String path, String basePath) {
 
     if (Strings.isNullOrEmpty(basePath)) {
