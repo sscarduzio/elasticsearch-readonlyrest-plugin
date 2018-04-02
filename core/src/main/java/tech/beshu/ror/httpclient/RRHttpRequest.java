@@ -45,6 +45,10 @@ public class RRHttpRequest {
     return new RRHttpRequest(HttpMethod.GET, url, queryParams, headers, Optional.empty());
   }
 
+  public static RRHttpRequest post(URI url, Map<String, String> queryParams, Map<String, String> headers) {
+    return new RRHttpRequest(HttpMethod.POST, url, queryParams, headers, Optional.empty());
+  }
+
   public static RRHttpRequest get(URI url, Map<String, String> headers) {
     return get(url, Maps.newHashMap(), headers);
   }
