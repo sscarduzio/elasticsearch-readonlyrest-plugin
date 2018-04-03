@@ -51,7 +51,7 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   private final ImmutableMap<String, String> defaultHeaders;
   private final ImmutableMap<String, String> defaultQueryParameters;
   private final HttpMethod method;
-  private final Function<LinkedHashMap<String, Object>, ImmutableMap<String, String>> toMap = (map) -> {
+  private Function<LinkedHashMap<String, Object>, ImmutableMap<String, String>> toMap = (map) -> {
     Map<String, String> tempMap = new HashMap<>();
     map.entrySet().forEach(e -> tempMap.put(e.getKey(), String.valueOf(e.getValue())));
     return ImmutableMap.copyOf(tempMap);
@@ -110,7 +110,7 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   }
 
   private HttpMethod httpMethodFromString(String method) {
-    return method.toLowerCase() == "post" ? HttpMethod.POST : HttpMethod.GET;
+    return method.equalsIgnoreCase("post") ? HttpMethod.POST : HttpMethod.GET;
   }
 
   public enum TokenPassingMethod {

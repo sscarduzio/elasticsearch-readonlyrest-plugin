@@ -47,7 +47,7 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   private final String responseGroupsJsonPath;
   private final ImmutableMap<String, String> defaultHeaders;
   private final ImmutableMap<String, String> defaultQueryParameters;
-  private final Function<LoggedUser,RRHttpRequest> requestBuilder;
+  private Function<LoggedUser,RRHttpRequest> requestBuilder;
 
   public GroupsProviderServiceHttpClient(String name,
                                          HttpClient client,

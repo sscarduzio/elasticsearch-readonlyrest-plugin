@@ -45,7 +45,8 @@ import java.util.stream.Collectors;
 public class GroupsProviderAuthorizationAsyncRuleTests {
 
   @ClassRule
-  public static WireMockContainer wireMockContainer = WireMockContainer.create("/groups_provider_authorization.json",
+  public static WireMockContainer wireMockContainer = WireMockContainer.create(
+      "/groups_provider_authorization.json",
       "/group_provider_authorization_complex.json");
 
   private final Function<ImmutableMap<String, String>, String> mapFormatter = map -> map.entrySet().stream().
@@ -59,7 +60,7 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
     result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
         "/complex/groups", "POST",
         ImmutableMap.of("Content-Type", "application/x-www-form-urlencoded",
-            "Authorization", "Basic base64_encoded_token"),
+            "Auth", "Basic base64_encoded_token"),
         ImmutableMap.of("return_groups", "true")
     );
     assertTrue(result.isMatch());
