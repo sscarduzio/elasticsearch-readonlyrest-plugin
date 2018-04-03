@@ -47,7 +47,6 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   private final String responseGroupsJsonPath;
   private final ImmutableMap<String, String> defaultHeaders;
   private final ImmutableMap<String, String> defaultQueryParameters;
-  private final HttpMethod method;
   private final Function<LoggedUser,RRHttpRequest> requestBuilder;
 
   public GroupsProviderServiceHttpClient(String name,
@@ -68,19 +67,9 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
     this.client = client;
     this.defaultHeaders = defaultHeaders;
     this.defaultQueryParameters = defaultQueryParameters;
-    this.method = method;
-    switch (method) {
-      case POST: {
-        requestBuilder = (t ->
-            RRHttpRequest.post(this.endpoint, createParams(t), createHeaders(t)));
-        break;
-      }
-      default: {
-        requestBuilder = (t ->
-            RRHttpRequest.get(this.endpoint, createParams(t), createHeaders(t)));
-      }
-
-    }
+    this.requestBuilder = method == HttpMethod.POST ? (t ->
+        RRHttpRequest.post(this.endpoint, createParams(t), createHeaders(t))) :
+        (t -> RRHttpRequest.get(this.endpoint, createParams(t), createHeaders(t)));
   }
 
   @Override

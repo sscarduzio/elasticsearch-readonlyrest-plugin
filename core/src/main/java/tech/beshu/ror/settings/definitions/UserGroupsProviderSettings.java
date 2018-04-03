@@ -17,7 +17,6 @@
 package tech.beshu.ror.settings.definitions;
 
 import com.google.common.collect.ImmutableMap;
-import org.slf4j.LoggerFactory;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.httpclient.HttpMethod;
@@ -39,8 +38,8 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   private static final String PASSED_AS = "auth_token_passed_as";
   private static final String JSON_PATH = "response_groups_json_path";
   private static final String CACHE = "cache_ttl_in_sec";
-  public static final String DEFAULT_QUERY_PARAMS = "default_query_parameters";
-  public static final String DEFAULT_HEADERS = "default_headers";
+  private static final String DEFAULT_QUERY_PARAMS = "default_query_parameters";
+  private static final String DEFAULT_HEADERS = "default_headers";
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
   private static final String HTTP_METHOD = "http_method";
   private final String name;
@@ -52,8 +51,11 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   private final ImmutableMap<String, String> defaultHeaders;
   private final ImmutableMap<String, String> defaultQueryParameters;
   private final HttpMethod method;
-
-  org.slf4j.Logger logger = LoggerFactory.getLogger(UserGroupsProviderSettings.class);
+  private final Function<LinkedHashMap<String, Object>, ImmutableMap<String, String>> toMap = (map) -> {
+    Map<String, String> tempMap = new HashMap<>();
+    map.entrySet().forEach(e -> tempMap.put(e.getKey(), String.valueOf(e.getValue())));
+    return ImmutableMap.copyOf(tempMap);
+  };
 
   public UserGroupsProviderSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
@@ -68,28 +70,6 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
         (LinkedHashMap) settings.asMap().get(DEFAULT_QUERY_PARAMS)) : ImmutableMap.<String, String>of();
     this.method = settings.opt(HTTP_METHOD).isPresent()?httpMethodFromString(settings.stringReq(HTTP_METHOD)):
         HttpMethod.GET;
-  }
-
-  Function<LinkedHashMap<String, Object>, ImmutableMap<String, String>> toMap = (t) -> {
-    Map<String, String> temp = new HashMap<>();
-    t.entrySet().forEach(e -> temp.put(e.getKey(), String.valueOf(e.getValue())));
-    return ImmutableMap.copyOf(temp);
-  };
-
-  private ImmutableMap<String, String> getHeaders(RawSettings settings) {
-    if (settings.stringOpt(DEFAULT_HEADERS).isPresent()) {
-      return toMap.apply((LinkedHashMap) settings.asMap().get(DEFAULT_HEADERS));
-
-    }
-    return null;
-  }
-
-  private ImmutableMap<String, String> getQueryParameters(RawSettings settings) {
-    if (settings.stringOpt(DEFAULT_QUERY_PARAMS).isPresent()) {
-      HashMap s = (LinkedHashMap) settings.asMap().get(DEFAULT_QUERY_PARAMS);
-      return ImmutableMap.copyOf(s);
-    }
-    return null;
   }
 
   @Override
@@ -130,14 +110,7 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   }
 
   private HttpMethod httpMethodFromString(String method) {
-    switch (method) {
-      case "get":
-        return HttpMethod.GET;
-      case "post":
-        return HttpMethod.POST;
-      default:
-        return HttpMethod.GET;
-    }
+    return method.toLowerCase() == "post" ? HttpMethod.POST : HttpMethod.GET;
   }
 
   public enum TokenPassingMethod {

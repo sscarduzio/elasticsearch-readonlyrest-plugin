@@ -48,6 +48,9 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
   public static WireMockContainer wireMockContainer = WireMockContainer.create("/groups_provider_authorization.json",
       "/group_provider_authorization_complex.json");
 
+  private final Function<ImmutableMap<String, String>, String> mapFormatter = map -> map.entrySet().stream().
+      map(y -> "      " + y.getKey() + ": " + y.getValue()).reduce("", (x, y) -> x + "\n" + y).concat("\n");
+
   @Test
   public void testUserAuthorizationSuccess() throws Exception {
     RuleExitResult result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
@@ -107,7 +110,6 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
     return rule.match(requestContext).get();
   }
 
-
   @NotNull
   private String apiConfigs(String uri, String method, ImmutableMap<String, String> headers, ImmutableMap<String, String> query_params) {
     StringBuilder builder = new StringBuilder("" +
@@ -124,10 +126,6 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
     builder.append(method != null ? "    http_method: " + method : "");
     return builder.toString();
   }
-
-  Function<ImmutableMap<String, String>, String> mapFormatter = map -> map.entrySet().stream().
-      map(y -> "      " + y.getKey() + ": " + y.getValue()).reduce("", (x, y) -> x + "\n" + y).concat("\n");
-
 
   @NotNull
   private String groupProviderConfig(List<String> ruleGroups) {
