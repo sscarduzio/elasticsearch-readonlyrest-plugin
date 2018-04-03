@@ -16,11 +16,17 @@
  */
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.jetbrains.annotations.NotNull;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.when;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
@@ -36,48 +42,66 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.when;
-
 public class GroupsProviderAuthorizationAsyncRuleTests {
 
   @ClassRule
-  public static WireMockContainer wireMockContainer = WireMockContainer.create("/groups_provider_authorization.json");
+  public static WireMockContainer wireMockContainer = WireMockContainer.create(
+      "/groups_provider_authorization.json",
+      "/group_provider_authorization_complex.json");
+
+  private final Function<ImmutableMap<String, String>, String> mapFormatter = map -> map.entrySet().stream().
+      map(y -> "      " + y.getKey() + ": " + y.getValue()).reduce("", (x, y) -> x + "\n" + y).concat("\n");
 
   @Test
   public void testUserAuthorizationSuccess() throws Exception {
-    RuleExitResult result = createRuleRunMatch(Lists.newArrayList("group1", "group3"));
+    RuleExitResult result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
+        "/groups", null, null, null);
+    assertTrue(result.isMatch());
+    result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
+        "/complex/groups", "POST",
+        ImmutableMap.of("Content-Type", "application/x-www-form-urlencoded",
+            "Auth", "Basic base64_encoded_token"),
+        ImmutableMap.of("return_groups", "true")
+    );
     assertTrue(result.isMatch());
   }
 
   @Test
   public void testUserAuthorizationFailedDueToGroupMismatching() throws Exception {
-    RuleExitResult result = createRuleRunMatch(Lists.newArrayList("group3", "group4"));
+    RuleExitResult result = createRuleRunMatch(Lists.newArrayList("group3", "group4"),
+        "/groups", null, null, null);
+    assertFalse(result.isMatch());
+    result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
+        "/complex/groups", "POST",
+        ImmutableMap.of("Content-Type", "application/x-www-form-urlencoded",
+            "Authorization", "Basic base64_encoded_token"),
+        ImmutableMap.of("return_Role", "true")
+    );
+    assertFalse(result.isMatch());
+
+    result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
+        "/complex/groups", "POST",
+        ImmutableMap.of("Content-Type", "application/x-www-form-urlencoded"),
+        ImmutableMap.of("return_Role", "true")
+    );
     assertFalse(result.isMatch());
   }
 
-  private RuleExitResult createRuleRunMatch(List<String> ruleGroups) throws Exception {
+
+  private RuleExitResult createRuleRunMatch(List<String> ruleGroups,
+                                            String uri, String method, ImmutableMap<String, String> headers,
+                                            ImmutableMap<String, String> query_params
+  ) throws Exception {
     GroupsProviderAuthorizationAsyncRule rule = new GroupsProviderAuthorizationAsyncRule(
-      GroupsProviderAuthorizationRuleSettings.from(
-        TestUtils.fromYAMLString("" +
-                                   "groups_provider_authorization:\n" +
-                                   "  user_groups_provider: \"provider1\"\n" +
-                                   "  groups: [" + Joiner.on(",").join(ruleGroups.stream().map(g -> "\"" + g + "\"").collect(Collectors.toSet())) + "]\n" +
-                                   "  cache_ttl_in_sec: 60").inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
-        UserGroupsProviderSettingsCollection.from(
-          TestUtils.fromYAMLString("" +
-                                     "user_groups_providers:\n" +
-                                     "  - name: provider1\n" +
-                                     "    groups_endpoint: \"http://localhost:" + wireMockContainer.getWireMockPort() + "/groups\"\n" +
-                                     "    auth_token_name: \"userId\"\n" +
-                                     "    auth_token_passed_as: QUERY_PARAM\n" +
-                                     "    response_groups_json_path: \"$..groups[?(@.name)].name\"\n"
-          )
-        )
-      ),
-      new DefinitionsFactory(MockedESContext.INSTANCE, MockedACL.getMock()),
-      MockedESContext.INSTANCE
+        GroupsProviderAuthorizationRuleSettings.from(
+            TestUtils.fromYAMLString(groupProviderConfig(ruleGroups)).inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
+            UserGroupsProviderSettingsCollection.from(
+                TestUtils.fromYAMLString(apiConfigs(uri, method, headers, query_params)
+                )
+            )
+        ),
+        new DefinitionsFactory(MockedESContext.INSTANCE, MockedACL.getMock()),
+        MockedESContext.INSTANCE
     );
 
     LoggedUser user = new LoggedUser("example_user");
@@ -86,4 +110,32 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
 
     return rule.match(requestContext).get();
   }
+
+  @NotNull
+  private String apiConfigs(String uri, String method, ImmutableMap<String, String> headers, ImmutableMap<String, String> query_params) {
+    StringBuilder builder = new StringBuilder("" +
+        "user_groups_providers:\n" +
+        "  - name: provider1\n" +
+        "    groups_endpoint: \"http://localhost:" + wireMockContainer.getWireMockPort() + uri + "\"\n" +
+        "    auth_token_name: \"userId\"\n" +
+        "    auth_token_passed_as: QUERY_PARAM\n" +
+        "    response_groups_json_path: \"$..groups[?(@.name)].name\"\n");
+    builder.append(headers != null ? new StringBuilder().
+        append("    default_headers:\n").append(mapFormatter.apply(headers)).toString() : "");
+    builder.append(headers != null ? new StringBuilder().
+        append("    default_query_parameters:\n").append(mapFormatter.apply(query_params)).toString() : "");
+    builder.append(method != null ? "    http_method: " + method : "");
+    return builder.toString();
+  }
+
+  @NotNull
+  private String groupProviderConfig(List<String> ruleGroups) {
+    return "" +
+        "groups_provider_authorization:\n" +
+        "  user_groups_provider: \"provider1\"\n" +
+        "  groups: [" + Joiner.on(",").join(ruleGroups.stream().map(g -> "\"" + g + "\"").collect(Collectors.toSet())) + "]\n" +
+        "  cache_ttl_in_sec: 60";
+  }
+
+
 }

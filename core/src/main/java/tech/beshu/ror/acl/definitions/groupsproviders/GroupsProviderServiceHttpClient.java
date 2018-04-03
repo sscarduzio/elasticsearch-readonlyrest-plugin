@@ -24,6 +24,7 @@ import tech.beshu.ror.acl.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.httpclient.HttpClient;
+import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.httpclient.RRHttpRequest;
 import tech.beshu.ror.httpclient.RRHttpResponse;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
@@ -44,14 +45,19 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   private final String authTokenName;
   private final UserGroupsProviderSettings.TokenPassingMethod passingMethod;
   private final String responseGroupsJsonPath;
+  private final ImmutableMap<String, String> defaultHeaders;
+  private final ImmutableMap<String, String> defaultQueryParameters;
+  private Function<LoggedUser,RRHttpRequest> requestBuilder;
 
   public GroupsProviderServiceHttpClient(String name,
                                          HttpClient client,
                                          URI endpoint,
                                          String authTokenName,
+                                         HttpMethod method,
                                          UserGroupsProviderSettings.TokenPassingMethod passingMethod,
                                          String responseGroupsJsonPath,
-                                         ESContext context) {
+                                         ImmutableMap<String, String> defaultHeaders, ImmutableMap<String,
+      String> defaultQueryParameters, ESContext context) {
     this.logger = context.logger(getClass());
     this.name = name;
     this.endpoint = endpoint;
@@ -59,24 +65,30 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
     this.passingMethod = passingMethod;
     this.responseGroupsJsonPath = responseGroupsJsonPath;
     this.client = client;
+    this.defaultHeaders = defaultHeaders;
+    this.defaultQueryParameters = defaultQueryParameters;
+    this.requestBuilder = method == HttpMethod.POST ? (t ->
+        RRHttpRequest.post(this.endpoint, createParams(t), createHeaders(t))) :
+        (t -> RRHttpRequest.get(this.endpoint, createParams(t), createHeaders(t)));
   }
 
   @Override
   public CompletableFuture<Set<String>> fetchGroupsFor(LoggedUser user) {
-    return client.send(RRHttpRequest.get(endpoint, createParams(user), createHeaders(user)))
-      .thenApply(groupsFromResponse());
+
+    return client.send(requestBuilder.apply(user))
+        .thenApply(groupsFromResponse());
   }
 
   private Map<String, String> createParams(LoggedUser user) {
     return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.QUERY
-      ? ImmutableMap.of(authTokenName, user.getId())
-      : ImmutableMap.of();
+        ? new ImmutableMap.Builder<String, String>().putAll(defaultQueryParameters.entrySet()).put(authTokenName, user.getId()).build()
+        : ImmutableMap.copyOf(defaultQueryParameters);
   }
 
   private Map<String, String> createHeaders(LoggedUser user) {
     return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.HEADER
-      ? ImmutableMap.of(authTokenName, user.getId())
-      : ImmutableMap.of();
+        ? new ImmutableMap.Builder<String, String>().putAll(defaultHeaders.entrySet()).put(authTokenName, user.getId()).build()
+        : ImmutableMap.copyOf(defaultHeaders);
   }
 
   private Function<RRHttpResponse, Set<String>> groupsFromResponse() {
@@ -95,4 +107,5 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
       return Sets.newHashSet();
     };
   }
+
 }

@@ -18,7 +18,11 @@
 package tech.beshu.ror.httpclient;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
@@ -30,6 +34,7 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.AccessController;
@@ -38,6 +43,8 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivilegedAction;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -85,20 +92,32 @@ public class ApacheHttpCoreClient implements HttpClient {
   public CompletableFuture<RRHttpResponse> send(RRHttpRequest request) {
 
     CompletableFuture<HttpResponse> promise = new CompletableFuture<>();
-
     URI uri;
+    HttpRequestBase hcRequest;
     try {
-      uri = new URIBuilder(request.getUrl().toASCIIString())
-        .addParameters(
-          request.getQueryParams().entrySet().stream()
-            .map(e -> new BasicNameValuePair(e.getKey(), e.getValue()))
-            .collect(Collectors.toList())
-        ).build();
+      if (request.getMethod() == HttpMethod.POST) {
+        uri = new URIBuilder(request.getUrl().toASCIIString()).build();
+        hcRequest = new HttpPost(uri);
+        List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
+        request.getQueryParams().entrySet().
+            forEach(x -> urlParameters.add(new BasicNameValuePair(x.getKey(), x.getValue())));
+        ((HttpPost) hcRequest).setEntity(new UrlEncodedFormEntity(urlParameters));
+
+      } else {
+        uri = new URIBuilder(request.getUrl().toASCIIString())
+            .addParameters(
+                request.getQueryParams().entrySet().stream()
+                    .map(e -> new BasicNameValuePair(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList())
+            ).build();
+        hcRequest = new HttpGet(uri);
+      }
     } catch (URISyntaxException e) {
+      throw context.rorException(e.getClass().getSimpleName() + ": " + e.getMessage());
+    } catch (UnsupportedEncodingException e) {
       throw context.rorException(e.getClass().getSimpleName() + ": " + e.getMessage());
     }
 
-    final HttpGet hcRequest = new HttpGet(uri);
     request.getHeaders().entrySet().forEach(e -> hcRequest.addHeader(e.getKey(), e.getValue()));
 
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {

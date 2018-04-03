@@ -181,8 +181,11 @@ public class DefinitionsFactory implements LdapClientFactory,
           new ApacheHttpCoreClient(context, true),
           settings.getEndpoint(),
           settings.getAuthTokenName(),
+          settings.getMethod(),
           settings.getAuthTokenPassedMethod(),
           settings.getResponseGroupsJsonPath(),
+          settings.getDefaultHeaders(),
+          settings.getDefaultQueryParameters(),
           context
         )
       )
