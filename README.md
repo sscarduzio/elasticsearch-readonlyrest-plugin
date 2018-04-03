@@ -411,6 +411,13 @@ readonlyrest:
       auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
       response_groups_json_path: "$..groups[?(@.name)].name"   # see: https://github.com/json-path/JsonPath
       cache_ttl_in_sec: 60
+      default_headers:                                         # default headers to be passed with api call
+        header1: value1
+        header2: value2
+      default_query_parameters:                                # default params to be passed with api calls
+        param1: value1
+        param2: value2
+      http_method: get/post                                    # method to invoke GET/POST.  
 ```
 
 In example above, a user is authenticated by reverse proxy and then external service is asked for groups for that user. 

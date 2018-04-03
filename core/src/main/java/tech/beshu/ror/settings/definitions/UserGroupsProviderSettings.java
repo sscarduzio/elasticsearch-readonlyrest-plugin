@@ -42,7 +42,7 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   public static final String DEFAULT_QUERY_PARAMS = "default_query_parameters";
   public static final String DEFAULT_HEADERS = "default_headers";
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
-  private static final String HTTP_METHOD = "http_method" ;
+  private static final String HTTP_METHOD = "http_method";
   private final String name;
   private final URI endpoint;
   private final String authTokenName;
@@ -56,7 +56,6 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   org.slf4j.Logger logger = LoggerFactory.getLogger(UserGroupsProviderSettings.class);
 
   public UserGroupsProviderSettings(RawSettings settings) {
-    logger.info("***************Trying things out******************");
     this.name = settings.stringReq(NAME);
     this.endpoint = settings.uriReq(ENDPOINT);
     this.authTokenName = settings.stringReq(AUTH_TOKEN_NAME);
@@ -67,9 +66,8 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
         (LinkedHashMap) settings.asMap().get(DEFAULT_HEADERS)) : ImmutableMap.<String, String>of();
     this.defaultQueryParameters = settings.stringOpt(DEFAULT_HEADERS).isPresent() ? toMap.apply(
         (LinkedHashMap) settings.asMap().get(DEFAULT_QUERY_PARAMS)) : ImmutableMap.<String, String>of();
-    //this.defaultQueryParameters = getQueryParameters(settings);
-    this.method = httpMethodFromString(settings.stringReq(HTTP_METHOD));
-    System.out.printf("******************** this is initialized*******");
+    this.method = settings.opt(HTTP_METHOD).isPresent()?httpMethodFromString(settings.stringReq(HTTP_METHOD)):
+        HttpMethod.GET;
   }
 
   Function<LinkedHashMap<String, Object>, ImmutableMap<String, String>> toMap = (t) -> {
