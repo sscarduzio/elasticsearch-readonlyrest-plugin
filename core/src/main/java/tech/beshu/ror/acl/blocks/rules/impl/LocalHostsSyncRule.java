@@ -24,6 +24,8 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
 
+import java.util.Optional;
+
 public class LocalHostsSyncRule extends SyncRule {
 
   private final ESContext context;
@@ -38,7 +40,15 @@ public class LocalHostsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return settings.getAllowedAddresses().contains(rc.getLocalAddress()) ? MATCH : NO_MATCH;
+    String rcDestAddress = rc.getLocalAddress();
+    return settings.getAllowedAddresses()
+                   .stream()
+                   .map(aa -> aa.getValue(rc))
+                   .filter(Optional::isPresent)
+                   .map(Optional::get)
+                   .filter(v -> v.equals(rcDestAddress))
+                   .findFirst()
+                   .isPresent() ? MATCH : NO_MATCH;
   }
 
   @Override
