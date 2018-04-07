@@ -17,12 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import java.io.IOException;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -45,7 +39,6 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
-
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.acl.blocks.BlockExitResult;
 import tech.beshu.ror.commons.Constants;
@@ -55,6 +48,11 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.FilterTransient;
 
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -74,14 +72,14 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
-                                ClusterService clusterService,
-                                TransportService transportService,
-                                NodeClient client,
-                                ThreadPool threadPool,
-                                SettingsObservableImpl settingsObservable,
-                                IndexNameExpressionResolver indexResolver
+      ClusterService clusterService,
+      TransportService transportService,
+      NodeClient client,
+      ThreadPool threadPool,
+      SettingsObservableImpl settingsObservable,
+      IndexNameExpressionResolver indexResolver
   )
-    throws IOException {
+      throws IOException {
     super(settings);
 
     loggerShim = ESContextImpl.mkLoggerShim(logger);
@@ -130,10 +128,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       return null;
 
     });
-
-
   }
-
 
   @Override
   public int order() {
@@ -142,10 +137,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   @Override
   public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
-                                                                                     String action,
-                                                                                     Request request,
-                                                                                     ActionListener<Response> listener,
-                                                                                     ActionFilterChain<Request, Response> chain) {
+      String action,
+      Request request,
+      ActionListener<Response> listener,
+      ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
       Optional<ACL> acl = this.acl.get();
@@ -162,11 +157,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,
-                                                                                              Task task,
-                                                                                              String action,
-                                                                                              Request request,
-                                                                                              ActionListener<Response> listener,
-                                                                                              ActionFilterChain<Request, Response> chain) {
+      Task task,
+      String action,
+      Request request,
+      ActionListener<Response> listener,
+      ActionFilterChain<Request, Response> chain) {
     RestChannel channel = ThreadRepo.channel.get();
     if (channel != null) {
       ThreadRepo.channel.remove();
@@ -182,8 +177,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       @Override
       public void onForbidden() {
         ElasticsearchStatusException exc = new ElasticsearchStatusException(
-          context.get().getSettings().getForbiddenMessage(),
-          acl.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN
+            context.get().getSettings().getForbiddenMessage(),
+            acl.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN
         );
         if (acl.doesRequirePassword()) {
           exc.addHeader("WWW-Authenticate", "Basic");
@@ -195,35 +190,36 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       public void onAllow(Object blockExitResult) {
         boolean hasProceeded = false;
         try {
-        	// Cache disabling for those 2 kind of request is crucial for
-        	// document level security to work. Otherwise we'd get an answer from
-        	// the cache some times and would not be filtered
-        	if (request instanceof SearchRequest) {
-				((SearchRequest)request).requestCache(Boolean.FALSE);
-			} else if (request instanceof MultiSearchRequest) {
-				for (SearchRequest sr : ((MultiSearchRequest)request).requests()) {
-					sr.requestCache(Boolean.FALSE);
-				}
-			}
-
-        	if (blockExitResult instanceof BlockExitResult) {
-        		BlockExitResult ber = (BlockExitResult) blockExitResult;
-        		Optional<String> filter = ber.getBlock().getFilter();
-        		if (filter.isPresent()) {
-        			String encodedUser = FilterTransient.createFromFilter(filter.get()).serialize();
-        			if (encodedUser == null) 
-						logger.error("Error while serializing user transient");
-					if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {
-						threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, encodedUser);
-					}
-        		}
-        	}
+          // Cache disabling for those 2 kind of request is crucial for
+          // document level security to work. Otherwise we'd get an answer from
+          // the cache some times and would not be filtered
+          if (acl.involvesFilter()) {
+            if (request instanceof SearchRequest) {
+              ((SearchRequest) request).requestCache(Boolean.FALSE);
+            }
+            else if (request instanceof MultiSearchRequest) {
+              for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
+                sr.requestCache(Boolean.FALSE);
+              }
+            }
+          }
+          if (blockExitResult instanceof BlockExitResult) {
+            BlockExitResult ber = (BlockExitResult) blockExitResult;
+            Optional<String> filter = ber.getBlock().getFilter();
+            if (filter.isPresent()) {
+              String encodedUser = FilterTransient.createFromFilter(filter.get()).serialize();
+              if (encodedUser == null)
+                logger.error("Error while serializing user transient");
+              if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {
+                threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, encodedUser);
+              }
+            }
+          }
           //         @SuppressWarnings("unchecked")
-//          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
-//            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl
-//          );
-//          chain.proceed(task, action, request, aclActionListener);
-
+          //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
+          //            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl
+          //          );
+          //          chain.proceed(task, action, request, aclActionListener);
 
           chain.proceed(task, action, request, listener);
           hasProceeded = true;

@@ -13,17 +13,21 @@ readonlyrest:
 
   access_control_rules:
 
-  - name: Gettera
+  - name: getter_a
     api_keys: ["g"]
     indices: ["testfiltera"]
     filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
-    
-  - name: Getterbandc
+
+  - name: getter_a_nofilter
+    api_keys: ["a_nofilter"]
+    indices: ["testfiltera"]
+
+  - name: getter_b_and_c
     api_keys: ["g"]
     indices: ["testfilterbandc"]
     filter: "{\"bool\": {\"should\": [{\"term\": {\"title\": {\"value\": \"b1\"}}},{\"term\": {\"title\": {\"value\": \"c2\"}}}]}}"
     
-  - name: Getterbandc
+  - name: getter_d
     api_keys: ["g"]
     indices: ["testfilterd"]
     filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"d1\"}}}]}}"
