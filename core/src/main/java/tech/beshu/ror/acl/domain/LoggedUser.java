@@ -29,7 +29,7 @@ public class LoggedUser {
 
   private final String id;
   private final Set<String> availableGroups = Sets.newHashSet();
-  private Optional<String> currentGroup;
+  private Optional<String> currentGroup = Optional.empty();
 
   public LoggedUser(String id) {
     this.id = id;
