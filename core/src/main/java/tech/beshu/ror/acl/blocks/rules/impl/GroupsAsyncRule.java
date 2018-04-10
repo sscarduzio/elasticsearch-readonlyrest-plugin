@@ -26,6 +26,8 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
+import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
@@ -37,6 +39,8 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static tech.beshu.ror.commons.Constants.HEADER_GROUP_CURRENT;
+
 /**
  * A GroupsSyncRule checks if a request containing Basic Authentication credentials
  * matches a user in one of the specified groups.
@@ -45,10 +49,7 @@ import java.util.stream.Collectors;
  */
 public class GroupsAsyncRule extends AsyncRule implements Authorization, Authentication {
 
-  public static final String CURRENT_GROUP_HEADER = "x-ror-current-group";
-  private static final boolean ROR_KIBANA_METADATA_ENABLED =
-    !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
-  private static final String AVAILABLE_GROUPS_HEADER = "x-ror-available-groups";
+
   private final GroupsRuleSettings settings;
   private final Map<String, User> users;
 
@@ -73,8 +74,11 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
     List<UserSettings> userSettingsToCheck = settings.getUsersSettings();
 
-    // Limit the userSettings to examine to the ones which include current group (is specified)
-    String preferredGroup = rc.getHeaders().get(CURRENT_GROUP_HEADER);
+    LoggedUser lu = rc.getLoggedInUser().orElseThrow(() -> new RuntimeException("No user was resolved " + rc));
+
+    // Filter the userSettings to leave only the ones which include the current group
+    // #TODO move to proper use of optional
+    String  preferredGroup = lu.resolveCurrentGroup(rc.getHeaders()).get();
     if (!Strings.isNullOrEmpty(preferredGroup)) {
       if (!resolvedGroups.contains(preferredGroup)) {
         return CompletableFuture.completedFuture(NO_MATCH);
@@ -112,28 +116,6 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
       (uSettings, ruleExit) -> {
         if (!ruleExit.isMatch()) {
           return false;
-        }
-
-        // A user has matched authentication with provided credentials, writing resp headers
-        if (ROR_KIBANA_METADATA_ENABLED) {
-
-          // ############# CURRENT GROUP HEADER
-          if (!Strings.isNullOrEmpty(preferredGroup)) {
-            // Mirror preferred group header from request to response.
-            rc.setResponseHeader(CURRENT_GROUP_HEADER, preferredGroup);
-          }
-          else {
-            // If no preferred group has been selected, just throw in the first of the list
-            Iterator<String> i = uSettings.getGroups().iterator();
-            if (i.hasNext()) {
-              rc.setResponseHeader(CURRENT_GROUP_HEADER, i.next());
-            }
-          }
-
-          // ############# AVAILABLE GROUPS HEADER
-          // #TODO add groups (with indices and kibana access and kibana index) to RC.
-          rc.setResponseHeader(AVAILABLE_GROUPS_HEADER, Joiner.on(",").join(uSettings.getGroups()));
-
         }
 
         return true;

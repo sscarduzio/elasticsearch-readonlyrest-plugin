@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.requestcontext;
 
 import com.google.common.base.Joiner;
@@ -24,9 +25,9 @@ import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.BlockHistory;
 import tech.beshu.ror.acl.blocks.Block;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.domain.LoggedUser;
 import tech.beshu.ror.acl.domain.Value;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
 import tech.beshu.ror.httpclient.HttpMethod;
@@ -119,9 +120,17 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       @Override
       public void onCommit(Optional<LoggedUser> value) {
         value.ifPresent(loggedUser -> {
-          Map<String, String> theMap = responseHeaders.get();
-          theMap.put("X-RR-User", loggedUser.getId());
-          responseHeaders.mutate(theMap);
+          if(Constants.KIBANA_METADATA_ENABLED) {
+            Map<String, String> theMap = responseHeaders.get();
+            theMap.put(Constants.HEADER_USER_ROR, loggedUser.getId());
+
+            String avGroups = Joiner.on(",").join(loggedUser.getAvailableGroups());
+            theMap.put(Constants.HEADER_GROUPS_AVAILABLE, avGroups);
+
+            loggedUser.resolveCurrentGroup(requestHeaders).ifPresent(cg -> theMap.put(Constants.HEADER_GROUP_CURRENT, cg));
+
+            responseHeaders.mutate(theMap);
+          }
         });
 
       }
@@ -144,10 +153,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       }
     };
 
-
-    // If we get to commit this transaction, put this header.
-    delay(() -> loggedInUser.get().ifPresent(loggedUser -> setResponseHeader("X-RR-User", loggedUser.getId())));
-
+    // If we get to commit this transaction, put this header. #TODO IS THIS NECESSARY? IT SHOULDNT!
+    delay(() -> loggedInUser.get().ifPresent(loggedUser -> setResponseHeader(Constants.HEADER_USER_ROR, loggedUser.getId())));
 
     // Register for cascading effects
     this.indices.delegateTo(this);
@@ -155,7 +162,6 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     this.kibanaIndex.delegateTo(this);
     this.responseHeaders.delegateTo(this);
   }
-
 
   public Set<String> getExpandedIndices() {
     return getExpandedIndices(indices.getInitial());
@@ -216,7 +222,6 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   abstract public String getRemoteAddress();
 
-
   abstract protected Map<String, String> extractRequestHeaders();
 
   public ESContext getContext() {
@@ -254,11 +259,9 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     return getContext().logger(this.getClass()).isDebugEnabled();
   }
 
-
   public Date getTimestamp() {
     return timestamp;
   }
-
 
   public Set<String> getTransientIndices() {
     return indices.get();
@@ -267,7 +270,6 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   public boolean involvesIndices() {
     return doesInvolveIndices;
   }
-
 
   public String toString() {
     return toString(false);
@@ -295,8 +297,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
     String theHeaders;
     if (!isDebug()) {
-      Map<String,String> hdrs = getHeaders();
-      if(hdrs.containsKey("Authorization")){
+      Map<String, String> hdrs = getHeaders();
+      if (hdrs.containsKey("Authorization")) {
         hdrs = Maps.newHashMap(hdrs);
         hdrs.put("Authorization", "<OMITTED>");
       }
@@ -312,8 +314,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     Optional<LoggedUser> loggedInUser = getLoggedInUser();
 
     String currentGroup;
-    if (getHeaders().containsKey(GroupsAsyncRule.CURRENT_GROUP_HEADER)) {
-      currentGroup = getHeaders().get(GroupsAsyncRule.CURRENT_GROUP_HEADER);
+    if (getHeaders().containsKey(Constants.HEADER_GROUP_CURRENT)) {
+      currentGroup = getHeaders().get(Constants.HEADER_GROUP_CURRENT);
       if (Strings.isNullOrEmpty(currentGroup)) {
         currentGroup = "<empty>";
       }

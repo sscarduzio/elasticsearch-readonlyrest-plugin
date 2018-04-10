@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
@@ -25,6 +26,7 @@ import tech.beshu.ror.acl.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -42,20 +44,36 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
-    return client.userById(user.getId())
-      .thenCompose(ldapUser -> ldapUser
-        .map(client::userGroups)
-        .orElseGet(() -> CompletableFuture.completedFuture(Sets.newHashSet()))
-      )
-      .thenApply(this::checkIfUserHasAccess);
+    CompletableFuture<Set<LdapGroup>> accessibleGroups = client
+        .userById(user.getId())
+        .thenCompose(ldapUser -> ldapUser
+            .map(client::userGroups)
+            .orElseGet(() -> CompletableFuture.completedFuture(Sets.newHashSet()))
+        );
+
+    return accessibleGroups.thenApply(ldapGroups -> {
+      Set<LdapGroup> intersectedGroups = checkWhatConfiguredGroupsUserHasAccess(ldapGroups);
+
+      // Add available group metadata
+      user.addAvailableGroups(
+          intersectedGroups.stream()
+                           .map(LdapGroup::getName)
+                           .collect(Collectors.toSet())
+      );
+
+      return !intersectedGroups.isEmpty();
+    });
+
   }
 
-  private boolean checkIfUserHasAccess(Set<LdapGroup> ldapGroups) {
-    return !ldapGroups.isEmpty() &&
-      !Sets.intersection(
-        settings.getGroups(),
-        ldapGroups.stream().map(LdapGroup::getName).collect(Collectors.toSet())
-      ).isEmpty();
+  private Set<LdapGroup> checkWhatConfiguredGroupsUserHasAccess(Set<LdapGroup> ldapGroups) {
+    if (ldapGroups.isEmpty()) {
+      return Collections.emptySet();
+    }
+
+    Set<LdapGroup> intersectedGroups = ldapGroups.stream().filter(g -> settings.getGroups().contains(g.getName())).collect(Collectors.toSet());
+
+    return intersectedGroups;
   }
 
   @Override

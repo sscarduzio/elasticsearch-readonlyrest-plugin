@@ -60,7 +60,6 @@ public class LocalHostsRuleTests {
     RuleExitResult res = match("1.1.1.1", "1.1.1.1");
     assertTrue(res.isMatch());
   }
-  
 
   @Test
   public void testOKName() {

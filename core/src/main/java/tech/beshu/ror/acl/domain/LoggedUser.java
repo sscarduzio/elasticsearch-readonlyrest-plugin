@@ -14,13 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.domain;
 
+import com.google.common.collect.Sets;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.shims.request.RequestContextShim;
+import tech.beshu.ror.requestcontext.RequestContext;
+
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 public class LoggedUser {
 
   private final String id;
+  private final Set<String> availableGroups = Sets.newHashSet();
+  private Optional<String> currentGroup;
 
   public LoggedUser(String id) {
     this.id = id;
@@ -30,10 +41,33 @@ public class LoggedUser {
     return id;
   }
 
+  public void addAvailableGroups(Set<String> groups) {
+    availableGroups.addAll(groups);
+  }
+
+  public Optional<String> resolveCurrentGroup(Map<String,String> requestHeaders) {
+    //#TODO use Optional::or in JDK9
+    if (currentGroup.isPresent()){
+      return currentGroup;
+    }
+    Optional<String> value =  Optional.of(requestHeaders.get(Constants.HEADER_GROUP_CURRENT));
+    if(!value.isPresent() && !availableGroups.isEmpty()){
+      value = Optional.of(availableGroups.iterator().next());
+    }
+    currentGroup = value;
+    return currentGroup;
+  }
+
+  public Set<String> getAvailableGroups() {
+    return Sets.newHashSet(availableGroups);
+  }
+
   @Override
   public boolean equals(Object obj) {
-    if (obj == null) return false;
-    if (getClass() != obj.getClass()) return false;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
     final LoggedUser other = (LoggedUser) obj;
     return Objects.equals(id, other.id);
   }
