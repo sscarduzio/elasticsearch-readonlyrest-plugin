@@ -19,8 +19,6 @@ package tech.beshu.ror.acl.domain;
 
 import com.google.common.collect.Sets;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.shims.request.RequestContextShim;
-import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.util.Map;
 import java.util.Objects;

@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
@@ -27,7 +26,6 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
 import tech.beshu.ror.acl.domain.LoggedUser;
-import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
@@ -38,8 +36,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static tech.beshu.ror.commons.Constants.HEADER_GROUP_CURRENT;
 
 /**
  * A GroupsSyncRule checks if a request containing Basic Authentication credentials
