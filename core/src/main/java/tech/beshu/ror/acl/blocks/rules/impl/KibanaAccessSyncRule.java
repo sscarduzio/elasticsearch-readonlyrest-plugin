@@ -52,8 +52,10 @@ public class KibanaAccessSyncRule extends SyncRule {
     "indices:data/write/delete*",
     "indices:data/write/index",
     "indices:data/write/update*",
-    "indices:data/write/bulk*"
+    "indices:data/write/bulk*",
+    "indices:admin/template/*"
   ));
+  
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
     "cluster:admin/rradmin/*",
     "indices:data/write/*", // <-- DEPRECATED!
