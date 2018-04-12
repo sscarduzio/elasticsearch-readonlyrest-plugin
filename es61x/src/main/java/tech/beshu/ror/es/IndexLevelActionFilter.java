@@ -32,6 +32,7 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
@@ -161,7 +162,13 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
         ElasticsearchStatusException exc = new ElasticsearchStatusException(
             context.get().getSettings().getForbiddenMessage(),
             acl.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN
-        );
+        ) {
+          @Override
+          public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            builder.field("reason", context.get().getSettings().getForbiddenMessage());
+            return builder;
+          }
+        };
         if (acl.doesRequirePassword()) {
           exc.addHeader("WWW-Authenticate", "Basic");
         }
@@ -176,7 +183,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           // Cache disabling for those 2 kind of request is crucial for
           // document level security to work. Otherwise we'd get an answer from
           // the cache some times and would not be filtered
-          if(acl.involvesFilter()) {
+          if (acl.involvesFilter()) {
             if (request instanceof SearchRequest) {
               logger.debug("ACL involves filters, will disable request cache for SearchRequest");
 
