@@ -31,7 +31,10 @@ import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Function;
@@ -70,24 +73,29 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
     List<UserSettings> userSettingsToCheck = settings.getUsersSettings();
 
-    LoggedUser lu = rc.getLoggedInUser().orElseThrow(() -> new RuntimeException("No user was resolved " + rc));
 
     // Filter the userSettings to leave only the ones which include the current group
     // #TODO move to proper use of optional
-    String  preferredGroup = lu.resolveCurrentGroup(rc.getHeaders()).get();
+    final String preferredGroup = rc.getLoggedInUser().isPresent() ?
+        rc.getLoggedInUser().get().resolveCurrentGroup(rc.getHeaders()).orElse(null) : new LoggedUser("x").resolveCurrentGroup(rc.getHeaders()).orElse(null);
+
+    // Exclude userSettings that don't contain groups in this groupRule
+    userSettingsToCheck = userSettingsToCheck.stream()
+                                             .filter(us -> !Sets.intersection(us.getGroups(), resolvedGroups).isEmpty())
+                                             .collect(Collectors.toList());
+
     if (!Strings.isNullOrEmpty(preferredGroup)) {
       if (!resolvedGroups.contains(preferredGroup)) {
         return CompletableFuture.completedFuture(NO_MATCH);
       }
-      userSettingsToCheck = settings.getUsersSettings().stream()
+      // Already isolate the preferred group
+
+      String userName = settings.getUsersSettings().stream()
         .filter(us -> us.getGroups().contains(preferredGroup))
-        .collect(Collectors.toList());
+        .collect(Collectors.toList()).iterator().next().getUsername();
     }
 
-    // Exclude userSettings that don't contain groups in this groupRule
-    userSettingsToCheck = userSettingsToCheck.stream()
-      .filter(us -> !Sets.intersection(us.getGroups(), resolvedGroups).isEmpty())
-      .collect(Collectors.toList());
+
 
     if (userSettingsToCheck.isEmpty()) {
       return CompletableFuture.completedFuture(NO_MATCH);
@@ -101,20 +109,29 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
       // Asynchronously map for each userSetting, return MATCH when we authenticated the first user
       uSettings -> {
-        return users.get(uSettings.getUsername()).getAuthKeyRule().match(rc)
-          .exceptionally(e -> {
-            e.printStackTrace();
-            return NO_MATCH;
-          });
+        return users.get(uSettings.getUsername())
+                    .getAuthKeyRule()
+                    .match(rc)
+                    .exceptionally(e -> {
+                      e.printStackTrace();
+                      return NO_MATCH;
+                    });
       },
 
-      // Boolean decision (true = break loop)
+        // Boolean decision (true = break loop)
       (uSettings, ruleExit) -> {
-        if (!ruleExit.isMatch()) {
+
+        if(!ruleExit.isMatch() && rc.getLoggedInUser().isPresent()){
           return false;
         }
 
-        return true;
+        // Now that we have a user, we can populate the headers.
+        rc.getLoggedInUser().ifPresent(lu -> {
+          lu.addAvailableGroups(users.get(lu.getId()).getGroups());
+          lu.resolveCurrentGroup(rc.getHeaders());
+        });
+
+        return ruleExit.isMatch();
       },
 
       // If never true..

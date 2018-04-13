@@ -46,6 +46,7 @@ public class LocalGroupsTest {
   @Test
   public void testOK_GoodCredsWithGoodRule() throws Exception {
     HttpResponse r = mkRequest("user", "passwd", matchingEndpoint);
+
     assertEquals(
       200,
       r.getStatusLine().getStatusCode()
@@ -56,6 +57,8 @@ public class LocalGroupsTest {
     assertTrue(r.getHeaders("x-ror-kibana_index")[0].getValue().equals(".kibana_user"));
     assertTrue(r.getHeaders("x-kibana-hide-apps")[0].getValue().equals("timelion"));
     assertTrue(r.getHeaders("x-ror-kibana_access")[0].getValue().equals("admin"));
+    assertTrue(r.getHeaders("x-ror-current-group")[0].getValue().equals("testgroup"));
+    assertTrue(r.getHeaders("x-ror-available-groups")[0].getValue().equals("testgroup,extra_group"));
   }
 
   @Test

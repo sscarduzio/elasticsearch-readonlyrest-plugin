@@ -26,9 +26,14 @@ readonlyrest:
     kibana_hide_apps: ["timelion"]
     kibana_access: admin
 
+  - name: R3
+    groups: ["extra_group"]
+    uri_re: "lol don't match here pls"
+
+
   users:
   - username: user
     auth_key: user:passwd
-    groups: ["testgroup"]
+    groups: ["testgroup", "extra_group"]
 
 

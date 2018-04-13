@@ -122,13 +122,15 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
         value.ifPresent(loggedUser -> {
           if(Constants.KIBANA_METADATA_ENABLED) {
             Map<String, String> theMap = responseHeaders.get();
+
             theMap.put(Constants.HEADER_USER_ROR, loggedUser.getId());
 
-            String avGroups = Joiner.on(",").join(loggedUser.getAvailableGroups());
-            theMap.put(Constants.HEADER_GROUPS_AVAILABLE, avGroups);
+            if(!loggedUser.getAvailableGroups().isEmpty()) {
+              String avGroups = Joiner.on(",").join(loggedUser.getAvailableGroups());
+              theMap.put(Constants.HEADER_GROUPS_AVAILABLE, avGroups);
+            }
 
             loggedUser.resolveCurrentGroup(requestHeaders).ifPresent(cg -> theMap.put(Constants.HEADER_GROUP_CURRENT, cg));
-
             responseHeaders.mutate(theMap);
           }
         });

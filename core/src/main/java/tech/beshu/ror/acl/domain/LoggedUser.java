@@ -44,11 +44,10 @@ public class LoggedUser {
   }
 
   public Optional<String> resolveCurrentGroup(Map<String,String> requestHeaders) {
-    //#TODO use Optional::or in JDK9
     if (currentGroup.isPresent()){
       return currentGroup;
     }
-    Optional<String> value =  Optional.of(requestHeaders.get(Constants.HEADER_GROUP_CURRENT));
+    Optional<String> value =  Optional.ofNullable(requestHeaders.get(Constants.HEADER_GROUP_CURRENT));
     if(!value.isPresent() && !availableGroups.isEmpty()){
       value = Optional.of(availableGroups.iterator().next());
     }
