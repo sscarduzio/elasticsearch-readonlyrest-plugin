@@ -88,11 +88,11 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
       if (!resolvedGroups.contains(preferredGroup)) {
         return CompletableFuture.completedFuture(NO_MATCH);
       }
+      
       // Already isolate the preferred group
-
-      String userName = settings.getUsersSettings().stream()
-        .filter(us -> us.getGroups().contains(preferredGroup))
-        .collect(Collectors.toList()).iterator().next().getUsername();
+       userSettingsToCheck = settings.getUsersSettings().stream()
+      .filter(us -> us.getGroups().contains(preferredGroup))
+      .collect(Collectors.toList();
     }
 
 
