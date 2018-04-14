@@ -70,7 +70,6 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
       .map(Optional::get)
       .collect(Collectors.toSet());
 
-
     List<UserSettings> userSettingsToCheck = settings.getUsersSettings();
 
 
@@ -88,11 +87,6 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
       if (!resolvedGroups.contains(preferredGroup)) {
         return CompletableFuture.completedFuture(NO_MATCH);
       }
-
-      // Already isolate the preferred group
-       userSettingsToCheck = settings.getUsersSettings().stream()
-      .filter(us -> us.getGroups().contains(preferredGroup))
-      .collect(Collectors.toList());
     }
 
 
@@ -109,6 +103,9 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
       // Asynchronously map for each userSetting, return MATCH when we authenticated the first user
       uSettings -> {
+        if(!Strings.isNullOrEmpty(preferredGroup) && !uSettings.getGroups().contains(preferredGroup)){
+          return CompletableFuture.completedFuture(NO_MATCH);
+        }
         return users.get(uSettings.getUsername())
                     .getAuthKeyRule()
                     .match(rc)

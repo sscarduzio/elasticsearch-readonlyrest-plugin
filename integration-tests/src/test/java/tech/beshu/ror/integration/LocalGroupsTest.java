@@ -14,20 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.integration;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import org.junit.ClassRule;
-import org.junit.Test;
 
 import java.util.Optional;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -37,61 +37,100 @@ public class LocalGroupsTest {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-    ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(),
-      "/local_groups/elasticsearch.yml",
-      Optional.empty()
-    );
+      ESWithReadonlyRestContainer.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          "/local_groups/elasticsearch.yml",
+          Optional.empty()
+      );
 
   @Test
   public void testOK_GoodCredsWithGoodRule() throws Exception {
     HttpResponse r = mkRequest("user", "passwd", matchingEndpoint);
 
     assertEquals(
-      200,
-      r.getStatusLine().getStatusCode()
+        200,
+        r.getStatusLine().getStatusCode()
     );
 
     // Piggy back response headers testing (too long to spin up another container)
-    assertTrue(r.getHeaders("x-rr-user")[0].getValue().equals("user"));
-    assertTrue(r.getHeaders("x-ror-kibana_index")[0].getValue().equals(".kibana_user"));
-    assertTrue(r.getHeaders("x-kibana-hide-apps")[0].getValue().equals("timelion"));
-    assertTrue(r.getHeaders("x-ror-kibana_access")[0].getValue().equals("admin"));
-    assertTrue(r.getHeaders("x-ror-current-group")[0].getValue().equals("testgroup"));
-    assertTrue(r.getHeaders("x-ror-available-groups")[0].getValue().equals("testgroup,extra_group"));
+    assertEquals("user", r.getHeaders("x-rr-user")[0].getValue());
+    assertEquals(".kibana_user", r.getHeaders("x-ror-kibana_index")[0].getValue());
+    assertEquals("timelion", r.getHeaders("x-kibana-hide-apps")[0].getValue());
+    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue());
+    assertEquals("testgroup", r.getHeaders("x-ror-current-group")[0].getValue());
+    assertEquals("testgroup,extra_group,foogroup", r.getHeaders("x-ror-available-groups")[0].getValue());
+  }
+
+  @Test
+  public void testOK_GoodCredsWithGoodRuleWithMatchingPreferredgroup() throws Exception {
+    HttpResponse r = mkRequest("user", "passwd", matchingEndpoint, "foogroup");
+
+    assertEquals(
+        200,
+        r.getStatusLine().getStatusCode()
+    );
+
+    // Piggy back response headers testing (too long to spin up another container)
+    assertEquals("user", r.getHeaders("x-rr-user")[0].getValue());
+    assertEquals(".kibana_foogroup", r.getHeaders("x-ror-kibana_index")[0].getValue());
+    assertEquals("foo:app", r.getHeaders("x-kibana-hide-apps")[0].getValue());
+    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue());
+    assertEquals("foogroup", r.getHeaders("x-ror-current-group")[0].getValue());
+    assertEquals("testgroup,extra_group,foogroup", r.getHeaders("x-ror-available-groups")[0].getValue());
+  }
+  @Test
+  public void testOK_GoodCredsWithGoodRuleWithNoNMatchingPreferredGroup() throws Exception {
+    HttpResponse r = mkRequest("user", "passwd", matchingEndpoint, "extra_group");
+
+    assertEquals(
+        401,
+        r.getStatusLine().getStatusCode()
+    );
   }
 
   @Test
   public void testFail_BadCredsGoodRule() throws Exception {
     assertNotEquals(
-      200,
-      mkRequest("user", "wrong", matchingEndpoint).getStatusLine().getStatusCode()
+        200,
+        mkRequest("user", "wrong", matchingEndpoint).getStatusLine().getStatusCode()
     );
   }
 
   @Test
   public void testFail_BadCredsBadRule() throws Exception {
     assertNotEquals(
-      200,
-      mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode()
+        200,
+        mkRequest("user", "wrong", "/_cat/indices").getStatusLine().getStatusCode()
     );
   }
 
   @Test
   public void testFail_GoodCredsBadRule() throws Exception {
     assertNotEquals(
-      200,
-      mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
+        200,
+        mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
     );
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {
     RestClient rcl = container.getBasicAuthClient(user, pass);
-    return rcl.execute(new HttpGet(rcl.from(
-      endpoint,
-      new ImmutableMap.Builder<String, String>()
-        .build()
-    )));
+    HttpGet req = new HttpGet(rcl.from(
+        endpoint,
+        new ImmutableMap.Builder<String, String>()
+            .build()
+    ));
+    return rcl.execute(req);
+  }
+
+  private HttpResponse mkRequest(String user, String pass, String endpoint, String preferredGroup) throws Exception {
+    RestClient rcl = container.getBasicAuthClient(user, pass);
+    HttpGet req = new HttpGet(rcl.from(
+        endpoint,
+        new ImmutableMap.Builder<String, String>()
+            .build()
+    ));
+    req.setHeader("x-ror-current-group", preferredGroup);
+    return rcl.execute(req);
   }
 
 }
