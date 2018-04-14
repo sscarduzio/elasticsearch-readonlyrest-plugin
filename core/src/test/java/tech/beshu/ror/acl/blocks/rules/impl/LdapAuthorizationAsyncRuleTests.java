@@ -65,7 +65,7 @@ public class LdapAuthorizationAsyncRuleTests {
     Set<String> availGroups = lu.getAvailableGroups();
     assertEquals(1, availGroups.size());
     assertEquals("group2", availGroups.iterator().next());
-    assertEquals("group2", lu.resolveCurrentGroup(rc.getHeaders()));
+    assertEquals("group2", lu.resolveCurrentGroup(rc.getHeaders()).get());
   }
 
   @Test
