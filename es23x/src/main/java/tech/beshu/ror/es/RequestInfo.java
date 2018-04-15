@@ -35,6 +35,8 @@ import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.percolate.MultiPercolateRequest;
+import org.elasticsearch.action.percolate.PercolateRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.IndicesOptions;
@@ -277,6 +279,16 @@ public class RequestInfo implements RequestInfoShim {
         .flatMap(Collection::stream)
         .collect(Collectors.toSet());
       indices = (String[]) indicesSet.toArray();
+    }
+
+    else if (ar instanceof PercolateRequest){
+      PercolateRequest pr = (PercolateRequest) ar;
+      indices = pr.indices();
+    }
+
+    else if (ar instanceof MultiPercolateRequest){
+      MultiPercolateRequest pr = (MultiPercolateRequest) ar;
+      indices = pr.indices();
     }
 
     // CompositeIndicesRequests
