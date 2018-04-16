@@ -211,9 +211,9 @@ public class ACL {
           }
         })
         .exceptionally(th -> {
-          h.onErrored(th);
           th.printStackTrace();
           doLog(new ResponseContext(FinalState.ERRORED, rc, th, null, "error", false));
+          h.onErrored(th);
           return null;
         });
   }
