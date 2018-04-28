@@ -40,6 +40,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.commons.domain.Variable;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
@@ -210,7 +211,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
 
       @Override
-      public void onAllow(Object blockExitResult) {
+      public void onAllow(Object blockExitResult, Variable.VariableResolver rc) {
         boolean hasProceeded = false;
         try {
           //         @SuppressWarnings("unchecked")
