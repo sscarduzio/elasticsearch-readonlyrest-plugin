@@ -48,12 +48,14 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.FieldLevelSecuritySettingsTransient;
 import tech.beshu.ror.commons.utils.FilterTransient;
 
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -205,6 +207,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
           if (blockExitResult instanceof BlockExitResult) {
             BlockExitResult ber = (BlockExitResult) blockExitResult;
+
+            // [DLS] forwarding constraint to next stage
             Optional<String> filter = ber.getBlock().getSettings().getFilter(rc);
             if (filter.isPresent()) {
               String serializedFilter = FilterTransient.createFromFilter(filter.get()).serialize();
@@ -215,6 +219,17 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                 threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, serializedFilter);
               }
             }
+
+            // [FLS] Forwarding constraints to next stage
+            Optional<Set<String>> fields = ber.getBlock().getSettings().getFields();
+            if(fields.isPresent() && !fields.get().isEmpty()){
+              if (threadPool.getThreadContext().getHeader(Constants.FIELDS_TRANSIENT) == null) {
+                String serializedFields = new FieldLevelSecuritySettingsTransient(fields).serialize();
+                logger.debug("FLS: injecting serialized fields " + serializedFields);
+                threadPool.getThreadContext().putHeader(Constants.FIELDS_TRANSIENT, serializedFields);
+              }
+            }
+
           }
           //         @SuppressWarnings("unchecked")
           //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(

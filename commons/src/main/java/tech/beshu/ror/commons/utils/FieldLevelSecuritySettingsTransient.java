@@ -31,7 +31,7 @@ public class FieldLevelSecuritySettingsTransient {
   private final ImmutableSet<String> flsFields;
   private boolean isBlackList = false;
 
-  FieldLevelSecuritySettingsTransient(Optional<Set<String>> fields) {
+  public FieldLevelSecuritySettingsTransient(Optional<Set<String>> fields) {
     assert fields != null;
     if (fields == null) {
       flsFields = ImmutableSet.of();
