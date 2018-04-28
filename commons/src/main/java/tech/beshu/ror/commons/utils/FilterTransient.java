@@ -31,60 +31,60 @@ import java.util.Base64;
 // We created a class to store the filter instead of using a String var
 // because we'll use it in further updates for the field level security
 public class FilterTransient implements Serializable {
-	private static final long serialVersionUID = -8866625802695512997L;
-    private final String _filter;
-    
-    public static FilterTransient createFromFilter(String filter) {
-    	return new FilterTransient(filter);
-    }
-    
-    private FilterTransient(String filter) {
-        this._filter = filter;
-    }
+  private static final long serialVersionUID = -8866625802695512997L;
+  private final String _filter;
 
-    public String getFilter() {
-    	return this._filter;
-    }
-    
-    @Override
-    public String toString() {
-        return "{ "
-                + "FILTER: " + this._filter
-                + "}";
-    }
-    
-    public String serialize() {
-    	ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos;
-		try {
-			oos = new ObjectOutputStream(baos);
-			oos.writeObject(this);
-	        oos.close();
-		} catch (IOException e) {
-			return null;
-		}
-        return Base64.getEncoder().encodeToString(baos.toByteArray());
-    }
-    
-    public static FilterTransient Deserialize(String userTransientEncoded) {
-    	FilterTransient userTransient = null;
-    	if (userTransientEncoded == null)
-    		return userTransient;
-		try {
-			byte [] data = Base64.getDecoder().decode(userTransientEncoded);
-	        ObjectInputStream ois;
-			ois = new ObjectInputStream(new ByteArrayInputStream(data));
-			Object o  = ois.readObject();
-			if (o instanceof FilterTransient) {
-				userTransient = (FilterTransient) o;
-			}
-	        ois.close();
-		} catch (IOException e) {
-			throw new IllegalStateException("Couldn't extract userTransient from threadContext.");
-		} catch (ClassNotFoundException e) {
-			throw new IllegalStateException("Couldn't extract userTransient from threadContext.");
-		}
-		return userTransient;
+  private FilterTransient(String filter) {
+    this._filter = filter;
+  }
 
+  public static FilterTransient createFromFilter(String filter) {
+    return new FilterTransient(filter);
+  }
+
+  public static FilterTransient Deserialize(String userTransientEncoded) {
+    FilterTransient userTransient = null;
+    if (userTransientEncoded == null)
+      return userTransient;
+    try {
+      byte[] data = Base64.getDecoder().decode(userTransientEncoded);
+      ObjectInputStream ois;
+      ois = new ObjectInputStream(new ByteArrayInputStream(data));
+      Object o = ois.readObject();
+      if (o instanceof FilterTransient) {
+        userTransient = (FilterTransient) o;
+      }
+      ois.close();
+    } catch (IOException e) {
+      throw new IllegalStateException("Couldn't extract userTransient from threadContext.");
+    } catch (ClassNotFoundException e) {
+      throw new IllegalStateException("Couldn't extract userTransient from threadContext.");
     }
+    return userTransient;
+
+  }
+
+  public String getFilter() {
+    return this._filter;
+  }
+
+  @Override
+  public String toString() {
+    return "{ "
+        + "FILTER: " + this._filter
+        + "}";
+  }
+
+  public String serialize() {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream oos;
+    try {
+      oos = new ObjectOutputStream(baos);
+      oos.writeObject(this);
+      oos.close();
+    } catch (IOException e) {
+      return null;
+    }
+    return Base64.getEncoder().encodeToString(baos.toByteArray());
+  }
 }

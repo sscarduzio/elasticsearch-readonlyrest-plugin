@@ -57,9 +57,9 @@ public final class DocumentFilterReader extends FilterLeafReader {
 
         final int maxDoc = this.in.maxDoc();
         final FixedBitSet bits = new FixedBitSet(maxDoc);
-        final Scorer preverveScorer = preserveWeight.scorer(this.getContext());
-        if (preverveScorer != null) {
-            bits.or(preverveScorer.iterator());
+        final Scorer preserveScorer = preserveWeight.scorer(this.getContext());
+        if (preserveScorer != null) {
+            bits.or(preserveScorer.iterator());
         }
 
         if (in.hasDeletions()) {
