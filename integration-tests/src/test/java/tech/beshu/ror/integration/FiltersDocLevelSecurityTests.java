@@ -114,6 +114,17 @@ public class FiltersDocLevelSecurityTests {
   }
 
   @Test
+  public void testHeaderReplacement() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search", "put-the-header");
+    assertTrue(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+    assertFalse(body.contains("c1"));
+    assertFalse(body.contains("c2"));
+  }
+
+  @Test
   public void testDirectMultipleIdxbandc() throws Exception {
     String body = search("/" + IDX_PREFIX + "bandc/_search");
     assertFalse(body.contains("a1"));
@@ -162,7 +173,9 @@ public class FiltersDocLevelSecurityTests {
     String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
     request.setHeader("x-caller-" + caller, "true");
     request.setHeader("x-api-key", apiKey);
-
+    if("put-the-header".equals(apiKey)) {
+      request.setHeader("x-randomheader", "value");
+    }
     HttpResponse resp = adminClient.execute(request);
 
     String body = body(resp);
