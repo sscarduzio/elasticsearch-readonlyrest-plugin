@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.definitions.groupsproviders;
 
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;

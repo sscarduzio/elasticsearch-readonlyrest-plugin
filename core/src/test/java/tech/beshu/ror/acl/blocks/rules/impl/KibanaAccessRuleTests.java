@@ -23,7 +23,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.acl.domain.KibanaAccess;
+import tech.beshu.ror.commons.domain.KibanaAccess;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;

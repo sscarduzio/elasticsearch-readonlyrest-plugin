@@ -14,28 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.domain;
+package tech.beshu.ror.commons.domain;
 
 import java.util.Optional;
-import java.util.function.Function;
 
-public interface Value<T> {
+public class Const<T> implements Value<T> {
 
-  static <T> Value<T> fromString(String value, Function<String, T> creator) {
-    return value.contains("@")
-      ? new Variable<>(value, creator)
-      : new Const<>(creator.apply(value));
+  private final T value;
+
+  Const(T value) {
+    this.value = value;
   }
 
-  Optional<T> getValue(VariableResolver resolver);
-
-  interface VariableResolver {
-    Optional<String> resolveVariable(String original);
-  }
-
-  class ResolvingException extends RuntimeException {
-    ResolvingException(String value, String variable) {
-      super("'" + value + "' is not correct value for variable '" + variable + "'");
-    }
+  @Override
+  public Optional<T> getValue(VariableResolver resolver) {
+    return Optional.of(value);
   }
 }

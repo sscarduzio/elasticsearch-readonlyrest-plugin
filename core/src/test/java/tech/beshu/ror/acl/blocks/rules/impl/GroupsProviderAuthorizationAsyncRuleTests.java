@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;

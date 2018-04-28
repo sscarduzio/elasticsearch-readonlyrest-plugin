@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.acl.domain;
+package tech.beshu.ror.commons.domain;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;

@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.rules.AsyncAuthorization;
 import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapClientFactory;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 

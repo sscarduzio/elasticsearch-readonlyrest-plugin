@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.acl.domain.KibanaAccess;
-import tech.beshu.ror.acl.domain.Value;
+import tech.beshu.ror.commons.domain.KibanaAccess;
+import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.RuleSettings;

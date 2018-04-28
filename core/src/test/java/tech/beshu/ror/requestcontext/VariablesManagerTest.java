@@ -19,7 +19,7 @@ package tech.beshu.ror.requestcontext;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 import org.mockito.Mockito;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.mocks.MockedESContext;
 
 import java.util.Optional;

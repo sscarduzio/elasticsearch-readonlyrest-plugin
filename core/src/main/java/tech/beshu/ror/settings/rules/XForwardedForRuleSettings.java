@@ -18,8 +18,8 @@ package tech.beshu.ror.settings.rules;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses;
-import tech.beshu.ror.acl.domain.IPMask;
-import tech.beshu.ror.acl.domain.Value;
+import tech.beshu.ror.commons.domain.IPMask;
+import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.net.UnknownHostException;

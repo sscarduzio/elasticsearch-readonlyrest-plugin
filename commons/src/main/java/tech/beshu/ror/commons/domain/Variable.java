@@ -14,25 +14,28 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.domain;
+package tech.beshu.ror.commons.domain;
 
 import java.util.Optional;
+import java.util.function.Function;
 
-public enum KibanaAccess {
-  RO, RW, RO_STRICT, ADMIN;
+public class Variable<T> implements Value<T> {
 
-  public static Optional<KibanaAccess> fromString(String value) {
-    switch (value.toLowerCase()) {
-      case "ro_strict":
-        return Optional.of(RO_STRICT);
-      case "ro":
-        return Optional.of(RO);
-      case "rw":
-        return Optional.of(RW);
-      case "admin":
-        return Optional.of(ADMIN);
-      default:
-        return Optional.empty();
+  private final String value;
+  private final Function<String, T> creator;
+
+  Variable(String value, Function<String, T> creator) {
+    this.value = value;
+    this.creator = creator;
+  }
+
+  @Override
+  public Optional<T> getValue(VariableResolver resolver) {
+    Optional<String> resolved = resolver.resolveVariable(value);
+    try {
+      return resolved.map(creator);
+    } catch (Exception ex) {
+      throw new ResolvingException(resolved.orElse("[unresolved]"), value);
     }
   }
 }

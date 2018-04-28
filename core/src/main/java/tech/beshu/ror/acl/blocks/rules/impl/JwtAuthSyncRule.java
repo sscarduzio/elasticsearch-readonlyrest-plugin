@@ -29,7 +29,7 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.UserRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;

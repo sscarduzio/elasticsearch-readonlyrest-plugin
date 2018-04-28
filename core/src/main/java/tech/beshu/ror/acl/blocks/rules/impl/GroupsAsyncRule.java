@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;

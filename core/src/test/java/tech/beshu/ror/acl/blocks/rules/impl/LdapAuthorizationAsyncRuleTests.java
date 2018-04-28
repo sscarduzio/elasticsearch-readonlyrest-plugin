@@ -23,7 +23,7 @@ import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.mocks.MockLdapClientHelper;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.mocks.RequestContextMock;

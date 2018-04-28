@@ -19,7 +19,7 @@ package tech.beshu.ror.mocks;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.requestcontext.RequestContext;
 
