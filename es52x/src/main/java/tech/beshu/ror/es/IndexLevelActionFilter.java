@@ -205,7 +205,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
           if (blockExitResult instanceof BlockExitResult) {
             BlockExitResult ber = (BlockExitResult) blockExitResult;
-            Optional<String> filter = ber.getBlock().getFilter();
+            Optional<String> filter = ber.getBlock().getSettings().getFilter();
             if (filter.isPresent()) {
               String encodedUser = FilterTransient.createFromFilter(filter.get()).serialize();
               if (encodedUser == null)

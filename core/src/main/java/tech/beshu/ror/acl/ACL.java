@@ -95,7 +95,7 @@ public class ACL {
                    .collect(Collectors.toList())
     );
 
-    this.involvesFilter = blocks.stream().filter(b -> b.getFilter().isPresent()).findFirst().isPresent();
+    this.involvesFilter = blocks.stream().filter(b -> b.getSettings().getFilter().isPresent()).findFirst().isPresent();
   }
 
   public static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {
