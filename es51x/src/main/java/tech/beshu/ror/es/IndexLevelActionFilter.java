@@ -42,6 +42,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.acl.ACL;
 import tech.beshu.ror.acl.blocks.BlockExitResult;
 import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.domain.Variable;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
@@ -193,7 +194,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
 
       @Override
-      public void onAllow(Object blockExitResult) {
+      public void onAllow(Object blockExitResult, Variable.VariableResolver rc) {
         boolean hasProceeded = false;
         try {
           // Cache disabling for those 2 kind of request is crucial for
@@ -211,7 +212,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
           if (blockExitResult instanceof BlockExitResult) {
             BlockExitResult ber = (BlockExitResult) blockExitResult;
-            Optional<String> filter = ber.getBlock().getSettings().getFilter();
+            Optional<String> filter = ber.getBlock().getSettings().getFilter(rc);
             if (filter.isPresent()) {
               String serializedFilter = FilterTransient.createFromFilter(filter.get()).serialize();
               if (serializedFilter == null) {

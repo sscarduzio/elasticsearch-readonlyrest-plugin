@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.domain.Value;
@@ -28,7 +29,6 @@ public class LocalHostsRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "hosts_local";
 
-
   private final Set<Value<String>> allowedAddresses;
 
   public LocalHostsRuleSettings(Set<Value<String>> allowedAddresses) {
@@ -37,9 +37,9 @@ public class LocalHostsRuleSettings implements RuleSettings {
 
   public static LocalHostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
     return new LocalHostsRuleSettings(
-      blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
-        .map(obj -> Value.fromString((String) obj, Function.identity()))
-        .collect(Collectors.toSet())
+        blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
+                     .map(obj -> Value.fromString((String) obj, Function.identity()))
+                     .collect(Collectors.toSet())
     );
   }
 
@@ -47,11 +47,9 @@ public class LocalHostsRuleSettings implements RuleSettings {
     return allowedAddresses;
   }
 
-
   @Override
   public String getName() {
     return ATTRIBUTE_NAME;
   }
-
 
 }

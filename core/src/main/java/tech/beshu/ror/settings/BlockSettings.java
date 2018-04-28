@@ -14,18 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
+package tech.beshu.ror.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-
 import tech.beshu.ror.acl.BlockPolicy;
 import tech.beshu.ror.commons.Verbosity;
+import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
@@ -36,6 +32,12 @@ import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 public class BlockSettings {
 
   public static final String ATTRIBUTE_NAME = "access_control_rules";
@@ -44,10 +46,11 @@ public class BlockSettings {
   private static final String POLICY = "type";
   private static final String VERBOSITY = "verbosity";
   private static final String FILTER = "filter";
-  
+  private static final String FIELDS = "fields";
+
   public static final Set<String> ruleModifiersToSkip = Sets.newHashSet(
-    NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
-    AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL, FILTER
+      NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
+      AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL, FILTER, FIELDS
   );
   private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
@@ -56,51 +59,59 @@ public class BlockSettings {
   private final List<RuleSettings> rules;
   private final Verbosity verbosity;
   private final Optional<String> filter;
-  
-  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules, Optional<String> filter) {
+  private final Optional<Set<String>> fields;
+
+  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules, Optional<String> filter, Optional<Set<String>> fields) {
     validate(rules);
     this.name = name;
     this.policy = policy;
     this.verbosity = verbosity;
     this.rules = rules;
     this.filter = filter;
+    this.fields = fields;
   }
 
   public static BlockSettings from(RawSettings settings,
-                                   AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
-                                   LdapSettingsCollection ldapSettingsCollection,
-                                   UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
-                                   ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
-                                   UserSettingsCollection userSettingsCollection) {
+      AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
+      LdapSettingsCollection ldapSettingsCollection,
+      UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
+      ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
+      UserSettingsCollection userSettingsCollection) {
     RulesSettingsCreatorsRegistry registry = new RulesSettingsCreatorsRegistry(
-      settings,
-      authMethodCreatorsRegistry,
-      ldapSettingsCollection,
-      groupsProviderSettingsCollection,
-      externalAuthenticationServiceSettingsCollection,
-      userSettingsCollection
+        settings,
+        authMethodCreatorsRegistry,
+        ldapSettingsCollection,
+        groupsProviderSettingsCollection,
+        externalAuthenticationServiceSettingsCollection,
+        userSettingsCollection
     );
     String name = settings.stringReq(NAME);
     BlockPolicy policy = settings.stringOpt(POLICY)
-      .map(value -> BlockPolicy.fromString(value)
-        .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown block policy type: " + value)))
-      .orElse(DEFAULT_BLOCK_POLICY);
+                                 .map(value -> BlockPolicy.fromString(value)
+                                     .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown block policy type: " + value)))
+                                 .orElse(DEFAULT_BLOCK_POLICY);
     Verbosity verbosity = settings.stringOpt(VERBOSITY)
-      .map(value -> Verbosity.fromString(value)
-        .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
-      .orElse(DEFAULT_VERBOSITY);
+                                  .map(value -> Verbosity.fromString(value)
+                                      .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
+                                  .orElse(DEFAULT_VERBOSITY);
     Optional<String> filter = settings.stringOpt(FILTER);
-    
+    Optional<Set<String>> fields = settings.notEmptySetOpt(FIELDS).map(s -> s.stream().map(str -> (String) str).collect(Collectors.toSet()));
+
     return new BlockSettings(
-      name,
-      policy,
-      verbosity,
-      settings.getKeys().stream()
-        .filter(k -> !ruleModifiersToSkip.contains(k))
-        .map(registry::create)
-        .collect(Collectors.toList()),
-      filter
+        name,
+        policy,
+        verbosity,
+        settings.getKeys().stream()
+                .filter(k -> !ruleModifiersToSkip.contains(k))
+                .map(registry::create)
+                .collect(Collectors.toList()),
+        filter,
+        fields
     );
+  }
+
+  public Optional<Set<String>> getFields() {
+    return fields;
   }
 
   public String getName() {
@@ -123,7 +134,7 @@ public class BlockSettings {
     if (rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
       if (rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
         throw new SettingsMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
-                                               "' rule does not mean anything if you don't also set some authentication rule");
+            "' rule does not mean anything if you don't also set some authentication rule");
       }
     }
   }
@@ -131,8 +142,11 @@ public class BlockSettings {
   public Verbosity getVerbosity() {
     return verbosity;
   }
-  
-  public Optional<String> getFilter() {
-	  return filter;
+
+  public Optional<String> getFilter(Value.VariableResolver vr) {
+    if (vr == null) {
+      return filter;
+    }
+    return filter.flatMap(flt -> Value.fromString(flt, Function.identity()).getValue(vr));
   }
 }
