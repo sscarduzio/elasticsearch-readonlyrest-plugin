@@ -95,7 +95,7 @@ public class ACL {
                    .collect(Collectors.toList())
     );
 
-    this.involvesFilter = blocks.stream().filter(b -> b.getSettings().getFilter().isPresent()).findFirst().isPresent();
+    this.involvesFilter = blocks.stream().filter(b -> b.getSettings().getFilter(null).isPresent()).findFirst().isPresent();
   }
 
   public static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {
@@ -198,7 +198,7 @@ public class ACL {
 
           // MATCH AN ALLOW BLOCK
           if (BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
-            h.onAllow(result);
+            h.onAllow(result, rc);
             doLog(new ResponseContext(FinalState.ALLOWED, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
             return null;
           }

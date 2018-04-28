@@ -23,7 +23,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -52,6 +51,12 @@ public class FieldLevelSecuritySettingsTransient {
     flsFields = ImmutableSet.copyOf(tmpFields);
   }
 
+  static Optional<FieldLevelSecuritySettingsTransient> deserialize(String s) {
+    Set<String> fields = gson.fromJson(s, new TypeToken<Set<String>>() {
+    }.getType());
+    return Optional.ofNullable(fields).map(set -> new FieldLevelSecuritySettingsTransient(Optional.ofNullable(set)));
+  }
+
   public ImmutableSet<String> getFlsFields() {
     return flsFields;
   }
@@ -60,12 +65,8 @@ public class FieldLevelSecuritySettingsTransient {
     return isBlackList;
   }
 
-  public String serialize(){
+  public String serialize() {
     return gson.toJson(getFlsFields().asList());
-  }
-  static Optional<FieldLevelSecuritySettingsTransient> deserialize(String s){
-    Set<String> fields = gson.fromJson(s,new TypeToken<Set<String>>(){}.getType());
-    return Optional.ofNullable(fields).map(set -> new FieldLevelSecuritySettingsTransient(Optional.ofNullable(set)));
   }
 }
 
