@@ -230,7 +230,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
                 threadPool.getThreadContext().putHeader(Constants.FIELDS_TRANSIENT, serializedFields);
               }
             }
-            
+
           }
           //         @SuppressWarnings("unchecked")
           //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
