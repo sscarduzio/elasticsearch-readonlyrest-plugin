@@ -50,18 +50,18 @@ public class SettingsObservableImpl extends SettingsObservable {
 
   private final NodeClient client;
   private final Settings initialSettings;
+  private final Environment environment;
 
   @Inject
-  public SettingsObservableImpl(NodeClient client, Settings s) {
-
+  public SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
+    this.environment = env;
     this.client = client;
-    current = BasicSettings.fromFile(logger, new Environment(s).configFile(), s.getAsStructuredMap()).getRaw();
+    current = BasicSettings.fromFile(logger, environment.configFile(), s.getAsStructuredMap()).getRaw();
     this.initialSettings = s;
   }
 
   @Override
   protected Path getConfigPath() {
-    Environment environment = new Environment(initialSettings);
     return environment.configFile();
   }
 
