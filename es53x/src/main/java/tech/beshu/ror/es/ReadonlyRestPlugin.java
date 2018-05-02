@@ -17,14 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
-
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -53,7 +45,6 @@ import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
-
 import tech.beshu.ror.commons.shims.es.AbstractESContext;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
@@ -61,15 +52,23 @@ import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
+
 public class ReadonlyRestPlugin extends Plugin
-  implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+    implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private Settings settings;
   private Environment environment;
-  
+
   public ReadonlyRestPlugin(Settings s) {
-	  this.settings = s;
-	  this.environment = new Environment(s);
+    this.settings = s;
+    this.environment = new Environment(s);
   }
 
   @Override
@@ -84,19 +83,19 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-    Settings settings,
-    ThreadPool threadPool,
-    BigArrays bigArrays,
-    CircuitBreakerService circuitBreakerService,
-    NamedWriteableRegistry namedWriteableRegistry,
-    NamedXContentRegistry xContentRegistry,
-    NetworkService networkService,
-    HttpServerTransport.Dispatcher dispatcher) {
+      Settings settings,
+      ThreadPool threadPool,
+      BigArrays bigArrays,
+      CircuitBreakerService circuitBreakerService,
+      NamedWriteableRegistry namedWriteableRegistry,
+      NamedXContentRegistry xContentRegistry,
+      NetworkService networkService,
+      HttpServerTransport.Dispatcher dispatcher) {
     return Collections.singletonMap(
-      "ssl_netty4", () ->
-        new SSLTransportNetty4(
-          settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
-        ));
+        "ssl_netty4", () ->
+            new SSLTransportNetty4(
+                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+            ));
   }
 
   @Override
@@ -123,18 +122,18 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<RestHandler> getRestHandlers(
-    Settings settings, RestController restController, ClusterSettings clusterSettings,
-    IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
-    IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+      Settings settings, RestController restController, ClusterSettings clusterSettings,
+      IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
+      IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
     return Collections.singletonList(new RestRRAdminAction(settings, restController));
   }
 
@@ -148,15 +147,15 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-	public void onIndexModule(IndexModule module) {
-		module.setSearcherWrapper(indexService -> {
-			try {
-				return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			return null;
-		});
-	}
+  public void onIndexModule(IndexModule module) {
+    module.setSearcherWrapper(indexService -> {
+      try {
+        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return null;
+    });
+  }
 
 }
