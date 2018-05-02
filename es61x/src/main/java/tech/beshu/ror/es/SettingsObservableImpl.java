@@ -67,7 +67,7 @@ public class SettingsObservableImpl extends SettingsObservable {
 
   @Override
   protected Path getConfigPath() {
-    return environment.configFile();
+    return environment.configFile().toAbsolutePath();
   }
 
   @Override

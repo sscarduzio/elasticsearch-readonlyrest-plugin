@@ -57,7 +57,7 @@ abstract public class SettingsObservable extends Observable {
   protected abstract void writeToIndex(RawSettings rawSettings, FutureCallback f);
 
   public RawSettings getFromFile() {
-    getLogger().info("reading settings from file");
+    getLogger().info("reading settings from file " + getConfigPath().toAbsolutePath());
     return BasicSettings.fromFile(getLogger(), getConfigPath(), current.asMap()).getRaw();
   }
 

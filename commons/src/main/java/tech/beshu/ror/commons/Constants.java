@@ -48,6 +48,8 @@ public class Constants {
   public static final boolean KIBANA_METADATA_ENABLED =
       !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
 
+  public static final String SETTINGS_YAML_FILE_PATH_PROPERTY = "com.readonlyrest.settings.file.path";
+
   public static String makeAbsolutePath(String path, String basePath) {
 
     if (Strings.isNullOrEmpty(basePath)) {

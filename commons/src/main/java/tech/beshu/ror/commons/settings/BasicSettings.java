@@ -14,9 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.commons.settings;
 
-
+import com.google.common.base.Strings;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableList;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.Verbosity;
@@ -36,6 +37,7 @@ import java.util.Optional;
 import static tech.beshu.ror.commons.Constants.SETTINGS_YAML_FILE;
 
 public class BasicSettings {
+  public static final String ROR_YAML_SETTINGS_PATH = System.getProperty(Constants.SETTINGS_YAML_FILE_PATH_PROPERTY);
   public static final String ATTRIBUTE_NAME = "readonlyrest";
   public static final String ATTRIBUTE_ENABLE = "enable";
   public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
@@ -136,10 +138,21 @@ public class BasicSettings {
   }
 
   public static BasicSettings fromFileObj(LoggerShim logger, Path configPath, Object settingsObject) {
+    logger.info("reading settings path (file obj) " + configPath);
+    if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
+      logger.info("overriding  settings path to " + ROR_YAML_SETTINGS_PATH);
+      configPath = Paths.get(ROR_YAML_SETTINGS_PATH);
+    }
     return fromFile(logger, configPath, (Map<String, ?>) ReflecUtils.invokeMethodCached(settingsObject, settingsObject.getClass(), "getAsStructuredMap"));
   }
 
   public static BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String, ?> fallback) {
+    logger.info("reading settings path (file obj) " + configPath);
+    if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
+      logger.info("overriding settings  path to " + ROR_YAML_SETTINGS_PATH);
+      configPath = Paths.get(ROR_YAML_SETTINGS_PATH);
+    }
+
     try {
       final String baseConfigDirPath = configPath.toAbsolutePath().toString();
       final String rorSettingsFilePath = Constants.makeAbsolutePath(SETTINGS_YAML_FILE, baseConfigDirPath);

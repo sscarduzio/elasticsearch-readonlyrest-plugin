@@ -57,13 +57,13 @@ public class SettingsObservableImpl extends SettingsObservable {
     this.environment = env;
 
     this.client = client;
-    current = BasicSettings.fromFile(logger, environment.configFile(), s.getAsStructuredMap()).getRaw();
+    current = BasicSettings.fromFile(logger, environment.configFile().toAbsolutePath(), s.getAsStructuredMap()).getRaw();
     this.initialSettings = s;
   }
 
   @Override
   protected Path getConfigPath() {
-    return environment.configFile();
+    return environment.configFile().toAbsolutePath();
   }
 
   @Override
