@@ -17,20 +17,15 @@
 
 package tech.beshu.ror.es;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
-
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
@@ -42,6 +37,7 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
+import org.elasticsearch.env.NodeEnvironment;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.index.IndexModule;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
@@ -52,24 +48,36 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
+import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
-
+import org.elasticsearch.watcher.ResourceWatcherService;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
+
 public class ReadonlyRestPlugin extends Plugin
-  implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+    implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final Settings settings;
-
+  private SettingsObservableImpl settingsObservable;
   private Environment environment;
 
   public ReadonlyRestPlugin(Settings s) {
-	  this.settings = s;
-	  this.environment = new Environment(s);
+    this.settings = s;
   }
 
   @Override
@@ -77,22 +85,42 @@ public class ReadonlyRestPlugin extends Plugin
     return Collections.singletonList(IndexLevelActionFilter.class);
   }
 
+  @Override
+  public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService,
+      ScriptService scriptService, NamedXContentRegistry xContentRegistry, Environment environment, NodeEnvironment nodeEnvironment,
+      NamedWriteableRegistry namedWriteableRegistry) {
+    final List<Object> components = new ArrayList<>(3);
+
+    // Wrap all ROR logic into privileged action
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        this.environment = environment;
+        settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      components.add(settingsObservable);
+      return null;
+    });
+
+    return components;
+  }
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-    Settings settings,
-    ThreadPool threadPool,
-    BigArrays bigArrays,
-    CircuitBreakerService circuitBreakerService,
-    NamedWriteableRegistry namedWriteableRegistry,
-    NamedXContentRegistry xContentRegistry,
-    NetworkService networkService,
-    HttpServerTransport.Dispatcher dispatcher) {
+      Settings settings,
+      ThreadPool threadPool,
+      BigArrays bigArrays,
+      CircuitBreakerService circuitBreakerService,
+      NamedWriteableRegistry namedWriteableRegistry,
+      NamedXContentRegistry xContentRegistry,
+      NetworkService networkService,
+      HttpServerTransport.Dispatcher dispatcher) {
     return Collections.singletonMap(
-      "ssl_netty4", () ->
-        new SSLTransportNetty4(
-          settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
-        ));
+        "ssl_netty4", () ->
+            new SSLTransportNetty4(
+                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+            ));
   }
 
   @Override
@@ -124,18 +152,18 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<RestHandler> getRestHandlers(
-    Settings settings, RestController restController, ClusterSettings clusterSettings,
-    IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
-    IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
+      Settings settings, RestController restController, ClusterSettings clusterSettings,
+      IndexScopedSettings indexScopedSettings, SettingsFilter settingsFilter,
+      IndexNameExpressionResolver indexNameExpressionResolver, Supplier<DiscoveryNodes> nodesInCluster) {
     return Collections.singletonList(new RestRRAdminAction(settings, restController));
   }
 
@@ -150,13 +178,13 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public void onIndexModule(IndexModule module) {
-	module.setSearcherWrapper(indexService -> {
-		try {
-			return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	});
+    module.setSearcherWrapper(indexService -> {
+      try {
+        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return null;
+    });
   }
 }

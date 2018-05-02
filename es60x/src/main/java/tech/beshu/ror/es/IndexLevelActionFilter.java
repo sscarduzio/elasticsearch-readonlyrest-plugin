@@ -77,24 +77,22 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   @Inject
   public IndexLevelActionFilter(Settings settings,
       ClusterService clusterService,
-      TransportService transportService,
       NodeClient client,
       ThreadPool threadPool,
       SettingsObservableImpl settingsObservable,
-      IndexNameExpressionResolver indexResolver
+      Environment env
   )
       throws IOException {
     super(settings);
-
+    this.indexResolver = new IndexNameExpressionResolver(settings);
+    this.env = env;
     loggerShim = ESContextImpl.mkLoggerShim(logger);
 
-    this.env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
 
     this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
     this.threadPool = threadPool;
     this.acl = new AtomicReference<>(Optional.empty());
     this.client = client;
