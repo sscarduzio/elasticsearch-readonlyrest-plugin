@@ -61,6 +61,7 @@ readonlyrest:
       keystore_file: "/elasticsearch/plugins/readonlyrest/keystore.jks"
       keystore_pass: readonlyrest
       key_pass: readonlyrest
+      key_alias: privatekeyalias    #This is needed only when the keystore has multiple entries
 ```
 
 ### USE CASE: Full access for localhost, RO some indices from elsewhere
