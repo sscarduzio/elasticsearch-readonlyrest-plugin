@@ -36,7 +36,7 @@ public class RCUtils {
     "cluster:monitor/*",
     "cluster:*get*",
     "cluster:*search*",
-    "indices:admin/aliases/exsists",
+    "indices:admin/aliases/exists",
     "indices:admin/aliases/get",
     "indices:admin/exists*",
     "indices:admin/get*",
