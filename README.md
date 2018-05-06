@@ -478,7 +478,7 @@ Build your ACL from simple building blocks (rules) i.e.:
 * ```kibana_access``` captures the read-only, read-only + new visualizations/dashboards, read-write use cases of Kibana.
 
 ## All the available rules in detail
-* [Official website detailed documentation](https://readonlyrest.com/documentation)
+* [Official website detailed documentation](https://github.com/beshu-tech/readonlyrest-docs/blob/master/elasticsearch.md)
 
 ## Contributor License Agreement
 
