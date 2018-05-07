@@ -473,7 +473,7 @@ Build your ACL from simple building blocks (rules) i.e.:
 
 ##### Elasticsearch internal protocol level rules
 * ```indices``` indices (aliases and wildcards work)
-* ```actions``` list of ES [actions](https://readonlyrest.com/documentation/#Rules--Rules--Elasticsearch_level--Action_rule) (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
+* ```actions``` list of ES [actions](https://github.com/beshu-tech/readonlyrest-docs/blob/master/elasticsearch.md#action-rule) (e.g. "cluster:*" , "indices:data/write/*", "indices:data/read*")
 
 ##### ElasticSearh level macro-rules
 * ```kibana_access``` captures the read-only, read-only + new visualizations/dashboards, read-write use cases of Kibana.
