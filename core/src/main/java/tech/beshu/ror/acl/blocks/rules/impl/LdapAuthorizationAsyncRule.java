@@ -52,33 +52,37 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
             .orElseGet(() -> CompletableFuture.completedFuture(Sets.newHashSet()))
         );
 
-    return accessibleGroups.thenApply(ldapGroups -> {
-      Set<LdapGroup> intersectedGroups = checkWhatConfiguredGroupsUserHasAccess(ldapGroups);
+    return accessibleGroups.thenApply(userLdapGroups -> {
+      Set<String> availableGroupsForUser = checkWhatConfiguredGroupsUserHasAccess(userLdapGroups);
 
       // Add available group metadata
-      user.addAvailableGroups(
-          intersectedGroups
-              .stream()
-              .map(LdapGroup::getName)
-              .collect(Collectors.toSet())
-      );
+      user.addAvailableGroups(availableGroupsForUser);
 
-      return !intersectedGroups.isEmpty();
+      return userLdapGroups
+          .stream()
+          .filter(ulg -> settings.getGroups().contains(ulg.getName()))
+          .findFirst()
+          .isPresent();
+
     });
 
   }
 
-  private Set<LdapGroup> checkWhatConfiguredGroupsUserHasAccess(Set<LdapGroup> ldapGroups) {
-    if (ldapGroups.isEmpty()) {
+  private Set<String> checkWhatConfiguredGroupsUserHasAccess(Set<LdapGroup> userLdapGroups) {
+    if (userLdapGroups.isEmpty()) {
       return Collections.emptySet();
     }
 
-    Set<LdapGroup> intersectedGroups = ldapGroups
+    Set<String> userLdapGroupNames = userLdapGroups
         .stream()
-        .filter(g -> client.getAvailableGroups().contains(g.getName()))
+        .map(LdapGroup::getName)
         .collect(Collectors.toSet());
 
-    return intersectedGroups;
+    // Retain only groups that the client knows and the user has
+    Set<String> remaining = client.getAvailableGroups();
+    remaining.retainAll(userLdapGroupNames);
+
+    return remaining;
   }
 
   @Override
