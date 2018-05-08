@@ -17,6 +17,8 @@
 package tech.beshu.ror.mocks;
 
 import com.google.common.collect.Sets;
+import com.sun.org.apache.xpath.internal.Arg;
+import org.mockito.ArgumentCaptor;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.definitions.ldaps.AuthenticationLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
@@ -34,7 +36,10 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anySet;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class MockLdapClientHelper {
@@ -68,6 +73,10 @@ public class MockLdapClientHelper {
   @SuppressWarnings("unchecked")
   private static GroupsProviderLdapClient mockLdapClient(Optional<Tuple<LdapUser, Set<LdapGroup>>> onAuthenticate) {
     GroupsProviderLdapClient client = mock(GroupsProviderLdapClient.class);
+    Set<String> availableGroups = Sets.newHashSet();
+    when(client.getAvailableGroups()).thenReturn(availableGroups);
+    doAnswer( inv -> availableGroups.addAll((Set<String>)inv.getArguments()[0])).when(client).addAvailableGroups(anySet());
+
     if (onAuthenticate.isPresent()) {
       LdapUser user = onAuthenticate.map(Tuple::v1).get();
       Set<LdapGroup> groups = onAuthenticate.map(Tuple::v2).get();

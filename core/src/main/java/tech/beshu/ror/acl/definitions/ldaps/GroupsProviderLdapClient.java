@@ -16,10 +16,21 @@
  */
 package tech.beshu.ror.acl.definitions.ldaps;
 
+import com.google.common.collect.Sets;
+
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public interface GroupsProviderLdapClient extends AuthenticationLdapClient {
 
   CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user);
+
+  Set<String> groups = Sets.newHashSet();
+  default void addAvailableGroups(Set<String> g) {
+    this.groups.addAll(g);
+  }
+
+  default Set<String> getAvailableGroups() {
+    return Sets.newHashSet(groups);
+  }
 }

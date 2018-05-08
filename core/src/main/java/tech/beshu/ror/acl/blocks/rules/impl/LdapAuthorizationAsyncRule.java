@@ -39,6 +39,7 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   public LdapAuthorizationAsyncRule(LdapAuthorizationRuleSettings settings, LdapClientFactory factory, ESContext context) {
     super(context);
     this.client = factory.getClient(settings.getLdapSettings());
+    this.client.addAvailableGroups(settings.getGroups());
     this.settings = settings;
   }
 
@@ -56,9 +57,10 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
 
       // Add available group metadata
       user.addAvailableGroups(
-          intersectedGroups.stream()
-                           .map(LdapGroup::getName)
-                           .collect(Collectors.toSet())
+          intersectedGroups
+              .stream()
+              .map(LdapGroup::getName)
+              .collect(Collectors.toSet())
       );
 
       return !intersectedGroups.isEmpty();
@@ -71,7 +73,10 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
       return Collections.emptySet();
     }
 
-    Set<LdapGroup> intersectedGroups = ldapGroups.stream().filter(g -> settings.getGroups().contains(g.getName())).collect(Collectors.toSet());
+    Set<LdapGroup> intersectedGroups = ldapGroups
+        .stream()
+        .filter(g -> client.getAvailableGroups().contains(g.getName()))
+        .collect(Collectors.toSet());
 
     return intersectedGroups;
   }
