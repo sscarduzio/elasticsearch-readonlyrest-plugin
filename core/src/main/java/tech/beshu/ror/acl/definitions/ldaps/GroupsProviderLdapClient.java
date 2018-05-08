@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.definitions.ldaps;
 
 import com.google.common.collect.Sets;
@@ -23,9 +24,10 @@ import java.util.concurrent.CompletableFuture;
 
 public interface GroupsProviderLdapClient extends AuthenticationLdapClient {
 
+  Set<String> groups = Sets.newHashSet();
+
   CompletableFuture<Set<LdapGroup>> userGroups(LdapUser user);
 
-  Set<String> groups = Sets.newHashSet();
   default void addAvailableGroups(Set<String> g) {
     this.groups.addAll(g);
   }
