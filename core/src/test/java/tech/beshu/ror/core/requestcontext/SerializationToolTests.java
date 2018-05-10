@@ -78,6 +78,11 @@ public class SerializationToolTests {
     }
 
     @Override
+    public String getContent() {
+      return "";
+    }
+
+    @Override
     public Integer getContentLength() {
       return 0;
     }
