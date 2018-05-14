@@ -14,35 +14,44 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.utils.integration;
 
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.message.BasicHeader;
+import org.junit.Assert;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import org.junit.Assert;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.function.Function;
 
 public class ReadonlyRestedESAssertions {
 
   private final MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent;
 
-  public static ReadonlyRestedESAssertions assertions(MultiContainerDependent<ESWithReadonlyRestContainer> container) {
-    return new ReadonlyRestedESAssertions(container);
-  }
-
   public ReadonlyRestedESAssertions(MultiContainerDependent<ESWithReadonlyRestContainer> container) {
     this.multiContainerDependent = container;
   }
 
-  public void assertUserHasAccessToIndex(String name, String password, String index)
+  public static ReadonlyRestedESAssertions assertions(MultiContainerDependent<ESWithReadonlyRestContainer> container) {
+    return new ReadonlyRestedESAssertions(container);
+  }
+
+  public void assertUserHasAccessToIndex(String name, String password, String index) throws IOException, URISyntaxException {
+    assertGetIndexResponseCode(multiContainerDependent.getContainer().getBasicAuthClient(name, password), index, 200, null, null);
+  }
+
+  public void assertUserHasAccessToIndex(String name, String password, String index, Function<HttpResponse, Void> responseHandler,
+      Function<HttpRequest, Void> requestHandler)
+
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
-        multiContainerDependent.getContainer().getBasicAuthClient(name, password), index, 200
+        multiContainerDependent.getContainer().getBasicAuthClient(name, password), index, 200, responseHandler, requestHandler
     );
   }
 
@@ -67,10 +76,25 @@ public class ReadonlyRestedESAssertions {
     );
   }
 
-  public void assertGetIndexResponseCode(RestClient client, String index, int expectedCode)
+  public void assertGetIndexResponseCode(RestClient client, String index, int expectedCode) throws IOException, URISyntaxException {
+    assertGetIndexResponseCode(client, index, expectedCode, null, null);
+  }
+
+  public void assertGetIndexResponseCode(RestClient client, String index, int expectedCode, Function<HttpResponse, Void> responseHandler,
+      Function<HttpRequest, Void> requestHandler)
       throws IOException, URISyntaxException {
-    HttpResponse response = client.execute(new HttpGet(client.from(index)));
+    HttpGet req = new HttpGet(client.from(index));
+    if (requestHandler != null) {
+      requestHandler.apply(req);
+    }
+
+    HttpResponse response = client.execute(req);
     Assert.assertEquals(expectedCode, response.getStatusLine().getStatusCode());
+
+    if (responseHandler != null) {
+      responseHandler.apply(response);
+    }
+
   }
 
 }
