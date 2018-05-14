@@ -14,8 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.integration;
 
+import com.google.common.base.Joiner;
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
 import tech.beshu.ror.utils.containers.LdapContainer;
@@ -24,48 +28,52 @@ import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
-import org.junit.ClassRule;
-import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
 
-public class LdapIntegrationFirstOptionTests {
+public class LdapIntegrationGroupsHeadersTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
-    ESWithReadonlyRestContainerUtils.create(
-      RorPluginGradleProject.fromSystemProperty(),
-      new MultiContainer.Builder()
-        .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-        .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-        .build(),
-      "/ldap_integration_1st/elasticsearch.yml",
-      new ElasticsearchTweetsInitializer()
-    );
+      ESWithReadonlyRestContainerUtils.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          new MultiContainer.Builder()
+              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_group_headers/ldap.ldif"))
+              .build(),
+          "/ldap_integration_group_headers/elasticsearch.yml",
+          new ElasticsearchTweetsInitializer()
+      );
 
   @Test
-  public void usersFromGroup1CanSeeTweets() throws Exception {
+  public void checkCartmanRespHeaders() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container);
-    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
-    assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
+          System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
+          assertEquals("group3,group1", response.getFirstHeader("x-ror-available-groups").getValue());
+          assertEquals("cartman", response.getFirstHeader("x-rr-user").getValue());
+          assertEquals("group1", response.getFirstHeader("x-ror-current-group").getValue());
+          return null;
+        },
+        httpRequest -> {
+          httpRequest.addHeader("x-ror-current-group", "group1");
+          return null;
+        });
   }
-
+  
   @Test
-  public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
-  }
-
-  @Test
-  public void unauthenticatedUserCannotSeeTweets() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
-  }
-
-  @Test
-  public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
+  public void checkCartmanRespHeadersWithCurrentGroupReqHeader() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container);
-    assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
-    assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
-    assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
+          System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
+          assertEquals("group3,group1", response.getFirstHeader("x-ror-available-groups").getValue());
+          assertEquals("cartman", response.getFirstHeader("x-rr-user").getValue());
+          assertEquals("group3", response.getFirstHeader("x-ror-current-group").getValue());
+          return null;
+        },
+        httpRequest -> {
+          return null;
+        });
   }
 
 }
