@@ -47,6 +47,7 @@ public class LdapIntegrationGroupsHeadersTests {
           new ElasticsearchTweetsInitializer()
       );
 
+
   @Test
   public void checkCartmanRespHeaders() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container);
