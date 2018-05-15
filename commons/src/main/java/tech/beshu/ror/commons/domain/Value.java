@@ -21,6 +21,8 @@ import java.util.function.Function;
 
 public interface Value<T> {
 
+  String getTemplate();
+
   static <T> Value<T> fromString(String value, Function<String, T> creator) {
     return value.contains("@")
       ? new Variable<>(value, creator)

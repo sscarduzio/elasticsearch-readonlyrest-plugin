@@ -30,6 +30,11 @@ public class Variable<T> implements Value<T> {
   }
 
   @Override
+  public String getTemplate() {
+    return value;
+  }
+
+  @Override
   public Optional<T> getValue(VariableResolver resolver) {
     Optional<String> resolved = resolver.resolveVariable(value);
     try {

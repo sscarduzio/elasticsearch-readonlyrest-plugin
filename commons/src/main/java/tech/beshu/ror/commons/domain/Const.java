@@ -22,8 +22,13 @@ public class Const<T> implements Value<T> {
 
   private final T value;
 
-  Const(T value) {
+  public Const(T value) {
     this.value = value;
+  }
+
+  @Override
+  public String getTemplate() {
+    return value.toString();
   }
 
   @Override
