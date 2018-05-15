@@ -23,7 +23,6 @@ import tech.beshu.ror.commons.shims.request.RequestContextShim;
 
 import java.text.SimpleDateFormat;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -36,11 +35,10 @@ public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String,
 
   @Override
   public Map<String, ?> createLoggableEntry(ResponseContext rc) {
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("match", rc.getIsMatch());
-    result.put("block", rc.getReason());
-
     Map<String, Object> map = Maps.newHashMap();
+
+    map.put("match", rc.getIsMatch());
+    map.put("block", rc.getReason());
 
     map.put("id", rc.getRequestContext().getId());
     map.put("final_state", rc.finalState().name());
