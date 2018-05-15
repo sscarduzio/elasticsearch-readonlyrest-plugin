@@ -45,6 +45,15 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
+
+    // Fail early if we have they are looking for a current group that is not within the allowed ones
+    if(user.getCurrentGroup().isPresent()){
+      String currGroup = user.getCurrentGroup().get();
+      if(!settings.getGroups().contains(currGroup)){
+        return CompletableFuture.completedFuture(false);
+      }
+    }
+
     CompletableFuture<Set<LdapGroup>> accessibleGroups = client
         .userById(user.getId())
         .thenCompose(ldapUser -> ldapUser

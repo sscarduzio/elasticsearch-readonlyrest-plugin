@@ -18,6 +18,8 @@
 package tech.beshu.ror.integration;
 
 import com.google.common.base.Joiner;
+import org.apache.http.Header;
+import org.apache.http.HttpResponse;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
@@ -50,9 +52,10 @@ public class LdapIntegrationGroupsHeadersTests {
     ReadonlyRestedESAssertions assertions = assertions(container);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
-          assertEquals("group3,group1", response.getFirstHeader("x-ror-available-groups").getValue());
-          assertEquals("cartman", response.getFirstHeader("x-rr-user").getValue());
-          assertEquals("group1", response.getFirstHeader("x-ror-current-group").getValue());
+          assertEquals("group3,group1", getHeader("x-ror-available-groups", response));
+          assertEquals("cartman", getHeader("x-rr-user",response));
+          assertEquals("group1", getHeader("x-ror-current-group",response));
+          assertEquals(".kibana_group1", getHeader("x-ror-kibana_index", response));
           return null;
         },
         httpRequest -> {
@@ -60,20 +63,30 @@ public class LdapIntegrationGroupsHeadersTests {
           return null;
         });
   }
-  
+
   @Test
   public void checkCartmanRespHeadersWithCurrentGroupReqHeader() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
-          System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
-          assertEquals("group3,group1", response.getFirstHeader("x-ror-available-groups").getValue());
-          assertEquals("cartman", response.getFirstHeader("x-rr-user").getValue());
-          assertEquals("group3", response.getFirstHeader("x-ror-current-group").getValue());
+          System.out.println("resp headers" + Joiner.on(",\n").join(response.getAllHeaders()));
+          assertEquals("group3,group1", getHeader("x-ror-available-groups", response));
+          assertEquals("cartman", getHeader("x-rr-user",response));
+          assertEquals("group3", getHeader("x-ror-current-group",response));
+          assertEquals(".kibana_group3", getHeader("x-ror-kibana_index", response));
           return null;
         },
         httpRequest -> {
+          httpRequest.addHeader("x-ror-current-group", "group3");
           return null;
         });
+  }
+
+  private String getHeader(String headerName, HttpResponse resp){
+    Header h = resp.getFirstHeader(headerName);
+    if (h == null){
+      return "";
+    }
+    return h.getValue();
   }
 
 }

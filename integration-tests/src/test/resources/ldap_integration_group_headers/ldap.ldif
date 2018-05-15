@@ -1,3 +1,15 @@
+#################################
+#################################
+#################################
+# g1: cartman, chandler
+# g2: morgan
+# g3: morgan, cartman, chandler
+################################
+################################
+################################
+################################
+
+
 version: 1
 
 dn: ou=People,dc=example,dc=com
@@ -60,3 +72,4 @@ cn: group3
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
+

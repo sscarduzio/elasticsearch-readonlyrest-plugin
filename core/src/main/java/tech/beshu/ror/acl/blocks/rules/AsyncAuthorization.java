@@ -14,8 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.blocks.rules;
 
+package tech.beshu.ror.acl.blocks.rules;
 
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.commons.domain.LoggedUser;
@@ -24,6 +24,7 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthorization extends AsyncRule implements Authorization {
@@ -41,7 +42,26 @@ public abstract class AsyncAuthorization extends AsyncRule implements Authorizat
     Optional<LoggedUser> optLoggedInUser = rc.getLoggedInUser();
     if (optLoggedInUser.isPresent()) {
       LoggedUser loggedUser = optLoggedInUser.get();
-      return authorize(loggedUser).thenApply(result -> result ? MATCH : NO_MATCH);
+      loggedUser.resolveCurrentGroup(rc.getHeaders());
+
+      return authorize(loggedUser)
+          .thenApply(result -> {
+
+            // After collecting all groups info, detect if they requested a preferred group that is not available
+            Optional<String> currentGroup = loggedUser.resolveCurrentGroup(rc.getHeaders());
+            Set<String> availableGroups = loggedUser.getAvailableGroups();
+            if (currentGroup.isPresent() && !availableGroups.contains(currentGroup.get())) {
+              logger.trace(
+                  rc.getId() + " - Cannot authorise user " + loggedUser.getId() +
+                      ": declared current group  " + currentGroup.get() +
+                      " is not available among permitted groups: " + availableGroups);
+              return false;
+            }
+            return result;
+
+          })
+          .thenApply(result -> result ? MATCH : NO_MATCH);
+
     }
     else {
       logger.warn("Cannot try to authorize user because non is logged now!");

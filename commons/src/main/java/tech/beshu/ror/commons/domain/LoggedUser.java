@@ -30,6 +30,7 @@ public class LoggedUser {
   private final String id;
   private final Set<String> availableGroups = Sets.newHashSet();
   private Optional<String> currentGroup = Optional.empty();
+  private boolean hasResolvedCurrentGroup = false;
 
   public LoggedUser(String id) {
     this.id = id;
@@ -43,7 +44,15 @@ public class LoggedUser {
     availableGroups.addAll(groups);
   }
 
+  public Optional<String> getCurrentGroup(){
+    if(!hasResolvedCurrentGroup){
+      throw new RuntimeException("tried to access current group before resolving them");
+    }
+    return currentGroup;
+  }
+
   public Optional<String> resolveCurrentGroup(Map<String,String> requestHeaders) {
+    this.hasResolvedCurrentGroup= true;
     if (currentGroup.isPresent()){
       return currentGroup;
     }
