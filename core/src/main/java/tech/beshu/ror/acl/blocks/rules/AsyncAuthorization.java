@@ -24,7 +24,6 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncAuthorization extends AsyncRule implements Authorization {
@@ -44,23 +43,8 @@ public abstract class AsyncAuthorization extends AsyncRule implements Authorizat
       LoggedUser loggedUser = optLoggedInUser.get();
       loggedUser.resolveCurrentGroup(rc.getHeaders());
 
-      return authorize(loggedUser)
-          .thenApply(result -> {
-
-            // After collecting all groups info, detect if they requested a preferred group that is not available
-            Optional<String> currentGroup = loggedUser.resolveCurrentGroup(rc.getHeaders());
-            Set<String> availableGroups = loggedUser.getAvailableGroups();
-            if (currentGroup.isPresent() && !availableGroups.contains(currentGroup.get())) {
-              logger.trace(
-                  rc.getId() + " - Cannot authorise user " + loggedUser.getId() +
-                      ": declared current group  " + currentGroup.get() +
-                      " is not available among permitted groups: " + availableGroups);
-              return false;
-            }
-            return result;
-
-          })
-          .thenApply(result -> result ? MATCH : NO_MATCH);
+      CompletableFuture<RuleExitResult> res = authorize(loggedUser).thenApply(result -> result ? MATCH : NO_MATCH);
+      return res;
 
     }
     else {

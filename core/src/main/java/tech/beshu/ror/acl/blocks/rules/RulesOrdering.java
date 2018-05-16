@@ -73,6 +73,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
 
         // Inspection rules next; these act based on properties of the request.
         KibanaAccessSyncRule.class,
+
         HostsSyncRule.class,
         LocalHostsSyncRule.class,
         SnapshotsSyncRule.class,
@@ -92,7 +93,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         // At the end the sync rule chain are those that can mutate the client request.
         KibanaHideAppsSyncRule.class,
         KibanaIndexSyncRule.class
-    );
+        );
   }
 
   @Override

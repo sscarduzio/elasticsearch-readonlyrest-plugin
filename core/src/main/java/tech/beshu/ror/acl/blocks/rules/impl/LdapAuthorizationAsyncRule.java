@@ -27,6 +27,7 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -47,9 +48,9 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
 
     // Fail early if we have they are looking for a current group that is not within the allowed ones
-    if(user.getCurrentGroup().isPresent()){
+    if (user.getCurrentGroup().isPresent()) {
       String currGroup = user.getCurrentGroup().get();
-      if(!settings.getGroups().contains(currGroup)){
+      if (!settings.getGroups().contains(currGroup)) {
         return CompletableFuture.completedFuture(false);
       }
     }
@@ -64,14 +65,27 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
     return accessibleGroups.thenApply(userLdapGroups -> {
       Set<String> availableGroupsForUser = checkWhatConfiguredGroupsUserHasAccess(userLdapGroups);
 
+      // After collecting all groups info, detect if they requested a preferred group that is not available
+      Optional<String> currentGroup = user.getCurrentGroup();
+      if (currentGroup.isPresent() && !availableGroupsForUser.contains(currentGroup.get())) {
+        return false;
+      }
+
       // Add available group metadata
       user.addAvailableGroups(availableGroupsForUser);
 
-      return userLdapGroups
+      Optional<LdapGroup> firstGroup = userLdapGroups
           .stream()
           .filter(ulg -> settings.getGroups().contains(ulg.getName()))
-          .findFirst()
-          .isPresent();
+          .findFirst();
+
+      Boolean success = firstGroup.isPresent();
+
+      if (success && !user.getCurrentGroup().isPresent()) {
+        user.setCurrentGroup(firstGroup.get().getName());
+      }
+
+      return success;
 
     });
 

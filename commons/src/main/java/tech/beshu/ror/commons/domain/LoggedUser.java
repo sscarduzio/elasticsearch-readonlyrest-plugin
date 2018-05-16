@@ -44,23 +44,28 @@ public class LoggedUser {
     availableGroups.addAll(groups);
   }
 
-  public Optional<String> getCurrentGroup(){
-    if(!hasResolvedCurrentGroup){
+  public Optional<String> getCurrentGroup() {
+    if (!hasResolvedCurrentGroup) {
       throw new RuntimeException("tried to access current group before resolving them");
     }
     return currentGroup;
   }
 
-  public Optional<String> resolveCurrentGroup(Map<String,String> requestHeaders) {
-    this.hasResolvedCurrentGroup= true;
-    if (currentGroup.isPresent()){
+  public void setCurrentGroup(String currentGroup) {
+    this.hasResolvedCurrentGroup = true;
+    this.currentGroup = Optional.ofNullable(currentGroup);
+  }
+
+  public Optional<String> resolveCurrentGroup(Map<String, String> requestHeaders) {
+    if (currentGroup.isPresent()) {
       return currentGroup;
     }
-    Optional<String> value =  Optional.ofNullable(requestHeaders.get(Constants.HEADER_GROUP_CURRENT));
-    if(!value.isPresent() && !availableGroups.isEmpty()){
-      value = Optional.of(availableGroups.iterator().next());
-    }
+    Optional<String> value = Optional.ofNullable(requestHeaders.get(Constants.HEADER_GROUP_CURRENT));
+    //    if(!value.isPresent() && !availableGroups.isEmpty()){
+    //      value = Optional.of(availableGroups.iterator().next());
+    //    }
     currentGroup = value;
+    this.hasResolvedCurrentGroup = true;
     return currentGroup;
   }
 

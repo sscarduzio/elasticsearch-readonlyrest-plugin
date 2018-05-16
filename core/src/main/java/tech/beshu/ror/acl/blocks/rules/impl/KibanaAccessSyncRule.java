@@ -55,7 +55,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     "indices:data/write/bulk*",
     "indices:admin/template/*"
   ));
-  
+
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
     "cluster:admin/rradmin/*",
     "indices:data/write/*", // <-- DEPRECATED!
@@ -123,6 +123,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
 
     String resolvedKibanaIndex = kibanaIndex.getValue(rc).orElse(".kibana");
+    rc.setKibanaIndex(resolvedKibanaIndex);
 
     // Save UI state in discover & Short urls
     Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create|index-pattern)/.*"
