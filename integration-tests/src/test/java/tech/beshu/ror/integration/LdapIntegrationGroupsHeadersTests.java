@@ -49,6 +49,23 @@ public class LdapIntegrationGroupsHeadersTests {
 
 
   @Test
+  public void checkCartmanRespHeadersWithoutCurrGroupHeader() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container);
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
+          System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
+          assertEquals("group3,group1", getHeader("x-ror-available-groups", response));
+          assertEquals("cartman", getHeader("x-rr-user",response));
+          assertEquals("group1", getHeader("x-ror-current-group",response));
+          assertEquals(".kibana_group1", getHeader("x-ror-kibana_index", response));
+          return null;
+        },
+        httpRequest -> {
+          //httpRequest.addHeader("x-ror-current-group", "group1");
+          return null;
+        });
+  }
+
+  @Test
   public void checkCartmanRespHeaders() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {

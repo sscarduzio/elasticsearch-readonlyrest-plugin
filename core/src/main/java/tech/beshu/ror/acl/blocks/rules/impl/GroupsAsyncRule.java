@@ -125,7 +125,11 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
         // Now that we have a user, we can populate the headers.
         rc.getLoggedInUser().ifPresent(lu -> {
           lu.addAvailableGroups(users.get(lu.getId()).getGroups());
-          lu.resolveCurrentGroup(rc.getHeaders());
+          Optional<String> cu = lu.resolveCurrentGroup(rc.getHeaders());
+          if(!cu.isPresent() && ruleExit.isMatch()){
+            lu.setCurrentGroup(lu.getAvailableGroups().iterator().next());
+          }
+
         });
 
         return ruleExit.isMatch();
