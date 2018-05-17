@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.domain.Value;
@@ -28,30 +29,36 @@ public class SnapshotsRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "snapshots";
 
+  private final Set<Value<String>> allowedSnapshots;
+  private final boolean containsVariables;
+  private Set<String> unwrapped;
 
-  private final Set<Value<String>> allowedAddresses;
-
-  public SnapshotsRuleSettings(Set<Value<String>> allowedAddresses) {
-    this.allowedAddresses = allowedAddresses;
+  public SnapshotsRuleSettings(Set<Value<String>> allowedSnapshots) {
+    this.containsVariables = allowedSnapshots.stream().filter(i -> i.getTemplate().contains("@{")).findFirst().isPresent();
+    this.allowedSnapshots = allowedSnapshots;
+    if (!containsVariables) {
+      this.unwrapped = allowedSnapshots.stream().map(Value::getTemplate).collect(Collectors.toSet());
+    }
   }
 
   public static SnapshotsRuleSettings fromBlockSettings(RawSettings blockSettings) {
     return new SnapshotsRuleSettings(
-      blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
-        .map(obj -> Value.fromString((String) obj, Function.identity()))
-        .collect(Collectors.toSet())
+        blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
+                     .map(obj -> Value.fromString((String) obj, Function.identity()))
+                     .collect(Collectors.toSet())
     );
   }
 
-  public Set<Value<String>> getAllowedAddresses() {
-    return allowedAddresses;
+  public Set<String> getAllowedSnapshots(Value.VariableResolver rc) {
+    if (!containsVariables) {
+      return unwrapped;
+    }
+    return allowedSnapshots.stream().map(v -> v.getValue(rc)).filter(o -> o.isPresent()).map(o -> o.get()).collect(Collectors.toSet());
   }
-
 
   @Override
   public String getName() {
     return ATTRIBUTE_NAME;
   }
-
 
 }

@@ -21,6 +21,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.SnapshotsRuleSettings;
 
@@ -38,7 +39,7 @@ public class SnapshotsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return settings.getAllowedAddresses().contains(rc.getLocalAddress()) ? MATCH : NO_MATCH;
+    return new MatcherWithWildcards(settings.getAllowedSnapshots(rc)).filter(rc.getSnapshots()).size() == rc.getSnapshots().size() ? MATCH : NO_MATCH;
   }
 
   @Override
