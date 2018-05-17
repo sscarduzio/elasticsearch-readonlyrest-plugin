@@ -54,15 +54,7 @@ public class SnapshotsRuleTests {
     RuleExitResult res = match(singletonList("public-*"), singletonList("public-asd"));
     assertTrue(res.isMatch());
   }
-
-  @Test
-  public void testReverseWildcard() {
-    RequestContext rc = Mockito.mock(RequestContext.class);
-    when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(singletonList("public-asd")));
-
-    RuleExitResult res = match(singletonList("public-asd"), singletonList("public-*"), rc);
-    assertTrue(res.isMatch());
-  }
+  
 
   private RuleExitResult match(List<String> configured, List<String> found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
