@@ -166,6 +166,19 @@ public class KibanaAccessRuleTests {
     assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
+  @Test
+  public void testRONonStrictOperations3() {
+    String customKibanaIndex = ".kibana-custom";
+    Set<String> indices = Sets.newHashSet(customKibanaIndex);
+    String action = "indices:admin/template/put";
+    String uri = "/_template/kibana_index_template%3A.kibana";
+    System.out.println("trying " + action + " as RO");
+    TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
+  }
+
+
   private RuleExitResult match(Conf configured, Found found, RequestContext rc, boolean involvesIndices) {
     when(rc.involvesIndices()).thenReturn(involvesIndices);
     when(rc.getIndices()).thenReturn(found.indices);

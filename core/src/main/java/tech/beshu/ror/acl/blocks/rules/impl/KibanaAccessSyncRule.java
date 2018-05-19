@@ -126,7 +126,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     rc.setKibanaIndex(resolvedKibanaIndex);
 
     // Save UI state in discover & Short urls
-    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create|index-pattern)/.*"
+    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create|index-pattern)/.*|^/_template/.*"
                                                       .replace("@kibana_index", resolvedKibanaIndex));
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(resolvedKibanaIndex);
@@ -135,7 +135,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     if (
       targetsKibana && !roStrict && !canModifyKibana &&
         nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
-        rc.getAction().startsWith("indices:data/write/")
+          (rc.getAction().startsWith("indices:data/write/") || rc.getAction().startsWith("indices:admin/template/put"))
       ) {
       return MATCH;
     }
