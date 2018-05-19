@@ -17,10 +17,8 @@
 
 package tech.beshu.ror.es.security;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import com.unboundid.util.args.ArgumentException;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.search.BooleanClause;
@@ -65,7 +63,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
 
   public RoleIndexSearcherWrapper(IndexService indexService, Settings s, Environment env) throws Exception {
     if (indexService == null) {
-      throw new ArgumentException("Please provide an indexService");
+      throw new IllegalArgumentException("Please provide an indexService");
     }
     Logger logger = Loggers.getLogger(this.getClass(), new String[0]);
     logger.info("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
@@ -133,5 +131,5 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   protected IndexSearcher wrap(IndexSearcher indexSearcher) throws EngineException {
     return indexSearcher;
   }
-  
+
 }

@@ -17,9 +17,9 @@
 
 package tech.beshu.ror.es.security;
 
-import java.io.IOException;
-import java.util.function.Function;
-
+import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
+import com.unboundid.util.args.ArgumentException;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.search.BooleanClause;
@@ -42,81 +42,94 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexSearcherWrapper;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
-
-import com.unboundid.util.args.ArgumentException;
-
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.FilterTransient;
 import tech.beshu.ror.es.ESContextImpl;
 
+import java.io.IOException;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 /*
  * @author Datasweet <contact@datasweet.fr>
  */
 public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
-    private final LoggerShim logger;
-    private final Function<ShardId, QueryShardContext> queryShardContextProvider;
-    private final ThreadContext threadContext;
-	private final Boolean enabled;
-	
-	public RoleIndexSearcherWrapper(IndexService indexService, Settings s, Environment env) throws Exception {
-        if (indexService == null) {
-            throw new ArgumentException("Please provide an indexService");
-        }
-		Logger logger = Loggers.getLogger(this.getClass(), new String[0]);
-		logger.info("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
-        this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null);
-        this.threadContext = indexService.getThreadPool().getThreadContext();
+  private final LoggerShim logger;
+  private final Function<ShardId, QueryShardContext> queryShardContextProvider;
+  private final ThreadContext threadContext;
+  private final Boolean enabled;
 
-		this.logger = ESContextImpl.mkLoggerShim(logger);
-		BasicSettings baseSettings = BasicSettings.fromFile(this.logger, env.configFile().toAbsolutePath(), s.getAsStructuredMap());
-		this.enabled = baseSettings.isEnabled();
-	}
-
-	@Override
-	protected DirectoryReader wrap(DirectoryReader reader) {
-		if (!this.enabled) {
-			logger.warn("Document filtering not available. Return defaut reader");
-			return reader;
-		}
-
-		FilterTransient userTransient = FilterTransient.Deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
-		if (userTransient == null) {
-			logger.debug("Couldn't extract userTransient from threadContext.");
-			return reader;
-		}
-
-        ShardId shardId = ShardUtils.extractShardId(reader);
-		if (shardId == null) {
-			throw new IllegalStateException(
-					LoggerMessageFormat.format("Couldn't extract shardId from reader [{}]", new Object[] { reader }));
-		}
-		String filter = userTransient.getFilter();
-
-		if (filter == null || filter.equals("")) {
-			return reader;
-        }
-		
-		try {
-			BooleanQuery.Builder boolQuery = new BooleanQuery.Builder();
-            boolQuery.setMinimumNumberShouldMatch(1);
-            QueryShardContext queryShardContext = this.queryShardContextProvider.apply(shardId);
-            XContentParser parser = XContentFactory.xContent(filter).createParser(queryShardContext.getXContentRegistry(), filter);
-            QueryBuilder queryBuilder = queryShardContext.newParseContext(parser).parseInnerQueryBuilder().get();
-            ParsedQuery parsedQuery = queryShardContext.toFilter(queryBuilder);
-			boolQuery.add(parsedQuery.query(), BooleanClause.Occur.SHOULD);
-			DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
-            return wrappedReader;
-		} catch (IOException e) {
-			this.logger.error("Unable to setup document security");
-			throw ExceptionsHelper.convertToElastic((Exception) e);
-		}
+  public RoleIndexSearcherWrapper(IndexService indexService, Settings s, Environment env) throws Exception {
+    if (indexService == null) {
+      throw new ArgumentException("Please provide an indexService");
     }
-    
+    Logger logger = Loggers.getLogger(this.getClass(), new String[0]);
+    logger.info("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
+    this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null);
+    this.threadContext = indexService.getThreadPool().getThreadContext();
 
-	@Override
-	protected IndexSearcher wrap(IndexSearcher indexSearcher) throws EngineException {
-		return indexSearcher;
+    this.logger = ESContextImpl.mkLoggerShim(logger);
+    BasicSettings baseSettings = BasicSettings.fromFile(this.logger, env.configFile().toAbsolutePath(), s.getAsStructuredMap());
+    this.enabled = baseSettings.isEnabled();
+  }
+
+  @Override
+  protected DirectoryReader wrap(DirectoryReader reader) {
+    if (!this.enabled) {
+      logger.warn("Document filtering not available. Return defaut reader");
+      return reader;
     }
+
+    // Field level security (FLS)
+    try {
+      String fieldsHeader = threadContext.getHeader(Constants.FIELDS_TRANSIENT);
+      Set<String> fields = Strings.isNullOrEmpty(fieldsHeader) ? null : Sets.newHashSet(fieldsHeader.split(",")).stream().map(String::trim).collect(Collectors.toSet());
+      if(fields != null) {
+        reader = DocumentFieldReader.wrap(reader, fields);
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Couldn't extract FLS fields from threadContext.", e);
+    }
+
+    // Document level security (DLS)
+    FilterTransient userTransient = FilterTransient.Deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
+    if (userTransient == null) {
+      logger.debug("Couldn't extract userTransient from threadContext.");
+      return reader;
+    }
+
+    ShardId shardId = ShardUtils.extractShardId(reader);
+    if (shardId == null) {
+      throw new IllegalStateException(
+          LoggerMessageFormat.format("Couldn't extract shardId from reader [{}]", new Object[] { reader }));
+    }
+    String filter = userTransient.getFilter();
+
+    if (filter == null || filter.equals("")) {
+      return reader;
+    }
+
+    try {
+      BooleanQuery.Builder boolQuery = new BooleanQuery.Builder();
+      boolQuery.setMinimumNumberShouldMatch(1);
+      QueryShardContext queryShardContext = this.queryShardContextProvider.apply(shardId);
+      XContentParser parser = XContentFactory.xContent(filter).createParser(queryShardContext.getXContentRegistry(), filter);
+      QueryBuilder queryBuilder = queryShardContext.newParseContext(parser).parseInnerQueryBuilder().get();
+      ParsedQuery parsedQuery = queryShardContext.toFilter(queryBuilder);
+      boolQuery.add(parsedQuery.query(), BooleanClause.Occur.SHOULD);
+      DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
+      return wrappedReader;
+    } catch (IOException e) {
+      this.logger.error("Unable to setup document security");
+      throw ExceptionsHelper.convertToElastic((Exception) e);
+    }
+  }
+
+  @Override
+  protected IndexSearcher wrap(IndexSearcher indexSearcher) throws EngineException {
+    return indexSearcher;
+  }
 }

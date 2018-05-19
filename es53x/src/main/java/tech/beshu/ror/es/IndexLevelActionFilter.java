@@ -47,14 +47,12 @@ import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.utils.FieldLevelSecuritySettingsTransient;
 import tech.beshu.ror.commons.utils.FilterTransient;
 
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -218,16 +216,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
               }
               if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {
                 threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, serializedFilter);
-              }
-            }
-
-            // [FLS] Forwarding constraints to next stage
-            Optional<Set<String>> fields = ber.getBlock().getSettings().getFields();
-            if(fields.isPresent() && !fields.get().isEmpty()){
-              if (threadPool.getThreadContext().getHeader(Constants.FIELDS_TRANSIENT) == null) {
-                String serializedFields = new FieldLevelSecuritySettingsTransient(fields).serialize();
-                logger.debug("FLS: injecting serialized fields " + serializedFields);
-                threadPool.getThreadContext().putHeader(Constants.FIELDS_TRANSIENT, serializedFields);
               }
             }
 

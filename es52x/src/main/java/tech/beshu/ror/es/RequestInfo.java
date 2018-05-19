@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.es;
 
 import com.google.common.base.Joiner;
@@ -42,6 +43,7 @@ import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
@@ -89,8 +91,8 @@ public class RequestInfo implements RequestInfoShim {
   private ESContext context;
 
   RequestInfo(
-    RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-    ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
+      RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
+      ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -248,17 +250,16 @@ public class RequestInfo implements RequestInfoShim {
       }
     }
 
-
-//    else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
-//      // Using reflection otherwise need to create another sub-project
-//      try {
-//        SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(), "getSearchRequest");
-//        IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
-//        indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
-//      } catch (Exception e) {
-//        e.printStackTrace();
-//      }
-//    }
+    //    else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
+    //      // Using reflection otherwise need to create another sub-project
+    //      try {
+    //        SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(), "getSearchRequest");
+    //        IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
+    //        indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
+    //      } catch (Exception e) {
+    //        e.printStackTrace();
+    //      }
+    //    }
     else if (ar instanceof DeleteRequest) {
       DeleteRequest ir = (DeleteRequest) ar;
       indices = ir.indices();
@@ -267,15 +268,15 @@ public class RequestInfo implements RequestInfoShim {
     else if (ar instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
       Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
-        .flatMap(Collection::stream)
-        .collect(Collectors.toSet());
+                                 .flatMap(Collection::stream)
+                                 .collect(Collectors.toSet());
       indices = (String[]) indicesSet.toArray();
     }
 
     else if (ar instanceof CompositeIndicesRequest) {
       logger.error(
-        "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
-          + ar.getClass().getSimpleName());
+          "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
+              + ar.getClass().getSimpleName());
     }
 
     // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
@@ -348,7 +349,6 @@ public class RequestInfo implements RequestInfoShim {
     });
     return h;
   }
-
 
   @Override
   public String extractRemoteAddress() {
@@ -508,7 +508,7 @@ public class RequestInfo implements RequestInfoShim {
     }
     else {
       logger.error("REFLECTION: Failed to set indices for type " + actionRequest.getClass().getSimpleName() +
-                     "  in req id: " + extractId());
+          "  in req id: " + extractId());
     }
   }
 
@@ -525,9 +525,9 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public boolean involvesIndices() {
     return actionRequest instanceof IndicesRequest ||
-      actionRequest instanceof CompositeIndicesRequest ||
-      // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
-      actionRequest instanceof RestoreSnapshotRequest;
+        actionRequest instanceof CompositeIndicesRequest ||
+        // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
+        actionRequest instanceof RestoreSnapshotRequest;
   }
 
   @Override
@@ -538,6 +538,20 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public boolean extractIsCompositeRequest() {
     return actionRequest instanceof CompositeIndicesRequest;
+  }
+
+  @Override
+  public void writeToThreadContextHeader(String key, String value) {
+    threadPool.getThreadContext().putHeader(key, value);
+  }
+
+  @Override
+  public String consumeThreadContextHeader(String key) {
+    String value = threadPool.getThreadContext().getHeader(key);
+    if (!Strings.isNullOrEmpty(value)) {
+      threadPool.getThreadContext().getHeaders().remove(key);
+    }
+    return value;
   }
 
 }
