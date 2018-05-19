@@ -46,11 +46,10 @@ public class BlockSettings {
   private static final String POLICY = "type";
   private static final String VERBOSITY = "verbosity";
   private static final String FILTER = "filter";
-  private static final String FIELDS = "fields";
 
   public static final Set<String> ruleModifiersToSkip = Sets.newHashSet(
       NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
-      AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL, FILTER, FIELDS
+      AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL, FILTER
   );
   private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
@@ -59,16 +58,14 @@ public class BlockSettings {
   private final List<RuleSettings> rules;
   private final Verbosity verbosity;
   private final Optional<String> filter;
-  private final Optional<Set<String>> fields;
 
-  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules, Optional<String> filter, Optional<Set<String>> fields) {
+  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules, Optional<String> filter) {
     validate(rules);
     this.name = name;
     this.policy = policy;
     this.verbosity = verbosity;
     this.rules = rules;
     this.filter = filter;
-    this.fields = fields;
   }
 
   public static BlockSettings from(RawSettings settings,
@@ -95,7 +92,6 @@ public class BlockSettings {
                                       .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
                                   .orElse(DEFAULT_VERBOSITY);
     Optional<String> filter = settings.stringOpt(FILTER);
-    Optional<Set<String>> fields = settings.notEmptySetOpt(FIELDS).map(s -> s.stream().map(str -> (String) str).collect(Collectors.toSet()));
 
     return new BlockSettings(
         name,
@@ -105,14 +101,10 @@ public class BlockSettings {
                 .filter(k -> !ruleModifiersToSkip.contains(k))
                 .map(registry::create)
                 .collect(Collectors.toList()),
-        filter,
-        fields
+        filter
     );
   }
 
-  public Optional<Set<String>> getFields() {
-    return fields;
-  }
 
   public String getName() {
     return name;

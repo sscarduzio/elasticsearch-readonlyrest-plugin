@@ -342,6 +342,16 @@ public class ACL {
       }
 
       @Override
+      protected String extractContextHeader(String key) {
+        return rInfo.consumeThreadContextHeader(key);
+      }
+
+      @Override
+      protected void writeContextHeader(String key, String value) {
+        rInfo.writeToThreadContextHeader(key, value);
+      }
+
+      @Override
       public void writeIndices(Set<String> newIndices) {
         rInfo.writeIndices(newIndices);
       }

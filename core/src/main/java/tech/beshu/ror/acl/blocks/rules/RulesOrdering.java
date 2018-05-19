@@ -26,6 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
@@ -92,7 +93,8 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         GroupsProviderAuthorizationAsyncRule.class,
         // At the end the sync rule chain are those that can mutate the client request.
         KibanaHideAppsSyncRule.class,
-        KibanaIndexSyncRule.class
+        KibanaIndexSyncRule.class,
+        FieldsSyncRule.class
         );
   }
 

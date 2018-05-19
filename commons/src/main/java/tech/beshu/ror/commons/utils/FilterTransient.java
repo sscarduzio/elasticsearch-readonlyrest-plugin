@@ -43,24 +43,24 @@ public class FilterTransient implements Serializable {
   }
 
   public static FilterTransient Deserialize(String userTransientEncoded) {
-    FilterTransient userTransient = null;
+    FilterTransient filterTransient = null;
     if (userTransientEncoded == null)
-      return userTransient;
+      return filterTransient;
     try {
       byte[] data = Base64.getDecoder().decode(userTransientEncoded);
       ObjectInputStream ois;
       ois = new ObjectInputStream(new ByteArrayInputStream(data));
       Object o = ois.readObject();
       if (o instanceof FilterTransient) {
-        userTransient = (FilterTransient) o;
+        filterTransient = (FilterTransient) o;
       }
       ois.close();
     } catch (IOException e) {
-      throw new IllegalStateException("Couldn't extract userTransient from threadContext.");
+      throw new IllegalStateException("Couldn't extract filterTransient from threadContext.");
     } catch (ClassNotFoundException e) {
-      throw new IllegalStateException("Couldn't extract userTransient from threadContext.");
+      throw new IllegalStateException("Couldn't extract filterTransient from threadContext.");
     }
-    return userTransient;
+    return filterTransient;
 
   }
 

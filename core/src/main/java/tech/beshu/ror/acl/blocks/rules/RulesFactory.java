@@ -20,6 +20,7 @@ import com.google.common.collect.Maps;
 import tech.beshu.ror.acl.blocks.rules.impl.ActionsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ApiKeysSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
@@ -105,8 +106,12 @@ public class RulesFactory {
       settings -> AsyncRuleAdapter.wrap(new KibanaAccessSyncRule((KibanaAccessRuleSettings) settings, context))
     );
     this.creators.put(
-      KibanaIndexSyncRule.Settings.class,
-      settings -> AsyncRuleAdapter.wrap(new KibanaIndexSyncRule((KibanaIndexSyncRule.Settings) settings))
+        KibanaIndexSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new KibanaIndexSyncRule((KibanaIndexSyncRule.Settings) settings))
+    );
+    this.creators.put(
+        FieldsSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new FieldsSyncRule((FieldsSyncRule.Settings) settings))
     );
     this.creators.put(
       KibanaHideAppsRuleSettings.class,

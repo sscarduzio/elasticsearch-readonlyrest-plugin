@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.settings;
 
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
@@ -102,6 +103,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
     creators.put(KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
+    creators.put(FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
     creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
     creators.put(ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
     creators.put(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
@@ -253,6 +255,11 @@ public class RulesSettingsCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaIndexSettingsCreator(RawSettings blockSettings) {
     return () -> KibanaIndexSyncRule.Settings.fromBlockSettings(blockSettings);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> fieldsSettingsCreator(RawSettings blockSettings) {
+    return () -> FieldsSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")

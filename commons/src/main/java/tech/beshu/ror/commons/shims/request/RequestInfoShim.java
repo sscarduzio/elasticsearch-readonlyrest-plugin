@@ -31,6 +31,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.commons.shims.request;
 
 import java.util.Map;
@@ -84,4 +85,9 @@ public interface RequestInfoShim {
   boolean extractIsReadRequest();
 
   boolean extractIsCompositeRequest();
+
+  void writeToThreadContextHeader(String key, String value);
+
+  String consumeThreadContextHeader(String key);
+
 }

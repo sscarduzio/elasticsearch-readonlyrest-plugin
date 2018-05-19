@@ -17,6 +17,9 @@
 
 package tech.beshu.ror.es.security;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
 import com.unboundid.util.args.ArgumentException;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.DirectoryReader;
@@ -47,7 +50,9 @@ import tech.beshu.ror.commons.utils.FilterTransient;
 import tech.beshu.ror.es.ESContextImpl;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /*
  * @author Datasweet <contact@datasweet.fr>
@@ -79,9 +84,21 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       return reader;
     }
 
-    FilterTransient userTransient = FilterTransient.Deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
-    if (userTransient == null) {
-      logger.debug("Couldn't extract userTransient from threadContext.");
+    // Field level security (FLS)
+    try {
+      String fieldsHeader = threadContext.getHeader(Constants.FIELDS_TRANSIENT);
+      Set<String> fields = Strings.isNullOrEmpty(fieldsHeader) ? null : Sets.newHashSet(fieldsHeader.split(",")).stream().map(String::trim).collect(Collectors.toSet());
+      if(fields != null) {
+        reader = DocumentFieldReader.wrap(reader, fields);
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Couldn't extract FLS fields from threadContext.", e);
+    }
+
+    // Document level security (DLS)
+    FilterTransient filterTransient = FilterTransient.Deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
+    if (filterTransient == null) {
+      logger.debug("Couldn't extract filterTransient from threadContext.");
       return reader;
     }
 
@@ -90,7 +107,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       throw new IllegalStateException(
           LoggerMessageFormat.format("Couldn't extract shardId from reader [{}]", new Object[] { reader }));
     }
-    String filter = userTransient.getFilter();
+    String filter = filterTransient.getFilter();
 
     if (filter == null || filter.equals("")) {
       return reader;

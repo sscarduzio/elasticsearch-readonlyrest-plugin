@@ -14,9 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.es;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
@@ -517,6 +519,20 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public boolean extractIsCompositeRequest() {
     return actionRequest instanceof CompositeIndicesRequest;
+  }
+
+  @Override
+  public void writeToThreadContextHeader(String key, String value) {
+    threadPool.getThreadContext().putHeader(key, value);
+  }
+
+  @Override
+  public String consumeThreadContextHeader(String key) {
+    String value = threadPool.getThreadContext().getHeader(key);
+    if (!Strings.isNullOrEmpty(value)) {
+      threadPool.getThreadContext().getHeaders().remove(key);
+    }
+    return value;
   }
 
 }

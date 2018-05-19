@@ -215,16 +215,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
               }
             }
 
-            // [FLS] Forwarding constraints to next stage
-            Optional<Set<String>> fields = ber.getBlock().getSettings().getFields();
-            if(fields.isPresent() && !fields.get().isEmpty()){
-              if (threadPool.getThreadContext().getHeader(Constants.FIELDS_TRANSIENT) == null) {
-                String serializedFields = new FieldLevelSecuritySettingsTransient(fields).serialize();
-                logger.debug("FLS: injecting serialized fields " + serializedFields);
-                threadPool.getThreadContext().putHeader(Constants.FIELDS_TRANSIENT, serializedFields);
-              }
-            }
-
           }
           //         @SuppressWarnings("unchecked")
           //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(

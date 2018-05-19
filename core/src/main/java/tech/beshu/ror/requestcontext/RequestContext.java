@@ -25,9 +25,9 @@ import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.BlockHistory;
 import tech.beshu.ror.acl.blocks.Block;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.domain.Value;
-import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
 import tech.beshu.ror.httpclient.HttpMethod;
@@ -51,6 +51,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   private Map<String, String> requestHeaders;
   private Transactional<Optional<LoggedUser>> loggedInUser;
   private Transactional<Map<String, String>> responseHeaders;
+  private Transactional<Map<String, String>> contextHeaders;
   private List<BlockHistory> history = Lists.newArrayList();
   private Date timestamp = new Date();
   private ESContext context;
@@ -106,6 +107,25 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       }
     };
 
+    this.contextHeaders = new Transactional<Map<String, String>>("rc-ctx-headers", context) {
+      @Override
+      public Map<String, String> initialize() {
+        return Maps.newHashMap();
+      }
+
+      @Override
+      public Map<String, String> copy(Map<String, String> initial) {
+        return Maps.newHashMap(initial);
+      }
+
+      @Override
+      public void onCommit(Map<String, String> hMap) {
+        for (String k : hMap.keySet()) {
+          writeContextHeader(k, hMap.get(k));
+        }
+      }
+    };
+
     this.loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
       @Override
       public Optional<LoggedUser> initialize() {
@@ -120,12 +140,12 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       @Override
       public void onCommit(Optional<LoggedUser> value) {
         value.ifPresent(loggedUser -> {
-          if(Constants.KIBANA_METADATA_ENABLED) {
+          if (Constants.KIBANA_METADATA_ENABLED) {
             Map<String, String> theMap = responseHeaders.get();
 
             theMap.put(Constants.HEADER_USER_ROR, loggedUser.getId());
 
-            if(!loggedUser.getAvailableGroups().isEmpty()) {
+            if (!loggedUser.getAvailableGroups().isEmpty()) {
               String avGroups = Joiner.on(",").join(loggedUser.getAvailableGroups());
               theMap.put(Constants.HEADER_GROUPS_AVAILABLE, avGroups);
             }
@@ -163,6 +183,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     this.loggedInUser.delegateTo(this);
     this.kibanaIndex.delegateTo(this);
     this.responseHeaders.delegateTo(this);
+    this.contextHeaders.delegateTo(this);
   }
 
   public Set<String> getExpandedIndices() {
@@ -226,6 +247,10 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   abstract protected Map<String, String> extractRequestHeaders();
 
+  abstract protected String extractContextHeader(String key);
+
+  abstract protected void writeContextHeader(String key, String value);
+
   public ESContext getContext() {
     return context;
   }
@@ -247,6 +272,16 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     Map<String, String> copied = responseHeaders.copy(responseHeaders.get());
     copied.put(name, value);
     responseHeaders.mutate(copied);
+  }
+
+  public Map<String, String> getContextHeader() {
+    return Maps.newHashMap(contextHeaders.get());
+  }
+
+  public void setContextHeader(String name, String value) {
+    Map<String, String> copied = contextHeaders.copy(contextHeaders.get());
+    copied.put(name, value);
+    contextHeaders.mutate(copied);
   }
 
   public Optional<LoggedUser> getLoggedInUser() {
