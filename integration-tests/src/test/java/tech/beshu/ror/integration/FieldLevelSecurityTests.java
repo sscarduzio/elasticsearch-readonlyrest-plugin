@@ -39,7 +39,7 @@ import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create
 /**
  * We configured filters to return only docs with title field with a certain value a1, b2, c1 etc.
  */
-public class FiltersDocLevelSecurityTests {
+public class FieldLevelSecurityTests {
 
   private static final String IDX_PREFIX = "testfilter";
 
@@ -47,17 +47,8 @@ public class FiltersDocLevelSecurityTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = create(RorPluginGradleProject.fromSystemProperty(),
-      "/filters/elasticsearch.yml", Optional.of(c -> {
-        insertDoc("a1", c, "a", "title");
-        insertDoc("a2", c, "a", "title");
-        insertDoc("b1", c, "bandc", "title");
-        insertDoc("b2", c, "bandc", "title");
-        insertDoc("c1", c, "bandc", "title");
-        insertDoc("c2", c, "bandc", "title");
-        insertDoc("d1", c, "d", "title");
-        insertDoc("d2", c, "d", "title");
-        insertDoc("d1", c, "d", "nottitle");
-        insertDoc("d2", c, "d", "nottitle");
+      "/field_level_security/elasticsearch.yml", Optional.of(c -> {
+        insertDoc("a1", c, "a", "dummy");
       })
   );
 
@@ -73,7 +64,11 @@ public class FiltersDocLevelSecurityTests {
       request.setHeader("Content-Type", "application/json");
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
-      request.setEntity(new StringEntity("{\"" + field + "\": \"" + docName + "\", \"dummy\": true}"));
+
+      String body = "{\"" + field + "\": \"" + docName + "\", \"dummy2\": true}";
+      System.out.println("inserting: " + body);
+      request.setEntity(new StringEntity(body));
+
       System.out.println(body(restClient.execute(request)));
 
     } catch (Exception e) {
@@ -103,68 +98,41 @@ public class FiltersDocLevelSecurityTests {
   }
 
   @Test
-  public void testDirectSingleIdxa() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search");
-    assertTrue(body.contains("a1"));
-    assertFalse(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
-    assertFalse(body.contains("c1"));
-    assertFalse(body.contains("c2"));
+  public void testPositive() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search", "pos");
+    assertTrue(body.contains("dummy2"));
+    assertFalse(body.contains("dummy\""));
   }
 
   @Test
-  public void testHeaderReplacement() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search", "put-the-header");
-    assertTrue(body.contains("a1"));
-    assertFalse(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
-    assertFalse(body.contains("c1"));
-    assertFalse(body.contains("c2"));
+  public void testPositiveWc() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search", "poswc");
+    assertTrue(body.contains("dummy2"));
+    assertTrue(body.contains("dummy\""));
   }
 
   @Test
-  public void testDirectMultipleIdxbandc() throws Exception {
-    String body = search("/" + IDX_PREFIX + "bandc/_search");
-    assertFalse(body.contains("a1"));
-    assertFalse(body.contains("a2"));
-    assertTrue(body.contains("b1"));
-    assertFalse(body.contains("b2"));
-    assertFalse(body.contains("c1"));
-    assertTrue(body.contains("c2"));
+  public void testNegative() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search", "neg");
+    assertFalse(body.contains("dummy2"));
+    assertTrue(body.contains("dummy\""));
   }
 
   @Test
-  public void testDirectSingleIdxd() throws Exception {
-    String body = search("/" + IDX_PREFIX + "d/_search");
-    assertFalse(body.contains("a1"));
-    assertFalse(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
-    assertFalse(body.contains("c1"));
-    assertFalse(body.contains("c2"));
-    assertTrue(body.contains("\"title\":\"d1\""));
-    assertFalse(body.contains("\"title\":\"d2\""));
-    assertFalse(body.contains("\"nottitle\":\"d1\""));
-    assertFalse(body.contains("\"nottitle\":\"d2\""));
+  public void testNegativeWc() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search", "neg_wc");
+    assertTrue(body.contains("_source"));
+    assertFalse(body.contains("dummy2"));
+    assertFalse(body.contains("dummy\""));
   }
-
   @Test
-  public void tesANoCache() throws Exception {
-    search("/" + IDX_PREFIX + "a/_search","a_nofilter");
-    String body = search("/" + IDX_PREFIX + "a/_search");
-    assertTrue(body.contains("a1"));
-    assertFalse(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
-    assertFalse(body.contains("c1"));
-    assertFalse(body.contains("c2"));
+  public void testMixNegPos() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search", "pos_wc_neg_wc");
+    assertTrue(body.contains("_source"));
+    assertFalse(body.contains("dummy2"));
+    assertTrue(body.contains("dummy\""));
   }
 
-  private String search(String endpoint) throws Exception {
-    return search(endpoint, "g");
-  }
 
   private String search(String endpoint, String apiKey) throws Exception {
     HttpGet request = new HttpGet(adminClient.from(endpoint));

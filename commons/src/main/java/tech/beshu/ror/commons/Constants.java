@@ -17,9 +17,11 @@
 
 package tech.beshu.ror.commons;
 
+import com.google.common.collect.Sets;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 
 import java.io.File;
+import java.util.Set;
 
 public class Constants {
   public static final Integer CACHE_WATERMARK = 1024;
@@ -42,6 +44,7 @@ public class Constants {
   public final static String REST_CONFIGURATION_FILE_PATH = "/_readonlyrest/admin/config/file";
   public final static String FILTER_TRANSIENT = "_filter";
   public final static String FIELDS_TRANSIENT = "_fields";
+  public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_type", "_parent", "_routing", "_timestamp", "_ttl", "_size","_index");
   public static final String HEADER_GROUPS_AVAILABLE = "x-ror-available-groups";
   public static final String HEADER_GROUP_CURRENT = "x-ror-current-group";
   public static final String HEADER_USER_ROR = "X-RR-User";

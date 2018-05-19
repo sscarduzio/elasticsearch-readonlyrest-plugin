@@ -43,12 +43,13 @@ public class MatcherWithWildcardsAndNegations {
   }
 
   public boolean match(String fieldName) {
-    // If positive matchers exist and the field does not match them, we bar it.
-    if (this.positivePatterns != null && !this.positivePatterns.match(fieldName)) {
-      return false;
-    }
     // If we have some negative matchers, and the field matches them, we bar it.
     if (this.negativePatterns != null && this.negativePatterns.match(fieldName)) {
+      return false;
+    }
+
+    // If positive matchers exist and the field does not match them, we bar it.
+    if (this.positivePatterns != null && !this.positivePatterns.match(fieldName)) {
       return false;
     }
 

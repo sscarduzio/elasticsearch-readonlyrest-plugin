@@ -22,11 +22,14 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
+import tech.beshu.ror.commons.utils.MatcherWithWildcardsAndNegations;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
-import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 18/05/2018.
@@ -60,6 +63,19 @@ public class FieldsSyncRule extends SyncRule {
 
     public Settings(Set<String> fields) {
       this.fields = fields;
+      int negatedItems = fields.stream().filter(s -> s.startsWith("~")).collect(Collectors.toList()).size();
+      if(negatedItems != 0 && negatedItems != fields.size()){
+        throw new SettingsMalformedException("fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: " + fields);
+      }
+
+      if (
+          !new MatcherWithWildcardsAndNegations(
+              fields.stream().map(f -> f.startsWith("~") ? f.substring(1, f.length()) : f).collect(Collectors.toSet())
+          )
+              .filter(Constants.FIELDS_ALWAYS_ALLOW).isEmpty()
+          ) {
+        throw new SettingsMalformedException("The fields rule cannot contain always-allowed fields: " + Constants.FIELDS_ALWAYS_ALLOW);
+      }
     }
 
     public static Settings fromBlockSettings(RawSettings blockSettings) {
@@ -69,6 +85,22 @@ public class FieldsSyncRule extends SyncRule {
     @Override
     public String getName() {
       return ATTRIBUTE_NAME;
+    }
+
+  }
+
+  public static class FieldPolicy {
+    private final MatcherWithWildcardsAndNegations fieldsMatcher;
+
+    public FieldPolicy(Set<String> fields){
+      this.fieldsMatcher = new MatcherWithWildcardsAndNegations(fields);
+    }
+
+    public boolean canStay(String field){
+      if(Constants.FIELDS_ALWAYS_ALLOW.contains(field)){
+        return true;
+      }
+      return fieldsMatcher.match(field);
     }
 
   }

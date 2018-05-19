@@ -39,7 +39,7 @@ import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.utils.MatcherWithWildcardsAndNegations;
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -47,55 +47,56 @@ import java.util.Map;
 import java.util.Set;
 
 public class DocumentFieldReader extends FilterLeafReader {
-  private MatcherWithWildcardsAndNegations fieldsMatcher;
+  private FieldsSyncRule.FieldPolicy policy;
 
   private DocumentFieldReader(LeafReader reader, Set<String> fields) {
     super(reader);
-    this.fieldsMatcher = new MatcherWithWildcardsAndNegations(fields);
+    this.policy = new FieldsSyncRule.FieldPolicy(fields);
+
   }
 
-  public static DocumentFieldReader.DocumentFieldDirectoryReader wrap(DirectoryReader in, Set<String> fields) throws IOException {
-    return new DocumentFieldReader.DocumentFieldDirectoryReader(in, fields);
+  public static DocumentFieldDirectoryReader wrap(DirectoryReader in, Set<String> fields) throws IOException {
+    return new DocumentFieldDirectoryReader(in, fields);
   }
 
   @Override
   public NumericDocValues getNumericDocValues(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.getNumericDocValues(field) : null;
+    return policy.canStay(field) ? in.getNumericDocValues(field) : null;
   }
 
   @Override
   public BinaryDocValues getBinaryDocValues(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.getBinaryDocValues(field) : null;
+    return policy.canStay(field) ? in.getBinaryDocValues(field) : null;
   }
 
   @Override
   public NumericDocValues getNormValues(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.getNormValues(field) : null;
+    return policy.canStay(field) ? in.getNormValues(field) : null;
   }
 
   @Override
   public SortedDocValues getSortedDocValues(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.getSortedDocValues(field) : null;
+    return policy.canStay(field) ? in.getSortedDocValues(field) : null;
   }
 
   @Override
   public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.getSortedNumericDocValues(field) : null;
+    return policy.canStay(field) ? in.getSortedNumericDocValues(field) : null;
   }
 
   @Override
   public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.getSortedSetDocValues(field) : null;
+    return policy.canStay(field) ? in.getSortedSetDocValues(field) : null;
   }
 
   @Override
   public PointValues getPointValues(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.getPointValues(field) : null;
+    return policy.canStay(field) ? in.getPointValues(field) : null;
   }
 
   @Override
   public Terms terms(String field) throws IOException {
-    return fieldsMatcher.match(field) ? in.terms(field) : null;
+    return policy.canStay(field) ? in.terms(field) : null;
   }
 
   @Override
@@ -124,7 +125,7 @@ public class DocumentFieldReader extends FilterLeafReader {
 
       @Override
       public Status needsField(FieldInfo fieldInfo) throws IOException {
-        return fieldsMatcher.match(fieldInfo.name) ? visitor.needsField(fieldInfo) : Status.NO;
+        return policy.canStay(fieldInfo.name) ? visitor.needsField(fieldInfo) : Status.NO;
       }
 
       @Override
@@ -173,7 +174,7 @@ public class DocumentFieldReader extends FilterLeafReader {
 
         Iterator<String> it = map.keySet().iterator();
         while (it.hasNext()) {
-          if (!fieldsMatcher.match(it.next())) {
+          if (!policy.canStay(it.next())) {
             it.remove();
           }
         }
