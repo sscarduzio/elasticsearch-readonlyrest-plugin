@@ -61,42 +61,42 @@ public class DocumentFieldReader extends FilterLeafReader {
 
   @Override
   public NumericDocValues getNumericDocValues(String field) throws IOException {
-    return policy.canStay(field) ? in.getNumericDocValues(field) : null;
+    return policy.canKeep(field) ? in.getNumericDocValues(field) : null;
   }
 
   @Override
   public BinaryDocValues getBinaryDocValues(String field) throws IOException {
-    return policy.canStay(field) ? in.getBinaryDocValues(field) : null;
+    return policy.canKeep(field) ? in.getBinaryDocValues(field) : null;
   }
 
   @Override
   public NumericDocValues getNormValues(String field) throws IOException {
-    return policy.canStay(field) ? in.getNormValues(field) : null;
+    return policy.canKeep(field) ? in.getNormValues(field) : null;
   }
 
   @Override
   public SortedDocValues getSortedDocValues(String field) throws IOException {
-    return policy.canStay(field) ? in.getSortedDocValues(field) : null;
+    return policy.canKeep(field) ? in.getSortedDocValues(field) : null;
   }
 
   @Override
   public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
-    return policy.canStay(field) ? in.getSortedNumericDocValues(field) : null;
+    return policy.canKeep(field) ? in.getSortedNumericDocValues(field) : null;
   }
 
   @Override
   public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
-    return policy.canStay(field) ? in.getSortedSetDocValues(field) : null;
+    return policy.canKeep(field) ? in.getSortedSetDocValues(field) : null;
   }
 
   @Override
   public PointValues getPointValues(String field) throws IOException {
-    return policy.canStay(field) ? in.getPointValues(field) : null;
+    return policy.canKeep(field) ? in.getPointValues(field) : null;
   }
 
   @Override
   public Terms terms(String field) throws IOException {
-    return policy.canStay(field) ? in.terms(field) : null;
+    return policy.canKeep(field) ? in.terms(field) : null;
   }
 
   @Override
@@ -125,7 +125,7 @@ public class DocumentFieldReader extends FilterLeafReader {
 
       @Override
       public Status needsField(FieldInfo fieldInfo) throws IOException {
-        return policy.canStay(fieldInfo.name) ? visitor.needsField(fieldInfo) : Status.NO;
+        return policy.canKeep(fieldInfo.name) ? visitor.needsField(fieldInfo) : Status.NO;
       }
 
       @Override
@@ -174,7 +174,7 @@ public class DocumentFieldReader extends FilterLeafReader {
 
         Iterator<String> it = map.keySet().iterator();
         while (it.hasNext()) {
-          if (!policy.canStay(it.next())) {
+          if (!policy.canKeep(it.next())) {
             it.remove();
           }
         }
