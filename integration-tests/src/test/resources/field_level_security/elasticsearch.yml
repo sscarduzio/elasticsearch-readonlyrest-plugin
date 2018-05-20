@@ -33,10 +33,6 @@ readonlyrest:
     indices: ["testfiltera"]
     fields: ["~du*"]
 
-  - name: getter_a_negative_wc_positive_wc
-    api_keys: ["pos_wc_neg_wc"]
-    indices: ["testfiltera"]
-    fields: [  "~du*2"]
 
 
   # ES container initializer need this rule to configure ES instance after startup

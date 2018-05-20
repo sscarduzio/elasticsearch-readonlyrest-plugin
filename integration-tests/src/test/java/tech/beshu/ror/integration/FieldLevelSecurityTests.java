@@ -125,14 +125,7 @@ public class FieldLevelSecurityTests {
     assertFalse(body.contains("dummy2"));
     assertFalse(body.contains("dummy\""));
   }
-  @Test
-  public void testMixNegPos() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search", "pos_wc_neg_wc");
-    assertTrue(body.contains("_source"));
-    assertFalse(body.contains("dummy2"));
-    assertTrue(body.contains("dummy\""));
-  }
-
+  
 
   private String search(String endpoint, String apiKey) throws Exception {
     HttpGet request = new HttpGet(adminClient.from(endpoint));
