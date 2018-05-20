@@ -49,6 +49,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class DocumentFieldReader extends FilterLeafReader {
   private final FieldInfos remainingFieldsInfo;
@@ -62,9 +63,16 @@ public class DocumentFieldReader extends FilterLeafReader {
     for (FieldInfo f : fInfos) {
       baseFields.add(f.name);
     }
-    Set<String> remainingFields = baseFields.stream().filter(x -> policy.canKeep(x)).collect(Collectors.toSet());
-    this.remainingFieldsInfo = new FieldInfos(remainingFields.toArray(new FieldInfo[remainingFields.size()]));
+    if (baseFields.isEmpty()) {
+      remainingFieldsInfo = fInfos;
+    }
+    else {
+      Set<FieldInfo> remainingFields = StreamSupport.stream(fInfos.spliterator(), false)
+                                                    .filter(x -> policy.canKeep(x.name)).collect(Collectors.toSet());
+      this.remainingFieldsInfo = new FieldInfos(remainingFields.toArray(new FieldInfo[remainingFields.size()]));
+    }
   }
+
 
   @Override
   public FieldInfos getFieldInfos() {

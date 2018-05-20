@@ -26,18 +26,17 @@ readonlyrest:
   - name: getter_a_negative
     api_keys: ["neg"]
     indices: ["testfiltera"]
-    fields: ["_source", "dummy", "~dummy2"]
+    fields: ["~dummy2"]
 
   - name: getter_a_negative_wc
     api_keys: ["neg_wc"]
     indices: ["testfiltera"]
-    fields: ["_source","~du*"]
+    fields: ["~du*"]
 
   - name: getter_a_negative_wc_positive_wc
     api_keys: ["pos_wc_neg_wc"]
     indices: ["testfiltera"]
-    fields: [ "_source", "du*", "~du*2"]
-
+    fields: [  "~du*2"]
 
 
   # ES container initializer need this rule to configure ES instance after startup

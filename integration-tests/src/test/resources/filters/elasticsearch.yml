@@ -16,29 +16,24 @@ readonlyrest:
   - name: getter_var
     api_keys: ["put-the-header"]
     indices: ["testfiltera"]
-    fields: ["~dummy"]
     filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"@{x-randomheader}\": \"a1\"}}}]}}"
 
   - name: getter_a
     api_keys: ["g"]
     indices: ["testfiltera"]
-    fields: ["~dummy"]
     filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
 
   - name: getter_a_nofilter
     api_keys: ["a_nofilter"]
-    fields: ["~dummy"]
     indices: ["testfiltera"]
 
   - name: getter_b_and_c
     api_keys: ["g"]
-    fields: ["~dummy"]
     indices: ["testfilterbandc"]
     filter: "{\"bool\": {\"should\": [{\"term\": {\"title\": {\"value\": \"b1\"}}},{\"term\": {\"title\": {\"value\": \"c2\"}}}]}}"
     
   - name: getter_d
     api_keys: ["g"]
-    fields: ["~dummy"]
     indices: ["testfilterd"]
     filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"d1\"}}}]}}"
     
