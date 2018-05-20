@@ -51,7 +51,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DocumentFieldReader extends FilterLeafReader {
-  private final Set<String> remainingFields;
+  private final FieldInfos remainingFieldsInfo;
   private FieldsSyncRule.FieldPolicy policy;
 
   private DocumentFieldReader(LeafReader reader, Set<String> fields) {
@@ -62,8 +62,14 @@ public class DocumentFieldReader extends FilterLeafReader {
     for (FieldInfo f : fInfos) {
       baseFields.add(f.name);
     }
-    this.remainingFields = baseFields.stream().filter(x -> policy.canKeep(x)).collect(Collectors.toSet());
+    Set<String> remainingFields = baseFields.stream().filter(x -> policy.canKeep(x)).collect(Collectors.toSet());
+    this.remainingFieldsInfo = new FieldInfos(remainingFields.toArray(new FieldInfo[remainingFields.size()]));
 
+  }
+
+  @Override
+  public FieldInfos getFieldInfos() {
+    return remainingFieldsInfo;
   }
 
   public static DocumentFieldDirectoryReader wrap(DirectoryReader in, Set<String> fields) throws IOException {
@@ -87,7 +93,7 @@ public class DocumentFieldReader extends FilterLeafReader {
 
       @Override
       public int size() {
-        return remainingFields.size();
+        return remainingFieldsInfo.size();
       }
     };
   }
@@ -140,6 +146,11 @@ public class DocumentFieldReader extends FilterLeafReader {
   @Override
   public LeafReader getDelegate() {
     return in;
+  }
+
+  @Override
+  public Bits getDocsWithField(String field) throws IOException {
+    return policy.canKeep(field) ? in.getDocsWithField(field) : null;
   }
 
   @Override
