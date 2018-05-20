@@ -69,7 +69,7 @@ public class DocumentFieldReader extends FilterLeafReader {
     }
     else {
       Set<FieldInfo> remainingFields = StreamSupport.stream(fInfos.spliterator(), false)
-          .filter(x -> policy.canKeep(x.name)).collect(Collectors.toSet());
+                                                    .filter(x -> policy.canKeep(x.name)).collect(Collectors.toSet());
       this.remainingFieldsInfo = new FieldInfos(remainingFields.toArray(new FieldInfo[remainingFields.size()]));
     }
   }

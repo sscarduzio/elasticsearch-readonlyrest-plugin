@@ -106,9 +106,9 @@ public class FieldLevelSecurityTests {
 
   @Test
   public void testPositiveWc() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search", "poswc");
+    String body = search("/" + IDX_PREFIX + "a/_search", "pos_wc");
     assertTrue(body.contains("dummy2"));
-    assertTrue(body.contains("dummy\""));
+    assertFalse(body.contains("dummy\""));
   }
 
   @Test
@@ -123,9 +123,8 @@ public class FieldLevelSecurityTests {
     String body = search("/" + IDX_PREFIX + "a/_search", "neg_wc");
     assertTrue(body.contains("_source"));
     assertFalse(body.contains("dummy2"));
-    assertFalse(body.contains("dummy\""));
+    assertTrue(body.contains("dummy\""));
   }
-  
 
   private String search(String endpoint, String apiKey) throws Exception {
     HttpGet request = new HttpGet(adminClient.from(endpoint));

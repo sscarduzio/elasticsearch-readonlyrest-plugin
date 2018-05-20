@@ -74,14 +74,13 @@ public class DocumentFieldReader extends FilterLeafReader {
     }
   }
 
+  public static DocumentFieldDirectoryReader wrap(DirectoryReader in, Set<String> fields) throws IOException {
+    return new DocumentFieldDirectoryReader(in, fields);
+  }
 
   @Override
   public FieldInfos getFieldInfos() {
     return remainingFieldsInfo;
-  }
-
-  public static DocumentFieldDirectoryReader wrap(DirectoryReader in, Set<String> fields) throws IOException {
-    return new DocumentFieldDirectoryReader(in, fields);
   }
 
   @Override

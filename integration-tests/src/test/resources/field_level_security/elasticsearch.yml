@@ -21,7 +21,7 @@ readonlyrest:
   - name: getter_a_positive_wc
     api_keys: ["pos_wc"]
     indices: ["testfiltera"]
-    fields: ["~du*"]
+    fields: ["_source","du*2"]
 
   - name: getter_a_negative
     api_keys: ["neg"]
@@ -31,7 +31,7 @@ readonlyrest:
   - name: getter_a_negative_wc
     api_keys: ["neg_wc"]
     indices: ["testfiltera"]
-    fields: ["~du*"]
+    fields: ["~du*2"]
 
 
 
