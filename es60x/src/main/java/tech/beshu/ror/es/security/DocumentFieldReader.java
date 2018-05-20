@@ -17,9 +17,12 @@
 
 package tech.beshu.ror.es.security;
 
+import com.google.common.collect.Iterators;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafMetaData;
@@ -42,21 +45,52 @@ import org.elasticsearch.common.xcontent.XContentType;
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DocumentFieldReader extends FilterLeafReader {
+  private final Set<String> remainingFields;
   private FieldsSyncRule.FieldPolicy policy;
 
   private DocumentFieldReader(LeafReader reader, Set<String> fields) {
     super(reader);
     this.policy = new FieldsSyncRule.FieldPolicy(fields);
 
+    FieldInfos fInfos = in.getFieldInfos();
+    Set<String> baseFields = new HashSet<>(fInfos.size());
+    for (FieldInfo f : fInfos) {
+      baseFields.add(f.name);
+    }
+    this.remainingFields = baseFields.stream().filter(x -> policy.canKeep(x)).collect(Collectors.toSet());
   }
 
   public static DocumentFieldDirectoryReader wrap(DirectoryReader in, Set<String> fields) throws IOException {
     return new DocumentFieldDirectoryReader(in, fields);
+  }
+
+  @Override
+  public Fields getTermVectors(int docID) throws IOException {
+    Fields original = in.getTermVectors(docID);
+
+    return new Fields() {
+      @Override
+      public Iterator<String> iterator() {
+        return Iterators.filter(original.iterator(), s -> policy.canKeep(s));
+      }
+
+      @Override
+      public Terms terms(String field) throws IOException {
+        return policy.canKeep(field) ? original.terms(field) : null;
+      }
+
+      @Override
+      public int size() {
+        return remainingFields.size();
+      }
+    };
   }
 
   @Override

@@ -18,6 +18,7 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.Constants;
@@ -31,6 +32,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * Field level security (FLS) rule.
+ * When applied, it forwards the field list to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link RequestContext}.
+ *
  * Created by sscarduzio on 18/05/2018.
  */
 public class FieldsSyncRule extends SyncRule {
@@ -44,6 +48,9 @@ public class FieldsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
+    if(!rc.isReadRequest()){
+      return NO_MATCH;
+    }
     rc.setContextHeader(Constants.FIELDS_TRANSIENT, fieldsAsString);
     return MATCH;
   }
@@ -54,7 +61,7 @@ public class FieldsSyncRule extends SyncRule {
   }
 
   /**
-   * Settings
+   * Settings for FLS
    */
   public static class Settings implements RuleSettings {
     public static final String ATTRIBUTE_NAME = "fields";
@@ -68,7 +75,7 @@ public class FieldsSyncRule extends SyncRule {
       }
 
       Set<String> fieldsWithnNormalizedNegations = fields.stream().map(f -> f.startsWith("~") ? f.substring(1, f.length()) : f).collect(Collectors.toSet());
-      if (!new MatcherWithWildcardsAndNegations(fieldsWithnNormalizedNegations).filter(Constants.FIELDS_ALWAYS_ALLOW).isEmpty()) {
+      if (Sets.intersection(fieldsWithnNormalizedNegations, Constants.FIELDS_ALWAYS_ALLOW).size() > 0 ) {
         throw new SettingsMalformedException("The fields rule cannot contain always-allowed fields: " + Constants.FIELDS_ALWAYS_ALLOW);
       }
 
@@ -89,6 +96,9 @@ public class FieldsSyncRule extends SyncRule {
 
   }
 
+  /**
+   * The decisions about what field to keep are taken in a ES branch independent place
+   */
   public static class FieldPolicy {
     private final MatcherWithWildcardsAndNegations fieldsMatcher;
 
