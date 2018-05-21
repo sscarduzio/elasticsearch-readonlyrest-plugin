@@ -77,6 +77,8 @@ public class FieldLevelSecurityTests {
 
     // Polling phase.. #TODO is there a better way?
     try {
+      Thread.sleep(10000);
+
       HttpResponse response;
       do {
         HttpHead request = new HttpHead(restClient.from(path));
@@ -90,6 +92,7 @@ public class FieldLevelSecurityTests {
       e.printStackTrace();
       throw new IllegalStateException("Cannot configure test case", e);
     }
+
   }
 
   private static String body(HttpResponse r) throws Exception {
