@@ -68,7 +68,6 @@ public class FieldLevelSecurityTests {
       String body = "{\"" + field + "\": \"" + docName + "\", \"dummy2\": true}";
       System.out.println("inserting: " + body);
       request.setEntity(new StringEntity(body));
-
       System.out.println(body(restClient.execute(request)));
 
     } catch (Exception e) {
@@ -94,7 +93,7 @@ public class FieldLevelSecurityTests {
   }
 
   private static String body(HttpResponse r) throws Exception {
-    return EntityUtils.toString(r.getEntity()).replace(" ","");
+    return EntityUtils.toString(r.getEntity()).replace(" ", "");
   }
 
   @Test
@@ -133,7 +132,7 @@ public class FieldLevelSecurityTests {
     String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
     request.setHeader("x-caller-" + caller, "true");
     request.setHeader("x-api-key", apiKey);
-    if("put-the-header".equals(apiKey)) {
+    if ("put-the-header".equals(apiKey)) {
       request.setHeader("x-randomheader", "value");
     }
     HttpResponse resp = adminClient.execute(request);
