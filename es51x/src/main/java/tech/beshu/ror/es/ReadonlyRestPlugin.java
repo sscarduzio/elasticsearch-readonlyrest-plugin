@@ -17,9 +17,12 @@
 
 package tech.beshu.ror.es;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -82,9 +85,16 @@ public class ReadonlyRestPlugin extends Plugin
     NamedWriteableRegistry namedWriteableRegistry,
     NetworkService networkService
   ) {
-    return Collections.singletonMap(
-      "ssl_netty4", () ->
-        new SSLTransportNetty4(settings, networkService, bigArrays, threadPool));
+    AtomicReference<Map<String, Supplier<HttpServerTransport>>> result = new AtomicReference<>();
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+
+      result.set(Collections.singletonMap(
+          "ssl_netty4", () ->
+              new SSLTransportNetty4(settings, networkService, bigArrays, threadPool)));
+      return null;
+    });
+
+    return result.get();
   }
 
   @Override

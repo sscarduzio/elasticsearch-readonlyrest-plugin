@@ -78,7 +78,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   @Override
   protected DirectoryReader wrap(DirectoryReader reader) {
     if (!this.enabled) {
-      logger.warn("Document filtering not available. Return defaut reader");
+      logger.debug("Document filtering not available. Return defaut reader");
       return reader;
     }
 
@@ -98,7 +98,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     // Document level security (DLS)
     FilterTransient filterTransient = FilterTransient.Deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
     if (filterTransient == null) {
-      logger.debug("Couldn't extract filterTransient from threadContext.");
+      logger.trace("filterTransient not found from threadContext.");
       return reader;
     }
 

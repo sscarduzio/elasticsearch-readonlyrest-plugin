@@ -77,7 +77,7 @@ public class FieldLevelSecurityTests {
 
     // Polling phase.. #TODO is there a better way?
     try {
-      Thread.sleep(10000);
+      Thread.sleep(5000);
 
       HttpResponse response;
       do {

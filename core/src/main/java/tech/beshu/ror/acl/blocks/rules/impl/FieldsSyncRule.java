@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 /**
  * Field level security (FLS) rule.
  * When applied, it forwards the field list to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link RequestContext}.
- *
  * Created by sscarduzio on 18/05/2018.
  */
 public class FieldsSyncRule extends SyncRule {
@@ -48,7 +47,7 @@ public class FieldsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if(!rc.isReadRequest()){
+    if (!rc.isReadRequest()) {
       return NO_MATCH;
     }
     rc.setContextHeader(Constants.FIELDS_TRANSIENT, fieldsAsString);
@@ -75,12 +74,12 @@ public class FieldsSyncRule extends SyncRule {
       }
 
       Set<String> fieldsWithnNormalizedNegations = fields.stream().map(f -> f.startsWith("~") ? f.substring(1, f.length()) : f).collect(Collectors.toSet());
-      if (Sets.intersection(fieldsWithnNormalizedNegations, Constants.FIELDS_ALWAYS_ALLOW).size() > 0 ) {
+      if (Sets.intersection(fieldsWithnNormalizedNegations, Constants.FIELDS_ALWAYS_ALLOW).size() > 0) {
         throw new SettingsMalformedException("The fields rule cannot contain always-allowed fields: " + Constants.FIELDS_ALWAYS_ALLOW);
       }
 
       // Unless explicitly allowed, the _all meta-field shoudl be disallowed
-      if (!fields.contains("_all")){
+      if (!fields.contains("_all")) {
         fields.add("~_all");
       }
     }

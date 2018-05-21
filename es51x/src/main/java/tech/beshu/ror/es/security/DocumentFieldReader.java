@@ -18,6 +18,7 @@
 package tech.beshu.ror.es.security;
 
 import com.google.common.collect.Iterators;
+import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
@@ -38,10 +39,12 @@ import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.collect.Tuple;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
+import tech.beshu.ror.commons.Constants;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -52,8 +55,9 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class DocumentFieldReader extends FilterLeafReader {
+  static protected final Logger logger = Loggers.getLogger(DocumentFieldReader.class, new String[0]);
   private final FieldInfos remainingFieldsInfo;
-  private FieldsSyncRule.FieldPolicy policy;
+  private final FieldsSyncRule.FieldPolicy policy;
 
   private DocumentFieldReader(LeafReader reader, Set<String> fields) {
     super(reader);
@@ -70,6 +74,11 @@ public class DocumentFieldReader extends FilterLeafReader {
       Set<FieldInfo> remainingFields = StreamSupport.stream(fInfos.spliterator(), false)
                                                     .filter(x -> policy.canKeep(x.name)).collect(Collectors.toSet());
       this.remainingFieldsInfo = new FieldInfos(remainingFields.toArray(new FieldInfo[remainingFields.size()]));
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("always allow: " + Constants.FIELDS_ALWAYS_ALLOW);
+      logger.debug("original fields were: " + baseFields);
+      logger.debug("new      fields  are: " + StreamSupport.stream(remainingFieldsInfo.spliterator(), false).map(f -> f.name).collect(Collectors.toSet()));
     }
   }
 
