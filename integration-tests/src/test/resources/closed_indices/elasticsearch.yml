@@ -22,11 +22,11 @@ readonlyrest:
     actions: ["cluster:monitor*", "indices:*/write*", "*create*"]
 
   - name: Poller
-    api_keys: ["p"]
+    headers: ["x-api-key:p"]
     verbosity: error
 
   - name: Getter
-    api_keys: ["g"]
+    headers: ["x-api-key:g"]
     indices:
     - intentp1_*
     - ".kibana"

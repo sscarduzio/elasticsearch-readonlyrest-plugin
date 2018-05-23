@@ -23,6 +23,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
@@ -122,8 +123,12 @@ public class RulesFactory {
       settings -> AsyncRuleAdapter.wrap(new MaxBodyLengthSyncRule((MaxBodyLengthRuleSettings) settings))
     );
     this.creators.put(
-      MethodsRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new MethodsSyncRule((MethodsRuleSettings) settings))
+        MethodsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new MethodsSyncRule((MethodsRuleSettings) settings))
+    );
+    this.creators.put(
+        HeadersSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new HeadersSyncRule((HeadersSyncRule.Settings) settings))
     );
     this.creators.put(
       SearchlogRuleSettings.class,
