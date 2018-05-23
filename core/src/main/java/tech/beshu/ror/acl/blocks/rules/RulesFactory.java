@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
@@ -35,6 +36,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
@@ -61,7 +63,6 @@ import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
-import tech.beshu.ror.settings.rules.SnapshotsRuleSettings;
 import tech.beshu.ror.settings.rules.UriReRuleSettings;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
@@ -79,32 +80,36 @@ public class RulesFactory {
     this.context = context;
     this.creators = Maps.newHashMap();
     this.creators.put(
-      ActionsRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new ActionsSyncRule((ActionsRuleSettings) settings, context))
+        ActionsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new ActionsSyncRule((ActionsRuleSettings) settings, context))
     );
     this.creators.put(
-      ApiKeysRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new ApiKeysSyncRule((ApiKeysRuleSettings) settings))
+        ApiKeysRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new ApiKeysSyncRule((ApiKeysRuleSettings) settings))
     );
     this.creators.put(
-      HostsRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new HostsSyncRule((HostsRuleSettings) settings, context))
+        HostsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new HostsSyncRule((HostsRuleSettings) settings, context))
     );
     this.creators.put(
-      LocalHostsRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new LocalHostsSyncRule((LocalHostsRuleSettings) settings, context))
+        LocalHostsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new LocalHostsSyncRule((LocalHostsRuleSettings) settings, context))
     );
     this.creators.put(
-      SnapshotsRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new SnapshotsSyncRule((SnapshotsRuleSettings) settings, context))
+        SnapshotsSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new SnapshotsSyncRule((SnapshotsSyncRule.Settings) settings, context))
     );
     this.creators.put(
-      IndicesRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new IndicesSyncRule((IndicesRuleSettings) settings, context))
+        RepositoriesSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new RepositoriesSyncRule((RepositoriesSyncRule.Settings) settings, context))
     );
     this.creators.put(
-      KibanaAccessRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new KibanaAccessSyncRule((KibanaAccessRuleSettings) settings, context))
+        IndicesRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new IndicesSyncRule((IndicesRuleSettings) settings, context))
+    );
+    this.creators.put(
+        KibanaAccessRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new KibanaAccessSyncRule((KibanaAccessRuleSettings) settings, context))
     );
     this.creators.put(
         KibanaIndexSyncRule.Settings.class,
@@ -115,12 +120,12 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new FieldsSyncRule((FieldsSyncRule.Settings) settings))
     );
     this.creators.put(
-      KibanaHideAppsRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new KibanaHideAppsSyncRule((KibanaHideAppsRuleSettings) settings, context))
+        KibanaHideAppsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new KibanaHideAppsSyncRule((KibanaHideAppsRuleSettings) settings, context))
     );
     this.creators.put(
-      MaxBodyLengthRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new MaxBodyLengthSyncRule((MaxBodyLengthRuleSettings) settings))
+        MaxBodyLengthRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new MaxBodyLengthSyncRule((MaxBodyLengthRuleSettings) settings))
     );
     this.creators.put(
         MethodsRuleSettings.class,
@@ -131,61 +136,61 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new HeadersSyncRule((HeadersSyncRule.Settings) settings))
     );
     this.creators.put(
-      SearchlogRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new SearchlogSyncRule((SearchlogRuleSettings) settings))
+        SearchlogRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new SearchlogSyncRule((SearchlogRuleSettings) settings))
     );
     this.creators.put(
-      SessionMaxIdleRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context))
+        SessionMaxIdleRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context))
     );
     this.creators.put(
-      UriReRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new UriReSyncRule((UriReRuleSettings) settings))
+        UriReRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new UriReSyncRule((UriReRuleSettings) settings))
     );
     this.creators.put(
-      XForwardedForRuleSettings.class,
-      settings -> AsyncRuleAdapter.wrap(new XForwardedForSyncRule((XForwardedForRuleSettings) settings))
+        XForwardedForRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new XForwardedForSyncRule((XForwardedForRuleSettings) settings))
     );
     this.creators.put(
-      LdapAuthenticationRuleSettings.class,
-      settings -> CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(
-        new LdapAuthenticationAsyncRule((LdapAuthenticationRuleSettings) settings, definitionsFactory, context),
-        (LdapAuthenticationRuleSettings) settings,
-        context
-      )
+        LdapAuthenticationRuleSettings.class,
+        settings -> CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(
+            new LdapAuthenticationAsyncRule((LdapAuthenticationRuleSettings) settings, definitionsFactory, context),
+            (LdapAuthenticationRuleSettings) settings,
+            context
+        )
     );
     this.creators.put(
-      LdapAuthorizationRuleSettings.class,
-      settings -> CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled(
-        new LdapAuthorizationAsyncRule((LdapAuthorizationRuleSettings) settings, definitionsFactory, context),
-        (LdapAuthorizationRuleSettings) settings,
-        context
-      )
+        LdapAuthorizationRuleSettings.class,
+        settings -> CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled(
+            new LdapAuthorizationAsyncRule((LdapAuthorizationRuleSettings) settings, definitionsFactory, context),
+            (LdapAuthorizationRuleSettings) settings,
+            context
+        )
     );
     this.creators.put(
-      LdapAuthRuleSettings.class,
-      settings -> new LdapAuthAsyncRule((LdapAuthRuleSettings) settings, definitionsFactory, context)
+        LdapAuthRuleSettings.class,
+        settings -> new LdapAuthAsyncRule((LdapAuthRuleSettings) settings, definitionsFactory, context)
     );
     this.creators.put(
-      ExternalAuthenticationRuleSettings.class,
-      settings -> CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(
-        new ExternalAuthenticationAsyncRule((ExternalAuthenticationRuleSettings) settings, definitionsFactory, context),
-        (ExternalAuthenticationRuleSettings) settings,
-        context
-      )
+        ExternalAuthenticationRuleSettings.class,
+        settings -> CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(
+            new ExternalAuthenticationAsyncRule((ExternalAuthenticationRuleSettings) settings, definitionsFactory, context),
+            (ExternalAuthenticationRuleSettings) settings,
+            context
+        )
     );
     this.creators.put(
-      GroupsProviderAuthorizationRuleSettings.class,
-      settings -> CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled(
-        new GroupsProviderAuthorizationAsyncRule((GroupsProviderAuthorizationRuleSettings) settings, definitionsFactory, context),
-        (GroupsProviderAuthorizationRuleSettings) settings,
-        context
-      )
+        GroupsProviderAuthorizationRuleSettings.class,
+        settings -> CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled(
+            new GroupsProviderAuthorizationAsyncRule((GroupsProviderAuthorizationRuleSettings) settings, definitionsFactory, context),
+            (GroupsProviderAuthorizationRuleSettings) settings,
+            context
+        )
     );
     this.creators.put(
-      GroupsRuleSettings.class,
-      settings ->
-        new GroupsAsyncRule((GroupsRuleSettings) settings, definitionsFactory)
+        GroupsRuleSettings.class,
+        settings ->
+            new GroupsAsyncRule((GroupsRuleSettings) settings, definitionsFactory)
     );
   }
 

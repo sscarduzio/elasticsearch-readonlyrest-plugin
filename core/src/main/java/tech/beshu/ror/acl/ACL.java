@@ -251,6 +251,11 @@ public class ACL {
       }
 
       @Override
+      public Set<String> getRepositories() {
+        return rInfo.extractRepositories();
+      }
+
+      @Override
       public Set<String> getExpandedIndices(Set<String> i) {
         return rInfo.getExpandedIndices(i);
       }

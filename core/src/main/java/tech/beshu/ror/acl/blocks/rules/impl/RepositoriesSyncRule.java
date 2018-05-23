@@ -22,7 +22,6 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
@@ -31,17 +30,17 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class SnapshotsSyncRule extends SyncRule {
+public class RepositoriesSyncRule extends SyncRule {
 
   private final Settings settings;
 
-  public SnapshotsSyncRule(Settings s, ESContext context) {
+  public RepositoriesSyncRule(Settings s, ESContext context) {
     this.settings = s;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return new MatcherWithWildcards(settings.getAllowedSnapshots(rc)).filter(rc.getSnapshots()).size() == rc.getSnapshots().size() ? MATCH : NO_MATCH;
+    return new MatcherWithWildcards(settings.getAllowedRepositories(rc)).filter(rc.getRepositories()).size() == rc.getRepositories().size() ? MATCH : NO_MATCH;
   }
 
   @Override
@@ -51,17 +50,17 @@ public class SnapshotsSyncRule extends SyncRule {
 
   public static class Settings implements RuleSettings {
 
-    public static final String ATTRIBUTE_NAME = "snapshots";
+    public static final String ATTRIBUTE_NAME = "repositories";
 
-    private final Set<Value<String>> allowedSnapshots;
+    private final Set<Value<String>> allowedRepositories;
     private final boolean containsVariables;
     private Set<String> unwrapped;
 
-    public Settings(Set<Value<String>> allowedSnapshots) {
-      this.containsVariables = allowedSnapshots.stream().filter(i -> i.getTemplate().contains("@{")).findFirst().isPresent();
-      this.allowedSnapshots = allowedSnapshots;
+    public Settings(Set<Value<String>> allowedRepositories) {
+      this.containsVariables = allowedRepositories.stream().filter(i -> i.getTemplate().contains("@{")).findFirst().isPresent();
+      this.allowedRepositories = allowedRepositories;
       if (!containsVariables) {
-        this.unwrapped = allowedSnapshots.stream().map(Value::getTemplate).collect(Collectors.toSet());
+        this.unwrapped = allowedRepositories.stream().map(Value::getTemplate).collect(Collectors.toSet());
       }
     }
 
@@ -73,11 +72,11 @@ public class SnapshotsSyncRule extends SyncRule {
       );
     }
 
-    public Set<String> getAllowedSnapshots(Value.VariableResolver rc) {
+    public Set<String> getAllowedRepositories(Value.VariableResolver rc) {
       if (!containsVariables) {
         return unwrapped;
       }
-      return allowedSnapshots.stream().map(v -> v.getValue(rc)).filter(o -> o.isPresent()).map(o -> o.get()).collect(Collectors.toSet());
+      return allowedRepositories.stream().map(v -> v.getValue(rc)).filter(o -> o.isPresent()).map(o -> o.get()).collect(Collectors.toSet());
     }
 
     @Override

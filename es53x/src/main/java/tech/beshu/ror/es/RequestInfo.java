@@ -338,6 +338,31 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
+  public Set<String> extractRepositories() {
+    if (actionRequest instanceof GetSnapshotsRequest) {
+      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
+      return Sets.newHashSet(rsr.repository());
+    }
+    else if (actionRequest instanceof CreateSnapshotRequest) {
+      CreateSnapshotRequest r = (CreateSnapshotRequest) actionRequest;
+      return Sets.newHashSet(r.repository());
+    }
+    else if (actionRequest instanceof DeleteSnapshotRequest) {
+      DeleteSnapshotRequest r = (DeleteSnapshotRequest) actionRequest;
+      return Sets.newHashSet(r.repository());
+    }
+    else if (actionRequest instanceof RestoreSnapshotRequest) {
+      RestoreSnapshotRequest r = (RestoreSnapshotRequest) actionRequest;
+      return Sets.newHashSet(r.repository());
+    }
+    else if (actionRequest instanceof SnapshotsStatusRequest) {
+      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
+      return Sets.newHashSet(r.repository());
+    }
+    return Collections.emptySet();
+  }
+
+  @Override
   public String extractAction() {
     return action;
   }

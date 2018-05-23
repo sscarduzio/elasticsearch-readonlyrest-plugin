@@ -207,6 +207,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   abstract public Set<String> getSnapshots();
 
+  abstract public Set<String> getRepositories();
+
   public Map<String, String> getHeaders() {
     return this.requestHeaders;
   }

@@ -40,10 +40,10 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 17/05/2018.
  */
 
-public class SnapshotsRuleTests {
+public class RepositoriesRuleTests {
 
   @Test
-  public void testSimpleSnapshot() {
+  public void testSimpleRepository() {
     RuleExitResult res = match(singletonList("public-asd"), singletonList("public-asd"));
     assertTrue(res.isMatch());
   }
@@ -61,13 +61,13 @@ public class SnapshotsRuleTests {
   private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
-    when(rc.getSnapshots()).thenReturn(foundSet);
+    when(rc.getRepositories()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
 
     Map<String, Object> yamlMap = new HashMap() {{
-      put("snapshots", configured);
+      put("repositories", configured);
     }};
-    SyncRule r = new SnapshotsSyncRule(SnapshotsSyncRule.Settings.fromBlockSettings(new RawSettings(yamlMap, LoggerShim.dummy())), MockedESContext.INSTANCE);
+    SyncRule r = new RepositoriesSyncRule(RepositoriesSyncRule.Settings.fromBlockSettings(new RawSettings(yamlMap, LoggerShim.dummy())), MockedESContext.INSTANCE);
     return r.match(rc);
   }
 

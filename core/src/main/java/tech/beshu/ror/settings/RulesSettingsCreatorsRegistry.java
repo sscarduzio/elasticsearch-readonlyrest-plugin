@@ -20,6 +20,8 @@ package tech.beshu.ror.settings;
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
@@ -50,7 +52,6 @@ import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
-import tech.beshu.ror.settings.rules.SnapshotsRuleSettings;
 import tech.beshu.ror.settings.rules.UriReRuleSettings;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
@@ -97,7 +98,8 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
     creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
-    creators.put(SnapshotsRuleSettings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
+    creators.put(SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
+    creators.put(SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
     creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
@@ -217,7 +219,12 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> snapshotsRuleSettingsCreator(RawSettings blockSettings) {
-    return () -> SnapshotsRuleSettings.fromBlockSettings(blockSettings);
+    return () -> SnapshotsSyncRule.Settings.fromBlockSettings(blockSettings);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> repositoriesRuleSettingsCreator(RawSettings blockSettings) {
+    return () -> RepositoriesSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")

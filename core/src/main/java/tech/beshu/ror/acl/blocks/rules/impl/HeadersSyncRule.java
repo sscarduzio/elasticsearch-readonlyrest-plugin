@@ -19,7 +19,6 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
