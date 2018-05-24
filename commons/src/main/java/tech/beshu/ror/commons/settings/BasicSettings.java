@@ -46,6 +46,7 @@ public class BasicSettings {
   public static final String VERBOSITY = "verbosity";
   public static final String AUDIT_COLLECTOR = "audit_collector";
   public static final String CUSTOM_AUDIT_SERIALIZER = "audit_serializer";
+  public static final String AUDIT_INDEX_TEMPLATE = "audit_index_template";
   public static final String CACHE_HASHING_ALGO = "cache_hashing_algo";
 
   // SSL
@@ -63,6 +64,7 @@ public class BasicSettings {
   private final String forbiddenMessage;
   private final Verbosity verbosity;
   private final Boolean auditCollector;
+  private final String auditIndexTemplate;
   private final Boolean promptForBasicAuth;
   private final boolean sslEnabled;
   private final List<?> blocksSettings;
@@ -94,6 +96,7 @@ public class BasicSettings {
       .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
     this.customAuditSerializer = raw.opt(CUSTOM_AUDIT_SERIALIZER);
+    this.auditIndexTemplate = raw.stringOpt(AUDIT_INDEX_TEMPLATE).orElse("'readonlyrest_audit-'yyyy-MM-dd");
     this.cacheHashingAlgo = raw.stringOpt(CACHE_HASHING_ALGO);
 
     // SSL
@@ -190,6 +193,10 @@ public class BasicSettings {
 
   public Boolean isAuditorCollectorEnabled() {
     return auditCollector;
+  }
+
+  public String getAuditIndexTemplate(){
+    return auditIndexTemplate;
   }
 
   public Optional<String> getCustomAuditSerializer() {

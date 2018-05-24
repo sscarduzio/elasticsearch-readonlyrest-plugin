@@ -32,23 +32,25 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Optional;
 
 /**
  * Created by sscarduzio on 28/06/2017.
  */
 public class SerializationTool {
-  private final static SimpleDateFormat indexNameFormatter = new SimpleDateFormat("yyyy-MM-dd");
+  private static SimpleDateFormat indexNameFormatter;
   private static ObjectMapper mapper;
   private final AuditLogSerializer auditLogSerializer;
   private final LoggerShim logger;
 
   public SerializationTool(ESContext esContext) {
+    indexNameFormatter = new SimpleDateFormat(esContext.getSettings().getAuditIndexTemplate());
     this.logger = esContext.logger(getClass());
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
-      "SimpleModule",
-      new Version(1, 0, 0, null, "com.readonlyrest", "readonlyrest")
+        "SimpleModule",
+        new Version(1, 0, 0, null, "com.readonlyrest", "readonlyrest")
     );
     mapper.registerModule(simpleModule);
     this.mapper = mapper;
@@ -85,7 +87,7 @@ public class SerializationTool {
   }
 
   public String mkIndexName() {
-    return "readonlyrest_audit-" + indexNameFormatter.format(Calendar.getInstance().getTime());
+    return indexNameFormatter.format(Calendar.getInstance().getTime());
   }
 
   public String toJson(ResponseContext rc) {
@@ -102,6 +104,4 @@ public class SerializationTool {
 
     return res[0];
   }
-
-
 }
