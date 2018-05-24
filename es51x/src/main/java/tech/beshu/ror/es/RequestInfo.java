@@ -23,6 +23,10 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
+import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest;
+import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest;
+import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequest;
+import org.elasticsearch.action.admin.cluster.repositories.verify.VerifyRepositoryRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest;
@@ -359,9 +363,28 @@ public class RequestInfo implements RequestInfoShim {
       SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
       return Sets.newHashSet(r.repository());
     }
+
+    // Specific to repositories
+    else if (actionRequest instanceof PutRepositoryRequest) {
+      PutRepositoryRequest r = (PutRepositoryRequest) actionRequest;
+      return Sets.newHashSet(r.name());
+    }
+    else if (actionRequest instanceof GetRepositoriesRequest) {
+      GetRepositoriesRequest r = (GetRepositoriesRequest) actionRequest;
+      return Sets.newHashSet(r.repositories());
+    }
+    else if (actionRequest instanceof DeleteRepositoryRequest) {
+      DeleteRepositoryRequest r = (DeleteRepositoryRequest) actionRequest;
+      return Sets.newHashSet(r.name());
+    }
+    else if (actionRequest instanceof VerifyRepositoryRequest) {
+      VerifyRepositoryRequest r = (VerifyRepositoryRequest) actionRequest;
+      return Sets.newHashSet(r.name());
+    }
+
     return Collections.emptySet();
   }
-  
+
   @Override
   public String extractAction() {
     return action;
