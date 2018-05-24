@@ -21,7 +21,8 @@ public class AuthKeySha256RuleSettings extends AuthKeyRuleSettings {
   public static final String ATTRIBUTE_NAME = "auth_key_sha256";
 
   public AuthKeySha256RuleSettings(String authKey) {
-    super(authKey);
+
+    super(authKey.toLowerCase());
   }
 
   public static AuthKeySha256RuleSettings from(String authKey) {

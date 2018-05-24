@@ -21,7 +21,7 @@ public class AuthKeySha512RuleSettings extends AuthKeyRuleSettings {
   public static final String ATTRIBUTE_NAME = "auth_key_sha512";
 
   public AuthKeySha512RuleSettings(String authKey) {
-    super(authKey);
+    super(authKey.toLowerCase());
   }
 
   public static AuthKeySha512RuleSettings from(String authKey) {
