@@ -96,7 +96,7 @@ public class BasicSettings {
       .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
     this.customAuditSerializer = raw.opt(CUSTOM_AUDIT_SERIALIZER);
-    this.auditIndexTemplate = raw.stringOpt(AUDIT_INDEX_TEMPLATE).orElse("'readonlyrest_audit-'yyyy-MM-dd");
+    this.auditIndexTemplate = raw.stringOpt(AUDIT_INDEX_TEMPLATE).orElse(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE);
     this.cacheHashingAlgo = raw.stringOpt(CACHE_HASHING_ALGO);
 
     // SSL

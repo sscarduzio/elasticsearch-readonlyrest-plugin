@@ -24,6 +24,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mockito.Mockito;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.AbstractESContext;
 import tech.beshu.ror.commons.shims.es.ESContext;
@@ -127,6 +128,7 @@ public class MockedESContext extends AbstractESContext {
 
     BasicSettings bs = Mockito.mock(BasicSettings.class);
     Mockito.when(bs.getCustomAuditSerializer()).thenReturn(Optional.ofNullable(customSerializer));
+    Mockito.when(bs.getAuditIndexTemplate()).thenReturn(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE);
     Mockito.when(bs.getCacheHashingAlgo()).thenReturn("none");
     return bs;
   }
