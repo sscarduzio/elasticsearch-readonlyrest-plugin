@@ -64,6 +64,8 @@ public interface RequestInfoShim {
 
   Set<String> extractSnapshots();
 
+  void writeSnapshots(Set<String> newSnapshots);
+
   Set<String> extractRepositories();
 
   String extractAction();

@@ -48,6 +48,8 @@ import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.cluster.metadata.RepositoriesMetaData;
+import org.elasticsearch.cluster.metadata.RepositoryMetaData;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
@@ -72,6 +74,7 @@ import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -98,8 +101,8 @@ public class RequestInfo implements RequestInfoShim {
   private ESContext context;
 
   RequestInfo(
-    RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-    ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
+      RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
+      ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -268,15 +271,15 @@ public class RequestInfo implements RequestInfoShim {
     else if (ar instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
       Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
-        .flatMap(Collection::stream)
-        .collect(Collectors.toSet());
+                                 .flatMap(Collection::stream)
+                                 .collect(Collectors.toSet());
       indices = (String[]) indicesSet.toArray();
     }
 
     else if (ar instanceof CompositeIndicesRequest) {
       logger.error(
-        "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
-          + ar.getClass().getSimpleName());
+          "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
+              + ar.getClass().getSimpleName());
     }
 
     // Buggy cases here onwards
@@ -325,24 +328,48 @@ public class RequestInfo implements RequestInfoShim {
       GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
       return Sets.newHashSet(rsr.snapshots());
     }
-    else if(actionRequest instanceof CreateSnapshotRequest){
+    else if (actionRequest instanceof CreateSnapshotRequest) {
       CreateSnapshotRequest r = (CreateSnapshotRequest) actionRequest;
       return Sets.newHashSet(r.snapshot());
     }
-    else if(actionRequest instanceof DeleteSnapshotRequest){
+    else if (actionRequest instanceof DeleteSnapshotRequest) {
       DeleteSnapshotRequest r = (DeleteSnapshotRequest) actionRequest;
       return Sets.newHashSet(r.snapshot());
     }
-    else if(actionRequest instanceof RestoreSnapshotRequest){
+    else if (actionRequest instanceof RestoreSnapshotRequest) {
       RestoreSnapshotRequest r = (RestoreSnapshotRequest) actionRequest;
       return Sets.newHashSet(r.snapshot());
     }
-    else if(actionRequest instanceof SnapshotsStatusRequest){
+    else if (actionRequest instanceof SnapshotsStatusRequest) {
       SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
       return Sets.newHashSet(r.snapshots());
     }
     return Collections.emptySet();
   }
+
+  @Override
+  public void writeSnapshots(Set<String> newSnapshots) {
+    // We limit this to read requests, as all the write requests are single-snapshot oriented.
+    String[] newSnapshotsA = newSnapshots.toArray(new String[newSnapshots.size()]);
+    if (actionRequest instanceof GetSnapshotsRequest) {
+      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
+      rsr.snapshots(newSnapshotsA);
+      return;
+    }
+
+    if (actionRequest instanceof SnapshotsStatusRequest) {
+      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
+      r.snapshots(newSnapshotsA);
+      return;
+    }
+  }
+
+//  public Set<String> extractAllRepositories() {
+//    RepositoriesMetaData out = clusterService.state().metaData().custom(RepositoriesMetaData.TYPE);
+//    List<RepositoryMetaData> x = out.repositories();
+//    return x.stream().map(RepositoryMetaData::name).collect(Collectors.toSet());
+//    //    clusterService.state().getMetaData().
+//  }
 
   @Override
   public Set<String> extractRepositories() {
@@ -536,7 +563,7 @@ public class RequestInfo implements RequestInfoShim {
     }
     else {
       logger.error("REFLECTION: Failed to set indices for type " + actionRequest.getClass().getSimpleName() +
-                     "  in req id: " + extractId());
+          "  in req id: " + extractId());
     }
   }
 
@@ -553,9 +580,9 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public boolean involvesIndices() {
     return actionRequest instanceof IndicesRequest ||
-      actionRequest instanceof CompositeIndicesRequest ||
-      // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
-      actionRequest instanceof RestoreSnapshotRequest;
+        actionRequest instanceof CompositeIndicesRequest ||
+        // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
+        actionRequest instanceof RestoreSnapshotRequest;
 
   }
 

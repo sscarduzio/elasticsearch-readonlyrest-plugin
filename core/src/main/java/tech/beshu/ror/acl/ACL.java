@@ -251,6 +251,11 @@ public class ACL {
       }
 
       @Override
+      protected void writeSnapshots(Set<String> newSnapshots) {
+        rInfo.writeSnapshots(newSnapshots);
+      }
+
+      @Override
       public Set<String> getRepositories() {
         return rInfo.extractRepositories();
       }
