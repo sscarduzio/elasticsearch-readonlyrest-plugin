@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -33,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static java.util.Collections.singletonList;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -43,27 +45,55 @@ import static org.mockito.Mockito.when;
 public class SnapshotsRuleTests {
 
   @Test
-  public void testSimpleSnapshot() {
-    RuleExitResult res = match(singletonList("public-asd"), singletonList("public-asd"));
+  public void testREADSimpleSnapshot() {
+    RuleExitResult res = matchAsRead(singletonList("public-asd"), singletonList("public-asd"));
     assertTrue(res.isMatch());
   }
 
   @Test
-  public void testSimpleWildcard() {
-    RuleExitResult res = match(singletonList("public-*"), singletonList("public-asd"));
+  public void testREADSimpleWildcard() {
+    RuleExitResult res = matchAsRead(singletonList("public-*"), singletonList("public-asd"));
     assertTrue(res.isMatch());
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+  @Test
+  public void testWRITESimpleWildcard() {
+    RuleExitResult res = matchAsWrite(singletonList("public-*"), singletonList("public-asd"));
+    assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testWRITESimpleWildcardNoMatch() {
+    RuleExitResult res = matchAsWrite(singletonList("public-*"), singletonList("x_public-asd"));
+    assertFalse(res.isMatch());
+  }
+
+  @Test
+  public void testREADMulti() {
+    RuleExitResult res = matchAsRead(Lists.newArrayList("public-*", "n"), Lists.newArrayList("x_public-asd", "q"));
+    assertTrue(res.isMatch());
+  }
+
+  private RuleExitResult matchAsRead(List<String> configured, List<String> found) {
+    RequestContext rc = Mockito.mock(RequestContext.class);
+    when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
+    when(rc.isReadRequest()).thenReturn(true);
+    return match(configured, found, rc);
+  }
+
+  private RuleExitResult matchAsWrite(List<String> configured, List<String> found) {
+    RequestContext rc = Mockito.mock(RequestContext.class);
+    when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
+    when(rc.isReadRequest()).thenReturn(false);
+    return match(configured, found, rc);
   }
 
   private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
-    when(rc.getSnapshots()).thenReturn(foundSet);
-    when(rc.isReadRequest()).thenReturn(true);
+    if (rc == null) {
 
+    }
     Map<String, Object> yamlMap = new HashMap() {{
       put("snapshots", configured);
     }};

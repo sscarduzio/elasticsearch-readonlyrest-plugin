@@ -22,7 +22,6 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
@@ -34,14 +33,37 @@ import java.util.stream.Collectors;
 public class SnapshotsSyncRule extends SyncRule {
 
   private final Settings settings;
+  private final ESContext context;
 
   public SnapshotsSyncRule(Settings s, ESContext context) {
     this.settings = s;
+    this.context = context;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return new MatcherWithWildcards(settings.getAllowedSnapshots(rc)).filter(rc.getSnapshots()).size() == rc.getSnapshots().size() ? MATCH : NO_MATCH;
+    Set<String> allowedSnapshots = settings.getAllowedSnapshots(rc);
+
+    // Shortcut if we are matching all (i.e. totally useless rule, should be removed from settings)
+    if(allowedSnapshots.contains("_all") || allowedSnapshots.contains("*")){
+    context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the ACL block.");
+      return MATCH;
+    }
+
+    Set<String> requestedSnapshots = rc.getSnapshots();
+
+    Set<String> alteredSnapshots = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(requestedSnapshots, new MatcherWithWildcards(allowedSnapshots));
+    if(alteredSnapshots == null){
+      return MATCH;
+    }
+
+    // Apply modifications only to read requests, the others can be happily bounced.
+    if(rc.isReadRequest()){
+      rc.setSnapshots(alteredSnapshots);
+      return MATCH;
+    }
+
+    return NO_MATCH;
   }
 
   @Override

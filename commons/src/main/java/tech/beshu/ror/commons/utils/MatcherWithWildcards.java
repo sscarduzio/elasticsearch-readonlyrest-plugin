@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.commons.utils;
 
-
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 
