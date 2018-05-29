@@ -63,7 +63,7 @@ public class RepositoriesRuleTests {
     foundSet.addAll(found);
     when(rc.getRepositories()).thenReturn(foundSet);
     when(rc.isReadRequest()).thenReturn(true);
-
+    when(rc.getAction()).thenReturn("cluster:admin/repositories/get");
     Map<String, Object> yamlMap = new HashMap() {{
       put("repositories", configured);
     }};

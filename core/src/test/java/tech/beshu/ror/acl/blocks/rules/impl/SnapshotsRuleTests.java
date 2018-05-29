@@ -79,6 +79,7 @@ public class SnapshotsRuleTests {
     when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
     when(rc.isReadRequest()).thenReturn(true);
 
+    when(rc.getAction()).thenReturn("cluster:admin/snapshot/get");
     return match(configured, found, rc);
   }
 
@@ -86,6 +87,8 @@ public class SnapshotsRuleTests {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
     when(rc.isReadRequest()).thenReturn(false);
+
+    when(rc.getAction()).thenReturn("cluster:admin/snapshot/get");
     return match(configured, found, rc);
   }
 
