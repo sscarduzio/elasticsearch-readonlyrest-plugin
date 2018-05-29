@@ -67,10 +67,10 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       throw new ArgumentException("Please provide an indexService");
     }
     Logger logger = Loggers.getLogger(this.getClass(), new String[0]);
-    logger.info("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
+    logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
     this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null);
     this.threadContext = indexService.getThreadPool().getThreadContext();
-    logger.info("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
+    logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
 
     this.logger = ESContextImpl.mkLoggerShim(logger);
     BasicSettings baseSettings = BasicSettings.fromFile(this.logger, env.configFile().toAbsolutePath(), s.getAsStructuredMap());

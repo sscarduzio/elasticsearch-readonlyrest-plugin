@@ -127,7 +127,7 @@ public class BasicSettings {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
         slurped[0] = new String(Files.readAllBytes(Paths.get(filePath)));
-        logger.info("Read data from " + filePath);
+        logger.debug("Read data from " + filePath);
       }
       catch (Throwable t) {
         logger.info(
@@ -141,7 +141,7 @@ public class BasicSettings {
   }
 
   public static BasicSettings fromFileObj(LoggerShim logger, Path configPath, Object settingsObject) {
-    logger.info("reading settings path (file obj) " + configPath);
+    logger.debug("reading settings path (file obj) " + configPath);
     if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
       logger.info("overriding  settings path to " + ROR_YAML_SETTINGS_PATH);
       configPath = Paths.get(ROR_YAML_SETTINGS_PATH);
@@ -150,7 +150,7 @@ public class BasicSettings {
   }
 
   public static BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String, ?> fallback) {
-    logger.info("reading settings path (file obj) " + configPath);
+    logger.debug("reading settings path (file obj) " + configPath);
     if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
       logger.info("overriding settings  path to " + ROR_YAML_SETTINGS_PATH);
       configPath = Paths.get(ROR_YAML_SETTINGS_PATH);
