@@ -70,8 +70,14 @@ public class SnapshotsRuleTests {
 
   @Test
   public void testREADMulti() {
-    RuleExitResult res = matchAsRead(Lists.newArrayList("public-*", "n"), Lists.newArrayList("x_public-asd", "q"));
+    RuleExitResult res = matchAsRead(Lists.newArrayList("public-*", "n"), Lists.newArrayList("public-asd", "q"));
     assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testWRITEMulti() {
+    RuleExitResult res = matchAsWrite(Lists.newArrayList("public-*", "n"), Lists.newArrayList("public-asd", "q"));
+    assertFalse(res.isMatch());
   }
 
   private RuleExitResult matchAsRead(List<String> configured, List<String> found) {
@@ -81,6 +87,18 @@ public class SnapshotsRuleTests {
 
     when(rc.getAction()).thenReturn("cluster:admin/snapshot/get");
     return match(configured, found, rc);
+  }
+
+  @Test
+  public void testSimpleWildcardForbid() {
+    RuleExitResult res = matchAsRead(singletonList("x-*"), singletonList("public-asd"));
+    assertFalse(res.isMatch());
+  }
+
+  @Test
+  public void testSimpleWildcardForbidW() {
+    RuleExitResult res = matchAsWrite(singletonList("x-*"), singletonList("public-asd"));
+    assertFalse(res.isMatch());
   }
 
   private RuleExitResult matchAsWrite(List<String> configured, List<String> found) {

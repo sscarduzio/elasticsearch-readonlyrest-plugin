@@ -54,6 +54,12 @@ public class RepositoriesRuleTests {
     assertTrue(res.isMatch());
   }
 
+  @Test
+  public void testSimpleWildcardForbid() {
+    RuleExitResult res = match(singletonList("x-*"), singletonList("public-asd"));
+    assertTrue(res.isMatch());
+  }
+
   private RuleExitResult match(List<String> configured, List<String> found) {
     return match(configured, found, Mockito.mock(RequestContext.class));
   }

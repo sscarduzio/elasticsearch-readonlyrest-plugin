@@ -58,8 +58,15 @@ public class SnapshotsSyncRule extends SyncRule {
     Set<String> requestedSnapshots = rc.getSnapshots();
 
     Set<String> alteredSnapshots = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(requestedSnapshots, new MatcherWithWildcards(allowedSnapshots));
+
+    // no changes needed
     if(alteredSnapshots == null){
       return MATCH;
+    }
+
+    // Nothing survived the filter, and we should forbid
+    if(alteredSnapshots.isEmpty()){
+      return NO_MATCH;
     }
 
     // Apply modifications only to read requests, the others can be happily bounced.

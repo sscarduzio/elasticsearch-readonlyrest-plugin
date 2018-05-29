@@ -58,8 +58,15 @@ public class RepositoriesSyncRule extends SyncRule {
     Set<String> requestedRepositories = rc.getRepositories();
 
     Set<String> alteredRepositories = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(requestedRepositories, new MatcherWithWildcards(allowedRepositories));
+
+    // no changes needed
     if(alteredRepositories == null){
       return MATCH;
+    }
+
+    // Nothing survived the filter, and we should forbid
+    if(alteredRepositories.isEmpty()){
+      return NO_MATCH;
     }
 
     // Apply modifications only to read requests, the others can be happily bounced.
