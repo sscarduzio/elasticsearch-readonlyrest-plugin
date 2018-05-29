@@ -134,6 +134,35 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
+  public void writeRepositories(Set<String> newRepositories) {
+    // We limit this to read requests, as all the write requests are single-snapshot oriented.
+    String[] newRepositoriesA = newRepositories.toArray(new String[newRepositories.size()]);
+    if (actionRequest instanceof GetSnapshotsRequest) {
+      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
+      rsr.repository(newRepositoriesA[0]);
+      return;
+    }
+
+    if (actionRequest instanceof SnapshotsStatusRequest) {
+      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
+      r.repository(newRepositoriesA[0]);
+      return;
+    }
+    if (actionRequest instanceof GetRepositoriesRequest) {
+      GetRepositoriesRequest r = (GetRepositoriesRequest) actionRequest;
+      r.repositories(newRepositoriesA);
+      return;
+    }
+
+    if (actionRequest instanceof VerifyRepositoryRequest) {
+      VerifyRepositoryRequest r = (VerifyRepositoryRequest) actionRequest;
+      r.name(newRepositoriesA[0]);
+      return;
+    }
+
+  }
+
+  @Override
   public String extractType() {
     return actionRequest.getClass().getSimpleName();
   }

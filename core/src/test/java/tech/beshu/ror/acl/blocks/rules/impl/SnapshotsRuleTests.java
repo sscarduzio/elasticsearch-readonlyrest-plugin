@@ -78,6 +78,7 @@ public class SnapshotsRuleTests {
     RequestContext rc = Mockito.mock(RequestContext.class);
     when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
     when(rc.isReadRequest()).thenReturn(true);
+
     return match(configured, found, rc);
   }
 
@@ -91,9 +92,6 @@ public class SnapshotsRuleTests {
   private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
-    if (rc == null) {
-
-    }
     Map<String, Object> yamlMap = new HashMap() {{
       put("snapshots", configured);
     }};

@@ -68,6 +68,8 @@ public interface RequestInfoShim {
 
   Set<String> extractRepositories();
 
+  void writeRepositories(Set<String> newRepositories);
+
   String extractAction();
 
   Map<String, String> extractRequestHeaders();

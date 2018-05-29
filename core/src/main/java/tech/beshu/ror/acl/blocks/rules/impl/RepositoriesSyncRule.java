@@ -33,15 +33,42 @@ import java.util.stream.Collectors;
 public class RepositoriesSyncRule extends SyncRule {
 
   private final Settings settings;
+  private final ESContext context;
 
   public RepositoriesSyncRule(Settings s, ESContext context) {
     this.settings = s;
+    this.context = context;
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return new MatcherWithWildcards(settings.getAllowedRepositories(rc)).filter(rc.getRepositories()).size() == rc.getRepositories().size() ? MATCH : NO_MATCH;
-  }
+
+    if(!rc.getAction().contains("/repository/")){
+      return MATCH;
+    }
+
+    Set<String> allowedRepositories = settings.getAllowedRepositories(rc);
+
+    // Shortcut if we are matching all (i.e. totally useless rule, should be removed from settings)
+    if(allowedRepositories.contains("_all") || allowedRepositories.contains("*")){
+      context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the ACL block.");
+      return MATCH;
+    }
+
+    Set<String> requestedRepositories = rc.getRepositories();
+
+    Set<String> alteredRepositories = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(requestedRepositories, new MatcherWithWildcards(allowedRepositories));
+    if(alteredRepositories == null){
+      return MATCH;
+    }
+
+    // Apply modifications only to read requests, the others can be happily bounced.
+    if(rc.isReadRequest()){
+      rc.setRepositories(alteredRepositories);
+      return MATCH;
+    }
+
+    return NO_MATCH;  }
 
   @Override
   public String getKey() {

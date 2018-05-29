@@ -246,7 +246,7 @@ public class ACL {
     return new RequestContext("rc", context) {
 
       @Override
-      public Set<String> getSnapshots() {
+      public Set<String> extractSnapshots() {
         return rInfo.extractSnapshots();
       }
 
@@ -256,8 +256,13 @@ public class ACL {
       }
 
       @Override
-      public Set<String> getRepositories() {
+      public Set<String> extractRepositories() {
         return rInfo.extractRepositories();
+      }
+
+      @Override
+      protected void writeRepositories(Set<String> newRepos) {
+        rInfo.writeRepositories(newRepos);
       }
 
       @Override

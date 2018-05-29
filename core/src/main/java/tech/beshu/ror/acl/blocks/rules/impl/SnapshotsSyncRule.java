@@ -42,6 +42,11 @@ public class SnapshotsSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(RequestContext rc) {
+
+    if(!rc.getAction().contains("/snapshot/")){
+      return MATCH;
+    }
+
     Set<String> allowedSnapshots = settings.getAllowedSnapshots(rc);
 
     // Shortcut if we are matching all (i.e. totally useless rule, should be removed from settings)

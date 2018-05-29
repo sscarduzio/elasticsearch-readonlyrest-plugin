@@ -48,8 +48,6 @@ import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
-import org.elasticsearch.cluster.metadata.RepositoriesMetaData;
-import org.elasticsearch.cluster.metadata.RepositoryMetaData;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
@@ -74,7 +72,6 @@ import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -364,12 +361,40 @@ public class RequestInfo implements RequestInfoShim {
     }
   }
 
-//  public Set<String> extractAllRepositories() {
-//    RepositoriesMetaData out = clusterService.state().metaData().custom(RepositoriesMetaData.TYPE);
-//    List<RepositoryMetaData> x = out.repositories();
-//    return x.stream().map(RepositoryMetaData::name).collect(Collectors.toSet());
-//    //    clusterService.state().getMetaData().
-//  }
+  @Override
+  public void writeRepositories(Set<String> newRepositories) {
+    // We limit this to read requests, as all the write requests are single-snapshot oriented.
+    String[] newRepositoriesA = newRepositories.toArray(new String[newRepositories.size()]);
+    if (actionRequest instanceof GetSnapshotsRequest) {
+      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
+      rsr.repository(newRepositoriesA[0]);
+      return;
+    }
+
+    if (actionRequest instanceof SnapshotsStatusRequest) {
+      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
+      r.repository(newRepositoriesA[0]);
+      return;
+    }
+    if (actionRequest instanceof GetRepositoriesRequest) {
+      GetRepositoriesRequest r = (GetRepositoriesRequest) actionRequest;
+      r.repositories(newRepositoriesA);
+      return;
+    }
+
+    if (actionRequest instanceof VerifyRepositoryRequest) {
+      VerifyRepositoryRequest r = (VerifyRepositoryRequest) actionRequest;
+      r.name(newRepositoriesA[0]);
+      return;
+    }
+
+  }
+  //  public Set<String> extractAllRepositories() {
+  //    RepositoriesMetaData out = clusterService.state().metaData().custom(RepositoriesMetaData.TYPE);
+  //    List<RepositoryMetaData> x = out.repositories();
+  //    return x.stream().map(RepositoryMetaData::name).collect(Collectors.toSet());
+  //    //    clusterService.state().getMetaData().
+  //  }
 
   @Override
   public Set<String> extractRepositories() {

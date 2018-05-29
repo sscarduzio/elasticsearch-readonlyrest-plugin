@@ -55,6 +55,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   private List<BlockHistory> history = Lists.newArrayList();
   private Date timestamp = new Date();
   private ESContext context;
+  private Transactional<Set<String>> snapshots;
+  private Transactional<Set<String>> repositories;
 
   public RequestContext(String name, ESContext context) {
     super(name, context);
@@ -158,6 +160,40 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       }
     };
 
+    this.repositories = new Transactional<Set<String>>("rc-repositories", context) {
+      @Override
+      public Set<String> initialize() {
+        return extractRepositories();
+      }
+
+      @Override
+      public Set<String> copy(Set<String> initial) {
+        return Sets.newHashSet(initial);
+      }
+
+      @Override
+      public void onCommit(Set<String> value) {
+        writeRepositories(value);
+      }
+    };
+
+    this.snapshots = new Transactional<Set<String>>("rc-snapshots", context) {
+      @Override
+      public Set<String> initialize() {
+        return extractSnapshots();
+      }
+
+      @Override
+      public Set<String> copy(Set<String> initial) {
+        return Sets.newHashSet(initial);
+      }
+
+      @Override
+      public void onCommit(Set<String> value) {
+        writeSnapshots(value);
+      }
+    };
+
     this.indices = new Transactional<Set<String>>("rc-indices", context) {
       @Override
       public Set<String> initialize() {
@@ -179,6 +215,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     delay(() -> loggedInUser.get().ifPresent(loggedUser -> setResponseHeader(Constants.HEADER_USER_ROR, loggedUser.getId())));
 
     // Register for cascading effects
+    this.repositories.delegateTo(this);
+    this.snapshots.delegateTo(this);
     this.indices.delegateTo(this);
     this.loggedInUser.delegateTo(this);
     this.kibanaIndex.delegateTo(this);
@@ -205,19 +243,32 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     indices.mutate(newIndices);
   }
 
-  abstract public Set<String> getSnapshots();
+  public Set<String> getSnapshots() {
+    return snapshots.getInitial();
+  }
+
+  public Set<String> getRepositories() {
+    return repositories.getInitial();
+  }
+  public void setRepositories(Set<String> newRepositories) {
+    repositories.mutate(newRepositories);
+  }
 
   public void setSnapshots(Set<String> newSnapshots) {
-    writeSnapshots(newSnapshots);
+    snapshots.mutate(newSnapshots);
   }
+
+  abstract protected Set<String> extractSnapshots();
 
   abstract protected void writeSnapshots(Set<String> newSnapshots);
 
-  abstract public Set<String> getRepositories();
+  abstract protected Set<String> extractRepositories();
 
   public Map<String, String> getHeaders() {
     return this.requestHeaders;
   }
+
+  protected abstract void writeRepositories(Set<String> newRepos);
 
   abstract public Set<String> getExpandedIndices(Set<String> i);
 
