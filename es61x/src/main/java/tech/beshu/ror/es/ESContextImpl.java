@@ -14,8 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es;
 
+package tech.beshu.ror.es;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
@@ -40,7 +40,6 @@ public class ESContextImpl extends AbstractESContext {
     }
     this.settings = settings;
   }
-
 
   public static LoggerShim mkLoggerShim(Logger l) {
     return new LoggerShim() {
@@ -67,14 +66,14 @@ public class ESContextImpl extends AbstractESContext {
 
       @Override
       public void warn(String message, Throwable t) {
-        l.warn(message);
-        t.printStackTrace();
+        l.warn(message, t);
+        t.printStackTrace(System.out);
       }
 
       @Override
       public void error(String message, Throwable t) {
-        l.error(message);
-        t.printStackTrace();
+        l.error(message, t);
+        t.printStackTrace(System.out);
       }
 
       @Override

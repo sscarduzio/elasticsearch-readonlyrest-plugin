@@ -139,7 +139,7 @@ public class Block {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
       rules,
       rule -> rule.match(rc).exceptionally(e -> {
-        logger.error(getName() + ": " + rule.getKey() + " rule matching got an error", e);
+        logger.error(getName() + ": " + rule.getKey() + " rule matching got an error " +  e.getMessage(), e);
         return new RuleExitResult(false, rule);
       }),
       ruleExitResult -> {
