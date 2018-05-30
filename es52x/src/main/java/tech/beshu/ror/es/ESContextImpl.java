@@ -67,13 +67,13 @@ public class ESContextImpl extends AbstractESContext {
       @Override
       public void warn(String message, Throwable t) {
         l.warn(message);
-        t.printStackTrace();
+        t.printStackTrace(System.out);
       }
 
       @Override
       public void error(String message, Throwable t) {
         l.error(message);
-        t.printStackTrace();
+        t.printStackTrace(System.out);
       }
 
       @Override
