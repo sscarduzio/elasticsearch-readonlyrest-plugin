@@ -27,6 +27,9 @@ import tech.beshu.ror.commons.shims.es.AbstractESContext;
 import tech.beshu.ror.commons.shims.es.ESVersion;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 public class ESContextImpl extends AbstractESContext {
   private static AuditSinkImpl auditSink;
   private final BasicSettings settings;
@@ -66,14 +69,18 @@ public class ESContextImpl extends AbstractESContext {
 
       @Override
       public void warn(String message, Throwable t) {
-        l.warn(message);
-        t.printStackTrace(System.out);
+        l.warn(message + "", t);
+        if(t != null){
+          l.warn(throwableToString(t));
+        }
       }
 
       @Override
       public void error(String message, Throwable t) {
-        l.error(message);
-        t.printStackTrace(System.out);
+        l.error(message + "",t);
+        if(t != null){
+          l.error(throwableToString(t));
+        }
       }
 
       @Override
@@ -87,7 +94,11 @@ public class ESContextImpl extends AbstractESContext {
       }
     };
   }
-
+  private  static String throwableToString( Throwable e) {
+    StringWriter sw = new StringWriter();
+    e.printStackTrace(new PrintWriter(sw));
+    return sw.toString();
+  }
   @Override
   public LoggerShim mkLogger(Class<?> clazz) {
     return mkLoggerShim(Loggers.getLogger(clazz.getName()));
@@ -111,4 +122,6 @@ public class ESContextImpl extends AbstractESContext {
   public BasicSettings getSettings() {
     return settings;
   }
+
+
 }
