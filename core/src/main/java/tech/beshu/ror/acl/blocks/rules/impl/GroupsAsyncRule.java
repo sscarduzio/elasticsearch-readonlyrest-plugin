@@ -48,16 +48,14 @@ import java.util.stream.Collectors;
  */
 public class GroupsAsyncRule extends AsyncRule implements Authorization, Authentication {
 
-
   private final GroupsRuleSettings settings;
   private final Map<String, User> users;
-
 
   public GroupsAsyncRule(GroupsRuleSettings s, UserFactory userFactory) {
     this.settings = s;
     this.users = settings.getUsersSettings().stream()
-      .map(uSettings -> userFactory.getUser(uSettings))
-      .collect(Collectors.toMap(User::getUsername, Function.identity()));
+                         .map(uSettings -> userFactory.getUser(uSettings))
+                         .collect(Collectors.toMap(User::getUsername, Function.identity()));
   }
 
   @Override
@@ -65,13 +63,12 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
     // All configured groups in a block's group rule, contextualized
     Set<String> resolvedGroups = settings.getGroups().stream()
-      .map(g -> g.getValue(rc))
-      .filter(Optional::isPresent)
-      .map(Optional::get)
-      .collect(Collectors.toSet());
+                                         .map(g -> g.getValue(rc))
+                                         .filter(Optional::isPresent)
+                                         .map(Optional::get)
+                                         .collect(Collectors.toSet());
 
     List<UserSettings> userSettingsToCheck = settings.getUsersSettings();
-
 
     // Filter the userSettings to leave only the ones which include the current group
     // #TODO move to proper use of optional
@@ -89,8 +86,6 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
       }
     }
 
-
-
     if (userSettingsToCheck.isEmpty()) {
       return CompletableFuture.completedFuture(NO_MATCH);
     }
@@ -98,45 +93,45 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
     // Check remaining userSettings for matching auth
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
 
-      // Iterator of users which match at least one group in this block's group rule
-      userSettingsToCheck.iterator(),
+        // Iterator of users which match at least one group in this block's group rule
+        userSettingsToCheck.iterator(),
 
-      // Asynchronously map for each userSetting, return MATCH when we authenticated the first user
-      uSettings -> {
-        if(!Strings.isNullOrEmpty(preferredGroup) && !uSettings.getGroups().contains(preferredGroup)){
-          return CompletableFuture.completedFuture(NO_MATCH);
-        }
-        return users.get(uSettings.getUsername())
-                    .getAuthKeyRule()
-                    .match(rc)
-                    .exceptionally(e -> {
-                      e.printStackTrace();
-                      return NO_MATCH;
-                    });
-      },
+        // Asynchronously map for each userSetting, return MATCH when we authenticated the first user
+        uSettings -> {
+          if (!Strings.isNullOrEmpty(preferredGroup) && !uSettings.getGroups().contains(preferredGroup)) {
+            return CompletableFuture.completedFuture(NO_MATCH);
+          }
+          return users.get(uSettings.getUsername())
+                      .getAuthKeyRule()
+                      .match(rc)
+                      .exceptionally(e -> {
+                        e.printStackTrace();
+                        return NO_MATCH;
+                      });
+        },
 
         // Boolean decision (true = break loop)
-      (uSettings, ruleExit) -> {
+        (uSettings, ruleExit) -> {
 
-        if(!ruleExit.isMatch() && rc.getLoggedInUser().isPresent()){
-          return false;
-        }
-
-        // Now that we have a user, we can populate the headers.
-        rc.getLoggedInUser().ifPresent(lu -> {
-          lu.addAvailableGroups(users.get(lu.getId()).getGroups());
-          Optional<String> cu = lu.resolveCurrentGroup(rc.getHeaders());
-          if(!cu.isPresent() && ruleExit.isMatch()){
-            lu.setCurrentGroup(lu.getAvailableGroups().iterator().next());
+          if (!ruleExit.isMatch() && rc.getLoggedInUser().isPresent()) {
+            return false;
           }
 
-        });
+          // Now that we have a user, and we know this is a match, we can populate the headers.
+          if (ruleExit.isMatch()) {
+            rc.getLoggedInUser().ifPresent(lu -> {
+              lu.addAvailableGroups(users.get(lu.getId()).getGroups());
+              Optional<String> cu = lu.resolveCurrentGroup(rc.getHeaders());
+              if (!cu.isPresent() && ruleExit.isMatch()) {
+                lu.setCurrentGroup(lu.getAvailableGroups().iterator().next());
+              }
+            });
+          }
+          return ruleExit.isMatch();
+        },
 
-        return ruleExit.isMatch();
-      },
-
-      // If never true..
-      nothing -> NO_MATCH
+        // If never true..
+        nothing -> NO_MATCH
     ).exceptionally(e -> {
       e.printStackTrace();
       throw new CompletionException(e);
