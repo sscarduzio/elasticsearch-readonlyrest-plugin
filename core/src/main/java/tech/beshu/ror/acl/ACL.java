@@ -24,6 +24,7 @@ import tech.beshu.ror.acl.blocks.BlockExitResult;
 import tech.beshu.ror.acl.blocks.rules.Rule;
 import tech.beshu.ror.acl.blocks.rules.RulesFactory;
 import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
+import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.ResponseContext;
@@ -95,7 +96,15 @@ public class ACL {
                    .collect(Collectors.toList())
     );
 
-    this.involvesFilter = blocks.stream().filter(b -> b.getSettings().getFilter(null).isPresent()).findFirst().isPresent();
+    this.involvesFilter = blocks
+        .stream()
+        .filter(b ->
+            b.getSettings()
+             .getRules()
+             .stream()
+             .anyMatch(r -> FilterSyncRule.Settings.ATTRIBUTE_NAME.equals(r.getName()))
+        ).findFirst().isPresent();
+
   }
 
   public static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {

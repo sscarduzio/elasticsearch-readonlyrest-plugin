@@ -45,27 +45,24 @@ public class BlockSettings {
   private static final String NAME = "name";
   private static final String POLICY = "type";
   private static final String VERBOSITY = "verbosity";
-  private static final String FILTER = "filter";
-
   public static final Set<String> ruleModifiersToSkip = Sets.newHashSet(
       NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
-      AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL, FILTER
+      AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
   );
+
   private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
   private final String name;
   private final BlockPolicy policy;
   private final List<RuleSettings> rules;
   private final Verbosity verbosity;
-  private final Optional<String> filter;
 
-  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules, Optional<String> filter) {
+  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
     validate(rules);
     this.name = name;
     this.policy = policy;
     this.verbosity = verbosity;
     this.rules = rules;
-    this.filter = filter;
   }
 
   public static BlockSettings from(RawSettings settings,
@@ -91,7 +88,6 @@ public class BlockSettings {
                                   .map(value -> Verbosity.fromString(value)
                                       .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
                                   .orElse(DEFAULT_VERBOSITY);
-    Optional<String> filter = settings.stringOpt(FILTER);
 
     return new BlockSettings(
         name,
@@ -100,11 +96,10 @@ public class BlockSettings {
         settings.getKeys().stream()
                 .filter(k -> !ruleModifiersToSkip.contains(k))
                 .map(registry::create)
-                .collect(Collectors.toList()),
-        filter
+                .collect(Collectors.toList())
+
     );
   }
-
 
   public String getName() {
     return name;
@@ -135,10 +130,4 @@ public class BlockSettings {
     return verbosity;
   }
 
-  public Optional<String> getFilter(Value.VariableResolver vr) {
-    if (vr == null) {
-      return filter;
-    }
-    return filter.flatMap(flt -> Value.fromString(flt, Function.identity()).getValue(vr));
-  }
 }

@@ -204,22 +204,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
               }
             }
           }
-          if (blockExitResult instanceof BlockExitResult) {
-            BlockExitResult ber = (BlockExitResult) blockExitResult;
-
-            // [DLS] forwarding constraint to next stage
-            Optional<String> filter = ber.getBlock().getSettings().getFilter(rc);
-            if (filter.isPresent()) {
-              String serializedFilter = FilterTransient.createFromFilter(filter.get()).serialize();
-              if (serializedFilter == null) {
-                logger.error("Error while serializing user transient");
-              }
-              if (threadPool.getThreadContext().getHeader(Constants.FILTER_TRANSIENT) == null) {
-                threadPool.getThreadContext().putHeader(Constants.FILTER_TRANSIENT, serializedFilter);
-              }
-            }
-
-          }
           //         @SuppressWarnings("unchecked")
           //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
           //            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl

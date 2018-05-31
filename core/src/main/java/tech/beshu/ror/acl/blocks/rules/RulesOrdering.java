@@ -27,6 +27,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
@@ -59,6 +60,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
 
   public RulesOrdering() {
     this.ordering = ImmutableList.of(
+
         // Authentication rules must come first because they set the user information which further rules might rely on.
         AuthKeySyncRule.class,
         AuthKeySha1SyncRule.class,
@@ -95,10 +97,14 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         // all authorization rules should be placed before any authentication rule
         LdapAuthorizationAsyncRule.class,
         GroupsProviderAuthorizationAsyncRule.class,
+
         // At the end the sync rule chain are those that can mutate the client request.
         KibanaHideAppsSyncRule.class,
         KibanaIndexSyncRule.class,
-        FieldsSyncRule.class
+
+        // Stuff to do later, at search time
+        FieldsSyncRule.class,
+        FilterSyncRule.class
         );
   }
 
