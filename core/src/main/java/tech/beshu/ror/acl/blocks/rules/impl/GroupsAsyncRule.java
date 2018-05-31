@@ -107,7 +107,16 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
                       .exceptionally(e -> {
                         e.printStackTrace();
                         return NO_MATCH;
-                      });
+                      }).thenApply(rExitRes -> {
+                        if(!rExitRes.isMatch()){
+                          return rExitRes;
+                        }
+                        if(rc.getLoggedInUser().isPresent() && users.get(rc.getLoggedInUser().get().getId()) == null){
+                          // User is authenticated, but was not declared as "username"
+                          return NO_MATCH;
+                        }
+                        return rExitRes;
+              });
         },
 
         // Boolean decision (true = break loop)
@@ -120,10 +129,13 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
           // Now that we have a user, and we know this is a match, we can populate the headers.
           if (ruleExit.isMatch()) {
             rc.getLoggedInUser().ifPresent(lu -> {
-              lu.addAvailableGroups(users.get(lu.getId()).getGroups());
-              Optional<String> cu = lu.resolveCurrentGroup(rc.getHeaders());
-              if (!cu.isPresent() && ruleExit.isMatch()) {
-                lu.setCurrentGroup(lu.getAvailableGroups().iterator().next());
+              User u = users.get(lu.getId());
+              if(u != null) {
+                lu.addAvailableGroups(u.getGroups());
+                Optional<String> cu = lu.resolveCurrentGroup(rc.getHeaders());
+                if (!cu.isPresent() && ruleExit.isMatch()) {
+                  lu.setCurrentGroup(lu.getAvailableGroups().iterator().next());
+                }
               }
             });
           }
