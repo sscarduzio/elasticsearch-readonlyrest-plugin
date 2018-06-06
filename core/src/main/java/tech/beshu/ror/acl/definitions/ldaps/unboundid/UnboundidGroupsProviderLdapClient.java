@@ -14,8 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.definitions.ldaps.unboundid;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.unboundid.ldap.sdk.Attribute;
@@ -46,22 +48,22 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
   private final UserGroupsSearchFilterConfig userGroupsSearchFilterConfig;
 
   public UnboundidGroupsProviderLdapClient(ConnectionConfig connectionConfig,
-                                           UserSearchFilterConfig userSearchFilterConfig,
-                                           UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
-                                           Optional<SearchingUserConfig> searchingUserConfig,
-                                           ESContext context) {
+      UserSearchFilterConfig userSearchFilterConfig,
+      UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
+      Optional<SearchingUserConfig> searchingUserConfig,
+      ESContext context) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
-          connectionConfig.getRequestTimeout(), userSearchFilterConfig, context
+        connectionConfig.getRequestTimeout(), userSearchFilterConfig, context
     );
     this.userGroupsSearchFilterConfig = userGroupsSearchFilterConfig;
     this.logger = context.logger(getClass());
   }
 
   public UnboundidGroupsProviderLdapClient(UnboundidConnection connection,
-                                           Duration requestTimeout,
-                                           UserSearchFilterConfig userSearchFilterConfig,
-                                           UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
-                                           ESContext context) {
+      Duration requestTimeout,
+      UserSearchFilterConfig userSearchFilterConfig,
+      UserGroupsSearchFilterConfig userGroupsSearchFilterConfig,
+      ESContext context) {
     super(connection, requestTimeout, userSearchFilterConfig, context);
     this.userGroupsSearchFilterConfig = userGroupsSearchFilterConfig;
     this.logger = context.logger(getClass());
@@ -80,42 +82,43 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
   private CompletableFuture<Set<LdapGroup>> getGroups(LdapUser user) throws LDAPException {
     // Compose the search string
     String searchString = String.format(
-      "(&%s(%s=%s))",
-      userGroupsSearchFilterConfig.getGroupSearchFilter(),
-      userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
-      Filter.encodeValue(user.getDN())
+        "(&%s(%s=%s))",
+        userGroupsSearchFilterConfig.getGroupSearchFilter(),
+        userGroupsSearchFilterConfig.getUniqueMemberAttribute(),
+        Filter.encodeValue(user.getDN())
     );
     logger.debug("LDAP search string: " + searchString + "  |  groupNameAttr: " + userGroupsSearchFilterConfig.getGroupNameAttribute());
 
     // Request formulation
     CompletableFuture<List<SearchResultEntry>> searchGroups = new CompletableFuture<>();
     connection.getConnectionPool().processRequestsAsync(
-      Lists.newArrayList(
-        new SearchRequest(
-          new UnboundidSearchResultListener(searchGroups),
-          userGroupsSearchFilterConfig.getSearchGroupBaseDN(),
-          SearchScope.SUB,
-          searchString,
-          userGroupsSearchFilterConfig.getGroupNameAttribute()
-        )),
-      requestTimeout.toMillis()
+        Lists.newArrayList(
+            new SearchRequest(
+                new UnboundidSearchResultListener(searchGroups),
+                userGroupsSearchFilterConfig.getSearchGroupBaseDN(),
+                SearchScope.SUB,
+                searchString,
+                userGroupsSearchFilterConfig.getGroupNameAttribute()
+            )),
+        requestTimeout.toMillis()
     );
 
     // Response adaptation
     return searchGroups
-      .thenApply(groupSearchResult -> groupSearchResult.stream()
-        .map(it -> Optional.ofNullable(it.getAttributeValue(userGroupsSearchFilterConfig.getGroupNameAttribute())))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .map(LdapGroup::new)
-        .collect(Collectors.toSet()))
-      .exceptionally(t -> {
-        if (t instanceof LdapSearchError) {
-          LdapSearchError error = (LdapSearchError) t;
-          logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
-        }
-        return Sets.newHashSet();
-      });
+        .thenApply(groupSearchResult -> groupSearchResult.stream()
+                                                         .map(it -> Optional.ofNullable(
+                                                             it.getAttributeValue(userGroupsSearchFilterConfig.getGroupNameAttribute())))
+                                                         .filter(Optional::isPresent)
+                                                         .map(Optional::get)
+                                                         .map(LdapGroup::new)
+                                                         .collect(Collectors.toSet()))
+        .exceptionally(t -> {
+          if (t instanceof LdapSearchError) {
+            LdapSearchError error = (LdapSearchError) t;
+            logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
+          }
+          return Sets.newHashSet();
+        });
   }
 
   private CompletableFuture<Set<LdapGroup>> getGroupsFromUser(LdapUser user) throws LDAPException {
@@ -124,34 +127,54 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
     // Request formulation
     CompletableFuture<List<SearchResultEntry>> searchGroups = new CompletableFuture<>();
     connection.getConnectionPool().processRequestsAsync(
-      Lists.newArrayList(
-        new SearchRequest(
-          new UnboundidSearchResultListener(searchGroups),
-          user.getDN(),
-          SearchScope.BASE,
-          "(objectClass=*)",
-          userGroupsSearchFilterConfig.getGroupsFromUserAttribute()
-        )),
-      requestTimeout.toMillis()
+        Lists.newArrayList(
+            new SearchRequest(
+                new UnboundidSearchResultListener(searchGroups),
+                user.getDN(),
+                SearchScope.BASE,
+                "(objectClass=*)",
+                userGroupsSearchFilterConfig.getGroupsFromUserAttribute()
+            )),
+        requestTimeout.toMillis()
     );
 
     // Response adaptation
     return searchGroups
-      .thenApply(groupSearchResult -> groupSearchResult.stream()
-        .map(it -> Stream.of(it.getAttributeValues(userGroupsSearchFilterConfig.getGroupsFromUserAttribute())))
-        .reduce(Stream.empty(), Stream::concat)
-        .map(this::getGroupNameFromDN)
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .map(LdapGroup::new)
-        .collect(Collectors.toSet()))
-      .exceptionally(t -> {
-        if (t instanceof LdapSearchError) {
-          LdapSearchError error = (LdapSearchError) t;
-          logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
-        }
-        return Sets.newHashSet();
-      });
+        .thenApply(sg -> {
+          logger.debug("getGroupsFromUser got " + sg.size() + " responses. ");
+          Set<String> sGroupsStr = sg
+              .stream()
+              .map(x -> {
+                Set<String> tmp = x.getAttributes().
+                    stream().map(y -> y.getName() + "=" + y.getValue()).collect(Collectors.toSet());
+
+                String formattedAttrs = Joiner.on(", ").join(tmp);
+                return "sg=" + x.getDN() + ", attrs={ " + formattedAttrs + " }";
+              })
+              .collect(Collectors.toSet());
+
+          logger.debug("getGroupsFromUser responses: \n" + Joiner.on("\n").join(sGroupsStr));
+          logger.debug("Will now get attribute values of " + userGroupsSearchFilterConfig.getGroupsFromUserAttribute());
+
+          return sg;
+        })
+        .thenApply(groupSearchResult -> groupSearchResult
+            .stream()
+            .map(it -> Stream.of(
+                it.getAttributeValues(userGroupsSearchFilterConfig.getGroupsFromUserAttribute())))
+            .reduce(Stream.empty(), Stream::concat)
+            .map(this::getGroupNameFromDN)
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .map(LdapGroup::new)
+            .collect(Collectors.toSet()))
+        .exceptionally(t -> {
+          if (t instanceof LdapSearchError) {
+            LdapSearchError error = (LdapSearchError) t;
+            logger.debug(String.format("LDAP getting user groups returned error [%s]", error.getResultString()));
+          }
+          return Sets.newHashSet();
+        });
   }
 
   private Optional<String> getGroupNameFromDN(String stringDn) {
@@ -159,9 +182,9 @@ public class UnboundidGroupsProviderLdapClient extends UnboundidAuthenticationLd
       DN dn = new DN(stringDn);
       if (dn.isDescendantOf(userGroupsSearchFilterConfig.getSearchGroupBaseDN(), false)) {
         return Stream.of(dn.getRDN().getAttributes())
-          .filter(attribute -> userGroupsSearchFilterConfig.getGroupNameAttribute().equals(attribute.getBaseName()))
-          .map(Attribute::getValue)
-          .findFirst();
+                     .filter(attribute -> userGroupsSearchFilterConfig.getGroupNameAttribute().equals(attribute.getBaseName()))
+                     .map(Attribute::getValue)
+                     .findFirst();
       }
     } catch (Exception e) {
       /* ignore */
