@@ -69,3 +69,9 @@ license {
 task wrapper(type: Wrapper) {
     gradleVersion = '3.5'
 }
+
+task ldapserver(type:JavaExec) {
+   systemProperties = System.properties
+   main = 'tech.beshu.ror.integration.LDAPServer'
+   classpath = sourceSets.test.runtimeClasspath
+}
