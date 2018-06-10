@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.requestcontext;
 
+import tech.beshu.ror.commons.ResponseContext;
+
 import java.util.Map;
 
 public class QueryAuditLogSerializer extends DefaultAuditLogSerializer {
