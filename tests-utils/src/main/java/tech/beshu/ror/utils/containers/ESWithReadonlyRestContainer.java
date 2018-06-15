@@ -103,7 +103,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                     .run(
                         "grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                     .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-                    //  .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
+                    .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
                     .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
                     .user("root")
                     .run("chown elasticsearch:elasticsearch config/*")
