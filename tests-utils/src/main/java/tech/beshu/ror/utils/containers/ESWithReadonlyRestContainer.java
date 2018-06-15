@@ -75,7 +75,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     );
 
     boolean greaterOrEqualThan630 = VersionUtil
-        .parseVersion("6.2.0", "x", "y")
+        .parseVersion(project.getESVersion(), "x", "y")
         .compareTo(
             new Version(6, 3, 0, "", "x", "y")) >= 0;
 
