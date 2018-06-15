@@ -109,6 +109,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                     .run("chown elasticsearch:elasticsearch config/*")
                     .user("elasticsearch")
                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+                    .env("JAVA_HOME", "/usr/lib/jvm/jre-1.8.0-openjdk")
                     .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + pluginFile.getName())
                     .build()))
     );
