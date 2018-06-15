@@ -79,7 +79,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         .compareTo(
             new Version(6, 3, 0, "", "x", "y")) >= 0;
 
-    String dockerImage = greaterOrEqualThan630 ? "docker.elastic.co/elasticsearch/elasticsearch" : "docker.elastic.co/elasticsearch/elasticsearch-oss";
+    String dockerImage = greaterOrEqualThan630 ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
     String keystoreFileName = "keystore.jks";
