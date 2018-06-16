@@ -64,6 +64,7 @@ public class LdapIntegrationWithLocalGroupsTests {
         });
   }
 
+
   @Test
   public void checkCartmanRespHeadersWithCurrentGroupReqHeader() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container2);

@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.BlockPolicy;
 import tech.beshu.ror.commons.Verbosity;
-import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
@@ -33,9 +32,7 @@ import tech.beshu.ror.settings.rules.HostsRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class BlockSettings {

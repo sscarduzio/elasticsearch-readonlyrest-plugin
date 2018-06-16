@@ -78,6 +78,7 @@ public class LocalGroupsTest {
     assertEquals("foogroup", r.getHeaders("x-ror-current-group")[0].getValue());
     assertEquals("testgroup,extra_group,foogroup", r.getHeaders("x-ror-available-groups")[0].getValue());
   }
+
   @Test
   public void testOK_GoodCredsWithGoodRuleWithNoNMatchingPreferredGroup() throws Exception {
     HttpResponse r = mkRequest("user", "passwd", matchingEndpoint, "extra_group");

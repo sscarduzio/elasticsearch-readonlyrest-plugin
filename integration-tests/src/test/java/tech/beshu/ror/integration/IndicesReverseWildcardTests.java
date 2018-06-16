@@ -22,17 +22,16 @@ import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
-import tech.beshu.ror.utils.httpclient.RestClient;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
+import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
 
 import static junit.framework.TestCase.assertFalse;
-import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 

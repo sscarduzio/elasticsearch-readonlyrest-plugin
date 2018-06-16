@@ -52,9 +52,8 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private final BasicSettings basicSettings;
   protected SslContext sslContext;
 
-
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-                            ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
 
@@ -65,15 +64,14 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       logger.info("creating SSL transport");
     }
 
-
     new SSLCertParser(basicSettings, logger, (certChain, privateKey) -> {
 
       try {
         // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
         SslContextBuilder sslcb = SslContextBuilder.forServer(
-          new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-          new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-          null
+            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+            null
         );
 
         // Creating one SSL engine just for protocol/cipher validation and logging
@@ -84,11 +82,10 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         SSLCertParser.validateProtocolAndCiphers(eng, logger, basicSettings);
       } catch (Exception e) {
         logger.error("Failed to load SSL CertChain & private key from Keystore! "
-                       + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+            + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
       }
     });
   }
-
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
     if (!this.lifecycle.started()) {
@@ -119,16 +116,16 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
 
-      if(!basicSettings.isSSLEnabled()) {
+      if (!basicSettings.isSSLEnabled()) {
         return;
       }
 
       SSLEngine eng = sslContext.newEngine(ch.alloc());
 
       basicSettings.getAllowedSSLProtocols()
-        .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
+                   .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
       basicSettings.getAllowedSSLCiphers()
-        .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
+                   .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
 
       ch.pipeline().addFirst("ssl_netty4_handler", new SslHandler(eng));
 

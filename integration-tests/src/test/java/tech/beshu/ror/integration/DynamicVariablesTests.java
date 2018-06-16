@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.integration;
 
 import com.mashape.unirest.http.Unirest;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
@@ -40,14 +40,14 @@ public class DynamicVariablesTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-    ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(),
-      "/dynamic_vars/elasticsearch.yml",
-      Optional.of(client -> {
-        Unirest.setHttpClient(client.getUnderlyingClient());
-        insertDoc(".kibana_simone", client);
-      })
-    );
+      ESWithReadonlyRestContainer.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          "/dynamic_vars/elasticsearch.yml",
+          Optional.of(client -> {
+            Unirest.setHttpClient(client.getUnderlyingClient());
+            insertDoc(".kibana_simone", client);
+          })
+      );
 
   private static void insertDoc(String indexName, RestClient restClient) {
     if (adminClient == null) {
@@ -93,6 +93,5 @@ public class DynamicVariablesTests {
     assertEquals(200, resp.getStatusLine().getStatusCode());
     return body;
   }
-
 
 }

@@ -21,7 +21,6 @@ package tech.beshu.ror.es;
  * Created by sscarduzio on 28/11/2016.
  */
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -51,7 +50,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private final LoggerShim logger;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-                            ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
 
@@ -91,9 +90,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
-            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-            null
+              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+              null
           );
 
           logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
@@ -102,15 +101,15 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           basicSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
           basicSettings.getAllowedSSLProtocols()
-            .map(protoList -> protoList.toArray(new String[protoList.size()]))
-            .ifPresent(sslCtxBuilder::protocols);
+                       .map(protoList -> protoList.toArray(new String[protoList.size()]))
+                       .ifPresent(sslCtxBuilder::protocols);
 
           context = Optional.of(sslCtxBuilder.build());
 
         } catch (Exception e) {
           context = Optional.empty();
           logger.error("Failed to load SSL CertChain & private key from Keystore! "
-                         + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+              + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
       });
     }
