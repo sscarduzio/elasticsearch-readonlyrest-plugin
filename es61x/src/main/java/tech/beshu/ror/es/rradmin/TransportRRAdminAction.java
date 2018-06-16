@@ -98,7 +98,6 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
           try {
             String currentSettingsYAML = settingsObservable.getFromFile().yaml();
             listener.onResponse(new RRAdminResponse(currentSettingsYAML));
-            System.out.println(currentSettingsYAML);
           } catch (Exception e) {
             listener.onFailure(e);
           }
@@ -106,7 +105,6 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
         }
         if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
           String currentSettingsYAML = settingsObservable.getCurrent().yaml();
-          System.out.println(currentSettingsYAML);
           listener.onResponse(new RRAdminResponse(currentSettingsYAML));
           return;
         }
