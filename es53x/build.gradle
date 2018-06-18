@@ -46,6 +46,11 @@ apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'license'
 
+compileJava {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
 dependencies {
     compile project(':commons')
     compile project(':core')
