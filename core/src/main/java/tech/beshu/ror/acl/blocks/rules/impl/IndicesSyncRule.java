@@ -70,11 +70,11 @@ public class IndicesSyncRule extends SyncRule {
   private <T extends RequestContext> boolean canPass(T src) {
 
     MatcherWithWildcards matcher = matcherNoVar != null ? matcherNoVar : new MatcherWithWildcards(
-      settings.getIndices().stream()
-        .map(v -> v.getValue(src))
-        .filter(Optional::isPresent)
-        .map(Optional::get)
-        .collect(Collectors.toSet())
+        settings.getIndices().stream()
+                .map(v -> v.getValue(src))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toSet())
     );
 
     Set<String> indices = Sets.newHashSet(src.getIndices());
@@ -145,19 +145,19 @@ public class IndicesSyncRule extends SyncRule {
         return true;
       }
 
-      // ------ Your request expands to one or many available indices, let's see which ones you are allowed to request..
-      Set<String> allowedExpansion = matcher.filter(expansion);
+      // Your request expands to one or many available indices, let's see which ones you are allowed to request..
+      Set<String> zkExpansion = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(src.getIndices(), matcher);
 
       // 5. You requested some indices, but NONE were allowed
       logger.debug("Stage 5");
-      if (allowedExpansion.size() == 0) {
+      if (zkExpansion.size() == 0) {
         // #TODO should I set indices to rule wildcards?
         return false;
       }
 
       // 6. You requested some indices, I can allow you only SOME (we made sure the allowed set is not empty!).
       logger.debug("Stage 6");
-      src.setIndices(allowedExpansion);
+      src.setIndices(zkExpansion);
       return true;
     }
 

@@ -1,0 +1,26 @@
+http.bind_host: _eth0:ipv4_
+network.host: _eth0:ipv4_
+
+http.type: ssl_netty4
+#transport.type: local
+
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+  - name: "::POLLER::"
+    methods: [HEAD]
+
+  - name: "::GETTER::"
+    methods: [GET]
+    indices: logstash-a*
+
+  - name: "CONTAINER ADMIN"
+    actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*"]
+    #auth_key: admin:container
+
