@@ -38,7 +38,7 @@ import static org.junit.Assert.assertTrue;
 public class IndicesReverseWildcardTests {
 
   private static RestClient adminClient;
-  
+
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     ESWithReadonlyRestContainer.create(

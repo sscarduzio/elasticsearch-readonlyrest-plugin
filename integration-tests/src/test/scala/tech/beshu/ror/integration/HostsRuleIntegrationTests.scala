@@ -53,7 +53,7 @@ object HostsRuleIntegrationTests {
       |  - name: "::BAD HOST::"
       |    accept_x-forwarded-for_header: true
       |    hosts: ["wontresolve"]
-      |    indices: ["emptyIndex"]
+      |    indices: ["empty_index"]
       |    kibana_access: rw
       |
     """.stripMargin
@@ -83,7 +83,7 @@ object HostsRuleIntegrationTests {
 
         Unirest.setHttpClient(client.getUnderlyingClient)
         url = client.from("").toASCIIString
-        println("Added empty index: " + Unirest.put(url + "emptyIndex")
+        println("Added empty index: " + Unirest.put(url + "empty_index")
           .header("refresh", "wait_for")
           .header("timeout", "50s")
           .asString().getBody)

@@ -33,7 +33,7 @@ class MSearchTEST1_Tests {
   }
 
   @Test
-  def test274_1_emptyindex() = {
+  def test274_1_empty_index() = {
     useCredentials("kibana", "kibana")
     assertEquals("[0]", msearchRequest(TEST1.MSEAERCH_BODY_EMPTY_INDEX))
   }
@@ -123,7 +123,7 @@ object MSearchTEST1_Tests {
         Unirest.setHttpClient(client.getUnderlyingClient)
         url = client.from("").toASCIIString
         println("Added empty index: " +
-          Unirest.put(url + "emptyIndex")
+          Unirest.put(url + "empty_index")
             .header("refresh", "wait_for")
             .header("timeout", "50s")
             .asString().getBody)

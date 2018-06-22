@@ -168,7 +168,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
           }
         }
         initalizer.ifPresent(i -> i.initialize(client));
-        logger.info("ES container stated");
+        logger.info("ES container started and listening " + getESHost() + ":" + getESPort());
       }
 
       private boolean isReady(RestClient client) {

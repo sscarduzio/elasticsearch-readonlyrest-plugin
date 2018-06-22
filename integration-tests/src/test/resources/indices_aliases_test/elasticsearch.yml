@@ -18,9 +18,15 @@ readonlyrest:
 
   - name: "::GETTER::"
     methods: [GET]
-    indices: logstash-a*
+    auth_key: "unrestricted:dev"
+
+  - name: "::RESTRICTED TO ALIAS::"
+    methods: [GET]
+    indices: ["public*"]
+    auth_key: "restricted:dev"
+
 
   - name: "CONTAINER ADMIN"
-    actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*"]
+    actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
     #auth_key: admin:container
 

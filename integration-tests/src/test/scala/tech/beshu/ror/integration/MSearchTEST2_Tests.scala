@@ -32,7 +32,7 @@ class MSearchTEST2_Tests {
   }
 
   @Test
-  def test274_2_emptyindex() = {
+  def test274_2_empty_index() = {
     useCredentials("kibana", "kibana")
     assertEquals("[0]", msearchRequest(TEST2.MSEAERCH_BODY_EMPTY_INDEX))
   }
@@ -58,7 +58,7 @@ object MSearchTEST2_Tests {
         |""".stripMargin
 
     val MSEAERCH_BODY_EMPTY_INDEX =
-      """{"index":["emptyIndex"],"ignore_unavailable":true,"preference":1506497937939}
+      """{"index":["empty_index"],"ignore_unavailable":true,"preference":1506497937939}
         |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
         |""".stripMargin
 
@@ -122,7 +122,7 @@ object MSearchTEST2_Tests {
         // Creating an empty index
         Unirest.setHttpClient(client.getUnderlyingClient)
         url = client.from("").toASCIIString
-        println("Added empty index: " + Unirest.put(url + "emptyIndex")
+        println("Added empty index: " + Unirest.put(url + "empty_index")
           .header("refresh", "wait_for")
           .header("timeout", "50s")
           .asString().getBody)
