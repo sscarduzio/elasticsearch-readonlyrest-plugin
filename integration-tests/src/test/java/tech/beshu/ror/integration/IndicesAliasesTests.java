@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.integration;
 
 import org.apache.http.HttpResponse;
@@ -24,43 +25,36 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.testcontainers.shaded.com.google.common.collect.Lists;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
 
-import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class IndicesReverseWildcardTests {
+public class IndicesAliasesTests {
 
-  private static RestClient adminClient;
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-    ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(),
-      "/indices_reverse_wildcards/elasticsearch.yml",
-      Optional.of(client -> {
-        Lists.newArrayList("a1", "a2", "b1", "b2").forEach(doc -> insertDoc(doc, client));
-      })
-    );
+      ESWithReadonlyRestContainer.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          "/indices_aliases_test/elasticsearch.yml",
+          Optional.of(client -> {
+            insertDoc("/my_data/test/1", "{\"hello\":\"world\"}", client, true);
+            insertDoc("/my_data/test/2", "{\"hello\":\"there\", \"public\":1}", client, true);
+            insertDoc("/my_data/_alias/public_data", "{\"filter\":{\"term\":{\"public\":1}}}", client, false);
+          })
+      );
 
-  private static void insertDoc(String docName, RestClient restClient) {
-    if (adminClient == null) {
-      adminClient = restClient;
-    }
-
+  private static void insertDoc(String docPath, String content, RestClient restClient, boolean poll) {
     try {
-      HttpPut request = new HttpPut(restClient.from(
-        "/logstash-" + docName + "/documents/doc-" + docName
-      ));
+      HttpPut request = new HttpPut(restClient.from(docPath));
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
       request.setHeader("Content-Type", "application/json");
-      request.setEntity(new StringEntity("{\"title\": \"" + docName + "\"}"));
+      request.setEntity(new StringEntity(content));
       System.out.println(body(restClient.execute(request)));
 
     } catch (Exception e) {
@@ -70,13 +64,21 @@ public class IndicesReverseWildcardTests {
 
     // Polling phase.. #TODO is there a better way?
     try {
-      HttpResponse response;
-      do {
-        Thread.sleep(200);
-        HttpHead request = new HttpHead(restClient.from("/logstash-" + docName + "/documents/doc-" + docName));
-        response = restClient.execute(request);
-        System.out.println("polling for " + docName + ".. result: " + response.getStatusLine().getReasonPhrase());
-      } while (response.getStatusLine().getStatusCode() != 200);
+
+      if (!poll) {
+        Thread.sleep(1000);
+      }
+
+      else {
+        HttpResponse response;
+        do {
+          Thread.sleep(200);
+          HttpHead request = new HttpHead(restClient.from(docPath));
+          response = restClient.execute(request);
+          System.out.println("polling for " + docPath + ".. result: " + response.getStatusLine().getReasonPhrase());
+        } while (response.getStatusLine().getStatusCode() != 200);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       throw new IllegalStateException("Cannot configure test case", e);
@@ -88,60 +90,75 @@ public class IndicesReverseWildcardTests {
   }
 
   @Test
-  public void testDirectSingleIdx() throws Exception {
-    String body = search("/logstash-a1/_search");
-    assertTrue(body.contains("a1"));
-    assertFalse(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
+  public void testDirectIndexQuery() throws Exception {
+    String body = search("/my_data/_search").body;
+    assertTrue(body.contains("\"hits\":{\"total\":2"));
   }
 
   @Test
-  public void testSimpleWildcard() throws Exception {
-    String body = search("/logstash-a*/_search");
-    assertTrue(body.contains("a1"));
-    assertTrue(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
+  public void testAliasQuery() throws Exception {
+    String body = search("/public_data/_search").body;
+    assertTrue(body.contains("\"hits\":{\"total\":1"));
   }
 
   @Test
-  public void testReverseWildcard() throws Exception {
-    String body = search("/logstash-*/_search");
-    assertTrue(body.contains("a1"));
-    assertTrue(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
+  public void testAliasAsWildcard() throws Exception {
+    String body = search("/pub*/_search").body;
+    assertTrue(body.contains("\"hits\":{\"total\":1"));
+  }
+
+  // Tests with indices rule restricting to "pub*"
+
+  @Test
+  public void testRestrictedPureIndex() throws Exception {
+    RestResult res = search("/my_data/_search", "restricted", "dev");
+    assertEquals(401, res.status);
+  }
+  @Test
+  public void testRestrictedAlias() throws Exception {
+    String body = search("/public_data/_search", "restricted", "dev").body;
+    assertTrue(body.contains("\"hits\":{\"total\":1"));
   }
 
   @Test
-  public void testReverseTotalWildcard() throws Exception {
-    String body = search("/*/_search");
-
-    assertTrue(body.contains("a1"));
-    assertTrue(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
+  public void testRestrictedAliasAsWildcard() throws Exception {
+    String body = search("/public*/_search", "restricted", "dev").body;
+    assertTrue(body.contains("\"hits\":{\"total\":1"));
   }
-
   @Test
-  public void testGenericSearchAll() throws Exception {
-    String body = search("/_search");
-    assertTrue(body.contains("a1"));
-    assertTrue(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
+  public void testRestrictedAliasAsHalfWildcard() throws Exception {
+    String body = search("/pu*/_search", "restricted", "dev").body;
+    assertTrue(body.contains("\"hits\":{\"total\":1"));
   }
 
-  private String search(String endpoint) throws Exception {
+
+  private RestResult search(String endpoint, String user, String pass) throws Exception {
+    RestClient client = container.getBasicAuthClient(user, pass);
+    return search(endpoint, client);
+  }
+
+  private RestResult search(String endpoint) throws Exception {
+    return search(endpoint, container.getBasicAuthClient("unrestricted", "dev"));
+  }
+
+  private RestResult search(String endpoint, RestClient client) throws Exception {
     String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
-    HttpGet request = new HttpGet(adminClient.from(endpoint));
+    HttpGet request = new HttpGet(client.from(endpoint));
     request.setHeader("timeout", "50s");
     request.setHeader("x-caller-" + caller, "true");
-    HttpResponse resp = adminClient.execute(request);
+    HttpResponse resp = client.execute(request);
     String body = body(resp);
     System.out.println("SEARCH RESPONSE for " + caller + ": " + body);
-    assertEquals(200, resp.getStatusLine().getStatusCode());
-    return body;
+    return new RestResult(body, resp.getStatusLine().getStatusCode());
+  }
+
+  static class RestResult {
+    public final String body;
+    public final int status;
+
+    public RestResult(String body, int status) {
+      this.body = body;
+      this.status = status;
+    }
   }
 }
