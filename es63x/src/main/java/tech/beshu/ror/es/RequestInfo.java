@@ -42,7 +42,6 @@ import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
@@ -62,6 +61,7 @@ import org.reflections.ReflectionUtils;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.shims.request.RequestInfoShim;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.commons.utils.RCUtils;
 import tech.beshu.ror.commons.utils.ReflecUtils;
 
@@ -141,25 +141,11 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (involvesIndices()) {
-      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
-
-      IndicesOptions opts = IndicesOptions.strictExpand();
-      if (actionRequest instanceof IndicesRequest) {
-        opts = ((IndicesRequest) actionRequest).indicesOptions();
-      }
-
-      String[] concreteIdxNames = {};
       try {
-        concreteIdxNames = indexResolver.concreteIndexNames(clusterService.state(), opts, ixs);
-      } catch (IndexNotFoundException infe) {
-        if (logger.isDebugEnabled()) {
-          logger.debug(Joiner.on(",").join(ixs) + " expands to no known index!");
-        }
+        return new MatcherWithWildcards(ixsSet).filter(extractAllIndicesAndAliases());
       } catch (Throwable t) {
         logger.error("error while resolving expanded indices", t);
       }
-      return Sets.newHashSet(concreteIdxNames);
-      //return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
     }
     throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }

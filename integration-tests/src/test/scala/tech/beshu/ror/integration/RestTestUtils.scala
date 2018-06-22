@@ -59,7 +59,3 @@ class RestTestUtils(restClient: RestClient, endpoint: HostAndPort) {
 
 }
 
-object RestTestUtils {
-
-
-}

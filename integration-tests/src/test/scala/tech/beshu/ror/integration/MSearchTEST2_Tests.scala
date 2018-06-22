@@ -151,7 +151,7 @@ object MSearchTEST2_Tests {
           .asString().getBody)
 
         // #TODO Hack the refresh=wait_for is not working, fixing temporarily with this shit
-        Thread.sleep(600)
+        Thread.sleep(1000)
 
       }
     }))
