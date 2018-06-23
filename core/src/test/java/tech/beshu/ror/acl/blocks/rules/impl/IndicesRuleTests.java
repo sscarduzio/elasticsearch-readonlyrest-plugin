@@ -34,6 +34,7 @@ import java.util.Set;
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anySetOf;
 import static org.mockito.Mockito.when;
 
 /**
@@ -78,16 +79,19 @@ public class IndicesRuleTests {
     when(rc.isReadRequest()).thenReturn(true);
     when(rc.involvesIndices()).thenReturn(true);
     when(rc.getLoggedInUser()).thenReturn(Optional.empty());
-    when(rc.getExpandedIndices()).thenReturn(Sets.newHashSet(singletonList("another_index")));
+
+    Set<String> expandedIndicesResult = Sets.newHashSet(singletonList("another_index"));
+    when(rc.getExpandedIndices(anySetOf(String.class))).thenReturn(expandedIndicesResult);
+
     when(rc.getAllIndicesAndAliases())
-      .thenReturn(Sets.newHashSet(Lists.newArrayList("perfmon-bfarm", "another_index")));
+        .thenReturn(Sets.newHashSet(Lists.newArrayList("perfmon-bfarm", "another_index")));
 
     RuleExitResult res = match(
-      // Mocks:  indices: ["perfmon*"]
-      singletonList("perfmon*"),
-      // The incoming request is directed to "another_index"
-      singletonList("another_index"),
-      rc
+        // Mocks:  indices: ["perfmon*"]
+        singletonList("perfmon*"),
+        // The incoming request is directed to "another_index"
+        singletonList("another_index"),
+        rc
     );
 
     // Should be a NO_MATCH
@@ -105,8 +109,8 @@ public class IndicesRuleTests {
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new IndicesSyncRule(
-      IndicesRuleSettings.from(Sets.newHashSet(configured)),
-      MockedESContext.INSTANCE
+        IndicesRuleSettings.from(Sets.newHashSet(configured)),
+        MockedESContext.INSTANCE
     );
 
     return r.match(rc);

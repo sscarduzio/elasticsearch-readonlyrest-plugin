@@ -137,9 +137,7 @@ public class IndicesSyncRule extends SyncRule {
       // 3. indices match by reverse-wildcard?
       // Expand requested indices to a subset of indices available in ES
       logger.debug("Stage 3");
-      // Set<String> zkExpansion = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(src.getIndices(), matcher);
       Set<String> expansion = src.getExpandedIndices(src.getIndices());
-      System.out.println(">>>> EXPANDED INDICES from " + src.getIndices() + " to " + expansion);
 
       // --- 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
       logger.debug("Stage 4");

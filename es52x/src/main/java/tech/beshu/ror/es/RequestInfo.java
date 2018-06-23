@@ -181,32 +181,6 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
-  public Set<String> getExpandedIndices(Set<String> ixsSet) {
-    if (involvesIndices()) {
-      String[] ixs = ixsSet.toArray(new String[ixsSet.size()]);
-
-      IndicesOptions opts = IndicesOptions.strictExpand();
-      if (actionRequest instanceof IndicesRequest) {
-        opts = ((IndicesRequest) actionRequest).indicesOptions();
-      }
-
-      String[] concreteIdxNames = {};
-      try {
-        concreteIdxNames = indexResolver.concreteIndexNames(clusterService.state(), opts, ixs);
-      } catch (IndexNotFoundException infe) {
-        if (logger.isDebugEnabled()) {
-          logger.debug(Joiner.on(",").join(ixs) + " expands to no known index!");
-        }
-      } catch (Throwable t) {
-        logger.error("error while resolving expanded indices", t);
-      }
-      return Sets.newHashSet(concreteIdxNames);
-      //return new MatcherWithWildcards(ixsSet).filter(getAllIndicesAndAliases());
-    }
-    throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
-  }
-
-  @Override
   public Set<String> extractIndexMetadata(String index) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
     return lookup.get(index).getIndices().stream().map(IndexMetaData::getIndexUUID).collect(Collectors.toSet());

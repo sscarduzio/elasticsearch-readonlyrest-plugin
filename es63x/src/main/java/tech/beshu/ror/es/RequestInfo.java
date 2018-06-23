@@ -17,10 +17,8 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
@@ -51,7 +49,6 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
-import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -61,7 +58,6 @@ import org.reflections.ReflectionUtils;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.shims.request.RequestInfoShim;
-import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.commons.utils.RCUtils;
 import tech.beshu.ror.commons.utils.ReflecUtils;
 
@@ -136,18 +132,6 @@ public class RequestInfo implements RequestInfoShim {
       }
     }
     return contentLength;
-  }
-
-  @Override
-  public Set<String> getExpandedIndices(Set<String> ixsSet) {
-    if (involvesIndices()) {
-      try {
-        return new MatcherWithWildcards(ixsSet).filter(extractAllIndicesAndAliases());
-      } catch (Throwable t) {
-        logger.error("error while resolving expanded indices", t);
-      }
-    }
-    throw new ElasticsearchException("Cannot get expanded indices of a non-index request");
   }
 
   @Override

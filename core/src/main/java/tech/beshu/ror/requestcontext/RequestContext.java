@@ -224,10 +224,6 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     this.contextHeaders.delegateTo(this);
   }
 
-  public Set<String> getExpandedIndices() {
-    return getExpandedIndices(indices.getInitial());
-  }
-
   public Optional<String> resolveVariable(String original) {
     return variablesManager.apply(original);
   }
