@@ -137,27 +137,29 @@ public class IndicesSyncRule extends SyncRule {
       // 3. indices match by reverse-wildcard?
       // Expand requested indices to a subset of indices available in ES
       logger.debug("Stage 3");
-      Set<String> expansion = src.getExpandedIndices();
+      // Set<String> zkExpansion = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(src.getIndices(), matcher);
+      Set<String> expansion = src.getExpandedIndices(src.getIndices());
+      System.out.println(">>>> EXPANDED INDICES from " + src.getIndices() + " to " + expansion);
 
-      // 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
+      // --- 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
       logger.debug("Stage 4");
       if (expansion.size() == 0) {
         return true;
       }
 
-      // Your request expands to one or many available indices, let's see which ones you are allowed to request..
-      Set<String> zkExpansion = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(src.getIndices(), matcher);
+      // ------ Your request expands to one or many available indices, let's see which ones you are allowed to request..
+      Set<String> allowedExpansion = matcher.filter(expansion);
 
       // 5. You requested some indices, but NONE were allowed
       logger.debug("Stage 5");
-      if (zkExpansion.size() == 0) {
+      if (allowedExpansion.size() == 0) {
         // #TODO should I set indices to rule wildcards?
         return false;
       }
 
       // 6. You requested some indices, I can allow you only SOME (we made sure the allowed set is not empty!).
       logger.debug("Stage 6");
-      src.setIndices(zkExpansion);
+      src.setIndices(allowedExpansion);
       return true;
     }
 
