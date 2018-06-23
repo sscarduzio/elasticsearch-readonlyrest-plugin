@@ -19,5 +19,6 @@ package tech.beshu.ror.commons.shims.request;
 
 public class RequestHandlingException extends Error {
   public RequestHandlingException(String cause) {
+    super(cause);
   }
 }
