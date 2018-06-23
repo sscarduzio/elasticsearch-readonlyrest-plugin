@@ -84,7 +84,7 @@ object MSearchTEST2_Tests {
         |
         |  - name: "::KIBANA-SRV::"
         |    auth_key: kibana:kibana
-        |    indices: ["perfmon_endpoint_requests","perfmon_logstash-apacheaccess*"]
+        |    indices: ["empty_index", "perfmon_endpoint_requests","perfmon_logstash-apacheaccess*"]
         |    verbosity: error
       """.stripMargin
 
@@ -151,7 +151,7 @@ object MSearchTEST2_Tests {
           .asString().getBody)
 
         // #TODO Hack the refresh=wait_for is not working, fixing temporarily with this shit
-        Thread.sleep(1000)
+        Thread.sleep(3000)
 
       }
     }))
