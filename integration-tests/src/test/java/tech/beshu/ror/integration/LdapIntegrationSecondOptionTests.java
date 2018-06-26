@@ -17,9 +17,6 @@
 
 package tech.beshu.ror.integration;
 
-import com.google.common.base.Joiner;
-import org.apache.http.Header;
-import org.apache.http.HttpResponse;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
@@ -31,61 +28,43 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
 
-import static org.junit.Assert.assertEquals;
-import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
-
 public class LdapIntegrationSecondOptionTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container2 =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProject.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_separate_authc_authz_integration_group_headers/ldap.ldif"))
+              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
               .build(),
-          "/ldap_separate_authc_authz_integration_group_headers/elasticsearch.yml",
+          "/ldap_integration_2nd/ldap_second_option_test_elasticsearch.yml",
           new ElasticsearchTweetsInitializer()
       );
 
   @Test
-  public void checkCartmanRespHeaders() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
-    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
-          System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
-          assertEquals("group3,group1", getHeader("x-ror-available-groups", response));
-          assertEquals("cartman", getHeader("x-rr-user", response));
-          assertEquals("group1", getHeader("x-ror-current-group", response));
-          assertEquals(".kibana_group1", getHeader("x-ror-kibana_index", response));
-          return null;
-        },
-        httpRequest -> {
-          httpRequest.addHeader("x-ror-current-group", "group1");
-          return null;
-        });
+  public void usersFromGroup1CanSeeTweets() throws Exception {
+    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
+    assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
-  public void checkCartmanRespHeadersWithCurrentGroupReqHeader() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
-    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
-          System.out.println("resp headers" + Joiner.on(",\n").join(response.getAllHeaders()));
-          assertEquals("group3,group1", getHeader("x-ror-available-groups", response));
-          assertEquals("cartman", getHeader("x-rr-user", response));
-          assertEquals("group3", getHeader("x-ror-current-group", response));
-          assertEquals(".kibana_group3", getHeader("x-ror-kibana_index", response));
-          return null;
-        },
-        httpRequest -> {
-          httpRequest.addHeader("x-ror-current-group", "group3");
-          return null;
-        });
+  public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
+    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
-  private String getHeader(String headerName, HttpResponse resp) {
-    Header h = resp.getFirstHeader(headerName);
-    if (h == null) {
-      return "";
-    }
-    return h.getValue();
+  @Test
+  public void unauthenticatedUserCannotSeeTweets() throws Exception {
+    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
+
+  @Test
+  public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
+    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
+    assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
+    assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");
+  }
+
 }
