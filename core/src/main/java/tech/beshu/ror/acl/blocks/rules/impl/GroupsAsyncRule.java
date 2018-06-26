@@ -108,14 +108,14 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
                         e.printStackTrace();
                         return NO_MATCH;
                       }).thenApply(rExitRes -> {
-                        if(!rExitRes.isMatch()){
-                          return rExitRes;
-                        }
-                        if(rc.getLoggedInUser().isPresent() && users.get(rc.getLoggedInUser().get().getId()) == null){
-                          // User is authenticated, but was not declared as "username"
-                          return NO_MATCH;
-                        }
-                        return rExitRes;
+                if (!rExitRes.isMatch()) {
+                  return rExitRes;
+                }
+                if (!rc.getLoggedInUser().filter(lu -> uSettings.getUsername().equals(lu.getId())).isPresent()) {
+                  // User is authenticated, but was not declared as "username"
+                  return NO_MATCH;
+                }
+                return rExitRes;
               });
         },
 
@@ -130,7 +130,7 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
           if (ruleExit.isMatch()) {
             rc.getLoggedInUser().ifPresent(lu -> {
               User u = users.get(lu.getId());
-              if(u != null) {
+              if (u != null) {
                 lu.addAvailableGroups(u.getGroups());
                 Optional<String> cu = lu.resolveCurrentGroup(rc.getHeaders());
                 if (!cu.isPresent() && ruleExit.isMatch()) {
