@@ -52,8 +52,7 @@ public class LoggedUser {
   }
 
   public Optional<String> resolveCurrentGroup(Map<String, String> requestHeaders) {
-    Optional<String> value = Optional.ofNullable(requestHeaders.get(Constants.HEADER_GROUP_CURRENT));
-    currentGroup = value;
+    currentGroup  = Optional.ofNullable(requestHeaders.get(Constants.HEADER_GROUP_CURRENT));
     return currentGroup;
   }
 
