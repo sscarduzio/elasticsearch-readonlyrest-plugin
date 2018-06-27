@@ -43,6 +43,11 @@ readonlyrest:
       name: "ldap1"
       groups: ["group3"]
 
+  ######### LDAP1 SERVER CONFIGURATION ########################
+  # group1: cartman, bong
+  # group2: morgan
+  # group3: morgan, cartman, bong
+  #############################################################
   ldaps:
   - name: ldap1
     host: "{LDAP1}"
