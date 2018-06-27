@@ -152,7 +152,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
               theMap.put(Constants.HEADER_GROUPS_AVAILABLE, avGroups);
             }
 
-            loggedUser.resolveCurrentGroup(requestHeaders).ifPresent(cg -> theMap.put(Constants.HEADER_GROUP_CURRENT, cg));
+            loggedUser.getCurrentGroup().ifPresent(cg -> theMap.put(Constants.HEADER_GROUP_CURRENT, cg));
             responseHeaders.mutate(theMap);
           }
         });
