@@ -71,7 +71,7 @@ dependencies {
 
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
 
-    compile('io.jsonwebtoken:jjwt:0.7.0') {
+    compile('io.jsonwebtoken:jjwt:0.9.1') {
         // exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
     }
 
@@ -81,7 +81,7 @@ dependencies {
     testCompile 'org.gradle:gradle-tooling-api:2.13'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
-    testCompile 'io.jsonwebtoken:jjwt:0.7.0'
+    testCompile 'io.jsonwebtoken:jjwt:0.9.1'
     testCompile 'org.yaml:snakeyaml:1.15'
 
 }

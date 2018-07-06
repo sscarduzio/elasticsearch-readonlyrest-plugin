@@ -50,7 +50,7 @@ test {
 dependencies {
     compile "org.scala-lang:scala-library:2.12.4"
     testCompile project(':tests-utils')
-    testCompile 'io.jsonwebtoken:jjwt:0.7.0'
+    testCompile 'io.jsonwebtoken:jjwt:0.9.1'
     testCompile 'com.jayway.jsonpath:json-path:2.2.0'
     testCompile 'org.gradle:gradle-tooling-api:2.13'
     //testCompile 'org.toile-libre.libe:curl:0.0.12'
