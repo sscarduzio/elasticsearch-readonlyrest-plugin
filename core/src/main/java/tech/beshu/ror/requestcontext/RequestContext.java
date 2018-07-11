@@ -211,9 +211,6 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       }
     };
 
-    // If we get to commit this transaction, put this header. #TODO IS THIS NECESSARY? IT SHOULDNT!
-    delay(() -> loggedInUser.get().ifPresent(loggedUser -> setResponseHeader(Constants.HEADER_USER_ROR, loggedUser.getId())));
-
     // Register for cascading effects
     this.repositories.delegateTo(this);
     this.snapshots.delegateTo(this);
