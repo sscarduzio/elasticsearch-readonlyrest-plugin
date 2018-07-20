@@ -185,7 +185,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             if (request instanceof SearchRequest) {
               logger.debug("ACL involves filters, will disable request cache for SearchRequest");
 
-              System.out.println("SEARCH REQUEST WILL DISABLE CACHE");
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
