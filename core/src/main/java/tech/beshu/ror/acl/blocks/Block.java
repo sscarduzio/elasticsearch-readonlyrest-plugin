@@ -56,17 +56,17 @@ public class Block {
   private final boolean authHeaderAccepted;
 
   public Block(BlockSettings settings,
-               RulesFactory rulesFactory,
-               ESContext context) {
+      RulesFactory rulesFactory,
+      ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = settings;
     this.rules = settings.getRules().stream()
-      .map(rulesFactory::create)
-      .collect(Collectors.toList());
+                         .map(rulesFactory::create)
+                         .collect(Collectors.toList());
 
     Set<Class<?>> phantomTypes = rules.stream()
-      .flatMap(r -> RulesUtils.ruleHasPhantomTypes(r, Sets.newHashSet(Authorization.class, Authentication.class)).stream())
-      .collect(Collectors.toSet());
+                                      .flatMap(r -> RulesUtils.ruleHasPhantomTypes(r, Sets.newHashSet(Authorization.class, Authentication.class)).stream())
+                                      .collect(Collectors.toSet());
 
     boolean containsAuthorization = phantomTypes.contains(Authorization.class);
     boolean containsAuthentication = phantomTypes.contains(Authentication.class);
@@ -74,8 +74,8 @@ public class Block {
     // Fail if this block contains authZ, but not authC
     if (containsAuthorization && !containsAuthentication) {
       throw new SettingsMalformedException(
-        "The '" + this.getName() + "' block contains an authorization rule, but not an authentication rule. " +
-          "This does not mean anything if you don't also set some authentication rule");
+          "The '" + this.getName() + "' block contains an authorization rule, but not an authentication rule. " +
+              "This does not mean anything if you don't also set some authentication rule");
     }
 
     this.authHeaderAccepted = containsAuthentication || containsAuthorization;
@@ -113,41 +113,41 @@ public class Block {
    */
   public CompletableFuture<BlockExitResult> check(RequestContext rc) {
     return checkAsyncRules(rc)
-      .thenApply(asyncCheck -> {
-        if (asyncCheck != null && asyncCheck) {
-          return finishWithMatchResult();
-        }
-        else {
-          return finishWithNoMatchResult(rc);
-        }
-      });
+        .thenApply(asyncCheck -> {
+          if (asyncCheck != null && asyncCheck) {
+            return finishWithMatchResult();
+          }
+          else {
+            return finishWithNoMatchResult(rc);
+          }
+        });
   }
 
   private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
     // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
     Set<RuleExitResult> thisBlockHistory = new HashSet<>(rules.size());
     return checkAsyncRulesInSequence(rc, rules.iterator(), thisBlockHistory)
-      .thenApply(result -> {
-        rc.addToHistory(this, thisBlockHistory);
-        return result;
-      });
+        .thenApply(result -> {
+          rc.addToHistory(this, thisBlockHistory);
+          return result;
+        });
   }
 
   private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
-                                                               Iterator<AsyncRule> rules,
-                                                               Set<RuleExitResult> thisBlockHistory) {
+      Iterator<AsyncRule> rules,
+      Set<RuleExitResult> thisBlockHistory) {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
-      rules,
-      rule -> rule.match(rc).exceptionally(e -> {
-        logger.error(getName() + ": " + rule.getKey() + " rule matching got an error " +  e.getMessage(), e);
-        return new RuleExitResult(false, rule);
-      }),
-      ruleExitResult -> {
-        thisBlockHistory.add(ruleExitResult);
-        return !ruleExitResult.isMatch();
-      },
-      RuleExitResult::isMatch,
-      nothing -> true
+        rules,
+        rule -> rule.match(rc).exceptionally(e -> {
+          logger.error(getName() + ": " + rule.getKey() + " rule matching got an error " + e.getMessage(), e);
+          return new RuleExitResult(false, rule);
+        }),
+        ruleExitResult -> {
+          thisBlockHistory.add(ruleExitResult);
+          return !ruleExitResult.isMatch();
+        },
+        RuleExitResult::isMatch,
+        nothing -> true
     );
   }
 
@@ -162,10 +162,10 @@ public class Block {
     return BlockExitResult.noMatch();
   }
 
-
   @Override
   public String toString() {
-    return "{ name: '" + settings.getName() + "', policy: " + settings.getPolicy() + "}";
+    return "{ name: '" + settings.getName() + "', policy: " + settings.getPolicy()
+        + ", rules: " + settings.getRules().stream().map(r -> r.getName()).collect(Collectors.toList()) + "}";
   }
 
 }
