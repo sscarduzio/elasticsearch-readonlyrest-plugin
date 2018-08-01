@@ -35,10 +35,12 @@ import tech.beshu.ror.utils.BasicAuthUtils;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 
@@ -240,15 +242,16 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     return snapshots.getInitial();
   }
 
+  public void setSnapshots(Set<String> newSnapshots) {
+    snapshots.mutate(newSnapshots);
+  }
+
   public Set<String> getRepositories() {
     return repositories.getInitial();
   }
+
   public void setRepositories(Set<String> newRepositories) {
     repositories.mutate(newRepositories);
-  }
-
-  public void setSnapshots(Set<String> newSnapshots) {
-    snapshots.mutate(newSnapshots);
   }
 
   abstract protected Set<String> extractSnapshots();
@@ -386,11 +389,21 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
     String theHeaders;
     if (!isDebug()) {
-      Map<String, String> hdrs = getHeaders();
-      if (hdrs.containsKey("Authorization")) {
-        hdrs = Maps.newHashMap(hdrs);
-        hdrs.put("Authorization", "<OMITTED>");
+      // We need to copy the original headers map so we don't change it by sanitising it
+      Map<String,String> originalHeaders = getHeaders();
+      Map<String, String> hdrs = new HashMap<>(originalHeaders.size());
+      hdrs.putAll(getHeaders());
+
+      // Sanitize credentials leaks in non-debug logs
+      Map<String,String> sanitized = Maps.newHashMap();
+      for ( Map.Entry<String,String> ks : hdrs.entrySet()) {
+        String key = ks.getKey();
+        if ("Authorization".equalsIgnoreCase(key)) {
+          sanitized.put(key, "<OMITTED>");
+        }
       }
+      hdrs.putAll(sanitized);
+
       theHeaders = hdrs.toString();
     }
     else {
@@ -421,7 +434,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       .append(", BRS:").append(!Strings.isNullOrEmpty(getHeaders().get("User-Agent")))
       .append(", KDX:").append(kibanaIndex.get())
       .append(", ACT:").append(getAction()).append(", OA:")
-      .append(getRemoteAddress())
+        .append(getRemoteAddress())
       .append(", DA:").append(getLocalAddress())
       .append(", IDX:").append(theIndices)
       .append(", MET:").append(getMethod())
