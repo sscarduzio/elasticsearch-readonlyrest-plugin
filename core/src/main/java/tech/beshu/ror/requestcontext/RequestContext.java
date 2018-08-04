@@ -40,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 
 public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 

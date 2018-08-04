@@ -134,7 +134,7 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
                 lu.addAvailableGroups(u.getGroups());
                 Optional<String> cu = lu.resolveCurrentGroup(rc.getHeaders());
                 if (!cu.isPresent() && ruleExit.isMatch()) {
-                  lu.setCurrentGroup(lu.getAvailableGroups().iterator().next());
+                  lu.setCurrentGroup(resolvedGroups.iterator().next());
                 }
               }
             });
