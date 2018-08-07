@@ -60,7 +60,7 @@ public class IndicesSyncRule extends SyncRule {
   public RuleExitResult match(RequestContext src) {
 
     logger.debug("Stage -1");
-    if (!rc.involvesIndices() || settings.getIndicesUnwrapped().contains("*")) {
+    if (!src.involvesIndices() || settings.getIndicesUnwrapped().contains("*")) {
       return MATCH;
     }
 
@@ -74,7 +74,7 @@ public class IndicesSyncRule extends SyncRule {
 
     // Cross cluster search awareness
     if (src.isReadRequest() && ( "indices:data/read/search".equals(src.getAction()) ||
-        "indices:data/read/msearch".equals(src.getAction())))
+        "indices:data/read/msearch".equals(src.getAction()))){
 
       // Fork the indices list in remote and local
       Map<Boolean, List<String>> map = src.getIndices().stream().collect(Collectors.partitioningBy(s -> s.contains(":")));

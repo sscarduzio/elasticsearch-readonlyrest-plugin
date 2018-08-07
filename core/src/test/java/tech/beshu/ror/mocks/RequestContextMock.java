@@ -19,22 +19,21 @@ package tech.beshu.ror.mocks;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.acl.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class RequestContextMock {
 
@@ -71,6 +70,26 @@ public class RequestContextMock {
 
   public static RequestContext mkSearchRequest(Set<String> initialIndices, Set<String> indicesInCluster, Set<String> expandedIndices) {
     return new RequestContext("search_test", new MockedESContext()) {
+      @Override
+      protected Set<String> extractSnapshots() {
+        return null;
+      }
+
+      @Override
+      protected void writeSnapshots(Set<String> newSnapshots) {
+
+      }
+
+      @Override
+      protected Set<String> extractRepositories() {
+        return null;
+      }
+
+      @Override
+      protected void writeRepositories(Set<String> newRepos) {
+
+      }
+
       @Override
       public Set<String> getExpandedIndices(Set<String> i) {
         return expandedIndices;
@@ -157,8 +176,23 @@ public class RequestContextMock {
       }
 
       @Override
+      public String getLocalAddress() {
+        return null;
+      }
+
+      @Override
       protected Map<String, String> extractRequestHeaders() {
         return Maps.newHashMap();
+      }
+
+      @Override
+      protected String extractContextHeader(String key) {
+        return null;
+      }
+
+      @Override
+      protected void writeContextHeader(String key, String value) {
+
       }
 
       @Override
