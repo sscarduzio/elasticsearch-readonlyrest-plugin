@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
@@ -33,7 +34,6 @@ import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 
 import java.security.AccessController;
@@ -86,7 +86,7 @@ public class RorKbnAuthSyncRule extends UserRule implements Authentication {
   @Override
   public RuleExitResult match(RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
-      .flatMap(RorKbnAuthSyncRule::extractToken);
+                                     .flatMap(RorKbnAuthSyncRule::extractToken);
 
     if (!token.isPresent()) {
       logger.debug("Authorization header is missing or does not contain a bearer token");
@@ -166,7 +166,8 @@ public class RorKbnAuthSyncRule extends UserRule implements Authentication {
       else if (value instanceof String) {
         set.add((String) value);
       }
-      if (set.isEmpty()) return Optional.empty();
+      if (set.isEmpty())
+        return Optional.empty();
       return Optional.of(set);
     });
   }

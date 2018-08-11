@@ -14,13 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettings;
-import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettings;
 import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
 
@@ -48,15 +47,15 @@ public class RorKbnAuthRuleSettings implements RuleSettings, AuthKeyProviderSett
     String jwtName = settings.stringReq(JWT_NAME);
     Set<String> roles = (Set<String>) (settings.notEmptySetOpt(ROLES).orElse(Collections.emptySet()));
     return new RorKbnAuthRuleSettings(
-      jwtSettingsCollection.get(jwtName),
-      roles
+        jwtSettingsCollection.get(jwtName),
+        roles
     );
   }
 
   public static RorKbnAuthRuleSettings from(String jwtName, RorKbnAuthDefinitionSettingsCollection jwtSettingsCollection) {
     return new RorKbnAuthRuleSettings(
-      jwtSettingsCollection.get(jwtName),
-      Collections.emptySet()
+        jwtSettingsCollection.get(jwtName),
+        Collections.emptySet()
     );
   }
 
