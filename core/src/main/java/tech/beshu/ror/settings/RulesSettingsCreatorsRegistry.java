@@ -51,6 +51,7 @@ import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
 import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
 import tech.beshu.ror.settings.rules.UriReRuleSettings;
@@ -120,6 +121,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
     creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
 
     this.ruleSettingsCreators = creators;
   }
@@ -347,6 +349,12 @@ public class RulesSettingsCreatorsRegistry {
   private Supplier<RuleSettings> jwtAuthSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
     return authRuleFrom(JwtAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> rorKbnAuthSettingsCreator(RawSettings blockSettings,
+      AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
+    return authRuleFrom(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   private Supplier<RuleSettings> authRuleFrom(String attribute, RawSettings settings,

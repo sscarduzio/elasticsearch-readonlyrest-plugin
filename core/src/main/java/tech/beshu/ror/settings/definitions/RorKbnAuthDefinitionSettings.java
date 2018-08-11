@@ -86,7 +86,7 @@ public class RorKbnAuthDefinitionSettings implements NamedSettings {
   }
 
   public Optional<String> getAlgo() {
-    return algo.isPresent() ? algo : Optional.of("RSA");
+    return algo;
   }
 
   public Optional<String> getUserClaim() {
