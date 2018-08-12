@@ -2,6 +2,11 @@ sudo: required
 dist: trusty
 group: deprecated-2017Q4
 
+cache:
+  directories:
+  - .autoconf
+  - $HOME/.m2
+
 language: java
 
 sudo: required
