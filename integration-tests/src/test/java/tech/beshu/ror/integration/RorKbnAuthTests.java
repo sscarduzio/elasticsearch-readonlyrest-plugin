@@ -110,6 +110,8 @@ public class RorKbnAuthTests {
     RestClient rc = container.getClient();
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
     token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), (withBearer ? "Bearer " : "") + t));
+    System.out.println("sending request with auth header: " + req.getFirstHeader("Authorization"));
+    System.out.println(Jwts.parser().parseClaimsJws(token.get()));
     HttpResponse resp = rc.execute(req);
     return resp.getStatusLine().getStatusCode();
   }
