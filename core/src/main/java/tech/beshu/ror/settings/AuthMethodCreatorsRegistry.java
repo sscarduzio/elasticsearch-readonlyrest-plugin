@@ -118,22 +118,22 @@ public class AuthMethodCreatorsRegistry {
   }
 
   private Function<RawSettings, AuthKeyProviderSettings> jwtAuthSettingsCreator(
-      JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection) {
+      JwtAuthDefinitionSettingsCollection definitionSettingsCollection) {
     return settings -> {
       Object conf = settings.req(JwtAuthRuleSettings.ATTRIBUTE_NAME);
       return conf instanceof String
-          ? JwtAuthRuleSettings.from((String) conf, jwtAuthDefinitionSettingsCollection)
-          : JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), jwtAuthDefinitionSettingsCollection);
+          ? JwtAuthRuleSettings.from((String) conf, definitionSettingsCollection)
+          : JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), definitionSettingsCollection);
     };
   }
 
   private Function<RawSettings, AuthKeyProviderSettings> rorKbnAuthSettingsCreator(
-      RorKbnAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection) {
+      RorKbnAuthDefinitionSettingsCollection definitionSettingsCollection) {
     return settings -> {
       Object conf = settings.req(RorKbnAuthRuleSettings.ATTRIBUTE_NAME);
       return conf instanceof String
-          ? RorKbnAuthRuleSettings.from((String) conf, jwtAuthDefinitionSettingsCollection)
-          : RorKbnAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), jwtAuthDefinitionSettingsCollection);
+          ? RorKbnAuthRuleSettings.from((String) conf, definitionSettingsCollection)
+          : RorKbnAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), definitionSettingsCollection);
     };
   }
 

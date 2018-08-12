@@ -18,7 +18,7 @@ readonlyrest:
 
     - name: Valid JWT token is present
       type: allow
-      jwt_auth: "kbn1"
+      ror_kbn_auth: "kbn1"
 
     - name: Valid JWT token is present with another key
       type: allow
