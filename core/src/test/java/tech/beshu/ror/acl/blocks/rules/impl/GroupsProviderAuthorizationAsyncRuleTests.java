@@ -84,32 +84,20 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
   @Test
   public void testUserAuthorizationFailedDueToGroupMismatching() throws Exception {
     RuleExitResult result = createRuleRunMatch(Lists.newArrayList("group3", "group4"),
-        "/groups", null, null, null, (user) -> {
-          assertEquals("group1", user.getCurrentGroup());
-          assertTrue(user.getAvailableGroups().contains("group1"));
-          return null;
-        }, null);
+        "/groups", null, null, null, null, null);
     assertFalse(result.isMatch());
     result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
         "/complex/groups", "POST",
         ImmutableMap.of("Content-Type", "application/x-www-form-urlencoded",
             "Authorization", "Basic base64_encoded_token"),
-        ImmutableMap.of("return_Role", "true"), (user) -> {
-          assertEquals("group1", user.getCurrentGroup().get());
-          assertTrue(user.getAvailableGroups().contains("group1"));
-          return null;
-        }, null
+        ImmutableMap.of("return_Role", "true"), null, null
     );
     assertFalse(result.isMatch());
 
     result = createRuleRunMatch(Lists.newArrayList("group1", "group3"),
         "/complex/groups", "POST",
         ImmutableMap.of("Content-Type", "application/x-www-form-urlencoded"),
-        ImmutableMap.of("return_Role", "true"), (user) -> {
-          assertEquals("group1", user.getCurrentGroup().get());
-          assertTrue(user.getAvailableGroups().contains("group1"));
-          return null;
-        }, null
+        ImmutableMap.of("return_Role", "true"), null, null
     );
     assertFalse(result.isMatch());
   }
