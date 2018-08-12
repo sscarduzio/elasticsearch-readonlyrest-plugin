@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
@@ -33,8 +34,8 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
   private final GroupsProviderServiceClient client;
 
   public GroupsProviderAuthorizationAsyncRule(GroupsProviderAuthorizationRuleSettings settings,
-                                              GroupsProviderServiceClientFactory factory,
-                                              ESContext context) {
+      GroupsProviderServiceClientFactory factory,
+      ESContext context) {
     super(context);
     this.settings = settings;
     this.client = factory.getClient(settings.getUserGroupsProviderSettings());
@@ -42,13 +43,25 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
   @Override
   protected CompletableFuture<Boolean> authorize(LoggedUser user) {
-    return client.fetchGroupsFor(user)
-      .thenApply(this::checkUserGroups);
-  }
-
-  private boolean checkUserGroups(Set<String> groups) {
-    Sets.SetView<String> intersection = Sets.intersection(settings.getGroups(), Sets.newHashSet(groups));
-    return !intersection.isEmpty();
+    return client
+        .fetchGroupsFor(user)
+        .thenApply(fetchedGroupsForUser -> {
+          Sets.SetView<String> intersection = Sets.intersection(settings.getGroups(), Sets.newHashSet(fetchedGroupsForUser));
+          if (intersection.isEmpty()) {
+            return false;
+          }
+          user.addAvailableGroups(intersection);
+          if (user.getCurrentGroup().isPresent()) {
+            String currGroup = user.getCurrentGroup().get();
+            if (!intersection.contains(currGroup)) {
+              return false;
+            }
+          }
+          else {
+            user.setCurrentGroup(intersection.iterator().next());
+          }
+          return true;
+        });
   }
 
   @Override
