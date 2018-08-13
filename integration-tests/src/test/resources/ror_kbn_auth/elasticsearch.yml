@@ -18,11 +18,13 @@ readonlyrest:
 
     - name: Valid JWT token is present
       type: allow
-      ror_kbn_auth: "kbn1"
+      ror_kbn_auth:
+        name: "kbn1"
 
     - name: Valid JWT token is present with another key
       type: allow
-      ror_kbn_auth: "kbn2"
+      ror_kbn_auth:
+        name: "kbn2"
 
     - name: Valid JWT token is present with a third key + role
       type: allow

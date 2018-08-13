@@ -111,7 +111,7 @@ public class RorKbnAuthTests {
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
     token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), (withBearer ? "Bearer " : "") + t));
     System.out.println("sending request with auth header: " + req.getFirstHeader("Authorization"));
-    System.out.println(Jwts.parser().parseClaimsJws(token.get()));
+    
     HttpResponse resp = rc.execute(req);
     return resp.getStatusLine().getStatusCode();
   }
@@ -131,8 +131,12 @@ public class RorKbnAuthTests {
   private Map<String, Object> makeClaimMap(Object... kvs) {
     assert kvs.length % 2 == 0;
     HashMap<String, Object> claims = Maps.newHashMap();
-    for (int i = 0; i < kvs.length; i += 2)
+    for (int i = 0; i < kvs.length; i += 2) {
       claims.put((String) kvs[i], kvs[i + 1]);
+    }
+    if(!claims.containsKey(USER_CLAIM)){
+      claims.put(USER_CLAIM, "user");
+    }
     return claims;
   }
 }
