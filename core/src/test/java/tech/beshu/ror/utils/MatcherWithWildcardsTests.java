@@ -34,6 +34,11 @@ public class MatcherWithWildcardsTests {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
     assertTrue(m.match("a"));
   }
+  @Test
+  public void testMatchSimpleString2() {
+    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
+    assertTrue(m.match("b"));
+  }
 
   @Test
   public void testMatchStarPatternRight() {
