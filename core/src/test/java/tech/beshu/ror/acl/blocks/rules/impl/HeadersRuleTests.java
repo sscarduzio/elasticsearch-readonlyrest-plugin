@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -74,8 +75,9 @@ public class HeadersRuleTests {
 
   @Test
   public void testHeaderCapitalHeaderKey() {
-    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:123"), new HashMap() {{
+    RuleExitResult res = match(Lists.newArrayList("hkey:hvalue:123"), new HashMap() {{
       put("Hkey", "hvalue:123");
+      put("other", "header");
     }});
     assertTrue(res.isMatch());
   }
@@ -86,6 +88,14 @@ public class HeadersRuleTests {
       put("hkey", "Hvalue:123");
     }});
     assertFalse(res.isMatch());
+  }
+
+  @Test
+  public void testHeaderCapitalHeaderValueWithWC() {
+    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:12*"), new HashMap() {{
+      put("hkey", "hvalue:123");
+    }});
+    assertTrue(res.isMatch());
   }
 
   private RuleExitResult match(List<String> configured, Map<String, String> found) {

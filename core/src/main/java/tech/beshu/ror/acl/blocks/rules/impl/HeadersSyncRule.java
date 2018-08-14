@@ -20,12 +20,14 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 14/02/2016.
@@ -40,11 +42,37 @@ public class HeadersSyncRule extends SyncRule {
     this.settings = s;
   }
 
+  /**
+   * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
+   * @param rc the RequestContext
+   * @return match or no match
+   */
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return rc.getHeaders().entrySet().containsAll(allowedHeaders.entrySet())
-        ? MATCH
-        : NO_MATCH;
+
+    Map<String, String> subsetHeaders = new HashMap<>(allowedHeaders.size());
+    for (Map.Entry<String, String> kv : rc.getHeaders().entrySet()) {
+      String lowerCaseKey = kv.getKey().toLowerCase();
+      if (allowedHeaders.containsKey(lowerCaseKey)) {
+        subsetHeaders.put(lowerCaseKey, kv.getValue());
+      }
+    }
+
+    // First check that we have all the required headers
+    if (subsetHeaders.size() < allowedHeaders.size()) {
+      return NO_MATCH;
+    }
+
+    Set<String> flattenedActualHeaders = subsetHeaders
+        .entrySet()
+        .stream()
+        .map(kv -> kv.getKey().toLowerCase() + ":" + kv.getValue())
+        .collect(Collectors.toSet());
+
+    return new MatcherWithWildcards(settings.getFlatHeaders())
+        .filter(flattenedActualHeaders)
+        .size() == allowedHeaders.size() ? MATCH : NO_MATCH;
+
   }
 
   @Override
@@ -55,6 +83,7 @@ public class HeadersSyncRule extends SyncRule {
   public static class Settings implements RuleSettings {
     public static final String ATTRIBUTE_NAME = "headers";
     private final Map<String, String> headers;
+    private final Set<String> flatHeaders;
 
     public Settings(Set<String> headersWithValue) {
       headersWithValue.stream().filter(x -> !x.contains(":")).findFirst().ifPresent(x -> {
@@ -65,10 +94,22 @@ public class HeadersSyncRule extends SyncRule {
         String[] kva = kv.toLowerCase().split(":", 2);
         this.headers.put(kva[0], kva[1]);
       }
+
+      // Only the header name should be lowercase (so it's compared case-insensitively)
+      this.flatHeaders = this.headers
+          .entrySet()
+          .stream()
+          .map(kv -> kv.getKey().toLowerCase() + ":" + kv.getValue())
+          .collect(Collectors.toSet());
+
     }
 
     public Map<String, String> getHeaders() {
       return headers;
+    }
+
+    public Set<String> getFlatHeaders() {
+      return flatHeaders;
     }
 
     @Override
