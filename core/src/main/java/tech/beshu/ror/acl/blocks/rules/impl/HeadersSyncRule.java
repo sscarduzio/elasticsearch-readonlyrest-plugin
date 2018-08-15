@@ -44,6 +44,7 @@ public class HeadersSyncRule extends SyncRule {
 
   /**
    * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
+   *
    * @param rc the RequestContext
    * @return match or no match
    */
