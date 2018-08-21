@@ -71,8 +71,9 @@ public class ProxyAuthSyncRule extends UserRule implements Authentication {
 
   private Optional<LoggedUser> getUser(Map<String, String> headers) {
     String userId = headers.get(settings.getUserIdHeader());
-    if (userId == null || userId.trim().length() == 0)
+    if (Strings.isNullOrEmpty(userId)) {
       return Optional.empty();
+    }
     return Optional.of(new LoggedUser(userId));
   }
 
