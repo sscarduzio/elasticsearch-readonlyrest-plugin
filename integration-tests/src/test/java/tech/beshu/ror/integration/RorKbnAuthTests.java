@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.integration;
 
 import com.google.common.collect.Maps;
@@ -22,11 +23,11 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import org.junit.ClassRule;
-import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,7 +35,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 
-public class BohAuthTests {
+public class RorKbnAuthTests {
 
   private static final String ALGO = "HS256";
   private static final String KEY = "123456";
@@ -42,14 +43,14 @@ public class BohAuthTests {
   private static final String WRONG_KEY = "abcdef";
   private static final String SUBJECT = "test";
   private static final String USER_CLAIM = "user";
-  private static final String ROLES_CLAIM = "roles";
+  private static final String GROUPS_CLAIM = "groups";
   private static final String EXP = "exp";
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
           RorPluginGradleProject.fromSystemProperty(),
-          "/jwt_auth/elasticsearch.yml",
+          "/ror_kbn_auth/elasticsearch.yml",
           Optional.empty()
       );
 
@@ -73,20 +74,8 @@ public class BohAuthTests {
 
   @Test
   public void acceptValidTokentWithUserClaim() throws Exception {
-    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user")));
+    int sc = test(makeToken(KEY_ROLE, makeClaimMap(USER_CLAIM, "user")));
     assertEquals(200, sc);
-  }
-
-  @Test
-  public void acceptValidTokentWithUserClaimAndCustomHeader() throws Exception {
-    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user")), Optional.of("x-custom-header"), false);
-    assertEquals(200, sc);
-  }
-
-  @Test
-  public void rejectTokentWithUserClaimAndCustomHeader() throws Exception {
-    int sc = test(makeToken(KEY, makeClaimMap("inexistent_claim", "user")), Optional.of("x-custom-header"), false);
-    assertEquals(401, sc);
   }
 
   @Test
@@ -103,13 +92,13 @@ public class BohAuthTests {
 
   @Test
   public void rejectTokenWithWrongRolesClaim() throws Exception {
-    int sc = test(makeToken(KEY_ROLE, makeClaimMap(ROLES_CLAIM, "role_wrong")));
+    int sc = test(makeToken(KEY_ROLE, makeClaimMap(GROUPS_CLAIM, "wrong_group")));
     assertEquals(401, sc);
   }
 
   @Test
   public void acceptValidTokentWithRolesClaim() throws Exception {
-    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "role_viewer")));
+    int sc = test(makeToken(KEY_ROLE, makeClaimMap(GROUPS_CLAIM, "viewer_group")));
     assertEquals(200, sc);
   }
 
@@ -121,6 +110,8 @@ public class BohAuthTests {
     RestClient rc = container.getClient();
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
     token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), (withBearer ? "Bearer " : "") + t));
+    System.out.println("sending request with auth header: " + req.getFirstHeader("Authorization"));
+
     HttpResponse resp = rc.execute(req);
     return resp.getStatusLine().getStatusCode();
   }
@@ -140,8 +131,12 @@ public class BohAuthTests {
   private Map<String, Object> makeClaimMap(Object... kvs) {
     assert kvs.length % 2 == 0;
     HashMap<String, Object> claims = Maps.newHashMap();
-    for (int i = 0; i < kvs.length; i += 2)
+    for (int i = 0; i < kvs.length; i += 2) {
       claims.put((String) kvs[i], kvs[i + 1]);
+    }
+    if(!claims.containsKey(USER_CLAIM)){
+      claims.put(USER_CLAIM, "user");
+    }
     return claims;
   }
 }
