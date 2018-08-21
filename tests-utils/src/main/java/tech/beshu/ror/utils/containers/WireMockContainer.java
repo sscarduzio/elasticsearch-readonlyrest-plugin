@@ -14,17 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.utils.containers;
 
 import com.google.common.collect.Lists;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import tech.beshu.ror.utils.httpclient.RestClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
+import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,22 +48,23 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
   public static WireMockContainer create(String... mappings) {
     ImageFromDockerfile dockerfile = new ImageFromDockerfile();
     List<File> mappingFiles = Lists.newArrayList(mappings).stream()
-      .map(ContainerUtils::getResourceFile)
-      .collect(Collectors.toList());
+                                   .map(ContainerUtils::getResourceFile)
+                                   .collect(Collectors.toList());
     mappingFiles.forEach(mappingFile -> dockerfile.withFileFromFile(mappingFile.getName(), mappingFile));
     logger.info("Creating WireMock container ...");
     WireMockContainer container = new WireMockContainer(
-      dockerfile.withDockerfileFromBuilder(builder -> {
-        DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
-        mappingFiles.forEach(mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
-        b.build();
-      }));
-    return container
-      .withExposedPorts(WIRE_MOCK_PORT)
-      .waitingFor(
-        container.waitStrategy()
-          .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
-      );
+        dockerfile.withDockerfileFromBuilder(builder -> {
+          DockerfileBuilder b = builder.from("rodolpheche/wiremock:2.5.1");
+          mappingFiles.forEach(mappingFile -> b.copy(mappingFile.getName(), "/home/wiremock/mappings/"));
+          b.build();
+        }));
+    WireMockContainer cont = container
+        .withExposedPorts(WIRE_MOCK_PORT)
+        .waitingFor(
+            container.waitStrategy()
+                     .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
+        );
+    return cont.withLogConsumer(s -> System.out.print("[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
   }
 
   public String getWireMockHost() {
@@ -85,7 +87,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         try {
           RestClient client = getClient();
           return client.execute(new HttpGet(client.from("/__admin/")))
-            .getStatusLine().getStatusCode() == 200;
+                       .getStatusLine().getStatusCode() == 200;
         } catch (IOException | URISyntaxException e) {
           return false;
         }
