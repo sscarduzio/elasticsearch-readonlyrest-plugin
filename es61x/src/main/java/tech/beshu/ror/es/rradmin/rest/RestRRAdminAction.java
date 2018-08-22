@@ -41,10 +41,9 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
   @Inject
   public RestRRAdminAction(Settings settings, RestController controller) {
     super(settings);
-    controller.registerHandler(RestRequest.Method.POST, Constants.REST_REFRESH_PATH, this);
-    controller.registerHandler(RestRequest.Method.GET, Constants.REST_CONFIGURATION_PATH, this);
-    controller.registerHandler(RestRequest.Method.POST, Constants.REST_CONFIGURATION_PATH, this);
-    controller.registerHandler(RestRequest.Method.GET, Constants.REST_CONFIGURATION_FILE_PATH, this);
+    Constants.RR_ADMIN_ROUTES.forEach( (k,v) -> {
+      controller.registerHandler(RestRequest.Method.valueOf(k),v, this);
+    });
   }
 
 

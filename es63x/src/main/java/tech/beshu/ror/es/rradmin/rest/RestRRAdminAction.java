@@ -41,12 +41,10 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
   @Inject
   public RestRRAdminAction(Settings settings, RestController controller) {
     super(settings);
-    controller.registerHandler(RestRequest.Method.POST, Constants.REST_REFRESH_PATH, this);
-    controller.registerHandler(RestRequest.Method.GET, Constants.REST_CONFIGURATION_PATH, this);
-    controller.registerHandler(RestRequest.Method.POST, Constants.REST_CONFIGURATION_PATH, this);
-    controller.registerHandler(RestRequest.Method.GET, Constants.REST_CONFIGURATION_FILE_PATH, this);
+    Constants.RR_ADMIN_ROUTES.forEach( (k,v) -> {
+      controller.registerHandler(RestRequest.Method.valueOf(k),v, this);
+    });
   }
-
 
   public String getName() {
     return "ror-admin-handler";
@@ -56,9 +54,9 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
   protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
     return (channel) -> {
       client.execute(
-        new RRAdminAction(),
-        new RRAdminRequest(request.method().name(), request.path(), request.content().utf8ToString()),
-        new RestToXContentListener<RRAdminResponse>(channel)
+          new RRAdminAction(),
+          new RRAdminRequest(request.method().name(), request.path(), request.content().utf8ToString()),
+          new RestToXContentListener<RRAdminResponse>(channel)
       );
     };
   }

@@ -44,6 +44,7 @@ import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -194,11 +195,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
               }
             }
           }
-          //         @SuppressWarnings("unchecked")
-          //          ActionListener<Response> aclActionListener = (ActionListener<Response>) new ACLActionListener(
-          //            request, (ActionListener<ActionResponse>) listener, rc, blockExitResult, context, acl
-          //          );
-          //          chain.proceed(task, action, request, aclActionListener);
+
+          ResponseActionListener searchListener =
+              new ResponseActionListener(action, request, (ActionListener<ActionResponse>) listener, (RequestContext) rc, logger);
+          chain.proceed(task, action, request, (ActionListener<Response>) searchListener);
+
 
           chain.proceed(task, action, request, listener);
           hasProceeded = true;
