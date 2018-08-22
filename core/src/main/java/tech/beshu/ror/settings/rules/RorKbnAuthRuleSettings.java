@@ -34,11 +34,11 @@ public class RorKbnAuthRuleSettings implements RuleSettings, AuthKeyProviderSett
   private static final String JWT_NAME = "name";
   private static final String ROLES = "roles";
 
-  private final RorKbnAuthDefinitionSettings jwtAuthSettings;
+  private final RorKbnAuthDefinitionSettings authSettings;
   private final Set<String> roles;
 
   private RorKbnAuthRuleSettings(RorKbnAuthDefinitionSettings settings, Set<String> roles) {
-    this.jwtAuthSettings = settings;
+    this.authSettings = settings;
     this.roles = roles;
   }
 
@@ -60,23 +60,23 @@ public class RorKbnAuthRuleSettings implements RuleSettings, AuthKeyProviderSett
   }
 
   public byte[] getKey() {
-    return jwtAuthSettings.getKey();
+    return authSettings.getKey();
   }
 
   public Optional<String> getAlgo() {
-    return jwtAuthSettings.getAlgo();
+    return authSettings.getAlgo();
   }
 
   public Optional<String> getUserClaim() {
-    return jwtAuthSettings.getUserClaim();
+    return authSettings.getUserClaim();
   }
 
   public Optional<String> getRolesClaim() {
-    return jwtAuthSettings.getRolesClaim();
+    return authSettings.getRolesClaim();
   }
 
   public String getHeaderName() {
-    return jwtAuthSettings.getHeaderName();
+    return authSettings.getHeaderName();
   }
 
   public Set<String> getRoles() {
