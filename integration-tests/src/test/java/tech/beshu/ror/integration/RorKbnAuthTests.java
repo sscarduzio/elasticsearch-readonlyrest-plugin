@@ -74,7 +74,8 @@ public class RorKbnAuthTests {
 
   @Test
   public void acceptValidTokentWithUserClaim() throws Exception {
-    int sc = test(makeToken(KEY_ROLE, makeClaimMap(USER_CLAIM, "user")));
+    // Groups claim is mandatory, even if empty
+    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user", GROUPS_CLAIM, "")));
     assertEquals(200, sc);
   }
 
