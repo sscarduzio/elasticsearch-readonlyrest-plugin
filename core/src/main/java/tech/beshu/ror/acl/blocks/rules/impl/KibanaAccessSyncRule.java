@@ -20,7 +20,6 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -38,36 +37,36 @@ import static tech.beshu.ror.commons.Constants.HEADER_KIBANA_ACCESS;
  */
 public class KibanaAccessSyncRule extends SyncRule {
   private static final boolean ROR_KIBANA_METADATA_ENABLED =
-    !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
+      !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
 
   public static MatcherWithWildcards RO = new MatcherWithWildcards(Sets.newHashSet(
-    "indices:admin/exists",
-    "indices:admin/mappings/fields/get*",
-    "indices:admin/mappings/get*",
-    "indices:admin/validate/query",
-    "indices:admin/get",
-    "indices:admin/refresh*",
-    "indices:data/read/*"
+      "indices:admin/exists",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/mappings/get*",
+      "indices:admin/validate/query",
+      "indices:admin/get",
+      "indices:admin/refresh*",
+      "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
-    "indices:admin/create",
-    "indices:admin/mapping/put",
-    "indices:data/write/delete*",
-    "indices:data/write/index",
-    "indices:data/write/update*",
-    "indices:data/write/bulk*",
-    "indices:admin/template/*"
+      "indices:admin/create",
+      "indices:admin/mapping/put",
+      "indices:data/write/delete*",
+      "indices:data/write/index",
+      "indices:data/write/update*",
+      "indices:data/write/bulk*",
+      "indices:admin/template/*"
   ));
 
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
-    "cluster:admin/rradmin/*",
-    "indices:data/write/*", // <-- DEPRECATED!
-    "indices:admin/create"
+      "cluster:admin/rradmin/*",
+      "indices:data/write/*", // <-- DEPRECATED!
+      "indices:admin/create"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
-    "cluster:monitor/nodes/info",
-    "cluster:monitor/main",
-    "cluster:monitor/health",
+      "cluster:monitor/nodes/info",
+      "cluster:monitor/main",
+      "cluster:monitor/health",
       "cluster:monitor/state"
   ));
 
@@ -131,16 +130,16 @@ public class KibanaAccessSyncRule extends SyncRule {
 
     // Save UI state in discover & Short urls
     Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create|index-pattern)/.*|^/_template/.*"
-                                                      .replace("@kibana_index", resolvedKibanaIndex));
+        .replace("@kibana_index", resolvedKibanaIndex));
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(resolvedKibanaIndex);
 
     // Ro non-strict cases to pass through
     if (
-      targetsKibana && !roStrict && !canModifyKibana &&
-        nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
-          (rc.getAction().startsWith("indices:data/write/") || rc.getAction().startsWith("indices:admin/template/put"))
-      ) {
+        targetsKibana && !roStrict && !canModifyKibana &&
+            nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
+            (rc.getAction().startsWith("indices:data/write/") || rc.getAction().startsWith("indices:admin/template/put"))
+        ) {
       return MATCH;
     }
 
