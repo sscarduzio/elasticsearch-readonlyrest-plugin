@@ -207,7 +207,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
               new ResponseActionListener(action, request, (ActionListener<ActionResponse>) listener, (RequestContext) rc, logger);
           chain.proceed(task, action, request, (ActionListener<Response>) searchListener);
 
-          chain.proceed(task, action, request, listener);
           hasProceeded = true;
           return;
         } catch (Throwable e) {
