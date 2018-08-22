@@ -21,6 +21,8 @@ import com.google.common.collect.Sets;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class Constants {
@@ -42,6 +44,7 @@ public class Constants {
   public final static String REST_REFRESH_PATH = "/_readonlyrest/admin/refreshconfig";
   public final static String REST_CONFIGURATION_PATH = "/_readonlyrest/admin/config";
   public final static String REST_CONFIGURATION_FILE_PATH = "/_readonlyrest/admin/config/file";
+  public final static String REST_METADATA_PATH = "/_readonlyrest/metadata/current_user";
   public final static String FILTER_TRANSIENT = "_filter";
   public final static String FIELDS_TRANSIENT = "_fields";
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");
@@ -53,6 +56,16 @@ public class Constants {
 
   public static final String SETTINGS_YAML_FILE_PATH_PROPERTY = "com.readonlyrest.settings.file.path";
   public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
+  public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
+  public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
+
+  public static final Map<String, String> RR_ADMIN_ROUTES = new HashMap<String, String>() {{
+    put("POST", Constants.REST_REFRESH_PATH);
+    put("GET", Constants.REST_CONFIGURATION_PATH);
+    put("POST", Constants.REST_CONFIGURATION_PATH);
+    put("GET", Constants.REST_CONFIGURATION_FILE_PATH);
+    put("GET", Constants.REST_METADATA_PATH);
+  }};
 
   public static String makeAbsolutePath(String path, String basePath) {
 

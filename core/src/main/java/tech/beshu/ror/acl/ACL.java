@@ -127,6 +127,10 @@ public class ACL {
     return false;
   }
 
+  public ESContext getContext() {
+    return context;
+  }
+
   private void doLog(ResponseContext res) {
 
     FinalState fState = res.finalState();

@@ -51,35 +51,45 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
     }
     return client
         .fetchGroupsFor(user)
+        // No wildcard matching for configured groups, but users can be declared as wildcards.
         .thenApply(fetchedGroupsForUser -> {
 
+          // Exit early if resolved groups have nothing to do with the ones configured in this rule
           Sets.SetView<String> intersection = Sets.intersection(settings.getGroups(), Sets.newHashSet(fetchedGroupsForUser));
           if (intersection.isEmpty()) {
             return false;
           }
+
           System.out.println("user: " + user.getId() + " has groups: " + fetchedGroupsForUser + ", intersected: " + intersection);
 
+          // Exit early if the request has a current group that does not belong to this rule, or is not resolved for user
           if (user.getCurrentGroup().isPresent()) {
             String currGroup = user.getCurrentGroup().get();
+            System.out.println("found current group: " + currGroup);
             if (!intersection.contains(currGroup)) {
+              System.out.println("current group in header does not match any available groups in rule " + currGroup);
               return false;
             }
           }
+
+          // Set current group as the first of the list, if was absent (this will surface on the response header)
           else {
-            System.out.println("setting current group: " + intersection.iterator().next());
-            user.setCurrentGroup(intersection.iterator().next());
+            String curGroup = intersection.immutableCopy().iterator().next();
+            System.out.println("setting current group: " + curGroup);
+            user.setCurrentGroup(curGroup);
           }
 
+          // Exploring all the ACL for available groups for this user, known what their resolved groups are, and what the ACL has to offer for the user
           Set<String> matchingUserPatterns = new MatcherWithWildcards(
               settings.getUserGroupsProviderSettings()
                       .getUser2availGroups().keySet())
               .matchingMatchers(Sets.newHashSet(user.getId()));
           Set<String> availGroupsForUser = Sets.newHashSet();
-          System.out.println("globally available groups for user " + user.getId() + ": " + availGroupsForUser);
           for (String up : matchingUserPatterns) {
             availGroupsForUser.addAll(settings.getUserGroupsProviderSettings().getUser2availGroups().get(up));
           }
           availGroupsForUser = Sets.intersection(availGroupsForUser, fetchedGroupsForUser);
+          System.out.println("adding available groups for user " + user.getId() + ": " + availGroupsForUser);
 
           user.addAvailableGroups(availGroupsForUser);
 

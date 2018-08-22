@@ -20,6 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -29,6 +30,8 @@ import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
 
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import static tech.beshu.ror.commons.Constants.HEADER_KIBANA_ACCESS;
 
 /**
  * Created by sscarduzio on 26/03/2016.
@@ -105,7 +108,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   public RuleExitResult match(RequestContext rc) {
     RuleExitResult res = doMatch(rc);
     if (ROR_KIBANA_METADATA_ENABLED && res.isMatch()) {
-      rc.setResponseHeader("x-ror-kibana_access", settings.getKibanaAccess().name().toLowerCase());
+      rc.setResponseHeader(HEADER_KIBANA_ACCESS, settings.getKibanaAccess().name().toLowerCase());
     }
     return res;
   }
