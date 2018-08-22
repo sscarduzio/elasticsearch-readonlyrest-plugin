@@ -44,7 +44,14 @@ public class SerializationTool {
   private final LoggerShim logger;
 
   public SerializationTool(ESContext esContext) {
-    indexNameFormatter = new SimpleDateFormat(esContext.getSettings().getAuditIndexTemplate());
+    String pattern = esContext.getSettings().getAuditIndexTemplate();
+    try {
+      indexNameFormatter = new SimpleDateFormat(pattern);
+    } catch(IllegalArgumentException iae){
+      throw esContext.rorException(
+          "Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'SimpleDateFormat patterns' to learn the syntax. Pattern was: "
+          + pattern + " error: " + iae.getMessage());
+    }
     this.logger = esContext.logger(getClass());
     ObjectMapper mapper = new ObjectMapper();
     SimpleModule simpleModule = new SimpleModule(
