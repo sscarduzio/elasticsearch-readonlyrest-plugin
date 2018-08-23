@@ -51,7 +51,7 @@ public class Constants {
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");
   public static final String HEADER_GROUPS_AVAILABLE = "x-ror-available-groups";
   public static final String HEADER_GROUP_CURRENT = "x-ror-current-group";
-  public static final String HEADER_USER_ROR = "X-RR-User";
+  public static final String HEADER_USER_ROR = "x-ror-username";
   public static final boolean KIBANA_METADATA_ENABLED =
       !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
 

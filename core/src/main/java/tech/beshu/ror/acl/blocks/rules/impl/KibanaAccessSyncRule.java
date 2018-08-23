@@ -20,6 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
@@ -114,6 +115,10 @@ public class KibanaAccessSyncRule extends SyncRule {
 
   private RuleExitResult doMatch(RequestContext rc) {
     Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
+
+    if(Constants.REST_METADATA_PATH.equals(rc.getUri())){
+      return MATCH;
+    }
 
     // Allow other actions if devnull is targeted to readers and writers
     if (indices.contains(".kibana-devnull")) {

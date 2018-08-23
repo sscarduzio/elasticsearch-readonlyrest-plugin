@@ -45,6 +45,7 @@ public class ResponseActionListener implements ActionListener<ActionResponse> {
   public void onResponse(ActionResponse actionResponse) {
     if(Constants.REST_METADATA_PATH.equals(requestContext.getUri())) {
       baseListener.onResponse(new RRMetadataResponse(requestContext));
+      return;
     }
     baseListener.onResponse(actionResponse);
   }
