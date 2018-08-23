@@ -29,12 +29,13 @@ import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 
 import java.util.Optional;
 
+import static tech.beshu.ror.commons.Constants.HEADER_KIBANA_HIDDEN_APPS;
+
 /**
  * Created by sscarduzio on 20/02/2016.
  */
 public class KibanaHideAppsSyncRule extends SyncRule {
 
-  private static final String KIBANA_HIDE_APPS_HEADER = "x-kibana-hide-apps";
 
   private final LoggerShim logger;
   private final String hiddenApps;
@@ -54,7 +55,7 @@ public class KibanaHideAppsSyncRule extends SyncRule {
     }
 
     logger.debug("setting hidden apps for user " + loggedInUser.get() + ": " + hiddenApps);
-    rc.setResponseHeader(KIBANA_HIDE_APPS_HEADER, hiddenApps);
+    rc.setResponseHeader(HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
 
     // This is a side-effect only rule, will always match
     return MATCH;

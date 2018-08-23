@@ -52,6 +52,8 @@ public class Constants {
   public static final String HEADER_GROUPS_AVAILABLE = "x-ror-available-groups";
   public static final String HEADER_GROUP_CURRENT = "x-ror-current-group";
   public static final String HEADER_USER_ROR = "x-ror-username";
+  public static final String HEADER_KIBANA_HIDDEN_APPS = "x-ror-kibana-hidden-apps";
+
   public static final boolean KIBANA_METADATA_ENABLED =
       !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
 

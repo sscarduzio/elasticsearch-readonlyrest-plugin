@@ -21,6 +21,7 @@ package tech.beshu.ror.es.rradmin;
 
 import com.google.common.collect.Maps;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContentObject;
@@ -35,7 +36,6 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
 
   private RequestContext requestContext;
   private Throwable throwable;
-
 
   public RRMetadataResponse(RequestContext requestContext) {
     this.requestContext = requestContext;
@@ -64,7 +64,9 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
       sourceMap.put(Constants.HEADER_GROUP_CURRENT, u.getCurrentGroup().orElse(null));
       sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, u.getAvailableGroups());
     });
-
+    String hiddenAppsStr = requestContext.getResponseHeaders().get(Constants.HEADER_KIBANA_HIDDEN_APPS);
+    String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");
+    sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
     sourceMap.put(Constants.HEADER_KIBANA_INDEX, requestContext.getKibanaIndex());
     sourceMap.put(Constants.HEADER_KIBANA_ACCESS, requestContext.getResponseHeaders().get(Constants.HEADER_KIBANA_ACCESS));
 
