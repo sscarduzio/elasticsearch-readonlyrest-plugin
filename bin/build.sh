@@ -77,7 +77,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     # es64
-    ./gradlew --stacktrace es64x:ror '-PesVersion=6.4.0'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.0'
 
     # es63
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.3.0'
