@@ -22,6 +22,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.junit.ClassRule;
 import org.junit.Test;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
@@ -53,12 +54,12 @@ public class LocalGroupsTest {
     );
 
     // Piggy back response headers testing (too long to spin up another container)
-    assertEquals("user", r.getHeaders("x-rr-user")[0].getValue());
-    assertEquals(".kibana_user", r.getHeaders("x-ror-kibana_index")[0].getValue());
-    assertEquals("timelion", r.getHeaders("x-kibana-hide-apps")[0].getValue());
-    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue());
-    assertEquals("testgroup", r.getHeaders("x-ror-current-group")[0].getValue());
-    assertEquals("testgroup,extra_group,foogroup", r.getHeaders("x-ror-available-groups")[0].getValue());
+    assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
+    assertEquals(".kibana_user", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
+    assertEquals("timelion", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());
+    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue());
+    assertEquals("testgroup", r.getHeaders(Constants.HEADER_GROUP_CURRENT)[0].getValue());
+    assertEquals("testgroup,extra_group,foogroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
   }
 
   @Test
@@ -71,12 +72,12 @@ public class LocalGroupsTest {
     );
 
     // Piggy back response headers testing (too long to spin up another container)
-    assertEquals("user", r.getHeaders("x-rr-user")[0].getValue());
-    assertEquals(".kibana_foogroup", r.getHeaders("x-ror-kibana_index")[0].getValue());
-    assertEquals("foo:app", r.getHeaders("x-kibana-hide-apps")[0].getValue());
-    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue());
-    assertEquals("foogroup", r.getHeaders("x-ror-current-group")[0].getValue());
-    assertEquals("testgroup,extra_group,foogroup", r.getHeaders("x-ror-available-groups")[0].getValue());
+    assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
+    assertEquals(".kibana_foogroup", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
+    assertEquals("foo:app", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());
+    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue());
+    assertEquals("foogroup", r.getHeaders(Constants.HEADER_GROUP_CURRENT)[0].getValue());
+    assertEquals("testgroup,extra_group,foogroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
   }
 
   @Test
@@ -130,7 +131,7 @@ public class LocalGroupsTest {
         new ImmutableMap.Builder<String, String>()
             .build()
     ));
-    req.setHeader("x-ror-current-group", preferredGroup);
+    req.setHeader(Constants.HEADER_GROUP_CURRENT, preferredGroup);
     return rcl.execute(req);
   }
 
