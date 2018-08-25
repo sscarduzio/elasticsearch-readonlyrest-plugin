@@ -116,7 +116,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   private RuleExitResult doMatch(RequestContext rc) {
     Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
 
-    if(Constants.REST_METADATA_PATH.equals(rc.getUri())){
+    if (Constants.REST_METADATA_PATH.equals(rc.getUri())) {
       return MATCH;
     }
 
@@ -127,6 +127,10 @@ public class KibanaAccessSyncRule extends SyncRule {
 
     // Any index, read op
     if (RO.match(rc.getAction()) || CLUSTER.match(rc.getAction())) {
+      return MATCH;
+    }
+
+    if (canModifyKibana && rc.getIndices().size() == 1 && rc.getIndices().iterator().next().startsWith("kibana_sample_data_")) {
       return MATCH;
     }
 
