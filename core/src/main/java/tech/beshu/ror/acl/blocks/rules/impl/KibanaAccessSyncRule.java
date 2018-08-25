@@ -130,7 +130,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
-    if (canModifyKibana && rc.getIndices().size() == 1 && rc.getIndices().iterator().next().startsWith("kibana_sample_data_")) {
+    if (canModifyKibana && rc.involvesIndices() && rc.getIndices().size() == 1 && rc.getIndices().iterator().next().startsWith("kibana_sample_data_")) {
       return MATCH;
     }
 

@@ -466,6 +466,9 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   }
 
   public boolean isReadRequest() {
+    if(Constants.REST_METADATA_PATH.equals(getUri()) && HttpMethod.GET.equals(getMethod())){
+      return true;
+    }
     return extractIsReadRequest();
   }
 
