@@ -21,6 +21,7 @@ package tech.beshu.ror.es.rradmin;
 
 import com.google.common.collect.Maps;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContentObject;
@@ -59,14 +60,17 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
     Map<String, Object> sourceMap = Maps.newHashMap();
 
+    requestContext.getResponseHeaders().forEach((k,v) -> sourceMap.put(k,v));
+
     requestContext.getLoggedInUser().ifPresent(u -> {
       sourceMap.put(Constants.HEADER_USER_ROR, u.getId());
       sourceMap.put(Constants.HEADER_GROUP_CURRENT, u.getCurrentGroup().orElse(null));
       sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, u.getAvailableGroups());
     });
 
-    sourceMap.put(Constants.HEADER_KIBANA_INDEX, requestContext.getKibanaIndex());
-    sourceMap.put(Constants.HEADER_KIBANA_ACCESS, requestContext.getResponseHeaders().get(Constants.HEADER_KIBANA_ACCESS));
+    String hiddenAppsStr = requestContext.getResponseHeaders().get(Constants.HEADER_KIBANA_HIDDEN_APPS);
+    String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");
+    sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
 
     builder.map(sourceMap);
     return builder;

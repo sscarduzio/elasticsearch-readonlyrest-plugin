@@ -61,6 +61,7 @@ public class Constants {
   public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
   public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
   public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
+  public static final String HEADER_USER_ORIGIN = "x-ror-origin";
 
   public static final List<List<String>> RR_ADMIN_ROUTES = new ArrayList<List<String>>() {{
     add(Lists.newArrayList("POST", Constants.REST_REFRESH_PATH));
