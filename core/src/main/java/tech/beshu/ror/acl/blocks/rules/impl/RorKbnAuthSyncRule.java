@@ -126,7 +126,10 @@ public class RorKbnAuthSyncRule extends UserRule implements Authentication {
             return NO_MATCH;
         }
       }
-      rc.setResponseHeader(Constants.HEADER_USER_ORIGIN, jws.getBody().get(Constants.HEADER_USER_ORIGIN, String.class));
+      String fromClaim = jws.getBody().get(Constants.HEADER_USER_ORIGIN, String.class);
+      if (!Strings.isNullOrEmpty(fromClaim)) {
+        rc.setResponseHeader(Constants.HEADER_USER_ORIGIN, fromClaim);
+      }
       return MATCH;
     } catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | SignatureException e) {
       return NO_MATCH;
