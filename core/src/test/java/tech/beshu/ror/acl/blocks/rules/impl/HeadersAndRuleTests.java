@@ -129,7 +129,7 @@ public class HeadersAndRuleTests {
   @Test
   public void testConfigureMultipleTimesSameHeader() {
     try {
-      RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey1:value2"), new HashMap() {{
+       match(Lists.newArrayList("headerkey1:value1", "headerkey1:value2"), new HashMap() {{
         put("headerkey1", "value1");
       }});
       assertEquals("should have thrown!", "");
