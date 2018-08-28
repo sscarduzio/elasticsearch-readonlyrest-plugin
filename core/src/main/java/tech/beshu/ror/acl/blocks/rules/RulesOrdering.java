@@ -30,6 +30,8 @@ import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
@@ -92,6 +94,8 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         MaxBodyLengthSyncRule.class,
         MethodsSyncRule.class,
         HeadersSyncRule.class,
+        HeadersAndSyncRule.class,
+        HeadersOrSyncRule.class,
         IndicesSyncRule.class,
         ActionsSyncRule.class,
         SearchlogSyncRule.class,

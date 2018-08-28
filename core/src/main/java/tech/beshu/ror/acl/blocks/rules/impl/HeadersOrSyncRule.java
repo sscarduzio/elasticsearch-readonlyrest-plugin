@@ -18,11 +18,8 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,19 +28,18 @@ import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 14/02/2016.
+ * This is a clone of headers rule (now deprecated), as it also evaluates arguments in logical AND
  */
-public class HeadersSyncRule extends SyncRule {
+public class HeadersOrSyncRule extends HeadersSyncRule {
 
-  protected final Map<String, String> allowedHeaders;
-  protected final Settings settings;
-
-  public HeadersSyncRule(Settings s) {
-    this.allowedHeaders = s.getHeaders();
-    this.settings = s;
+  public HeadersOrSyncRule(Settings s) {
+    super(s);
   }
 
   /**
    * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
+   *
+   * This is an OR evaluated variant of {@link HeadersAndSyncRule}
    *
    * @param rc the RequestContext
    * @return match or no match
@@ -59,8 +55,8 @@ public class HeadersSyncRule extends SyncRule {
       }
     }
 
-    // First check that we have all the required headers
-    if (subsetHeaders.size() < allowedHeaders.size()) {
+    // First check that we have some of the required headers
+    if (subsetHeaders.size() == 0) {
       return NO_MATCH;
     }
 
@@ -72,50 +68,21 @@ public class HeadersSyncRule extends SyncRule {
 
     return new MatcherWithWildcards(settings.getFlatHeaders())
         .filter(flattenedActualHeaders)
-        .size() == allowedHeaders.size() ? MATCH : NO_MATCH;
+        .size() > 0 ? MATCH : NO_MATCH;
 
   }
 
   @Override
   public String getKey() {
-    return settings.getName();
+    return super.settings.getName();
   }
 
-  public static class Settings implements RuleSettings {
-    public static final String ATTRIBUTE_NAME = "headers";
-    private final Map<String, String> headers;
-    private final Set<String> flatHeaders;
-    protected boolean rejectDuplicateHeaderKey = true;
+  public static class Settings extends HeadersSyncRule.Settings {
+    public static final String ATTRIBUTE_NAME = "headers_or";
+    protected boolean rejectDuplicateHeaderKey = false;
 
     public Settings(Set<String> headersWithValue) {
-      headersWithValue.stream().filter(x -> !x.contains(":")).findFirst().ifPresent(x -> {
-        throw new SettingsMalformedException("Headers should be in the form 'Key:Value' (separated by a colon)");
-      });
-      this.headers = new HashMap(headersWithValue.size());
-      for (String kv : headersWithValue) {
-        String[] kva = kv.toLowerCase().split(":", 2);
-        if (rejectDuplicateHeaderKey && this.headers.keySet().contains(kva[0])) {
-          throw new SettingsMalformedException(
-              getName()+ " rule: you can't require the same header (" + kva[0] + ") to have two values at the same time!");
-        }
-        this.headers.put(kva[0], kva[1]);
-      }
-
-      // Only the header name should be lowercase (so it's compared case-insensitively)
-      this.flatHeaders = this.headers
-          .entrySet()
-          .stream()
-          .map(kv -> kv.getKey().toLowerCase() + ":" + kv.getValue())
-          .collect(Collectors.toSet());
-
-    }
-
-    public Map<String, String> getHeaders() {
-      return headers;
-    }
-
-    public Set<String> getFlatHeaders() {
-      return flatHeaders;
+      super(headersWithValue);
     }
 
     @Override
