@@ -25,13 +25,11 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.requestcontext.RequestContext;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -44,7 +42,7 @@ public class HeadersOrRuleTests {
   @Test
   public void testHeaderMultiShouldLogicalOr1() {
     RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1","value1");
+      put("headerkey1", "value1");
     }});
     assertTrue(res.isMatch());
   }
@@ -52,18 +50,19 @@ public class HeadersOrRuleTests {
   @Test
   public void testHeaderMultiShouldLogicalOr2() {
     RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1","value1");
-      put("headerkey2","value2");
+      put("headerkey1", "value1");
+      put("headerkey2", "value2");
     }});
     assertTrue(res.isMatch());
   }
+
   @Test
   public void testHeaderMultiShouldLogicalOr_extraheaders() {
     RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1","value1");
-      put("headerkey2","value2");
-      put("headerkey3","value3");
-      put("headerkey4","value4");
+      put("headerkey1", "value1");
+      put("headerkey2", "value2");
+      put("headerkey3", "value3");
+      put("headerkey4", "value4");
     }});
     assertTrue(res.isMatch());
   }
@@ -71,9 +70,9 @@ public class HeadersOrRuleTests {
   @Test
   public void testHeaderMultiShouldLogicalOr_subset() {
     RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1","value1");
-      put("headerkey3","value3");
-      put("headerkey4","value4");
+      put("headerkey1", "value1");
+      put("headerkey3", "value3");
+      put("headerkey4", "value4");
     }});
     assertTrue(res.isMatch());
   }
@@ -81,7 +80,7 @@ public class HeadersOrRuleTests {
   @Test
   public void testConfigureMultipleTimesSameHeader() {
     RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey1:value2"), new HashMap() {{
-      put("headerkey1","value1");
+      put("headerkey1", "value1");
     }});
     assertTrue(res.isMatch());
   }

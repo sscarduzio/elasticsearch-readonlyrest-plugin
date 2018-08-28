@@ -21,7 +21,6 @@ import java.util.Set;
 
 /**
  * Created by sscarduzio on 14/02/2016.
- *
  * This is a clone of headers rule (now deprecated), as it also evaluates arguments in logical AND
  */
 public class HeadersAndSyncRule extends HeadersSyncRule {

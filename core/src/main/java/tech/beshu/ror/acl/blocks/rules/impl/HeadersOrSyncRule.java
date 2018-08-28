@@ -38,7 +38,6 @@ public class HeadersOrSyncRule extends HeadersSyncRule {
 
   /**
    * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
-   *
    * This is an OR evaluated variant of {@link HeadersAndSyncRule}
    *
    * @param rc the RequestContext
@@ -50,7 +49,7 @@ public class HeadersOrSyncRule extends HeadersSyncRule {
     Map<String, String> subsetHeaders = new HashMap<>(allowedHeaders.size());
     for (Map.Entry<String, String> kv : rc.getHeaders().entrySet()) {
       String lowerCaseKey = kv.getKey().toLowerCase();
-      if (allowedHeaders.containsKey(lowerCaseKey)) {
+      if (allowedHeaders.contains(lowerCaseKey)) {
         subsetHeaders.put(lowerCaseKey, kv.getValue());
       }
     }
@@ -79,10 +78,14 @@ public class HeadersOrSyncRule extends HeadersSyncRule {
 
   public static class Settings extends HeadersSyncRule.Settings {
     public static final String ATTRIBUTE_NAME = "headers_or";
-    protected boolean rejectDuplicateHeaderKey = false;
 
     public Settings(Set<String> headersWithValue) {
       super(headersWithValue);
+    }
+
+    @Override
+    protected boolean shouldRejectDuplicateHeaderKey() {
+      return false;
     }
 
     @Override

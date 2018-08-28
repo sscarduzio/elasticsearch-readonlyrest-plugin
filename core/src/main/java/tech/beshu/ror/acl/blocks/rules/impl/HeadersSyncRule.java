@@ -17,6 +17,8 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
@@ -34,11 +36,11 @@ import java.util.stream.Collectors;
  */
 public class HeadersSyncRule extends SyncRule {
 
-  protected final Map<String, String> allowedHeaders;
+  protected final  Set<String> allowedHeaders;
   protected final Settings settings;
 
   public HeadersSyncRule(Settings s) {
-    this.allowedHeaders = s.getHeaders();
+    this.allowedHeaders = s.getHeaderKeys();
     this.settings = s;
   }
 
@@ -54,7 +56,7 @@ public class HeadersSyncRule extends SyncRule {
     Map<String, String> subsetHeaders = new HashMap<>(allowedHeaders.size());
     for (Map.Entry<String, String> kv : rc.getHeaders().entrySet()) {
       String lowerCaseKey = kv.getKey().toLowerCase();
-      if (allowedHeaders.containsKey(lowerCaseKey)) {
+      if (allowedHeaders.contains(lowerCaseKey)) {
         subsetHeaders.put(lowerCaseKey, kv.getValue());
       }
     }
@@ -83,9 +85,8 @@ public class HeadersSyncRule extends SyncRule {
 
   public static class Settings implements RuleSettings {
     public static final String ATTRIBUTE_NAME = "headers";
-    private final Map<String, String> headers;
+    private final Map<String, Set<String>> headers;
     private final Set<String> flatHeaders;
-    protected boolean rejectDuplicateHeaderKey = true;
 
     public Settings(Set<String> headersWithValue) {
       headersWithValue.stream().filter(x -> !x.contains(":")).findFirst().ifPresent(x -> {
@@ -94,24 +95,36 @@ public class HeadersSyncRule extends SyncRule {
       this.headers = new HashMap(headersWithValue.size());
       for (String kv : headersWithValue) {
         String[] kva = kv.toLowerCase().split(":", 2);
-        if (rejectDuplicateHeaderKey && this.headers.keySet().contains(kva[0])) {
+        if (shouldRejectDuplicateHeaderKey() && this.headers.keySet().contains(kva[0])) {
           throw new SettingsMalformedException(
-              getName()+ " rule: you can't require the same header (" + kva[0] + ") to have two values at the same time!");
+              getName() + " rule: you can't require the same header (" + kva[0] + ") to have two values at the same time!");
         }
-        this.headers.put(kva[0], kva[1]);
+        if (Strings.isNullOrEmpty(kva[0])) {
+          continue;
+        }
+        Set<String> valueSet = headers.get(kva[0]);
+        if(valueSet == null){
+          valueSet = Sets.newHashSet();
+        }
+        valueSet.add(kva[1]);
+        this.headers.put(kva[0], valueSet);
       }
 
       // Only the header name should be lowercase (so it's compared case-insensitively)
       this.flatHeaders = this.headers
           .entrySet()
           .stream()
-          .map(kv -> kv.getKey().toLowerCase() + ":" + kv.getValue())
+          .flatMap(kv -> kv.getValue().stream().map(val -> kv.getKey().toLowerCase() + ":" + val))
           .collect(Collectors.toSet());
 
     }
 
-    public Map<String, String> getHeaders() {
-      return headers;
+    protected boolean shouldRejectDuplicateHeaderKey() {
+      return true;
+    }
+
+    public Set<String> getHeaderKeys() {
+      return headers.keySet();
     }
 
     public Set<String> getFlatHeaders() {

@@ -135,7 +135,6 @@ public class HeadersAndRuleTests {
       assertEquals("should have thrown!", "");
     }
     catch(SettingsMalformedException sme){
-      sme.printStackTrace();
       assertEquals(sme.getClass().getName(), SettingsMalformedException.class.getName());
     }
 
