@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es;
 
+import com.google.common.base.Strings;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
@@ -43,7 +44,8 @@ public class ResponseActionListener implements ActionListener<ActionResponse> {
 
   @Override
   public void onResponse(ActionResponse actionResponse) {
-    if(Constants.REST_METADATA_PATH.equals(requestContext.getUri())) {
+    String uri = requestContext.getUri();
+    if(!Strings.isNullOrEmpty(uri) && uri.startsWith(Constants.REST_METADATA_PATH)) {
       baseListener.onResponse(new RRMetadataResponse(requestContext));
       return;
     }

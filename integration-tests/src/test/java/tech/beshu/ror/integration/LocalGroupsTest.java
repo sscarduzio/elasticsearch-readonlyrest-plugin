@@ -18,8 +18,15 @@
 package tech.beshu.ror.integration;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
 import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.commons.Constants;
@@ -27,8 +34,13 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -112,6 +124,26 @@ public class LocalGroupsTest {
         200,
         mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
     );
+  }
+
+  @Test
+  public void testIdentityRetrieval() throws Exception {
+
+    HttpResponse response = mkRequest("user", "passwd", Constants.REST_METADATA_PATH);
+    assertEquals(response.getStatusLine().getStatusCode(), 200);
+    Type type = new TypeToken<Map<String, Object>>() {
+    }.getType();
+
+    Map<String, Object> bodyMap = new Gson().fromJson(EntityUtils.toString(response.getEntity()), type);
+    assertEquals(".kibana_user", bodyMap.get(Constants.HEADER_KIBANA_INDEX));
+    assertEquals("user", bodyMap.get(Constants.HEADER_USER_ROR));
+    assertEquals("[timelion]", bodyMap.get(Constants.HEADER_KIBANA_HIDDEN_APPS).toString());
+    assertEquals("admin", bodyMap.get(Constants.HEADER_KIBANA_ACCESS));
+    assertEquals("testgroup", bodyMap.get(Constants.HEADER_GROUP_CURRENT));
+    assertTrue( bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("testgroup"));
+    assertTrue( bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("extra_group"));
+    assertTrue( bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("foogroup"));
+
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {

@@ -26,14 +26,12 @@ readonlyrest:
 
   - name: R3
     groups: ["testgroup"]
-    uri_re: ".*nodes.*"
     kibana_index: ".kibana_@{user}"
     kibana_hide_apps: ["timelion"]
     kibana_access: admin
 
   - name: R4
     groups: ["foogroup"]
-    uri_re: ".*nodes.*"
     kibana_index: ".kibana_foogroup"
     kibana_hide_apps: ["foo:app"]
     kibana_access: admin

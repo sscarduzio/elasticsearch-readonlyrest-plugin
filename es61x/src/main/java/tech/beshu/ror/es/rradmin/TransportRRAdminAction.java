@@ -31,10 +31,12 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsUtils;
+import tech.beshu.ror.es.ResponseActionListener;
 import tech.beshu.ror.es.SettingsObservableImpl;
 
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_FILE_PATH;
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
+import static tech.beshu.ror.commons.Constants.REST_METADATA_PATH;
 import static tech.beshu.ror.commons.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
@@ -42,13 +44,12 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   private final NodeClient client;
   private final SettingsObservableImpl settingsObservable;
 
-
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
-                                ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-                                NodeClient client, SettingsObservableImpl settingsObservable) {
+      ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
+      NodeClient client, SettingsObservableImpl settingsObservable) {
     super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
-          RRAdminRequest::new
+        RRAdminRequest::new
     );
     this.client = client;
     this.settingsObservable = settingsObservable;
@@ -78,17 +79,18 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
             return;
           }
           // Can throw SettingsMalformedException
-          settingsObservable.refreshFromStringAndPersist(new RawSettings(SettingsUtils.extractYAMLfromJSONStorage(body), settingsObservable.getCurrent().getLogger()), new FutureCallback() {
-            @Override
-            public void onSuccess(Object result) {
-              listener.onResponse(new RRAdminResponse("updated settings"));
-            }
+          settingsObservable.refreshFromStringAndPersist(
+              new RawSettings(SettingsUtils.extractYAMLfromJSONStorage(body), settingsObservable.getCurrent().getLogger()), new FutureCallback() {
+                @Override
+                public void onSuccess(Object result) {
+                  listener.onResponse(new RRAdminResponse("updated settings"));
+                }
 
-            @Override
-            public void onFailure(Throwable t) {
-              listener.onFailure(new Exception("could not update settings ", t));
-            }
-          });
+                @Override
+                public void onFailure(Throwable t) {
+                  listener.onFailure(new Exception("could not update settings ", t));
+                }
+              });
           return;
         }
       }
@@ -106,6 +108,10 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
         if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
           String currentSettingsYAML = settingsObservable.getCurrent().yaml();
           listener.onResponse(new RRAdminResponse(currentSettingsYAML));
+          return;
+        }
+        if (REST_METADATA_PATH.equals(normalisePath(path))) {
+          listener.onResponse(new RRAdminResponse("will be filled in " + ResponseActionListener.class.getSimpleName()));
           return;
         }
       }
