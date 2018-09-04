@@ -19,24 +19,24 @@ readonlyrest:
   - name: R1
     groups: ["nonexisting"]
 
-
   - name: R2
     groups: ["extra_group"]
+    actions: ["cluster:*"]
     uri_re: "lol don't match here pls"
 
   - name: R3
     groups: ["testgroup"]
+    actions: ["cluster:*"]
     kibana_index: ".kibana_@{user}"
     kibana_hide_apps: ["timelion"]
     kibana_access: admin
 
   - name: R4
     groups: ["foogroup"]
+    actions: ["cluster:*"]
     kibana_index: ".kibana_foogroup"
     kibana_hide_apps: ["foo:app"]
     kibana_access: admin
-
-
 
   users:
   - username: user
