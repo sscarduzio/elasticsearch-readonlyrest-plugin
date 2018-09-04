@@ -31,6 +31,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsUtils;
+import tech.beshu.ror.es.ResponseActionListener;
 import tech.beshu.ror.es.SettingsObservableImpl;
 
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_FILE_PATH;
@@ -112,6 +113,10 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
         // This route just needs to exist
         if (REST_METADATA_PATH.equals(normalisePath(path))) {
           listener.onResponse(new RRAdminResponse("<placeholder>"));
+          return;
+        }
+        if (REST_METADATA_PATH.equals(normalisePath(path))) {
+          listener.onResponse(new RRAdminResponse("will be filled in " + ResponseActionListener.class.getSimpleName()));
           return;
         }
       }

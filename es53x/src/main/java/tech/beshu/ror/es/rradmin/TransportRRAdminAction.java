@@ -31,10 +31,12 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsUtils;
+import tech.beshu.ror.es.ResponseActionListener;
 import tech.beshu.ror.es.SettingsObservableImpl;
 
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_FILE_PATH;
 import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
+import static tech.beshu.ror.commons.Constants.REST_METADATA_PATH;
 import static tech.beshu.ror.commons.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
@@ -107,6 +109,10 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
         if (REST_CONFIGURATION_PATH.equals(normalisePath(path))) {
           String currentSettingsYAML = settingsObservable.getCurrent().yaml();
           listener.onResponse(new RRAdminResponse(currentSettingsYAML));
+          return;
+        }
+        if (REST_METADATA_PATH.equals(normalisePath(path))) {
+          listener.onResponse(new RRAdminResponse("will be filled in " + ResponseActionListener.class.getSimpleName()));
           return;
         }
       }
