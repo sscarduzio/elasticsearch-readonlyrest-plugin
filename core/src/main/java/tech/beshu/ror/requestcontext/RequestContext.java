@@ -43,8 +43,6 @@ import java.util.Set;
 
 public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 
-  private final static String X_KIBANA_INDEX_HEADER = "x-ror-kibana_index";
-
   protected Transactional<Set<String>> indices;
   private Transactional<String> kibanaIndex;
   private Boolean doesInvolveIndices = false;
@@ -81,7 +79,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
       @Override
       public void onCommit(String value) {
-        setResponseHeader(X_KIBANA_INDEX_HEADER, value);
+        setResponseHeader(Constants.HEADER_KIBANA_INDEX, value);
       }
 
       @Override
@@ -91,6 +89,12 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     };
 
     this.requestHeaders = extractRequestHeaders();
+
+    String curGroup = requestHeaders.get(Constants.HEADER_GROUP_CURRENT);
+    if (curGroup != null && curGroup.contains(",")) {
+      throw context.rorException("Current groups contains more than one values: " + curGroup);
+    }
+
     variablesManager = new VariablesManager(this.requestHeaders, this, context);
 
     this.responseHeaders = new Transactional<Map<String, String>>("rc-resp-headers", context) {
@@ -389,13 +393,13 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     String theHeaders;
     if (!isDebug()) {
       // We need to copy the original headers map so we don't change it by sanitising it
-      Map<String,String> originalHeaders = getHeaders();
+      Map<String, String> originalHeaders = getHeaders();
       Map<String, String> hdrs = new HashMap<>(originalHeaders.size());
       hdrs.putAll(getHeaders());
 
       // Sanitize credentials leaks in non-debug logs
-      Map<String,String> sanitized = Maps.newHashMap();
-      for ( Map.Entry<String,String> ks : hdrs.entrySet()) {
+      Map<String, String> sanitized = Maps.newHashMap();
+      for (Map.Entry<String, String> ks : hdrs.entrySet()) {
         String key = ks.getKey();
         if ("Authorization".equalsIgnoreCase(key)) {
           sanitized.put(key, "<OMITTED>");
@@ -426,26 +430,45 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     }
 
     return new StringBuilder()
-      .append("{ ID:").append(getId())
-      .append(", TYP:").append(getType())
-      .append(", CGR:").append(currentGroup)
-      .append(", USR:").append(loggedInUser.isPresent() ? loggedInUser.get() : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]")))
-      .append(", BRS:").append(!Strings.isNullOrEmpty(getHeaders().get("User-Agent")))
-      .append(", KDX:").append(kibanaIndex.get())
-      .append(", ACT:").append(getAction()).append(", OA:")
+        .append("{ ID:")
+        .append(getId())
+        .append(", TYP:")
+        .append(getType())
+        .append(", CGR:")
+        .append(currentGroup)
+        .append(", USR:")
+        .append(
+            loggedInUser.isPresent() ? loggedInUser.get() : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]")))
+        .append(", BRS:")
+        .append(!Strings.isNullOrEmpty(getHeaders().get("User-Agent")))
+        .append(", KDX:")
+        .append(kibanaIndex.get())
+        .append(", ACT:")
+        .append(getAction())
+        .append(", OA:")
         .append(getRemoteAddress())
-      .append(", DA:").append(getLocalAddress())
-      .append(", IDX:").append(theIndices)
-      .append(", MET:").append(getMethod())
-      .append(", PTH:").append(getUri())
-      .append(", CNT:").append(content)
-      .append(", HDR:").append(theHeaders)
-      .append(", HIS:").append(hist)
-      .append(" }").toString();
+        .append(", DA:")
+        .append(getLocalAddress())
+        .append(", IDX:")
+        .append(theIndices)
+        .append(", MET:")
+        .append(getMethod())
+        .append(", PTH:")
+        .append(getUri())
+        .append(", CNT:")
+        .append(content)
+        .append(", HDR:")
+        .append(theHeaders)
+        .append(", HIS:")
+        .append(hist)
+        .append(" }")
+        .toString();
   }
 
-
   public boolean isReadRequest() {
+    if(Constants.REST_METADATA_PATH.equals(getUri()) && HttpMethod.GET.equals(getMethod())){
+      return true;
+    }
     return extractIsReadRequest();
   }
 

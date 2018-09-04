@@ -37,6 +37,7 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -47,6 +48,7 @@ import static tech.beshu.ror.utils.containers.ContainerUtils.checkTimeout;
 public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonlyRestContainer> {
 
   private static Logger logger = LogManager.getLogger(ESWithReadonlyRestContainer.class);
+  private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   private static int ES_PORT = 9200;
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
@@ -84,7 +86,8 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     String log4j2FileName = "log4j2.properties";
     String keystoreFileName = "keystore.jks";
 
-    logger.info("Creating ES container ...");
+    logger.info(sdf.format(System.currentTimeMillis()) + " Creating ES container ...");
+
     ESWithReadonlyRestContainer container = new ESWithReadonlyRestContainer(
         project.getESVersion(),
         new ImageFromDockerfile()
@@ -122,7 +125,14 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
     );
     return container
-        .withLogConsumer((l) -> System.out.print(l.getUtf8String()))
+        .withLogConsumer((l) -> {
+          String logLine = new StringBuilder(3)
+              .append(sdf.format(System.currentTimeMillis()))
+              .append(" ")
+              .append(l.getUtf8String())
+              .toString();
+          System.out.print(logLine);
+        })
         .withExposedPorts(ES_PORT)
         .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 

@@ -19,6 +19,8 @@ package tech.beshu.ror.settings;
 
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
@@ -51,6 +53,7 @@ import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
 import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
 import tech.beshu.ror.settings.rules.UriReRuleSettings;
@@ -96,6 +99,8 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
     creators.put(MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
     creators.put(HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
+    creators.put(HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
+    creators.put(HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
     creators.put(ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
     creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
@@ -120,6 +125,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
     creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
 
     this.ruleSettingsCreators = creators;
   }
@@ -199,6 +205,19 @@ public class RulesSettingsCreatorsRegistry {
   private Supplier<RuleSettings> headersSettingsCreator(RawSettings blockSettings) {
     return () -> new HeadersSyncRule.Settings(
         (Set<String>) blockSettings.notEmptySetReq(HeadersSyncRule.Settings.ATTRIBUTE_NAME)
+    );
+  }
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> headersOrSettingsCreator(RawSettings blockSettings) {
+    return () -> new HeadersOrSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(HeadersOrSyncRule.Settings.ATTRIBUTE_NAME)
+    );
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> headersAndSettingsCreator(RawSettings blockSettings) {
+    return () -> new HeadersAndSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(HeadersAndSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
@@ -347,6 +366,12 @@ public class RulesSettingsCreatorsRegistry {
   private Supplier<RuleSettings> jwtAuthSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
     return authRuleFrom(JwtAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Supplier<RuleSettings> rorKbnAuthSettingsCreator(RawSettings blockSettings,
+      AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
+    return authRuleFrom(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   private Supplier<RuleSettings> authRuleFrom(String attribute, RawSettings settings,

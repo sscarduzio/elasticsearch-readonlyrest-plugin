@@ -41,6 +41,7 @@ import tech.beshu.ror.requestcontext.SerializationTool;
 import tech.beshu.ror.settings.RorSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -125,6 +126,10 @@ public class ACL {
       }
     }
     return false;
+  }
+
+  public ESContext getContext() {
+    return context;
   }
 
   private void doLog(ResponseContext res) {
@@ -291,6 +296,8 @@ public class ACL {
 
       @Override
       protected void commitResponseHeaders(Map<String, String> hmap) {
+        // Setting headers with null value makes a mess in Netty
+        hmap.values().removeAll(Collections.singleton(null));
         rInfo.writeResponseHeaders(hmap);
       }
 

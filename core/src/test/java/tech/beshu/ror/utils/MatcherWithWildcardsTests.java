@@ -21,6 +21,8 @@ import com.google.common.collect.Sets;
 import org.junit.Test;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 
+import java.util.Set;
+
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -33,6 +35,12 @@ public class MatcherWithWildcardsTests {
   public void testMatchSimpleString() {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
     assertTrue(m.match("a"));
+  }
+
+  @Test
+  public void testMatchSimpleString2() {
+    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a", "b*"));
+    assertTrue(m.match("b"));
   }
 
   @Test
@@ -84,4 +92,23 @@ public class MatcherWithWildcardsTests {
     MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("perf*mon_my_test*"));
     assertTrue(m.match("perfmon_my_test1"));
   }
+
+  @Test
+  public void testMatchingMatchers() {
+    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a*", "b*"));
+    Set<String> matchedMatchers = m.matchingMatchers(Sets.newHashSet("asd"));
+    assertTrue(matchedMatchers.contains("a*"));
+    assertFalse(matchedMatchers.contains("b*"));
+    assertTrue(matchedMatchers.size() == 1);
+  }
+
+  @Test
+  public void testMatchingMatchersMulti() {
+    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("a*", "b*", "z"));
+    Set<String> matchedMatchers = m.matchingMatchers(Sets.newHashSet("asd", "bsd", "xxx"));
+    assertTrue(matchedMatchers.contains("a*"));
+    assertTrue(matchedMatchers.contains("b*"));
+    assertTrue(matchedMatchers.size() == 2);
+  }
+
 }

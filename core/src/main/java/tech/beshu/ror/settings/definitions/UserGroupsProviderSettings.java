@@ -14,9 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.definitions;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.httpclient.HttpMethod;
@@ -28,6 +30,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class UserGroupsProviderSettings implements CacheSettings, NamedSettings {
@@ -51,6 +54,7 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   private final ImmutableMap<String, String> defaultHeaders;
   private final ImmutableMap<String, String> defaultQueryParameters;
   private final HttpMethod method;
+  private final Map<String, Set<String>> user2availGroups = Maps.newHashMap();
   private Function<LinkedHashMap<String, Object>, ImmutableMap<String, String>> toMap = (map) -> {
     Map<String, String> tempMap = new HashMap<>();
     map.entrySet().forEach(e -> tempMap.put(e.getKey(), String.valueOf(e.getValue())));
@@ -68,8 +72,12 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
         (LinkedHashMap) settings.asMap().get(DEFAULT_HEADERS)) : ImmutableMap.<String, String>of();
     this.defaultQueryParameters = settings.stringOpt(DEFAULT_HEADERS).isPresent() ? toMap.apply(
         (LinkedHashMap) settings.asMap().get(DEFAULT_QUERY_PARAMS)) : ImmutableMap.<String, String>of();
-    this.method = settings.opt(HTTP_METHOD).isPresent()?httpMethodFromString(settings.stringReq(HTTP_METHOD)):
+    this.method = settings.opt(HTTP_METHOD).isPresent() ? httpMethodFromString(settings.stringReq(HTTP_METHOD)) :
         HttpMethod.GET;
+  }
+
+  public Map<String, Set<String>> getUser2availGroups() {
+    return user2availGroups;
   }
 
   @Override
@@ -113,10 +121,6 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
     return method.equalsIgnoreCase("post") ? HttpMethod.POST : HttpMethod.GET;
   }
 
-  public enum TokenPassingMethod {
-    QUERY, HEADER
-  }
-
   public ImmutableMap<String, String> getDefaultHeaders() {
     return defaultHeaders;
   }
@@ -127,5 +131,9 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
 
   public HttpMethod getMethod() {
     return method;
+  }
+
+  public enum TokenPassingMethod {
+    QUERY, HEADER
   }
 }

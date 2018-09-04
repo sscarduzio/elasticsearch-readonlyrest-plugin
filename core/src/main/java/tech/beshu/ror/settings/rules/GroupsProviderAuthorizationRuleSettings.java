@@ -14,14 +14,18 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 
 public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, CacheSettings {
@@ -30,6 +34,7 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, Ca
 
   private static final String GROUPS_PROVIDER_NAME = "user_groups_provider";
   private static final String GROUPS = "groups";
+  private static final String USERS = "users";
   private static final String CACHE = "cache_ttl_in_sec";
 
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
@@ -37,23 +42,46 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, Ca
   private final Set<String> groups;
   private final Duration cacheTtl;
   private final UserGroupsProviderSettings userGroupsProviderSettings;
+  private final Set<String> users;
 
-  private GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Duration cacheTtl) {
+  private GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Set<String> users, Duration cacheTtl) {
     this.groups = groups;
+    this.users = users;
     this.cacheTtl = cacheTtl;
     this.userGroupsProviderSettings = settings;
+
+    // Map merging
+    Map<String, Set<String>> newUser2availGroups = Maps.newHashMap();
+    Map<String, Set<String>> user2availGroups = userGroupsProviderSettings.getUser2availGroups();
+    for (String user : users) {
+      Set<String> groupsOfUser = user2availGroups.get(user);
+      if (groupsOfUser != null) {
+        groupsOfUser.addAll(groups);
+      }
+      else {
+        groupsOfUser = Sets.newHashSet(groups);
+      }
+      newUser2availGroups.put(user, groupsOfUser);
+    }
+    user2availGroups.putAll(newUser2availGroups);
   }
 
   @SuppressWarnings("unchecked")
   public static GroupsProviderAuthorizationRuleSettings from(RawSettings settings,
-                                                             UserGroupsProviderSettingsCollection groupsProviderSettingsCollection) {
+      UserGroupsProviderSettingsCollection groupsProviderSettingsCollection) {
     String providerName = settings.stringReq(GROUPS_PROVIDER_NAME);
     Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
+    Set<String> users = (Set<String>) settings.notEmptySetOpt(USERS).orElse(Sets.newHashSet("*"));
     return new GroupsProviderAuthorizationRuleSettings(
-      groupsProviderSettingsCollection.get(providerName),
-      groups,
-      settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
+        groupsProviderSettingsCollection.get(providerName),
+        groups,
+        users,
+        settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
+  }
+
+  public Set<String> getUsers() {
+    return users;
   }
 
   @Override

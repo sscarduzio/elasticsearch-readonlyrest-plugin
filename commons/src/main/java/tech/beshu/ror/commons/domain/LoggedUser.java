@@ -20,6 +20,7 @@ package tech.beshu.ror.commons.domain;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.commons.Constants;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -28,7 +29,7 @@ import java.util.Set;
 public class LoggedUser {
 
   private final String id;
-  private final Set<String> availableGroups = Sets.newHashSet();
+  private final LinkedHashSet<String> availableGroups = Sets.newLinkedHashSet();
   private Optional<String> currentGroup = Optional.empty();
 
   public LoggedUser(String id) {

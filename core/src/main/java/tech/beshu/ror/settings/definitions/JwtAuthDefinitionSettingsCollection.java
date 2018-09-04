@@ -32,7 +32,7 @@ import static org.jooq.lambda.Seq.seq;
  * @author Datasweet <contact@datasweet.fr>
  */
 public class JwtAuthDefinitionSettingsCollection {
-  public static final String ATTRIBUTE_NAME = "jwt";
+  private static final String ATTRIBUTE_NAME = "jwt";
 
   private final Map<String, JwtAuthDefinitionSettings> jwtAuthConfigsSettingsMap;
 

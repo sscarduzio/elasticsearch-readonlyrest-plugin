@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings;
 
 import com.google.common.collect.ImmutableList;
@@ -25,6 +26,7 @@ import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
 
@@ -72,29 +74,31 @@ public class RorSettings {
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
     ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection = ExternalAuthenticationServiceSettingsCollection.from(raw);
     JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection = JwtAuthDefinitionSettingsCollection.from(raw);
+    RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection = RorKbnAuthDefinitionSettingsCollection.from(raw);
     AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(
-      proxyAuthDefinitionSettingsCollection,
-      ldapSettingsCollection,
-      jwtAuthDefinitionSettingsCollection
+        proxyAuthDefinitionSettingsCollection,
+        ldapSettingsCollection,
+        jwtAuthDefinitionSettingsCollection,
+        rorKbnAuthDefinitionSettingsCollection
     );
 
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt(BlockSettings.ATTRIBUTE_NAME).orElse(DEFAULT_BLOCK_SETTINGS).stream()
-      .map(block -> BlockSettings.from(
-        new RawSettings((Map<String, ?>) block, raw.getLogger()),
-        authMethodCreatorsRegistry,
-        ldapSettingsCollection,
-        userGroupsProviderSettingsCollection,
-        externalAuthenticationServiceSettingsCollection,
-        UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
-      ))
-      .collect(Collectors.toList());
+                             .map(block -> BlockSettings.from(
+                                 new RawSettings((Map<String, ?>) block, raw.getLogger()),
+                                 authMethodCreatorsRegistry,
+                                 ldapSettingsCollection,
+                                 userGroupsProviderSettingsCollection,
+                                 externalAuthenticationServiceSettingsCollection,
+                                 UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
+                             ))
+                             .collect(Collectors.toList());
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
     this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);
     this.verbosity = raw.stringOpt(VERBOSITY)
-      .map(value -> Verbosity.fromString(value)
-        .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
-      .orElse(DEFAULT_VERBOSITY);
+                        .map(value -> Verbosity.fromString(value)
+                            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
+                        .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
 
     // SSL

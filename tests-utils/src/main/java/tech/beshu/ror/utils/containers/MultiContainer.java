@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.utils.containers;
 
 import com.google.common.collect.ImmutableList;
@@ -23,6 +24,7 @@ import org.junit.runner.Description;
 import org.testcontainers.containers.FailureDetectingExternalResource;
 import org.testcontainers.containers.GenericContainer;
 
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +34,12 @@ import java.util.stream.Collectors;
 
 public class MultiContainer extends FailureDetectingExternalResource {
 
+  private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   private ImmutableMap<String, NamedContainer> containers;
 
   public MultiContainer(Map<String, Supplier<GenericContainer<?>>> containerCreators) {
-    List<NamedContainer> namedContainers = containerCreators.entrySet().stream()
+    List<NamedContainer> namedContainers = containerCreators
+        .entrySet().stream()
         .map(entry -> new NamedContainer(entry.getKey(), entry.getValue().get()))
         .collect(Collectors.toList());
     this.containers = Maps.uniqueIndex(namedContainers, NamedContainer::getName);
@@ -43,6 +47,11 @@ public class MultiContainer extends FailureDetectingExternalResource {
 
   @Override
   protected void starting(Description description) {
+    System.out.println(
+        sdf.format(System.currentTimeMillis()) +
+            " >>> Starting Multicontainer " +
+            this.containers.keySet());
+
     this.containers.values().forEach(c -> c.getContainer().start());
   }
 
