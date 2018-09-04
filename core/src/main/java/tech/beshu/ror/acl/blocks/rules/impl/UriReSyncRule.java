@@ -20,10 +20,13 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.UriReRuleSettings;
+import tech.beshu.ror.settings.RuleSettings;
 
+import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -31,9 +34,9 @@ import java.util.regex.Pattern;
 public class UriReSyncRule extends SyncRule {
 
   private final Value<Pattern> uri_re;
-  private final UriReRuleSettings settings;
+  private final Settings settings;
 
-  public UriReSyncRule(UriReRuleSettings s) {
+  public UriReSyncRule(Settings s) {
     this.uri_re = s.getPattern();
     this.settings = s;
   }
@@ -41,12 +44,42 @@ public class UriReSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(RequestContext rc) {
     return uri_re.getValue(rc)
-      .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
-      .orElse(NO_MATCH);
+                 .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
+                 .orElse(NO_MATCH);
   }
 
   @Override
   public String getKey() {
     return settings.getName();
+  }
+
+  public static class Settings implements RuleSettings {
+
+    public static final String ATTRIBUTE_NAME = "uri_re";
+    private static Function<String, Pattern> patternFromString = value -> {
+      try {
+        return Pattern.compile(value);
+      } catch (PatternSyntaxException e) {
+        throw new SettingsMalformedException("invalid 'uri_re' regexp", e);
+      }
+    };
+    private final Value<Pattern> pattern;
+
+    private Settings(Value<Pattern> pattern) {
+      this.pattern = pattern;
+    }
+
+    public static UriReSyncRule.Settings from(String value) {
+      return new Settings(Value.fromString(value, patternFromString));
+    }
+
+    public Value<Pattern> getPattern() {
+      return pattern;
+    }
+
+    @Override
+    public String getName() {
+      return ATTRIBUTE_NAME;
+    }
   }
 }

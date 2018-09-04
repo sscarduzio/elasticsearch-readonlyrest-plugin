@@ -17,35 +17,61 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
-import tech.beshu.ror.commons.settings.SettingsMalformedException;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class UriReSyncRule extends SyncRule {
+public class UsersSyncRule extends SyncRule {
 
-  private final Value<Pattern> uri_re;
   private final Settings settings;
+  private final MatcherWithWildcards matcherNoVar;
 
-  public UriReSyncRule(Settings s) {
-    this.uri_re = s.getPattern();
+  public UsersSyncRule(Settings s) {
+    if (!s.hasVariables()) {
+      this.matcherNoVar = new MatcherWithWildcards(s.getPatternsUnwrapped());
+    }
+    else {
+      this.matcherNoVar = null;
+    }
+
     this.settings = s;
+
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    return uri_re.getValue(rc)
-                 .map(re -> re.matcher(rc.getUri()).find() ? MATCH : NO_MATCH)
-                 .orElse(NO_MATCH);
+    if (!rc.getLoggedInUser().isPresent() || Strings.isNullOrEmpty(rc.getLoggedInUser().get().getId())) {
+      return NO_MATCH;
+    }
+    String resolvedUser = rc.getLoggedInUser().get().getId();
+    if (matcherNoVar != null) {
+      return matcherNoVar.match(resolvedUser) ? MATCH : NO_MATCH;
+    }
+
+    Set<String> allowedUsers = settings
+        .getPatterns()
+        .stream()
+        .map(v -> v.getValue(rc))
+        .flatMap(o -> o.isPresent() ? Stream.of(o.get()) : Stream.empty())
+        .collect(Collectors.toSet());
+
+    return new MatcherWithWildcards(allowedUsers).match(resolvedUser) ? MATCH : NO_MATCH;
+
   }
 
   @Override
@@ -55,26 +81,34 @@ public class UriReSyncRule extends SyncRule {
 
   public static class Settings implements RuleSettings {
 
-    public static final String ATTRIBUTE_NAME = "uri_re";
-    private static Function<String, Pattern> patternFromString = value -> {
-      try {
-        return Pattern.compile(value);
-      } catch (PatternSyntaxException e) {
-        throw new SettingsMalformedException("invalid 'uri_re' regexp", e);
-      }
-    };
-    private final Value<Pattern> pattern;
+    public static final String ATTRIBUTE_NAME = "users";
+    private final boolean containsVariables;
+    private final Set<Value<String>> patterns;
+    private Set<String> patternsUnwrapped;
 
-    private Settings(Value<Pattern> pattern) {
-      this.pattern = pattern;
+    public Settings(Set<String> patterns) {
+      this.containsVariables = patterns.stream().filter(i -> i.contains("@{")).findFirst().isPresent();
+      this.patternsUnwrapped = patterns;
+      this.patterns = patternsUnwrapped.stream()
+                                       .map(i -> Value.fromString(i, Function.identity()))
+                                       .collect(Collectors.toSet());
+
     }
 
-    public static UriReSyncRule.Settings from(String value) {
-      return new Settings(Value.fromString(value, patternFromString));
+    public static UsersSyncRule.Settings from(List<String> patterns) {
+      return new Settings(Sets.newHashSet(patterns));
     }
 
-    public Value<Pattern> getPattern() {
-      return pattern;
+    public Set<Value<String>> getPatterns() {
+      return patterns;
+    }
+
+    public Set<String> getPatternsUnwrapped() {
+      return patternsUnwrapped;
+    }
+
+    public boolean hasVariables() {
+      return containsVariables;
     }
 
     @Override

@@ -17,84 +17,61 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.requestcontext.RequestContext;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.Optional;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
- * Created by sscarduzio on 23/05/2018.
+ * Created by sscarduzio on 04/09/2018.
  */
 
-public class HeadersOrRuleTests {
+public class UsersRuleTests {
 
   @Test
-  public void testHeaderMultiShouldLogicalOr1() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1", "value1");
-    }});
+  public void testSimpleMatch() {
+    RuleExitResult res = match(Lists.newArrayList("asd"), "asd");
     assertTrue(res.isMatch());
   }
 
   @Test
-  public void testHeaderMultiShouldLogicalOr2() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1", "value1");
-      put("headerkey2", "value2");
-    }});
+  public void testMismatch() {
+    RuleExitResult res = match(Lists.newArrayList("_asd"), "asd");
+    assertFalse(res.isMatch());
+  }
+
+  @Test
+  public void testWCmatch() {
+    RuleExitResult res = match(Lists.newArrayList("as*"), "asd");
     assertTrue(res.isMatch());
   }
 
   @Test
-  public void testHeaderMultiShouldLogicalOr_extraheaders() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1", "value1");
-      put("headerkey2", "value2");
-      put("headerkey3", "value3");
-      put("headerkey4", "value4");
-    }});
-    assertTrue(res.isMatch());
+  public void testWCMismatch() {
+    RuleExitResult res = match(Lists.newArrayList("as*"), "aXsd");
+    assertFalse(res.isMatch());
   }
 
-  @Test
-  public void testHeaderMultiShouldLogicalOr_subset() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1", "value1");
-      put("headerkey3", "value3");
-      put("headerkey4", "value4");
-    }});
-    assertTrue(res.isMatch());
+  private RuleExitResult match(List<String> configured, String found) {
+    return match(configured, found, Mockito.mock(RequestContext.class));
   }
 
-  @Test
-  public void testConfigureMultipleTimesSameHeader() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey1:value2"), new HashMap() {{
-      put("headerkey1", "value1");
-    }});
-    assertTrue(res.isMatch());
-  }
+  private RuleExitResult match(List<String> configured, String found, RequestContext rc) {
+    when(rc.getLoggedInUser()).thenReturn(Optional.ofNullable(Strings.isNullOrEmpty(found) ? null : new LoggedUser(found)));
 
-  private RuleExitResult match(List<String> configured, Map<String, String> found) {
-    Map<String, String> foundCaseInsensitive = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    foundCaseInsensitive.putAll(found);
-    return match(configured, foundCaseInsensitive, Mockito.mock(RequestContext.class));
-  }
-
-  private RuleExitResult match(List<String> configured, Map<String, String> found, RequestContext rc) {
-    when(rc.getHeaders()).thenReturn(found);
-
-    SyncRule r = new HeadersOrSyncRule(new HeadersOrSyncRule.Settings(Sets.newHashSet(configured)));
+    SyncRule r = new UsersSyncRule(new UsersSyncRule.Settings(Sets.newHashSet(configured)));
     return r.match(rc);
   }
 

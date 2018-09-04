@@ -52,6 +52,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.UsersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.utils.RulesUtils;
 
@@ -99,6 +100,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         IndicesSyncRule.class,
         ActionsSyncRule.class,
         SearchlogSyncRule.class,
+        UsersSyncRule.class,
 
         // all authorization rules should be placed before any authentication rule
         LdapAuthorizationAsyncRule.class,
