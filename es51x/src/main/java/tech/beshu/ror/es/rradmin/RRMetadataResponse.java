@@ -59,7 +59,7 @@ public class RRMetadataResponse extends ActionResponse implements ToXContent {
   public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
     Map<String, Object> sourceMap = Maps.newHashMap();
 
-    requestContext.getResponseHeaders().forEach((k,v) -> sourceMap.put(k,v));
+    sourceMap.putAll(requestContext.getResponseHeaders());
 
     requestContext.getLoggedInUser().ifPresent(u -> {
       sourceMap.put(Constants.HEADER_USER_ROR, u.getId());

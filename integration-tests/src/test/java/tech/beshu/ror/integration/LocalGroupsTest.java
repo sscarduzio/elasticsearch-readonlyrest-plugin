@@ -129,7 +129,9 @@ public class LocalGroupsTest {
     Type type = new TypeToken<Map<String, Object>>() {
     }.getType();
 
-    Map<String, Object> bodyMap = new Gson().fromJson(EntityUtils.toString(response.getEntity()), type);
+    String body = EntityUtils.toString(response.getEntity());
+    System.out.println("identity object: " + body);
+    Map<String, Object> bodyMap = new Gson().fromJson(body, type);
     assertEquals(".kibana_user", bodyMap.get(Constants.HEADER_KIBANA_INDEX));
     assertEquals("user", bodyMap.get(Constants.HEADER_USER_ROR));
     assertEquals("[timelion]", bodyMap.get(Constants.HEADER_KIBANA_HIDDEN_APPS).toString());
