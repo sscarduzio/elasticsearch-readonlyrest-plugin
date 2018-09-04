@@ -23,7 +23,9 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.mocks.MockedESContext;
+import tech.beshu.ror.mocks.RequestContextMock;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 
@@ -33,6 +35,7 @@ import java.util.Set;
 
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anySetOf;
 import static org.mockito.Mockito.when;
@@ -42,6 +45,36 @@ import static org.mockito.Mockito.when;
  */
 
 public class IndicesRuleTests {
+
+  @Test
+  public void test1() {
+    MatcherWithWildcards matcher = new MatcherWithWildcards(Sets.newHashSet("a*"));
+
+    Set<String> res = new ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("*"), matcher);
+    assertNotNull(res);
+    assertTrue(res.contains("a*"));
+    res = new ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("b"), matcher);
+    assertNotNull(res);
+    assertTrue(res.isEmpty());
+
+  }
+
+  @Test
+  public void test2() {
+    Set<String> res = new ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("a*"), new MatcherWithWildcards(Sets.newHashSet("a1*")));
+    assertNotNull(res);
+    assertTrue(res.contains("a1*"));
+    assertFalse(res.contains("a*"));
+  }
+
+  @Test
+  public void test3() {
+    MatcherWithWildcards matcher = new MatcherWithWildcards(Sets.newHashSet("b:*", "a*"));
+    Set<String> res = new ZeroKnowledgeIndexFilter(true).alterIndicesIfNecessary(Sets.newHashSet("*"), matcher);
+    assertNotNull(res);
+    assertTrue(res.contains("a*"));
+    assertFalse(res.contains("b:*"));
+  }
 
   @Test
   public void testSimpleIndex() {
@@ -75,26 +108,21 @@ public class IndicesRuleTests {
 
   @Test
   public void test152() {
-    RequestContext rc = Mockito.mock(RequestContext.class);
-    when(rc.isReadRequest()).thenReturn(true);
-    when(rc.involvesIndices()).thenReturn(true);
-    when(rc.getLoggedInUser()).thenReturn(Optional.empty());
 
-    Set<String> expandedIndicesResult = Sets.newHashSet(singletonList("another_index"));
-    when(rc.getExpandedIndices(anySetOf(String.class))).thenReturn(expandedIndicesResult);
-
-    when(rc.getAllIndicesAndAliases())
-        .thenReturn(Sets.newHashSet(Lists.newArrayList("perfmon-bfarm", "another_index")));
-
-    RuleExitResult res = match(
-        // Mocks:  indices: ["perfmon*"]
-        singletonList("perfmon*"),
-        // The incoming request is directed to "another_index"
-        singletonList("another_index"),
-        rc
+    RequestContext rc = RequestContextMock.mkSearchRequest(
+      Sets.newHashSet("another_index"),
+      Sets.newHashSet("perfmon-bfarm", "another_index"),
+      Sets.newHashSet("another_index")
     );
 
-    // Should be a NO_MATCH
+    SyncRule r = new IndicesSyncRule(
+      // Mocks:  indices: ["perfmon*"]
+      IndicesRuleSettings.from(Sets.newHashSet(Sets.newHashSet("perfmon*"))),
+      MockedESContext.INSTANCE
+    );
+
+    RuleExitResult res = r.match(rc);
+
     assertFalse(res.isMatch());
   }
 
@@ -106,6 +134,7 @@ public class IndicesRuleTests {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);
+    when(rc.getAction()).thenReturn("indices:data/read/search");
     when(rc.isReadRequest()).thenReturn(true);
 
     SyncRule r = new IndicesSyncRule(

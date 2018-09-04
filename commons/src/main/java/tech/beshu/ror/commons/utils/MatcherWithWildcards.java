@@ -17,9 +17,11 @@
 
 package tech.beshu.ror.commons.utils;
 
+
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -82,6 +84,33 @@ public class MatcherWithWildcards {
     return false;
   }
 
+  public boolean match(boolean remoteClusterAware, String haystack) {
+    return remoteClusterAware ? matchRemoteClusterAware(haystack) : match(haystack);
+  }
+
+  public Set<String> filter(boolean remoteClusterAware, Set<String> haystack) {
+    return remoteClusterAware ? filterRemoteClusterAware(haystack) : filter(haystack);
+  }
+
+  public boolean matchRemoteClusterAware(String haystack) {
+    if (haystack == null) {
+      return false;
+    }
+
+    boolean remoteClusterRequested = haystack.contains(":");
+
+    for (String[] p : patternsList) {
+      // Ignore remote cluster related permissions if request didn't mean it
+      if (!remoteClusterRequested && Arrays.asList(p).contains(":")) {
+        continue;
+      }
+      if (miniglob(p, haystack)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public Set<String> filter(Set<String> haystack) {
     if (haystack == null) {
       return empty;
@@ -94,7 +123,7 @@ public class MatcherWithWildcards {
     }
     return filtered;
   }
-
+  
   public Set<String> matchingMatchers(Set<String> haystack) {
     if (haystack == null) {
       return empty;
@@ -108,6 +137,18 @@ public class MatcherWithWildcards {
       }
     }
     return filtered;
-  }
+}
 
+  public Set<String> filterRemoteClusterAware(Set<String> haystack) {
+    if (haystack == null) {
+      return empty;
+    }
+    Set<String> filtered = Sets.newHashSet();
+    for (String hs : haystack) {
+      if (matchRemoteClusterAware(hs)) {
+        filtered.add(hs);
+      }
+    }
+    return filtered;
+  }
 }

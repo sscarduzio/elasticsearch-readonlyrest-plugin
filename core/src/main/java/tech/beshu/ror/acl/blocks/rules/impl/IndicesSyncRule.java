@@ -26,6 +26,8 @@ import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,6 +40,7 @@ public class IndicesSyncRule extends SyncRule {
   private final IndicesRuleSettings settings;
   private final LoggerShim logger;
   private final MatcherWithWildcards matcherNoVar;
+  private final ZeroKnowledgeIndexFilter zKindexFilter;
 
   public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
@@ -48,26 +51,18 @@ public class IndicesSyncRule extends SyncRule {
     else {
       this.matcherNoVar = null;
     }
+
+    this.zKindexFilter = new ZeroKnowledgeIndexFilter(true);
   }
 
+
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(RequestContext src) {
 
     logger.debug("Stage -1");
-    if (!rc.involvesIndices() || settings.getIndicesUnwrapped().contains("*")) {
+    if (!src.involvesIndices() || settings.getIndicesUnwrapped().contains("*")) {
       return MATCH;
     }
-
-    return canPass(rc) ? MATCH : NO_MATCH;
-  }
-
-  @Override
-  public String getKey() {
-    return settings.getName();
-  }
-
-  // Is a request or sub-request free from references to any forbidden indices?
-  private <T extends RequestContext> boolean canPass(T src) {
 
     MatcherWithWildcards matcher = matcherNoVar != null ? matcherNoVar : new MatcherWithWildcards(
         settings.getIndices().stream()
@@ -77,7 +72,59 @@ public class IndicesSyncRule extends SyncRule {
                 .collect(Collectors.toSet())
     );
 
-    Set<String> indices = Sets.newHashSet(src.getIndices());
+    // Cross cluster search awareness
+    if (src.isReadRequest() && ( "indices:data/read/search".equals(src.getAction()) ||
+        "indices:data/read/msearch".equals(src.getAction()))){
+
+      // Fork the indices list in remote and local
+      Map<Boolean, List<String>> map = src.getIndices().stream().collect(Collectors.partitioningBy(s -> s.contains(":")));
+      Set<String> crossClusterIndices = Sets.newHashSet(map.get(true));
+      Set<String> localIndices = Sets.newHashSet(map.get(false));
+
+      // Scatter gather for local and remote indices barring algorithms
+      if (!crossClusterIndices.isEmpty()) {
+
+        Set<String> processedLocalIndices = localIndices;
+        // Run the local algorithm
+        if (localIndices.isEmpty() && !crossClusterIndices.isEmpty()) {
+          // Don't run locally if only have crossCluster, otherwise you'll get the equivalent of "*"
+        }
+        else {
+          src.setIndices(Sets.newHashSet(localIndices));
+          if (!canPass(src, matcher)) {
+            return NO_MATCH;
+          }
+          processedLocalIndices = src.getTransientIndices();
+        }
+        // Run the remote algorithm (without knowing the remote list of indices)
+        if (!zKindexFilter.alterIndicesIfNecessaryAndCheck(crossClusterIndices, matcher, src::setIndices)) {
+          return NO_MATCH;
+        }
+
+        // Merge the result without duplicates only if we have green light from both algorithms.
+        Set<String> processedRemoteIndices = src.getTransientIndices();
+        processedLocalIndices.addAll(processedRemoteIndices);
+        src.setIndices(processedLocalIndices);
+        return MATCH;
+      }
+    }
+
+    return canPass(src, matcher) ? MATCH : NO_MATCH;
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
+  }
+
+  // Is a request or sub-request free from references to any forbidden indices?
+  private <T extends RequestContext> boolean canPass(T src, MatcherWithWildcards matcher) {
+
+
+    // if ("indices:data/read/search".equals(src.getAction()) && src.shouldConsiderRemoteClustersSearch()) {
+
+    Set<String> indices = Sets.newHashSet(src.getTransientIndices());
+
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist.
     logger.debug("Stage 0");
