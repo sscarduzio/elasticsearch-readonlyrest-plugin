@@ -19,6 +19,7 @@
 
 package tech.beshu.ror.es.rradmin;
 
+import com.google.common.collect.Maps;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -26,7 +27,6 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.io.IOException;
@@ -57,22 +57,23 @@ public class RRMetadataResponse extends ActionResponse implements ToXContent {
 
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
+    Map<String, Object> sourceMap = Maps.newHashMap();
 
-    for (Map.Entry<String, String> kv : requestContext.getResponseHeaders().entrySet()) {
-      builder.field(kv.getKey(), kv.getValue());
-    }
+    requestContext.getResponseHeaders().forEach((k,v) -> sourceMap.put(k,v));
 
-    if (requestContext.getLoggedInUser().isPresent()) {
-      LoggedUser u = requestContext.getLoggedInUser().get();
-      builder.field(Constants.HEADER_USER_ROR, u.getId());
-      builder.field(Constants.HEADER_GROUP_CURRENT, u.getCurrentGroup().orElse(null));
-      builder.field(Constants.HEADER_GROUPS_AVAILABLE, u.getAvailableGroups());
-    }
+    requestContext.getLoggedInUser().ifPresent(u -> {
+      sourceMap.put(Constants.HEADER_USER_ROR, u.getId());
+      sourceMap.put(Constants.HEADER_GROUP_CURRENT, u.getCurrentGroup().orElse(null));
+      sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, u.getAvailableGroups());
+    });
 
     String hiddenAppsStr = requestContext.getResponseHeaders().get(Constants.HEADER_KIBANA_HIDDEN_APPS);
     String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");
-    builder.field(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
+    sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
 
+    for (Map.Entry<String, Object> kv : sourceMap.entrySet()) {
+      builder.field(kv.getKey(), kv.getValue());
+    }
     return builder;
   }
 }
