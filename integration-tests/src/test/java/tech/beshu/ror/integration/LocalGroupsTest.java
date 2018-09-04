@@ -17,15 +17,12 @@
 
 package tech.beshu.ror.integration;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -35,8 +32,6 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -122,7 +117,7 @@ public class LocalGroupsTest {
   public void testFail_GoodCredsBadRule() throws Exception {
     assertNotEquals(
         200,
-        mkRequest("user", "passwd", "/_cat/indices").getStatusLine().getStatusCode()
+        mkRequest("user", "passwd", "/_search").getStatusLine().getStatusCode()
     );
   }
 
@@ -140,20 +135,14 @@ public class LocalGroupsTest {
     assertEquals("[timelion]", bodyMap.get(Constants.HEADER_KIBANA_HIDDEN_APPS).toString());
     assertEquals("admin", bodyMap.get(Constants.HEADER_KIBANA_ACCESS));
     assertEquals("testgroup", bodyMap.get(Constants.HEADER_GROUP_CURRENT));
-    assertTrue( bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("testgroup"));
-    assertTrue( bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("extra_group"));
-    assertTrue( bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("foogroup"));
+    assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("testgroup"));
+    assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("extra_group"));
+    assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("foogroup"));
 
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {
-    RestClient rcl = container.getBasicAuthClient(user, pass);
-    HttpGet req = new HttpGet(rcl.from(
-        endpoint,
-        new ImmutableMap.Builder<String, String>()
-            .build()
-    ));
-    return rcl.execute(req);
+    return mkRequest(user, pass, endpoint, null);
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint, String preferredGroup) throws Exception {
@@ -163,7 +152,10 @@ public class LocalGroupsTest {
         new ImmutableMap.Builder<String, String>()
             .build()
     ));
-    req.setHeader(Constants.HEADER_GROUP_CURRENT, preferredGroup);
+
+    if (!Strings.isNullOrEmpty(preferredGroup)) {
+      req.setHeader(Constants.HEADER_GROUP_CURRENT, preferredGroup);
+    }
     return rcl.execute(req);
   }
 
