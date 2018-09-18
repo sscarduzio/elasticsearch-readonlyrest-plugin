@@ -64,8 +64,11 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
       this.key = null;
     }
     else {
-      key = evalPrefixedSignatureKey(key);
-      this.key = key.getBytes();
+      String evaluated = evalPrefixedSignatureKey(key);
+      if(Strings.isNullOrEmpty(evaluated)){
+        throw new SettingsMalformedException("could not find a value fo the configured signature key: "+ key);
+      }
+      this.key = evaluated.getBytes();
     }
     this.algo = settings.stringOpt(SIGNATURE_ALGO);
     this.userClaim = settings.stringOpt(USER_CLAIM);
