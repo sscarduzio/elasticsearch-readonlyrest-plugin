@@ -19,6 +19,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
+import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.blocks.rules.UserRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.commons.domain.LoggedUser;
@@ -33,7 +34,7 @@ import java.util.stream.Collectors;
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthSyncRule extends UserRule implements Authentication {
+public class ProxyAuthSyncRule extends SyncRule implements Authentication {
 
   private final MatcherWithWildcards userListMatcher;
   private final ProxyAuthRuleSettings settings;

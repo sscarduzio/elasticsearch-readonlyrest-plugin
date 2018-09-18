@@ -22,6 +22,7 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.rules.NamedSettings;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -34,6 +35,10 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
   private static final String USER_CLAIM = "user_claim";
   private static final String ROLES_CLAIM = "roles_claim";
   private static final String HEADER_NAME = "header_name";
+  private static final String EXTERNAL_VALIDATOR = "external_validator.url";
+  private static final String EXTERNAL_VALIDATOR_VALIDATE = "external_validator.validate";
+  private static final String EXTERNAL_VALIDATOR_SUCCESS_STATUS_CODE = "external_validator.success_status_code";
+  private static final String EXTERNAL_VALIDATOR_CACHE_TTL = "external_validator.cache_ttl_in_sec";
   private static final String DEFAULT_HEADER_NAME = "Authorization";
 
   private final String name;
@@ -41,30 +46,50 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
   private final Optional<String> userClaim;
   private final Optional<String> rolesClaim;
   private final Optional<String> algo;
+  private final Optional<String> externalValidator;
   private final String headerName;
+  private final int externalValidatorCacheTtlSec;
+  private final Boolean externalValidatorValidate;
+  private final int externalValidatorSuccessStatusCode;
 
   public JwtAuthDefinitionSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
 
-    String key = evalPrefixedSignatureKey(ensureString(settings, SIGNATURE_KEY));
-    if (Strings.isNullOrEmpty(key))
-      throw new SettingsMalformedException(
-        "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string");
-
-    this.key = key.getBytes();
+    String key = ensureString(settings, SIGNATURE_KEY);
+    if(Strings.isNullOrEmpty(key)){
+      if(!settings.stringOpt(EXTERNAL_VALIDATOR).isPresent()){
+        throw new SettingsMalformedException(
+            "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string unless '" + EXTERNAL_VALIDATOR + "' is  defined.");
+      }
+      this.key = null;
+    }
+    else {
+      key = evalPrefixedSignatureKey(key);
+      this.key = key.getBytes();
+    }
     this.algo = settings.stringOpt(SIGNATURE_ALGO);
     this.userClaim = settings.stringOpt(USER_CLAIM);
     this.rolesClaim = settings.stringOpt(ROLES_CLAIM);
+    this.externalValidator = settings.stringOpt(EXTERNAL_VALIDATOR);
+    this.externalValidatorValidate = settings.booleanOpt(EXTERNAL_VALIDATOR_VALIDATE).orElse(true);
+    this.externalValidatorSuccessStatusCode = settings.intOpt(EXTERNAL_VALIDATOR_SUCCESS_STATUS_CODE).orElse(200);
+    this.externalValidatorCacheTtlSec = settings.intOpt(EXTERNAL_VALIDATOR_CACHE_TTL).orElse(60);
     this.headerName = settings.stringOpt(HEADER_NAME).orElse(DEFAULT_HEADER_NAME);
   }
 
   private static String ensureString(RawSettings settings, String key) {
-    Object value = settings.req(key);
-    if (value instanceof String)
+    Optional<Object> oValue = settings.opt(key);
+    if(!oValue.isPresent()){
+      return null;
+    }
+    Object value = oValue.get();
+    if (value instanceof String) {
       return (String) value;
-    else
+    }
+    else {
       throw new SettingsMalformedException(
-        "Attribute '" + key + "' must be a string; if it looks like a number try adding quotation marks");
+          "Attribute '" + key + "' must be a string; if it looks like a number try adding quotation marks");
+    }
   }
 
   private static String evalPrefixedSignatureKey(String s) {
@@ -97,7 +122,23 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
     return rolesClaim;
   }
 
+  public Optional<String> getExternalValidator() {
+    return externalValidator;
+  }
+
+  public Duration getExternalValidatorCacheTtl() {
+    return Duration.ofSeconds(externalValidatorCacheTtlSec);
+  }
+
   public String getHeaderName() {
     return headerName;
+  }
+
+  public boolean getExternalValidatorValidate() {
+    return externalValidatorValidate;
+  }
+
+  public int getExternalValidatorSuccessStatusCode() {
+    return externalValidatorSuccessStatusCode;
   }
 }

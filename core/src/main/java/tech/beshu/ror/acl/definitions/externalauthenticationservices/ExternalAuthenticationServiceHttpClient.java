@@ -26,9 +26,9 @@ import java.util.concurrent.CompletableFuture;
 
 public class ExternalAuthenticationServiceHttpClient implements ExternalAuthenticationServiceClient {
 
-  private final URI endpoint;
-  private final int successStatusCode;
-  private final HttpClient client;
+  protected final URI endpoint;
+  protected final int successStatusCode;
+  protected final HttpClient client;
 
   public ExternalAuthenticationServiceHttpClient(HttpClient client, URI endpoint, int successStatusCode) {
     this.client = client;

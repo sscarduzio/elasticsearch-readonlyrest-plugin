@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-public abstract class BasicAuthentication extends UserRule implements Authentication {
+public abstract class BasicAuthentication extends SyncRule implements Authentication {
 
   private final LoggerShim logger;
   private final String authKey;

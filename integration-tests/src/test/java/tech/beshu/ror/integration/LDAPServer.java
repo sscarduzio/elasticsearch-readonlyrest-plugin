@@ -23,11 +23,14 @@ import tech.beshu.ror.utils.containers.LdapContainer;
  * This is really useful when you want to stand up a LDAP server for manual tests
  */
 public class LDAPServer {
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     String ldifFile = System.getProperty("config", "/ldap_integration_group_headers/ldap.ldif");
     System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
     LdapContainer lc = LdapContainer.create(ldifFile);
     lc.start();
     System.out.println(lc.getLdapHost() + " " + lc.getLdapPort());
+    while(true){
+      Thread.sleep(Long.MAX_VALUE);
+    }
   }
 }

@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.settings.RawSettings;
@@ -22,11 +23,12 @@ import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettings;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
-public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
+public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings, CacheSettings, NamedSettings {
 
   public static final String ATTRIBUTE_NAME = "jwt_auth";
 
@@ -46,15 +48,15 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
     String jwtName = settings.stringReq(JWT_NAME);
     Set<String> roles = (Set<String>) (settings.notEmptySetOpt(ROLES).orElse(Collections.emptySet()));
     return new JwtAuthRuleSettings(
-      jwtSettingsCollection.get(jwtName),
-      roles
+        jwtSettingsCollection.get(jwtName),
+        roles
     );
   }
 
   public static JwtAuthRuleSettings from(String jwtName, JwtAuthDefinitionSettingsCollection jwtSettingsCollection) {
     return new JwtAuthRuleSettings(
-      jwtSettingsCollection.get(jwtName),
-      Collections.emptySet()
+        jwtSettingsCollection.get(jwtName),
+        Collections.emptySet()
     );
   }
 
@@ -78,6 +80,10 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
     return jwtAuthSettings.getHeaderName();
   }
 
+  public Optional<String> getExternalValidator() {
+    return jwtAuthSettings.getExternalValidator();
+  }
+
   public Set<String> getRoles() {
     return roles;
   }
@@ -85,5 +91,18 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   @Override
   public String getName() {
     return ATTRIBUTE_NAME;
+  }
+
+  public boolean getExternalValidatorValidate() {
+    return jwtAuthSettings.getExternalValidatorValidate();
+  }
+
+  public int getExternalValidatorSuccessStatusCode() {
+    return jwtAuthSettings.getExternalValidatorSuccessStatusCode();
+  }
+
+  @Override
+  public Duration getCacheTtl() {
+    return jwtAuthSettings.getExternalValidatorCacheTtl();
   }
 }

@@ -28,6 +28,7 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
+import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.blocks.rules.UserRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.commons.Constants;
@@ -49,7 +50,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class RorKbnAuthSyncRule extends UserRule implements Authentication {
+public class RorKbnAuthSyncRule extends SyncRule implements Authentication {
 
   private final LoggerShim logger;
   private final RorKbnAuthRuleSettings settings;
