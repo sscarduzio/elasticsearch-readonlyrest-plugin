@@ -94,7 +94,7 @@ public class UserRuleFactory {
 
     this.creators.put(
         JwtAuthRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new JwtAuthSyncRule((JwtAuthRuleSettings) settings, context))
+        settings -> new JwtAuthSyncRule((JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
     );
     this.creators.put(
         RorKbnAuthRuleSettings.class,

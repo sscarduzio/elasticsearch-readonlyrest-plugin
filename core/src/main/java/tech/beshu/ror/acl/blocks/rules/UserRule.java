@@ -16,5 +16,5 @@
  */
 package tech.beshu.ror.acl.blocks.rules;
 
-public abstract class UserRule extends SyncRule {
+public abstract class UserRule extends AsyncRule {
 }

@@ -19,6 +19,8 @@ package tech.beshu.ror.acl.definitions.externalauthenticationservices;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.hash.Hashing;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtExternalValidationHttpClient;
+import tech.beshu.ror.httpclient.HttpClient;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
 import java.nio.charset.Charset;
@@ -41,10 +43,18 @@ public class CachedExternalAuthenticationServiceClient implements ExternalAuthen
   }
 
   public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
-                                                                                ExternalAuthenticationServiceClient client) {
+      ExternalAuthenticationServiceClient client) {
     return settings.getCacheTtl().isZero()
-      ? client
-      : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
+        ? client
+        : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
+  }
+
+  public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(
+      CacheSettings settings, ExternalAuthenticationServiceHttpClient client) {
+
+    return settings.getCacheTtl().isZero()
+        ? client
+        : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
   }
 
   private static String hashFrom(String password) {

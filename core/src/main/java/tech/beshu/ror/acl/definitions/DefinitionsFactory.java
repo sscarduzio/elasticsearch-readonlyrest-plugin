@@ -14,11 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.definitions;
 
+import com.fasterxml.jackson.databind.util.Named;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtExternalValidationHttpClient;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceHttpClient;
@@ -46,8 +49,12 @@ import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
 import tech.beshu.ror.settings.definitions.UserSettings;
+import tech.beshu.ror.settings.rules.CacheSettings;
+import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.NamedSettings;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.function.Supplier;
 
 import static tech.beshu.ror.acl.definitions.externalauthenticationservices.CachedExternalAuthenticationServiceClient.wrapInCacheIfCacheIsEnabled;
@@ -55,9 +62,9 @@ import static tech.beshu.ror.acl.definitions.groupsproviders.CachedGroupsProvide
 import static tech.beshu.ror.acl.definitions.ldaps.caching.GroupsProviderLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled;
 
 public class DefinitionsFactory implements LdapClientFactory,
-  ExternalAuthenticationServiceClientFactory,
-  GroupsProviderServiceClientFactory,
-  UserFactory {
+    ExternalAuthenticationServiceClientFactory,
+    GroupsProviderServiceClientFactory,
+    UserFactory {
 
   //private final HttpClient httpClient;
   private final ESContext context;
@@ -66,6 +73,7 @@ public class DefinitionsFactory implements LdapClientFactory,
   private final Cache<String, ExternalAuthenticationServiceClient> externalAuthenticationServiceClientsCache;
   private final Cache<String, GroupsProviderServiceClient> groupsProviderServiceClientsCache;
   private final ACL acl;
+  private final Cache<String, ExternalAuthenticationServiceClient> jwtExternalValidatorClientCache;
 
   public DefinitionsFactory(ESContext context, ACL acl) {
     this.acl = acl;
@@ -75,138 +83,158 @@ public class DefinitionsFactory implements LdapClientFactory,
     this.authenticationLdapClientsCache = CacheBuilder.newBuilder().build();
     this.externalAuthenticationServiceClientsCache = CacheBuilder.newBuilder().build();
     this.groupsProviderServiceClientsCache = CacheBuilder.newBuilder().build();
+    this.jwtExternalValidatorClientCache = CacheBuilder.newBuilder().build();
   }
 
   @Override
   public GroupsProviderLdapClient getClient(GroupsProviderLdapSettings settings) {
     return getOrCreate(
-      settings,
-      groupsProviderLdapClientsCache,
-      () -> GroupsProviderLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled(
-        settings.getName(),
-        context,
-        wrapInCacheIfCacheIsEnabled(
-          settings,
-          new UnboundidGroupsProviderLdapClient(
-            new ConnectionConfig(
-              settings.getHost(),
-              settings.getPort(),
-              settings.getConnectionPoolSize(),
-              settings.getConnectionTimeout(),
-              settings.getRequestTimeout(),
-              settings.isSslEnabled(),
-              settings.isTrustAllCertificates()
-            ),
-            new UserSearchFilterConfig(
-              settings.getSearchUserBaseDn(),
-              settings.getUserIdAttribute()
-            ),
-            new UserGroupsSearchFilterConfig(
-              settings.getSearchGroupBaseDn(),
-              settings.getUniqueMemberAttribute(),
-              settings.getGroupSearchFilter(),
-              settings.getGroupNameAttribute(),
-              settings.isGroupsFromUser(),
-              settings.getGroupsFromUserAttribute()
-            ),
-            settings.getSearchingUserSettings().map(s ->
-                                                      new SearchingUserConfig(s.getDn(), s.getPassword())
-            ),
-            context
-          )
+        settings,
+        groupsProviderLdapClientsCache,
+        () -> GroupsProviderLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled(
+            settings.getName(),
+            context,
+            wrapInCacheIfCacheIsEnabled(
+                settings,
+                new UnboundidGroupsProviderLdapClient(
+                    new ConnectionConfig(
+                        settings.getHost(),
+                        settings.getPort(),
+                        settings.getConnectionPoolSize(),
+                        settings.getConnectionTimeout(),
+                        settings.getRequestTimeout(),
+                        settings.isSslEnabled(),
+                        settings.isTrustAllCertificates()
+                    ),
+                    new UserSearchFilterConfig(
+                        settings.getSearchUserBaseDn(),
+                        settings.getUserIdAttribute()
+                    ),
+                    new UserGroupsSearchFilterConfig(
+                        settings.getSearchGroupBaseDn(),
+                        settings.getUniqueMemberAttribute(),
+                        settings.getGroupSearchFilter(),
+                        settings.getGroupNameAttribute(),
+                        settings.isGroupsFromUser(),
+                        settings.getGroupsFromUserAttribute()
+                    ),
+                    settings.getSearchingUserSettings().map(s ->
+                        new SearchingUserConfig(s.getDn(), s.getPassword())
+                    ),
+                    context
+                )
+            )
         )
-      )
     );
   }
 
   @Override
   public AuthenticationLdapClient getClient(AuthenticationLdapSettings settings) {
     return getOrCreate(
-      settings,
-      authenticationLdapClientsCache,
-      () -> AuthenticationLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled(
-        settings.getName(),
-        context,
-        AuthenticationLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled(
-          settings,
-          new UnboundidAuthenticationLdapClient(
-            new ConnectionConfig(
-              settings.getHost(),
-              settings.getPort(),
-              settings.getConnectionPoolSize(),
-              settings.getConnectionTimeout(),
-              settings.getRequestTimeout(),
-              settings.isSslEnabled(),
-              settings.isTrustAllCertificates()
-            ),
-            new UserSearchFilterConfig(
-              settings.getSearchUserBaseDn(),
-              settings.getUserIdAttribute()
-            ),
-            settings.getSearchingUserSettings().map(s ->
-                                                      new SearchingUserConfig(s.getDn(), s.getPassword())
-            ),
-            context
-          )
+        settings,
+        authenticationLdapClientsCache,
+        () -> AuthenticationLdapClientLoggingDecorator.wrapInLoggingIfIsLoggingEnabled(
+            settings.getName(),
+            context,
+            AuthenticationLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled(
+                settings,
+                new UnboundidAuthenticationLdapClient(
+                    new ConnectionConfig(
+                        settings.getHost(),
+                        settings.getPort(),
+                        settings.getConnectionPoolSize(),
+                        settings.getConnectionTimeout(),
+                        settings.getRequestTimeout(),
+                        settings.isSslEnabled(),
+                        settings.isTrustAllCertificates()
+                    ),
+                    new UserSearchFilterConfig(
+                        settings.getSearchUserBaseDn(),
+                        settings.getUserIdAttribute()
+                    ),
+                    settings.getSearchingUserSettings().map(s ->
+                        new SearchingUserConfig(s.getDn(), s.getPassword())
+                    ),
+                    context
+                )
+            )
         )
-      )
     );
   }
 
   @Override
   public ExternalAuthenticationServiceClient getClient(ExternalAuthenticationServiceSettings settings) {
     return getOrCreate(
-      settings,
-      externalAuthenticationServiceClientsCache,
-      () -> wrapInCacheIfCacheIsEnabled(
         settings,
-        new ExternalAuthenticationServiceHttpClient(
-          new ApacheHttpCoreClient(context, settings.getValidate()),
-          settings.getEndpoint(),
-          settings.getSuccessStatusCode()
+        externalAuthenticationServiceClientsCache,
+        () -> wrapInCacheIfCacheIsEnabled(
+            settings,
+            new ExternalAuthenticationServiceHttpClient(
+                new ApacheHttpCoreClient(context, settings.getValidate()),
+                settings.getEndpoint(),
+                settings.getSuccessStatusCode()
+            )
         )
-      )
     );
   }
 
   @Override
   public GroupsProviderServiceClient getClient(UserGroupsProviderSettings settings) {
     return getOrCreate(
-      settings,
-      groupsProviderServiceClientsCache,
-      () -> wrapInCacheIfCacheIsEnabled(
         settings,
-        new GroupsProviderServiceHttpClient(
-          settings.getName(),
-          new ApacheHttpCoreClient(context, true),
-          settings.getEndpoint(),
-          settings.getAuthTokenName(),
-          settings.getMethod(),
-          settings.getAuthTokenPassedMethod(),
-          settings.getResponseGroupsJsonPath(),
-          settings.getDefaultHeaders(),
-          settings.getDefaultQueryParameters(),
-          context
+        groupsProviderServiceClientsCache,
+        () -> wrapInCacheIfCacheIsEnabled(
+            settings,
+            new GroupsProviderServiceHttpClient(
+                settings.getName(),
+                new ApacheHttpCoreClient(context, true),
+                settings.getEndpoint(),
+                settings.getAuthTokenName(),
+                settings.getMethod(),
+                settings.getAuthTokenPassedMethod(),
+                settings.getResponseGroupsJsonPath(),
+                settings.getDefaultHeaders(),
+                settings.getDefaultQueryParameters(),
+                context
+            )
         )
-      )
     );
   }
 
   @Override
   public User getUser(UserSettings settings) {
     return new User(
-      settings.getUsername(),
-      settings.getGroups(),
-      acl.getUserRuleFactory().create(settings.getAuthKeyProviderSettings())
+        settings.getUsername(),
+        settings.getGroups(),
+        acl.getUserRuleFactory().create(settings.getAuthKeyProviderSettings())
     );
   }
 
   private <T> T getOrCreate(NamedSettings settings, Cache<String, T> cache, Supplier<T> creator) {
     T cached = cache.getIfPresent(settings.getName());
-    if (cached != null) return cached;
+    if (cached != null)
+      return cached;
 
     T created = creator.get();
     cache.put(settings.getName(), created);
     return created;
+  }
+
+  public ExternalAuthenticationServiceClient getClient(JwtAuthRuleSettings settings) {
+    URI externalUrl = null;
+    try {
+      externalUrl = new URI(settings.getExternalValidator().get());
+    } catch (URISyntaxException e) {
+      e.printStackTrace();
+    }
+    URI finalExternalUrl = externalUrl;
+    NamedSettings ns = settings;
+    ExternalAuthenticationServiceClient authcli = new JwtExternalValidationHttpClient(
+        new ApacheHttpCoreClient(context, settings.getExternalValidatorValidate()),
+        finalExternalUrl,
+        settings.getExternalValidatorSuccessStatusCode()
+    );
+    return getOrCreate(ns, jwtExternalValidatorClientCache, () -> wrapInCacheIfCacheIsEnabled((CacheSettings) ns,authcli));
+
   }
 }
