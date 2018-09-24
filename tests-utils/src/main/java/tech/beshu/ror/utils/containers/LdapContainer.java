@@ -30,7 +30,7 @@ import org.apache.logging.log4j.Logger;
 import tech.beshu.ror.utils.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.WaitStrategy;
+import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
 import java.io.File;
