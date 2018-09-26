@@ -117,6 +117,10 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
       }
       else {
         String[] ar = token.get().split("\\.");
+        if (ar.length < 2) {
+          // token is not a valid JWT
+          return CompletableFuture.completedFuture(NO_MATCH);
+        }
         String tokenNoSig = ar[0] + "." + ar[1] + ".";
         jws = parser.parseClaimsJwt(tokenNoSig).getBody();
       }
