@@ -38,8 +38,8 @@ import static org.junit.Assert.assertEquals;
 public class RorKbnAuthTests {
 
   private static final String ALGO = "HS256";
-  private static final String KEY = "123456";
-  private static final String KEY_ROLE = "123456789";
+  private static final String KEY = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456";
+  private static final String KEY_ROLE = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890";
   private static final String WRONG_KEY = "abcdef";
   private static final String SUBJECT = "test";
   private static final String USER_CLAIM = "user";
