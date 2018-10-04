@@ -17,12 +17,12 @@ readonlyrest:
     type: allow
     auth_key: admin:container
 
-  - name: "Kibana at user"
+  - name: "Kibana at user 1"
     type: allow
     auth_key: simone:${TEST_VAR}
     indices: [".kibana_@{user}"]
 
-  - name: "Kibana at user"
+  - name: "Kibana at user 2"
     type: allow
     auth_key: pablo:${TEST_VAR}
     indices: [".kibana_simone"]
