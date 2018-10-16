@@ -89,7 +89,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       }
     };
 
-    this.requestHeaders = new TreeMap<>(extractRequestHeaders());
+    this.requestHeaders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    this.requestHeaders.putAll(extractRequestHeaders());
 
     String curGroup = requestHeaders.get(Constants.HEADER_GROUP_CURRENT);
     if (curGroup != null && curGroup.contains(",")) {
@@ -467,7 +468,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   }
 
   public boolean isReadRequest() {
-    if(Constants.REST_METADATA_PATH.equals(getUri()) && HttpMethod.GET.equals(getMethod())){
+    if (Constants.REST_METADATA_PATH.equals(getUri()) && HttpMethod.GET.equals(getMethod())) {
       return true;
     }
     return extractIsReadRequest();
