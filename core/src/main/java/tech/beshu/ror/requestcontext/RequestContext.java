@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 
@@ -88,7 +89,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       }
     };
 
-    this.requestHeaders = extractRequestHeaders();
+    this.requestHeaders = new TreeMap<>(extractRequestHeaders());
 
     String curGroup = requestHeaders.get(Constants.HEADER_GROUP_CURRENT);
     if (curGroup != null && curGroup.contains(",")) {

@@ -49,5 +49,9 @@ public class BasicAuthUtilsTests {
     assertFalse(BasicAuthUtils.getBasicAuthFromString(base64Value).isPresent());
   }
 
+  @Test
+  public void basicAuthNoCredsTest() {
+    assertFalse(BasicAuthUtils.getBasicAuthFromString(null).isPresent());
+  }
 
 }
