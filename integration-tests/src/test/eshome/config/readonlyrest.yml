@@ -1,0 +1,42 @@
+readonlyrest:
+  audit_collector: true
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  ssl_internode:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+  - name: "::KIBANA-SRV::"
+    auth_key: kibana:kibana
+    verbosity: error
+
+  - name: 'Local auth for admin'
+    groups: [Admins]
+    kibana_access: admin
+    type: allow
+
+  - name: 'Local auth for nonpriv admin'
+    groups: [Nonpriv Admins]
+    kibana_access: admin
+    kibana_index: '.kibana-nonpriv'
+    type: allow
+    indices: ['r*', 'logstash-dev-wl-*', '.kibana-nonpriv']
+
+
+
+  users:
+  - username: admin
+    groups: [Admins]
+    auth_key: 'admin:admin'
+
+  - username: np
+    groups: [Nonpriv Admins]
+    auth_key: 'np:np'

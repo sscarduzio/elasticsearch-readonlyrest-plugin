@@ -31,7 +31,10 @@ eclipse-build
 docker/*
 integration-tests/src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
 integration-tests/src/main/resources/plugin-descriptor.properties
-integration-tests/src/test/eshome/*
+integration-tests/src/test/eshome/logs/
+integration-tests/src/test/eshome/data/
+integration-tests/src/test/eshome/*.log
+
 
 // Crypto
 *.pem
