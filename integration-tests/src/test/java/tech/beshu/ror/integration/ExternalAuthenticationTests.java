@@ -46,7 +46,6 @@ public class ExternalAuthenticationTests {
       new ElasticsearchTweetsInitializer()
     );
 
-  // #TODO this fails
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {
     assertions(container).assertUserHasAccessToIndex("cartman", "user1", "twitter");
