@@ -17,10 +17,8 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.DocWriteRequest;
@@ -42,7 +40,6 @@ import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
@@ -52,7 +49,6 @@ import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.index.Index;
-import org.elasticsearch.index.IndexNotFoundException;
 import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
@@ -247,12 +243,6 @@ public class RequestInfo implements RequestInfoShim {
       indices = (String[]) indicesSet.toArray();
     }
 
-    else if (ar instanceof CompositeIndicesRequest) {
-      logger.error(
-          "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
-              + ar.getClass().getSimpleName());
-    }
-
     // Buggy cases here onwards
     else if (ar instanceof ReindexRequest) {
       // Using reflection otherwise need to create another sub-project
@@ -263,6 +253,12 @@ public class RequestInfo implements RequestInfoShim {
       } catch (Exception e) {
         e.printStackTrace();
       }
+    }
+
+    else if (ar instanceof CompositeIndicesRequest) {
+      logger.error(
+          "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
+              + ar.getClass().getSimpleName());
     }
 
     // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671

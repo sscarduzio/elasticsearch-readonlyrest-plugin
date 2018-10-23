@@ -30,6 +30,7 @@ import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollectio
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -93,6 +94,14 @@ public class RorSettings {
                                  UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
                              ))
                              .collect(Collectors.toList());
+
+    List<String> blockNames = this.blocksSettings.stream().map(BlockSettings::getName).collect(Collectors.toList());
+    blockNames.forEach(name -> {
+      if (Collections.frequency(blockNames, name) > 1) {
+        throw new SettingsMalformedException("ACL Block names should be unique! Found more than one ACL block with the same name: " + name);
+      }
+    });
+
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
     this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);
     this.verbosity = raw.stringOpt(VERBOSITY)
