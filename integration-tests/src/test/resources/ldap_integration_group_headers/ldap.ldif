@@ -4,6 +4,7 @@
 # g1: cartman, chandler
 # g2: morgan
 # g3: morgan, cartman, chandler
+# gAll: morgan, cartman, chandler
 ################################
 ################################
 ################################
@@ -73,3 +74,10 @@ uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
 
+dn: cn=groupAll,ou=Groups,dc=example,dc=com
+objectClass: top
+objectClass: groupOfUniqueNames
+cn: groupAll
+uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
+uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
+uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com

@@ -41,6 +41,13 @@ readonlyrest:
       name: "ldap1"
       groups: ["group3"]
 
+  - name: "::Something else that never matches but should add groupAll to avail grps::"
+    methods: GET
+    kibana_index: ".kibana_group3"
+    ldap_auth:
+      name: "ldap1"
+      groups: ["groupAll"]
+
   ######### LDAP1 SERVER CONFIGURATION ########################
   # group1: cartman, bong
   # group2: morgan
