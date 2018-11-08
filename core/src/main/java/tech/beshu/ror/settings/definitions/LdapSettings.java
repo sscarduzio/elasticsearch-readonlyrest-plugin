@@ -14,8 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.definitions;
 
+import com.google.common.collect.Sets;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.rules.CacheSettings;
@@ -23,6 +25,7 @@ import tech.beshu.ror.settings.rules.NamedSettings;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.Set;
 
 public abstract class LdapSettings implements CacheSettings, NamedSettings {
 
@@ -59,6 +62,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private final Duration connectionTimeout;
   private final Duration requestTimeout;
   private final Duration cacheTtl;
+  private Set<String> availableGroups = Sets.newHashSet();
 
   protected LdapSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
@@ -78,6 +82,14 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   @Override
   public String getName() {
     return name;
+  }
+
+  public Set<String> getAvailableGroups() {
+    return availableGroups;
+  }
+
+  public void setAvailableGroups(Set<String> availableGroups) {
+    this.availableGroups = availableGroups;
   }
 
   public String getHost() {
@@ -141,7 +153,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
       Optional<String> bindDn = settings.stringOpt(BIND_DN);
       Optional<String> bindPassword = settings.stringOpt(BIND_PASS);
       if ((bindDn.isPresent() && !bindPassword.isPresent()) ||
-        (!bindDn.isPresent() && bindPassword.isPresent())) {
+          (!bindDn.isPresent() && bindPassword.isPresent())) {
         throw new SettingsMalformedException("'" + BIND_DN + "' & '" + BIND_PASS + "' should be both present or both absent");
       }
       return bindDn.flatMap(bdn -> bindPassword.map(bp -> new SearchingUserSettings(bdn, bp)));
