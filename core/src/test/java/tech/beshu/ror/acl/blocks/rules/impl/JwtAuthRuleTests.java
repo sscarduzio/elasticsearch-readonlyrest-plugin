@@ -21,12 +21,12 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.SignatureException;
 import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
@@ -110,7 +110,7 @@ public class JwtAuthRuleTests {
     res.get().thenAccept(r -> assertTrue(r.isMatch()));
   }
 
-  @Test
+  @Test(expected = SignatureException.class)
   public void shouldRejectTokenWithInvalidSignature() {
     String token = Jwts.builder()
                        .setSubject(SUBJECT)
@@ -128,7 +128,7 @@ public class JwtAuthRuleTests {
     res.get().thenAccept(r -> assertFalse(r.isMatch()));
   }
 
-  @Test
+  @Test(expected = SignatureException.class)
   public void shouldRejectRSATokenWithInvalidSignature() throws KeyException {
     String token = Jwts.builder()
                        .setSubject(SUBJECT)
