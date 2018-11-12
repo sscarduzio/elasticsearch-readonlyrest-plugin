@@ -18,14 +18,13 @@ package tech.beshu.ror.utils.containers;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.testcontainers.containers.GenericContainer;
-
+import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 import java.time.Duration;
 import java.time.Instant;
 
 import static tech.beshu.ror.utils.containers.ContainerUtils.checkTimeout;
 
-public abstract class WaitWithRetriesStrategy extends GenericContainer.AbstractWaitStrategy {
+public abstract class WaitWithRetriesStrategy extends AbstractWaitStrategy {
 
   private static Logger logger = LogManager.getLogger(WaitWithRetriesStrategy.class);
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);

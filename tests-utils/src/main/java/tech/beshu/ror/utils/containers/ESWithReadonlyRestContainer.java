@@ -33,6 +33,7 @@ import tech.beshu.ror.utils.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
+import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 
 import java.io.File;
 import java.io.IOException;
@@ -164,7 +165,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
   private WaitStrategy waitStrategy(Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     final ObjectMapper mapper = new ObjectMapper();
-    return new GenericContainer.AbstractWaitStrategy() {
+    return new org.testcontainers.containers.wait.strategy.AbstractWaitStrategy() {
       @Override
       protected void waitUntilReady() {
         logger.info("Waiting for ES container ...");
