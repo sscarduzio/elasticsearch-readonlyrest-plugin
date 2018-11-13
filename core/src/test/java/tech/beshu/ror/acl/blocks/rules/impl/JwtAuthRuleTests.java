@@ -110,6 +110,32 @@ public class JwtAuthRuleTests {
     res.get().thenAccept(r -> assertTrue(r.isMatch()));
   }
 
+  //  @Test
+  //  public void shouldAcceptTokenWithValidEllipticCurveSignature() throws KeyException, NoSuchAlgorithmException, InvalidKeySpecException {
+  //    // This throws exception for some reason, see issue
+  //    // https://github.com/jwtk/jjwt/issues/411
+  //    KeyPair keys = Keys.keyPairFor(SignatureAlgorithm.ES256);
+  //    String token = Jwts.builder()
+  //                       .setSubject(SUBJECT)
+  //                       .signWith(SignatureAlgorithm.valueOf("ES256"), keys.getPrivate())
+  //                       .compact();
+  //
+  //    RawSettings settings = makeSettings(
+  //        SETTINGS_SIGNATURE_KEY, Base64.getEncoder().encodeToString(keys.getPublic().getEncoded()),
+  //        SETTINGS_SIGNATURE_ALGO, "ES"
+  //    );
+  //
+  //    RequestContext rc = getMock(token);
+  //
+  //    Optional<AsyncRule> rule = makeRule(settings);
+  //    Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
+  //    rc.commit();
+  //
+  //    assertTrue(rule.isPresent());
+  //    assertTrue(res.isPresent());
+  //    res.get().thenAccept(r -> assertTrue(r.isMatch()));
+  //  }
+
   @Test(expected = SignatureException.class)
   public void shouldRejectTokenWithInvalidSignature() {
     String token = Jwts.builder()
