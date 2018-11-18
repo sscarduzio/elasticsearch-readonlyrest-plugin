@@ -24,6 +24,8 @@ import tech.beshu.ror.settings.rules.CacheSettings;
 import tech.beshu.ror.settings.rules.NamedSettings;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -31,6 +33,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
 
   private static final String NAME = "name";
   private static final String HOST = "host";
+  private static final String SERVERS = "servers";
   private static final String PORT = "port";
   private static final String SSL_ENABLED = "ssl_enabled";
   private static final String TRUST_ALL_CERTS = "ssl_trust_all_certs";
@@ -40,6 +43,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private static final String CONNECTION_TIMEOUT = "connection_timeout_in_sec";
   private static final String REQUEST_TIMEOUT = "request_timeout_in_sec";
   private static final String CACHE = "cache_ttl_in_sec";
+  private static final String HA_KEY = "ha";
 
   private static final int DEFAULT_PORT = 389;
   private static final boolean DEFAULT_SSL_ENABLED = true;
@@ -49,6 +53,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
   private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(1);
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
+  private static final HA DEFAULT_HA = HA.FAILOVER;
 
   private final String name;
   private final String host;
@@ -62,11 +67,26 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private final Duration connectionTimeout;
   private final Duration requestTimeout;
   private final Duration cacheTtl;
+  private final HA ha;
   private Set<String> availableGroups = Sets.newHashSet();
+  private Set<String> servers;
 
   protected LdapSettings(RawSettings settings) {
+    if (settings.stringOpt(HA_KEY).isPresent() && (settings.stringOpt(HOST).isPresent() || settings.intOpt(PORT).isPresent())) {
+      throw new SettingsMalformedException(
+          "Cannot accept single server settings (host,port) AND multi server configuration (servers) at the same time.");
+    }
+    if (settings.stringOpt(HA_KEY).isPresent() && settings.stringOpt(HOST).isPresent()) {
+      throw new SettingsMalformedException(
+          "Please specify more than one LDAP server using 'servers' to use HA");
+    }
+    if (settings.stringOpt(SSL_ENABLED).isPresent() && !settings.stringOpt(HOST).isPresent()) {
+      throw new SettingsMalformedException(
+          "When using multi-server, the option '" + SSL_ENABLED + "' can't be used. Please use ldaps:// schema while listing the 'servers'");
+    }
     this.name = settings.stringReq(NAME);
-    this.host = settings.stringReq(HOST);
+    this.host = settings.stringOpt(HOST).orElse(null);
+    this.servers = new HashSet(settings.notEmptyListOpt(SERVERS).orElse(new ArrayList<>(0)));
     this.port = settings.intOpt(PORT).orElse(DEFAULT_PORT);
     this.isSslEnabled = settings.booleanOpt(SSL_ENABLED).orElse(DEFAULT_SSL_ENABLED);
     this.trustAllCertificates = settings.booleanOpt(TRUST_ALL_CERTS).orElse(DEFAULT_TRUST_ALL_CERTS);
@@ -77,6 +97,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
     this.connectionTimeout = settings.intOpt(CONNECTION_TIMEOUT).map(Duration::ofSeconds).orElse(DEFAULT_CONNECTION_TIMEOUT);
     this.requestTimeout = settings.intOpt(REQUEST_TIMEOUT).map(Duration::ofSeconds).orElse(DEFAULT_REQUEST_TIMEOUT);
     this.cacheTtl = settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL);
+    this.ha = HA.valueOf(settings.stringOpt(HA_KEY).orElse(DEFAULT_HA.name()));
   }
 
   @Override
@@ -94,6 +115,14 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
 
   public String getHost() {
     return host;
+  }
+
+  public HA getHa() {
+    return ha;
+  }
+
+  public Set<String> getServers() {
+    return servers;
   }
 
   public int getPort() {
@@ -135,6 +164,10 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   @Override
   public Duration getCacheTtl() {
     return cacheTtl;
+  }
+
+  public enum HA {
+    FAILOVER, ROUNDR_ROBIN
   }
 
   public static class SearchingUserSettings {

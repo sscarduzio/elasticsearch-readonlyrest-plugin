@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.definitions.ldaps.unboundid;
 
 import com.unboundid.ldap.sdk.BindResult;
@@ -38,19 +39,19 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
   private final LoggerShim logger;
 
   public UnboundidAuthenticationLdapClient(ConnectionConfig connectionConfig,
-                                           UserSearchFilterConfig userSearchFilterConfig,
-                                           Optional<SearchingUserConfig> searchingUserConfig,
-                                           ESContext context) {
+      UserSearchFilterConfig userSearchFilterConfig,
+      Optional<SearchingUserConfig> searchingUserConfig,
+      ESContext context) {
     super(new UnboundidConnection(connectionConfig, searchingUserConfig),
-          connectionConfig.getRequestTimeout(), userSearchFilterConfig, context
+        connectionConfig.getRequestTimeout(), userSearchFilterConfig, context
     );
     this.logger = context.logger(getClass());
   }
 
   public UnboundidAuthenticationLdapClient(UnboundidConnection connection,
-                                           Duration requestTimeout,
-                                           UserSearchFilterConfig userSearchFilterConfig,
-                                           ESContext context) {
+      Duration requestTimeout,
+      UserSearchFilterConfig userSearchFilterConfig,
+      ESContext context) {
     super(connection, requestTimeout, userSearchFilterConfig, context);
     this.logger = context.logger(getClass());
   }
@@ -58,10 +59,10 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
   @Override
   public CompletableFuture<Optional<LdapUser>> authenticate(LdapCredentials credentials) {
     return userById(credentials.getUserName())
-      .thenApply(user ->
-                   user.map(u -> authenticate(u, credentials.getPassword()))
-                     .flatMap(isAuthenticated -> isAuthenticated ? user : Optional.empty())
-      );
+        .thenApply(user ->
+            user.map(u -> authenticate(u, credentials.getPassword()))
+                .flatMap(isAuthenticated -> isAuthenticated ? user : Optional.empty())
+        );
   }
 
   private Boolean authenticate(LdapUser user, String password) {
@@ -74,7 +75,8 @@ public class UnboundidAuthenticationLdapClient extends UnboundidBaseLdapClient i
       } catch (LDAPException e) {
         logger.error("LDAP authenticate operation failed: " + e.getMessage());
         return false;
-      } finally {
+      }
+      finally {
         if (ldapConnection != null) {
           connection.getConnectionPool().releaseAndReAuthenticateConnection(ldapConnection);
         }
