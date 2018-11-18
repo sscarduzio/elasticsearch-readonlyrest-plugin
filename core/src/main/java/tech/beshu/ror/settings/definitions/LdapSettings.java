@@ -25,6 +25,7 @@ import tech.beshu.ror.settings.rules.NamedSettings;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -72,6 +73,9 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private Set<String> servers;
 
   protected LdapSettings(RawSettings settings) {
+    if(!settings.stringOpt(HOST).isPresent() && !settings.notEmptyListOpt(SERVERS).isPresent()){
+      throw new SettingsMalformedException("Server information missing: use either 'host' and 'port' or 'servers' option");
+    }
     if (settings.stringOpt(HA_KEY).isPresent() && (settings.stringOpt(HOST).isPresent() || settings.intOpt(PORT).isPresent())) {
       throw new SettingsMalformedException(
           "Cannot accept single server settings (host,port) AND multi server configuration (servers) at the same time.");
@@ -86,7 +90,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
     }
     this.name = settings.stringReq(NAME);
     this.host = settings.stringOpt(HOST).orElse(null);
-    this.servers = new HashSet(settings.notEmptyListOpt(SERVERS).orElse(new ArrayList<>(0)));
+    this.servers = new HashSet(settings.notEmptyListOpt(SERVERS).orElse(Collections.emptyList()));
     this.port = settings.intOpt(PORT).orElse(DEFAULT_PORT);
     this.isSslEnabled = settings.booleanOpt(SSL_ENABLED).orElse(DEFAULT_SSL_ENABLED);
     this.trustAllCertificates = settings.booleanOpt(TRUST_ALL_CERTS).orElse(DEFAULT_TRUST_ALL_CERTS);
