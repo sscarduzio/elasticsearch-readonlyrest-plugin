@@ -50,7 +50,7 @@ public final class DocumentFilterReader extends FilterLeafReader {
     final IndexSearcher searcher = new IndexSearcher(this);
     searcher.setQueryCache(null);
     final boolean needsScores = false;
-    final Weight preserveWeight = searcher.createNormalizedWeight(query, needsScores);
+    final Weight preserveWeight = searcher.createWeight(query, needsScores, 0);
 
     final int maxDoc = this.in.maxDoc();
     final FixedBitSet bits = new FixedBitSet(maxDoc);
