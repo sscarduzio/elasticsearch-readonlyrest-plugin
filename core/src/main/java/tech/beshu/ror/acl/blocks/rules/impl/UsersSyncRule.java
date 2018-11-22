@@ -50,7 +50,6 @@ public class UsersSyncRule extends SyncRule {
     }
 
     this.settings = s;
-
   }
 
   @Override
