@@ -18,6 +18,7 @@
 package tech.beshu.ror.es;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import org.apache.logging.log4j.LogManager;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -27,7 +28,6 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.env.Environment;
@@ -46,7 +46,7 @@ import java.util.Map;
 
 @Singleton
 public class SettingsObservableImpl extends SettingsObservable {
-  private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
+  private static final LoggerShim logger = ESContextImpl.mkLoggerShim(LogManager.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
   private final Settings initialSettings;

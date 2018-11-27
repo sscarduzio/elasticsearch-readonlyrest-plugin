@@ -17,11 +17,11 @@
 
 package tech.beshu.ror.es;
 
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.logging.Loggers;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.AbstractESContext;
 import tech.beshu.ror.commons.shims.es.ESVersion;
@@ -90,7 +90,7 @@ public class ESContextImpl extends AbstractESContext {
 
   @Override
   public LoggerShim mkLogger(Class<?> clazz) {
-    return mkLoggerShim(Loggers.getLogger(clazz.getName()));
+    return mkLoggerShim(LogManager.getLogger(clazz.getName()));
   }
 
   @Override
