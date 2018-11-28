@@ -24,7 +24,6 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import org.apache.commons.codec.binary.Base64;
@@ -108,12 +107,11 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
 
       // Defaulting to HMAC for backward compatibility
       String algoFamily = settings.getAlgo().map(String::toUpperCase).orElse("HMAC");
-      if(settings.getKey() == null){
+      if (settings.getKey() == null) {
         algoFamily = "NONE";
       }
 
-      if (algoFamily != "NONE") {
-
+      if (!"NONE".equals(algoFamily)) {
 
         if ("RSA".equals(algoFamily)) {
           try {
@@ -137,11 +135,11 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
           }
         }
 
-        else if ("HMAC".equals(algoFamily))  {
+        else if ("HMAC".equals(algoFamily)) {
           parser.setSigningKey(settings.getKey());
         }
         else {
-          throw new RuntimeException("unrecognised algorithm family " + algoFamily + ". Should be either of: HMAC, EC, RSA");
+          throw new RuntimeException("unrecognised algorithm family " + algoFamily + ". Should be either of: HMAC, EC, RSA, NONE");
         }
       }
 

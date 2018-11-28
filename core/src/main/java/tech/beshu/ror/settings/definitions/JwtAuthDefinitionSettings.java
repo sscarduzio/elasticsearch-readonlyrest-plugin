@@ -56,8 +56,10 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
     this.name = settings.stringReq(NAME);
 
     String key = ensureString(settings, SIGNATURE_KEY);
-    if(Strings.isNullOrEmpty(key)){
-      if(!settings.stringOpt(EXTERNAL_VALIDATOR).isPresent()){
+    if (Strings.isNullOrEmpty(key)) {
+      if (
+          !settings.stringOpt(SIGNATURE_ALGO).map(String::toUpperCase).orElse("NONE").equals("NONE") &&
+              !settings.stringOpt(EXTERNAL_VALIDATOR).isPresent()) {
         throw new SettingsMalformedException(
             "Attribute '" + SIGNATURE_KEY + "' shall not evaluate to an empty string unless '" + EXTERNAL_VALIDATOR + "' is  defined.");
       }
@@ -65,8 +67,8 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
     }
     else {
       String evaluated = evalPrefixedSignatureKey(key);
-      if(Strings.isNullOrEmpty(evaluated)){
-        throw new SettingsMalformedException("could not find a value fo the configured signature key: "+ key);
+      if (Strings.isNullOrEmpty(evaluated)) {
+        throw new SettingsMalformedException("could not find a value fo the configured signature key: " + key);
       }
       this.key = evaluated.getBytes();
     }
@@ -82,7 +84,7 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
 
   private static String ensureString(RawSettings settings, String key) {
     Optional<Object> oValue = settings.opt(key);
-    if(!oValue.isPresent()){
+    if (!oValue.isPresent()) {
       return null;
     }
     Object value = oValue.get();

@@ -110,6 +110,27 @@ public class JwtAuthRuleTests {
     res.get().thenAccept(r -> assertTrue(r.isMatch()));
   }
 
+  @Test
+  public void shouldAcceptTokenWithValidNONESignature() throws KeyException {
+    String token = Jwts.builder()
+                       .setSubject(SUBJECT)
+                       .compact();
+
+    RawSettings settings = makeSettings(
+        SETTINGS_SIGNATURE_ALGO, "NONE"
+    );
+
+    RequestContext rc = getMock(token);
+
+    Optional<AsyncRule> rule = makeRule(settings);
+    Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    res.get().thenAccept(r -> assertTrue(r.isMatch()));
+  }
+
   //  @Test
   //  public void shouldAcceptTokenWithValidEllipticCurveSignature() throws KeyException, NoSuchAlgorithmException, InvalidKeySpecException {
   //    // This throws exception for some reason, see issue
@@ -272,7 +293,7 @@ public class JwtAuthRuleTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeytIsEmpty() {
-    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "");
+    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "", SETTINGS_SIGNATURE_ALGO, "RSA");
     JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
   }
 
