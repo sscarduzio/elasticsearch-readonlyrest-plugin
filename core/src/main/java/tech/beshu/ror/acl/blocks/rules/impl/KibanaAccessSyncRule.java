@@ -47,7 +47,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       "indices:admin/validate/query",
       "indices:admin/get",
       "indices:admin/refresh*",
-      "indices:data/read/*",
+      "indices:data/read/*"
   ));
   public static MatcherWithWildcards RW = new MatcherWithWildcards(Sets.newHashSet(
       "indices:admin/create",
