@@ -34,14 +34,14 @@ import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection
 import java.util.Iterator;
 import java.util.List;
 
-public class BlockTest {
+public class __old_BlockTest {
 
   @Test
   public void testRulesShallFollowAuthInspectMutateOrder() {
     UserRuleFactory userRuleFactory = new UserRuleFactory(MockedESContext.INSTANCE, MockedACL.getMock());
     DefinitionsFactory definitionsFactory = new DefinitionsFactory(MockedESContext.INSTANCE, MockedACL.getMock());
     RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, MockedESContext.INSTANCE);
-    Block block = new Block(
+    __old_Block block = new __old_Block(
       BlockSettings.from(
         TestUtils.fromYAMLString("" +
                                    "name: Dummy block\n" +

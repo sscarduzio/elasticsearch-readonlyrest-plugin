@@ -18,7 +18,7 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
-import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.__old_ACL;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
@@ -49,9 +49,9 @@ public class UserRuleFactory {
 
   private final Map<Class<? extends RuleSettings>, Function<RuleSettings, ? extends AsyncRule>> creators;
   private final ESContext context;
-  private final ACL acl;
+  private final __old_ACL acl;
 
-  public UserRuleFactory(ESContext context, ACL acl) {
+  public UserRuleFactory(ESContext context, __old_ACL acl) {
     this.acl = acl;
     this.context = context;
     this.creators = Maps.newHashMap();

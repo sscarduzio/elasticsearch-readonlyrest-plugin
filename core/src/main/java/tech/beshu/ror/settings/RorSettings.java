@@ -107,7 +107,7 @@ public class RorSettings {
     List<String> blockNames = this.blocksSettings.stream().map(BlockSettings::getName).collect(Collectors.toList());
     blockNames.forEach(name -> {
       if (Collections.frequency(blockNames, name) > 1) {
-        throw new SettingsMalformedException("ACL Block names should be unique! Found more than one ACL block with the same name: " + name);
+        throw new SettingsMalformedException("__old_ACL __old_Block names should be unique! Found more than one __old_ACL block with the same name: " + name);
       }
     });
 

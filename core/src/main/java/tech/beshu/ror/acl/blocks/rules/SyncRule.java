@@ -22,7 +22,7 @@ import tech.beshu.ror.requestcontext.RequestContext;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public abstract class SyncRule extends Rule {
+public abstract class SyncRule extends __old_Rule {
 
   public abstract RuleExitResult match(RequestContext rc);
 

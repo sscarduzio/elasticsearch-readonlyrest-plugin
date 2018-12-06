@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.definitions;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.__old_ACL;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtExternalValidationHttpClient;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
@@ -71,10 +71,10 @@ public class DefinitionsFactory implements LdapClientFactory,
   private final Cache<String, AuthenticationLdapClient> authenticationLdapClientsCache;
   private final Cache<String, ExternalAuthenticationServiceClient> externalAuthenticationServiceClientsCache;
   private final Cache<String, GroupsProviderServiceClient> groupsProviderServiceClientsCache;
-  private final ACL acl;
+  private final __old_ACL acl;
   private final Cache<String, ExternalAuthenticationServiceClient> jwtExternalValidatorClientCache;
 
-  public DefinitionsFactory(ESContext context, ACL acl) {
+  public DefinitionsFactory(ESContext context, __old_ACL acl) {
     this.acl = acl;
     //this.httpClient = new ApacheHttpCoreClient(context);
     this.context = context;

@@ -38,7 +38,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.__old_ACL;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
@@ -61,7 +61,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<ACL>> acl;
+  private final AtomicReference<Optional<__old_ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
@@ -95,7 +95,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       if (newContext.getSettings().isEnabled()) {
         try {
-          ACL newAcl = new ACL(newContext);
+          __old_ACL newAcl = new __old_ACL(newContext);
           acl.set(Optional.of(newAcl));
           logger.info("Configuration reloaded - ReadonlyREST enabled");
         } catch (Exception ex) {
@@ -129,7 +129,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-      Optional<ACL> acl = this.acl.get();
+      Optional<__old_ACL> acl = this.acl.get();
       if (acl.isPresent()) {
         handleRequest(acl.get(), task, action, request, listener, chain);
       }
@@ -142,7 +142,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse>
-  void handleRequest(ACL acl, Task task, String action, Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
+  void handleRequest(__old_ACL acl, Task task, String action, Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
     RestChannel channel = ThreadRepo.channel.get();
     if (channel != null) {
       ThreadRepo.channel.remove();
@@ -150,7 +150,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     boolean chanNull = channel == null;
     boolean reqNull = channel == null ? true : channel.request() == null;
-    if (ACL.shouldSkipACL(chanNull, reqNull)) {
+    if (__old_ACL.shouldSkipACL(chanNull, reqNull)) {
       chain.proceed(task, action, request, listener);
       return;
     }
@@ -184,12 +184,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           // the cache some times and would not be filtered
           if (acl.involvesFilter()) {
             if (request instanceof SearchRequest) {
-              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
+              logger.debug("__old_ACL involves filters, will disable request cache for SearchRequest");
 
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
-              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
+              logger.debug("__old_ACL involves filters, will disable request cache for MultiSearchRequest");
               for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
                 sr.requestCache(Boolean.FALSE);
               }

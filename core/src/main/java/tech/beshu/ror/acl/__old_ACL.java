@@ -19,9 +19,9 @@ package tech.beshu.ror.acl;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
-import tech.beshu.ror.acl.blocks.Block;
-import tech.beshu.ror.acl.blocks.BlockExitResult;
-import tech.beshu.ror.acl.blocks.rules.Rule;
+import tech.beshu.ror.acl.blocks.__old_Block;
+import tech.beshu.ror.acl.blocks.__old_BlockExitResult;
+import tech.beshu.ror.acl.blocks.rules.__old_Rule;
 import tech.beshu.ror.acl.blocks.rules.RulesFactory;
 import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
@@ -53,11 +53,11 @@ import java.util.stream.Collectors;
  * Created by sscarduzio on 13/02/2016.
  */
 
-public class ACL {
+public class __old_ACL {
 
   private final LoggerShim logger;
   // list because it preserves the insertion order
-  private final ImmutableList<Block> blocks;
+  private final ImmutableList<__old_Block> blocks;
 
   private final UserRuleFactory userRuleFactory;
 
@@ -67,7 +67,7 @@ public class ACL {
   private final boolean involvesFilter;
   private ESContext context;
 
-  public ACL(ESContext context) {
+  public __old_ACL(ESContext context) {
     serTool = context.getSettings().isAuditorCollectorEnabled() ? new SerializationTool(context) : null;
     this.rorSettings = new RorSettings(context.getSettings().getRaw());
     this.logger = context.logger(getClass());
@@ -77,34 +77,34 @@ public class ACL {
     final RulesFactory rulesFactory = new RulesFactory(definitionsFactory, userRuleFactory, context);
 
     this.blocks = ImmutableList.copyOf(
-        rorSettings.getBlocksSettings().stream()
-                   .map(blockSettings -> {
-                     try {
-                       Block block = new Block(blockSettings, rulesFactory, context);
-                       logger.info("ADDING BLOCK:\t" + block.toString());
-                       return block;
-                     } catch (Throwable t) {
-                       logger.error("> Impossible to add block to ACL: " + blockSettings.getName() +
-                           " Reason: [" + t.getClass().getSimpleName() + "] " + t.getMessage(), t);
-                       t.printStackTrace();
-                       if (t.getCause() != null) {
-                         logger.error("caused by " + t.getCause().getClass().getSimpleName() + " " + t.getCause().getMessage());
-                       }
-                       return null;
-                     }
-                   })
-                   .filter(Objects::nonNull)
-                   .collect(Collectors.toList())
+      rorSettings.getBlocksSettings().stream()
+        .map(blockSettings -> {
+          try {
+            __old_Block block = new __old_Block(blockSettings, rulesFactory, context);
+            logger.info("ADDING BLOCK:\t" + block.toString());
+            return block;
+          } catch (Throwable t) {
+            logger.error("> Impossible to add block to __old_ACL: " + blockSettings.getName() +
+              " Reason: [" + t.getClass().getSimpleName() + "] " + t.getMessage(), t);
+            t.printStackTrace();
+            if (t.getCause() != null) {
+              logger.error("caused by " + t.getCause().getClass().getSimpleName() + " " + t.getCause().getMessage());
+            }
+            return null;
+          }
+        })
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList())
     );
 
     this.involvesFilter = blocks
-        .stream()
-        .filter(b ->
-            b.getSettings()
-             .getRules()
-             .stream()
-             .anyMatch(r -> FilterSyncRule.Settings.ATTRIBUTE_NAME.equals(r.getName()))
-        ).findFirst().isPresent();
+      .stream()
+      .anyMatch(b ->
+        b.getSettings()
+          .getRules()
+          .stream()
+          .anyMatch(r -> FilterSyncRule.Settings.ATTRIBUTE_NAME.equals(r.getName()))
+      );
 
   }
 
@@ -119,7 +119,7 @@ public class ACL {
     if (reqNull != chanNull) {
       if (chanNull) {
         throw new SecurityPermissionException("Problems analyzing the channel object. " +
-            "Have you checked the security permissions?", null);
+          "Have you checked the security permissions?", null);
       }
       if (reqNull) {
         throw new SecurityPermissionException("Problems analyzing the request object. " + "Have you checked the security permissions?", null);
@@ -136,7 +136,7 @@ public class ACL {
 
     FinalState fState = res.finalState();
     boolean skipLog = fState.equals(FinalState.ALLOWED) &&
-        !Verbosity.INFO.equals(res.getVerbosity());
+      !Verbosity.INFO.equals(res.getVerbosity());
 
     if (skipLog) {
       return;
@@ -161,14 +161,14 @@ public class ACL {
     }
     StringBuilder sb = new StringBuilder();
     sb
-        .append(color)
-        .append(fState.name())
-        .append(" by ")
-        .append(res.getReason())
-        .append(" req=")
-        .append(res.getRequestContext())
-        .append(" ")
-        .append(Constants.ANSI_RESET);
+      .append(color)
+      .append(fState.name())
+      .append(" by ")
+      .append(res.getReason())
+      .append(" req=")
+      .append(res.getRequestContext())
+      .append(" ")
+      .append(Constants.ANSI_RESET);
 
     logger.info(sb.toString());
 
@@ -184,74 +184,74 @@ public class ACL {
     // Run the blocks through
     doCheck(rc)
 
-        // Handle different exceptions meanings
-        .exceptionally(throwable -> {
-          if (h.isNotFound(throwable)) {
-            logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
-            h.onNotFound(throwable);
-            doLog(new ResponseContext(FinalState.NOT_FOUND, rc, throwable, null, "not found", false));
+      // Handle different exceptions meanings
+      .exceptionally(throwable -> {
+        if (h.isNotFound(throwable)) {
+          logger.warn("Resource not found! ID: " + rc.getId() + "  " + throwable.getCause().getMessage());
+          h.onNotFound(throwable);
+          doLog(new ResponseContext(FinalState.NOT_FOUND, rc, throwable, null, "not found", false));
 
-            return null;
-          }
-          throwable.printStackTrace();
-          h.onErrored(throwable);
-          doLog(new ResponseContext(FinalState.ERRORED, rc, throwable, null, "error", false));
           return null;
-        })
+        }
+        throwable.printStackTrace();
+        h.onErrored(throwable);
+        doLog(new ResponseContext(FinalState.ERRORED, rc, throwable, null, "error", false));
+        return null;
+      })
 
-        // FINAL stage: either is match or it isn't.
-        .thenApply(result -> {
-          assert result != null;
+      // FINAL stage: either is match or it isn't.
+      .thenApply(result -> {
+        assert result != null;
 
-          // NO MATCH
-          if (!result.isMatch()) {
-            h.onForbidden();
-            doLog(new ResponseContext(FinalState.FORBIDDEN, rc, null, null, "default", false));
-            return null;
-          }
-
-          // MATCH AN ALLOW BLOCK
-          if (BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
-            h.onAllow(result, rc);
-            doLog(new ResponseContext(FinalState.ALLOWED, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
-            return null;
-          }
-
-          // MATCH A FORBIDDEN BLOCK
-          else {
-            doLog(new ResponseContext(FinalState.FORBIDDEN, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
-            h.onForbidden();
-            return null;
-          }
-        })
-        .exceptionally(th -> {
-          th.printStackTrace();
-          doLog(new ResponseContext(FinalState.ERRORED, rc, th, null, "error", false));
-          h.onErrored(th);
+        // NO MATCH
+        if (!result.isMatch()) {
+          h.onForbidden();
+          doLog(new ResponseContext(FinalState.FORBIDDEN, rc, null, null, "default", false));
           return null;
-        });
+        }
+
+        // MATCH AN ALLOW BLOCK
+        if (BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
+          h.onAllow(result, rc);
+          doLog(new ResponseContext(FinalState.ALLOWED, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
+          return null;
+        }
+
+        // MATCH A FORBIDDEN BLOCK
+        else {
+          doLog(new ResponseContext(FinalState.FORBIDDEN, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
+          h.onForbidden();
+          return null;
+        }
+      })
+      .exceptionally(th -> {
+        th.printStackTrace();
+        doLog(new ResponseContext(FinalState.ERRORED, rc, th, null, "error", false));
+        h.onErrored(th);
+        return null;
+      });
   }
 
-  private CompletableFuture<BlockExitResult> doCheck(RequestContext rc) {
+  private CompletableFuture<__old_BlockExitResult> doCheck(RequestContext rc) {
     logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
-        blocks.iterator(),
-        block -> {
-          rc.reset();
-          return block.check(rc);
-        },
-        (block, checkResult) -> {
+      blocks.iterator(),
+      block -> {
+        rc.reset();
+        return block.check(rc);
+      },
+      (block, checkResult) -> {
 
-          if (checkResult.isMatch()) {
-            boolean isAllowed = checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW);
-            if (isAllowed) {
-              rc.commit();
-            }
-            return true;
+        if (checkResult.isMatch()) {
+          boolean isAllowed = checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW);
+          if (isAllowed) {
+            rc.commit();
           }
-          return false;
-        },
-        nothing -> BlockExitResult.noMatch()
+          return true;
+        }
+        return false;
+      },
+      nothing -> __old_BlockExitResult.noMatch()
 
     );
   }
@@ -324,7 +324,7 @@ public class ACL {
       @Override
       public HttpMethod getMethod() {
         return HttpMethod.fromString(rInfo.extractMethod())
-                         .orElseThrow(() -> context.rorException("unrecognised HTTP method " + rInfo.extractMethod()));
+          .orElseThrow(() -> context.rorException("unrecognised HTTP method " + rInfo.extractMethod()));
       }
 
       @Override
@@ -405,9 +405,9 @@ public class ACL {
   }
 
   public boolean responseOkHook(RequestContext rc, Object blockExitResult, Object actionRsponse) {
-    BlockExitResult result = (BlockExitResult) blockExitResult;
+    __old_BlockExitResult result = (__old_BlockExitResult) blockExitResult;
 
-    for (Rule r : result.getBlock().getRules()) {
+    for (__old_Rule r : result.getBlock().getRules()) {
       //#TODO check response listeners of rules
     }
 
@@ -427,7 +427,7 @@ public class ACL {
   }
 
   public boolean doesRequirePassword() {
-    return blocks.stream().anyMatch(Block::isAuthHeaderAccepted) && rorSettings.isPromptForBasicAuth();
+    return blocks.stream().anyMatch(__old_Block::isAuthHeaderAccepted) && rorSettings.isPromptForBasicAuth();
   }
 
   public boolean involvesFilter() {

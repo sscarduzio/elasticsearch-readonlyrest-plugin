@@ -31,6 +31,7 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.BlockSettings;
+import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
 import tech.beshu.ror.utils.RulesUtils;
 
@@ -48,14 +49,14 @@ import static tech.beshu.ror.commons.Constants.ANSI_YELLOW;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class Block {
+public class __old_Block {
 
   private final LoggerShim logger;
   private final BlockSettings settings;
   private final List<AsyncRule> rules;
   private final boolean authHeaderAccepted;
 
-  public Block(BlockSettings settings,
+  public __old_Block(BlockSettings settings,
       RulesFactory rulesFactory,
       ESContext context) {
     this.logger = context.logger(getClass());
@@ -111,7 +112,7 @@ public class Block {
    * Check all the conditions of this rule and return a rule exit result
    *
    */
-  public CompletableFuture<BlockExitResult> check(RequestContext rc) {
+  public CompletableFuture<__old_BlockExitResult> check(RequestContext rc) {
     return checkAsyncRules(rc)
         .thenApply(asyncCheck -> {
           if (asyncCheck != null && asyncCheck) {
@@ -151,21 +152,21 @@ public class Block {
     );
   }
 
-  private BlockExitResult finishWithMatchResult() {
+  private __old_BlockExitResult finishWithMatchResult() {
     if (logger.isDebugEnabled()) logger.debug(ANSI_CYAN + "matched " + this + ANSI_RESET);
-    return BlockExitResult.match(this);
+    return __old_BlockExitResult.match(this);
   }
 
-  private BlockExitResult finishWithNoMatchResult(RequestContext rc) {
+  private __old_BlockExitResult finishWithNoMatchResult(RequestContext rc) {
     if (logger.isDebugEnabled())
       logger.debug(ANSI_YELLOW + "[" + settings.getName() + "] the request matches no rules in this block: " + rc + ANSI_RESET);
-    return BlockExitResult.noMatch();
+    return __old_BlockExitResult.noMatch();
   }
 
   @Override
   public String toString() {
     return "{ name: '" + settings.getName() + "', policy: " + settings.getPolicy()
-        + ", rules: " + settings.getRules().stream().map(r -> r.getName()).collect(Collectors.toList()) + "}";
+        + ", rules: " + settings.getRules().stream().map(RuleSettings::getName).collect(Collectors.toList()) + "}";
   }
 
 }

@@ -40,9 +40,9 @@ repositories {
 }
 
 apply plugin: 'java'
-apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'license'
+apply plugin: 'scala'
 
 compileJava {
     sourceCompatibility = 1.8
@@ -58,6 +58,14 @@ test {
 }
 dependencies {
     compile project(':commons')
+
+    compile "org.scala-lang:scala-library:2.12.4"
+    compile group: 'io.monix', name: 'monix_2.12', version: '2.3.3'
+    compile group: 'io.monix', name: 'monix-cats_2.12', version: '2.3.3'
+    compile group: 'com.typesafe.scala-logging', name: 'scala-logging_2.12', version: '3.9.0'
+
+    testCompile group: 'org.scalatest', name: 'scalatest_2.12', version: '3.0.5'
+
     compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'

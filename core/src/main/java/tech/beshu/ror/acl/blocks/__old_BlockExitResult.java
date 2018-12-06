@@ -21,21 +21,21 @@ package tech.beshu.ror.acl.blocks;
 /**
  * Created by sscarduzio on 14/02/2016.
  */
-public class BlockExitResult {
-  private final Block block;
+public class __old_BlockExitResult {
+  private final __old_Block block;
   private final boolean match;
 
-  private BlockExitResult(Block block, Boolean match) {
+  private __old_BlockExitResult(__old_Block block, Boolean match) {
     this.block = block;
     this.match = match;
   }
 
-  public static BlockExitResult match(Block block) {
-    return new BlockExitResult(block, true);
+  public static __old_BlockExitResult match(__old_Block block) {
+    return new __old_BlockExitResult(block, true);
   }
 
-  public static BlockExitResult noMatch() {
-    return new BlockExitResult(null, false);
+  public static __old_BlockExitResult noMatch() {
+    return new __old_BlockExitResult(null, false);
   }
 
   public boolean isMatch() {
@@ -43,7 +43,7 @@ public class BlockExitResult {
     return block != null && match;
   }
 
-  public Block getBlock() {
+  public __old_Block getBlock() {
     return block;
   }
 

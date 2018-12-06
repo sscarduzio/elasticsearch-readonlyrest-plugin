@@ -51,7 +51,7 @@ public class RepositoriesSyncRule extends SyncRule {
 
     // Shortcut if we are matching all (i.e. totally useless rule, should be removed from settings)
     if(allowedRepositories.contains("_all") || allowedRepositories.contains("*")){
-      context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the ACL block.");
+      context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the __old_ACL block.");
       return MATCH;
     }
 

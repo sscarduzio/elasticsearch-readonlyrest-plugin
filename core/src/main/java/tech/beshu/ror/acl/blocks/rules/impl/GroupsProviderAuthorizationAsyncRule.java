@@ -79,7 +79,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
             user.setCurrentGroup(curGroup);
           }
 
-          // Exploring all the ACL for available groups for this user, known what their resolved groups are, and what the ACL has to offer for the user
+          // Exploring all the __old_ACL for available groups for this user, known what their resolved groups are, and what the __old_ACL has to offer for the user
           Set<String> matchingUserPatterns = new MatcherWithWildcards(
               settings.getUserGroupsProviderSettings()
                       .getUser2availGroups().keySet())

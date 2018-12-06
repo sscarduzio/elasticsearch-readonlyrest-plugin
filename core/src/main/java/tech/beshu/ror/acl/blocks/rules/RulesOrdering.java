@@ -60,7 +60,7 @@ import java.util.Comparator;
 
 public class RulesOrdering implements Comparator<AsyncRule> {
 
-  private final ImmutableList<Class<? extends Rule>> ordering;
+  private final ImmutableList<Class<? extends __old_Rule>> ordering;
 
   public RulesOrdering() {
     this.ordering = ImmutableList.of(
@@ -124,7 +124,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
     );
   }
 
-  private int indexOfRuleClass(Class<? extends Rule> ruleClass) {
+  private int indexOfRuleClass(Class<? extends __old_Rule> ruleClass) {
     int index = ordering.indexOf(ruleClass);
     if (index < 0)
       throw new IllegalStateException("Cannot find class '" + ruleClass.getName() + "' in rules ordering " +

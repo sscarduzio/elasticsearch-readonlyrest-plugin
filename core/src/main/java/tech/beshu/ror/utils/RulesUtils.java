@@ -20,14 +20,14 @@ import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.AsyncRuleAdapter;
 import tech.beshu.ror.acl.blocks.rules.CachedAsyncAuthenticationDecorator;
 import tech.beshu.ror.acl.blocks.rules.CachedAsyncAuthorizationDecorator;
-import tech.beshu.ror.acl.blocks.rules.Rule;
+import tech.beshu.ror.acl.blocks.rules.__old_Rule;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RulesUtils {
 
-  public static Class<? extends Rule> classOfRule(Rule rule) {
+  public static Class<? extends __old_Rule> classOfRule(__old_Rule rule) {
     if (rule instanceof CachedAsyncAuthenticationDecorator) {
       return tryAsyncAdapterUnpack(((CachedAsyncAuthenticationDecorator) rule).getUnderlying());
     }
@@ -39,7 +39,7 @@ public class RulesUtils {
     }
   }
 
-  private static Class<? extends Rule> tryAsyncAdapterUnpack(Rule rule) {
+  private static Class<? extends __old_Rule> tryAsyncAdapterUnpack(__old_Rule rule) {
     return rule instanceof AsyncRuleAdapter
       ? ((AsyncRuleAdapter) rule).getUnderlying().getClass()
       : rule.getClass();

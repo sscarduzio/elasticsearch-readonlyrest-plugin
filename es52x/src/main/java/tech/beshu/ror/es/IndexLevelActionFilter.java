@@ -39,7 +39,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.__old_ACL;
 import tech.beshu.ror.commons.domain.Variable;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;
@@ -63,7 +63,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<ACL>> acl;
+  private final AtomicReference<Optional<__old_ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final IndexNameExpressionResolver indexResolver;
   private final LoggerShim loggerShim;
@@ -100,7 +100,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
         if (newContext.getSettings().isEnabled()) {
           try {
-            ACL newAcl = new ACL(newContext);
+            __old_ACL newAcl = new __old_ACL(newContext);
             acl.set(Optional.of(newAcl));
             logger.info("Configuration reloaded - ReadonlyREST enabled");
           } catch (Exception ex) {
@@ -136,7 +136,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-      Optional<ACL> acl = this.acl.get();
+      Optional<__old_ACL> acl = this.acl.get();
       if (acl.isPresent()) {
         handleRequest(acl.get(), task, action, request, listener, chain);
       }
@@ -148,7 +148,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     });
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,
+  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(__old_ACL acl,
       Task task,
       String action,
       Request request,
@@ -160,7 +160,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
     boolean chanNull = channel == null;
     boolean reqNull = channel == null ? true : channel.request() == null;
-    if (ACL.shouldSkipACL(chanNull, reqNull)) {
+    if (__old_ACL.shouldSkipACL(chanNull, reqNull)) {
       chain.proceed(task, action, request, listener);
       return;
     }

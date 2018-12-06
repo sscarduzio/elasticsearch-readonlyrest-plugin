@@ -17,11 +17,11 @@
 
 package tech.beshu.ror.acl.blocks.rules;
 
-public abstract class Rule {
+public abstract class __old_Rule {
   protected final RuleExitResult MATCH;
   protected final RuleExitResult NO_MATCH;
 
-  Rule() {
+  __old_Rule() {
     MATCH = new RuleExitResult(true, this);
     NO_MATCH = new RuleExitResult(false, this);
   }

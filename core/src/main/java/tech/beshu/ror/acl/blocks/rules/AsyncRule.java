@@ -21,7 +21,7 @@ import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.util.concurrent.CompletableFuture;
 
-public abstract class AsyncRule extends Rule {
+public abstract class AsyncRule extends __old_Rule {
 
   public abstract CompletableFuture<RuleExitResult> match(RequestContext rc);
 

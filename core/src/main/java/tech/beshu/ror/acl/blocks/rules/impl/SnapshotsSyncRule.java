@@ -51,7 +51,7 @@ public class SnapshotsSyncRule extends SyncRule {
 
     // Shortcut if we are matching all (i.e. totally useless rule, should be removed from settings)
     if(allowedSnapshots.contains("_all") || allowedSnapshots.contains("*")){
-    context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the ACL block.");
+    context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the __old_ACL block.");
       return MATCH;
     }
 

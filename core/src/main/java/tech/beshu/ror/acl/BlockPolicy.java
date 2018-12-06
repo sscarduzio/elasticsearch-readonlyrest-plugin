@@ -17,7 +17,6 @@
 package tech.beshu.ror.acl;
 
 import java.util.Optional;
-
 public enum BlockPolicy {
   ALLOW, FORBID;
 

@@ -17,7 +17,7 @@
 package tech.beshu.ror.mocks;
 
 import org.mockito.Mockito;
-import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.__old_ACL;
 import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 
@@ -25,13 +25,13 @@ import tech.beshu.ror.acl.definitions.DefinitionsFactory;
  * Created by sscarduzio on 03/06/2017.
  */
 public class MockedACL {
-  private static ACL INSTANCE;
+  private static __old_ACL INSTANCE;
 
-  public static final ACL getMock() {
+  public static final __old_ACL getMock() {
     if (INSTANCE != null) {
       return INSTANCE;
     }
-    ACL acl = Mockito.mock(ACL.class);
+    __old_ACL acl = Mockito.mock(__old_ACL.class);
     Mockito.when(acl.getUserRuleFactory()).thenReturn(new UserRuleFactory(MockedESContext.INSTANCE, acl));
     Mockito.when(acl.getDefinitionsFactory()).thenReturn(new DefinitionsFactory(MockedESContext.INSTANCE, acl));
     INSTANCE = acl;

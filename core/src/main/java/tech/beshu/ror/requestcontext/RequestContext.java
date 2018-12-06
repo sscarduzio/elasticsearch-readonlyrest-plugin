@@ -23,7 +23,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.BlockHistory;
-import tech.beshu.ror.acl.blocks.Block;
+import tech.beshu.ror.acl.blocks.__old_Block;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.LoggedUser;
@@ -319,7 +319,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     return history;
   }
 
-  public void addToHistory(Block block, Set<RuleExitResult> results) {
+  public void addToHistory(__old_Block block, Set<RuleExitResult> results) {
     BlockHistory blockHistory = new BlockHistory(block.getName(), results);
     history.add(blockHistory);
   }
