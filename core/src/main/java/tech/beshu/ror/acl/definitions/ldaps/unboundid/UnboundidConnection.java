@@ -131,6 +131,7 @@ public class UnboundidConnection {
             serverSet = isSecure ?
                 new FailoverServerSet(hosts, ports, sslSocketFactory, options) :
                 new FailoverServerSet(hosts, ports, options);
+            break;
           }
         }
       }
