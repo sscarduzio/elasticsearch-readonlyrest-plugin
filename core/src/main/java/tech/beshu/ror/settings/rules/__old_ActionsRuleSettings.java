@@ -20,22 +20,22 @@ import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.Set;
 
-public class ApiKeysRuleSettings implements RuleSettings {
+public class __old_ActionsRuleSettings implements RuleSettings {
 
-  public static final String ATTRIBUTE_NAME = "api_keys";
+  public static final String ATTRIBUTE_NAME = "actions";
 
-  private final Set<String> apiKeys;
+  private final Set<String> actions;
 
-  public ApiKeysRuleSettings(Set<String> apiKeys) {
-    this.apiKeys = apiKeys;
+  private __old_ActionsRuleSettings(Set<String> actions) {
+    this.actions = actions;
   }
 
-  public static ApiKeysRuleSettings from(Set<String> indices) {
-    return new ApiKeysRuleSettings(indices);
+  public static __old_ActionsRuleSettings from(Set<String> indices) {
+    return new __old_ActionsRuleSettings(indices);
   }
 
-  public Set<String> getApiKeys() {
-    return apiKeys;
+  public Set<String> getActions() {
+    return actions;
   }
 
   @Override

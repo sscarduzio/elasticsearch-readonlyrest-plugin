@@ -35,7 +35,7 @@ import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAut
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 
 import java.security.GeneralSecurityException;
@@ -71,7 +71,7 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
   }
 
   @Override
-  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
+  public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
                                      .flatMap(JwtAuthSyncRule::extractToken);
 

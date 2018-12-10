@@ -15,19 +15,32 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.settings.rules;
+package tech.beshu.ror.acl.blocks.rules.impl;
 
-import tech.beshu.ror.settings.AuthKeyProviderSettings;
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
 
-public abstract class AuthKeyRuleSettings implements AuthKeyProviderSettings {
+/**
+ * Created by sscarduzio on 13/02/2016.
+ */
+public class __old_AuthKeySha256SyncRule extends __old_AuthKeyHashingRule {
 
-  private final String authKey;
+  private final AuthKeySha256RuleSettings settings;
 
-  protected AuthKeyRuleSettings(String authKey) {
-    this.authKey = authKey;
+  public __old_AuthKeySha256SyncRule(AuthKeySha256RuleSettings s, ESContext context) {
+    super(s, context);
+    this.settings = s;
   }
 
-  public String getAuthKey() {
-    return authKey;
+  @Override
+  protected HashFunction getHashFunction() {
+    return Hashing.sha256();
+  }
+
+  @Override
+  public String getKey() {
+    return settings.getName();
   }
 }

@@ -27,7 +27,7 @@ import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.mocks.MockLdapClientHelper;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.mocks.RequestContextMock;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 
@@ -56,7 +56,7 @@ public class LdapAuthorizationAsyncRuleTests {
         )),
         MockedESContext.INSTANCE
     );
-    RequestContext rc = RequestContextMock.mockedRequestContext("user", "pass", "group2");
+    __old_RequestContext rc = RequestContextMock.mockedRequestContext("user", "pass", "group2");
     RuleExitResult match = rule.match(rc).get();
 
     // Available groups

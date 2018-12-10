@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,11 +40,11 @@ public class HeadersOrSyncRule extends HeadersSyncRule {
    * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
    * This is an OR evaluated variant of {@link HeadersAndSyncRule}
    *
-   * @param rc the RequestContext
+   * @param rc the __old_RequestContext
    * @return match or no match
    */
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
 
     Map<String, String> subsetHeaders = new HashMap<>(allowedHeaders.size());
     for (Map.Entry<String, String> kv : rc.getHeaders().entrySet()) {

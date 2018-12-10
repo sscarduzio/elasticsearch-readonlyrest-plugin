@@ -24,7 +24,7 @@ import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -143,10 +143,10 @@ public class HeadersAndRuleTests {
   private RuleExitResult match(List<String> configured, Map<String, String> found) {
     Map<String, String> foundCaseInsensitive = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     foundCaseInsensitive.putAll(found);
-    return match(configured, foundCaseInsensitive, Mockito.mock(RequestContext.class));
+    return match(configured, foundCaseInsensitive, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, Map<String, String> found, RequestContext rc) {
+  private RuleExitResult match(List<String> configured, Map<String, String> found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(found);
 
     SyncRule r = new HeadersSyncRule(new HeadersSyncRule.Settings(Sets.newHashSet(configured)));

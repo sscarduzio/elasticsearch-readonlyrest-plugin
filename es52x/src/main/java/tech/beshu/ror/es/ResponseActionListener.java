@@ -23,18 +23,18 @@ import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.es.rradmin.RRMetadataResponse;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 public class ResponseActionListener implements ActionListener<ActionResponse> {
   private final String action;
   private final ActionListener<ActionResponse> baseListener;
   private final ActionRequest request;
-  private final RequestContext requestContext;
+  private final __old_RequestContext requestContext;
   private final Logger logger;
 
   ResponseActionListener(String action, ActionRequest request,
       ActionListener<ActionResponse> baseListener,
-      RequestContext requestContext, Logger logger) {
+      __old_RequestContext requestContext, Logger logger) {
     this.action = action;
     this.logger = logger;
     this.request = request;

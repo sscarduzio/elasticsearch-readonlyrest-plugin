@@ -19,11 +19,11 @@ package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
 import tech.beshu.ror.acl.__old_ACL;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha1SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha256SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha512SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
@@ -57,15 +57,15 @@ public class UserRuleFactory {
     this.creators = Maps.newHashMap();
     this.creators.put(
         AuthKeySha1RuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new AuthKeySha1SyncRule((AuthKeySha1RuleSettings) settings, context))
+        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySha1SyncRule((AuthKeySha1RuleSettings) settings, context))
     );
     this.creators.put(
         AuthKeySha256RuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context))
+        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context))
     );
     this.creators.put(
         AuthKeySha512RuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
+        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
     );
 
     // Infinitely cached because the crypto is super heavy; the in-mem cache has salt+hashed keys for security.
@@ -73,14 +73,14 @@ public class UserRuleFactory {
         AuthKeyUnixRuleSettings.class,
         settings -> {
           AuthKeyUnixRuleSettings ruleSettings = (AuthKeyUnixRuleSettings) settings;
-          AuthKeyUnixAsyncRule rule = new AuthKeyUnixAsyncRule(ruleSettings, context);
+          __old_AuthKeyUnixAsyncRule rule = new __old_AuthKeyUnixAsyncRule(ruleSettings, context);
           return CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(rule, (CacheSettings) settings, context);
         }
     );
 
     this.creators.put(
         AuthKeyPlainTextRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context))
+        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context))
     );
     this.creators.put(
         ProxyAuthRuleSettings.class,

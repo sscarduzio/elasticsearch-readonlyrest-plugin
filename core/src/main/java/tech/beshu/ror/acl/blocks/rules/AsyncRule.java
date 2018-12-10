@@ -17,12 +17,12 @@
 
 package tech.beshu.ror.acl.blocks.rules;
 
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.concurrent.CompletableFuture;
 
 public abstract class AsyncRule extends __old_Rule {
 
-  public abstract CompletableFuture<RuleExitResult> match(RequestContext rc);
+  public abstract CompletableFuture<RuleExitResult> match(__old_RequestContext rc);
 
 }

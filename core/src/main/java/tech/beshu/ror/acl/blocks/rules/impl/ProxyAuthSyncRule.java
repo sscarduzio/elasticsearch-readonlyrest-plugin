@@ -20,11 +20,10 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.acl.blocks.rules.UserRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
 
 import java.util.Map;
@@ -50,7 +49,7 @@ public class ProxyAuthSyncRule extends SyncRule implements Authentication {
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     Optional<LoggedUser> optUser = getUser(rc.getHeaders());
 
     if (!optUser.isPresent()) {

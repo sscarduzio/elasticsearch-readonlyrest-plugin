@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.HashMap;
@@ -47,11 +47,11 @@ public class HeadersSyncRule extends SyncRule {
   /**
    * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
    *
-   * @param rc the RequestContext
+   * @param rc the __old_RequestContext
    * @return match or no match
    */
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
 
     Map<String, String> subsetHeaders = new HashMap<>(allowedHeaders.size());
     for (Map.Entry<String, String> kv : rc.getHeaders().entrySet()) {

@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
 
 import java.util.Set;
@@ -42,10 +42,10 @@ import static org.mockito.Mockito.when;
 public class HostsRuleTests {
 
   private RuleExitResult match(String configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) {
+  private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getRemoteAddress()).thenReturn(found);
 
     Set<Value<String>> configV = Sets.newHashSet(configured).stream().map(i -> Value.fromString(i, Function.identity())).collect(Collectors.toSet());

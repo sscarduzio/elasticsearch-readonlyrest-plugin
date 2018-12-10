@@ -14,34 +14,32 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.settings.rules;
 
-package tech.beshu.ror.acl.blocks.rules.impl;
+import tech.beshu.ror.settings.RuleSettings;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
+import java.util.Set;
 
+public class __old_ApiKeysRuleSettings implements RuleSettings {
 
-/**
- * Created by samy-orange on 13/02/2016.
- */
-public class AuthKeySha512SyncRule extends AuthKeyHashingRule {
+  public static final String ATTRIBUTE_NAME = "api_keys";
 
-  private final AuthKeySha512RuleSettings settings;
+  private final Set<String> apiKeys;
 
-  public AuthKeySha512SyncRule(AuthKeySha512RuleSettings s, ESContext context) {
-    super(s, context);
-    this.settings = s;
+  public __old_ApiKeysRuleSettings(Set<String> apiKeys) {
+    this.apiKeys = apiKeys;
+  }
+
+  public static __old_ApiKeysRuleSettings from(Set<String> indices) {
+    return new __old_ApiKeysRuleSettings(indices);
+  }
+
+  public Set<String> getApiKeys() {
+    return apiKeys;
   }
 
   @Override
-  protected HashFunction getHashFunction() {
-    return Hashing.sha512();
-  }
-
-  @Override
-  public String getKey() {
-    return settings.getName();
+  public String getName() {
+    return ATTRIBUTE_NAME;
   }
 }

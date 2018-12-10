@@ -29,13 +29,12 @@ import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.acl.blocks.rules.UserRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 
 import java.security.AccessController;
@@ -86,7 +85,7 @@ public class RorKbnAuthSyncRule extends SyncRule implements Authentication {
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
                                      .flatMap(RorKbnAuthSyncRule::extractToken);
 

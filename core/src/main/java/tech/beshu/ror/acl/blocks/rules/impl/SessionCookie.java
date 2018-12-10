@@ -24,7 +24,7 @@ import com.google.common.hash.Hashing;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.net.HttpCookie;
 import java.nio.charset.StandardCharsets;
@@ -50,12 +50,12 @@ public class SessionCookie {
 
   private final LoggerShim logger;
   private final Long sessionMaxIdleMillis;
-  private final RequestContext rc;
+  private final __old_RequestContext rc;
 
   private boolean cookiePresent = false;
   private boolean cookieValid = false;
 
-  SessionCookie(RequestContext rc, Long sessionMaxIdleMillis, ESContext context) {
+  SessionCookie(__old_RequestContext rc, Long sessionMaxIdleMillis, ESContext context) {
     logger = context.logger(getClass());
     if (sessionMaxIdleMillis <= 0) {
       throw context.rorException("session max idle interval cannot be negative");

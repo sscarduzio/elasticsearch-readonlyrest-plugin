@@ -32,7 +32,7 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 
@@ -79,7 +79,7 @@ public class JwtAuthRuleTests {
                        .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
                        .compact();
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET);
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -99,7 +99,7 @@ public class JwtAuthRuleTests {
 
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, getRsaPublicKey(), SETTINGS_SIGNATURE_ALGO, "RSA");
 
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -120,7 +120,7 @@ public class JwtAuthRuleTests {
         SETTINGS_SIGNATURE_ALGO, "NONE"
     );
 
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -146,7 +146,7 @@ public class JwtAuthRuleTests {
   //        SETTINGS_SIGNATURE_ALGO, "ES"
   //    );
   //
-  //    RequestContext rc = getMock(token);
+  //    __old_RequestContext rc = getMock(token);
   //
   //    Optional<AsyncRule> rule = makeRule(settings);
   //    Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -164,7 +164,7 @@ public class JwtAuthRuleTests {
                        .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
                        .compact();
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, BAD_SECRET);
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -184,7 +184,7 @@ public class JwtAuthRuleTests {
 
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, getInvalidPublicKey(), SETTINGS_SIGNATURE_ALGO, "RSA");
 
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -213,7 +213,7 @@ public class JwtAuthRuleTests {
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_USER_CLAIM, USER_CLAIM
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -234,7 +234,7 @@ public class JwtAuthRuleTests {
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_USER_CLAIM, USER_CLAIM
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -254,7 +254,7 @@ public class JwtAuthRuleTests {
                        .signWith(SignatureAlgorithm.valueOf(ALGO), SECRET.getBytes())
                        .compact();
     RawSettings settings = makeSettings(SETTINGS_SIGNATURE_KEY, SECRET);
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -329,7 +329,7 @@ public class JwtAuthRuleTests {
         SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_ROLES_CLAIM, ROLES_CLAIM
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -351,7 +351,7 @@ public class JwtAuthRuleTests {
         SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_ROLES_CLAIM, ROLES_CLAIM
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -373,7 +373,7 @@ public class JwtAuthRuleTests {
         SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_ROLES_CLAIM, ROLES_CLAIM
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -396,7 +396,7 @@ public class JwtAuthRuleTests {
         SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_ROLES_CLAIM, ROLES_CLAIM
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(JWT_NAME, "role_3,role_test", settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -421,7 +421,7 @@ public class JwtAuthRuleTests {
         SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_ROLES_CLAIM, "roles.wrong_path"
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -446,7 +446,7 @@ public class JwtAuthRuleTests {
         SETTINGS_SIGNATURE_KEY, SECRET,
         SETTINGS_ROLES_CLAIM, "roles.subpath"
     );
-    RequestContext rc = getMock(token);
+    __old_RequestContext rc = getMock(token);
 
     Optional<AsyncRule> rule = makeRule(JWT_NAME, "role_test", settings);
     Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
@@ -457,8 +457,8 @@ public class JwtAuthRuleTests {
     res.get().thenAccept(r -> assertTrue(r.isMatch()));
   }
 
-  private RequestContext getMock(String token) {
-    RequestContext mock = Mockito.mock(RequestContext.class);
+  private __old_RequestContext getMock(String token) {
+    __old_RequestContext mock = Mockito.mock(__old_RequestContext.class);
     when(mock.getHeaders()).thenReturn(ImmutableMap.of("Authorization", "Bearer " + token));
     return mock;
   }

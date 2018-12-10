@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.commons.utils;
 
-
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 
@@ -76,6 +75,9 @@ public class MatcherWithWildcards {
     if (haystack == null) {
       return false;
     }
+    if (matchers.contains("*")) {
+      return true;
+    }
     for (String[] p : patternsList) {
       if (miniglob(p, haystack)) {
         return true;
@@ -123,7 +125,7 @@ public class MatcherWithWildcards {
     }
     return filtered;
   }
-  
+
   public Set<String> matchingMatchers(Set<String> haystack) {
     if (haystack == null) {
       return empty;
@@ -137,7 +139,7 @@ public class MatcherWithWildcards {
       }
     }
     return filtered;
-}
+  }
 
   public Set<String> filterRemoteClusterAware(Set<String> haystack) {
     if (haystack == null) {

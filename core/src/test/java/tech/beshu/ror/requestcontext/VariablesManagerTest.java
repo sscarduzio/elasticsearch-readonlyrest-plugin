@@ -85,8 +85,8 @@ public class VariablesManagerTest {
     assertEquals(Optional.of(".@one@two.x@three@@@"), vm.apply(".@one@two.@{key1}@three@@@"));
   }
 
-  private RequestContext getMock(Optional<String> userName) {
-    RequestContext rc = Mockito.mock(RequestContext.class);
+  private __old_RequestContext getMock(Optional<String> userName) {
+    __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
     when(rc.getLoggedInUser()).thenReturn(userName.map(LoggedUser::new));
     return rc;
   }

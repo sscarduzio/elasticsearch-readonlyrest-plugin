@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.rules;
 
-public class AuthKeySha512RuleSettings extends AuthKeyRuleSettings {
+public class AuthKeySha512RuleSettings extends __old_AuthKeyRuleSettings {
 
   public static final String ATTRIBUTE_NAME = "auth_key_sha512";
 

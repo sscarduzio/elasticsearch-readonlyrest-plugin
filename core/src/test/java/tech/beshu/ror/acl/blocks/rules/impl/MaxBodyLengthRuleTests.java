@@ -21,7 +21,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 
 import static junit.framework.TestCase.assertFalse;
@@ -52,10 +52,10 @@ public class MaxBodyLengthRuleTests {
   }
 
   private RuleExitResult match(Integer configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(Integer configured, String found, RequestContext rc) {
+  private RuleExitResult match(Integer configured, String found, __old_RequestContext rc) {
     when(rc.getContentLength()).thenReturn(found.length());
 
     SyncRule r = new MaxBodyLengthSyncRule(MaxBodyLengthRuleSettings.from(configured));

@@ -23,14 +23,14 @@ import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.utils.FilterTransient;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.function.Function;
 
 /**
  * Document level security (DLS) rule.
- * When applied, it forwards the filter query to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link RequestContext}.
+ * When applied, it forwards the filter query to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link __old_RequestContext}.
  * Created by sscarduzio on 31/05/2018.
  */
 public class FilterSyncRule extends SyncRule {
@@ -43,7 +43,7 @@ public class FilterSyncRule extends SyncRule {
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     if (!rc.isReadRequest()) {
       return NO_MATCH;
     }

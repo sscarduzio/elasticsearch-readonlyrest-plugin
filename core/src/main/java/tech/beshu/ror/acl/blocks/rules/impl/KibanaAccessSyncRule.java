@@ -25,7 +25,7 @@ import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
 
 import java.util.Set;
@@ -105,7 +105,7 @@ public class KibanaAccessSyncRule extends SyncRule {
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     RuleExitResult res = doMatch(rc);
     if (ROR_KIBANA_METADATA_ENABLED && res.isMatch()) {
       rc.setResponseHeader(HEADER_KIBANA_ACCESS, settings.getKibanaAccess().name().toLowerCase());
@@ -113,7 +113,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     return res;
   }
 
-  private RuleExitResult doMatch(RequestContext rc) {
+  private RuleExitResult doMatch(__old_RequestContext rc) {
     Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
 
     if (Constants.REST_METADATA_PATH.equals(rc.getUri())) {

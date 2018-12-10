@@ -22,7 +22,7 @@ import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
 
 import static org.junit.Assert.assertFalse;
@@ -54,10 +54,10 @@ public class ProxyAuthRuleTests {
   }
 
   private RuleExitResult match(String configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) {
+  private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
 
     ProxyAuthSyncRule r = new ProxyAuthSyncRule(ProxyAuthRuleSettings.from(Lists.newArrayList(configured)));

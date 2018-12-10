@@ -21,7 +21,7 @@ import org.mockito.Mockito;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
 import java.time.Duration;
@@ -70,7 +70,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
     when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContext requestContext = Mockito.mock(RequestContext.class);
+    __old_RequestContext requestContext = Mockito.mock(__old_RequestContext.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
     CacheSettings settings = () -> Duration.ofSeconds(10);
@@ -90,7 +90,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
     when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
-    RequestContext requestContext = Mockito.mock(RequestContext.class);
+    __old_RequestContext requestContext = Mockito.mock(__old_RequestContext.class);
     when(requestContext.getLoggedInUser()).thenReturn(Optional.of(user));
 
     CacheSettings settings = () -> ttl;

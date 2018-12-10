@@ -33,8 +33,8 @@ import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
-import tech.beshu.ror.settings.rules.ActionsRuleSettings;
-import tech.beshu.ror.settings.rules.ApiKeysRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
@@ -102,7 +102,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
     creators.put(HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
     creators.put(HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
-    creators.put(ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
+    creators.put(__old_ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
     creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
     creators.put(SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
@@ -118,7 +118,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
     creators.put(FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
     creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
-    creators.put(ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
+    creators.put(__old_ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
     creators.put(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
     creators.put(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
     creators.put(SearchlogRuleSettings.ATTRIBUTE_NAME, searchlogSettingsCreator(blockSettings));
@@ -226,8 +226,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> actionsSettingsCreator(RawSettings blockSettings) {
-    return () -> ActionsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(ActionsRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_ActionsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(__old_ActionsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
@@ -316,8 +316,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> apiKeysSettingsCreator(RawSettings blockSettings) {
-    return () -> ApiKeysRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(ApiKeysRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_ApiKeysRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(__old_ApiKeysRuleSettings.ATTRIBUTE_NAME)
     );
   }
 

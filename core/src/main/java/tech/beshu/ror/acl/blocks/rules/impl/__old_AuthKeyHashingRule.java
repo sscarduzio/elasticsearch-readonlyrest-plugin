@@ -18,22 +18,22 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.hash.HashFunction;
-import tech.beshu.ror.acl.blocks.rules.BasicAuthentication;
+import tech.beshu.ror.acl.blocks.rules.__old_BasicAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.settings.rules.AuthKeyRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyRuleSettings;
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-public abstract class AuthKeyHashingRule extends BasicAuthentication {
+public abstract class __old_AuthKeyHashingRule extends __old_BasicAuthentication {
   private final LoggerShim logger;
 
-  public AuthKeyHashingRule(AuthKeyRuleSettings s, ESContext context) {
+  public __old_AuthKeyHashingRule(__old_AuthKeyRuleSettings s, ESContext context) {
     super(s, context);
-    logger = context.logger(AuthKeySha1SyncRule.class);
+    logger = context.logger(__old_AuthKeySha1SyncRule.class);
   }
 
   @Override

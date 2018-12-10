@@ -18,7 +18,7 @@ package tech.beshu.ror.settings.rules;
 
 import java.time.Duration;
 
-public class AuthKeyUnixRuleSettings extends AuthKeyRuleSettings implements CacheSettings {
+public class AuthKeyUnixRuleSettings extends __old_AuthKeyRuleSettings implements CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "auth_key_unix";
   public static final String ATTRIBUTE_AUTH_CACHE_TTL = "auth_cache_ttl_sec";

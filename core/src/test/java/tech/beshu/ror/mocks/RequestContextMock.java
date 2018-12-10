@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.httpclient.HttpMethod;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.Base64;
 import java.util.HashMap;
@@ -37,8 +37,8 @@ import java.util.UUID;
 
 public class RequestContextMock {
 
-  public static RequestContext mockedRequestContext(String user, String pass) {
-    RequestContext mock = mock(RequestContext.class);
+  public static __old_RequestContext mockedRequestContext(String user, String pass) {
+    __old_RequestContext mock = mock(__old_RequestContext.class);
     when(mock.getHeaders()).thenReturn(
         Maps.newHashMap(ImmutableMap.<String, String>builder()
             .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
@@ -47,8 +47,8 @@ public class RequestContextMock {
     return mock;
   }
 
-  public static RequestContext  mockedRequestContext(String user, String pass, String preferredGroup) {
-    RequestContext mock = mock(RequestContext.class);
+  public static __old_RequestContext mockedRequestContext(String user, String pass, String preferredGroup) {
+    __old_RequestContext mock = mock(__old_RequestContext.class);
     when(mock.getHeaders()).thenReturn(
         Maps.newHashMap(ImmutableMap.<String, String>builder()
             .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
@@ -68,8 +68,8 @@ public class RequestContextMock {
   }
 
 
-  public static RequestContext mkSearchRequest(Set<String> initialIndices, Set<String> indicesInCluster, Set<String> expandedIndices) {
-    return new RequestContext("search_test", new MockedESContext()) {
+  public static __old_RequestContext mkSearchRequest(Set<String> initialIndices, Set<String> indicesInCluster, Set<String> expandedIndices) {
+    return new __old_RequestContext("search_test", new MockedESContext()) {
       @Override
       protected Set<String> extractSnapshots() {
         return null;

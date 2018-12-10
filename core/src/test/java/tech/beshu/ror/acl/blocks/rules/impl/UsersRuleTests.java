@@ -25,7 +25,7 @@ import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.LoggedUser;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.List;
 import java.util.Optional;
@@ -65,10 +65,10 @@ public class UsersRuleTests {
   }
 
   private RuleExitResult match(List<String> configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, String found, RequestContext rc) {
+  private RuleExitResult match(List<String> configured, String found, __old_RequestContext rc) {
     when(rc.getLoggedInUser()).thenReturn(Optional.ofNullable(Strings.isNullOrEmpty(found) ? null : new LoggedUser(found)));
 
     SyncRule r = new UsersSyncRule(new UsersSyncRule.Settings(Sets.newHashSet(configured)));

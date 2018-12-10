@@ -32,7 +32,7 @@ import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.utils.containers.WireMockContainer;
@@ -119,7 +119,7 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
     );
 
     LoggedUser user = new LoggedUser("example_user");
-    RequestContext requestContext = Mockito.mock(RequestContext.class);
+    __old_RequestContext requestContext = Mockito.mock(__old_RequestContext.class);
     if (currentGroup != null) {
       Map<String, String> hmap = new HashMap<>(1);
       hmap.put(Constants.HEADER_GROUP_CURRENT, "group1");

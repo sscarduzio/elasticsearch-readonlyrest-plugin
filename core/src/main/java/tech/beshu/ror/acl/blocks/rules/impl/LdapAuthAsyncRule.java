@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.acl.definitions.ldaps.LdapClientFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
@@ -64,7 +64,7 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
   }
 
   @Override
-  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
+  public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
     return authentication.match(rc)
       .exceptionally(e -> {
         e.printStackTrace();

@@ -18,13 +18,13 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.ImmutableList;
-import tech.beshu.ror.acl.blocks.rules.impl.ActionsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.ApiKeysSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_ActionsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha1SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha256SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha512SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
@@ -66,11 +66,11 @@ public class RulesOrdering implements Comparator<AsyncRule> {
     this.ordering = ImmutableList.of(
 
         // Authentication rules must come first because they set the user information which further rules might rely on.
-        AuthKeySyncRule.class,
-        AuthKeySha1SyncRule.class,
-        AuthKeySha256SyncRule.class,
-        AuthKeySha512SyncRule.class,
-        AuthKeyUnixAsyncRule.class,
+        __old_AuthKeySyncRule.class,
+        __old_AuthKeySha1SyncRule.class,
+        __old_AuthKeySha256SyncRule.class,
+        __old_AuthKeySha512SyncRule.class,
+        __old_AuthKeyUnixAsyncRule.class,
         ProxyAuthSyncRule.class,
         JwtAuthSyncRule.class,
         RorKbnAuthSyncRule.class,
@@ -89,7 +89,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         SnapshotsSyncRule.class,
         RepositoriesSyncRule.class,
         XForwardedForSyncRule.class,
-        ApiKeysSyncRule.class,
+        __old_ApiKeysSyncRule.class,
         SessionMaxIdleSyncRule.class,
         UriReSyncRule.class,
         MaxBodyLengthSyncRule.class,
@@ -98,7 +98,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         HeadersAndSyncRule.class,
         HeadersOrSyncRule.class,
         IndicesSyncRule.class,
-        ActionsSyncRule.class,
+        __old_ActionsSyncRule.class,
         SearchlogSyncRule.class,
         UsersSyncRule.class,
 

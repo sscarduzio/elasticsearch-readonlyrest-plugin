@@ -19,33 +19,33 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.ApiKeysRuleSettings;
-
-import java.util.Set;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.MatcherWithWildcards;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
+import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
 
 /**
- * Created by sscarduzio on 13/02/2016.
+ * Created by sscarduzio on 14/02/2016.
  */
-public class ApiKeysSyncRule extends SyncRule {
+public class __old_ActionsSyncRule extends SyncRule {
 
-  private final Set<String> validApiKeys;
-  private final ApiKeysRuleSettings settings;
+  private final LoggerShim logger;
+  private final MatcherWithWildcards matcher;
+  private final __old_ActionsRuleSettings settings;
 
-  public ApiKeysSyncRule(ApiKeysRuleSettings s) {
-    this.settings = s;
-    this.validApiKeys = s.getApiKeys();
+  public __old_ActionsSyncRule(__old_ActionsRuleSettings s, ESContext context) {
+    logger = context.logger(getClass());
+    matcher = new MatcherWithWildcards(s.getActions());
+    settings = s;
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
-    String h = rc.getHeaders().get("X-Api-Key");
-    if (validApiKeys == null || h == null) {
-      return NO_MATCH;
-    }
-    if (validApiKeys.contains(h)) {
+  public RuleExitResult match(__old_RequestContext rc) {
+    if (settings.getActions().contains("*") || matcher.match(rc.getAction())) {
       return MATCH;
     }
+    logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");
     return NO_MATCH;
   }
 

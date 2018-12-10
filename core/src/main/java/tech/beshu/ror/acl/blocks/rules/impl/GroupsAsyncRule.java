@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
 import tech.beshu.ror.commons.domain.LoggedUser;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
@@ -59,7 +59,7 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
   }
 
   @Override
-  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
+  public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
 
     // All configured groups in a block's group rule, contextualized
     Set<String> resolvedGroups = settings.getGroups().stream()

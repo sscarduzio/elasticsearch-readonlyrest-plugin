@@ -29,7 +29,7 @@ import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.BlockSettings;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
@@ -112,7 +112,7 @@ public class __old_Block {
    * Check all the conditions of this rule and return a rule exit result
    *
    */
-  public CompletableFuture<__old_BlockExitResult> check(RequestContext rc) {
+  public CompletableFuture<__old_BlockExitResult> check(__old_RequestContext rc) {
     return checkAsyncRules(rc)
         .thenApply(asyncCheck -> {
           if (asyncCheck != null && asyncCheck) {
@@ -124,8 +124,8 @@ public class __old_Block {
         });
   }
 
-  private CompletableFuture<Boolean> checkAsyncRules(RequestContext rc) {
-    // async rules should be checked in sequence due to interaction with not thread safe objects like RequestContext
+  private CompletableFuture<Boolean> checkAsyncRules(__old_RequestContext rc) {
+    // async rules should be checked in sequence due to interaction with not thread safe objects like __old_RequestContext
     Set<RuleExitResult> thisBlockHistory = new HashSet<>(rules.size());
     return checkAsyncRulesInSequence(rc, rules.iterator(), thisBlockHistory)
         .thenApply(result -> {
@@ -134,7 +134,7 @@ public class __old_Block {
         });
   }
 
-  private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
+  private CompletableFuture<Boolean> checkAsyncRulesInSequence(__old_RequestContext rc,
       Iterator<AsyncRule> rules,
       Set<RuleExitResult> thisBlockHistory) {
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
@@ -157,7 +157,7 @@ public class __old_Block {
     return __old_BlockExitResult.match(this);
   }
 
-  private __old_BlockExitResult finishWithNoMatchResult(RequestContext rc) {
+  private __old_BlockExitResult finishWithNoMatchResult(__old_RequestContext rc) {
     if (logger.isDebugEnabled())
       logger.debug(ANSI_YELLOW + "[" + settings.getName() + "] the request matches no rules in this block: " + rc + ANSI_RESET);
     return __old_BlockExitResult.noMatch();

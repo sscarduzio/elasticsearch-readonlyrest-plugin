@@ -7,7 +7,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult._
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.requestcontext.RequestContext
+import tech.beshu.ror.acl.requestcontext.RequestContext
 
 class Block(rules: NonEmptyList[Rule]) {
 
@@ -23,8 +23,8 @@ class Block(rules: NonEmptyList[Rule]) {
             case Matched =>
               lift(rule.`match`(context))
                 .flatMap {
-                  case true => matched.tell(List("matched"))
-                  case false => unmatched.tell(List("unmatched"))
+                  case true => matched.tell("matched" :: Nil)
+                  case false => unmatched.tell("unmatched" :: Nil)
                 }
             case Unmatched =>
               unmatched

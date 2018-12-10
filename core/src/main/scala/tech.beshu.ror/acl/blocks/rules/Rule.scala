@@ -1,9 +1,14 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.requestcontext.RequestContext
+import tech.beshu.ror.acl.requestcontext.RequestContext
 
-trait Rule {
-
+sealed trait Rule {
   def `match`(context: RequestContext): Task[Boolean]
+}
+
+object Rule {
+  trait AuthenticationRule extends Rule
+  trait AuthorizationRule extends Rule
+  trait RegularRule extends Rule
 }

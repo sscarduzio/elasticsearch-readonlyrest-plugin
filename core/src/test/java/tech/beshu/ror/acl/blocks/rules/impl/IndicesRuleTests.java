@@ -26,18 +26,16 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.mocks.RequestContextMock;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anySetOf;
 import static org.mockito.Mockito.when;
 
 /**
@@ -90,7 +88,7 @@ public class IndicesRuleTests {
 
   @Test
   public void testReverseWildcard() {
-    RequestContext rc = Mockito.mock(RequestContext.class);
+    __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
     when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(singletonList("public-asd")));
 
     RuleExitResult res = match(singletonList("public-asd"), singletonList("public-*"), rc);
@@ -99,7 +97,7 @@ public class IndicesRuleTests {
 
   @Test
   public void testReturnAllowedSubset() {
-    RequestContext rc = Mockito.mock(RequestContext.class);
+    __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
     when(rc.getAllIndicesAndAliases()).thenReturn(Sets.newHashSet(Lists.newArrayList("a", "b", "c")));
 
     RuleExitResult res = match(singletonList("a"), Lists.newArrayList("a", "b", "c"), rc);
@@ -109,7 +107,7 @@ public class IndicesRuleTests {
   @Test
   public void test152() {
 
-    RequestContext rc = RequestContextMock.mkSearchRequest(
+    __old_RequestContext rc = RequestContextMock.mkSearchRequest(
       Sets.newHashSet("another_index"),
       Sets.newHashSet("perfmon-bfarm", "another_index"),
       Sets.newHashSet("another_index")
@@ -127,10 +125,10 @@ public class IndicesRuleTests {
   }
 
   private RuleExitResult match(List<String> configured, List<String> found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) {
+  private RuleExitResult match(List<String> configured, List<String> found, __old_RequestContext rc) {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getIndices()).thenReturn(foundSet);

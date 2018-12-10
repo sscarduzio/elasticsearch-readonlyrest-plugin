@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.rules;
 
-public class AuthKeyPlainTextRuleSettings extends AuthKeyRuleSettings {
+public class AuthKeyPlainTextRuleSettings extends __old_AuthKeyRuleSettings {
 
   public static final String ATTRIBUTE_NAME = "auth_key";
 

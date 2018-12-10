@@ -23,7 +23,7 @@ import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.httpclient.HttpMethod;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 
 import java.util.Arrays;
@@ -59,10 +59,10 @@ public class MethodsRuleTests {
   }
 
   private RuleExitResult match(List<HttpMethod> configured, HttpMethod found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(List<HttpMethod> configured, HttpMethod found, RequestContext rc) {
+  private RuleExitResult match(List<HttpMethod> configured, HttpMethod found, __old_RequestContext rc) {
     when(rc.getMethod()).thenReturn(found);
     when(rc.isReadRequest()).thenReturn(true);
 

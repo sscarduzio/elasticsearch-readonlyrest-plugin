@@ -17,36 +17,38 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.acl.blocks.rules.__old_BasicAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.utils.MatcherWithWildcards;
-import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.ActionsRuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
+import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 /**
- * Created by sscarduzio on 14/02/2016.
+ * Created by sscarduzio on 13/02/2016.
  */
-public class ActionsSyncRule extends SyncRule {
+public class __old_AuthKeySyncRule extends __old_BasicAuthentication {
 
   private final LoggerShim logger;
-  private final MatcherWithWildcards matcher;
-  private final ActionsRuleSettings settings;
+  private final AuthKeyPlainTextRuleSettings settings;
 
-  public ActionsSyncRule(ActionsRuleSettings s, ESContext context) {
-    logger = context.logger(getClass());
-    matcher = new MatcherWithWildcards(s.getActions());
-    settings = s;
+  public __old_AuthKeySyncRule(AuthKeyPlainTextRuleSettings s, ESContext context) {
+    super(s, context);
+    this.logger = context.logger(__old_AuthKeySyncRule.class);
+    this.settings = s;
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
-    if (settings.getActions().contains("*") || matcher.match(rc.getAction())) {
-      return MATCH;
+  protected boolean authenticate(String configuredAuthKey, BasicAuth basicAuth) {
+    try {
+      String decodedProvided = new String(Base64.getDecoder().decode(basicAuth.getBase64Value()), StandardCharsets.UTF_8);
+      return decodedProvided.equals(configuredAuthKey);
+    } catch (Throwable e) {
+      logger.warn("Exception while authentication", e);
+      return false;
     }
-    logger.debug("This request uses the action'" + rc.getAction() + "' and none of them is on the list.");
-    return NO_MATCH;
   }
 
   @Override

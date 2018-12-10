@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.HashMap;
 import java.util.List;
@@ -61,10 +61,10 @@ public class RepositoriesRuleTests {
   }
 
   private RuleExitResult match(List<String> configured, List<String> found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) {
+  private RuleExitResult match(List<String> configured, List<String> found, __old_RequestContext rc) {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     when(rc.getRepositories()).thenReturn(foundSet);

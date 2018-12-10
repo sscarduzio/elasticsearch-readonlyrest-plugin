@@ -18,8 +18,8 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
-import tech.beshu.ror.acl.blocks.rules.impl.ActionsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.ApiKeysSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_ActionsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
@@ -50,8 +50,8 @@ import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.rules.ActionsRuleSettings;
-import tech.beshu.ror.settings.rules.ApiKeysRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
 import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
@@ -83,12 +83,12 @@ public class RulesFactory {
     this.context = context;
     this.creators = Maps.newHashMap();
     this.creators.put(
-        ActionsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new ActionsSyncRule((ActionsRuleSettings) settings, context))
+        __old_ActionsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_ActionsSyncRule((__old_ActionsRuleSettings) settings, context))
     );
     this.creators.put(
-        ApiKeysRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new ApiKeysSyncRule((ApiKeysRuleSettings) settings))
+        __old_ApiKeysRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_ApiKeysSyncRule((__old_ApiKeysRuleSettings) settings))
     );
     this.creators.put(
         HostsRuleSettings.class,

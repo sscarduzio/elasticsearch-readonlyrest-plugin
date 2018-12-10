@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 /**
  * Created by sscarduzio on 05/05/2017.
@@ -27,7 +27,7 @@ import tech.beshu.ror.requestcontext.RequestContext;
 public class IndexLevelSecuritySyncRule extends SyncRule {
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     return MATCH;
   }
 

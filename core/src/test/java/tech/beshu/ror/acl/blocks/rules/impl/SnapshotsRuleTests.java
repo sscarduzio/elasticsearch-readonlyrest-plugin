@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.HashMap;
 import java.util.List;
@@ -81,7 +81,7 @@ public class SnapshotsRuleTests {
   }
 
   private RuleExitResult matchAsRead(List<String> configured, List<String> found) {
-    RequestContext rc = Mockito.mock(RequestContext.class);
+    __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
     when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
     when(rc.isReadRequest()).thenReturn(true);
 
@@ -102,7 +102,7 @@ public class SnapshotsRuleTests {
   }
 
   private RuleExitResult matchAsWrite(List<String> configured, List<String> found) {
-    RequestContext rc = Mockito.mock(RequestContext.class);
+    __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
     when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
     when(rc.isReadRequest()).thenReturn(false);
 
@@ -110,7 +110,7 @@ public class SnapshotsRuleTests {
     return match(configured, found, rc);
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found, RequestContext rc) {
+  private RuleExitResult match(List<String> configured, List<String> found, __old_RequestContext rc) {
     Set<String> foundSet = Sets.newHashSet();
     foundSet.addAll(found);
     Map<String, Object> yamlMap = new HashMap() {{

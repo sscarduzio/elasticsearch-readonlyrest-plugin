@@ -17,38 +17,26 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import tech.beshu.ror.acl.blocks.rules.BasicAuthentication;
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
 import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeySyncRule extends BasicAuthentication {
+public class __old_AuthKeySha1SyncRule extends __old_AuthKeyHashingRule {
 
-  private final LoggerShim logger;
-  private final AuthKeyPlainTextRuleSettings settings;
+  private final AuthKeySha1RuleSettings settings;
 
-  public AuthKeySyncRule(AuthKeyPlainTextRuleSettings s, ESContext context) {
+  public __old_AuthKeySha1SyncRule(AuthKeySha1RuleSettings s, ESContext context) {
     super(s, context);
-    this.logger = context.logger(AuthKeySyncRule.class);
     this.settings = s;
   }
 
   @Override
-  protected boolean authenticate(String configuredAuthKey, BasicAuth basicAuth) {
-    try {
-      String decodedProvided = new String(Base64.getDecoder().decode(basicAuth.getBase64Value()), StandardCharsets.UTF_8);
-      return decodedProvided.equals(configuredAuthKey);
-    } catch (Throwable e) {
-      logger.warn("Exception while authentication", e);
-      return false;
-    }
+  protected HashFunction getHashFunction() {
+    return Hashing.sha1();
   }
 
   @Override

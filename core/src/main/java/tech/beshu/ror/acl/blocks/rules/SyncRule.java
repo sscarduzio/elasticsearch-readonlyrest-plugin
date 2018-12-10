@@ -17,13 +17,13 @@
 
 package tech.beshu.ror.acl.blocks.rules;
 
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
 public abstract class SyncRule extends __old_Rule {
 
-  public abstract RuleExitResult match(RequestContext rc);
+  public abstract RuleExitResult match(__old_RequestContext rc);
 
 }

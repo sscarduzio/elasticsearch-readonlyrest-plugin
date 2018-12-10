@@ -14,32 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.settings.RuleSettings;
+import tech.beshu.ror.settings.AuthKeyProviderSettings;
 
-import java.util.Set;
+public abstract class __old_AuthKeyRuleSettings implements AuthKeyProviderSettings {
 
-public class ActionsRuleSettings implements RuleSettings {
+  private final String authKey;
 
-  public static final String ATTRIBUTE_NAME = "actions";
-
-  private final Set<String> actions;
-
-  private ActionsRuleSettings(Set<String> actions) {
-    this.actions = actions;
+  protected __old_AuthKeyRuleSettings(String authKey) {
+    this.authKey = authKey;
   }
 
-  public static ActionsRuleSettings from(Set<String> indices) {
-    return new ActionsRuleSettings(indices);
-  }
-
-  public Set<String> getActions() {
-    return actions;
-  }
-
-  @Override
-  public String getName() {
-    return ATTRIBUTE_NAME;
+  public String getAuthKey() {
+    return authKey;
   }
 }

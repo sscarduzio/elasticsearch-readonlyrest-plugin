@@ -46,7 +46,7 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -203,7 +203,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
           }
 
           ResponseActionListener searchListener =
-              new ResponseActionListener(action, request, (ActionListener<ActionResponse>) listener, (RequestContext) rc, logger);
+              new ResponseActionListener(action, request, (ActionListener<ActionResponse>) listener, (__old_RequestContext) rc, logger);
           chain.proceed(task, action, request, (ActionListener<Response>) searchListener);
 
           hasProceeded = true;

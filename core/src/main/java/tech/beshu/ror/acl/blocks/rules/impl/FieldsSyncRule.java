@@ -25,7 +25,7 @@ import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.commons.utils.MatcherWithWildcardsAndNegations;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.Set;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 /**
  * Field level security (FLS) rule.
- * When applied, it forwards the field list to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link RequestContext}.
+ * When applied, it forwards the field list to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link __old_RequestContext}.
  * Created by sscarduzio on 18/05/2018.
  */
 public class FieldsSyncRule extends SyncRule {
@@ -46,7 +46,7 @@ public class FieldsSyncRule extends SyncRule {
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     if (!rc.isReadRequest()) {
       return NO_MATCH;
     }

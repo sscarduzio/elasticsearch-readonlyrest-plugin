@@ -21,7 +21,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.function.Function;
@@ -37,7 +37,7 @@ public class KibanaIndexSyncRule extends SyncRule {
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     rc.setKibanaIndex(settings.kibanaIndex.getValue(rc).orElse(null));
     return MATCH;
   }

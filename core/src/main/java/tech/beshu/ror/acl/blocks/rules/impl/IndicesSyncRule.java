@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 
 import java.util.List;
@@ -57,7 +57,7 @@ public class IndicesSyncRule extends SyncRule {
 
 
   @Override
-  public RuleExitResult match(RequestContext src) {
+  public RuleExitResult match(__old_RequestContext src) {
 
     logger.debug("Stage -1");
     if (!src.involvesIndices() || settings.getIndicesUnwrapped().contains("*")) {
@@ -118,7 +118,7 @@ public class IndicesSyncRule extends SyncRule {
   }
 
   // Is a request or sub-request free from references to any forbidden indices?
-  private <T extends RequestContext> boolean canPass(T src, MatcherWithWildcards matcher) {
+  private <T extends __old_RequestContext> boolean canPass(T src, MatcherWithWildcards matcher) {
 
 
     // if ("indices:data/read/search".equals(src.getAction()) && src.shouldConsiderRemoteClustersSearch()) {

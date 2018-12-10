@@ -42,7 +42,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
-public abstract class RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
+public abstract class __old_RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
 
   protected Transactional<Set<String>> indices;
   private Transactional<String> kibanaIndex;
@@ -58,7 +58,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
   private Transactional<Set<String>> snapshots;
   private Transactional<Set<String>> repositories;
 
-  public RequestContext(String name, ESContext context) {
+  public __old_RequestContext(String name, ESContext context) {
     super(name, context);
     this.context = context;
     init();

@@ -23,7 +23,7 @@ import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
 
 import java.util.Base64;
@@ -38,13 +38,13 @@ import static org.mockito.Mockito.when;
 public class AuthKeySha256RuleTests {
 
   private RuleExitResult match(String configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) {
+  private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new AuthKeySha256SyncRule(new AuthKeySha256RuleSettings(configured), MockedESContext.INSTANCE);
+    SyncRule r = new __old_AuthKeySha256SyncRule(new AuthKeySha256RuleSettings(configured), MockedESContext.INSTANCE);
 
     return r.match(rc);
   }

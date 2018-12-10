@@ -17,26 +17,36 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
+import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
+import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
+import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
+
+import java.util.Set;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class AuthKeySha256SyncRule extends AuthKeyHashingRule {
+public class __old_ApiKeysSyncRule extends SyncRule {
 
-  private final AuthKeySha256RuleSettings settings;
+  private final Set<String> validApiKeys;
+  private final __old_ApiKeysRuleSettings settings;
 
-  public AuthKeySha256SyncRule(AuthKeySha256RuleSettings s, ESContext context) {
-    super(s, context);
+  public __old_ApiKeysSyncRule(__old_ApiKeysRuleSettings s) {
     this.settings = s;
+    this.validApiKeys = s.getApiKeys();
   }
 
   @Override
-  protected HashFunction getHashFunction() {
-    return Hashing.sha256();
+  public RuleExitResult match(__old_RequestContext rc) {
+    String h = rc.getHeaders().get("X-Api-Key");
+    if (validApiKeys == null || h == null) {
+      return NO_MATCH;
+    }
+    if (validApiKeys.contains(h)) {
+      return MATCH;
+    }
+    return NO_MATCH;
   }
 
   @Override

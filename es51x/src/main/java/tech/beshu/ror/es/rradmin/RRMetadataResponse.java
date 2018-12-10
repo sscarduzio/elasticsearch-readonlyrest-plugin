@@ -27,17 +27,17 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.io.IOException;
 import java.util.Map;
 
 public class RRMetadataResponse extends ActionResponse implements ToXContent {
 
-  private RequestContext requestContext;
+  private __old_RequestContext requestContext;
   private Throwable throwable;
 
-  public RRMetadataResponse(RequestContext requestContext) {
+  public RRMetadataResponse(__old_RequestContext requestContext) {
     this.requestContext = requestContext;
   }
 

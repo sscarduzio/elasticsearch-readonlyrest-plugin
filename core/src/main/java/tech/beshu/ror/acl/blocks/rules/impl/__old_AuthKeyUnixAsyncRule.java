@@ -29,14 +29,14 @@ import java.util.regex.Pattern;
 import static org.apache.commons.codec.digest.Crypt.crypt;
 
 
-public class AuthKeyUnixAsyncRule extends AsyncAuthentication {
+public class __old_AuthKeyUnixAsyncRule extends AsyncAuthentication {
 
   private final LoggerShim logger;
   private final AuthKeyUnixRuleSettings settings;
 
-  public AuthKeyUnixAsyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
+  public __old_AuthKeyUnixAsyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
     super(context);
-    this.logger = context.logger(AuthKeyUnixAsyncRule.class);
+    this.logger = context.logger(__old_AuthKeyUnixAsyncRule.class);
     this.settings = s;
   }
 

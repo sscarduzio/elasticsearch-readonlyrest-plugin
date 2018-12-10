@@ -23,8 +23,8 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.ApiKeysRuleSettings;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
+import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
 
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -34,16 +34,16 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class ApiKeysRuleTests {
+public class __old_ApiKeysRuleTests {
 
   private RuleExitResult match(String configured, String found) {
-    return match(configured, found, Mockito.mock(RequestContext.class));
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, RequestContext rc) {
+  private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Api-Key", found));
 
-    SyncRule r = new ApiKeysSyncRule(new ApiKeysRuleSettings(Sets.newHashSet(configured)));
+    SyncRule r = new __old_ApiKeysSyncRule(new __old_ApiKeysRuleSettings(Sets.newHashSet(configured)));
     return r.match(rc);
   }
 

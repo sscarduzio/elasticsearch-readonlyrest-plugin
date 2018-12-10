@@ -20,23 +20,24 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
+
 
 /**
- * Created by sscarduzio on 13/02/2016.
+ * Created by samy-orange on 13/02/2016.
  */
-public class AuthKeySha1SyncRule extends AuthKeyHashingRule {
+public class __old_AuthKeySha512SyncRule extends __old_AuthKeyHashingRule {
 
-  private final AuthKeySha1RuleSettings settings;
+  private final AuthKeySha512RuleSettings settings;
 
-  public AuthKeySha1SyncRule(AuthKeySha1RuleSettings s, ESContext context) {
+  public __old_AuthKeySha512SyncRule(AuthKeySha512RuleSettings s, ESContext context) {
     super(s, context);
     this.settings = s;
   }
 
   @Override
   protected HashFunction getHashFunction() {
-    return Hashing.sha1();
+    return Hashing.sha512();
   }
 
   @Override

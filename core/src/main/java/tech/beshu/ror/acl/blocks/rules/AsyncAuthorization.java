@@ -21,7 +21,7 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -37,7 +37,7 @@ public abstract class AsyncAuthorization extends AsyncRule implements Authorizat
   protected abstract CompletableFuture<Boolean> authorize(LoggedUser user);
 
   @Override
-  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
+  public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
     Optional<LoggedUser> optLoggedInUser = rc.getLoggedInUser();
     if (optLoggedInUser.isPresent()) {
       LoggedUser loggedUser = optLoggedInUser.get();

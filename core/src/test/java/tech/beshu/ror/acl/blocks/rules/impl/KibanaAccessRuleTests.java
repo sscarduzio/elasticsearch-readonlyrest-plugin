@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.KibanaAccess;
 import tech.beshu.ror.mocks.MockedESContext;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
 
 import java.util.Optional;
@@ -191,7 +191,7 @@ public class KibanaAccessRuleTests {
   }
 
 
-  private RuleExitResult match(Conf configured, Found found, RequestContext rc, boolean involvesIndices) {
+  private RuleExitResult match(Conf configured, Found found, __old_RequestContext rc, boolean involvesIndices) {
     when(rc.involvesIndices()).thenReturn(involvesIndices);
     when(rc.getIndices()).thenReturn(found.indices);
     when(rc.getAction()).thenReturn(found.action);
@@ -229,7 +229,7 @@ public class KibanaAccessRuleTests {
     found.action = action;
     found.indices = indices;
 
-    return match(conf, found, Mockito.mock(RequestContext.class), involvesIndices);
+    return match(conf, found, Mockito.mock(__old_RequestContext.class), involvesIndices);
   }
 
   class Conf {

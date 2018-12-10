@@ -21,20 +21,20 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
-import tech.beshu.ror.settings.rules.AuthKeyRuleSettings;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
+import tech.beshu.ror.settings.rules.__old_AuthKeyRuleSettings;
 import tech.beshu.ror.utils.BasicAuthUtils;
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-public abstract class BasicAuthentication extends SyncRule implements Authentication {
+public abstract class __old_BasicAuthentication extends SyncRule implements Authentication {
 
   private final LoggerShim logger;
   private final String authKey;
 
-  public BasicAuthentication(AuthKeyRuleSettings s, ESContext context) {
+  public __old_BasicAuthentication(__old_AuthKeyRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.authKey = s.getAuthKey();
   }
@@ -42,7 +42,7 @@ public abstract class BasicAuthentication extends SyncRule implements Authentica
   protected abstract boolean authenticate(String configuredAuthKey, BasicAuth basicAuth);
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(rc.getHeaders());
 
     if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {

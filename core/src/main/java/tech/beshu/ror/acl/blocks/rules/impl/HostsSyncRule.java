@@ -24,7 +24,7 @@ import tech.beshu.ror.commons.domain.IPMask;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
@@ -64,7 +64,7 @@ public class HostsSyncRule extends SyncRule {
     return null;
   }
 
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     boolean res = matchesAddress(rc, rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
     return res ? MATCH : NO_MATCH;
   }
@@ -77,7 +77,7 @@ public class HostsSyncRule extends SyncRule {
   /*
    * All "matches" methods should return true if no explicit condition was configured
    */
-  private boolean matchesAddress(RequestContext rc, String address, String xForwardedForHeader) {
+  private boolean matchesAddress(__old_RequestContext rc, String address, String xForwardedForHeader) {
     if (address == null) {
       throw context.rorException("For some reason the origin address of this call could not be determined. Abort!");
     }

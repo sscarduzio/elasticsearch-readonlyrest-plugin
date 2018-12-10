@@ -23,11 +23,10 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -53,7 +52,7 @@ public class UsersSyncRule extends SyncRule {
   }
 
   @Override
-  public RuleExitResult match(RequestContext rc) {
+  public RuleExitResult match(__old_RequestContext rc) {
     if (!rc.getLoggedInUser().isPresent() || Strings.isNullOrEmpty(rc.getLoggedInUser().get().getId())) {
       return NO_MATCH;
     }

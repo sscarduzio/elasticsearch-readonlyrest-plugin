@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.blocks.rules;
 
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -33,7 +33,7 @@ public class AsyncRuleAdapter extends AsyncRule {
   }
 
   @Override
-  public CompletableFuture<RuleExitResult> match(RequestContext rc) {
+  public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
     return CompletableFuture.completedFuture(underlying.match(rc));
   }
 

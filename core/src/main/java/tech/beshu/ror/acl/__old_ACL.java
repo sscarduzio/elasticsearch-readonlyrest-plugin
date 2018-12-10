@@ -36,7 +36,7 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.shims.request.RequestInfoShim;
 import tech.beshu.ror.httpclient.HttpMethod;
-import tech.beshu.ror.requestcontext.RequestContext;
+import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.requestcontext.SerializationTool;
 import tech.beshu.ror.settings.RorSettings;
 import tech.beshu.ror.utils.FuturesSequencer;
@@ -179,7 +179,7 @@ public class __old_ACL {
   }
 
   public void check(RequestInfoShim rInfo, ACLHandler h) {
-    RequestContext rc = mkRequestContext(rInfo);
+    __old_RequestContext rc = mkRequestContext(rInfo);
 
     // Run the blocks through
     doCheck(rc)
@@ -232,7 +232,7 @@ public class __old_ACL {
       });
   }
 
-  private CompletableFuture<__old_BlockExitResult> doCheck(RequestContext rc) {
+  private CompletableFuture<__old_BlockExitResult> doCheck(__old_RequestContext rc) {
     logger.debug("checking request:" + rc.getId());
     return FuturesSequencer.runInSeqUntilConditionIsUndone(
       blocks.iterator(),
@@ -256,8 +256,8 @@ public class __old_ACL {
     );
   }
 
-  private RequestContext mkRequestContext(RequestInfoShim rInfo) {
-    return new RequestContext("rc", context) {
+  private __old_RequestContext mkRequestContext(RequestInfoShim rInfo) {
+    return new __old_RequestContext("rc", context) {
 
       @Override
       public Set<String> extractSnapshots() {
@@ -404,7 +404,7 @@ public class __old_ACL {
     };
   }
 
-  public boolean responseOkHook(RequestContext rc, Object blockExitResult, Object actionRsponse) {
+  public boolean responseOkHook(__old_RequestContext rc, Object blockExitResult, Object actionRsponse) {
     __old_BlockExitResult result = (__old_BlockExitResult) blockExitResult;
 
     for (__old_Rule r : result.getBlock().getRules()) {
