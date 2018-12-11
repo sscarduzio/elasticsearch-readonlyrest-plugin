@@ -254,7 +254,10 @@ public class RequestInfo implements RequestInfoShim {
         e.printStackTrace();
       }
     }
-
+    else if (ar.getClass().getSimpleName().startsWith("Sql")) {
+      // Do noting, we can't do anything about X-Pack SQL queries, as it does not contain indices.
+      // #TODO The only way we can filter this kind of request is going Lucene level like "filter" rule.
+    }
     else if (ar instanceof CompositeIndicesRequest) {
       logger.error(
           "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
