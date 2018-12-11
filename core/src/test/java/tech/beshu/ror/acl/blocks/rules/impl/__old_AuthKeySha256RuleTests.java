@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
 
 import java.util.Base64;
 
@@ -35,7 +35,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class AuthKeySha1RuleTests {
+public class __old_AuthKeySha256RuleTests {
 
   private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(__old_RequestContext.class));
@@ -44,7 +44,7 @@ public class AuthKeySha1RuleTests {
   private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new __old_AuthKeySha1SyncRule(new AuthKeySha1RuleSettings(configured), MockedESContext.INSTANCE);
+    SyncRule r = new __old_AuthKeySha256SyncRule(new AuthKeySha256RuleSettings(configured), MockedESContext.INSTANCE);
 
     return r.match(rc);
   }
@@ -52,7 +52,7 @@ public class AuthKeySha1RuleTests {
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-      "4338fa3ea95532196849ae27615e14dda95c77b1",
+      "280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9",
       "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());

@@ -11,8 +11,8 @@ class ApiKeysRule(settings: Settings)
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context
       .getHeaders
-      .get(xApiKeyHeaderName)
-      .exists { header => settings.apiKeys.contains(header) }
+      .find(_.name == xApiKeyHeaderName)
+      .exists { header => settings.apiKeys.contains(header.value) }
   }
 }
 
@@ -20,5 +20,5 @@ object ApiKeysRule {
 
   final case class Settings(apiKeys: Set[String])
 
-  val xApiKeyHeaderName = "X-Api-Key"
+  val xApiKeyHeaderName: String = "X-Api-Key".toLowerCase
 }

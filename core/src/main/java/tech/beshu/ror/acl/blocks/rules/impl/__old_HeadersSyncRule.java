@@ -34,12 +34,12 @@ import java.util.stream.Collectors;
 /**
  * Created by sscarduzio on 14/02/2016.
  */
-public class HeadersSyncRule extends SyncRule {
+public class __old_HeadersSyncRule extends SyncRule {
 
   protected final  Set<String> allowedHeaders;
   protected final Settings settings;
 
-  public HeadersSyncRule(Settings s) {
+  public __old_HeadersSyncRule(Settings s) {
     this.allowedHeaders = s.getHeaderKeys();
     this.settings = s;
   }

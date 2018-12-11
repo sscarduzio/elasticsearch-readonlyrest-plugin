@@ -40,7 +40,7 @@ repositories {
 }
 
 apply plugin: 'java'
-apply plugin: 'idea'
+apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'license'
 
@@ -57,6 +57,9 @@ test {
     }
 }
 dependencies {
+    compile group: 'org.scala-lang',                name: 'scala-library',                      version: '2.12.4'
+    compile group: 'org.typelevel',                 name: 'cats-core_2.12',                     version: '1.4.0'
+
     compile 'org.yaml:snakeyaml:1.19'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'

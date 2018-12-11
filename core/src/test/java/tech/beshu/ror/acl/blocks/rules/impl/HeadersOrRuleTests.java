@@ -94,7 +94,7 @@ public class HeadersOrRuleTests {
   private RuleExitResult match(List<String> configured, Map<String, String> found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(found);
 
-    SyncRule r = new HeadersOrSyncRule(new HeadersOrSyncRule.Settings(Sets.newHashSet(configured)));
+    SyncRule r = new __old_HeadersOrSyncRule(new __old_HeadersOrSyncRule.Settings(Sets.newHashSet(configured)));
     return r.match(rc);
   }
 

@@ -38,8 +38,6 @@ public class FilterSyncRule extends SyncRule {
 
   public FilterSyncRule(FilterSyncRule.Settings s) {
     this.settings = s;
-
-
   }
 
   @Override

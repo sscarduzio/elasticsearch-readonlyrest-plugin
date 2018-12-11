@@ -30,9 +30,9 @@ import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
@@ -94,9 +94,9 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         UriReSyncRule.class,
         MaxBodyLengthSyncRule.class,
         MethodsSyncRule.class,
-        HeadersSyncRule.class,
-        HeadersAndSyncRule.class,
-        HeadersOrSyncRule.class,
+        __old_HeadersSyncRule.class,
+        __old_HeadersAndSyncRule.class,
+        __old_HeadersOrSyncRule.class,
         IndicesSyncRule.class,
         __old_ActionsSyncRule.class,
         SearchlogSyncRule.class,

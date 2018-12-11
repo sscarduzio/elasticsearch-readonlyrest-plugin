@@ -41,7 +41,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 23/05/2018.
  */
 
-public class HeadersAndRuleTests {
+public class __old_HeadersAndRuleTests {
 
   @Test
   public void testSimpleHeaderMatch() {
@@ -149,7 +149,7 @@ public class HeadersAndRuleTests {
   private RuleExitResult match(List<String> configured, Map<String, String> found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(found);
 
-    SyncRule r = new HeadersSyncRule(new HeadersSyncRule.Settings(Sets.newHashSet(configured)));
+    SyncRule r = new __old_HeadersSyncRule(new __old_HeadersSyncRule.Settings(Sets.newHashSet(configured)));
     return r.match(rc);
   }
 

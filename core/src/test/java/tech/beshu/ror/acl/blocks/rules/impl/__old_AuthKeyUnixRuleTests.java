@@ -20,13 +20,15 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 import org.mockito.Mockito;
+import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 
+import java.time.Duration;
 import java.util.Base64;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
@@ -35,26 +37,31 @@ import static org.mockito.Mockito.when;
  * Created by samy-orange on 03/07/2017.
  */
 
-public class AuthKeySha512RuleTests {
+public class __old_AuthKeyUnixRuleTests {
 
   private RuleExitResult match(String configured, String found) {
-    return match(configured, found, Mockito.mock(__old_RequestContext.class));
+    try {
+      return match(configured, found, Mockito.mock(__old_RequestContext.class));
+    } catch (Throwable t) {
+      throw new Error(t);
+    }
   }
 
-  private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
+  private RuleExitResult match(String configured, String found, __old_RequestContext rc) throws ExecutionException, InterruptedException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new __old_AuthKeySha512SyncRule(new AuthKeySha512RuleSettings(configured), MockedESContext.INSTANCE);
+    AsyncRule r = new __old_AuthKeyUnixAsyncRule(new AuthKeyUnixRuleSettings(configured, Duration.ZERO), MockedESContext.INSTANCE);
 
-    return r.match(rc);
+    return r.match(rc).get();
   }
 
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-      "3586d5752240fd09e967383d3f1bad025bbc6953ba7c6d2135670631b4e326fee0cc8bd81addb9f6de111b9c380505b5ea0531598c21b0906d8e726f24e0dbe2",
-      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
+      "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
+      "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())
     );
     assertTrue(res.isMatch());
   }
+
 }

@@ -20,48 +20,52 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 import org.mockito.Mockito;
-import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
+import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
 
-import java.time.Duration;
 import java.util.Base64;
-import java.util.concurrent.ExecutionException;
 
+import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
- * Created by samy-orange on 03/07/2017.
+ * Created by sscarduzio on 18/01/2017.
  */
 
-public class AuthKeyUnixRuleTests {
+public class __old_AuthKeyRuleTests {
 
   private RuleExitResult match(String configured, String found) {
-    try {
-      return match(configured, found, Mockito.mock(__old_RequestContext.class));
-    } catch (Throwable t) {
-      throw new Error(t);
-    }
+    return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, __old_RequestContext rc) throws ExecutionException, InterruptedException {
+  private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    AsyncRule r = new __old_AuthKeyUnixAsyncRule(new AuthKeyUnixRuleSettings(configured, Duration.ZERO), MockedESContext.INSTANCE);
+    SyncRule r = new __old_AuthKeySyncRule(new AuthKeyPlainTextRuleSettings(configured), MockedESContext.INSTANCE);
 
-    return r.match(rc).get();
+    return r.match(rc);
   }
 
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-      "test:$6$rounds=65535$d07dnv4N$QeErsDT9Mz.ZoEPXW3dwQGL7tzwRz.eOrTBepIwfGEwdUAYSy/NirGoOaNyPx8lqiR6DYRSsDzVvVbhP4Y9wf0",
-      "Basic " + Base64.getEncoder().encodeToString("test:test".getBytes())
+      "logstash:logstash",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
+  }
+
+  @Test
+  public void testInvalid() {
+    RuleExitResult res = match(
+      "logstash:logstash",
+      "Basic " + Base64.getEncoder().encodeToString("logstash:nologstash".getBytes())
+    );
+    assertFalse(res.isMatch());
   }
 
 }

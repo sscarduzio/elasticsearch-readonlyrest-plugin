@@ -25,9 +25,9 @@ import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
@@ -139,16 +139,16 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new MethodsSyncRule((MethodsRuleSettings) settings))
     );
     this.creators.put(
-        HeadersSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new HeadersSyncRule((HeadersSyncRule.Settings) settings))
+        __old_HeadersSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_HeadersSyncRule((__old_HeadersSyncRule.Settings) settings))
     );
     this.creators.put(
-        HeadersAndSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new HeadersAndSyncRule((HeadersAndSyncRule.Settings) settings))
+        __old_HeadersAndSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_HeadersAndSyncRule((__old_HeadersAndSyncRule.Settings) settings))
     );
     this.creators.put(
-        HeadersOrSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new HeadersOrSyncRule((HeadersOrSyncRule.Settings) settings))
+        __old_HeadersOrSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_HeadersOrSyncRule((__old_HeadersOrSyncRule.Settings) settings))
     );
     this.creators.put(
         SearchlogRuleSettings.class,

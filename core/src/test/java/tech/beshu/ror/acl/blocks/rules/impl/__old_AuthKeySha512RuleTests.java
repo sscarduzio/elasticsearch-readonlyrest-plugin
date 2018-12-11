@@ -24,19 +24,18 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
 
 import java.util.Base64;
 
-import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
- * Created by sscarduzio on 18/01/2017.
+ * Created by samy-orange on 03/07/2017.
  */
 
-public class AuthKeyRuleTests {
+public class __old_AuthKeySha512RuleTests {
 
   private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(__old_RequestContext.class));
@@ -45,7 +44,7 @@ public class AuthKeyRuleTests {
   private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new __old_AuthKeySyncRule(new AuthKeyPlainTextRuleSettings(configured), MockedESContext.INSTANCE);
+    SyncRule r = new __old_AuthKeySha512SyncRule(new AuthKeySha512RuleSettings(configured), MockedESContext.INSTANCE);
 
     return r.match(rc);
   }
@@ -53,19 +52,9 @@ public class AuthKeyRuleTests {
   @Test
   public void testSimple() {
     RuleExitResult res = match(
-      "logstash:logstash",
+      "3586d5752240fd09e967383d3f1bad025bbc6953ba7c6d2135670631b4e326fee0cc8bd81addb9f6de111b9c380505b5ea0531598c21b0906d8e726f24e0dbe2",
       "Basic " + Base64.getEncoder().encodeToString("logstash:logstash".getBytes())
     );
     assertTrue(res.isMatch());
   }
-
-  @Test
-  public void testInvalid() {
-    RuleExitResult res = match(
-      "logstash:logstash",
-      "Basic " + Base64.getEncoder().encodeToString("logstash:nologstash".getBytes())
-    );
-    assertFalse(res.isMatch());
-  }
-
 }

@@ -19,9 +19,9 @@ package tech.beshu.ror.settings;
 
 import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
@@ -99,9 +99,9 @@ public class RulesSettingsCreatorsRegistry {
     );
     creators.put(IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
     creators.put(MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
-    creators.put(HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
-    creators.put(HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
-    creators.put(HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
+    creators.put(__old_HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
+    creators.put(__old_HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
+    creators.put(__old_HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
     creators.put(__old_ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
     creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
@@ -205,22 +205,22 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> headersSettingsCreator(RawSettings blockSettings) {
-    return () -> new HeadersSyncRule.Settings(
-        (Set<String>) blockSettings.notEmptySetReq(HeadersSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> new __old_HeadersSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(__old_HeadersSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> headersOrSettingsCreator(RawSettings blockSettings) {
-    return () -> new HeadersOrSyncRule.Settings(
-        (Set<String>) blockSettings.notEmptySetReq(HeadersOrSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> new __old_HeadersOrSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(__old_HeadersOrSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> headersAndSettingsCreator(RawSettings blockSettings) {
-    return () -> new HeadersAndSyncRule.Settings(
-        (Set<String>) blockSettings.notEmptySetReq(HeadersAndSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> new __old_HeadersAndSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(__old_HeadersAndSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 

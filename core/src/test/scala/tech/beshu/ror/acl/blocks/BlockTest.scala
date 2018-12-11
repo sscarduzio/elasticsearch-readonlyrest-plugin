@@ -17,14 +17,14 @@ class BlockTest extends WordSpec {
   "A block execution result" should {
     "be unmatched and contain all history, up to unmatched rule" in {
       val block = new Block(NonEmptyList.fromList(passingRule :: passingRule :: notPassingRule :: passingRule :: Nil).get)
-      val result = block.execute(dummyRequestContext).run.runSyncMaybe
+      val result = block.execute(dummyRequestContext).run.runSyncStep
 
       result shouldBe Right("matched" :: "matched" :: "unmatched" :: Nil, Block.ExecutionResult.Unmatched)
     }
 
     "be matched and contain all rules history from the block" in {
       val block = new Block(NonEmptyList.fromList(passingRule :: passingRule :: passingRule :: Nil).get)
-      val result = block.execute(dummyRequestContext).run.runSyncMaybe
+      val result = block.execute(dummyRequestContext).run.runSyncStep
 
       result shouldBe Right("matched" :: "matched" :: "matched" :: Nil, Block.ExecutionResult.Matched)
     }

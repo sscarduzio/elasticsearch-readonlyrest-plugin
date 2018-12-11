@@ -23,9 +23,9 @@ import java.util.Set;
  * Created by sscarduzio on 14/02/2016.
  * This is a clone of headers rule (now deprecated), as it also evaluates arguments in logical AND
  */
-public class HeadersAndSyncRule extends HeadersSyncRule {
+public class __old_HeadersAndSyncRule extends __old_HeadersSyncRule {
 
-  public HeadersAndSyncRule(Settings s) {
+  public __old_HeadersAndSyncRule(Settings s) {
     super(s);
   }
 
@@ -34,7 +34,7 @@ public class HeadersAndSyncRule extends HeadersSyncRule {
     return super.settings.getName();
   }
 
-  public static class Settings extends HeadersSyncRule.Settings {
+  public static class Settings extends __old_HeadersSyncRule.Settings {
     public static final String ATTRIBUTE_NAME = "headers_and";
 
     public Settings(Set<String> headersWithValue) {

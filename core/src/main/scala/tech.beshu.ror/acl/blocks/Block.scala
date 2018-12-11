@@ -2,7 +2,6 @@ package tech.beshu.ror.acl.blocks
 
 import cats.data.{NonEmptyList, WriterT}
 import cats.implicits._
-import monix.cats._
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult._
@@ -37,7 +36,7 @@ class Block(rules: NonEmptyList[Rule]) {
 
   private val matched = lift(Task.now(Block.ExecutionResult.Matched: ExecutionResult))
 
-  private def lift[T](task: Task[T]) = WriterT.lift[Task, History, T](task)
+  private def lift[T](task: Task[T]) = WriterT.liftF[Task, History, T](task)
 }
 
 object Block {
