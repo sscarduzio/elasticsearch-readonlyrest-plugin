@@ -39,7 +39,7 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.acl.__old_ACL;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
@@ -175,7 +175,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
 
       @Override
-      public void onAllow(Object blockExitResult, Value.VariableResolver rc) {
+      public void onAllow(Object blockExitResult, __old_Value.__old_VariableResolver rc) {
 
         boolean hasProceeded = false;
         try {

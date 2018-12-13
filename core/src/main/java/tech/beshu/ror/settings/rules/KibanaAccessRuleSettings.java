@@ -17,7 +17,7 @@
 package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.domain.KibanaAccess;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.RuleSettings;
@@ -32,11 +32,11 @@ public class KibanaAccessRuleSettings implements RuleSettings {
   private static final String DEFAULT_KIBANA_INDEX = ".kibana";
 
   private final KibanaAccess kibanaAccess;
-  private final Value<String> kibanaIndex;
+  private final __old_Value<String> kibanaIndex;
 
   public KibanaAccessRuleSettings(KibanaAccess kibanaAccess, String kibanaIndex) {
     this.kibanaAccess = kibanaAccess;
-    this.kibanaIndex = Value.fromString(kibanaIndex, Function.identity());
+    this.kibanaIndex = __old_Value.fromString(kibanaIndex, Function.identity());
   }
 
   public static KibanaAccessRuleSettings fromBlockSettings(RawSettings blockSettings) {
@@ -52,7 +52,7 @@ public class KibanaAccessRuleSettings implements RuleSettings {
     return kibanaAccess;
   }
 
-  public Value<String> getKibanaIndex() {
+  public __old_Value<String> getKibanaIndex() {
     return kibanaIndex;
   }
 

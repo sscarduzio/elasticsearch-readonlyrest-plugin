@@ -22,7 +22,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class HostsRuleTests {
+public class __old_HostsRuleTests {
 
   private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(__old_RequestContext.class));
@@ -48,9 +48,9 @@ public class HostsRuleTests {
   private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getRemoteAddress()).thenReturn(found);
 
-    Set<Value<String>> configV = Sets.newHashSet(configured).stream().map(i -> Value.fromString(i, Function.identity())).collect(Collectors.toSet());
+    Set<__old_Value<String>> configV = Sets.newHashSet(configured).stream().map(i -> __old_Value.fromString(i, Function.identity())).collect(Collectors.toSet());
     HostsRuleSettings hrset = new HostsRuleSettings(configV, false);
-    SyncRule r = new HostsSyncRule(hrset, new MockedESContext());
+    SyncRule r = new __old_HostsSyncRule(hrset, new MockedESContext());
     return r.match(rc);
   }
 

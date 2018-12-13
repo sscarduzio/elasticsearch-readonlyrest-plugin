@@ -8,4 +8,6 @@ object aDomain {
     def create(name: String, value: String): Header = new Header(name.toLowerCase, value)
     def create(nameAndValue: (String, String)): Header = create(nameAndValue._1, nameAndValue._2)
   }
+
+  final case class UnresolvedAddress(value: String) extends AnyVal
 }

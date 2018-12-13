@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
@@ -31,11 +31,11 @@ public class GroupsRuleSettings implements RuleSettings {
   public static final String ATTRIBUTE_NAME = "groups";
 
   private final List<UserSettings> usersSettings;
-  private final Set<Value<String>> groups;
+  private final Set<__old_Value<String>> groups;
 
   private GroupsRuleSettings(Set<String> groups, List<UserSettings> usersSettings) {
     this.usersSettings = usersSettings;
-    this.groups = groups.stream().map(g -> Value.fromString(g, Function.identity())).collect(Collectors.toSet());
+    this.groups = groups.stream().map(g -> __old_Value.fromString(g, Function.identity())).collect(Collectors.toSet());
   }
 
   public static GroupsRuleSettings from(Set<String> groups, UserSettingsCollection userSettingsCollection) {
@@ -46,7 +46,7 @@ public class GroupsRuleSettings implements RuleSettings {
     return usersSettings;
   }
 
-  public Set<Value<String>> getGroups() {
+  public Set<__old_Value<String>> getGroups() {
     return groups;
   }
 

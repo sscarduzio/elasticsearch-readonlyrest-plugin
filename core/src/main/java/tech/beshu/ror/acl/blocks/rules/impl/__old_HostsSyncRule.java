@@ -21,7 +21,7 @@ import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.IPMask;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -36,15 +36,15 @@ import java.util.Set;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class HostsSyncRule extends SyncRule {
+public class __old_HostsSyncRule extends SyncRule {
 
   private final HostsRuleSettings settings;
   private final LoggerShim logger;
-  private final Set<Value<String>> allowedAddressesStrings;
+  private final Set<__old_Value<String>> allowedAddressesStrings;
   private final ESContext context;
   private final Boolean acceptXForwardedForHeader;
 
-  public HostsSyncRule(HostsRuleSettings s, ESContext context) {
+  public __old_HostsSyncRule(HostsRuleSettings s, ESContext context) {
     this.acceptXForwardedForHeader = s.isAcceptXForwardedForHeader();
     this.allowedAddressesStrings = s.getAllowedAddresses();
 

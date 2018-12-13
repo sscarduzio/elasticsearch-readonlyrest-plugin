@@ -7,7 +7,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.requestcontext.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.ops.header.order
+import tech.beshu.ror.commons.orders._
 
 class HeadersAndRuleTests extends WordSpec with MockFactory {
 
@@ -51,7 +51,6 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
           )
         }
       }
-
       "two headers are configured and two headers are passed with request" when {
         "their names are different" in {
           assertMatchRule(
@@ -61,18 +60,29 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
         }
         "their names are the same" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header.create("hkey" -> "hvalue2"), Header.create("hkey" -> "hvalue2")),
-            requestHeaders = Set(Header.create("hkey" -> "hvalue2"), Header.create("hkey" -> "hvalue2"))
+            configuredHeaders = NonEmptySet.of(Header.create("hkey" -> "hvalue1"), Header.create("hkey" -> "hvalue2")),
+            requestHeaders = Set(Header.create("hkey" -> "hvalue2"), Header.create("hkey" -> "hvalue1"))
           )
         }
       }
-
     }
     "not match" when {
       "two headers are configured, but only one is passed" in {
         assertNotMatchRule(
-          configuredHeaders = NonEmptySet.of(Header.create("hkey" -> "hvalue2"), Header.create("hkey" -> "hvalue2")),
-          requestHeaders = Set(Header.create("hkey" -> "hvalue2"))
+          configuredHeaders = NonEmptySet.of(Header.create("hkey1" -> "hvalue1"), Header.create("hkey2" -> "hvalue2")),
+          requestHeaders = Set(Header.create("hkey1" -> "hvalue1"))
+        )
+      }
+      "one header is configured, but request contains one, different header" in {
+        assertNotMatchRule(
+          configuredHeaders = NonEmptySet.of(Header.create("hkey1" -> "hvalue1")),
+          requestHeaders = Set(Header.create("hkey2" -> "hvalue2"))
+        )
+      }
+      "one header is configure, but request has no headers" in {
+        assertNotMatchRule(
+          configuredHeaders = NonEmptySet.of(Header.create("hkey1" -> "hvalue1")),
+          requestHeaders = Set.empty
         )
       }
     }
@@ -84,7 +94,7 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
   private def assertNotMatchRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header]) =
     assertRule(configuredHeaders, requestHeaders, isMatched = false)
 
-  private def assertRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header], isMatched: Boolean ) = {
+  private def assertRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header], isMatched: Boolean) = {
     val rule = new HeadersAndRule(HeadersAndRule.Settings(configuredHeaders))
     val context = mock[RequestContext]
     (context.getHeaders _).expects().returning(requestHeaders)

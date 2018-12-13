@@ -20,7 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.utils.FilterTransient;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -47,7 +47,7 @@ public class FilterSyncRule extends SyncRule {
     }
 
     // [DLS] forwarding constraint to next stage
-    String filterWithResolvedVars = Value.fromString(settings.filter, Function.identity()).getValue(rc).get();
+    String filterWithResolvedVars = __old_Value.fromString(settings.filter, Function.identity()).getValue(rc).get();
     rc.setContextHeader(Constants.FILTER_TRANSIENT, FilterTransient.createFromFilter(filterWithResolvedVars).serialize());
 
     return MATCH;

@@ -19,7 +19,7 @@ package tech.beshu.ror.settings.rules;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses;
 import tech.beshu.ror.commons.domain.IPMask;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.net.UnknownHostException;
@@ -31,21 +31,21 @@ public class XForwardedForRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "x_forwarded_for";
 
-  private final Set<Value<String>> allowedIdentifiers;
+  private final Set<__old_Value<String>> allowedIdentifiers;
   private final Set<IPMask> allowedNumeric;
 
-  private XForwardedForRuleSettings(Set<Value<String>> allowedIdentifiers, Set<IPMask> allowedNumeric) {
+  private XForwardedForRuleSettings(Set<__old_Value<String>> allowedIdentifiers, Set<IPMask> allowedNumeric) {
     this.allowedIdentifiers = allowedIdentifiers;
     this.allowedNumeric = allowedNumeric;
   }
 
   public static XForwardedForRuleSettings from(List<String> hosts) {
-    Set<Value<String>> identifiers = Sets.newHashSet();
+    Set<__old_Value<String>> identifiers = Sets.newHashSet();
     Set<IPMask> numerics = Sets.newHashSet();
     hosts.stream()
       .forEach(allowedHost -> {
         if (!isInetAddressOrBlock(allowedHost)) {
-          identifiers.add(Value.fromString(allowedHost, Function.identity()));
+          identifiers.add(__old_Value.fromString(allowedHost, Function.identity()));
         }
         else {
           try {
@@ -67,7 +67,7 @@ public class XForwardedForRuleSettings implements RuleSettings {
     return InetAddresses.isInetAddress(address);
   }
 
-  public Set<Value<String>> getAllowedIdentifiers() {
+  public Set<__old_Value<String>> getAllowedIdentifiers() {
     return allowedIdentifiers;
   }
 

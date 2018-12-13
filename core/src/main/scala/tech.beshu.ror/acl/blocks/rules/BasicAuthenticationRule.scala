@@ -6,7 +6,7 @@ import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.requestcontext.RequestContext
 import tech.beshu.ror.commons.domain.LoggedUser
-import tech.beshu.ror.commons.ops.header.ToTuple._
+import tech.beshu.ror.commons.header.ToTuple._
 import tech.beshu.ror.utils.BasicAuthUtils
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 

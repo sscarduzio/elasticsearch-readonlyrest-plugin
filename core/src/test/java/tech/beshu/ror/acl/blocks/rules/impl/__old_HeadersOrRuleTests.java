@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 23/05/2018.
  */
 
-public class HeadersOrRuleTests {
+public class __old_HeadersOrRuleTests {
 
   @Test
   public void testHeaderMultiShouldLogicalOr1() {

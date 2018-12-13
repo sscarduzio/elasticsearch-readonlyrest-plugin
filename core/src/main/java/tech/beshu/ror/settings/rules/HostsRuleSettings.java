@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
 
@@ -31,10 +31,10 @@ public class HostsRuleSettings implements RuleSettings {
 
   private static final boolean DEFAULT_ACCEPT_X_FOWARDED_FOR = false;
 
-  private final Set<Value<String>> allowedAddresses;
+  private final Set<__old_Value<String>> allowedAddresses;
   private final boolean acceptXForwardedForHeader;
 
-  public HostsRuleSettings(Set<Value<String>> allowedAddresses, boolean acceptXForwardedForHeader) {
+  public HostsRuleSettings(Set<__old_Value<String>> allowedAddresses, boolean acceptXForwardedForHeader) {
     this.allowedAddresses = allowedAddresses;
     this.acceptXForwardedForHeader = acceptXForwardedForHeader;
   }
@@ -42,13 +42,13 @@ public class HostsRuleSettings implements RuleSettings {
   public static HostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
     return new HostsRuleSettings(
       blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
-        .map(obj -> Value.fromString((String) obj, Function.identity()))
+        .map(obj -> __old_Value.fromString((String) obj, Function.identity()))
         .collect(Collectors.toSet()),
       blockSettings.booleanOpt(ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER).orElse(DEFAULT_ACCEPT_X_FOWARDED_FOR)
     );
   }
 
-  public Set<Value<String>> getAllowedAddresses() {
+  public Set<__old_Value<String>> getAllowedAddresses() {
     return allowedAddresses;
   }
 

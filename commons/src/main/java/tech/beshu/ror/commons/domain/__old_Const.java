@@ -18,11 +18,11 @@ package tech.beshu.ror.commons.domain;
 
 import java.util.Optional;
 
-public class Const<T> implements Value<T> {
+public class __old_Const<T> implements __old_Value<T> {
 
   private final T value;
 
-  public Const(T value) {
+  public __old_Const(T value) {
     this.value = value;
   }
 
@@ -32,7 +32,7 @@ public class Const<T> implements Value<T> {
   }
 
   @Override
-  public Optional<T> getValue(VariableResolver resolver) {
+  public Optional<T> getValue(__old_VariableResolver resolver) {
     return Optional.of(value);
   }
 }

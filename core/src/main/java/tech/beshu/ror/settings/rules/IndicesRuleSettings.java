@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.Set;
@@ -27,7 +27,7 @@ public class IndicesRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "indices";
 
-  private final Set<Value<String>> indices;
+  private final Set<__old_Value<String>> indices;
   private final Set<String> indicesUnwrapped;
   private boolean containsVariables;
 
@@ -35,7 +35,7 @@ public class IndicesRuleSettings implements RuleSettings {
     this.indicesUnwrapped = indices;
     containsVariables = indices.stream().filter(i -> i.contains("@{")).findFirst().isPresent();
     this.indices = indices.stream()
-      .map(i -> Value.fromString(i, Function.identity()))
+      .map(i -> __old_Value.fromString(i, Function.identity()))
       .collect(Collectors.toSet());
   }
 
@@ -47,7 +47,7 @@ public class IndicesRuleSettings implements RuleSettings {
     return containsVariables;
   }
 
-  public Set<Value<String>> getIndices() {
+  public Set<__old_Value<String>> getIndices() {
     return indices;
   }
 

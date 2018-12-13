@@ -20,7 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
@@ -35,7 +35,7 @@ import java.util.Set;
  */
 public class XForwardedForSyncRule extends SyncRule {
 
-  private final Set<Value<String>> allowedAddresses;
+  private final Set<__old_Value<String>> allowedAddresses;
   private final XForwardedForRuleSettings settings;
 
   public XForwardedForSyncRule(XForwardedForRuleSettings s) {

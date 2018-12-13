@@ -33,7 +33,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
@@ -44,7 +44,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
@@ -84,7 +84,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         // Inspection rules next; these act based on properties of the request.
         KibanaAccessSyncRule.class,
 
-        HostsSyncRule.class,
+        __old_HostsSyncRule.class,
         LocalHostsSyncRule.class,
         SnapshotsSyncRule.class,
         RepositoriesSyncRule.class,
@@ -93,7 +93,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         SessionMaxIdleSyncRule.class,
         UriReSyncRule.class,
         MaxBodyLengthSyncRule.class,
-        MethodsSyncRule.class,
+        __old_MethodsSyncRule.class,
         __old_HeadersSyncRule.class,
         __old_HeadersAndSyncRule.class,
         __old_HeadersOrSyncRule.class,

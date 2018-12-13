@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
@@ -52,10 +52,10 @@ public class KibanaIndexSyncRule extends SyncRule {
    */
   public static class Settings implements RuleSettings {
     public static final String ATTRIBUTE_NAME = "kibana_index";
-    private final Value<String> kibanaIndex;
+    private final __old_Value<String> kibanaIndex;
 
     public Settings(String kibanaIndexTpl) {
-      this.kibanaIndex = Value.fromString(kibanaIndexTpl, Function.identity());
+      this.kibanaIndex = __old_Value.fromString(kibanaIndexTpl, Function.identity());
     }
 
     public static Settings fromBlockSettings(RawSettings blockSettings) {

@@ -90,7 +90,7 @@ public class __old_HeadersSyncRule extends SyncRule {
 
     public Settings(Set<String> headersWithValue) {
       headersWithValue.stream().filter(x -> !x.contains(":")).findFirst().ifPresent(x -> {
-        throw new SettingsMalformedException("Headers should be in the form 'Key:Value' (separated by a colon)");
+        throw new SettingsMalformedException("Headers should be in the form 'Key:__old_Value' (separated by a colon)");
       });
       this.headers = new HashMap(headersWithValue.size());
       for (String kv : headersWithValue) {

@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
@@ -86,27 +86,27 @@ public class RepositoriesSyncRule extends SyncRule {
 
     public static final String ATTRIBUTE_NAME = "repositories";
 
-    private final Set<Value<String>> allowedRepositories;
+    private final Set<__old_Value<String>> allowedRepositories;
     private final boolean containsVariables;
     private Set<String> unwrapped;
 
-    public Settings(Set<Value<String>> allowedRepositories) {
+    public Settings(Set<__old_Value<String>> allowedRepositories) {
       this.containsVariables = allowedRepositories.stream().filter(i -> i.getTemplate().contains("@{")).findFirst().isPresent();
       this.allowedRepositories = allowedRepositories;
       if (!containsVariables) {
-        this.unwrapped = allowedRepositories.stream().map(Value::getTemplate).collect(Collectors.toSet());
+        this.unwrapped = allowedRepositories.stream().map(__old_Value::getTemplate).collect(Collectors.toSet());
       }
     }
 
     public static Settings fromBlockSettings(RawSettings blockSettings) {
       return new Settings(
           blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
-                       .map(obj -> Value.fromString((String) obj, Function.identity()))
+                       .map(obj -> __old_Value.fromString((String) obj, Function.identity()))
                        .collect(Collectors.toSet())
       );
     }
 
-    public Set<String> getAllowedRepositories(Value.VariableResolver rc) {
+    public Set<String> getAllowedRepositories(__old_Value.__old_VariableResolver rc) {
       if (!containsVariables) {
         return unwrapped;
       }

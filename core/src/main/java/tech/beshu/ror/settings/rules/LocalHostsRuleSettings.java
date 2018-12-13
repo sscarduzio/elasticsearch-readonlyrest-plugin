@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
 
@@ -29,21 +29,21 @@ public class LocalHostsRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "hosts_local";
 
-  private final Set<Value<String>> allowedAddresses;
+  private final Set<__old_Value<String>> allowedAddresses;
 
-  public LocalHostsRuleSettings(Set<Value<String>> allowedAddresses) {
+  public LocalHostsRuleSettings(Set<__old_Value<String>> allowedAddresses) {
     this.allowedAddresses = allowedAddresses;
   }
 
   public static LocalHostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
     return new LocalHostsRuleSettings(
         blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
-                     .map(obj -> Value.fromString((String) obj, Function.identity()))
+                     .map(obj -> __old_Value.fromString((String) obj, Function.identity()))
                      .collect(Collectors.toSet())
     );
   }
 
-  public Set<Value<String>> getAllowedAddresses() {
+  public Set<__old_Value<String>> getAllowedAddresses() {
     return allowedAddresses;
   }
 

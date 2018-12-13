@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.__old_Block;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.LoggedUser;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
 import tech.beshu.ror.httpclient.HttpMethod;
@@ -42,7 +42,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
-public abstract class __old_RequestContext extends Delayed implements RequestContextShim, Value.VariableResolver {
+public abstract class __old_RequestContext extends Delayed implements RequestContextShim,
+    __old_Value.__old_VariableResolver {
 
   protected Transactional<Set<String>> indices;
   private Transactional<String> kibanaIndex;

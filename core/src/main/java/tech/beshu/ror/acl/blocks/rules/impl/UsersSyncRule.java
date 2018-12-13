@@ -21,7 +21,7 @@ import com.google.common.base.Strings;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
@@ -81,14 +81,14 @@ public class UsersSyncRule extends SyncRule {
 
     public static final String ATTRIBUTE_NAME = "users";
     private final boolean containsVariables;
-    private final Set<Value<String>> patterns;
+    private final Set<__old_Value<String>> patterns;
     private Set<String> patternsUnwrapped;
 
     public Settings(Set<String> patterns) {
       this.containsVariables = patterns.stream().filter(i -> i.contains("@{")).findFirst().isPresent();
       this.patternsUnwrapped = patterns;
       this.patterns = patternsUnwrapped.stream()
-                                       .map(i -> Value.fromString(i, Function.identity()))
+                                       .map(i -> __old_Value.fromString(i, Function.identity()))
                                        .collect(Collectors.toSet());
 
     }
@@ -97,7 +97,7 @@ public class UsersSyncRule extends SyncRule {
       return new Settings(Sets.newHashSet(patterns));
     }
 
-    public Set<Value<String>> getPatterns() {
+    public Set<__old_Value<String>> getPatterns() {
       return patterns;
     }
 

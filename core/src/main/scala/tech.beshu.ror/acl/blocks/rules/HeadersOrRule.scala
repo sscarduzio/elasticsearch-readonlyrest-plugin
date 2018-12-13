@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.requestcontext.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
-import tech.beshu.ror.commons.ops.header.FlatHeader._
+import tech.beshu.ror.commons.header.FlatHeader._
 
 import scala.collection.JavaConverters._
 

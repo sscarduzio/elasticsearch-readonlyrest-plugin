@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
@@ -33,7 +33,7 @@ import java.util.regex.PatternSyntaxException;
  */
 public class UriReSyncRule extends SyncRule {
 
-  private final Value<Pattern> uri_re;
+  private final __old_Value<Pattern> uri_re;
   private final Settings settings;
 
   public UriReSyncRule(Settings s) {
@@ -63,17 +63,17 @@ public class UriReSyncRule extends SyncRule {
         throw new SettingsMalformedException("invalid 'uri_re' regexp", e);
       }
     };
-    private final Value<Pattern> pattern;
+    private final __old_Value<Pattern> pattern;
 
-    private Settings(Value<Pattern> pattern) {
+    private Settings(__old_Value<Pattern> pattern) {
       this.pattern = pattern;
     }
 
     public static UriReSyncRule.Settings from(String value) {
-      return new Settings(Value.fromString(value, patternFromString));
+      return new Settings(__old_Value.fromString(value, patternFromString));
     }
 
-    public Value<Pattern> getPattern() {
+    public __old_Value<Pattern> getPattern() {
       return pattern;
     }
 

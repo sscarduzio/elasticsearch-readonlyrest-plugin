@@ -19,12 +19,12 @@ package tech.beshu.ror.commons.domain;
 import java.util.Optional;
 import java.util.function.Function;
 
-public class Variable<T> implements Value<T> {
+public class __old_Variable<T> implements __old_Value<T> {
 
   private final String value;
   private final Function<String, T> creator;
 
-  Variable(String value, Function<String, T> creator) {
+  __old_Variable(String value, Function<String, T> creator) {
     this.value = value;
     this.creator = creator;
   }
@@ -35,7 +35,7 @@ public class Variable<T> implements Value<T> {
   }
 
   @Override
-  public Optional<T> getValue(VariableResolver resolver) {
+  public Optional<T> getValue(__old_VariableResolver resolver) {
     Optional<String> resolved = resolver.resolveVariable(value);
     try {
       return resolved.map(creator);

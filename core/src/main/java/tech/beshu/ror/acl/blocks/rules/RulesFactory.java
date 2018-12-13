@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
@@ -38,7 +38,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
@@ -92,7 +92,7 @@ public class RulesFactory {
     );
     this.creators.put(
         HostsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new HostsSyncRule((HostsRuleSettings) settings, context))
+        settings -> AsyncRuleAdapter.wrap(new __old_HostsSyncRule((HostsRuleSettings) settings, context))
     );
     this.creators.put(
         LocalHostsRuleSettings.class,
@@ -136,7 +136,7 @@ public class RulesFactory {
     );
     this.creators.put(
         MethodsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new MethodsSyncRule((MethodsRuleSettings) settings))
+        settings -> AsyncRuleAdapter.wrap(new __old_MethodsSyncRule((MethodsRuleSettings) settings))
     );
     this.creators.put(
         __old_HeadersSyncRule.Settings.class,

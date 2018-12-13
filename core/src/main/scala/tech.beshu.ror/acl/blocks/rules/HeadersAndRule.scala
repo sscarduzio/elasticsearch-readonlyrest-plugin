@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.requestcontext.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
-import tech.beshu.ror.commons.ops.header.FlatHeader._
+import tech.beshu.ror.commons.header.FlatHeader._
 
 import scala.collection.JavaConverters._
 
@@ -21,7 +21,7 @@ class HeadersAndRule(settings: Settings)
     val headersSubset = context
       .getHeaders
       .filter(h => settings.headers.exists(_.name == h.name))
-    if (headersSubset.size == settings.headers.length) false
+    if (headersSubset.size != settings.headers.length) false
     else new MatcherWithWildcards(settings.headers.toSortedSet.map(_.flatten).asJava)
       .filter(headersSubset.map(_.flatten).asJava)
       .size == settings.headers.length

@@ -22,7 +22,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
@@ -48,7 +48,7 @@ public class LocalHostsRuleTests {
   private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getLocalAddress()).thenReturn(found);
 
-    Set<Value<String>> configV = Sets.newHashSet(configured).stream().map(i -> Value.fromString(i, Function.identity())).collect(Collectors.toSet());
+    Set<__old_Value<String>> configV = Sets.newHashSet(configured).stream().map(i -> __old_Value.fromString(i, Function.identity())).collect(Collectors.toSet());
     LocalHostsRuleSettings hrset = new LocalHostsRuleSettings(configV);
     SyncRule r = new LocalHostsSyncRule(hrset, new MockedESContext());
     return r.match(rc);

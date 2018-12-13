@@ -38,7 +38,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class MethodsRuleTests {
+public class __old_MethodsRuleTests {
 
   @Test
   public void testSimpleGET() {
@@ -66,7 +66,7 @@ public class MethodsRuleTests {
     when(rc.getMethod()).thenReturn(found);
     when(rc.isReadRequest()).thenReturn(true);
 
-    SyncRule r = new MethodsSyncRule(new MethodsRuleSettings(Sets.newHashSet(configured)));
+    SyncRule r = new __old_MethodsSyncRule(new MethodsRuleSettings(Sets.newHashSet(configured)));
     return r.match(rc);
   }
 

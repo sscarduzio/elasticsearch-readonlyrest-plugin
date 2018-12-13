@@ -19,19 +19,19 @@ package tech.beshu.ror.commons.domain;
 import java.util.Optional;
 import java.util.function.Function;
 
-public interface Value<T> {
+public interface __old_Value<T> {
 
   String getTemplate();
 
-  static <T> Value<T> fromString(String value, Function<String, T> creator) {
+  static <T> __old_Value<T> fromString(String value, Function<String, T> creator) {
     return value.contains("@")
-      ? new Variable<>(value, creator)
-      : new Const<>(creator.apply(value));
+      ? new __old_Variable<>(value, creator)
+      : new __old_Const<>(creator.apply(value));
   }
 
-  Optional<T> getValue(VariableResolver resolver);
+  Optional<T> getValue(__old_VariableResolver resolver);
 
-  interface VariableResolver {
+  interface __old_VariableResolver {
     Optional<String> resolveVariable(String original);
   }
 
