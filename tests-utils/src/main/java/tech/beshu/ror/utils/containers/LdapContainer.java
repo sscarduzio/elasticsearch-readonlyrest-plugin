@@ -94,7 +94,7 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
   }
 
   private WaitStrategy ldapWaitStrategy(File initialDataLdif) {
-    return new GenericContainer.AbstractWaitStrategy() {
+    return new org.testcontainers.containers.wait.strategy.AbstractWaitStrategy() {
 
       @Override
       protected void waitUntilReady() {

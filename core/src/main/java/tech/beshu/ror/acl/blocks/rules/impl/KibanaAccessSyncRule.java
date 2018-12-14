@@ -68,7 +68,8 @@ public class KibanaAccessSyncRule extends SyncRule {
       "cluster:monitor/nodes/info",
       "cluster:monitor/main",
       "cluster:monitor/health",
-      "cluster:monitor/state"
+      "cluster:monitor/state",
+      "cluster:monitor/xpack/*"
   ));
 
   private final LoggerShim logger;
@@ -138,7 +139,7 @@ public class KibanaAccessSyncRule extends SyncRule {
     rc.setKibanaIndex(resolvedKibanaIndex);
 
     // Save UI state in discover & Short urls
-    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create|index-pattern)/.*|^/_template/.*"
+    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*)/.*|^/_template/.*"
         .replace("@kibana_index", resolvedKibanaIndex));
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(resolvedKibanaIndex);

@@ -14,9 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.acl.definitions.ldaps.unboundid;
 
+import tech.beshu.ror.settings.definitions.LdapSettings;
+
 import java.time.Duration;
+import java.util.Set;
 
 public class ConnectionConfig {
 
@@ -27,26 +31,42 @@ public class ConnectionConfig {
   private final Duration requestTimeout;
   private final boolean sslEnabled;
   private final boolean trustAllCerts;
+  private final Set<String> servers;
+  private LdapSettings.HA ha;
 
-  public ConnectionConfig(String host,
-                          int port,
-                          int poolSize,
-                          Duration connectionTimeout,
-                          Duration requestTimeout,
-                          boolean sslEnabled,
-                          boolean trustAllCerts) {
+  public ConnectionConfig(
+      String host,
+      Set<String> servers,
+      int port,
+      int poolSize,
+      Duration connectionTimeout,
+      Duration requestTimeout,
+      boolean sslEnabled,
+      boolean trustAllCerts,
+      LdapSettings.HA ha
+  ) {
 
     this.host = host;
+    this.servers = servers;
     this.port = port;
     this.poolSize = poolSize;
     this.connectionTimeout = connectionTimeout;
     this.requestTimeout = requestTimeout;
     this.sslEnabled = sslEnabled;
     this.trustAllCerts = trustAllCerts;
+    this.ha = ha;
   }
 
   public String getHost() {
     return host;
+  }
+
+  public Set<String> getServers() {
+    return servers;
+  }
+
+  public LdapSettings.HA getHA() {
+    return this.ha;
   }
 
   public int getPort() {
@@ -81,14 +101,17 @@ public class ConnectionConfig {
     public static Duration DEFAULT_LDAP_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
     public static boolean DEFAULT_LDAP_SSL_ENABLED = true;
     public static boolean DEFAULT_LDAP_SSL_TRUST_ALL_CERTS = false;
+    public static LdapSettings.HA DEFAULT_HA = LdapSettings.HA.FAILOVER;
 
     private final String host;
+    private Set<String> servers;
     private int port = DEFAULT_LDAP_PORT;
     private int poolSize = DEFAULT_LDAP_CONNECTION_POOL_SIZE;
     private Duration requestTimeout = DEFAULT_LDAP_REQUEST_TIMEOUT;
     private Duration connectionTimeout = DEFAULT_LDAP_CONNECTION_TIMEOUT;
     private boolean sslEnabled = DEFAULT_LDAP_SSL_ENABLED;
     private boolean trustAllCerts = DEFAULT_LDAP_SSL_TRUST_ALL_CERTS;
+    private LdapSettings.HA ha;
 
     public Builder(String host) {
       this.host = host;
@@ -124,8 +147,13 @@ public class ConnectionConfig {
       return this;
     }
 
+    public Builder setServers(Set<String> serverSet) {
+      this.servers = serverSet;
+      return this;
+    }
+
     public ConnectionConfig build() {
-      return new ConnectionConfig(host, port, poolSize, connectionTimeout, requestTimeout, sslEnabled, trustAllCerts);
+      return new ConnectionConfig(host, servers, port, poolSize, connectionTimeout, requestTimeout, sslEnabled, trustAllCerts, ha);
     }
   }
 }

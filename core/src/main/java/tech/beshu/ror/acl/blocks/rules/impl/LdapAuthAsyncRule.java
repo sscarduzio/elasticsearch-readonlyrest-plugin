@@ -40,6 +40,7 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
 
   private final AsyncAuthentication authentication;
   private final AsyncAuthorization authorization;
+  private final LdapAuthorizationRuleSettings authorizationSettings;
 
   public LdapAuthAsyncRule(LdapAuthRuleSettings settings, LdapClientFactory factory, ESContext context) {
     LdapAuthenticationRuleSettings ldapAuthenticationRuleSettings = LdapAuthenticationRuleSettings.from(settings);
@@ -49,11 +50,17 @@ public class LdapAuthAsyncRule extends AsyncRule implements Authentication, Auth
       context
     );
     LdapAuthorizationRuleSettings ldapAuthorizationRuleSettings = LdapAuthorizationRuleSettings.from(settings);
+    LdapAuthorizationAsyncRule authorizationUnwrapped= new LdapAuthorizationAsyncRule(ldapAuthorizationRuleSettings, factory, context);
+    this.authorizationSettings =  authorizationUnwrapped.getSettings();
     this.authorization = CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled(
-      new LdapAuthorizationAsyncRule(ldapAuthorizationRuleSettings, factory, context),
+        authorizationUnwrapped,
       ldapAuthorizationRuleSettings,
       context
     );
+  }
+
+  public LdapAuthorizationRuleSettings getSettings() {
+    return authorizationSettings;
   }
 
   @Override

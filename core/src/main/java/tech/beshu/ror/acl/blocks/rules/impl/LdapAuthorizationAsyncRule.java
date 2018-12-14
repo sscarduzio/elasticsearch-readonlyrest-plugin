@@ -102,7 +102,8 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
         .collect(Collectors.toSet());
 
     // Retain only groups that the client knows and the user has
-    Set<String> remaining = client.getAvailableGroups();
+    Set<String> remaining = settings.getLdapSettings().getAvailableGroups();
+    remaining.addAll(client.getAvailableGroups());
     remaining.retainAll(userLdapGroupNames);
 
     return remaining;
@@ -113,4 +114,7 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
     return settings.getName();
   }
 
+  public LdapAuthorizationRuleSettings getSettings() {
+    return settings;
+  }
 }

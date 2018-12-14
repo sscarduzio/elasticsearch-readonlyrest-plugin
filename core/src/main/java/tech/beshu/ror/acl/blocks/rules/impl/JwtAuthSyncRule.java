@@ -24,8 +24,9 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
+import org.apache.commons.codec.binary.Base64;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
@@ -37,10 +38,10 @@ import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 
-import java.security.Key;
+import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
+import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -52,13 +53,11 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
 
   private final LoggerShim logger;
   private final JwtAuthRuleSettings settings;
-  private final Optional<Key> signingKeyForAlgo;
   private final ExternalAuthenticationServiceClient httpClient;
 
   public JwtAuthSyncRule(JwtAuthRuleSettings settings, ESContext context, DefinitionsFactory factory) {
     this.logger = context.logger(getClass());
     this.settings = settings;
-    this.signingKeyForAlgo = getSigningKeyForAlgo();
     this.httpClient = settings.getExternalValidator().isPresent() ? factory.getClient(settings) : null;
   }
 
@@ -71,27 +70,31 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
     return Optional.ofNullable(Strings.emptyToNull(authHeader));
   }
 
-  private Optional<Key> getSigningKeyForAlgo() {
-    if (settings.getKey() == null) {
-      return Optional.empty();
-    }
-    if (settings.getAlgo().isPresent()) {
-      try {
-        byte[] decoded = Base64.getDecoder().decode(settings.getKey());
-        X509EncodedKeySpec X509publicKey = new X509EncodedKeySpec(decoded);
-        KeyFactory kf = KeyFactory.getInstance(settings.getAlgo().get());
-        return Optional.of(kf.generatePublic(X509publicKey));
-      } catch (Exception e) {
-        logger.error(e.getMessage());
-      }
-    }
-    return Optional.empty();
-  }
-
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
                                      .flatMap(JwtAuthSyncRule::extractToken);
+
+    /*
+      JWT ALGO    FAMILY
+      =======================
+      NONE        None
+
+      HS256       HMAC
+      HS384       HMAC
+      HS512       HMAC
+
+      RS256       RSA
+      RS384       RSA
+      RS512       RSA
+      PS256       RSA
+      PS384       RSA
+      PS512       RSA
+
+      ES256       EC
+      ES384       EC
+      ES512       EC
+    */
 
     if (!token.isPresent()) {
       logger.debug("Authorization header is missing or does not contain a bearer token");
@@ -102,16 +105,45 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
 
       JwtParser parser = Jwts.parser();
 
-      if (signingKeyForAlgo.isPresent()) {
-        parser.setSigningKey(signingKeyForAlgo.get());
+      // Defaulting to HMAC for backward compatibility
+      String algoFamily = settings.getAlgo().map(String::toUpperCase).orElse("HMAC");
+      if (settings.getKey() == null) {
+        algoFamily = "NONE";
       }
-      else {
-        if (settings.getKey() != null) {
+
+      if (!"NONE".equals(algoFamily)) {
+
+        if ("RSA".equals(algoFamily)) {
+          try {
+            byte[] keyBytes = Base64.decodeBase64(settings.getKey());
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            PublicKey pubKey = kf.generatePublic(new X509EncodedKeySpec(keyBytes));
+            parser.setSigningKey(pubKey);
+          } catch (GeneralSecurityException gso) {
+            throw new RuntimeException(gso);
+          }
+        }
+
+        else if ("EC".equals(algoFamily)) {
+          try {
+            byte[] keyBytes = Base64.decodeBase64(settings.getKey());
+            KeyFactory kf = KeyFactory.getInstance("EC");
+            PublicKey pubKey = kf.generatePublic(new X509EncodedKeySpec(keyBytes));
+            parser.setSigningKey(pubKey);
+          } catch (GeneralSecurityException gso) {
+            throw new RuntimeException(gso);
+          }
+        }
+
+        else if ("HMAC".equals(algoFamily)) {
           parser.setSigningKey(settings.getKey());
+        }
+        else {
+          throw new RuntimeException("unrecognised algorithm family " + algoFamily + ". Should be either of: HMAC, EC, RSA, NONE");
         }
       }
 
-      Claims jws = null;
+      Claims jws;
       if (settings.getKey() != null) {
         jws = parser.parseClaimsJws(token.get()).getBody();
       }

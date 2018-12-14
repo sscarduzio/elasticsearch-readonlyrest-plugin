@@ -19,6 +19,9 @@ package tech.beshu.ror.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
@@ -29,11 +32,16 @@ import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection
 import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
+import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RorSettings {
@@ -65,6 +73,7 @@ public class RorSettings {
   private Optional<String> keyPass;
   private Optional<String> keyAlias;
   private String keystoreFile;
+  private Map<String, Set<String>> ldapConnector2allowedGroups;
 
   @SuppressWarnings("unchecked")
   public RorSettings(RawSettings raw_global) {
@@ -101,6 +110,40 @@ public class RorSettings {
         throw new SettingsMalformedException("ACL Block names should be unique! Found more than one ACL block with the same name: " + name);
       }
     });
+
+    // This is useful for LDAP AUTHZ multitenancy available groups list
+    this.ldapConnector2allowedGroups = new HashMap<>();
+    for (BlockSettings bs : blocksSettings) {
+      Optional<Map.Entry<String, Set<String>>> ldapAuthorizationAsyncRuleO = bs
+          .getRules()
+          .stream()
+          .map(r -> {
+            if (r instanceof LdapAuthorizationAsyncRule) {
+              LdapAuthorizationRuleSettings s = (LdapAuthorizationRuleSettings) r;
+              return Maps.immutableEntry(s.getLdapSettings().getName(), s.getGroups());
+            }
+            else if (r instanceof LdapAuthRuleSettings) {
+              LdapAuthRuleSettings s = (LdapAuthRuleSettings) r;
+              return Maps.immutableEntry(s.getLdapSettings().getName(), s.getGroups());
+            }
+            else {
+              return null;
+            }
+          })
+          .filter(Objects::nonNull)
+          .findFirst();
+
+      ldapAuthorizationAsyncRuleO.ifPresent(entry -> {
+        String ldapConnectorName = entry.getKey();
+        Set<String> groupsForThisLdapConnector = ldapConnector2allowedGroups.getOrDefault(ldapConnectorName, Sets.newHashSet());
+        groupsForThisLdapConnector.addAll(entry.getValue());
+        ldapConnector2allowedGroups.put(ldapConnectorName, groupsForThisLdapConnector);
+      });
+    }
+
+    ldapConnector2allowedGroups
+        .keySet().stream()
+        .forEach(connectorName -> ldapSettingsCollection.get(connectorName).setAvailableGroups(ldapConnector2allowedGroups.get(connectorName)));
 
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
     this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);

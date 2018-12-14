@@ -94,7 +94,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       throw new IllegalStateException("Couldn't extract FLS fields from threadContext.", e);
     }
 
-    FilterTransient filterTransient = FilterTransient.Deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
+    FilterTransient filterTransient = FilterTransient.deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
     if (filterTransient == null) {
       logger.warn("Couldn't extract filterTransient from threadContext.");
       return reader;

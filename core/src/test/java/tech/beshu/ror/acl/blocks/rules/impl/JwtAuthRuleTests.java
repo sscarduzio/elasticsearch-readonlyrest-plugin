@@ -21,12 +21,12 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.SignatureException;
 import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
@@ -111,6 +111,53 @@ public class JwtAuthRuleTests {
   }
 
   @Test
+  public void shouldAcceptTokenWithValidNONESignature() throws KeyException {
+    String token = Jwts.builder()
+                       .setSubject(SUBJECT)
+                       .compact();
+
+    RawSettings settings = makeSettings(
+        SETTINGS_SIGNATURE_ALGO, "NONE"
+    );
+
+    RequestContext rc = getMock(token);
+
+    Optional<AsyncRule> rule = makeRule(settings);
+    Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    res.get().thenAccept(r -> assertTrue(r.isMatch()));
+  }
+
+  //  @Test
+  //  public void shouldAcceptTokenWithValidEllipticCurveSignature() throws KeyException, NoSuchAlgorithmException, InvalidKeySpecException {
+  //    // This throws exception for some reason, see issue
+  //    // https://github.com/jwtk/jjwt/issues/411
+  //    KeyPair keys = Keys.keyPairFor(SignatureAlgorithm.ES256);
+  //    String token = Jwts.builder()
+  //                       .setSubject(SUBJECT)
+  //                       .signWith(SignatureAlgorithm.valueOf("ES256"), keys.getPrivate())
+  //                       .compact();
+  //
+  //    RawSettings settings = makeSettings(
+  //        SETTINGS_SIGNATURE_KEY, Base64.getEncoder().encodeToString(keys.getPublic().getEncoded()),
+  //        SETTINGS_SIGNATURE_ALGO, "ES"
+  //    );
+  //
+  //    RequestContext rc = getMock(token);
+  //
+  //    Optional<AsyncRule> rule = makeRule(settings);
+  //    Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
+  //    rc.commit();
+  //
+  //    assertTrue(rule.isPresent());
+  //    assertTrue(res.isPresent());
+  //    res.get().thenAccept(r -> assertTrue(r.isMatch()));
+  //  }
+
+  @Test(expected = SignatureException.class)
   public void shouldRejectTokenWithInvalidSignature() {
     String token = Jwts.builder()
                        .setSubject(SUBJECT)
@@ -128,7 +175,7 @@ public class JwtAuthRuleTests {
     res.get().thenAccept(r -> assertFalse(r.isMatch()));
   }
 
-  @Test
+  @Test(expected = SignatureException.class)
   public void shouldRejectRSATokenWithInvalidSignature() throws KeyException {
     String token = Jwts.builder()
                        .setSubject(SUBJECT)
@@ -246,7 +293,7 @@ public class JwtAuthRuleTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeytIsEmpty() {
-    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "");
+    RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "", SETTINGS_SIGNATURE_ALGO, "RSA");
     JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
   }
 

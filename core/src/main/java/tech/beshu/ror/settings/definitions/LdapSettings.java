@@ -14,20 +14,27 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.definitions;
 
+import com.google.common.collect.Sets;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.rules.CacheSettings;
 import tech.beshu.ror.settings.rules.NamedSettings;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 public abstract class LdapSettings implements CacheSettings, NamedSettings {
 
   private static final String NAME = "name";
   private static final String HOST = "host";
+  private static final String SERVERS = "servers";
   private static final String PORT = "port";
   private static final String SSL_ENABLED = "ssl_enabled";
   private static final String TRUST_ALL_CERTS = "ssl_trust_all_certs";
@@ -37,6 +44,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private static final String CONNECTION_TIMEOUT = "connection_timeout_in_sec";
   private static final String REQUEST_TIMEOUT = "request_timeout_in_sec";
   private static final String CACHE = "cache_ttl_in_sec";
+  private static final String HA_KEY = "ha";
 
   private static final int DEFAULT_PORT = 389;
   private static final boolean DEFAULT_SSL_ENABLED = true;
@@ -46,6 +54,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private static final Duration DEFAULT_CONNECTION_TIMEOUT = Duration.ofSeconds(1);
   private static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofSeconds(1);
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
+  private static final HA DEFAULT_HA = HA.FAILOVER;
 
   private final String name;
   private final String host;
@@ -59,10 +68,29 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
   private final Duration connectionTimeout;
   private final Duration requestTimeout;
   private final Duration cacheTtl;
+  private final HA ha;
+  private Set<String> availableGroups = Sets.newHashSet();
+  private Set<String> servers;
 
   protected LdapSettings(RawSettings settings) {
+    if(!settings.stringOpt(HOST).isPresent() && !settings.notEmptyListOpt(SERVERS).isPresent()){
+      throw new SettingsMalformedException("Server information missing: use either 'host' and 'port' or 'servers' option");
+    }
+    if (settings.stringOpt(HA_KEY).isPresent() && (settings.stringOpt(HOST).isPresent() || settings.intOpt(PORT).isPresent())) {
+      throw new SettingsMalformedException(
+          "Cannot accept single server settings (host,port) AND multi server configuration (servers) at the same time.");
+    }
+    if (settings.stringOpt(HA_KEY).isPresent() && settings.stringOpt(HOST).isPresent()) {
+      throw new SettingsMalformedException(
+          "Please specify more than one LDAP server using 'servers' to use HA");
+    }
+    if (settings.stringOpt(SSL_ENABLED).isPresent() && !settings.stringOpt(HOST).isPresent()) {
+      throw new SettingsMalformedException(
+          "When using multi-server, the option '" + SSL_ENABLED + "' can't be used. Please use ldaps:// schema while listing the 'servers'");
+    }
     this.name = settings.stringReq(NAME);
-    this.host = settings.stringReq(HOST);
+    this.host = settings.stringOpt(HOST).orElse(null);
+    this.servers = new HashSet(settings.notEmptyListOpt(SERVERS).orElse(Collections.emptyList()));
     this.port = settings.intOpt(PORT).orElse(DEFAULT_PORT);
     this.isSslEnabled = settings.booleanOpt(SSL_ENABLED).orElse(DEFAULT_SSL_ENABLED);
     this.trustAllCertificates = settings.booleanOpt(TRUST_ALL_CERTS).orElse(DEFAULT_TRUST_ALL_CERTS);
@@ -73,6 +101,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
     this.connectionTimeout = settings.intOpt(CONNECTION_TIMEOUT).map(Duration::ofSeconds).orElse(DEFAULT_CONNECTION_TIMEOUT);
     this.requestTimeout = settings.intOpt(REQUEST_TIMEOUT).map(Duration::ofSeconds).orElse(DEFAULT_REQUEST_TIMEOUT);
     this.cacheTtl = settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL);
+    this.ha = HA.valueOf(settings.stringOpt(HA_KEY).orElse(DEFAULT_HA.name()));
   }
 
   @Override
@@ -80,8 +109,24 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
     return name;
   }
 
+  public Set<String> getAvailableGroups() {
+    return availableGroups;
+  }
+
+  public void setAvailableGroups(Set<String> availableGroups) {
+    this.availableGroups = availableGroups;
+  }
+
   public String getHost() {
     return host;
+  }
+
+  public HA getHa() {
+    return ha;
+  }
+
+  public Set<String> getServers() {
+    return servers;
   }
 
   public int getPort() {
@@ -125,6 +170,10 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
     return cacheTtl;
   }
 
+  public enum HA {
+    FAILOVER, ROUNDR_ROBIN
+  }
+
   public static class SearchingUserSettings {
     private static final String BIND_DN = "bind_dn";
     private static final String BIND_PASS = "bind_password";
@@ -141,7 +190,7 @@ public abstract class LdapSettings implements CacheSettings, NamedSettings {
       Optional<String> bindDn = settings.stringOpt(BIND_DN);
       Optional<String> bindPassword = settings.stringOpt(BIND_PASS);
       if ((bindDn.isPresent() && !bindPassword.isPresent()) ||
-        (!bindDn.isPresent() && bindPassword.isPresent())) {
+          (!bindDn.isPresent() && bindPassword.isPresent())) {
         throw new SettingsMalformedException("'" + BIND_DN + "' & '" + BIND_PASS + "' should be both present or both absent");
       }
       return bindDn.flatMap(bdn -> bindPassword.map(bp -> new SearchingUserSettings(bdn, bp)));

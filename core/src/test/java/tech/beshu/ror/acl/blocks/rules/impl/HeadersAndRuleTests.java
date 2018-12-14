@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.Test;
@@ -45,93 +46,93 @@ public class HeadersAndRuleTests {
 
   @Test
   public void testSimpleHeaderMatch() {
-    RuleExitResult res = match(Collections.singletonList("hkey:hvalue"), new HashMap() {{
-      put("hkey", "hvalue");
-    }});
+    RuleExitResult res = match(Collections.singletonList("hkey:hvalue"), ImmutableMap.of(
+      "hkey", "hvalue"
+    ));
     assertTrue(res.isMatch());
   }
 
   @Test
   public void testHeaderMultiSeparator() {
-    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:123"), new HashMap() {{
-      put("hkey", "hvalue:123");
-    }});
+    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:123"), ImmutableMap.of(
+      "hkey", "hvalue:123"
+    ));
     assertTrue(res.isMatch());
   }
 
   @Test
   public void testHeaderCapitalSettingsKey() {
-    RuleExitResult res = match(Collections.singletonList("Hkey:hvalue:123"), new HashMap() {{
-      put("hkey", "hvalue:123");
-    }});
+    RuleExitResult res = match(Collections.singletonList("Hkey:hvalue:123"), ImmutableMap.of(
+      "hkey", "hvalue:123"
+    ));
     assertTrue(res.isMatch());
   }
 
   @Test
   public void testHeaderCapitalSettingsKeyValue() {
-    RuleExitResult res = match(Collections.singletonList("Hkey:Hvalue:123"), new HashMap() {{
-      put("hkey", "hvalue:123");
-    }});
+    RuleExitResult res = match(Collections.singletonList("Hkey:Hvalue:123"),ImmutableMap.of(
+     "hkey", "hvalue:123"
+    ));
     assertTrue(res.isMatch());
   }
 
   @Test
   public void testHeaderCapitalHeaderKey() {
-    RuleExitResult res = match(Lists.newArrayList("hkey:hvalue:123"), new HashMap() {{
-      put("Hkey", "hvalue:123");
-      put("other", "header");
-    }});
+    RuleExitResult res = match(Lists.newArrayList("hkey:hvalue:123"), ImmutableMap.of(
+      "Hkey", "hvalue:123",
+      "other", "header"
+    ));
     assertTrue(res.isMatch());
   }
 
   @Test
   public void testHeaderCapitalHeaderValue() {
-    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:123"), new HashMap() {{
-      put("hkey", "Hvalue:123");
-    }});
+    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:123"), ImmutableMap.of(
+      "hkey", "Hvalue:123"
+    ));
     assertFalse(res.isMatch());
   }
 
   @Test
   public void testHeaderCapitalHeaderValueWithWC() {
-    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:12*"), new HashMap() {{
-      put("hkey", "hvalue:123");
-    }});
+    RuleExitResult res = match(Collections.singletonList("hkey:hvalue:12*"), ImmutableMap.of(
+      "hkey", "hvalue:123"
+    ));
     assertTrue(res.isMatch());
   }
 
   @Test
   public void testHeaderMultiShouldLogicalAND1() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1","value1");
-    }});
+    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), ImmutableMap.of(
+      "headerkey1","value1"
+    ));
     assertFalse(res.isMatch());
   }
 
   @Test
   public void testHeaderMultiShouldLogicalAND2() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1","value1");
-      put("headerkey2","value2");
-    }});
+    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), ImmutableMap.of(
+      "headerkey1","value1",
+      "headerkey2","value2"
+    ));
     assertTrue(res.isMatch());
   }
   @Test
   public void testHeaderMultiShouldLogicalAND_extraheaders() {
-    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), new HashMap() {{
-      put("headerkey1","value1");
-      put("headerkey2","value2");
-      put("headerkey3","value3");
-      put("headerkey4","value4");
-    }});
+    RuleExitResult res = match(Lists.newArrayList("headerkey1:value1", "headerkey2:value2"), ImmutableMap.of(
+      "headerkey1","value1",
+      "headerkey2","value2",
+      "headerkey3","value3",
+      "headerkey4","value4"
+    ));
     assertTrue(res.isMatch());
   }
   @Test
   public void testConfigureMultipleTimesSameHeader() {
     try {
-       match(Lists.newArrayList("headerkey1:value1", "headerkey1:value2"), new HashMap() {{
-        put("headerkey1", "value1");
-      }});
+       match(Lists.newArrayList("headerkey1:value1", "headerkey1:value2"), ImmutableMap.of(
+        "headerkey1", "value1"
+      ));
       assertEquals("should have thrown!", "");
     }
     catch(SettingsMalformedException sme){

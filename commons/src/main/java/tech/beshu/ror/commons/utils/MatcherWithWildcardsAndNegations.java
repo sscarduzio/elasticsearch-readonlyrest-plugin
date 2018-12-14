@@ -60,7 +60,7 @@ public class MatcherWithWildcardsAndNegations {
     if (haystack == null) {
       return Collections.emptySet();
     }
-    Set<String> filtered = cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets.newHashSet();
+    Set<String> filtered = Sets.newHashSet();
     for (String hs : haystack) {
       if (match(hs)) {
         filtered.add(hs);

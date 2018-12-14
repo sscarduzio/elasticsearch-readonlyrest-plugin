@@ -27,7 +27,6 @@ import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -50,7 +49,6 @@ public class UsersSyncRule extends SyncRule {
     }
 
     this.settings = s;
-
   }
 
   @Override

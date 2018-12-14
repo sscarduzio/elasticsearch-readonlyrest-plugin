@@ -40,14 +40,11 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.acl.ACL;
-import tech.beshu.ror.acl.blocks.BlockExitResult;
-import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.domain.Variable;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.utils.FilterTransient;
 import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.io.IOException;

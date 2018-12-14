@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.acl.definitions;
 
-import com.fasterxml.jackson.databind.util.Named;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import tech.beshu.ror.acl.ACL;
@@ -99,12 +98,14 @@ public class DefinitionsFactory implements LdapClientFactory,
                 new UnboundidGroupsProviderLdapClient(
                     new ConnectionConfig(
                         settings.getHost(),
+                        settings.getServers(),
                         settings.getPort(),
                         settings.getConnectionPoolSize(),
                         settings.getConnectionTimeout(),
                         settings.getRequestTimeout(),
                         settings.isSslEnabled(),
-                        settings.isTrustAllCertificates()
+                        settings.isTrustAllCertificates(),
+                        settings.getHa()
                     ),
                     new UserSearchFilterConfig(
                         settings.getSearchUserBaseDn(),
@@ -141,12 +142,14 @@ public class DefinitionsFactory implements LdapClientFactory,
                 new UnboundidAuthenticationLdapClient(
                     new ConnectionConfig(
                         settings.getHost(),
+                        settings.getServers(),
                         settings.getPort(),
                         settings.getConnectionPoolSize(),
                         settings.getConnectionTimeout(),
                         settings.getRequestTimeout(),
                         settings.isSslEnabled(),
-                        settings.isTrustAllCertificates()
+                        settings.isTrustAllCertificates(),
+                        settings.getHa()
                     ),
                     new UserSearchFilterConfig(
                         settings.getSearchUserBaseDn(),
@@ -234,7 +237,7 @@ public class DefinitionsFactory implements LdapClientFactory,
         finalExternalUrl,
         settings.getExternalValidatorSuccessStatusCode()
     );
-    return getOrCreate(ns, jwtExternalValidatorClientCache, () -> wrapInCacheIfCacheIsEnabled((CacheSettings) ns,authcli));
+    return getOrCreate(ns, jwtExternalValidatorClientCache, () -> wrapInCacheIfCacheIsEnabled((CacheSettings) ns, authcli));
 
   }
 }
