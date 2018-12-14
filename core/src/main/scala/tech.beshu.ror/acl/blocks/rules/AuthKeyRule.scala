@@ -1,12 +1,9 @@
 package tech.beshu.ror.acl.blocks.rules
 
-import java.util.regex.{Matcher, Pattern}
-
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.commons.codec.digest.Crypt.crypt
-import tech.beshu.ror.utils.BasicAuthUtils
 import tech.beshu.ror.acl.utils.BasicAuthOps._
 import tech.beshu.ror.acl.utils.TryOps._
+import tech.beshu.ror.utils.BasicAuthUtils
 
 class AuthKeyRule(settings: BasicAuthenticationRule.Settings)
   extends BasicAuthenticationRule(settings)

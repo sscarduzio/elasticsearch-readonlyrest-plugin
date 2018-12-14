@@ -20,7 +20,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.jayway.jsonpath.JsonPath;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.httpclient.HttpClient;
@@ -47,7 +47,7 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   private final String responseGroupsJsonPath;
   private final ImmutableMap<String, String> defaultHeaders;
   private final ImmutableMap<String, String> defaultQueryParameters;
-  private Function<LoggedUser,RRHttpRequest> requestBuilder;
+  private Function<__old_LoggedUser,RRHttpRequest> requestBuilder;
 
   public GroupsProviderServiceHttpClient(String name,
                                          HttpClient client,
@@ -73,19 +73,19 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   }
 
   @Override
-  public CompletableFuture<Set<String>> fetchGroupsFor(LoggedUser user) {
+  public CompletableFuture<Set<String>> fetchGroupsFor(__old_LoggedUser user) {
 
     return client.send(requestBuilder.apply(user))
         .thenApply(groupsFromResponse());
   }
 
-  private Map<String, String> createParams(LoggedUser user) {
+  private Map<String, String> createParams(__old_LoggedUser user) {
     return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.QUERY
         ? new ImmutableMap.Builder<String, String>().putAll(defaultQueryParameters.entrySet()).put(authTokenName, user.getId()).build()
         : ImmutableMap.copyOf(defaultQueryParameters);
   }
 
-  private Map<String, String> createHeaders(LoggedUser user) {
+  private Map<String, String> createHeaders(__old_LoggedUser user) {
     return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.HEADER
         ? new ImmutableMap.Builder<String, String>().putAll(defaultHeaders.entrySet()).put(authTokenName, user.getId()).build()
         : ImmutableMap.copyOf(defaultHeaders);

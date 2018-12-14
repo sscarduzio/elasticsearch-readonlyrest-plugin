@@ -35,12 +35,12 @@ import java.util.stream.Stream;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class UsersSyncRule extends SyncRule {
+public class __old_UsersSyncRule extends SyncRule {
 
   private final Settings settings;
   private final MatcherWithWildcards matcherNoVar;
 
-  public UsersSyncRule(Settings s) {
+  public __old_UsersSyncRule(Settings s) {
     if (!s.hasVariables()) {
       this.matcherNoVar = new MatcherWithWildcards(s.getPatternsUnwrapped());
     }
@@ -93,7 +93,7 @@ public class UsersSyncRule extends SyncRule {
 
     }
 
-    public static UsersSyncRule.Settings from(List<String> patterns) {
+    public static __old_UsersSyncRule.Settings from(List<String> patterns) {
       return new Settings(Sets.newHashSet(patterns));
     }
 

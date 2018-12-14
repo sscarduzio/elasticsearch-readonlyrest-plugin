@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.BlockHistory;
 import tech.beshu.ror.acl.blocks.__old_Block;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
@@ -50,7 +50,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
   private Boolean doesInvolveIndices = false;
   private VariablesManager variablesManager;
   private Map<String, String> requestHeaders;
-  private Transactional<Optional<LoggedUser>> loggedInUser;
+  private Transactional<Optional<__old_LoggedUser>> loggedInUser;
   private Transactional<Map<String, String>> responseHeaders;
   private Transactional<Map<String, String>> contextHeaders;
   private List<BlockHistory> history = Lists.newArrayList();
@@ -136,19 +136,19 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
       }
     };
 
-    this.loggedInUser = new Transactional<Optional<LoggedUser>>("rc-loggedin-user", context) {
+    this.loggedInUser = new Transactional<Optional<__old_LoggedUser>>("rc-loggedin-user", context) {
       @Override
-      public Optional<LoggedUser> initialize() {
+      public Optional<__old_LoggedUser> initialize() {
         return Optional.empty();
       }
 
       @Override
-      public Optional<LoggedUser> copy(Optional<LoggedUser> initial) {
-        return initial.map((u) -> new LoggedUser(u.getId()));
+      public Optional<__old_LoggedUser> copy(Optional<__old_LoggedUser> initial) {
+        return initial.map((u) -> new __old_LoggedUser(u.getId()));
       }
 
       @Override
-      public void onCommit(Optional<LoggedUser> value) {
+      public void onCommit(Optional<__old_LoggedUser> value) {
         value.ifPresent(loggedUser -> {
           if (Constants.KIBANA_METADATA_ENABLED) {
             Map<String, String> theMap = responseHeaders.get();
@@ -345,11 +345,11 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
     contextHeaders.mutate(copied);
   }
 
-  public Optional<LoggedUser> getLoggedInUser() {
+  public Optional<__old_LoggedUser> getLoggedInUser() {
     return loggedInUser.get();
   }
 
-  public void setLoggedInUser(LoggedUser user) {
+  public void setLoggedInUser(__old_LoggedUser user) {
     loggedInUser.mutate(Optional.of(user));
   }
 
@@ -419,7 +419,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
     String hist = Joiner.on(", ").join(getHistory());
     Optional<BasicAuthUtils.BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
 
-    Optional<LoggedUser> loggedInUser = getLoggedInUser();
+    Optional<__old_LoggedUser> loggedInUser = getLoggedInUser();
 
     String currentGroup;
     if (getHeaders().containsKey(Constants.HEADER_GROUP_CURRENT)) {

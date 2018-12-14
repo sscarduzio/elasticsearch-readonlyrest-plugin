@@ -1,16 +1,17 @@
 package tech.beshu.ror.commons
 
 import cats.Order
+import cats.implicits._
 import com.softwaremill.sttp.Method
 import tech.beshu.ror.commons.aDomain.{Header, UnresolvedAddress}
-import tech.beshu.ror.commons.domain.{Const, Value, Variable}
+import tech.beshu.ror.commons.domain.{Const, LoggedUser, Value, Variable}
 
 import scala.language.implicitConversions
 
 object header {
 
   class FlatHeader(header: Header) {
-    def flatten: String = s"${header.name}:${header.value}"
+    def flatten: String = s"${header.name.toLowerCase()}:${header.value}"
   }
 
   object FlatHeader {
@@ -32,10 +33,10 @@ object unresolvedaddress {
 }
 
 object orders {
-  implicit val headerOrder: Order[Header] = Order.fromOrdering(Ordering.by { h: Header => (h.name, h.value) })
-  implicit val unresolvedAddressOrder: Order[UnresolvedAddress] = Order.fromOrdering(Ordering.by { u: UnresolvedAddress => u.value })
-  implicit val methodOrder: Order[Method] = Order.from((a, b) => a.m.compareTo(b.m))
-
+  implicit val headerOrder: Order[Header] = Order.by(h => (h.name, h.value))
+  implicit val unresolvedAddressOrder: Order[UnresolvedAddress] = Order.by(_.value)
+  implicit val methodOrder: Order[Method] = Order.by(_.m)
+  implicit val loggedUserIdOrder: Order[LoggedUser.Id] = Order.by(_.value)
   implicit def valueOrder[T: Order]: Order[Value[T]] = Order.from {
     case (a: Const[T], b: Const[T]) => implicitly[Order[T]].compare(a.value, b.value)
     case (_: Const[T], _: Variable[T]) => -1

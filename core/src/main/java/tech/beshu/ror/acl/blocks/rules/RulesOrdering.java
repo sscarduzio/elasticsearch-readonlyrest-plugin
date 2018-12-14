@@ -51,8 +51,8 @@ import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.UsersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.utils.RulesUtils;
 
@@ -91,7 +91,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         XForwardedForSyncRule.class,
         __old_ApiKeysSyncRule.class,
         SessionMaxIdleSyncRule.class,
-        UriReSyncRule.class,
+        __old_UriReSyncRule.class,
         MaxBodyLengthSyncRule.class,
         __old_MethodsSyncRule.class,
         __old_HeadersSyncRule.class,
@@ -100,7 +100,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         IndicesSyncRule.class,
         __old_ActionsSyncRule.class,
         SearchlogSyncRule.class,
-        UsersSyncRule.class,
+        __old_UsersSyncRule.class,
 
         // all authorization rules should be placed before any authentication rule
         LdapAuthorizationAsyncRule.class,

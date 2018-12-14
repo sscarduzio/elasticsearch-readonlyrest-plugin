@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.blocks.rules;
 
 import org.junit.Test;
 import org.mockito.Mockito;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -40,7 +40,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
   private AsyncAuthorization dummyAsyncRule = new AsyncAuthorization(MockedESContext.INSTANCE) {
     @Override
-    protected CompletableFuture<Boolean> authorize(LoggedUser user) {
+    protected CompletableFuture<Boolean> authorize(__old_LoggedUser user) {
       return CompletableFuture.completedFuture(true);
     }
 
@@ -66,7 +66,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
   @Test
   public void testIfAuthorizationIsCached() throws Exception {
-    LoggedUser user = new LoggedUser("tester");
+    __old_LoggedUser user = new __old_LoggedUser("tester");
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
     when(rule.authorize(any())).thenReturn(CompletableFuture.completedFuture(true));
@@ -85,7 +85,7 @@ public class CachedAsyncAuthorizationDecoratorTests {
 
   @Test
   public void testIfCachedResultExpires() throws Exception {
-    LoggedUser user = new LoggedUser("tester");
+    __old_LoggedUser user = new __old_LoggedUser("tester");
     Duration ttl = Duration.ofSeconds(1);
 
     MockedAsyncAuthorization rule = Mockito.mock(MockedAsyncAuthorization.class);
@@ -110,6 +110,6 @@ public class CachedAsyncAuthorizationDecoratorTests {
     }
 
     @Override
-    public abstract CompletableFuture<Boolean> authorize(LoggedUser user);
+    public abstract CompletableFuture<Boolean> authorize(__old_LoggedUser user);
   }
 }

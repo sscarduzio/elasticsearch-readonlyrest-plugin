@@ -31,7 +31,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -111,7 +111,7 @@ public class RorKbnAuthSyncRule extends SyncRule implements Authentication {
         if (!user.isPresent())
           return NO_MATCH;
         else
-          rc.setLoggedInUser(new LoggedUser(user.get()));
+          rc.setLoggedInUser(new __old_LoggedUser(user.get()));
 
       Optional<Set<String>> roles = this.extractRoles(jws);
       if (settings.getRolesClaim().isPresent() && !roles.isPresent())

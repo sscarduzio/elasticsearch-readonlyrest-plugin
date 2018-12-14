@@ -20,5 +20,5 @@ object ApiKeysRule {
 
   final case class Settings(apiKeys: Set[String])
 
-  val xApiKeyHeaderName: String = "X-Api-Key".toLowerCase
+  val xApiKeyHeaderName: String = "X-Api-Key"
 }

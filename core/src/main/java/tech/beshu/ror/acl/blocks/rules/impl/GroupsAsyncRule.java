@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.acl.definitions.users.User;
 import tech.beshu.ror.acl.definitions.users.UserFactory;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.definitions.UserSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
@@ -73,7 +73,7 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
     // Filter the userSettings to leave only the ones which include the current group
     // #TODO move to proper use of optional
     final String preferredGroup = rc.getLoggedInUser().isPresent() ?
-        rc.getLoggedInUser().get().resolveCurrentGroup(rc.getHeaders()).orElse(null) : new LoggedUser("x").resolveCurrentGroup(rc.getHeaders()).orElse(null);
+        rc.getLoggedInUser().get().resolveCurrentGroup(rc.getHeaders()).orElse(null) : new __old_LoggedUser("x").resolveCurrentGroup(rc.getHeaders()).orElse(null);
 
     // Exclude userSettings that don't contain groups in this groupRule
     userSettingsToCheck = userSettingsToCheck.stream()

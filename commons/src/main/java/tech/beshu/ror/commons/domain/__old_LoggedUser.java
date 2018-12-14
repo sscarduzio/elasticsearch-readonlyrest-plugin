@@ -26,13 +26,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-public class LoggedUser {
+public class __old_LoggedUser {
 
   private final String id;
   private final LinkedHashSet<String> availableGroups = Sets.newLinkedHashSet();
   private Optional<String> currentGroup = Optional.empty();
 
-  public LoggedUser(String id) {
+  public __old_LoggedUser(String id) {
     this.id = id;
   }
 
@@ -67,7 +67,7 @@ public class LoggedUser {
       return false;
     if (getClass() != obj.getClass())
       return false;
-    final LoggedUser other = (LoggedUser) obj;
+    final __old_LoggedUser other = (__old_LoggedUser) obj;
     return Objects.equals(id, other.id);
   }
 

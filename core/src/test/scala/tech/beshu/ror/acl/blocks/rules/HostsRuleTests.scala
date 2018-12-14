@@ -12,7 +12,7 @@ import tech.beshu.ror.commons.orders._
 
 class HostsRuleTests extends WordSpec with MockFactory {
 
-  "An HostsRule" should {
+  "A HostsRule" should {
     "match" when {
       "configured host IP is the same as remote host IP in request" in {
         assertMatchRule(

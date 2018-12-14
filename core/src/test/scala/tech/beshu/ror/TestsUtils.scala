@@ -7,5 +7,5 @@ import tech.beshu.ror.commons.aDomain.Header
 object TestsUtils {
 
   def basicAuthHeader(value: String): Header =
-    Header.create("Authorization", "Basic " + Base64.getEncoder.encodeToString(value.getBytes))
+    Header("Authorization", "Basic " + Base64.getEncoder.encodeToString(value.getBytes))
 }

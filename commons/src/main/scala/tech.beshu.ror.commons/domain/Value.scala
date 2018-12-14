@@ -6,7 +6,7 @@ sealed trait Value[T] {
 
 object Value {
   def fromString[T](representation: String, covert: String => T): Value[T] = {
-    if(representation.contains("@")) Variable(representation, covert)
+    if(representation.contains("@")) Variable(representation, covert) // todo: what about escaping
     else Const(covert(representation))
   }
 }

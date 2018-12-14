@@ -7,6 +7,7 @@ import tech.beshu.ror.acl.requestcontext.RequestContext
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.TestsUtils.basicAuthHeader
 import tech.beshu.ror.commons.domain.LoggedUser
+import tech.beshu.ror.commons.domain.LoggedUser.Id
 
 trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
 
@@ -18,7 +19,7 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
       "basic auth header contains configured in rule's settings value" in {
         val context = mock[RequestContext]
         (context.getHeaders _).expects().returning(Set(basicAuthHeader("logstash:logstash")))
-        (context.setLoggedInUser _).expects(new LoggedUser("logstash"))
+        (context.setLoggedInUser _).expects(LoggedUser(Id("logstash")))
         rule.`match`(context).runSyncStep shouldBe Right(true)
       }
     }

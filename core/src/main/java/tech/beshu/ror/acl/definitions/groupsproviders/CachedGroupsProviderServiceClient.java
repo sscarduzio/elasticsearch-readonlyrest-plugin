@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.definitions.groupsproviders;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
 import java.time.Duration;
@@ -47,7 +47,7 @@ public class CachedGroupsProviderServiceClient implements GroupsProviderServiceC
   }
 
   @Override
-  public CompletableFuture<Set<String>> fetchGroupsFor(LoggedUser user) {
+  public CompletableFuture<Set<String>> fetchGroupsFor(__old_LoggedUser user) {
     Set<String> cachedUserGroups = cache.getIfPresent(user.getId());
     if (cachedUserGroups == null) {
       return underlying.fetchGroupsFor(user)

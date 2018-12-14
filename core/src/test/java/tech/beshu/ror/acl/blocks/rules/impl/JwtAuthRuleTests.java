@@ -27,7 +27,7 @@ import org.mockito.Mockito;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.mocks.MockedACL;
@@ -243,7 +243,7 @@ public class JwtAuthRuleTests {
     assertTrue(rule.isPresent());
     assertTrue(res.isPresent());
     res.get().thenAccept(r -> assertTrue(r.isMatch()));
-    verify(rc).setLoggedInUser(new LoggedUser(USER1));
+    verify(rc).setLoggedInUser(new __old_LoggedUser(USER1));
   }
 
   @Test

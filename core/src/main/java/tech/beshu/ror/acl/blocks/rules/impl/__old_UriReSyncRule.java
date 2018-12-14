@@ -31,12 +31,12 @@ import java.util.regex.PatternSyntaxException;
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class UriReSyncRule extends SyncRule {
+public class __old_UriReSyncRule extends SyncRule {
 
   private final __old_Value<Pattern> uri_re;
   private final Settings settings;
 
-  public UriReSyncRule(Settings s) {
+  public __old_UriReSyncRule(Settings s) {
     this.uri_re = s.getPattern();
     this.settings = s;
   }
@@ -69,7 +69,7 @@ public class UriReSyncRule extends SyncRule {
       this.pattern = pattern;
     }
 
-    public static UriReSyncRule.Settings from(String value) {
+    public static __old_UriReSyncRule.Settings from(String value) {
       return new Settings(__old_Value.fromString(value, patternFromString));
     }
 

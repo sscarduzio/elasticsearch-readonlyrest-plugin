@@ -24,7 +24,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 
 import java.util.List;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 04/09/2018.
  */
 
-public class UsersRuleTests {
+public class __old_UsersRuleTests {
 
   @Test
   public void testSimpleMatch() {
@@ -69,9 +69,9 @@ public class UsersRuleTests {
   }
 
   private RuleExitResult match(List<String> configured, String found, __old_RequestContext rc) {
-    when(rc.getLoggedInUser()).thenReturn(Optional.ofNullable(Strings.isNullOrEmpty(found) ? null : new LoggedUser(found)));
+    when(rc.getLoggedInUser()).thenReturn(Optional.ofNullable(Strings.isNullOrEmpty(found) ? null : new __old_LoggedUser(found)));
 
-    SyncRule r = new UsersSyncRule(new UsersSyncRule.Settings(Sets.newHashSet(configured)));
+    SyncRule r = new __old_UsersSyncRule(new __old_UsersSyncRule.Settings(Sets.newHashSet(configured)));
     return r.match(rc);
   }
 

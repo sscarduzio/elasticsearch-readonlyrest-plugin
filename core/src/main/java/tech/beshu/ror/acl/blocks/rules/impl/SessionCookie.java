@@ -21,7 +21,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -75,7 +75,7 @@ public class SessionCookie {
     this.cookiePresent = true;
 
     // ----- Check cookie validity
-    String user = rc.getLoggedInUser().map(LoggedUser::getId).orElseGet(null);
+    String user = rc.getLoggedInUser().map(__old_LoggedUser::getId).orElseGet(null);
     Iterator<String> cookiePartsIterator =
       Splitter.on(COOKIE_STRING_SEPARATOR).trimResults().split(cookieValue).iterator();
 
@@ -123,7 +123,7 @@ public class SessionCookie {
   }
 
   public void setCookie() {
-    Optional<LoggedUser> user = rc.getLoggedInUser();
+    Optional<__old_LoggedUser> user = rc.getLoggedInUser();
     if (!user.isPresent()) {
       logger.warn("Cannot state the logged in user, put the authentication rule on top of the block!");
       return;

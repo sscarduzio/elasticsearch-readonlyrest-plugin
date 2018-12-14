@@ -19,7 +19,7 @@ package tech.beshu.ror.requestcontext;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 import org.mockito.Mockito;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.mocks.MockedESContext;
 
 import java.util.Optional;
@@ -87,7 +87,7 @@ public class VariablesManagerTest {
 
   private __old_RequestContext getMock(Optional<String> userName) {
     __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
-    when(rc.getLoggedInUser()).thenReturn(userName.map(LoggedUser::new));
+    when(rc.getLoggedInUser()).thenReturn(userName.map(__old_LoggedUser::new));
     return rc;
   }
 

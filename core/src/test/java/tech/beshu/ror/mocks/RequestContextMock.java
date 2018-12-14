@@ -24,7 +24,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 
@@ -43,7 +43,7 @@ public class RequestContextMock {
         Maps.newHashMap(ImmutableMap.<String, String>builder()
             .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
             .build()));
-    when(mock.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser(user)));
+    when(mock.getLoggedInUser()).thenReturn(Optional.of(new __old_LoggedUser(user)));
     return mock;
   }
 
@@ -54,7 +54,7 @@ public class RequestContextMock {
             .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
             .put(Constants.HEADER_GROUP_CURRENT,preferredGroup)
             .build()));
-    when(mock.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser(user)));
+    when(mock.getLoggedInUser()).thenReturn(Optional.of(new __old_LoggedUser(user)));
     HashMap<String, String> respHeaders = Maps.newHashMap();
 
     when(mock.getResponseHeaders()).thenReturn(respHeaders);

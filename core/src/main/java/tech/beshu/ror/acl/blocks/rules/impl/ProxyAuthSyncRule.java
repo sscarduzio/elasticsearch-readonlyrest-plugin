@@ -21,7 +21,7 @@ import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
@@ -50,13 +50,13 @@ public class ProxyAuthSyncRule extends SyncRule implements Authentication {
 
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
-    Optional<LoggedUser> optUser = getUser(rc.getHeaders());
+    Optional<__old_LoggedUser> optUser = getUser(rc.getHeaders());
 
     if (!optUser.isPresent()) {
       return NO_MATCH;
     }
 
-    LoggedUser user = optUser.get();
+    __old_LoggedUser user = optUser.get();
     RuleExitResult res = userListMatcher.match(user.getId()) ? MATCH : NO_MATCH;
     if (res.isMatch()) {
       rc.setLoggedInUser(user);
@@ -69,12 +69,12 @@ public class ProxyAuthSyncRule extends SyncRule implements Authentication {
     return settings.getName();
   }
 
-  private Optional<LoggedUser> getUser(Map<String, String> headers) {
+  private Optional<__old_LoggedUser> getUser(Map<String, String> headers) {
     String userId = headers.get(settings.getUserIdHeader());
     if (Strings.isNullOrEmpty(userId)) {
       return Optional.empty();
     }
-    return Optional.of(new LoggedUser(userId));
+    return Optional.of(new __old_LoggedUser(userId));
   }
 
 }

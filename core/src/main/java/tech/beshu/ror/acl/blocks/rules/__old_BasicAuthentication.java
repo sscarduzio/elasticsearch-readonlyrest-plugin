@@ -18,7 +18,7 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -61,7 +61,7 @@ public abstract class __old_BasicAuthentication extends SyncRule implements Auth
     BasicAuth basicAuth = optBasicAuth.get();
     RuleExitResult res = authenticate(authKey, basicAuth) ? MATCH : NO_MATCH;
     if (res.isMatch()) {
-      rc.setLoggedInUser(new LoggedUser(basicAuth.getUserName()));
+      rc.setLoggedInUser(new __old_LoggedUser(basicAuth.getUserName()));
     }
     return res;
   }

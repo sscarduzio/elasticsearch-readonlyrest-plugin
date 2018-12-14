@@ -43,8 +43,8 @@ import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.UsersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
@@ -159,12 +159,12 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context))
     );
     this.creators.put(
-        UriReSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new UriReSyncRule((UriReSyncRule.Settings) settings))
+        __old_UriReSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_UriReSyncRule((__old_UriReSyncRule.Settings) settings))
     );
     this.creators.put(
-        UsersSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new UsersSyncRule((UsersSyncRule.Settings) settings))
+        __old_UsersSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_UsersSyncRule((__old_UsersSyncRule.Settings) settings))
     );
     this.creators.put(
         XForwardedForRuleSettings.class,

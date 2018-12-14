@@ -29,7 +29,7 @@ import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -104,7 +104,7 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
 
   private RuleExitResult createRuleRunMatch(
       List<String> ruleGroups, String uri, String method, ImmutableMap<String, String> headers,
-      ImmutableMap<String, String> query_params, Function<LoggedUser, Void> userAssertions, String currentGroup) throws Exception {
+      ImmutableMap<String, String> query_params, Function<__old_LoggedUser, Void> userAssertions, String currentGroup) throws Exception {
 
     GroupsProviderAuthorizationAsyncRule rule = new GroupsProviderAuthorizationAsyncRule(
         GroupsProviderAuthorizationRuleSettings.from(
@@ -118,7 +118,7 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
         MockedESContext.INSTANCE
     );
 
-    LoggedUser user = new LoggedUser("example_user");
+    __old_LoggedUser user = new __old_LoggedUser("example_user");
     __old_RequestContext requestContext = Mockito.mock(__old_RequestContext.class);
     if (currentGroup != null) {
       Map<String, String> hmap = new HashMap<>(1);

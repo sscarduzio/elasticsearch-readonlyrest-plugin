@@ -32,7 +32,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
@@ -164,7 +164,7 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
           return CompletableFuture.completedFuture(NO_MATCH);
         }
         else {
-          rc.setLoggedInUser(new LoggedUser(user.get()));
+          rc.setLoggedInUser(new __old_LoggedUser(user.get()));
         }
 
       Optional<Set<String>> roles = this.extractRoles(jws);

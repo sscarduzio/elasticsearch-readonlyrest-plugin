@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import tech.beshu.ror.commons.domain.LoggedUser;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
@@ -48,7 +48,7 @@ public class CachedAsyncAuthorizationDecorator extends AsyncAuthorization {
   }
 
   @Override
-  public CompletableFuture<Boolean> authorize(LoggedUser user) {
+  public CompletableFuture<Boolean> authorize(__old_LoggedUser user) {
     Boolean authorizationResult = cache.getIfPresent(user.getId());
     if (authorizationResult == null) {
       return underlying.authorize(user)

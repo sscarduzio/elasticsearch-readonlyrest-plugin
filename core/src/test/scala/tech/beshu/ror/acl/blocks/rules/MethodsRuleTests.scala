@@ -11,7 +11,7 @@ import tech.beshu.ror.commons.orders._
 
 class MethodsRuleTests extends WordSpec with MockFactory {
 
-  "An MethodsRule" should {
+  "A MethodsRule" should {
     "match" when {
       "configured method is GET and request method is also GET" in {
         assertMatchRule(

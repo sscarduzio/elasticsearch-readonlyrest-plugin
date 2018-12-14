@@ -25,8 +25,8 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.UsersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
@@ -122,8 +122,8 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
     creators.put(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
     creators.put(SearchlogRuleSettings.ATTRIBUTE_NAME, searchlogSettingsCreator(blockSettings));
-    creators.put(UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
-    creators.put(UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
+    creators.put(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
+    creators.put(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
     creators.put(XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
     creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
@@ -344,15 +344,15 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> uriReSettingsCreator(RawSettings blockSettings) {
-    return () -> UriReSyncRule.Settings.from(
-        blockSettings.stringReq(UriReSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> __old_UriReSyncRule.Settings.from(
+        blockSettings.stringReq(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> usersSettingsCreator(RawSettings blockSettings) {
-    return () -> UsersSyncRule.Settings.from(
-        (List<String>) blockSettings.notEmptyListReq(UsersSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> __old_UsersSyncRule.Settings.from(
+        (List<String>) blockSettings.notEmptyListReq(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
