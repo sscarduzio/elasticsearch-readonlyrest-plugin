@@ -59,7 +59,7 @@ class UsersRuleTests extends WordSpec with MockFactory {
   private def assertRule(configuredIds: NonEmptySet[Value[LoggedUser.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds))
     val context = mock[RequestContext]
-    (context.getLoggedUser _).expects().returning(loggedUser)
+    (context.loggedUser _).expects().returning(loggedUser)
     rule.`match`(context).runSyncStep shouldBe Right(isMatched)
   }
 }

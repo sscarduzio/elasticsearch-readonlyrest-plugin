@@ -27,19 +27,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-public class XForwardedForRuleSettings implements RuleSettings {
+public class __old_XForwardedForRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "x_forwarded_for";
 
   private final Set<__old_Value<String>> allowedIdentifiers;
   private final Set<IPMask> allowedNumeric;
 
-  private XForwardedForRuleSettings(Set<__old_Value<String>> allowedIdentifiers, Set<IPMask> allowedNumeric) {
+  private __old_XForwardedForRuleSettings(Set<__old_Value<String>> allowedIdentifiers, Set<IPMask> allowedNumeric) {
     this.allowedIdentifiers = allowedIdentifiers;
     this.allowedNumeric = allowedNumeric;
   }
 
-  public static XForwardedForRuleSettings from(List<String> hosts) {
+  public static __old_XForwardedForRuleSettings from(List<String> hosts) {
     Set<__old_Value<String>> identifiers = Sets.newHashSet();
     Set<IPMask> numerics = Sets.newHashSet();
     hosts.stream()
@@ -56,7 +56,7 @@ public class XForwardedForRuleSettings implements RuleSettings {
         }
       });
 
-    return new XForwardedForRuleSettings(identifiers, numerics);
+    return new __old_XForwardedForRuleSettings(identifiers, numerics);
   }
 
   public static boolean isInetAddressOrBlock(String address) {

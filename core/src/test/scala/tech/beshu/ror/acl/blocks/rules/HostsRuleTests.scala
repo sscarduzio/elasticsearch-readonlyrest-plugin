@@ -6,7 +6,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.requestcontext.RequestContext
-import tech.beshu.ror.commons.aDomain.UnresolvedAddress
+import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.domain.Value
 import tech.beshu.ror.commons.orders._
 
@@ -16,56 +16,56 @@ class HostsRuleTests extends WordSpec with MockFactory {
     "match" when {
       "configured host IP is the same as remote host IP in request" in {
         assertMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1", UnresolvedAddress.apply)),
-          remoteHost = UnresolvedAddress("1.1.1.1")
+          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1", Address.apply)),
+          remoteHost = Address("1.1.1.1")
         )
       }
       "configured host net address is the same as remote host net address in request" in {
         assertMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1/16", UnresolvedAddress.apply)),
-          remoteHost = UnresolvedAddress("1.1.1.2")
+          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1/16", Address.apply)),
+          remoteHost = Address("1.1.1.2")
         )
       }
       "configured host domain address is the same as remote host domain address in request (different mask)" in {
         assertMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("google.com", UnresolvedAddress.apply)),
-          remoteHost = UnresolvedAddress("google.com")
+          configuredHosts = NonEmptySet.of(Value.fromString("google.com", Address.apply)),
+          remoteHost = Address("google.com")
         )
       }
     }
     "not match" when {
       "configured host is unresolvable" in {
         assertNotMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("cannotresolve.lolol", UnresolvedAddress.apply)),
-          remoteHost = UnresolvedAddress("x")
+          configuredHosts = NonEmptySet.of(Value.fromString("cannotresolve.lolol", Address.apply)),
+          remoteHost = Address("x")
         )
       }
       "configured host net address is different then remote host net address in request" in {
         assertNotMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1/24", UnresolvedAddress.apply)),
-          remoteHost = UnresolvedAddress("2.2.2.2")
+          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1/24", Address.apply)),
+          remoteHost = Address("2.2.2.2")
         )
       }
-      "configured host domain adress is different than the one from request" in {
+      "configured host domain address is different than the one from request" in {
         assertNotMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("google.com", UnresolvedAddress.apply)),
-          remoteHost = UnresolvedAddress("yahoo.com")
+          configuredHosts = NonEmptySet.of(Value.fromString("google.com", Address.apply)),
+          remoteHost = Address("yahoo.com")
         )
       }
     }
   }
 
-  private def assertMatchRule(configuredHosts: NonEmptySet[Value[UnresolvedAddress]], remoteHost: UnresolvedAddress) =
+  private def assertMatchRule(configuredHosts: NonEmptySet[Value[Address]], remoteHost: Address) =
     assertRule(configuredHosts, remoteHost, isMatched = true)
 
-  private def assertNotMatchRule(configuredHosts: NonEmptySet[Value[UnresolvedAddress]], remoteHost: UnresolvedAddress) =
+  private def assertNotMatchRule(configuredHosts: NonEmptySet[Value[Address]], remoteHost: Address) =
     assertRule(configuredHosts, remoteHost, isMatched = false)
 
-  private def assertRule(configuredValues: NonEmptySet[Value[UnresolvedAddress]], address: UnresolvedAddress, isMatched: Boolean) = {
+  private def assertRule(configuredValues: NonEmptySet[Value[Address]], address: Address, isMatched: Boolean) = {
     val rule = new HostsRule(HostsRule.Settings(configuredValues, acceptXForwardedForHeader = false))
     val context = mock[RequestContext]
-    (context.getRemoteAddress _).expects().returning(address)
-    (context.getHeaders _).expects().returning(Set.empty)
+    (context.remoteAddress _).expects().returning(address)
+    (context.headers _).expects().returning(Set.empty)
     rule.`match`(context).runSyncStep shouldBe Right(isMatched)
   }
 }

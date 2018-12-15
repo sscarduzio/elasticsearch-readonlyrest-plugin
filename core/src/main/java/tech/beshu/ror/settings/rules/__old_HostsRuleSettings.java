@@ -24,7 +24,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class HostsRuleSettings implements RuleSettings {
+public class __old_HostsRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "hosts";
   public static final String ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER = "accept_x-forwarded-for_header";
@@ -34,13 +34,13 @@ public class HostsRuleSettings implements RuleSettings {
   private final Set<__old_Value<String>> allowedAddresses;
   private final boolean acceptXForwardedForHeader;
 
-  public HostsRuleSettings(Set<__old_Value<String>> allowedAddresses, boolean acceptXForwardedForHeader) {
+  public __old_HostsRuleSettings(Set<__old_Value<String>> allowedAddresses, boolean acceptXForwardedForHeader) {
     this.allowedAddresses = allowedAddresses;
     this.acceptXForwardedForHeader = acceptXForwardedForHeader;
   }
 
-  public static HostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
-    return new HostsRuleSettings(
+  public static __old_HostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
+    return new __old_HostsRuleSettings(
       blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
         .map(obj -> __old_Value.fromString((String) obj, Function.identity()))
         .collect(Collectors.toSet()),

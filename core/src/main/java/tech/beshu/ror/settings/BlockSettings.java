@@ -28,7 +28,7 @@ import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
-import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
 
 import java.util.List;
@@ -43,7 +43,7 @@ public class BlockSettings {
   private static final String POLICY = "type";
   private static final String VERBOSITY = "verbosity";
   public static final Set<String> ruleModifiersToSkip = Sets.newHashSet(
-      NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
+      NAME, POLICY, VERBOSITY, __old_HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
       AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
   );
 

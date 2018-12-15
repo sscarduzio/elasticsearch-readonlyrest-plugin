@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 
 import java.util.Set;
 import java.util.function.Function;
@@ -49,7 +49,7 @@ public class __old_HostsRuleTests {
     when(rc.getRemoteAddress()).thenReturn(found);
 
     Set<__old_Value<String>> configV = Sets.newHashSet(configured).stream().map(i -> __old_Value.fromString(i, Function.identity())).collect(Collectors.toSet());
-    HostsRuleSettings hrset = new HostsRuleSettings(configV, false);
+    __old_HostsRuleSettings hrset = new __old_HostsRuleSettings(configV, false);
     SyncRule r = new __old_HostsSyncRule(hrset, new MockedESContext());
     return r.match(rc);
   }

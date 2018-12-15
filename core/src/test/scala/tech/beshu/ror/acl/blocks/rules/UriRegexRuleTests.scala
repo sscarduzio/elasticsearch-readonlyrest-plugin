@@ -58,9 +58,9 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     val context = mock[RequestContext]
     uriRegex match {
       case Const(_) =>
-        (context.getUri _).expects().returning(uri)
+        (context.uri _).expects().returning(uri)
       case Variable(representation, _) if isUserLogged =>
-        (context.getUri _).expects().returning(uri)
+        (context.uri _).expects().returning(uri)
         (context.resolve _).expects(representation).returning(Some(uri.toString()))
       case Variable(representation, _) =>
         (context.resolve _).expects(representation).returning(None)

@@ -25,8 +25,8 @@ import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.HostsRuleSettings;
-import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
+import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -38,13 +38,13 @@ import java.util.Set;
  */
 public class __old_HostsSyncRule extends SyncRule {
 
-  private final HostsRuleSettings settings;
+  private final __old_HostsRuleSettings settings;
   private final LoggerShim logger;
   private final Set<__old_Value<String>> allowedAddressesStrings;
   private final ESContext context;
   private final Boolean acceptXForwardedForHeader;
 
-  public __old_HostsSyncRule(HostsRuleSettings s, ESContext context) {
+  public __old_HostsSyncRule(__old_HostsRuleSettings s, ESContext context) {
     this.acceptXForwardedForHeader = s.isAcceptXForwardedForHeader();
     this.allowedAddressesStrings = s.getAllowedAddresses();
 
@@ -105,7 +105,7 @@ public class __old_HostsSyncRule extends SyncRule {
     try {
       String allowedResolvedIp = allowedHost;
 
-      if (!XForwardedForRuleSettings.isInetAddressOrBlock(allowedHost)) {
+      if (!__old_XForwardedForRuleSettings.isInetAddressOrBlock(allowedHost)) {
         // Super-late DNS resolution
         allowedResolvedIp = InetAddress.getByName(allowedHost).getHostAddress();
       }

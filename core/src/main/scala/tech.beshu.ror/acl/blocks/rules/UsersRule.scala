@@ -13,7 +13,7 @@ class UsersRule(settings: Settings)
   extends RegularRule {
 
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    context.getLoggedUser match {
+    context.loggedUser match {
       case None => false
       case Some(user) => matchUser(user, context)
     }

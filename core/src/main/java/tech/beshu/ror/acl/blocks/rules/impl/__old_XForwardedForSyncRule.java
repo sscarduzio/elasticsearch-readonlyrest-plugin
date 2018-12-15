@@ -20,26 +20,22 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
+import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Created by sscarduzio on 13/02/2016.
  */
-public class XForwardedForSyncRule extends SyncRule {
+public class __old_XForwardedForSyncRule extends SyncRule {
 
-  private final Set<__old_Value<String>> allowedAddresses;
-  private final XForwardedForRuleSettings settings;
+  private final __old_XForwardedForRuleSettings settings;
 
-  public XForwardedForSyncRule(XForwardedForRuleSettings s) {
-    this.allowedAddresses = s.getAllowedIdentifiers();
+  public __old_XForwardedForSyncRule(__old_XForwardedForRuleSettings s) {
     this.settings = s;
   }
 

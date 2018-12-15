@@ -63,7 +63,7 @@ class HeaderOrRuleTests extends WordSpec with MockFactory {
   private def assertRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header], isMatched: Boolean) = {
     val rule = new HeadersOrRule(HeadersOrRule.Settings(configuredHeaders))
     val context = mock[RequestContext]
-    (context.getHeaders _).expects().returning(requestHeaders)
+    (context.headers _).expects().returning(requestHeaders)
     rule.`match`(context).runSyncStep shouldBe Right(isMatched)
   }
 }

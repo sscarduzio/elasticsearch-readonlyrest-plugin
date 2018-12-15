@@ -10,7 +10,7 @@ class ApiKeysRule(settings: Settings)
 
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context
-      .getHeaders
+      .headers
       .find(_.name == xApiKeyHeaderName)
       .exists { header => settings.apiKeys.contains(header.value) }
   }

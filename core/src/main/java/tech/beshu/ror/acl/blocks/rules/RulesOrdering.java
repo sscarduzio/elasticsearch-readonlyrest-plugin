@@ -53,7 +53,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_XForwardedForSyncRule;
 import tech.beshu.ror.utils.RulesUtils;
 
 import java.util.Comparator;
@@ -88,7 +88,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         LocalHostsSyncRule.class,
         SnapshotsSyncRule.class,
         RepositoriesSyncRule.class,
-        XForwardedForSyncRule.class,
+        __old_XForwardedForSyncRule.class,
         __old_ApiKeysSyncRule.class,
         SessionMaxIdleSyncRule.class,
         __old_UriReSyncRule.class,

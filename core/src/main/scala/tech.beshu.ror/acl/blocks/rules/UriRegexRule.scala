@@ -15,7 +15,7 @@ class UriRegexRule(settings: Settings)
       .uriPattern
       .getValue(context)
       .exists {
-        _.matcher(context.getUri.toString()).find()
+        _.matcher(context.uri.toString()).find()
       }
   }
 }

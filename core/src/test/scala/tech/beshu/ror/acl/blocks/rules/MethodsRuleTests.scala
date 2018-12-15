@@ -45,7 +45,7 @@ class MethodsRuleTests extends WordSpec with MockFactory {
   private def assertRule(configuredMethods: NonEmptySet[Method], requestMethod: Method, isMatched: Boolean) = {
     val rule = new MethodsRule(MethodsRule.Settings(configuredMethods))
     val context = mock[RequestContext]
-    (context.getMethod _).expects().returning(requestMethod)
+    (context.method _).expects().returning(requestMethod)
     rule.`match`(context).runSyncStep shouldBe Right(isMatched)
   }
 }

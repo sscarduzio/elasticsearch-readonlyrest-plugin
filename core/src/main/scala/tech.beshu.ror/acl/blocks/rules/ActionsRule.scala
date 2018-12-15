@@ -16,10 +16,10 @@ class ActionsRule(settings: Settings)
   private val matcher = new MatcherWithWildcards(settings.actions.map(_.value).asJava)
 
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    if (matcher.`match`(context.getAction.value)) {
+    if (matcher.`match`(context.action.value)) {
       true
     } else {
-      logger.debug(s"This request uses the action '${context.getAction}' and none of them is on the list.")
+      logger.debug(s"This request uses the action '${context.action}' and none of them is on the list.")
       false
     }
   }

@@ -8,7 +8,7 @@ import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 import scala.language.implicitConversions
 import scala.util.Try
 
-class BasicAuthOps(basicAuth: BasicAuth) {
+class BasicAuthOps(val basicAuth: BasicAuth) extends AnyVal {
 
   def tryDecode: Try[String] = {
     Try(new String(Base64.getDecoder.decode(basicAuth.getBase64Value), StandardCharsets.UTF_8).toString)

@@ -45,7 +45,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_XForwardedForSyncRule;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
@@ -55,7 +55,7 @@ import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
 import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
-import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
@@ -67,7 +67,7 @@ import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
-import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
+import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -91,8 +91,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new __old_ApiKeysSyncRule((__old_ApiKeysRuleSettings) settings))
     );
     this.creators.put(
-        HostsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_HostsSyncRule((HostsRuleSettings) settings, context))
+        __old_HostsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_HostsSyncRule((__old_HostsRuleSettings) settings, context))
     );
     this.creators.put(
         LocalHostsRuleSettings.class,
@@ -167,8 +167,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new __old_UsersSyncRule((__old_UsersSyncRule.Settings) settings))
     );
     this.creators.put(
-        XForwardedForRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new XForwardedForSyncRule((XForwardedForRuleSettings) settings))
+        __old_XForwardedForRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_XForwardedForSyncRule((__old_XForwardedForRuleSettings) settings))
     );
     this.creators.put(
         LdapAuthenticationRuleSettings.class,

@@ -23,7 +23,7 @@ import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
+import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class XForwardedForSyncRuleTests {
+public class __old_XForwardedForSyncRuleTests {
 
   private RuleExitResult match(String configured, String found) {
     return match(configured, found, Mockito.mock(__old_RequestContext.class));
@@ -47,8 +47,8 @@ public class XForwardedForSyncRuleTests {
     headers.put("X-Forwarded-For", found);
     when(rc.getHeaders()).thenReturn(headers);
 
-    XForwardedForRuleSettings hrset = XForwardedForRuleSettings.from(Lists.newArrayList(configured));
-    SyncRule r = new XForwardedForSyncRule(hrset);
+    __old_XForwardedForRuleSettings hrset = __old_XForwardedForRuleSettings.from(Lists.newArrayList(configured));
+    SyncRule r = new __old_XForwardedForSyncRule(hrset);
     return r.match(rc);
   }
 

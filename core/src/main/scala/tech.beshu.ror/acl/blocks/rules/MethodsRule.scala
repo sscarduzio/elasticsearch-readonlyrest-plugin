@@ -16,7 +16,7 @@ class MethodsRule(settings: Settings)
     It's actually interpreted by all means as a GET!
    */
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    settings.methods.contains(context.getMethod)
+    settings.methods.contains(context.method)
   }
 }
 

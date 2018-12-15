@@ -9,7 +9,8 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.requestcontext.RequestContext
-import tech.beshu.ror.commons.aDomain.{Header, UnresolvedAddress}
+import tech.beshu.ror.acl.requestcontext.RequestContextOps._
+import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.domain.{IPMask, Value}
 
 import scala.util.control.Exception._
@@ -18,16 +19,16 @@ class HostsRule(settings: Settings)
   extends RegularRule with StrictLogging {
 
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    getXForwardedForHeaderValue(context.getHeaders) match {
+    context.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>
         if (tryToMatchAddress(xForwardedHeaderValue, context)) true
-        else tryToMatchAddress(context.getRemoteAddress, context)
+        else tryToMatchAddress(context.remoteAddress, context)
       case _ =>
-        tryToMatchAddress(context.getRemoteAddress, context)
+        tryToMatchAddress(context.remoteAddress, context)
     }
   }
 
-  private def tryToMatchAddress(address: UnresolvedAddress, context: RequestContext): Boolean =
+  private def tryToMatchAddress(address: Address, context: RequestContext): Boolean =
     settings
       .hosts
       .exists { host =>
@@ -36,17 +37,7 @@ class HostsRule(settings: Settings)
           .exists(ipMatchesAddress(_, address))
       }
 
-  private def getXForwardedForHeaderValue(headers: Set[Header]): Option[UnresolvedAddress] = {
-    headers
-      .find(_.name == "X-Forwarded-For")
-      .flatMap { header =>
-        Option(header.value)
-          .flatMap(_.split(",").headOption)
-          .map(UnresolvedAddress.apply)
-      }
-  }
-
-  private def ipMatchesAddress(allowedHost: UnresolvedAddress, address: UnresolvedAddress): Boolean =
+  private def ipMatchesAddress(allowedHost: Address, address: Address): Boolean =
     catching(classOf[UnknownHostException])
       .opt {
         val allowedResolvedIp =
@@ -65,7 +56,7 @@ class HostsRule(settings: Settings)
         false
     }
 
-  def isInetAddressOrBlock(address: UnresolvedAddress): Boolean = {
+  def isInetAddressOrBlock(address: Address): Boolean = {
     val slash = address.value.lastIndexOf('/')
     InetAddresses.isInetAddress(if (slash != -1) address.value.substring(0, slash) else address.value)
   }
@@ -73,6 +64,6 @@ class HostsRule(settings: Settings)
 
 object HostsRule {
 
-  final case class Settings(hosts: NonEmptySet[Value[UnresolvedAddress]], acceptXForwardedForHeader: Boolean)
+  final case class Settings(hosts: NonEmptySet[Value[Address]], acceptXForwardedForHeader: Boolean)
 
 }

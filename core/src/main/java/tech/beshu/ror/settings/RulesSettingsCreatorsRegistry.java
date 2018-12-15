@@ -43,7 +43,7 @@ import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
-import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
@@ -58,7 +58,7 @@ import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
 import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
-import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
+import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
 
 import java.util.HashMap;
 import java.util.List;
@@ -103,7 +103,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(__old_HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
     creators.put(__old_HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
     creators.put(__old_ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
-    creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
+    creators.put(__old_HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
     creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
     creators.put(SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
     creators.put(RepositoriesSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
@@ -124,7 +124,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(SearchlogRuleSettings.ATTRIBUTE_NAME, searchlogSettingsCreator(blockSettings));
     creators.put(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
     creators.put(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
-    creators.put(XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
+    creators.put(__old_XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
     creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
@@ -233,7 +233,7 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> hostsSettingsCreator(RawSettings blockSettings) {
-    return () -> HostsRuleSettings.fromBlockSettings(blockSettings);
+    return () -> __old_HostsRuleSettings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
@@ -358,8 +358,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> xForwardedForSettingsCreator(RawSettings blockSettings) {
-    return () -> XForwardedForRuleSettings.from(
-        (List<String>) blockSettings.notEmptyListReq(XForwardedForRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_XForwardedForRuleSettings.from(
+        (List<String>) blockSettings.notEmptyListReq(__old_XForwardedForRuleSettings.ATTRIBUTE_NAME)
     );
   }
 

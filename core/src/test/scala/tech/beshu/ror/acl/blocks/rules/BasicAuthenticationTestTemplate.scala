@@ -18,7 +18,7 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
     "match" when {
       "basic auth header contains configured in rule's settings value" in {
         val context = mock[RequestContext]
-        (context.getHeaders _).expects().returning(Set(basicAuthHeader("logstash:logstash")))
+        (context.headers _).expects().returning(Set(basicAuthHeader("logstash:logstash")))
         (context.setLoggedInUser _).expects(LoggedUser(Id("logstash")))
         rule.`match`(context).runSyncStep shouldBe Right(true)
       }
@@ -27,12 +27,12 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
     "not match" when {
       "basic auth header contains not configured in rule's settings value" in {
         val context = mock[RequestContext]
-        (context.getHeaders _).expects().returning(Set(basicAuthHeader("logstash:nologstash")))
+        (context.headers _).expects().returning(Set(basicAuthHeader("logstash:nologstash")))
         rule.`match`(context).runSyncStep shouldBe Right(false)
       }
       "basic auth header is absent" in {
         val context = mock[RequestContext]
-        (context.getHeaders _).expects().returning(Set.empty)
+        (context.headers _).expects().returning(Set.empty)
         rule.`match`(context).runSyncStep shouldBe Right(false)
       }
     }
