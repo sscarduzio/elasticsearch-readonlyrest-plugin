@@ -5,8 +5,9 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.acl.requestcontext.RequestContext
-import tech.beshu.ror.commons.domain.{LoggedUser, Value}
+import tech.beshu.ror.commons.domain.{LoggedUser, User, Value}
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
+
 import scala.collection.JavaConverters._
 
 class UsersRule(settings: Settings)
@@ -32,7 +33,7 @@ class UsersRule(settings: Settings)
 
 object UsersRule {
 
-  final case class Settings(userIds: NonEmptySet[Value[LoggedUser.Id]]) // todo: do we need Value here?
+  final case class Settings(userIds: NonEmptySet[Value[User.Id]]) // todo: do we need Value here?
 
 }
 

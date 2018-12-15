@@ -18,18 +18,18 @@ package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.settings.RuleSettings;
 
-public class MaxBodyLengthRuleSettings implements RuleSettings {
+public class __old_MaxBodyLengthRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "max_body_length";
 
   private final Integer maxBodyLength;
 
-  private MaxBodyLengthRuleSettings(Integer maxBodyLength) {
+  private __old_MaxBodyLengthRuleSettings(Integer maxBodyLength) {
     this.maxBodyLength = maxBodyLength;
   }
 
-  public static MaxBodyLengthRuleSettings from(Integer value) {
-    return new MaxBodyLengthRuleSettings(value);
+  public static __old_MaxBodyLengthRuleSettings from(Integer value) {
+    return new __old_MaxBodyLengthRuleSettings(value);
   }
 
   public Integer getMaxBodyLength() {

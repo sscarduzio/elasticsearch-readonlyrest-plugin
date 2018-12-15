@@ -38,14 +38,14 @@ import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_LocalHostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
@@ -71,7 +71,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         __old_AuthKeySha256SyncRule.class,
         __old_AuthKeySha512SyncRule.class,
         __old_AuthKeyUnixAsyncRule.class,
-        ProxyAuthSyncRule.class,
+        __old_ProxyAuthSyncRule.class,
         JwtAuthSyncRule.class,
         RorKbnAuthSyncRule.class,
 
@@ -85,14 +85,14 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         KibanaAccessSyncRule.class,
 
         __old_HostsSyncRule.class,
-        LocalHostsSyncRule.class,
+        __old_LocalHostsSyncRule.class,
         SnapshotsSyncRule.class,
         RepositoriesSyncRule.class,
         __old_XForwardedForSyncRule.class,
         __old_ApiKeysSyncRule.class,
         SessionMaxIdleSyncRule.class,
         __old_UriReSyncRule.class,
-        MaxBodyLengthSyncRule.class,
+        __old_MaxBodyLengthSyncRule.class,
         __old_MethodsSyncRule.class,
         __old_HeadersSyncRule.class,
         __old_HeadersAndSyncRule.class,
@@ -108,7 +108,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
 
         // At the end the sync rule chain are those that can mutate the client request.
         KibanaHideAppsSyncRule.class,
-        KibanaIndexSyncRule.class,
+        __old_KibanaIndexSyncRule.class,
 
         // Stuff to do later, at search time
         FieldsSyncRule.class,

@@ -25,18 +25,18 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class LocalHostsRuleSettings implements RuleSettings {
+public class __old_LocalHostsRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "hosts_local";
 
   private final Set<__old_Value<String>> allowedAddresses;
 
-  public LocalHostsRuleSettings(Set<__old_Value<String>> allowedAddresses) {
+  public __old_LocalHostsRuleSettings(Set<__old_Value<String>> allowedAddresses) {
     this.allowedAddresses = allowedAddresses;
   }
 
-  public static LocalHostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
-    return new LocalHostsRuleSettings(
+  public static __old_LocalHostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
+    return new __old_LocalHostsRuleSettings(
         blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
                      .map(obj -> __old_Value.fromString((String) obj, Function.identity()))
                      .collect(Collectors.toSet())

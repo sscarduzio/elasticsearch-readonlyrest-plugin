@@ -19,53 +19,40 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.__old_Value;
-import tech.beshu.ror.commons.settings.RawSettings;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.RuleSettings;
+import tech.beshu.ror.settings.rules.__old_LocalHostsRuleSettings;
 
-import java.util.function.Function;
+import java.util.Optional;
 
-/**
- * Created by sscarduzio on 14/02/2016.
- */
-public class KibanaIndexSyncRule extends SyncRule {
-  private final KibanaIndexSyncRule.Settings settings;
+public class __old_LocalHostsSyncRule extends SyncRule {
 
-  public KibanaIndexSyncRule(KibanaIndexSyncRule.Settings s) {
+  private final ESContext context;
+  private final __old_LocalHostsRuleSettings settings;
+  private final LoggerShim logger;
+
+  public __old_LocalHostsSyncRule(__old_LocalHostsRuleSettings s, ESContext context) {
+    this.context = context;
+    this.logger = context.logger(getClass());
     this.settings = s;
   }
 
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
-    rc.setKibanaIndex(settings.kibanaIndex.getValue(rc).orElse(null));
-    return MATCH;
+    String rcDestAddress = rc.getLocalAddress();
+    return settings.getAllowedAddresses()
+                   .stream()
+                   .map(aa -> aa.getValue(rc))
+                   .filter(Optional::isPresent)
+                   .map(Optional::get)
+                   .filter(v -> v.equals(rcDestAddress))
+                   .findFirst()
+                   .isPresent() ? MATCH : NO_MATCH;
   }
 
   @Override
   public String getKey() {
     return settings.getName();
-  }
-
-  /**
-   * Settings
-   */
-  public static class Settings implements RuleSettings {
-    public static final String ATTRIBUTE_NAME = "kibana_index";
-    private final __old_Value<String> kibanaIndex;
-
-    public Settings(String kibanaIndexTpl) {
-      this.kibanaIndex = __old_Value.fromString(kibanaIndexTpl, Function.identity());
-    }
-
-    public static Settings fromBlockSettings(RawSettings blockSettings) {
-      return new Settings(blockSettings.stringReq(ATTRIBUTE_NAME));
-    }
-
-    @Override
-    public String getName() {
-      return ATTRIBUTE_NAME;
-    }
-
   }
 }

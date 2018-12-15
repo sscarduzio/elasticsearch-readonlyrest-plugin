@@ -2,6 +2,7 @@ package tech.beshu.ror.acl.blocks.rules
 
 import java.net.{Inet4Address, InetAddress, UnknownHostException}
 
+import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
@@ -17,7 +18,7 @@ class XForwardedForRule(settings: Settings)
 
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context.xForwardedForHeaderValue match {
-      case Some(address) if address == Address.unknown => false
+      case Some(address) if address === Address.unknown => false
       case None => false
       case Some(address) if matchAddress(address, context) => true
       case Some(address) => ipMaskOf(address) match {

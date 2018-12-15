@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
 
 import java.util.Map;
 import java.util.Optional;
@@ -33,12 +33,12 @@ import java.util.stream.Collectors;
 /**
  * Created by ah on 15/02/2016.
  */
-public class ProxyAuthSyncRule extends SyncRule implements Authentication {
+public class __old_ProxyAuthSyncRule extends SyncRule implements Authentication {
 
   private final MatcherWithWildcards userListMatcher;
-  private final ProxyAuthRuleSettings settings;
+  private final __old_ProxyAuthRuleSettings settings;
 
-  public ProxyAuthSyncRule(ProxyAuthRuleSettings s) {
+  public __old_ProxyAuthSyncRule(__old_ProxyAuthRuleSettings s) {
     this.settings = s;
     this.userListMatcher = new MatcherWithWildcards(
       s.getUsers().stream()

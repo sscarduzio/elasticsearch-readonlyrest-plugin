@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
@@ -51,10 +51,10 @@ import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
-import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_LocalHostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
-import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
 import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
@@ -104,22 +104,23 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(__old_HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
     creators.put(__old_ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(__old_HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
-    creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
+    creators.put(__old_LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
     creators.put(SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
     creators.put(RepositoriesSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
-    creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(
+        __old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
-    creators.put(KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
+    creators.put(__old_KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
     creators.put(FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
     creators.put(FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
     creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
     creators.put(__old_ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
-    creators.put(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
+    creators.put(__old_MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
     creators.put(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
     creators.put(SearchlogRuleSettings.ATTRIBUTE_NAME, searchlogSettingsCreator(blockSettings));
     creators.put(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
@@ -238,7 +239,7 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> localHostsSettingsCreator(RawSettings blockSettings) {
-    return () -> LocalHostsRuleSettings.fromBlockSettings(blockSettings);
+    return () -> __old_LocalHostsRuleSettings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
@@ -254,7 +255,7 @@ public class RulesSettingsCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> proxyAuthSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(ProxyAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(__old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
@@ -294,7 +295,7 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaIndexSettingsCreator(RawSettings blockSettings) {
-    return () -> KibanaIndexSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> __old_KibanaIndexSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
@@ -323,8 +324,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> maxBodyLengthSettingsCreator(RawSettings blockSettings) {
-    return () -> MaxBodyLengthRuleSettings.from(
-        blockSettings.intReq(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_MaxBodyLengthRuleSettings.from(
+        blockSettings.intReq(__old_MaxBodyLengthRuleSettings.ATTRIBUTE_NAME)
     );
   }
 

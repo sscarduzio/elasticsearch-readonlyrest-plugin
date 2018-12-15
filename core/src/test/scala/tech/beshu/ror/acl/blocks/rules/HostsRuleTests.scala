@@ -26,7 +26,7 @@ class HostsRuleTests extends WordSpec with MockFactory {
           remoteHost = Address("1.1.1.2")
         )
       }
-      "configured host domain address is the same as remote host domain address in request (different mask)" in {
+      "configured host domain address is the same as remote host domain address in request" in {
         assertMatchRule(
           configuredHosts = NonEmptySet.of(Value.fromString("google.com", Address.apply)),
           remoteHost = Address("google.com")

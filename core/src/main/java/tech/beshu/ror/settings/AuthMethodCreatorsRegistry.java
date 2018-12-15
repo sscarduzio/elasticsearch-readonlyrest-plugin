@@ -31,7 +31,7 @@ import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
-import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
 import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 
 import java.time.Duration;
@@ -57,7 +57,7 @@ public class AuthMethodCreatorsRegistry {
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
     creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator());
     creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator());
-    creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
+    creators.put(__old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
     creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME, ldapAuthenticationRuleSettingsCreator(ldapSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(jwtAuthDefinitionSettingsCollection));
     creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(rorKbnAuthDefinitionSettingsCollection));
@@ -104,15 +104,15 @@ public class AuthMethodCreatorsRegistry {
   private Function<RawSettings, AuthKeyProviderSettings> proxyAuthSettingsCreator(
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     return settings -> {
-      Object s = settings.req(ProxyAuthRuleSettings.ATTRIBUTE_NAME);
+      Object s = settings.req(__old_ProxyAuthRuleSettings.ATTRIBUTE_NAME);
       if (s instanceof List<?>) {
-        return ProxyAuthRuleSettings.from((List<String>) s);
+        return __old_ProxyAuthRuleSettings.from((List<String>) s);
       }
       else if (s instanceof String) {
-        return ProxyAuthRuleSettings.from(Lists.newArrayList((String) s));
+        return __old_ProxyAuthRuleSettings.from(Lists.newArrayList((String) s));
       }
       else {
-        return ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s, settings.getLogger()), proxyAuthDefinitionSettingsCollection);
+        return __old_ProxyAuthRuleSettings.from(new RawSettings((Map<String, ?>) s, settings.getLogger()), proxyAuthDefinitionSettingsCollection);
       }
     };
   }

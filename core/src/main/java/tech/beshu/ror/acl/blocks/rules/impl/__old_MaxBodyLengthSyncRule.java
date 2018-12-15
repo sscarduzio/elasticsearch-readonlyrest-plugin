@@ -19,36 +19,25 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
 
-import java.util.Optional;
+/**
+ * Created by sscarduzio on 14/02/2016.
+ */
+public class __old_MaxBodyLengthSyncRule extends SyncRule {
 
-public class LocalHostsSyncRule extends SyncRule {
+  private final Integer maxBodyLength;
+  private final __old_MaxBodyLengthRuleSettings settings;
 
-  private final ESContext context;
-  private final LocalHostsRuleSettings settings;
-  private final LoggerShim logger;
-
-  public LocalHostsSyncRule(LocalHostsRuleSettings s, ESContext context) {
-    this.context = context;
-    this.logger = context.logger(getClass());
+  public __old_MaxBodyLengthSyncRule(__old_MaxBodyLengthRuleSettings s) {
+    this.maxBodyLength = s.getMaxBodyLength();
     this.settings = s;
   }
 
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
-    String rcDestAddress = rc.getLocalAddress();
-    return settings.getAllowedAddresses()
-                   .stream()
-                   .map(aa -> aa.getValue(rc))
-                   .filter(Optional::isPresent)
-                   .map(Optional::get)
-                   .filter(v -> v.equals(rcDestAddress))
-                   .findFirst()
-                   .isPresent() ? MATCH : NO_MATCH;
+    return (rc.getContentLength() > maxBodyLength) ? NO_MATCH : MATCH;
   }
 
   @Override

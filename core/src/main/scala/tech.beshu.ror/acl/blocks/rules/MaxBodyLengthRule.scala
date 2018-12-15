@@ -1,0 +1,20 @@
+package tech.beshu.ror.acl.blocks.rules
+
+import monix.eval.Task
+import squants.information.Information
+import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule.Settings
+import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.acl.requestcontext.RequestContext
+
+class MaxBodyLengthRule(settings: Settings)
+  extends RegularRule {
+
+  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
+    context.contentLength <= settings.maxContentLength
+  }
+}
+
+object MaxBodyLengthRule {
+
+  final case class Settings(maxContentLength: Information)
+}

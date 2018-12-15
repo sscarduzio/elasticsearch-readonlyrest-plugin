@@ -19,29 +19,53 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.domain.__old_Value;
+import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
+import tech.beshu.ror.settings.RuleSettings;
+
+import java.util.function.Function;
 
 /**
  * Created by sscarduzio on 14/02/2016.
  */
-public class MaxBodyLengthSyncRule extends SyncRule {
+public class __old_KibanaIndexSyncRule extends SyncRule {
+  private final __old_KibanaIndexSyncRule.Settings settings;
 
-  private final Integer maxBodyLength;
-  private final MaxBodyLengthRuleSettings settings;
-
-  public MaxBodyLengthSyncRule(MaxBodyLengthRuleSettings s) {
-    this.maxBodyLength = s.getMaxBodyLength();
+  public __old_KibanaIndexSyncRule(__old_KibanaIndexSyncRule.Settings s) {
     this.settings = s;
   }
 
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
-    return (rc.getContentLength() > maxBodyLength) ? NO_MATCH : MATCH;
+    rc.setKibanaIndex(settings.kibanaIndex.getValue(rc).orElse(null));
+    return MATCH;
   }
 
   @Override
   public String getKey() {
     return settings.getName();
+  }
+
+  /**
+   * Settings
+   */
+  public static class Settings implements RuleSettings {
+    public static final String ATTRIBUTE_NAME = "kibana_index";
+    private final __old_Value<String> kibanaIndex;
+
+    public Settings(String kibanaIndexTpl) {
+      this.kibanaIndex = __old_Value.fromString(kibanaIndexTpl, Function.identity());
+    }
+
+    public static Settings fromBlockSettings(RawSettings blockSettings) {
+      return new Settings(blockSettings.stringReq(ATTRIBUTE_NAME));
+    }
+
+    @Override
+    public String getName() {
+      return ATTRIBUTE_NAME;
+    }
+
   }
 }

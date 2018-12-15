@@ -7,8 +7,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.requestcontext.RequestContext
-import tech.beshu.ror.commons.domain.LoggedUser.Id
-import tech.beshu.ror.commons.domain.{LoggedUser, Value}
+import tech.beshu.ror.commons.domain.User.Id
+import tech.beshu.ror.commons.domain.{LoggedUser, User, Value}
 import tech.beshu.ror.commons.orders._
 
 class UsersRuleTests extends WordSpec with MockFactory {
@@ -50,13 +50,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredIds: NonEmptySet[Value[LoggedUser.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertMatchRule(configuredIds: NonEmptySet[Value[User.Id]], loggedUser: Option[LoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = true)
 
-  private def assertNotMatchRule(configuredIds: NonEmptySet[Value[LoggedUser.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertNotMatchRule(configuredIds: NonEmptySet[Value[User.Id]], loggedUser: Option[LoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = false)
 
-  private def assertRule(configuredIds: NonEmptySet[Value[LoggedUser.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
+  private def assertRule(configuredIds: NonEmptySet[Value[User.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds))
     val context = mock[RequestContext]
     (context.loggedUser _).expects().returning(loggedUser)

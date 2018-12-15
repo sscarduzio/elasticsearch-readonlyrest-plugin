@@ -20,7 +20,7 @@ class HeadersOrRule(settings: Settings)
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     val headersSubset = context
       .headers
-      .filter(h => settings.headers.exists(_.name.toLowerCase() == h.name.toLowerCase()))
+      .filter(h => settings.headers.exists(_.name.value.toLowerCase() == h.name.value.toLowerCase()))
     if (headersSubset.isEmpty) false
     else new MatcherWithWildcards(settings.headers.toSortedSet.map(_.flatten).asJava)
       .filter(headersSubset.map(_.flatten).asJava)

@@ -17,50 +17,49 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
+import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
 
-import static org.junit.Assert.assertFalse;
+import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
  * Created by sscarduzio on 18/01/2017.
  */
-
-public class ProxyAuthRuleTests {
+public class __old_MaxBodyLengthRuleTests {
 
   @Test
-  public void testOK() {
-    RuleExitResult res = match("1234567890", "1234567890");
+  public void testShortEnuf() {
+    RuleExitResult res = match(5, "xx");
     assertTrue(res.isMatch());
   }
 
   @Test
-  public void testKO() {
-    RuleExitResult res = match("1234567890", "123");
-    assertFalse(res.isMatch());
+  public void testEmpty() {
+    RuleExitResult res = match(5, "");
+    assertTrue(res.isMatch());
   }
 
   @Test
-  public void testEmpty() {
-    RuleExitResult res = match("1234567890", "");
+  public void testTooLong() {
+    RuleExitResult res = match(5, "hello123123");
     assertFalse(res.isMatch());
   }
 
-  private RuleExitResult match(String configured, String found) {
+  private RuleExitResult match(Integer configured, String found) {
     return match(configured, found, Mockito.mock(__old_RequestContext.class));
   }
 
-  private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
-    when(rc.getHeaders()).thenReturn(ImmutableMap.of("X-Forwarded-User", found));
+  private RuleExitResult match(Integer configured, String found, __old_RequestContext rc) {
+    when(rc.getContentLength()).thenReturn(found.length());
 
-    ProxyAuthSyncRule r = new ProxyAuthSyncRule(ProxyAuthRuleSettings.from(Lists.newArrayList(configured)));
+    SyncRule r = new __old_MaxBodyLengthSyncRule(__old_MaxBodyLengthRuleSettings.from(configured));
+
     return r.match(rc);
   }
 

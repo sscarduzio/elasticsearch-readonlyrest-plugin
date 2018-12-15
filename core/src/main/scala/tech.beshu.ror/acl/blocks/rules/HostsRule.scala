@@ -30,7 +30,7 @@ class HostsRule(settings: Settings)
 
   private def tryToMatchAddress(address: Address, context: RequestContext): Boolean =
     settings
-      .hosts
+      .allowedHosts
       .exists { host =>
         host
           .getValue(context)
@@ -64,6 +64,7 @@ class HostsRule(settings: Settings)
 
 object HostsRule {
 
-  final case class Settings(hosts: NonEmptySet[Value[Address]], acceptXForwardedForHeader: Boolean)
+  final case class Settings(allowedHosts: NonEmptySet[Value[Address]],
+                            acceptXForwardedForHeader: Boolean)
 
 }

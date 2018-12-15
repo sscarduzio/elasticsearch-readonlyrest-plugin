@@ -32,12 +32,12 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_LocalHostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
@@ -62,8 +62,8 @@ import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
-import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_LocalHostsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
 import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
@@ -95,8 +95,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new __old_HostsSyncRule((__old_HostsRuleSettings) settings, context))
     );
     this.creators.put(
-        LocalHostsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new LocalHostsSyncRule((LocalHostsRuleSettings) settings, context))
+        __old_LocalHostsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_LocalHostsSyncRule((__old_LocalHostsRuleSettings) settings, context))
     );
     this.creators.put(
         SnapshotsSyncRule.Settings.class,
@@ -115,8 +115,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new KibanaAccessSyncRule((KibanaAccessRuleSettings) settings, context))
     );
     this.creators.put(
-        KibanaIndexSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new KibanaIndexSyncRule((KibanaIndexSyncRule.Settings) settings))
+        __old_KibanaIndexSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_KibanaIndexSyncRule((__old_KibanaIndexSyncRule.Settings) settings))
     );
     this.creators.put(
         FieldsSyncRule.Settings.class,
@@ -131,8 +131,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new KibanaHideAppsSyncRule((KibanaHideAppsRuleSettings) settings, context))
     );
     this.creators.put(
-        MaxBodyLengthRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new MaxBodyLengthSyncRule((MaxBodyLengthRuleSettings) settings))
+        __old_MaxBodyLengthRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_MaxBodyLengthSyncRule((__old_MaxBodyLengthRuleSettings) settings))
     );
     this.creators.put(
         MethodsRuleSettings.class,

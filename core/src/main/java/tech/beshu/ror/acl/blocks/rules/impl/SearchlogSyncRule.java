@@ -26,6 +26,7 @@ import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
  * Created by sscarduzio on 27/03/2017.
  */
 public class SearchlogSyncRule extends SyncRule {
+  // todo: is it no longer used?
 
   private final boolean shouldLog;
   private final SearchlogRuleSettings settings;

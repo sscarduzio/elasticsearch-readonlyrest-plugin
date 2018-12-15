@@ -3,7 +3,7 @@ package tech.beshu.ror.commons
 import cats.Order
 import cats.implicits._
 import com.softwaremill.sttp.Method
-import tech.beshu.ror.commons.aDomain.{Address, Header}
+import tech.beshu.ror.commons.aDomain.{Address, ApiKey, Header}
 import tech.beshu.ror.commons.domain._
 
 import scala.language.implicitConversions
@@ -11,7 +11,7 @@ import scala.language.implicitConversions
 object header {
 
   class FlatHeader(val header: Header) extends AnyVal {
-    def flatten: String = s"${header.name.toLowerCase()}:${header.value}"
+    def flatten: String = s"${header.name.value.toLowerCase()}:${header.value}"
   }
 
   object FlatHeader {
@@ -19,7 +19,7 @@ object header {
   }
 
   class ToTuple(val header: Header) extends AnyVal {
-    def toTuple: (String, String) = (header.name, header.value)
+    def toTuple: (String, String) = (header.name.value, header.value)
   }
 
   object ToTuple {
@@ -33,11 +33,13 @@ object unresolvedaddress {
 }
 
 object orders {
+  implicit val headerNameOrder: Order[Header.Name] = Order.by(_.value)
   implicit val headerOrder: Order[Header] = Order.by(h => (h.name, h.value))
   implicit val unresolvedAddressOrder: Order[Address] = Order.by(_.value)
   implicit val methodOrder: Order[Method] = Order.by(_.m)
-  implicit val loggedUserIdOrder: Order[LoggedUser.Id] = Order.by(_.value)
+  implicit val userIdOrder: Order[User.Id] = Order.by(_.value)
   implicit val ipMaskOrder: Order[IPMask] = Order.by(_.hashCode())
+  implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit def valueOrder[T: Order]: Order[Value[T]] = Order.from {
     case (a: Const[T], b: Const[T]) => implicitly[Order[T]].compare(a.value, b.value)
     case (_: Const[T], _: Variable[T]) => -1
