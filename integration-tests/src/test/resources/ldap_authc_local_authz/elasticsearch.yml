@@ -37,6 +37,10 @@ readonlyrest:
     groups: ["group1", "group3"]
     ldap_authentication: "ldap1"
 
+  - username: Bìlbö Bággįnš
+    groups: ["group1"]
+    ldap_authentication: "ldap1"
+
   - username: morgan
     groups: ["group2", "group3"]
     ldap_authentication: "ldap1"
