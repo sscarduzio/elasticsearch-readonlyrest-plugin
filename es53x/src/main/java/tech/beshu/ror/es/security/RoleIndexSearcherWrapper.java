@@ -95,7 +95,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     }
 
     // Document level security (DLS)
-    FilterTransient userTransient = FilterTransient.Deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
+    FilterTransient userTransient = FilterTransient.deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
     if (userTransient == null) {
       logger.debug("Couldn't extract userTransient from threadContext.");
       return reader;

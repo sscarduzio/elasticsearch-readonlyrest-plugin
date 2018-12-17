@@ -64,6 +64,15 @@ public class UnboundidAuthenticationLdapClientTests {
   }
 
   @Test
+  public void testAuthenticationSuccessUnicodeUserName() throws Exception {
+    CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
+        new LdapCredentials("Bìlbö Bággįnš", "user2")
+    );
+    Optional<LdapUser> user = userF.get();
+    Assert.assertEquals(true, user.isPresent());
+  }
+
+  @Test
   public void testAuthenticationErrorDueToInvalidPassword() throws Exception {
     CompletableFuture<Optional<LdapUser>> userF = client.authenticate(
       new LdapCredentials("cartman", "wrongpassword")

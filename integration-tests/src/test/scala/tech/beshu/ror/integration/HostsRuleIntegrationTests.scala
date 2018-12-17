@@ -73,7 +73,7 @@ object HostsRuleIntegrationTests {
     ).getUnderlyingClient
   )
 
-  var url: String = null
+  var url: String = ""
 
   @ClassRule def container = ESWithReadonlyRestContainer.create(RorPluginGradleProject.fromSystemProperty,
     TempFile.newFile(getClass.getName, "elasticsearch.yml", settingsYaml),
@@ -100,5 +100,5 @@ object HostsRuleIntegrationTests {
       }
     }))
 
-  var endpoint: HostAndPort = null
+  var endpoint: HostAndPort = HostAndPort.fromHost("")
 }

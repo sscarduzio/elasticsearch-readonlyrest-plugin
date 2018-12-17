@@ -35,6 +35,7 @@ import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAut
 import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.commons.utils.SecureStringHasher;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 
@@ -54,11 +55,13 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
   private final LoggerShim logger;
   private final JwtAuthRuleSettings settings;
   private final ExternalAuthenticationServiceClient httpClient;
+  private final SecureStringHasher secureStringHasher;
 
   public JwtAuthSyncRule(JwtAuthRuleSettings settings, ESContext context, DefinitionsFactory factory) {
     this.logger = context.logger(getClass());
     this.settings = settings;
     this.httpClient = settings.getExternalValidator().isPresent() ? factory.getClient(settings) : null;
+    this.secureStringHasher = new SecureStringHasher("sha256");
   }
 
   private static Optional<String> extractToken(String authHeader) {
@@ -183,7 +186,7 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
       }
 
       if (settings.getExternalValidator().isPresent()) {
-        return httpClient.authenticate("x", token.get())
+        return httpClient.authenticate(secureStringHasher.hash(token.get()), token.get())
                          .thenApply(resp -> resp ? MATCH : NO_MATCH);
       }
       return CompletableFuture.completedFuture(MATCH);

@@ -68,7 +68,8 @@ public class KibanaAccessSyncRule extends SyncRule {
       "cluster:monitor/nodes/info",
       "cluster:monitor/main",
       "cluster:monitor/health",
-      "cluster:monitor/state"
+      "cluster:monitor/state",
+      "cluster:monitor/xpack/*"
   ));
 
   private final LoggerShim logger;
