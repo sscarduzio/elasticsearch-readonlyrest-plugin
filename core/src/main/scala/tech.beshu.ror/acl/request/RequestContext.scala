@@ -1,4 +1,4 @@
-package tech.beshu.ror.acl.requestcontext
+package tech.beshu.ror.acl.request
 
 import cats.implicits._
 import com.softwaremill.sttp.Method
@@ -19,9 +19,10 @@ trait RequestContext extends VariablesResolver {
   def contentLength: Information
 
   def loggedUser: Option[LoggedUser]
-  def setLoggedInUser(user: LoggedUser): Unit
 
+  def setLoggedInUser(user: LoggedUser): Unit
   def setKibanaIndex(index: IndexName): Unit
+  def setResponseHeader(header: Header): Unit
 }
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {

@@ -4,7 +4,7 @@ import java.util.regex.Pattern
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.domain.Value
 
 class UriRegexRule(settings: Settings)

@@ -5,7 +5,7 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule.{Settings, xApiKeyHeaderName}
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.{ApiKey, Header}
 import tech.beshu.ror.commons.aDomain.Header.Name._
 

@@ -10,6 +10,10 @@ object aDomain {
     final case class Name(value: String) extends AnyVal
     object Name {
       val xForwardedFor = Name("X-Forwarded-For")
+      val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
+      val cookie = Name("Cookie")
+      val setCookie = Name("Set-Cookie")
+
       implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
     }
 
@@ -38,6 +42,11 @@ object aDomain {
   final case class ApiKey(value: String) extends AnyVal
   object ApiKey {
     implicit val eqApiKey: Eq[ApiKey] = Eq.fromUniversalEquals
+  }
+
+  final case class KibanaApp(value: String) extends AnyVal
+  object KibanaApp {
+    implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }
 
 }

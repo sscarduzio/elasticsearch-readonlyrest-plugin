@@ -3,7 +3,7 @@ package tech.beshu.ror.acl.blocks.rules
 import org.scalatest.Matchers._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.TestsUtils.basicAuthHeader
 import tech.beshu.ror.commons.domain.LoggedUser

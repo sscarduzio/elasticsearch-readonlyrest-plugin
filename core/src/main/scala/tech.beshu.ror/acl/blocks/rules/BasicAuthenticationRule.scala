@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.domain.LoggedUser
 import tech.beshu.ror.commons.domain.User.Id
 import tech.beshu.ror.commons.header.ToTuple._

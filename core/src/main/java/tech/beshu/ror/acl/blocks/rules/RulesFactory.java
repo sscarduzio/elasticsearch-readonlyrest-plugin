@@ -31,7 +31,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
@@ -41,7 +41,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
@@ -128,7 +128,7 @@ public class RulesFactory {
     );
     this.creators.put(
         KibanaHideAppsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new KibanaHideAppsSyncRule((KibanaHideAppsRuleSettings) settings, context))
+        settings -> AsyncRuleAdapter.wrap(new __old_KibanaHideAppsSyncRule((KibanaHideAppsRuleSettings) settings, context))
     );
     this.creators.put(
         __old_MaxBodyLengthRuleSettings.class,
@@ -156,7 +156,7 @@ public class RulesFactory {
     );
     this.creators.put(
         SessionMaxIdleRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context))
+        settings -> AsyncRuleAdapter.wrap(new __old_SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context))
     );
     this.creators.put(
         __old_UriReSyncRule.Settings.class,

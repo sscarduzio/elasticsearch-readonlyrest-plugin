@@ -37,7 +37,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
@@ -49,7 +49,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
@@ -90,7 +90,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         RepositoriesSyncRule.class,
         __old_XForwardedForSyncRule.class,
         __old_ApiKeysSyncRule.class,
-        SessionMaxIdleSyncRule.class,
+        __old_SessionMaxIdleSyncRule.class,
         __old_UriReSyncRule.class,
         __old_MaxBodyLengthSyncRule.class,
         __old_MethodsSyncRule.class,
@@ -107,7 +107,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         GroupsProviderAuthorizationAsyncRule.class,
 
         // At the end the sync rule chain are those that can mutate the client request.
-        KibanaHideAppsSyncRule.class,
+        __old_KibanaHideAppsSyncRule.class,
         __old_KibanaIndexSyncRule.class,
 
         // Stuff to do later, at search time

@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.ActionsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Action
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
 

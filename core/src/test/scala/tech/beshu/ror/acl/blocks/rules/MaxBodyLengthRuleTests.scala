@@ -5,7 +5,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import squants.information.{Bytes, Information, Kilobytes}
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 
 class MaxBodyLengthRuleTests extends WordSpec with MockFactory {
 

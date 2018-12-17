@@ -4,7 +4,7 @@ import monix.eval.Task
 import squants.information.Information
 import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 
 class MaxBodyLengthRule(settings: Settings)
   extends RegularRule {

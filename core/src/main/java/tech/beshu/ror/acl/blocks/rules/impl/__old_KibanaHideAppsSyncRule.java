@@ -17,57 +17,48 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 
-import java.time.Duration;
+import java.util.Optional;
+
+import static tech.beshu.ror.commons.Constants.HEADER_KIBANA_HIDDEN_APPS;
 
 /**
- * Created by sscarduzio on 03/01/2017.
+ * Created by sscarduzio on 20/02/2016.
  */
-public class SessionMaxIdleSyncRule extends SyncRule {
+public class __old_KibanaHideAppsSyncRule extends SyncRule {
+
 
   private final LoggerShim logger;
-  private final ESContext context;
-  private final Duration maxIdle;
-  private final RuleSettings settings;
+  private final String hiddenApps;
+  private final KibanaHideAppsRuleSettings settings;
 
-  public SessionMaxIdleSyncRule(SessionMaxIdleRuleSettings s, ESContext context) {
-    this.logger = context.logger(getClass());
-    this.context = context;
-    this.maxIdle = s.getMaxIdle();
-    this.settings = s;
+  public __old_KibanaHideAppsSyncRule(KibanaHideAppsRuleSettings s, ESContext context) {
+    logger = context.logger(getClass());
+    hiddenApps = Joiner.on(",").join(s.getKibanaHideApps());
+    settings = s;
   }
 
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
-    SessionCookie c = new SessionCookie(rc, maxIdle.toMillis(), context);
-
-    // 1 no cookie
-    if (!c.isCookiePresent()) {
-      c.setCookie();
+    Optional<__old_LoggedUser> loggedInUser = rc.getLoggedInUser();
+    if (Strings.isNullOrEmpty(hiddenApps) || !loggedInUser.isPresent()) {
       return MATCH;
     }
 
-    // 2 OkCookie
-    if (c.isCookieValid()) {
-      // Postpone the expiry date: we want to reset the login only for users that are INACTIVE FOR a period of time.
-      c.setCookie();
-      return MATCH;
-    }
+    logger.debug("setting hidden apps for user " + loggedInUser.get() + ": " + hiddenApps);
+    rc.setResponseHeader(HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
 
-    // 2' BadCookie
-    if (c.isCookiePresent() && !c.isCookieValid()) {
-      c.unsetCookie();
-      return NO_MATCH;
-    }
-    logger.error("Session handling panic! " + c + " RC:" + rc);
-    return NO_MATCH;
+    // This is a side-effect only rule, will always match
+    return MATCH;
   }
 
   @Override

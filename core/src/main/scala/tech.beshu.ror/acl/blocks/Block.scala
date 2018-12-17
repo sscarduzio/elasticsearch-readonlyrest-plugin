@@ -6,7 +6,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult._
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 
 class Block(rules: NonEmptyList[Rule]) {
 

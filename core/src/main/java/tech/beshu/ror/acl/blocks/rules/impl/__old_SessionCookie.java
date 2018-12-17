@@ -41,7 +41,7 @@ import java.util.UUID;
 /**
  * Created by sscarduzio on 01/01/2017.
  */
-public class SessionCookie {
+public class __old_SessionCookie {
 
   private static final String SERVER_SECRET = UUID.randomUUID().toString();
   private static final String COOKIE_NAME = "ReadonlyREST_Session";
@@ -55,7 +55,7 @@ public class SessionCookie {
   private boolean cookiePresent = false;
   private boolean cookieValid = false;
 
-  SessionCookie(__old_RequestContext rc, Long sessionMaxIdleMillis, ESContext context) {
+  __old_SessionCookie(__old_RequestContext rc, Long sessionMaxIdleMillis, ESContext context) {
     logger = context.logger(getClass());
     if (sessionMaxIdleMillis <= 0) {
       throw context.rorException("session max idle interval cannot be negative");

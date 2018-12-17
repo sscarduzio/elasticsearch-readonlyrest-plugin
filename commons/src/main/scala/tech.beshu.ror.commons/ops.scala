@@ -1,9 +1,9 @@
 package tech.beshu.ror.commons
 
-import cats.Order
+import cats.{Order, Show}
 import cats.implicits._
 import com.softwaremill.sttp.Method
-import tech.beshu.ror.commons.aDomain.{Address, ApiKey, Header}
+import tech.beshu.ror.commons.aDomain.{Address, ApiKey, Header, KibanaApp}
 import tech.beshu.ror.commons.domain._
 
 import scala.language.implicitConversions
@@ -40,10 +40,18 @@ object orders {
   implicit val userIdOrder: Order[User.Id] = Order.by(_.value)
   implicit val ipMaskOrder: Order[IPMask] = Order.by(_.hashCode())
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
+  implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
   implicit def valueOrder[T: Order]: Order[Value[T]] = Order.from {
     case (a: Const[T], b: Const[T]) => implicitly[Order[T]].compare(a.value, b.value)
     case (_: Const[T], _: Variable[T]) => -1
     case (_: Variable[T], _: Const[T]) => 1
     case (a: Variable[T], b: Variable[T]) => a.representation.compareTo(b.representation)
+  }
+}
+
+object show {
+  object logs {
+    implicit val userIdShow: Show[User.Id] = Show.show(_.value)
+    implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value)
   }
 }

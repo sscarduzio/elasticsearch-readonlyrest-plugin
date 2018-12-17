@@ -4,7 +4,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.IndexName
 import tech.beshu.ror.commons.domain.Value
 

@@ -8,7 +8,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import tech.beshu.ror.acl.blocks.BlockTest.{notPassingRule, passingRule, dummyRequestContext}
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 
 import scala.language.postfixOps
 

@@ -8,8 +8,8 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.acl.requestcontext.RequestContext
-import tech.beshu.ror.acl.requestcontext.RequestContextOps._
+import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.domain.{IPMask, Value}
 

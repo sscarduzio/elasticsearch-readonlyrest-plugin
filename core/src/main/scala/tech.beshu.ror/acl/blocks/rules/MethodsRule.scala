@@ -5,7 +5,7 @@ import com.softwaremill.sttp.Method
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.acl.requestcontext.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 
 class MethodsRule(settings: Settings)
   extends RegularRule {
