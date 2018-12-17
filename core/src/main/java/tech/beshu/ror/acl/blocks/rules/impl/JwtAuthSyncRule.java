@@ -183,7 +183,7 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
       }
 
       if (settings.getExternalValidator().isPresent()) {
-        return httpClient.authenticate(token.get(), token.get())
+        return httpClient.authenticate(String.valueOf(token.get().hashCode()), token.get())
                          .thenApply(resp -> resp ? MATCH : NO_MATCH);
       }
       return CompletableFuture.completedFuture(MATCH);
