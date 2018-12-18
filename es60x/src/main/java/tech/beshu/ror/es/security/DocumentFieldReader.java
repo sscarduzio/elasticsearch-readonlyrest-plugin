@@ -44,7 +44,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.commons.Constants;
 
 import java.io.IOException;
@@ -58,11 +58,11 @@ import java.util.stream.StreamSupport;
 public class DocumentFieldReader extends FilterLeafReader {
   static protected final Logger logger = Loggers.getLogger(DocumentFieldReader.class, new String[0]);
   private final FieldInfos remainingFieldsInfo;
-  private FieldsSyncRule.FieldPolicy policy;
+  private __old_FieldsSyncRule.FieldPolicy policy;
 
   private DocumentFieldReader(LeafReader reader, Set<String> fields) {
     super(reader);
-    this.policy = new FieldsSyncRule.FieldPolicy(fields);
+    this.policy = new __old_FieldsSyncRule.FieldPolicy(fields);
     FieldInfos fInfos = in.getFieldInfos();
     Set<String> baseFields = new HashSet<>(fInfos.size());
     for (FieldInfo f : fInfos) {

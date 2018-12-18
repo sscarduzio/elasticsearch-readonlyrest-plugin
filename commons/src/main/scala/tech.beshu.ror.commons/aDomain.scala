@@ -13,6 +13,7 @@ object aDomain {
       val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")
+      val transientFields = Name(Constants.FIELDS_TRANSIENT)
 
       implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
     }
@@ -49,4 +50,9 @@ object aDomain {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }
 
+  sealed abstract class DocumentField(val value: String)
+  object DocumentField {
+    final case class ADocumentField(override val value: String) extends DocumentField(value)
+    final case class NegatedDocumentField(override val value: String) extends DocumentField(value)
+  }
 }

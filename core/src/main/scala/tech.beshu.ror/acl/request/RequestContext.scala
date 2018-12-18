@@ -18,11 +18,14 @@ trait RequestContext extends VariablesResolver {
   def uri: Uri
   def contentLength: Information
 
+  def isReadOnlyRequest: Boolean
+
   def loggedUser: Option[LoggedUser]
 
   def setLoggedInUser(user: LoggedUser): Unit
   def setKibanaIndex(index: IndexName): Unit
   def setResponseHeader(header: Header): Unit
+  def setContextHeader(header: Header): Unit
 }
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {

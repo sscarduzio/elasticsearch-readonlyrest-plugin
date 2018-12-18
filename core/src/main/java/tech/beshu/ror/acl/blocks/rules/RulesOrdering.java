@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha512SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
@@ -111,7 +111,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         __old_KibanaIndexSyncRule.class,
 
         // Stuff to do later, at search time
-        FieldsSyncRule.class,
+        __old_FieldsSyncRule.class,
         FilterSyncRule.class
         );
   }

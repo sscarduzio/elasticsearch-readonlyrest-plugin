@@ -6,7 +6,8 @@ import com.softwaremill.sttp.Method
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import shapeless.Nat
-import tech.beshu.ror.commons.aDomain.{Address, ApiKey, Header, KibanaApp}
+import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.commons.aDomain._
 import tech.beshu.ror.commons.domain._
 
 import scala.concurrent.duration.FiniteDuration
@@ -45,7 +46,8 @@ object orders {
   implicit val ipMaskOrder: Order[IPMask] = Order.by(_.hashCode())
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
-
+  implicit val aDocumentFieldOrder: Order[ADocumentField] = Order.by(_.value)
+  implicit val negatedDocumentFieldOrder: Order[NegatedDocumentField] = Order.by(_.value)
   implicit def valueOrder[T: Order]: Order[Value[T]] = Order.from {
     case (a: Const[T], b: Const[T]) => implicitly[Order[T]].compare(a.value, b.value)
     case (_: Const[T], _: Variable[T]) => -1

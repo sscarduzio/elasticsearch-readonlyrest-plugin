@@ -36,11 +36,11 @@ import java.util.stream.Collectors;
  * When applied, it forwards the field list to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link __old_RequestContext}.
  * Created by sscarduzio on 18/05/2018.
  */
-public class FieldsSyncRule extends SyncRule {
-  private final FieldsSyncRule.Settings settings;
+public class __old_FieldsSyncRule extends SyncRule {
+  private final __old_FieldsSyncRule.Settings settings;
   private final String fieldsAsString;
 
-  public FieldsSyncRule(FieldsSyncRule.Settings s) {
+  public __old_FieldsSyncRule(__old_FieldsSyncRule.Settings s) {
     this.settings = s;
     this.fieldsAsString = Joiner.on(",").join(settings.fields);
   }
@@ -78,7 +78,7 @@ public class FieldsSyncRule extends SyncRule {
         throw new SettingsMalformedException("The fields rule cannot contain always-allowed fields: " + Constants.FIELDS_ALWAYS_ALLOW);
       }
 
-      // Unless explicitly allowed, the _all meta-field shoudl be disallowed
+      // Unless explicitly allowed, the _all meta-field should be disallowed
       if (!fields.contains("_all")) {
         fields.add("~_all");
       }
