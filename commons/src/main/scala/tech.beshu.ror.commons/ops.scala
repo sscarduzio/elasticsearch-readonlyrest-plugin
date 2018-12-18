@@ -3,9 +3,13 @@ package tech.beshu.ror.commons
 import cats.{Order, Show}
 import cats.implicits._
 import com.softwaremill.sttp.Method
+import eu.timepit.refined.api.Validate
+import eu.timepit.refined.numeric.Greater
+import shapeless.Nat
 import tech.beshu.ror.commons.aDomain.{Address, ApiKey, Header, KibanaApp}
 import tech.beshu.ror.commons.domain._
 
+import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
 object header {
@@ -41,6 +45,7 @@ object orders {
   implicit val ipMaskOrder: Order[IPMask] = Order.by(_.hashCode())
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
+
   implicit def valueOrder[T: Order]: Order[Value[T]] = Order.from {
     case (a: Const[T], b: Const[T]) => implicitly[Order[T]].compare(a.value, b.value)
     case (_: Const[T], _: Variable[T]) => -1
@@ -50,8 +55,18 @@ object orders {
 }
 
 object show {
+
   object logs {
     implicit val userIdShow: Show[User.Id] = Show.show(_.value)
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value)
   }
+
+}
+
+object refined {
+  implicit val finiteDurationValidate: Validate[FiniteDuration, Greater[Nat._0]] = Validate.fromPredicate(
+    (d: FiniteDuration) => d.length > 0,
+    (d: FiniteDuration) => s"$d is positive",
+    Greater(shapeless.nat._0)
+  )
 }

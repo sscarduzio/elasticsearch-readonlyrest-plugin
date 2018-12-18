@@ -10,12 +10,13 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.request.RorSessionCookie.{ExtractingError, emptySessionHeader, toSessionHeader}
 import tech.beshu.ror.acl.request.{RequestContext, RorSessionCookie}
+import tech.beshu.ror.acl.utils.UuidProvider
 import tech.beshu.ror.commons.domain.LoggedUser
 
 import scala.concurrent.duration.FiniteDuration
 
 class SessionMaxIdleRule(settings: Settings)
-                        (implicit clock: Clock)
+                        (implicit clock: Clock, uuidProvider: UuidProvider)
   extends RegularRule with StrictLogging {
 
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
@@ -41,9 +42,7 @@ class SessionMaxIdleRule(settings: Settings)
     }
   }
 
-  private def newExpiryDate = {
-    Instant.now().plusMillis(settings.sessionMaxIdle.value.toMillis)
-  }
+  private def newExpiryDate = Instant.now(clock).plusMillis(settings.sessionMaxIdle.value.toMillis)
 }
 
 object SessionMaxIdleRule {
