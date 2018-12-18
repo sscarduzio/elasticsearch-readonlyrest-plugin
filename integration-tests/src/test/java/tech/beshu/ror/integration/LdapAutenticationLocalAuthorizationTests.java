@@ -50,6 +50,12 @@ public class LdapAutenticationLocalAuthorizationTests {
   }
 
   @Test
+  public void checkUnicodedBibloCanSeeTwitter() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container2);
+    assertions.assertUserHasAccessToIndex("Bìlbö Bággįnš", "user2", "twitter");
+  }
+
+  @Test
   public void checkMorganCanSeeFacebook() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(container2);
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");
