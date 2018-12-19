@@ -13,6 +13,8 @@ import scala.collection.JavaConverters._
 class UsersRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("users")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context.loggedUser match {
       case None => false

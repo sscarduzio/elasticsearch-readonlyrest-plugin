@@ -17,6 +17,8 @@ import scala.collection.JavaConverters._
 class HeadersOrRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("headers_or")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     val headersSubset = context
       .headers

@@ -11,6 +11,8 @@ import tech.beshu.ror.commons.domain.Value
 class LocalHostsRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("hosts_local")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     settings
       .allowedAddresses

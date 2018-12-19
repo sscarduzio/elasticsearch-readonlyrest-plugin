@@ -10,6 +10,8 @@ import tech.beshu.ror.acl.request.RequestContext
 class MethodsRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("methods")
+
   /*
     NB: Elasticsearch will parse as GET any HTTP methods that it does not understand.
     So it's normal if you allowed GET and see a 'LINK' request going throw.

@@ -15,6 +15,8 @@ import cats.implicits._
 class KibanaHideAppsRule(settings: Settings)
   extends MatchingAlwaysRule with StrictLogging {
 
+  override val name: Rule.Name = Rule.Name("hosts_local")
+
   private val kibanaAppsHeader = new Header(
     kibanaHiddenApps,
     settings.kibanaAppsToHide.toSortedSet.map(_.value).mkString(",")

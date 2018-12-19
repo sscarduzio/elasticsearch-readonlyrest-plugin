@@ -13,6 +13,8 @@ import tech.beshu.ror.commons.domain.{LoggedUser, User}
 class ProxyAuthRule(settings: Settings)
   extends AuthenticationRule {
 
+  override val name: Rule.Name = Rule.Name("proxy_auth")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     getLoggedUser(context) match {
       case None => false

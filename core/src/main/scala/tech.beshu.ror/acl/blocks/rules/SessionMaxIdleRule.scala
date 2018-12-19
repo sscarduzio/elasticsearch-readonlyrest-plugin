@@ -19,6 +19,8 @@ class SessionMaxIdleRule(settings: Settings)
                         (implicit clock: Clock, uuidProvider: UuidProvider)
   extends RegularRule with StrictLogging {
 
+  override val name: Rule.Name = Rule.Name("proxy_auth")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context.loggedUser match {
       case Some(user) =>

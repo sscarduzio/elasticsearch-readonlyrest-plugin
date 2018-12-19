@@ -2,44 +2,78 @@ package tech.beshu.ror.acl.blocks
 
 import cats.data.{NonEmptyList, WriterT}
 import cats.implicits._
+import cats.{Eq, Show}
+import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.Block.ExecutionResult
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult._
+import tech.beshu.ror.acl.blocks.Block._
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.request.RequestContext._
+import tech.beshu.ror.acl.utils.TaskOps._
+import tech.beshu.ror.commons.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 
-class Block(rules: NonEmptyList[Rule]) {
+import scala.util.Success
 
-  type History = List[String]
-  type BlockResultWithHistory = WriterT[Task, History, Block.ExecutionResult]
+class Block(val name: Name,
+            val policy: Policy,
+            val rules: NonEmptyList[Rule])
+  extends StrictLogging {
 
   def execute(context: RequestContext): BlockResultWithHistory = {
-    rules.foldLeft(matched) {
-      case (acc, rule) =>
-        for {
-          lastResult <- acc
-          res <- lastResult match {
-            case Matched =>
-              lift(rule.`match`(context))
-                .flatMap {
-                  case true => matched.tell("matched" :: Nil)
-                  case false => unmatched.tell("unmatched" :: Nil)
-                }
-            case Unmatched =>
-              unmatched
-          }
-        } yield res
-    }
+    rules
+      .foldLeft(matched) {
+        case (acc, rule) =>
+          for {
+            lastResult <- acc
+            res <- lastResult match {
+              case Matched =>
+                val isRuleMatched = rule
+                  .`match`(context)
+                  .recover { case e =>
+                    logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
+                    false
+                  }
+                lift(isRuleMatched)
+                  .flatMap {
+                    case true => matched.tell(Vector(HistoryItem(rule.name, matched = true)))
+                    case false => unmatched.tell(Vector(HistoryItem(rule.name, matched = false)))
+                  }
+              case Unmatched =>
+                unmatched
+            }
+          } yield res
+      }
+      .mapWritten(History(name, _))
+      .run
+      .map(_.swap)
+      .andThen {
+        case Success((Matched, _)) =>
+          val block: Block = this
+          logger.debug(s"${ANSI_CYAN}matched ${block.show}$ANSI_RESET")
+        case Success((Unmatched, _)) =>
+          logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${context.show} $ANSI_RESET")
+      }
   }
 
-  private val unmatched = lift(Task.now(Block.ExecutionResult.Unmatched: ExecutionResult))
+  private val unmatched = lift(Task.now(Unmatched: ExecutionResult))
 
-  private val matched = lift(Task.now(Block.ExecutionResult.Matched: ExecutionResult))
+  private val matched = lift(Task.now(Matched: ExecutionResult))
 
-  private def lift[T](task: Task[T]) = WriterT.liftF[Task, History, T](task)
+  private def lift[T](task: Task[T]) = WriterT.liftF[Task, Vector[HistoryItem], T](task)
 }
 
 object Block {
+
+  type BlockResultWithHistory = Task[(Block.ExecutionResult, History)]
+
+  final case class Name(value: String) extends AnyVal
+  final case class History(block: Block.Name, items: Vector[HistoryItem])
+  final case class HistoryItem(rule: Rule.Name, matched: Boolean)
+
+  object Name {
+    implicit val show: Show[Name] = Show.show(_.value)
+  }
 
   sealed trait ExecutionResult
   object ExecutionResult {
@@ -47,4 +81,16 @@ object Block {
     case object Unmatched extends ExecutionResult
   }
 
+  sealed trait Policy
+  object Policy {
+    case object Allow extends Policy
+    case object Forbid extends Policy
+
+    implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
+    implicit val show: Show[Policy] = Show.fromToString
+  }
+
+  implicit val blockShow: Show[Block] = Show.show { b =>
+    s"{ name: '${b.name.show}', policy: { ${b.policy.show}, rules: ${b.rules.map(_.name.show).toList.mkString(",")} }"
+  }
 }

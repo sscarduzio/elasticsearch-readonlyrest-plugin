@@ -8,6 +8,8 @@ import tech.beshu.ror.utils.BasicAuthUtils
 class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)
   extends BasicAuthenticationRule(settings) {
 
+  override val name: Rule.Name = Rule.Name("auth_key_unix")
+
   override protected def authenticate(configuredAuthKey: String,
                                       basicAuth: BasicAuthUtils.BasicAuth): Boolean = {
     configuredAuthKey.split(":").toList match {

@@ -10,6 +10,8 @@ import tech.beshu.ror.commons.domain.Value
 class UriRegexRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("uri_re")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     settings
       .uriPattern

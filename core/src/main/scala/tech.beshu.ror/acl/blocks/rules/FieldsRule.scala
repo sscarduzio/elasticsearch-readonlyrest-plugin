@@ -12,6 +12,8 @@ import tech.beshu.ror.commons.aDomain.{DocumentField, Header}
 class FieldsRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("fields")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     if(!context.isReadOnlyRequest) false
     else {

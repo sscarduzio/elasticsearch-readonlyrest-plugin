@@ -16,6 +16,8 @@ import scala.util.control.Exception._
 class XForwardedForRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("x_forwarded_for")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context.xForwardedForHeaderValue match {
       case Some(address) if address === Address.unknown => false

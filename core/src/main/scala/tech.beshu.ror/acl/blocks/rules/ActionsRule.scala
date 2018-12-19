@@ -13,6 +13,8 @@ import scala.collection.JavaConverters._
 class ActionsRule(settings: Settings)
   extends RegularRule with StrictLogging {
 
+  override val name: Rule.Name = Rule.Name("actions")
+
   private val matcher = new MatcherWithWildcards(settings.actions.map(_.value).asJava)
 
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {

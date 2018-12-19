@@ -18,6 +18,8 @@ import scala.util.control.Exception._
 class HostsRule(settings: Settings)
   extends RegularRule with StrictLogging {
 
+  override val name: Rule.Name = Rule.Name("hosts")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>

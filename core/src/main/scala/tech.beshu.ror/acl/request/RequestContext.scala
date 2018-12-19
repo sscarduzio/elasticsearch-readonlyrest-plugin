@@ -1,15 +1,18 @@
 package tech.beshu.ror.acl.request
 
+import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import io.lemonlabs.uri.Uri
 import squants.information.Information
+import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.commons.aDomain.{Action, Address, Header, IndexName}
 import tech.beshu.ror.commons.domain.{LoggedUser, VariablesResolver}
 
 import scala.language.implicitConversions
 
 trait RequestContext extends VariablesResolver {
+  def id: Id
   def action: Action
   def headers: Set[Header]
   def remoteAddress: Address
@@ -26,6 +29,18 @@ trait RequestContext extends VariablesResolver {
   def setKibanaIndex(index: IndexName): Unit
   def setResponseHeader(header: Header): Unit
   def setContextHeader(header: Header): Unit
+
+  def reset(): Unit
+  def commit(): Unit
+}
+
+object RequestContext {
+  final case class Id(value: String) extends AnyVal
+  object Id {
+    implicit val show: Show[Id] = Show.show(_.value)
+  }
+
+  implicit val show: Show[RequestContext] = ??? // todo: implement
 }
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {

@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.utils.BasicAuthOps._
 import tech.beshu.ror.acl.utils.TryOps._
 import tech.beshu.ror.utils.BasicAuthUtils
 
-class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
+abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
                          hashFunction: HashFunction)
   extends BasicAuthenticationRule(settings)
     with StrictLogging {
@@ -29,11 +29,19 @@ class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
 }
 
 class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings)
-  extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha1())
+  extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha1()) {
 
+  override val name: Rule.Name = Rule.Name("auth_key_sha1")
+}
 
 class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings)
-  extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha256())
+  extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha256()) {
+
+  override val name: Rule.Name = Rule.Name("auth_key_sha256")
+}
 
 class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings)
-  extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha512())
+  extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha512()) {
+
+  override val name: Rule.Name = Rule.Name("auth_key_sha512")
+}

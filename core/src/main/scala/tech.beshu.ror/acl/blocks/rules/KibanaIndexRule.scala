@@ -10,6 +10,8 @@ import tech.beshu.ror.commons.domain.Value
 class KibanaIndexRule(settings: Settings)
   extends MatchingAlwaysRule {
 
+  override val name: Rule.Name = Rule.Name("kibana_hide_apps")
+
   override def process(context: RequestContext): Task[Unit] = Task.now {
     settings
       .kibanaIndex

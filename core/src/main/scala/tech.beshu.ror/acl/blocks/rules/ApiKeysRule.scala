@@ -12,6 +12,8 @@ import tech.beshu.ror.commons.aDomain.Header.Name._
 class ApiKeysRule(settings: Settings)
   extends RegularRule {
 
+  override val name: Rule.Name = Rule.Name("api_keys")
+
   override def `match`(context: RequestContext): Task[Boolean] = Task.now {
     context
       .headers
