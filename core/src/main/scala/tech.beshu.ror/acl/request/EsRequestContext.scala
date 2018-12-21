@@ -1,7 +1,6 @@
 package tech.beshu.ror.acl.request
 
-import com.softwaremill.sttp.Method
-import io.lemonlabs.uri.Uri
+import com.softwaremill.sttp.{Method, Uri}
 import squants.information.Information
 import tech.beshu.ror.commons.aDomain
 import tech.beshu.ror.commons.domain.LoggedUser
@@ -25,16 +24,6 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
   override def isReadOnlyRequest: Boolean = ???
 
-  override def loggedUser: Option[LoggedUser] = ???
-
-  override def setLoggedInUser(user: LoggedUser): Unit = ???
-
-  override def setKibanaIndex(index: aDomain.IndexName): Unit = ???
-
-  override def setResponseHeader(header: aDomain.Header): Unit = ???
-
-  override def setContextHeader(header: aDomain.Header): Unit = ???
-
   override def resolve(value: String): Option[String] = ???
 
   override def id: RequestContext.Id = ???
@@ -42,4 +31,8 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
   override def reset(): Unit = ???
 
   override def commit(): Unit = ???
+
+  override def `type`: aDomain.Type = ???
+
+  override def content: String = ???
 }

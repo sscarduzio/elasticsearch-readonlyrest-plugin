@@ -12,6 +12,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.TestsUtils.scalaFiniteDuration2JavaDuration
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRuleTest._
 import tech.beshu.ror.acl.request.RequestContext
@@ -63,10 +66,10 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
       "user is not logged" in {
         implicit val _ = fixedClock
         val rule = new SessionMaxIdleRule(Settings(positive(1 minute)))
-        val context = mock[RequestContext]
-        (context.loggedUser _).expects().returning(None)
-        (context.setResponseHeader _).expects(Header("Set-Cookie" -> ""))
-        rule.`match`(context).runSyncStep shouldBe Right(false)
+        val requestContext = mock[RequestContext]
+        val blockContext = mock[BlockContext]
+        (blockContext.loggedUser _).expects().returning(None)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected)
       }
       "ror cookie is expired" in {
         implicit val _ = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
@@ -118,11 +121,13 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
                          isMatched: Boolean)
                         (implicit clock: Clock) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle))
-    val context = mock[RequestContext]
-    (context.loggedUser _).expects().returning(loggedUser)
-    (context.headers _).expects().returning(Set(Header("Cookie" -> rawCookie)))
-    (context.setResponseHeader _).expects(Header("Set-Cookie" -> setRawCookie))
-    rule.`match`(context).runSyncStep shouldBe Right(isMatched)
+    val requestContext = mock[RequestContext]
+    val blockContext = mock[BlockContext]
+    val newBlockContext = mock[BlockContext]
+    (requestContext.headers _).expects().returning(Set(Header("Cookie" -> rawCookie)))
+    (blockContext.loggedUser _).expects().returning(loggedUser)
+    if(isMatched) (blockContext.setResponseHeader _).expects(Header("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(newBlockContext) { isMatched })
   }
 
   private def positive(duration: FiniteDuration) = refineV[Positive](duration).right.get

@@ -29,12 +29,12 @@ import java.util.Objects;
  * - an immutable final req
  * - a custom function that is executed when the final req is being frozen.
  * <p>
- * NB: If a Delayed.reset() is executed, the tranisent req returns to the initial req.
+ * NB: If a __old_Delayed.reset() is executed, the tranisent req returns to the initial req.
  * <p>
  * Created by sscarduzio on 14/04/2017.
  */
 
-public abstract class Transactional<T> extends Delayed {
+public abstract class __old_Transactional<T> extends __old_Delayed {
 
   private final LoggerShim logger;
 
@@ -42,7 +42,7 @@ public abstract class Transactional<T> extends Delayed {
   private T initialValue;
   private T transientValue;
 
-  public Transactional(String name, ESContext context) {
+  public __old_Transactional(String name, ESContext context) {
     super(name, context);
     this.logger = context.logger(getClass());
   }

@@ -43,11 +43,10 @@ object RorSessionCookie extends StrictLogging {
 
   def toSessionHeader(cookie: RorSessionCookie)
                      (implicit uuidProvider: UuidProvider): Header =
-    setSessionHeader(s"$rorCookieName=${coders.encoder((cookie, Signature.sign(cookie))).noSpaces}")
-
-  def emptySessionHeader: Header = setSessionHeader("")
-
-  private def setSessionHeader(value: String) = new Header(setCookie, value)
+    new Header(
+      setCookie,
+      s"$rorCookieName=${coders.encoder((cookie, Signature.sign(cookie))).noSpaces}"
+    )
 
   private def extractRorHttpCookie(context: RequestContext) = {
     context

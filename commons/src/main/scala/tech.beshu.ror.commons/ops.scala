@@ -2,11 +2,12 @@ package tech.beshu.ror.commons
 
 import cats.{Order, Show}
 import cats.implicits._
-import com.softwaremill.sttp.Method
+import com.softwaremill.sttp.{Method, Uri}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import shapeless.Nat
 import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.commons.aDomain.Header.Name
 import tech.beshu.ror.commons.aDomain._
 import tech.beshu.ror.commons.domain._
 
@@ -61,6 +62,16 @@ object show {
   object logs {
     implicit val userIdShow: Show[User.Id] = Show.show(_.value)
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value)
+    implicit val typeShow: Show[Type] = Show.show(_.value)
+    implicit val actionShow: Show[Action] = Show.show(_.value)
+    implicit val addressShow: Show[Address] = Show.show(_.value)
+    implicit val methodShow: Show[Method] = Show.show(_.m)
+    implicit val uriShow: Show[Uri] = Show.show(_.toString())
+    implicit val headerNameShow: Show[Header.Name] = Show.show(_.value)
+    implicit val headerShow: Show[Header] = Show.show {
+      case Header(name@Name.authorization, _) => s"${name.show}=<OMITTED>"
+      case Header(name, value) => s"${name.show}=${value.show}"
+    }
   }
 
 }

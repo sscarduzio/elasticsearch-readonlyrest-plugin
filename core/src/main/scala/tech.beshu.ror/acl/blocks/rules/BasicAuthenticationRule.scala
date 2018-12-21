@@ -2,8 +2,10 @@ package tech.beshu.ror.acl.blocks.rules
 
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.domain.LoggedUser
 import tech.beshu.ror.commons.domain.User.Id
@@ -20,20 +22,20 @@ abstract class BasicAuthenticationRule(settings: Settings)
 
   protected def authenticate(configuredAuthKey: String, basicAuth: BasicAuth): Boolean
 
-  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
+  override def check(requestContext: RequestContext,
+                     blockContext: BlockContext): Task[RuleResult] = Task.now {
     BasicAuthUtils
-      .getBasicAuthFromHeaders(context.headers.map(_.toTuple).toMap.asJava).asScala
+      .getBasicAuthFromHeaders(requestContext.headers.map(_.toTuple).toMap.asJava).asScala
       .map { credentials =>
-        logger.debug(s"Attempting Login as: ${credentials.getUserName} rc: $context")
-        val authenticationResult = authenticate(settings.authKey, credentials)
-        if (authenticationResult) {
-          context.setLoggedInUser(LoggedUser(Id(credentials.getUserName)))
-        }
-        authenticationResult
+        logger.debug(s"Attempting Login as: ${credentials.getUserName} rc: $requestContext")
+        if (authenticate(settings.authKey, credentials))
+          Fulfilled(blockContext.setLoggedUser(LoggedUser(Id(credentials.getUserName))))
+        else
+          Rejected
       }
       .getOrElse {
         logger.debug("No basic auth")
-        false
+        Rejected
       }
   }
 }

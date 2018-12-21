@@ -42,22 +42,22 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
-public abstract class __old_RequestContext extends Delayed implements RequestContextShim,
+public abstract class __old_RequestContext extends __old_Delayed implements RequestContextShim,
     __old_Value.__old_VariableResolver {
 
-  protected Transactional<Set<String>> indices;
-  private Transactional<String> kibanaIndex;
+  protected __old_Transactional<Set<String>> indices;
+  private __old_Transactional<String> kibanaIndex;
   private Boolean doesInvolveIndices = false;
   private VariablesManager variablesManager;
   private Map<String, String> requestHeaders;
-  private Transactional<Optional<__old_LoggedUser>> loggedInUser;
-  private Transactional<Map<String, String>> responseHeaders;
-  private Transactional<Map<String, String>> contextHeaders;
+  private __old_Transactional<Optional<__old_LoggedUser>> loggedInUser;
+  private __old_Transactional<Map<String, String>> responseHeaders;
+  private __old_Transactional<Map<String, String>> contextHeaders;
   private List<BlockHistory> history = Lists.newArrayList();
   private Date timestamp = new Date();
   private ESContext context;
-  private Transactional<Set<String>> snapshots;
-  private Transactional<Set<String>> repositories;
+  private __old_Transactional<Set<String>> snapshots;
+  private __old_Transactional<Set<String>> repositories;
 
   public __old_RequestContext(String name, ESContext context) {
     super(name, context);
@@ -68,7 +68,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
   public void init() {
     this.doesInvolveIndices = extractDoesInvolveIndices();
 
-    this.kibanaIndex = new Transactional<String>("tx_kibana_index", context) {
+    this.kibanaIndex = new __old_Transactional<String>("tx_kibana_index", context) {
       @Override
       public String initialize() {
         return null;
@@ -100,7 +100,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
 
     variablesManager = new VariablesManager(this.requestHeaders, this, context);
 
-    this.responseHeaders = new Transactional<Map<String, String>>("rc-resp-headers", context) {
+    this.responseHeaders = new __old_Transactional<Map<String, String>>("rc-resp-headers", context) {
       @Override
       public Map<String, String> initialize() {
         return Maps.newHashMap();
@@ -117,7 +117,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
       }
     };
 
-    this.contextHeaders = new Transactional<Map<String, String>>("rc-ctx-headers", context) {
+    this.contextHeaders = new __old_Transactional<Map<String, String>>("rc-ctx-headers", context) {
       @Override
       public Map<String, String> initialize() {
         return Maps.newHashMap();
@@ -136,7 +136,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
       }
     };
 
-    this.loggedInUser = new Transactional<Optional<__old_LoggedUser>>("rc-loggedin-user", context) {
+    this.loggedInUser = new __old_Transactional<Optional<__old_LoggedUser>>("rc-loggedin-user", context) {
       @Override
       public Optional<__old_LoggedUser> initialize() {
         return Optional.empty();
@@ -168,7 +168,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
       }
     };
 
-    this.repositories = new Transactional<Set<String>>("rc-repositories", context) {
+    this.repositories = new __old_Transactional<Set<String>>("rc-repositories", context) {
       @Override
       public Set<String> initialize() {
         return extractRepositories();
@@ -185,7 +185,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
       }
     };
 
-    this.snapshots = new Transactional<Set<String>>("rc-snapshots", context) {
+    this.snapshots = new __old_Transactional<Set<String>>("rc-snapshots", context) {
       @Override
       public Set<String> initialize() {
         return extractSnapshots();
@@ -202,7 +202,7 @@ public abstract class __old_RequestContext extends Delayed implements RequestCon
       }
     };
 
-    this.indices = new Transactional<Set<String>>("rc-indices", context) {
+    this.indices = new __old_Transactional<Set<String>>("rc-indices", context) {
       @Override
       public Set<String> initialize() {
         return involvesIndices() ? extractIndices() : Collections.emptySet();

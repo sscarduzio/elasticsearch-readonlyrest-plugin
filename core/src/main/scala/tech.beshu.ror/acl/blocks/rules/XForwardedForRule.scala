@@ -5,12 +5,15 @@ import java.net.{Inet4Address, InetAddress, UnknownHostException}
 import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.domain.{IPMask, Value}
+
 import scala.util.control.Exception._
 
 class XForwardedForRule(settings: Settings)
@@ -18,14 +21,18 @@ class XForwardedForRule(settings: Settings)
 
   override val name: Rule.Name = Rule.Name("x_forwarded_for")
 
-  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    context.xForwardedForHeaderValue match {
-      case Some(address) if address === Address.unknown => false
-      case None => false
-      case Some(address) if matchAddress(address, context) => true
+  override def check(requestContext: RequestContext,
+                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+    requestContext.xForwardedForHeaderValue match {
+      case Some(address) if address === Address.unknown => Rejected
+      case None => Rejected
+      case Some(address) if matchAddress(address, requestContext) => Fulfilled(blockContext)
       case Some(address) => ipMaskOf(address) match {
-        case None => false
-        case Some(ip) => settings.allowedIps.exists(_.matches(ip))
+        case None => Rejected
+        case Some(ip) =>
+          RuleResult.fromCondition(blockContext) {
+            settings.allowedIps.exists(_.matches(ip))
+          }
       }
     }
   }

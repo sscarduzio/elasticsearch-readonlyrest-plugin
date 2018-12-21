@@ -27,16 +27,16 @@ import java.util.List;
 /**
  * Created by sscarduzio on 14/04/2017.
  */
-public abstract class Delayed {
+public abstract class __old_Delayed {
   protected final String name;
   private final LoggerShim logger;
   private final ESContext context;
   private final List<Runnable> effects = new LinkedList<>();
-  private final List<Delayed> delegates = new LinkedList<>();
+  private final List<__old_Delayed> delegates = new LinkedList<>();
   private Boolean committed = false;
   private Boolean delegated = false;
 
-  public Delayed(String name, ESContext context) {
+  public __old_Delayed(String name, ESContext context) {
     this.logger = context.logger(getClass());
     this.name = name;
     this.context = context;
@@ -69,7 +69,7 @@ public abstract class Delayed {
       }
       it.remove();
     }
-    delegates.forEach(Delayed::commit);
+    delegates.forEach(__old_Delayed::commit);
   }
 
   public void reset() {
@@ -87,10 +87,10 @@ public abstract class Delayed {
    * Replace this effects queue with the ambassador's queue
    * That is, when the ambassador commits/resets, also this instance's effects are committed/reset.
    *
-   * @param ambassador the Delayed instance we are delegating our commit/reset to.
+   * @param ambassador the __old_Delayed instance we are delegating our commit/reset to.
    */
 
-  public void delegateTo(Delayed ambassador) {
+  public void delegateTo(__old_Delayed ambassador) {
     if (delegated) {
       throw context.rorException(name + " > Already delegated, cannot delegate twice.");
     }

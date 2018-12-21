@@ -5,6 +5,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import squants.information.{Bytes, Information, Kilobytes}
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
 
 class MaxBodyLengthRuleTests extends WordSpec with MockFactory {
@@ -48,8 +50,9 @@ class MaxBodyLengthRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(configuredMaxContentLength: Information, body: String, isMatched: Boolean) = {
     val rule = new MaxBodyLengthRule(MaxBodyLengthRule.Settings(configuredMaxContentLength))
-    val context = mock[RequestContext]
-    (context.contentLength _).expects().returning(Bytes(body.length))
-    rule.`match`(context).runSyncStep shouldBe Right(isMatched)
+    val requestContext = mock[RequestContext]
+    val blockContext = mock[BlockContext]
+    (requestContext.contentLength _).expects().returning(Bytes(body.length))
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
   }
 }

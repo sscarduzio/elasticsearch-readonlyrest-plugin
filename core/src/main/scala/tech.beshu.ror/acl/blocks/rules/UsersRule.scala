@@ -2,7 +2,9 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
+import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.domain.{LoggedUser, User, Value}
@@ -15,21 +17,24 @@ class UsersRule(settings: Settings)
 
   override val name: Rule.Name = Rule.Name("users")
 
-  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    context.loggedUser match {
-      case None => false
-      case Some(user) => matchUser(user, context)
+  override def check(requestContext: RequestContext,
+                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+    blockContext.loggedUser match {
+      case None => Rejected
+      case Some(user) => matchUser(user, requestContext, blockContext)
     }
   }
 
-  private def matchUser(user: LoggedUser, context: RequestContext): Boolean = {
+  private def matchUser(user: LoggedUser, requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
     val resolvedIds = settings
       .userIds
       .toNonEmptyList
       .toList
-      .flatMap(_.getValue(context))
+      .flatMap(_.getValue(requestContext))
       .toSet
-    new MatcherWithWildcards(resolvedIds.map(_.value).asJava).`match`(user.id.value)
+    RuleResult.fromCondition(blockContext) {
+      new MatcherWithWildcards(resolvedIds.map(_.value).asJava).`match`(user.id.value)
+    }
   }
 }
 

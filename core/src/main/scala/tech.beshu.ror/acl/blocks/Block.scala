@@ -8,6 +8,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult._
 import tech.beshu.ror.acl.blocks.Block._
 import tech.beshu.ror.acl.blocks.rules.Rule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContext._
 import tech.beshu.ror.acl.utils.TaskOps._
@@ -20,24 +21,29 @@ class Block(val name: Name,
             val rules: NonEmptyList[Rule])
   extends StrictLogging {
 
-  def execute(context: RequestContext): BlockResultWithHistory = {
+  def execute(requestContext: RequestContext): BlockResultWithHistory = {
+    val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     rules
-      .foldLeft(matched) {
+      .foldLeft(matched(initBlockContext)) {
         case (acc, rule) =>
           for {
             lastResult <- acc
             res <- lastResult match {
-              case Matched =>
-                val isRuleMatched = rule
-                  .`match`(context)
+              case Matched(blockContext) =>
+                val ruleResult = rule
+                  .check(requestContext, blockContext)
                   .recover { case e =>
                     logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
-                    false
+                    RuleResult.Rejected
                   }
-                lift(isRuleMatched)
+                lift(ruleResult)
                   .flatMap {
-                    case true => matched.tell(Vector(HistoryItem(rule.name, matched = true)))
-                    case false => unmatched.tell(Vector(HistoryItem(rule.name, matched = false)))
+                    case RuleResult.Fulfilled(newBlockContext) =>
+                      matched(newBlockContext)
+                        .tell(Vector(HistoryItem(rule.name, matched = true)))
+                    case RuleResult.Rejected =>
+                      unmatched
+                        .tell(Vector(HistoryItem(rule.name, matched = false)))
                   }
               case Unmatched =>
                 unmatched
@@ -48,17 +54,17 @@ class Block(val name: Name,
       .run
       .map(_.swap)
       .andThen {
-        case Success((Matched, _)) =>
+        case Success((Matched(_), _)) =>
           val block: Block = this
           logger.debug(s"${ANSI_CYAN}matched ${block.show}$ANSI_RESET")
         case Success((Unmatched, _)) =>
-          logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${context.show} $ANSI_RESET")
+          logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }
   }
 
-  private val unmatched = lift(Task.now(Unmatched: ExecutionResult))
+  private def matched[T <: BlockContext](blockContext: T) = lift(Task.now(Matched(blockContext): ExecutionResult))
 
-  private val matched = lift(Task.now(Matched: ExecutionResult))
+  private val unmatched = lift(Task.now(Unmatched: ExecutionResult))
 
   private def lift[T](task: Task[T]) = WriterT.liftF[Task, Vector[HistoryItem], T](task)
 }
@@ -77,7 +83,7 @@ object Block {
 
   sealed trait ExecutionResult
   object ExecutionResult {
-    case object Matched extends ExecutionResult
+    final case class Matched(context: BlockContext) extends ExecutionResult
     case object Unmatched extends ExecutionResult
   }
 

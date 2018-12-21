@@ -6,6 +6,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.domain.User.Id
 import tech.beshu.ror.commons.domain.{LoggedUser, User, Value}
@@ -58,8 +60,9 @@ class UsersRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(configuredIds: NonEmptySet[Value[User.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds))
-    val context = mock[RequestContext]
-    (context.loggedUser _).expects().returning(loggedUser)
-    rule.`match`(context).runSyncStep shouldBe Right(isMatched)
+    val requestContext = mock[RequestContext]
+    val blockContext = mock[BlockContext]
+    (blockContext.loggedUser _).expects().returning(loggedUser)
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
   }
 }

@@ -5,6 +5,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.{Header, KibanaApp}
 import tech.beshu.ror.commons.domain.LoggedUser
@@ -17,16 +19,19 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
     "always match" should {
       "set kibana app header if user is logged" in {
         val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1"))))
-        val context = mock[RequestContext]
-        (context.loggedUser _).expects().returning(Some(LoggedUser(Id("user1"))))
-        (context.setResponseHeader _).expects(Header("x-ror-kibana-hidden-apps" -> "app1"))
-        rule.`match`(context).runSyncStep shouldBe Right(true)
+        val requestContext = mock[RequestContext]
+        val blockContext = mock[BlockContext]
+        val newBlockContext = mock[BlockContext]
+        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id("user1"))))
+        (blockContext.setResponseHeader _).expects(Header("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext) )
       }
       "not set kibana app header if user is not logged" in {
         val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1"))))
-        val context = mock[RequestContext]
-        (context.loggedUser _).expects().returning(None)
-        rule.`match`(context).runSyncStep shouldBe Right(true)
+        val requestContext = mock[RequestContext]
+        val blockContext = mock[BlockContext]
+        (blockContext.loggedUser _).expects().returning(None)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
       }
     }
   }

@@ -6,6 +6,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.orders._
 
@@ -44,8 +46,9 @@ class MethodsRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(configuredMethods: NonEmptySet[Method], requestMethod: Method, isMatched: Boolean) = {
     val rule = new MethodsRule(MethodsRule.Settings(configuredMethods))
-    val context = mock[RequestContext]
-    (context.method _).expects().returning(requestMethod)
-    rule.`match`(context).runSyncStep shouldBe Right(isMatched)
+    val requestContext = mock[RequestContext]
+    val blockContext = mock[BlockContext]
+    (requestContext.method _).expects().returning(requestMethod)
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
   }
 }

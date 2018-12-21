@@ -4,7 +4,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.Block
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
 import tech.beshu.ror.acl.request.EsRequestContext
@@ -18,31 +18,33 @@ import scala.util.Success
 class ACL(blocks: NonEmptyList[Block])
   extends StrictLogging {
 
-  def check(rInfo: RequestInfoShim, handler: ACLHandler): Unit = {
+  // todo: history
+  def check(rInfo: RequestInfoShim, handler: ACLHandler): Task[Unit] = {
     val context = new EsRequestContext(rInfo)
     logger.debug(s"checking request: ${context.id.show}")
-    blocks.foldLeft(unmatched) {
-      case (acc, block) => acc.flatMap {
-        case Unmatched =>
-          for {
-            _ <- Task.now(context.reset())
-            result <- block
-              .execute(context)
-              .andThen {
-                case Success((Matched, _)) if block.policy === Block.Policy.Allow =>
-                  context.commit()
-              }
-              .map(_._1)
-          } yield result
-        case Matched =>
-          matched
+    blocks
+      .foldLeft(unmatched) {
+        case (acc, block) => acc.flatMap {
+          case Unmatched =>
+            for {
+              _ <- Task.now(context.reset())
+              result <- block
+                .execute(context)
+                .andThen {
+                  case Success((Matched(blockContext), _)) if block.policy === Block.Policy.Allow =>
+                    commitChanges(blockContext, rInfo)
+                }
+                .map(_._1)
+            } yield result
+          case matched =>
+            Task.now(matched)
+        }
       }
-    }
+      .map(_ => {})
   }
 
+  private def commitChanges(blockContext: BlockContext, rInfo: RequestInfoShim): Unit = ???
 
   private val unmatched = Task.now(Block.ExecutionResult.Unmatched: ExecutionResult)
-
-  private val matched = Task.now(Block.ExecutionResult.Matched: ExecutionResult)
 
 }

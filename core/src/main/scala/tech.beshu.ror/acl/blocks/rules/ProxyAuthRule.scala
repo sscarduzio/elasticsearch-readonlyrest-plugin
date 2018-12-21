@@ -3,8 +3,10 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.domain.User.Id
@@ -15,13 +17,15 @@ class ProxyAuthRule(settings: Settings)
 
   override val name: Rule.Name = Rule.Name("proxy_auth")
 
-  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    getLoggedUser(context) match {
-      case None => false
+  override def check(requestContext: RequestContext,
+                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+    getLoggedUser(requestContext) match {
+      case None =>
+        Rejected
       case Some(loggedUser) if shouldAuthenticate(loggedUser) =>
-        context.setLoggedInUser(loggedUser)
-        true
-      case Some(_) => false
+        Fulfilled(blockContext.setLoggedUser(loggedUser))
+      case Some(_) =>
+        Rejected
     }
   }
 

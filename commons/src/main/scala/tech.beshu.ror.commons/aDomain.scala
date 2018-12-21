@@ -14,6 +14,9 @@ object aDomain {
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")
       val transientFields = Name(Constants.FIELDS_TRANSIENT)
+      val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
+      val userAgent = Name("User-Agent")
+      val authorization = Name("Authorization")
 
       implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
     }
@@ -55,4 +58,6 @@ object aDomain {
     final case class ADocumentField(override val value: String) extends DocumentField(value)
     final case class NegatedDocumentField(override val value: String) extends DocumentField(value)
   }
+
+  final case class Type(value: String) extends AnyVal
 }

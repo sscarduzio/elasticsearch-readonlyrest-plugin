@@ -5,6 +5,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.domain.User.Id
@@ -61,9 +63,11 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(settings: ProxyAuthRule.Settings, header: Header, isMatched: Boolean) = {
     val rule = new ProxyAuthRule(settings)
-    val context = mock[RequestContext]
-    (context.headers _).expects().returning(Set(header))
-    if(isMatched) (context.setLoggedInUser _).expects(LoggedUser(Id(header.value)))
-    rule.`match`(context).runSyncStep shouldBe Right(isMatched)
+    val requestContext = mock[RequestContext]
+    val blockContext = mock[BlockContext]
+    val newBlockContext = mock[BlockContext]
+    (requestContext.headers _).expects().returning(Set(header))
+    if(isMatched) (blockContext.setLoggedUser _).expects(LoggedUser(Id(header.value))).returning(newBlockContext)
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(newBlockContext) { isMatched })
   }
 }

@@ -2,8 +2,9 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.HeadersAndRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
@@ -19,14 +20,20 @@ class HeadersAndRule(settings: Settings)
 
   override val name: Rule.Name = Rule.Name("headers_and")
 
-  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    val headersSubset = context
+  override def check(requestContext: RequestContext,
+                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+    val headersSubset = requestContext
       .headers
       .filter(h => settings.headers.exists(_.name.value.toLowerCase() == h.name.value.toLowerCase()))
-    if (headersSubset.size != settings.headers.length) false
-    else new MatcherWithWildcards(settings.headers.toSortedSet.map(_.flatten).asJava)
-      .filter(headersSubset.map(_.flatten).asJava)
-      .size == settings.headers.length
+    if (headersSubset.size != settings.headers.length)
+      RuleResult.Rejected
+    else {
+      RuleResult.fromCondition(blockContext) {
+        new MatcherWithWildcards(settings.headers.toSortedSet.map(_.flatten).asJava)
+          .filter(headersSubset.map(_.flatten).asJava)
+          .size == settings.headers.length
+      }
+    }
   }
 }
 

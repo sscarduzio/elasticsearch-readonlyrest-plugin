@@ -29,7 +29,7 @@ public class TransactionalTest {
 
   @Test
   public void testTransactional() {
-    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
+    __old_Transactional<String> tv = new __old_Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -58,7 +58,7 @@ public class TransactionalTest {
 
   @Test(expected = RuntimeException.class)
   public void testThrowOnDoubleCommit() {
-    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
+    __old_Transactional<String> tv = new __old_Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -81,7 +81,7 @@ public class TransactionalTest {
 
   @Test
   public void testReset() {
-    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
+    __old_Transactional<String> tv = new __old_Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -109,7 +109,7 @@ public class TransactionalTest {
 
   @Test(expected = RuntimeException.class)
   public void testDelegate() {
-    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
+    __old_Transactional<String> tv = new __old_Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -126,7 +126,7 @@ public class TransactionalTest {
       }
     };
 
-    Transactional<Integer> tvi = new Transactional<Integer>("tvi", MockedESContext.INSTANCE) {
+    __old_Transactional<Integer> tvi = new __old_Transactional<Integer>("tvi", MockedESContext.INSTANCE) {
 
       @Override
       public Integer initialize() {
@@ -154,7 +154,7 @@ public class TransactionalTest {
 
   @Test
   public void testDelegateReset() {
-    Transactional<String> tv = new Transactional<String>("tv", MockedESContext.INSTANCE) {
+    __old_Transactional<String> tv = new __old_Transactional<String>("tv", MockedESContext.INSTANCE) {
 
       @Override
       public String initialize() {
@@ -171,7 +171,7 @@ public class TransactionalTest {
       }
     };
 
-    Transactional<Integer> tvi = new Transactional<Integer>("tvi", MockedESContext.INSTANCE) {
+    __old_Transactional<Integer> tvi = new __old_Transactional<Integer>("tvi", MockedESContext.INSTANCE) {
 
       @Override
       public Integer initialize() {

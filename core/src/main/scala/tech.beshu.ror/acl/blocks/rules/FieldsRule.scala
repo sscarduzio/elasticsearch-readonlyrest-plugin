@@ -2,8 +2,9 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.FieldsRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.commons.aDomain.Header.Name
@@ -14,12 +15,10 @@ class FieldsRule(settings: Settings)
 
   override val name: Rule.Name = Rule.Name("fields")
 
-  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    if(!context.isReadOnlyRequest) false
-    else {
-      context.setContextHeader(transientFieldsHeader)
-      true
-    }
+  override def check(requestContext: RequestContext,
+                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+    if(!requestContext.isReadOnlyRequest) RuleResult.Rejected
+    else RuleResult.Fulfilled(blockContext.setContentHeader(transientFieldsHeader))
   }
 
   private val transientFieldsHeader = new Header(Name.transientFields, settings.fields.map(_.value).mkString(","))

@@ -27,5 +27,6 @@ final case class Const[T](value: T)
 }
 
 trait VariablesResolver {
+  // todo: request context or block context?
   def resolve(value: String): Option[String]
 }

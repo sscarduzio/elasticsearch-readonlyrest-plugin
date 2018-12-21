@@ -2,13 +2,16 @@ package tech.beshu.ror.acl.blocks.rules
 
 import java.util.regex.Pattern
 
-import io.lemonlabs.uri.Uri
+import com.softwaremill.sttp.Uri
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.domain.{Const, Value, Variable}
+import com.softwaremill.sttp.UriContext
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 
 class UriRegexRuleTests extends WordSpec with MockFactory {
 
@@ -17,14 +20,14 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
       "configured pattern matches uri from request" in {
         assertMatchRule(
           uriRegex = Value.fromString("""^http:\/\/one.com\/\d\d\d$""", Pattern.compile),
-          uri = Uri.parse("http://one.com/123"),
+          uri = uri"http://one.com/123",
           isUserLogged = false
         )
       }
       "configured pattern with variable matches uri from request when user is logged" in {
         assertMatchRule(
           uriRegex = Value.fromString("""^http:\/\/one.com\/@{user}$""", Pattern.compile),
-          uri = Uri.parse("http://one.com/mia"),
+          uri = uri"http://one.com/mia",
           isUserLogged = true
         )
       }
@@ -33,14 +36,14 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
       "configured pattern doesn't match uri from request" in {
         assertNotMatchRule(
           uriRegex = Value.fromString("""^http:\/\/one.com\/\d\d\d$""", Pattern.compile),
-          uri = Uri.parse("http://one.com/one"),
+          uri = uri"http://one.com/one",
           isUserLogged = false
         )
       }
       "configured pattern with variable doesn't matche uri from request when user is not logged" in {
         assertNotMatchRule(
           uriRegex = Value.fromString("""^http:\/\/one.com\/@{user}$""", Pattern.compile),
-          uri = Uri.parse("http://one.com/mia"),
+          uri = uri"http://one.com/mia",
           isUserLogged = false
         )
       }
@@ -55,16 +58,17 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(uriRegex: Value[Pattern], uri: Uri, isMatched: Boolean, isUserLogged: Boolean) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
-    val context = mock[RequestContext]
+    val requestContext = mock[RequestContext]
+    val blockContext = mock[BlockContext]
     uriRegex match {
       case Const(_) =>
-        (context.uri _).expects().returning(uri)
+        (requestContext.uri _).expects().returning(uri)
       case Variable(representation, _) if isUserLogged =>
-        (context.uri _).expects().returning(uri)
-        (context.resolve _).expects(representation).returning(Some(uri.toString()))
+        (requestContext.uri _).expects().returning(uri)
+        (requestContext.resolve _).expects(representation).returning(Some(uri.toString()))
       case Variable(representation, _) =>
-        (context.resolve _).expects(representation).returning(None)
+        (requestContext.resolve _).expects(representation).returning(None)
     }
-    rule.`match`(context).runSyncStep shouldBe Right(isMatched)
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
   }
 }

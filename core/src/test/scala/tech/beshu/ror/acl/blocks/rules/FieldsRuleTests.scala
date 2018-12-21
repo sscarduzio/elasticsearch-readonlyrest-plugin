@@ -5,6 +5,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.DocumentField.ADocumentField
 import tech.beshu.ror.commons.aDomain.Header
@@ -16,18 +18,21 @@ class FieldsRuleTests extends WordSpec with MockFactory {
     "match" when {
       "request is read only" in {
         val rule = new FieldsRule(FieldsRule.Settings.ofFields(NonEmptySet.of(ADocumentField("_field1"), ADocumentField("_field2"))))
-        val context = mock[RequestContext]
-        (context.isReadOnlyRequest _).expects().returning(true)
-        (context.setContextHeader _).expects(Header("_fields" -> "_field1,_field2"))
-        rule.`match`(context).runSyncStep shouldBe Right(true)
+        val requestContext = mock[RequestContext]
+        val blockContext = mock[BlockContext]
+        val newBlockContext = mock[BlockContext]
+        (requestContext.isReadOnlyRequest _).expects().returning(true)
+        (blockContext.setContentHeader _).expects(Header("_fields" -> "_field1,_field2")).returning(newBlockContext)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
     }
     "not match" when {
       "request is not read only" in {
         val rule = new FieldsRule(FieldsRule.Settings.ofFields(NonEmptySet.of(ADocumentField("_field1"))))
-        val context = mock[RequestContext]
-        (context.isReadOnlyRequest _).expects().returning(false)
-        rule.`match`(context).runSyncStep shouldBe Right(false)
+        val requestContext = mock[RequestContext]
+        val blockContext = mock[BlockContext]
+        (requestContext.isReadOnlyRequest _).expects().returning(false)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected)
       }
     }
   }

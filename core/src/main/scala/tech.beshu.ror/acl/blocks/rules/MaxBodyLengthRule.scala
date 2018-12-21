@@ -2,8 +2,9 @@ package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
 import squants.information.Information
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
+import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.request.RequestContext
 
 class MaxBodyLengthRule(settings: Settings)
@@ -11,8 +12,11 @@ class MaxBodyLengthRule(settings: Settings)
 
   override val name: Rule.Name = Rule.Name("max_body_length")
 
-  override def `match`(context: RequestContext): Task[Boolean] = Task.now {
-    context.contentLength <= settings.maxContentLength
+  override def check(requestContext: RequestContext,
+                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+    RuleResult.fromCondition(blockContext) {
+      requestContext.contentLength <= settings.maxContentLength
+    }
   }
 }
 
