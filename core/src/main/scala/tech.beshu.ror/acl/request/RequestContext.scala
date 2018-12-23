@@ -5,15 +5,15 @@ import cats.implicits._
 import com.softwaremill.sttp.{Method, Uri}
 import com.typesafe.scalalogging.StrictLogging
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.acl.blocks.{VariablesManager, VariablesResolver}
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.request.RequestContextOps.toRequestContextOps
 import tech.beshu.ror.commons.aDomain._
-import tech.beshu.ror.commons.domain.{LoggedUser, VariablesResolver}
 import tech.beshu.ror.commons.show.logs._
 
 import scala.language.implicitConversions
 
-trait RequestContext extends VariablesResolver {
+trait RequestContext {
   def id: Id
   def `type`: Type
   def action: Action
@@ -27,8 +27,7 @@ trait RequestContext extends VariablesResolver {
 
   def isReadOnlyRequest: Boolean
 
-  def reset(): Unit
-  def commit(): Unit
+  def variablesResolver: VariablesResolver = new VariablesManager(this)
 }
 
 object RequestContext extends StrictLogging {

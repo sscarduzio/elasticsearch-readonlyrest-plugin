@@ -7,7 +7,7 @@ import org.scalatest.WordSpec
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History, HistoryItem}
-import tech.beshu.ror.acl.blocks.BlockTest.{dummyRequestContext, notPassingRule, passingRule, throwingRule}
+import tech.beshu.ror.acl.blocks.BlockTests.{dummyRequestContext, notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Failure
 
-class BlockTest extends WordSpec {
+class BlockTests extends WordSpec {
 
   "A block execution result" should {
     "be unmatched and contain all history, up to unmatched rule" when {
@@ -86,7 +86,7 @@ class BlockTest extends WordSpec {
   }
 }
 
-object BlockTest extends MockFactory {
+object BlockTests extends MockFactory {
 
   private val passingRule = new RegularRule {
     override val name: Rule.Name = Rule.Name("matching")

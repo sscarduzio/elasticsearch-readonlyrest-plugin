@@ -3,11 +3,10 @@ package tech.beshu.ror.acl.blocks.rules
 import java.util.regex.Pattern
 
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.domain.Value
 
 class UriRegexRule(settings: Settings)
   extends RegularRule {
@@ -19,7 +18,7 @@ class UriRegexRule(settings: Settings)
     RuleResult.fromCondition(blockContext) {
       settings
         .uriPattern
-        .getValue(requestContext)
+        .getValue(requestContext.variablesResolver, blockContext)
         .exists {
           _.matcher(requestContext.uri.toString()).find()
         }

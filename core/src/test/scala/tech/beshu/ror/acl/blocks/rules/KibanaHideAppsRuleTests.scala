@@ -23,7 +23,7 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id("user1"))))
-        (blockContext.setResponseHeader _).expects(Header("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
+        (blockContext.addResponseHeader _).expects(Header("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext) )
       }
       "not set kibana app header if user is not logged" in {

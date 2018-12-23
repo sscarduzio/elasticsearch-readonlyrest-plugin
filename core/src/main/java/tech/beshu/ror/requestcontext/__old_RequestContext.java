@@ -48,7 +48,7 @@ public abstract class __old_RequestContext extends __old_Delayed implements Requ
   protected __old_Transactional<Set<String>> indices;
   private __old_Transactional<String> kibanaIndex;
   private Boolean doesInvolveIndices = false;
-  private VariablesManager variablesManager;
+  private __old_VariablesManager variablesManager;
   private Map<String, String> requestHeaders;
   private __old_Transactional<Optional<__old_LoggedUser>> loggedInUser;
   private __old_Transactional<Map<String, String>> responseHeaders;
@@ -98,7 +98,7 @@ public abstract class __old_RequestContext extends __old_Delayed implements Requ
       throw context.rorException("Current groups contains more than one values: " + curGroup);
     }
 
-    variablesManager = new VariablesManager(this.requestHeaders, this, context);
+    variablesManager = new __old_VariablesManager(this.requestHeaders, this, context);
 
     this.responseHeaders = new __old_Transactional<Map<String, String>>("rc-resp-headers", context) {
       @Override

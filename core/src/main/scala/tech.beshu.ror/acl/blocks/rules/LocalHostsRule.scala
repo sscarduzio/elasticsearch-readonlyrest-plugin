@@ -2,12 +2,11 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Address
-import tech.beshu.ror.commons.domain.Value
 
 class LocalHostsRule(settings: Settings)
   extends RegularRule {
@@ -20,7 +19,7 @@ class LocalHostsRule(settings: Settings)
       settings
         .allowedAddresses
         .toSortedSet
-        .flatMap(_.getValue(requestContext))
+        .flatMap(_.getValue(requestContext.variablesResolver, blockContext))
         .contains(requestContext.localAddress)
     }
   }

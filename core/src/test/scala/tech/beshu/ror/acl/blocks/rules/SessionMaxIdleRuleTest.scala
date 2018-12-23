@@ -126,7 +126,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
     val newBlockContext = mock[BlockContext]
     (requestContext.headers _).expects().returning(Set(Header("Cookie" -> rawCookie)))
     (blockContext.loggedUser _).expects().returning(loggedUser)
-    if(isMatched) (blockContext.setResponseHeader _).expects(Header("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
+    if(isMatched) (blockContext.addResponseHeader _).expects(Header("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(newBlockContext) { isMatched })
   }
 

@@ -31,11 +31,11 @@ import static org.mockito.Mockito.when;
 /**
  * Created by sscarduzio on 04/05/2017.
  */
-public class VariablesManagerTest {
+public class __old_VariablesManagerTest {
 
   @Test
   public void testSimple() {
-    VariablesManager vm = new VariablesManager(
+    __old_VariablesManager vm = new __old_VariablesManager(
       ImmutableMap.<String, String>builder().put("key1", "x").build(),
       getMock(Optional.of("simone")),
       MockedESContext.INSTANCE
@@ -45,7 +45,7 @@ public class VariablesManagerTest {
 
   @Test
   public void testSimpleWithUser() {
-    VariablesManager vm = new VariablesManager(
+    __old_VariablesManager vm = new __old_VariablesManager(
       ImmutableMap.<String, String>builder().build(),
       getMock(Optional.of("simone")),
       MockedESContext.INSTANCE
@@ -55,7 +55,7 @@ public class VariablesManagerTest {
 
   @Test
   public void testNoReplacement() {
-    VariablesManager vm = new VariablesManager(
+    __old_VariablesManager vm = new __old_VariablesManager(
       ImmutableMap.<String, String>builder().put("key1", "x").build(),
       getMock(Optional.of("simone")),
       MockedESContext.INSTANCE
@@ -65,7 +65,7 @@ public class VariablesManagerTest {
 
   @Test
   public void testUpperHeadersLowerVar() {
-    VariablesManager vm = new VariablesManager(
+    __old_VariablesManager vm = new __old_VariablesManager(
       ImmutableMap.<String, String>builder().put("KEY1", "x").build(),
       getMock(Optional.of("simone")),
       MockedESContext.INSTANCE
@@ -75,7 +75,7 @@ public class VariablesManagerTest {
 
   @Test
   public void testMessyOriginal() {
-    VariablesManager vm = new VariablesManager(
+    __old_VariablesManager vm = new __old_VariablesManager(
       ImmutableMap.<String, String>builder().put("key1", "x").build(),
       getMock(Optional.of("simone")),
       MockedESContext.INSTANCE

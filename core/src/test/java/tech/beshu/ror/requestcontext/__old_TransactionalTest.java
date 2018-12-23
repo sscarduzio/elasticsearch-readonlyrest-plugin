@@ -25,7 +25,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by sscarduzio on 14/04/2017.
  */
-public class TransactionalTest {
+public class __old_TransactionalTest {
 
   @Test
   public void testTransactional() {

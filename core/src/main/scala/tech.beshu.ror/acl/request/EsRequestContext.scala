@@ -6,6 +6,7 @@ import tech.beshu.ror.commons.aDomain
 import tech.beshu.ror.commons.domain.LoggedUser
 import tech.beshu.ror.commons.shims.request.RequestInfoShim
 
+// todo: implement
 class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
   override def action: aDomain.Action = ???
@@ -24,13 +25,7 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
   override def isReadOnlyRequest: Boolean = ???
 
-  override def resolve(value: String): Option[String] = ???
-
   override def id: RequestContext.Id = ???
-
-  override def reset(): Unit = ???
-
-  override def commit(): Unit = ???
 
   override def `type`: aDomain.Type = ???
 

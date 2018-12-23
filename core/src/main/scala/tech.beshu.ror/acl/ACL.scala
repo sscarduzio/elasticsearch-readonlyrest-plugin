@@ -27,7 +27,6 @@ class ACL(blocks: NonEmptyList[Block])
         case (acc, block) => acc.flatMap {
           case Unmatched =>
             for {
-              _ <- Task.now(context.reset())
               result <- block
                 .execute(context)
                 .andThen {

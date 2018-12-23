@@ -5,14 +5,14 @@ import java.net.{Inet4Address, InetAddress, UnknownHostException}
 import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.commons.aDomain.Address
-import tech.beshu.ror.commons.domain.{IPMask, Value}
+import tech.beshu.ror.commons.domain.IPMask
 
 import scala.util.control.Exception._
 
@@ -26,7 +26,7 @@ class XForwardedForRule(settings: Settings)
     requestContext.xForwardedForHeaderValue match {
       case Some(address) if address === Address.unknown => Rejected
       case None => Rejected
-      case Some(address) if matchAddress(address, requestContext) => Fulfilled(blockContext)
+      case Some(address) if matchAddress(address, requestContext, blockContext) => Fulfilled(blockContext)
       case Some(address) => ipMaskOf(address) match {
         case None => Rejected
         case Some(ip) =>
@@ -37,10 +37,10 @@ class XForwardedForRule(settings: Settings)
     }
   }
 
-  private def matchAddress(address: Address, context: RequestContext): Boolean =
+  private def matchAddress(address: Address, requestContext: RequestContext, blockContext: BlockContext): Boolean =
     settings
       .allowedAddresses
-      .flatMap(_.getValue(context))
+      .flatMap(_.getValue(requestContext.variablesResolver, blockContext))
       .contains(address)
 
   private def ipMaskOf(address: Address): Option[Inet4Address] = {

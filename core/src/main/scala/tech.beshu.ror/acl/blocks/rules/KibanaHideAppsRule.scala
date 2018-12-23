@@ -27,7 +27,7 @@ class KibanaHideAppsRule(settings: Settings)
     blockContext.loggedUser match {
       case Some(user) =>
         logger.debug(s"setting hidden apps for user ${user.show}: ${kibanaAppsHeader.value.show}")
-        blockContext.setResponseHeader(kibanaAppsHeader)
+        blockContext.addResponseHeader(kibanaAppsHeader)
       case None =>
         blockContext
     }

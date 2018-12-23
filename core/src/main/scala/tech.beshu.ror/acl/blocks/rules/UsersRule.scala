@@ -2,12 +2,12 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.domain.{LoggedUser, User, Value}
+import tech.beshu.ror.commons.domain.{LoggedUser, User}
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
@@ -30,7 +30,7 @@ class UsersRule(settings: Settings)
       .userIds
       .toNonEmptyList
       .toList
-      .flatMap(_.getValue(requestContext))
+      .flatMap(_.getValue(requestContext.variablesResolver, blockContext))
       .toSet
     RuleResult.fromCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value).asJava).`match`(user.id.value)

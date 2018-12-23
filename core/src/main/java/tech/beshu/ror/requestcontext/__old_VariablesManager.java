@@ -27,7 +27,7 @@ import java.util.TreeMap;
 /**
  * Created by sscarduzio on 04/05/2017.
  */
-public class VariablesManager {
+public class __old_VariablesManager {
 
   private static final char ESCAPE_CHAR = '@';
   private static final char DELIMITER_BEGIN_CHAR = '{';
@@ -38,7 +38,7 @@ public class VariablesManager {
   private final __old_RequestContext rc;
   private Map<String, String> headers;
 
-  public VariablesManager(Map<String, String> headers, __old_RequestContext rc, ESContext context) {
+  public __old_VariablesManager(Map<String, String> headers, __old_RequestContext rc, ESContext context) {
     this.logger = context.logger(getClass());
     this.rc = rc;
     Map<String, String> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);

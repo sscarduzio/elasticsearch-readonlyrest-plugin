@@ -10,8 +10,8 @@ trait BlockContext {
   def loggedUser: Option[LoggedUser]
   def setLoggedUser(user: LoggedUser): BlockContext
 
-  def setResponseHeader(header: Header): BlockContext
-  def setContentHeader(header: Header): BlockContext
+  def addResponseHeader(header: Header): BlockContext
+  def addContextHeader(header: Header): BlockContext
   def setKibanaIndex(index: IndexName): BlockContext
 
 }
@@ -24,21 +24,30 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def setLoggedUser(user: LoggedUser): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(loggedUser = Some(user)))
 
-  override def setResponseHeader(header: Header): BlockContext =
+  override def addResponseHeader(header: Header): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(responseHeaders = data.responseHeaders :+ header))
 
-  override def setContentHeader(header: Header): BlockContext = ???
+  override def addContextHeader(header: Header): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(contextHeaders = data.contextHeaders :+ header))
 
-  override def setKibanaIndex(index: IndexName): BlockContext = ???
+  override def setKibanaIndex(index: IndexName): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
 }
 
 object RequestContextInitiatedBlockContext {
 
   final case class BlockContextData(loggedUser: Option[LoggedUser],
-                                    responseHeaders: Vector[Header])
+                                    responseHeaders: Vector[Header],
+                                    contextHeaders: Vector[Header],
+                                    kibanaIndex: Option[IndexName])
 
   def fromRequestContext(requestContext: RequestContext): RequestContextInitiatedBlockContext =
     new RequestContextInitiatedBlockContext(
-      BlockContextData(None, Vector.empty) // todo:
+      BlockContextData(
+        loggedUser = None,
+        responseHeaders = Vector.empty,
+        contextHeaders = Vector.empty,
+        kibanaIndex = None
+      )
     )
 }
