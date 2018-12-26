@@ -125,6 +125,17 @@ public class FiltersDocLevelSecurityTests {
   }
 
   @Test
+  public void testStar() throws Exception {
+    String body = search("/" + IDX_PREFIX + "*/_search", "star");
+    assertTrue(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+    assertFalse(body.contains("c1"));
+    assertFalse(body.contains("c2"));
+  }
+
+  @Test
   public void testDirectMultipleIdxbandc() throws Exception {
     String body = search("/" + IDX_PREFIX + "bandc/_search");
     assertFalse(body.contains("a1"));
