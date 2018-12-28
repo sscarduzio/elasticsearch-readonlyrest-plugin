@@ -10,7 +10,6 @@ import tech.beshu.ror.acl.blocks.Block._
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.request.RequestContext._
 import tech.beshu.ror.acl.utils.TaskOps._
 import tech.beshu.ror.commons.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 
@@ -18,6 +17,7 @@ import scala.util.Success
 
 class Block(val name: Name,
             val policy: Policy,
+            val verbosity: Verbosity,
             val rules: NonEmptyList[Rule])
   extends StrictLogging {
 
@@ -25,11 +25,11 @@ class Block(val name: Name,
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     rules
       .foldLeft(matched(initBlockContext)) {
-        case (acc, rule) =>
+        case (currentResult, rule) =>
           for {
-            lastResult <- acc
-            res <- lastResult match {
-              case Matched(blockContext) =>
+            previousRulesResult <- currentResult
+            newCurrentResult <- previousRulesResult match {
+              case Matched(_, blockContext) =>
                 val ruleResult = rule
                   .check(requestContext, blockContext)
                   .recover { case e =>
@@ -48,21 +48,21 @@ class Block(val name: Name,
               case Unmatched =>
                 unmatched
             }
-          } yield res
+          } yield newCurrentResult
       }
       .mapWritten(History(name, _))
       .run
       .map(_.swap)
       .andThen {
-        case Success((Matched(_), _)) =>
+        case Success((Matched(_, _), _)) =>
           val block: Block = this
           logger.debug(s"${ANSI_CYAN}matched ${block.show}$ANSI_RESET")
         case Success((Unmatched, _)) =>
-          logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
+          logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.id.show} $ANSI_RESET")
       }
   }
 
-  private def matched[T <: BlockContext](blockContext: T) = lift(Task.now(Matched(blockContext): ExecutionResult))
+  private def matched[T <: BlockContext](blockContext: T) = lift(Task.now(Matched(this, blockContext): ExecutionResult))
 
   private val unmatched = lift(Task.now(Unmatched: ExecutionResult))
 
@@ -74,16 +74,25 @@ object Block {
   type BlockResultWithHistory = Task[(Block.ExecutionResult, History)]
 
   final case class Name(value: String) extends AnyVal
-  final case class History(block: Block.Name, items: Vector[HistoryItem])
-  final case class HistoryItem(rule: Rule.Name, matched: Boolean)
-
   object Name {
     implicit val show: Show[Name] = Show.show(_.value)
   }
 
+  final case class History(block: Block.Name, items: Vector[HistoryItem])
+  object History {
+    implicit val show: Show[History] = Show.show { h =>
+      s"""[${h.block.show}]->[${h.items.map(_.show).mkString(", ")}]"""
+    }
+  }
+
+  final case class HistoryItem(rule: Rule.Name, matched: Boolean)
+  object HistoryItem {
+    implicit val show: Show[HistoryItem] = Show.show { hi => s"${hi.rule.show}->${hi.matched}"}
+  }
+
   sealed trait ExecutionResult
   object ExecutionResult {
-    final case class Matched(context: BlockContext) extends ExecutionResult
+    final case class Matched(block: Block, context: BlockContext) extends ExecutionResult
     case object Unmatched extends ExecutionResult
   }
 
@@ -94,6 +103,12 @@ object Block {
 
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
     implicit val show: Show[Policy] = Show.fromToString
+  }
+
+  sealed trait Verbosity
+  object Verbosity {
+    case object Info extends Verbosity
+    case object Error extends Verbosity
   }
 
   implicit val blockShow: Show[Block] = Show.show { b =>

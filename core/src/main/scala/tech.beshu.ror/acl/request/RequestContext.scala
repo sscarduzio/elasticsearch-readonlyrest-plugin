@@ -4,12 +4,10 @@ import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.{Method, Uri}
 import com.typesafe.scalalogging.StrictLogging
-import squants.information.{Bytes, Information}
+import squants.information.Information
 import tech.beshu.ror.acl.blocks.{VariablesManager, VariablesResolver}
 import tech.beshu.ror.acl.request.RequestContext.Id
-import tech.beshu.ror.acl.request.RequestContextOps.toRequestContextOps
 import tech.beshu.ror.commons.aDomain._
-import tech.beshu.ror.commons.show.logs._
 
 import scala.language.implicitConversions
 
@@ -34,36 +32,6 @@ object RequestContext extends StrictLogging {
   final case class Id(value: String) extends AnyVal
   object Id {
     implicit val show: Show[Id] = Show.show(_.value)
-  }
-
-  // fixme:
-  implicit val show: Show[RequestContext] = Show.show { r =>
-//    def stringifyLoggedUser = r.loggedUser match {
-//      case Some(user) => s"${user.id.show}"
-//      case None => "[no basic auth header]"
-//    }
-    def stringifyContentLength = {
-      if(r.contentLength == Bytes(0)) "<N/A>"
-      else if(logger.underlying.isDebugEnabled()) r.content
-      else s"<OMITTED, LENGTH=${r.contentLength}> "
-    }
-    s"""{
-       | ID: ${r.id.show},
-       | TYP: ${r.`type`.show},
-       | CGR: ${r.currentGroup.show},
-       | USR: //todo
-       | BRS: ${r.headers.exists(_.name === Header.Name.userAgent)},
-       | KDX: //todo,
-       | ACT: ${r.action.show},
-       | OA: ${r.remoteAddress.show},
-       | DA: ${r.localAddress.show},
-       | IDX: // todo,
-       | MET: ${r.method.show},
-       | PTH: ${r.uri.show},
-       | CNT: $stringifyContentLength,
-       | HDR: ${r.headers.map(_.show).mkString(", ")},
-       | HIS: // todo
-       | }""".stripMargin
   }
 }
 

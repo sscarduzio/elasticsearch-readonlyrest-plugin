@@ -26,6 +26,7 @@ class BlockTests extends WordSpec {
         val block = new Block(
           name = blockName,
           policy = Block.Policy.Allow,
+          verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromList(passingRule :: passingRule :: notPassingRule :: passingRule :: Nil).get
         )
         val result = block.execute(dummyRequestContext).runSyncUnsafe(1 second)
@@ -47,6 +48,7 @@ class BlockTests extends WordSpec {
         val block = new Block(
           name = blockName,
           policy = Block.Policy.Allow,
+          verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromList(passingRule :: passingRule :: throwingRule :: notPassingRule :: passingRule :: Nil).get
         )
         val result = block.execute(dummyRequestContext).runSyncUnsafe(1 second)
@@ -69,11 +71,12 @@ class BlockTests extends WordSpec {
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
+        verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromList(passingRule :: passingRule :: passingRule :: Nil).get
       )
       val result = block.execute(dummyRequestContext).runSyncUnsafe(1 second)
 
-      result._1 should matchPattern { case ExecutionResult.Matched(_) => }
+      result._1 should matchPattern { case ExecutionResult.Matched(_, _) => }
       result._2 shouldBe History(
         blockName,
         Vector(

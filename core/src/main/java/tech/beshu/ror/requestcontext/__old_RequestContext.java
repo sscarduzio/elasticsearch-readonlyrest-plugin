@@ -22,7 +22,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import tech.beshu.ror.acl.BlockHistory;
+import tech.beshu.ror.acl.__old_BlockHistory;
 import tech.beshu.ror.acl.blocks.__old_Block;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.commons.Constants;
@@ -53,7 +53,7 @@ public abstract class __old_RequestContext extends __old_Delayed implements Requ
   private __old_Transactional<Optional<__old_LoggedUser>> loggedInUser;
   private __old_Transactional<Map<String, String>> responseHeaders;
   private __old_Transactional<Map<String, String>> contextHeaders;
-  private List<BlockHistory> history = Lists.newArrayList();
+  private List<__old_BlockHistory> history = Lists.newArrayList();
   private Date timestamp = new Date();
   private ESContext context;
   private __old_Transactional<Set<String>> snapshots;
@@ -316,12 +316,12 @@ public abstract class __old_RequestContext extends __old_Delayed implements Requ
     return context;
   }
 
-  public List<BlockHistory> getHistory() {
+  public List<__old_BlockHistory> getHistory() {
     return history;
   }
 
   public void addToHistory(__old_Block block, Set<RuleExitResult> results) {
-    BlockHistory blockHistory = new BlockHistory(block.getName(), results);
+    __old_BlockHistory blockHistory = new __old_BlockHistory(block.getName(), results);
     history.add(blockHistory);
   }
 

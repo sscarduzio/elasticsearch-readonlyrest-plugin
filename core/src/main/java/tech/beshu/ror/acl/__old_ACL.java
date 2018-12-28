@@ -31,7 +31,7 @@ import tech.beshu.ror.commons.ResponseContext;
 import tech.beshu.ror.commons.ResponseContext.FinalState;
 import tech.beshu.ror.commons.SecurityPermissionException;
 import tech.beshu.ror.commons.Verbosity;
-import tech.beshu.ror.commons.shims.es.ACLHandler;
+import tech.beshu.ror.commons.shims.es.__old_ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.shims.request.RequestInfoShim;
@@ -178,7 +178,7 @@ public class __old_ACL {
     }
   }
 
-  public void check(RequestInfoShim rInfo, ACLHandler h) {
+  public void check(RequestInfoShim rInfo, __old_ACLHandler h) {
     __old_RequestContext rc = mkRequestContext(rInfo);
 
     // Run the blocks through
@@ -211,7 +211,7 @@ public class __old_ACL {
         }
 
         // MATCH AN ALLOW BLOCK
-        if (BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
+        if (__old_BlockPolicy.ALLOW.equals(result.getBlock().getPolicy())) {
           h.onAllow(result, rc);
           doLog(new ResponseContext(FinalState.ALLOWED, rc, null, result.getBlock().getVerbosity(), result.getBlock().toString(), true));
           return null;
@@ -243,7 +243,7 @@ public class __old_ACL {
       (block, checkResult) -> {
 
         if (checkResult.isMatch()) {
-          boolean isAllowed = checkResult.getBlock().getPolicy().equals(BlockPolicy.ALLOW);
+          boolean isAllowed = checkResult.getBlock().getPolicy().equals(__old_BlockPolicy.ALLOW);
           if (isAllowed) {
             rc.commit();
           }

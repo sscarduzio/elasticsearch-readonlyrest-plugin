@@ -1,33 +1,40 @@
 package tech.beshu.ror.acl.request
 
+import java.net.URI
+
 import com.softwaremill.sttp.{Method, Uri}
-import squants.information.Information
-import tech.beshu.ror.commons.aDomain
-import tech.beshu.ror.commons.domain.LoggedUser
+import squants.information.{Bytes, Information}
+import tech.beshu.ror.commons.aDomain.Header.Name
+import tech.beshu.ror.commons.aDomain.{Action, Address, Header, Type}
 import tech.beshu.ror.commons.shims.request.RequestInfoShim
 
-// todo: implement
+import scala.collection.JavaConverters._
+
 class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
-  override def action: aDomain.Action = ???
+  override def id: RequestContext.Id = RequestContext.Id(rInfo.extractId())
 
-  override def headers: Set[aDomain.Header] = ???
+  override def action: Action = Action(rInfo.extractAction)
 
-  override def remoteAddress: aDomain.Address = ???
+  override def headers: Set[Header] =
+    rInfo
+      .extractRequestHeaders.asScala
+      .map { case (name, value) => Header(Name(name), value) }
+      .toSet
 
-  override def localAddress: aDomain.Address = ???
+  override def remoteAddress: Address = Address(rInfo.extractRemoteAddress())
 
-  override def method: Method = ???
+  override def localAddress: Address = Address(rInfo.extractLocalAddress())
 
-  override def uri: Uri = ???
+  override def method: Method = Method(rInfo.extractMethod())
 
-  override def contentLength: Information = ???
+  override def uri: Uri = Uri(new URI(rInfo.extractURI()))
 
-  override def isReadOnlyRequest: Boolean = ???
+  override def contentLength: Information = Bytes(rInfo.extractContentLength().toLong)
 
-  override def id: RequestContext.Id = ???
+  override def isReadOnlyRequest: Boolean = rInfo.extractIsReadRequest()
 
-  override def `type`: aDomain.Type = ???
+  override def `type`: Type = Type(rInfo.extractType())
 
-  override def content: String = ???
+  override def content: String = rInfo.extractContent()
 }

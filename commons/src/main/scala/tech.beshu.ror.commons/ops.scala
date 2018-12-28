@@ -10,6 +10,7 @@ import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocu
 import tech.beshu.ror.commons.aDomain.Header.Name
 import tech.beshu.ror.commons.aDomain._
 import tech.beshu.ror.commons.domain._
+import tech.beshu.ror.commons.header.ToHeaderValue
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -19,7 +20,6 @@ object header {
   class FlatHeader(val header: Header) extends AnyVal {
     def flatten: String = s"${header.name.value.toLowerCase()}:${header.value}"
   }
-
   object FlatHeader {
     implicit def toFlatHeader(header: Header): FlatHeader = new FlatHeader(header)
   }
@@ -27,11 +27,18 @@ object header {
   class ToTuple(val header: Header) extends AnyVal {
     def toTuple: (String, String) = (header.name.value, header.value)
   }
-
   object ToTuple {
     implicit def toTuple(header: Header): ToTuple = new ToTuple(header)
   }
 
+  trait ToHeaderValue[T] {
+    def toRawValue(t: T): String
+  }
+  object ToHeaderValue {
+    def apply[T](func: T => String): ToHeaderValue[T] = new ToHeaderValue[T]() {
+      override def toRawValue(t: T): String = func(t)
+    }
+  }
 }
 
 object unresolvedaddress {
@@ -67,7 +74,6 @@ object show {
       case Header(name, value) => s"${name.show}=${value.show}"
     }
   }
-
 }
 
 object refined {
@@ -76,4 +82,9 @@ object refined {
     (d: FiniteDuration) => s"$d is positive",
     Greater(shapeless.nat._0)
   )
+}
+
+object headerValues {
+  implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
+  implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
 }

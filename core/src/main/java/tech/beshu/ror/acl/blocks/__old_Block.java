@@ -18,7 +18,7 @@
 package tech.beshu.ror.acl.blocks;
 
 import com.google.common.collect.Sets;
-import tech.beshu.ror.acl.BlockPolicy;
+import tech.beshu.ror.acl.__old_BlockPolicy;
 import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.RulesFactory;
@@ -92,7 +92,7 @@ public class __old_Block {
     return settings.getName();
   }
 
-  public BlockPolicy getPolicy() {
+  public __old_BlockPolicy getPolicy() {
     return settings.getPolicy();
   }
 

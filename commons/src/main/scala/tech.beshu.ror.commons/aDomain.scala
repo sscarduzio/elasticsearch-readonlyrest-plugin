@@ -2,6 +2,7 @@ package tech.beshu.ror.commons
 
 import cats.Eq
 import tech.beshu.ror.commons.aDomain.Header.Name
+import tech.beshu.ror.commons.header.ToHeaderValue
 
 object aDomain {
 
@@ -17,12 +18,16 @@ object aDomain {
       val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
       val userAgent = Name("User-Agent")
       val authorization = Name("Authorization")
+      val rorUser = Name(Constants.HEADER_USER_ROR)
+      val kibanaIndex = Name(Constants.HEADER_KIBANA_INDEX)
 
       implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
     }
 
     def apply(name: Name, value: String): Header = new Header(name, value)
     def apply(nameAndValue: (String, String)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
+    def apply[T](name: Name, value: T)
+                (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
 
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
   }

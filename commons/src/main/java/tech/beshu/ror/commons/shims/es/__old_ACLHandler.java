@@ -14,20 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl;
 
-import java.util.Optional;
-public enum BlockPolicy {
-  ALLOW, FORBID;
+package tech.beshu.ror.commons.shims.es;
 
-  public static Optional<BlockPolicy> fromString(String value) {
-    switch (value.toLowerCase()) {
-      case "allow":
-        return Optional.of(ALLOW);
-      case "forbid":
-        return Optional.of(FORBID);
-      default:
-        return Optional.empty();
-    }
-  }
+import tech.beshu.ror.commons.domain.__old_Value;
+
+public interface __old_ACLHandler {
+  void onForbidden();
+
+  void onAllow(Object blockExitResult, __old_Value.__old_VariableResolver rc);
+
+  boolean isNotFound(Throwable t);
+
+  void onNotFound(Throwable t);
+
+  void onErrored(Throwable t);
 }

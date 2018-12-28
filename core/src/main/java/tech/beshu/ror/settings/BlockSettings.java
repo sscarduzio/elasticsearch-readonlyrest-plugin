@@ -19,7 +19,7 @@ package tech.beshu.ror.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import tech.beshu.ror.acl.BlockPolicy;
+import tech.beshu.ror.acl.__old_BlockPolicy;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
@@ -47,14 +47,14 @@ public class BlockSettings {
       AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
   );
 
-  private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
+  private static final __old_BlockPolicy DEFAULT_BLOCK_POLICY = __old_BlockPolicy.ALLOW;
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
   private final String name;
-  private final BlockPolicy policy;
+  private final __old_BlockPolicy policy;
   private final List<RuleSettings> rules;
   private final Verbosity verbosity;
 
-  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
+  private BlockSettings(String name, __old_BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
     validate(rules);
     this.name = name;
     this.policy = policy;
@@ -77,8 +77,8 @@ public class BlockSettings {
         userSettingsCollection
     );
     String name = settings.stringReq(NAME);
-    BlockPolicy policy = settings.stringOpt(POLICY)
-                                 .map(value -> BlockPolicy.fromString(value)
+    __old_BlockPolicy policy = settings.stringOpt(POLICY)
+                                 .map(value -> __old_BlockPolicy.fromString(value)
                                      .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown block policy type: " + value)))
                                  .orElse(DEFAULT_BLOCK_POLICY);
     Verbosity verbosity = settings.stringOpt(VERBOSITY)
@@ -102,7 +102,7 @@ public class BlockSettings {
     return name;
   }
 
-  public BlockPolicy getPolicy() {
+  public __old_BlockPolicy getPolicy() {
     return policy;
   }
 

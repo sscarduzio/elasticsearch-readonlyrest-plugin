@@ -43,7 +43,7 @@ import tech.beshu.ror.acl.__old_ACL;
 import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.commons.shims.es.ACLHandler;
+import tech.beshu.ror.commons.shims.es.__old_ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
@@ -199,7 +199,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       return;
     }
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, context.get(), indexResolver);
-    acl.check(requestInfo, new ACLHandler() {
+    acl.check(requestInfo, new __old_ACLHandler() {
       @Override
       public void onForbidden() {
         sendNotAuthResponse(channel, context.get().getSettings());
