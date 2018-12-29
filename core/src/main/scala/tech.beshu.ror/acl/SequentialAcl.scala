@@ -87,4 +87,7 @@ class SequentialAcl(blocks: NonEmptyList[Block])
     blockContext.kibanaIndex.map(i => Header(Name.kibanaIndex, i))
   }
 
+  override val involvesFilter: Boolean = false // todo: impl
+
+  override val doesRequirePassword: Boolean = false // todo: impl
 }

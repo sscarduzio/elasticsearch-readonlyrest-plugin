@@ -8,7 +8,7 @@ object LoggedUser {
 }
 
 object User {
-  final case class Id(value: String) extends AnyVal
+  final case class Id(value: String)
   object Id {
     implicit val eqId: Eq[Id] = Eq.fromUniversalEquals
   }

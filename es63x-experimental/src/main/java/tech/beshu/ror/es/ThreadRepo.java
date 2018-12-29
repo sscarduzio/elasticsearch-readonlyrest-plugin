@@ -15,16 +15,15 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-rootProject.name = 'readonlyrest'
-include 'core'
-include 'commons'
-include 'tests-utils'
-include 'integration-tests'
-include 'es23x'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es60x'
-include 'es61x'
-include 'es63x'
-include 'es63x-experimental'
+package tech.beshu.ror.es;
+
+import org.elasticsearch.rest.RestChannel;
+
+/**
+ * Created by sscarduzio on 25/11/2016.
+ */
+public class ThreadRepo {
+
+  public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
+
+}

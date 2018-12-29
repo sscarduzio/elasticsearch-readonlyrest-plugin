@@ -8,7 +8,7 @@ object aDomain {
 
   final case class Header(name: Name, value: String)
   object Header {
-    final case class Name(value: String) extends AnyVal
+    final case class Name(value: String)
     object Name {
       val xForwardedFor = Name("X-Forwarded-For")
       val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
