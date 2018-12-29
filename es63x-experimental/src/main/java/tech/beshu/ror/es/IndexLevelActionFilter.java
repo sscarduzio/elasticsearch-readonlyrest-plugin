@@ -18,6 +18,7 @@
 package tech.beshu.ror.es;
 
 import cats.data.NonEmptyList;
+import monix.execution.Scheduler$;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -159,6 +160,7 @@ import scala.collection.JavaConverters$;
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
         context.get(), indexResolver);
     RequestContext requestContext = new EsRequestContext(requestInfo);
+
     // todo: optimize handler creation
     acl.handle(requestContext, new AclHandler() {
       ResponseWriter writer = new ResponseWriter() {
@@ -241,7 +243,7 @@ import scala.collection.JavaConverters$;
       public void onError(Throwable t) {
         listener.onFailure((Exception) t);
       }
-    });
+    }).runAsyncAndForget(Scheduler$.MODULE$.global());
   }
 
   private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {
