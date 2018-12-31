@@ -19,7 +19,7 @@ import scala.util.control.Exception._
 class HostsRule(settings: Settings)
   extends RegularRule with StrictLogging {
 
-  override val name: Rule.Name = Rule.Name("hosts")
+  override val name: Rule.Name = HostsRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -75,6 +75,8 @@ class HostsRule(settings: Settings)
 }
 
 object HostsRule {
+
+  val name: Rule.Name = Rule.Name("hosts")
 
   final case class Settings(allowedHosts: NonEmptySet[Value[Address]],
                             acceptXForwardedForHeader: Boolean)

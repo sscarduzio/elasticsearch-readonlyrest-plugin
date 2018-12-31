@@ -9,7 +9,7 @@ class AuthKeyRule(settings: BasicAuthenticationRule.Settings)
   extends BasicAuthenticationRule(settings)
     with StrictLogging {
 
-  override val name: Rule.Name = Rule.Name("auth_key")
+  override val name: Rule.Name = AuthKeyRule.name
 
   override protected def authenticate(configuredAuthKey: String,
                                       basicAuth: BasicAuthUtils.BasicAuth): Boolean = {
@@ -21,4 +21,8 @@ class AuthKeyRule(settings: BasicAuthenticationRule.Settings)
         false
       }
   }
+}
+
+object AuthKeyRule {
+  val name = Rule.Name("auth_key")
 }

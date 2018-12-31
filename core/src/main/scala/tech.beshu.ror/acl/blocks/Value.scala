@@ -8,9 +8,9 @@ sealed trait Value[T] {
 }
 
 object Value {
-  def fromString[T](representation: String, covert: ResolvedValue => T): Value[T] = {
-    if(Variable.isStringVariable(representation)) Variable(ValueWithVariable(representation), covert) // todo: what about escaping
-    else Const(covert(ResolvedValue(representation)))
+  def fromString[T](representation: String, convert: ResolvedValue => T): Value[T] = {
+    if(Variable.isStringVariable(representation)) Variable(ValueWithVariable(representation), convert) // todo: what about escaping
+    else Const(convert(ResolvedValue(representation)))
   }
 
   implicit def valueOrder[T: Order]: Order[Value[T]] = Order.from {
