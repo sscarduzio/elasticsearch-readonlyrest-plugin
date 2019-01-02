@@ -17,11 +17,13 @@ class RorAclFactoryTests extends WordSpec {
           |  - name: "CONTAINER ADMIN"
           |    type: allow
           |    auth_key: admin:container
+          |    ss: 12
           |
           |  - name: 4
           |    type: allow
-          |    hosts: [127.0.0.1, 192.168.1.0/24]
           |    accept_x-forwarded-for_header: true
+          |    hosts: [127.0.0.1, 192.168.1.0/24]
+          |    ds: 213
         """.stripMargin
       factory.createAclFrom(settings) should be(Left(RorAclFactory.AclCreationError.UnparsableYamlContent))
     }

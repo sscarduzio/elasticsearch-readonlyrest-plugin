@@ -1,14 +1,16 @@
 package tech.beshu.ror.acl.factory
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, State}
+import cats.implicits._
+import cats.kernel.Monoid
 import io.circe.yaml.parser
-import io.circe.{Decoder, DecodingFailure, Json}
+import io.circe._
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlockInstantiatingError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.acl.factory.ruleDecoders.ruleDecoder
+import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 
@@ -16,40 +18,62 @@ import scala.language.implicitConversions
 
 class RorAclFactory {
 
-  def createAclFrom(settingsYamlString: String): Either[AclCreationError, Acl] = {
+  def createAclFrom(settingsYamlString: String): Either[NonEmptyList[AclCreationError], Acl] = {
     parser.parse(settingsYamlString) match {
-      case Right(json) => createFrom(json)
-      case Left(_) => Left(UnparsableYamlContent(settingsYamlString))
+      case Right(json) => createFrom(json).toEither
+      case Left(_) => Left(NonEmptyList.one(UnparsableYamlContent(settingsYamlString)))
     }
   }
 
   private def createFrom(settingsJson: Json) = {
-    aclDecoder
-      .decodeJson(settingsJson)
-      .left
-      .map(decodingFailure => decodingFailure.aclCreationError.getOrElse(BlockInstantiatingError(decodingFailure.message)))
+    aclDecoder(HCursor.fromJson(settingsJson))
+      .leftMap { failures =>
+        failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(f.message)))
+      }
   }
 
-  private implicit val rulesListDecoder: Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
-    def decodeRule(name: String): Decoder.Result[Rule] = {
-      // todo: filter associated keys; what if one of these key will be at the begining?
-      val decoder = ruleDecoder(name)
-      decoder.decode(
-        c.downField(name),
-        c.value.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key)))
-      )
-    }
-    c.keys.map(_.toList) match {
-      case None | Some(Nil) => Left(DecodingFailure(s"No rules found inside the block", Nil))
-      case Some(firstRuleName :: ruleNames) =>
-        ruleNames.foldLeft(decodeRule(firstRuleName).map(NonEmptyList.one)) {
-          case (acc, currentRuleName) =>
-            acc.flatMap(nelOfRules =>
-              decodeRule(currentRuleName).map(_ :: nelOfRules)
-            )
+  private implicit val rulesNelDecoder: Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
+    val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
+    val (cursor, result) = c.keys.toList.flatten
+      .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
+        for {
+          last <- collectedRuleResults
+          current <- decodeRuleInCursorContext(currentRuleName).map(_.map(_.map(_ :: Nil)))
+        } yield Monoid.combine(last, current)
+      }
+      .run(c)
+      .value
+
+    (cursor.keys.toList.flatten, result) match {
+      case (Nil, Some(r)) =>
+        r.flatMap { a =>
+          NonEmptyList.fromList(a) match {
+            case Some(rules) =>
+              Right(rules)
+            case None =>
+              Left(DecodingFailureOps.fromError(RulesLevelCreationError(s"No rules defined in block")))
+          }
         }
+      case (Nil, None) =>
+        Left(DecodingFailureOps.fromError(RulesLevelCreationError(s"No rules defined in block")))
+      case (keys, _) =>
+        Left(DecodingFailureOps.fromError(RulesLevelCreationError(s"Unknown rules: ${keys.mkString(",")}")))
     }
   }
+
+  private def decodeRuleInCursorContext(name: String): State[ACursor, Option[Decoder.Result[Rule]]] = State(cursor => {
+    ruleDecoderBy(name) match {
+      case Some(decoder) =>
+        val decodingResult = decoder.decode(
+          cursor.downField(name),
+          cursor.withFocus(_.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key))))
+        )
+        val newCursor = cursor.withFocus(_.mapObject(json => decoder.associatedFields.foldLeft(json.remove(name)) { _.remove(_) }))
+        (newCursor, Some(decodingResult))
+      case None =>
+        (cursor, None)
+    }
+  })
 
   private implicit val blockDecoder: Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderOps.decodeStringOrNumber.map(Block.Name.apply)
@@ -81,15 +105,20 @@ class RorAclFactory {
           verbosity.getOrElse(Block.Verbosity.Info),
           rules
         )
-        result.left.map(_.overrideDefaultErrorWith(AclCreationError.BlockInstantiatingError(s"Cannot load block section [${c.value}]")))
+        result.left.map(_.overrideDefaultErrorWith(AclCreationError.BlocksLevelCreationError(s"Cannot load block section [${c.value}]")))
       }
   }
 
-  private implicit val aclDecoder: Decoder[Acl] = Decoder.instance(_
-    .downField(Attributes.acl).as[NonEmptyList[Block]]
-    .map(new SequentialAcl(_))
-    .left.map(_.overrideDefaultErrorWith(BlockInstantiatingError(s"Cannot load ${Attributes.acl} section")))
-  )
+  private implicit val aclDecoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
+    c.downField(Attributes.acl) match {
+      case hc: HCursor =>
+        Decoder[NonEmptyList[Block]].accumulating.map(new SequentialAcl(_): Acl).apply(hc)
+      case _ =>
+        AccumulatingDecoder
+          .failed[Acl](NonEmptyList.one(DecodingFailureOps.fromError(BlocksLevelCreationError(s"Cannot load ${Attributes.acl} section"))))
+          .apply(c)
+    }
+  }
 }
 
 object RorAclFactory {
@@ -97,16 +126,19 @@ object RorAclFactory {
   sealed trait AclCreationError
   object AclCreationError {
     final case class UnparsableYamlContent(value: String) extends AclCreationError
-    final case class BlockInstantiatingError(message: String) extends AclCreationError
-    final case class RuleInstantiatingError(message: String) extends AclCreationError
+    final case class BlocksLevelCreationError(message: String) extends AclCreationError
+    final case class RulesLevelCreationError(message: String) extends AclCreationError
   }
 
   private object Attributes {
     val acl = "access_control_rules"
+
     object Block {
       val name = "name"
       val policy = "type"
       val verbosity = "verbosity"
     }
+
   }
+
 }
