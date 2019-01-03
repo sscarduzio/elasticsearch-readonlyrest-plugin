@@ -21,22 +21,22 @@ import tech.beshu.ror.settings.RuleSettings;
 
 import java.time.Duration;
 
-public class SessionMaxIdleRuleSettings implements RuleSettings {
+public class __old_SessionMaxIdleRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "session_max_idle";
 
   private final Duration maxIdle;
 
-  private SessionMaxIdleRuleSettings(Duration maxIdle) {
+  private __old_SessionMaxIdleRuleSettings(Duration maxIdle) {
     this.maxIdle = maxIdle;
   }
 
-  public static SessionMaxIdleRuleSettings from(String millisStr) {
+  public static __old_SessionMaxIdleRuleSettings from(String millisStr) {
     Duration duration = Duration.ofMillis(timeIntervalStringToMillis(millisStr));
     if (duration.isNegative() || duration.isZero()) {
       throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' req must be greater than zero");
     }
-    return new SessionMaxIdleRuleSettings(duration);
+    return new __old_SessionMaxIdleRuleSettings(duration);
   }
 
   private static long timeIntervalStringToMillis(String input) {

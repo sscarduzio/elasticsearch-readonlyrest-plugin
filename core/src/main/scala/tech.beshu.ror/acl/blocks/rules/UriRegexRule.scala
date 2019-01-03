@@ -11,7 +11,7 @@ import tech.beshu.ror.acl.request.RequestContext
 class UriRegexRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("uri_re")
+  override val name: Rule.Name = UriRegexRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -27,7 +27,7 @@ class UriRegexRule(settings: Settings)
 }
 
 object UriRegexRule {
+  val name = Rule.Name("uri_re")
 
   final case class Settings(uriPattern: Value[Pattern])
-
 }

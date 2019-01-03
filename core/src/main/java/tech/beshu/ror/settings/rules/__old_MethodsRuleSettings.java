@@ -23,18 +23,18 @@ import tech.beshu.ror.settings.RuleSettings;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class MethodsRuleSettings implements RuleSettings {
+public class __old_MethodsRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "methods";
 
   private final Set<HttpMethod> methods;
 
-  public MethodsRuleSettings(Set<HttpMethod> methods) {
+  public __old_MethodsRuleSettings(Set<HttpMethod> methods) {
     this.methods = methods;
   }
 
-  public static MethodsRuleSettings from(Set<String> methods) {
-    return new MethodsRuleSettings(methods.stream()
+  public static __old_MethodsRuleSettings from(Set<String> methods) {
+    return new __old_MethodsRuleSettings(methods.stream()
                                      .map(value -> HttpMethod.fromString(value)
                                        .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown/unsupported http method: " + value)))
                                      .collect(Collectors.toSet()));

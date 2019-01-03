@@ -1,6 +1,6 @@
 package tech.beshu.ror.commons
 
-import cats.Eq
+import cats.{Eq, Show}
 import tech.beshu.ror.commons.aDomain.Header.Name
 import tech.beshu.ror.commons.header.ToHeaderValue
 
@@ -62,6 +62,14 @@ object aDomain {
   object DocumentField {
     final case class ADocumentField(override val value: String) extends DocumentField(value)
     final case class NegatedDocumentField(override val value: String) extends DocumentField(value)
+
+    val all = ADocumentField("_all")
+    val notAll = NegatedDocumentField("_all")
+
+    implicit val show: Show[DocumentField] = Show.show {
+      case f: ADocumentField => f.value
+      case f: NegatedDocumentField => s"~${f.value}"
+    }
   }
 
   final case class Type(value: String) extends AnyVal

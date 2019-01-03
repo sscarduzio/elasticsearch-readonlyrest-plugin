@@ -21,7 +21,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.MethodsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MethodsRuleSettings;
 
 import java.util.Set;
 
@@ -31,9 +31,9 @@ import java.util.Set;
 public class __old_MethodsSyncRule extends SyncRule {
 
   private final Set<HttpMethod> allowedMethods;
-  private final MethodsRuleSettings settings;
+  private final __old_MethodsRuleSettings settings;
 
-  public __old_MethodsSyncRule(MethodsRuleSettings s) {
+  public __old_MethodsSyncRule(__old_MethodsRuleSettings s) {
     this.allowedMethods = s.getMethods();
     this.settings = s;
   }

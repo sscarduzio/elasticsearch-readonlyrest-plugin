@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
 class HeadersOrRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("headers_or")
+  override val name: Rule.Name = HeadersOrRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -38,6 +38,7 @@ class HeadersOrRule(settings: Settings)
 }
 
 object HeadersOrRule {
+  val name = Rule.Name("headers_or")
 
   final case class Settings(headers: NonEmptySet[Header])
 

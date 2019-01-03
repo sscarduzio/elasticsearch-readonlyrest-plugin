@@ -31,17 +31,26 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
 class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings)
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha1()) {
 
-  override val name: Rule.Name = Rule.Name("auth_key_sha1")
+  override val name: Rule.Name = AuthKeySha1Rule.name
+}
+object AuthKeySha1Rule {
+  val name = Rule.Name("auth_key_sha1")
 }
 
 class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings)
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha256()) {
 
-  override val name: Rule.Name = Rule.Name("auth_key_sha256")
+  override val name: Rule.Name = AuthKeySha256Rule.name
+}
+object AuthKeySha256Rule {
+  val name = Rule.Name("auth_key_sha256")
 }
 
 class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings)
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha512()) {
 
-  override val name: Rule.Name = Rule.Name("auth_key_sha512")
+  override val name: Rule.Name = AuthKeySha512Rule.name
+}
+object AuthKeySha512Rule {
+  val name = Rule.Name("auth_key_sha512")
 }

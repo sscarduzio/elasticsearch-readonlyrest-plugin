@@ -25,7 +25,7 @@ import tech.beshu.ror.commons.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
 
 import java.util.Optional;
 
@@ -39,9 +39,9 @@ public class __old_KibanaHideAppsSyncRule extends SyncRule {
 
   private final LoggerShim logger;
   private final String hiddenApps;
-  private final KibanaHideAppsRuleSettings settings;
+  private final __old_KibanaHideAppsRuleSettings settings;
 
-  public __old_KibanaHideAppsSyncRule(KibanaHideAppsRuleSettings s, ESContext context) {
+  public __old_KibanaHideAppsSyncRule(__old_KibanaHideAppsRuleSettings s, ESContext context) {
     logger = context.logger(getClass());
     hiddenApps = Joiner.on(",").join(s.getKibanaHideApps());
     settings = s;

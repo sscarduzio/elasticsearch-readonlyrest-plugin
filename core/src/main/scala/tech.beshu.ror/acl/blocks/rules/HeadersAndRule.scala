@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
 class HeadersAndRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("headers_and")
+  override val name: Rule.Name = HeadersAndRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -38,6 +38,7 @@ class HeadersAndRule(settings: Settings)
 }
 
 object HeadersAndRule {
+  val name = Rule.Name("headers_and")
 
   // todo: clarify "should reject duplicated headers" feature
   final case class Settings(headers: NonEmptySet[Header])

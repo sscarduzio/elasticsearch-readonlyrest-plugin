@@ -1,5 +1,6 @@
 package tech.beshu.ror.acl.blocks.rules
 
+import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -13,7 +14,7 @@ import tech.beshu.ror.commons.aDomain.{DocumentField, Header}
 class FieldsRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("fields")
+  override val name: Rule.Name = FieldsRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -21,13 +22,17 @@ class FieldsRule(settings: Settings)
     else RuleResult.Fulfilled(blockContext.addContextHeader(transientFieldsHeader))
   }
 
-  private val transientFieldsHeader = new Header(Name.transientFields, settings.fields.map(_.value).mkString(","))
+  private val transientFieldsHeader = new Header(Name.transientFields, settings.fields.map(_.show).mkString(","))
 }
 
 object FieldsRule {
+  val name = Rule.Name("fields")
+
   final case class Settings private(fields: Set[DocumentField])
   object Settings {
-    def ofFields(fields: NonEmptySet[ADocumentField]): Settings = Settings(fields.toSortedSet.toSet)
-    def ofNegatedFields(fields: NonEmptySet[NegatedDocumentField]): Settings = Settings(fields.toSortedSet.toSet)
+    def ofFields(fields: NonEmptySet[ADocumentField], notAll: Option[NegatedDocumentField]): Settings =
+      Settings(fields.toSortedSet ++ notAll.toSet)
+    def ofNegatedFields(fields: NonEmptySet[NegatedDocumentField], notAll: Option[NegatedDocumentField]): Settings =
+      Settings(fields.toSortedSet ++ notAll.toSet)
   }
 }

@@ -21,7 +21,7 @@ class SessionMaxIdleRule(settings: Settings)
                         (implicit clock: Clock, uuidProvider: UuidProvider)
   extends RegularRule with StrictLogging {
 
-  override val name: Rule.Name = Rule.Name("proxy_auth")
+  override val name: Rule.Name = SessionMaxIdleRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -48,6 +48,7 @@ class SessionMaxIdleRule(settings: Settings)
 }
 
 object SessionMaxIdleRule {
+  val name = Rule.Name("session_max_idle")
 
   final case class Settings(sessionMaxIdle: FiniteDuration Refined Positive)
 

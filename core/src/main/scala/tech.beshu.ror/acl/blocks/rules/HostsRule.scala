@@ -68,7 +68,7 @@ class HostsRule(settings: Settings)
         false
     }
 
-  def isInetAddressOrBlock(address: Address): Boolean = {
+  private def isInetAddressOrBlock(address: Address): Boolean = {
     val slash = address.value.lastIndexOf('/')
     InetAddresses.isInetAddress(if (slash != -1) address.value.substring(0, slash) else address.value)
   }

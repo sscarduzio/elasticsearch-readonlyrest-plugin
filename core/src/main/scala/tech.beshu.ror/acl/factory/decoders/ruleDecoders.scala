@@ -1,11 +1,14 @@
 package tech.beshu.ror.acl.factory.decoders
 
+import java.time.Clock
+
 import cats.data.NonEmptySet
 import io.circe.Decoder.Result
 import io.circe._
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, HostsRule, Rule}
+import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
+import tech.beshu.ror.acl.utils.UuidProvider
 
 import scala.language.implicitConversions
 
@@ -45,10 +48,30 @@ object ruleDecoders {
       }
   }
 
-  implicit def ruleDecoderBy(name: String): Option[RuleDecoder[_ <: Rule]] = Rule.Name(name) match {
-    case AuthKeyRule.name => Some(AuthKeyRuleDecoder)
-    case HostsRule.name => Some(HostsRuleDecoder)
-    case _ => None
-  }
-
+  implicit def ruleDecoderBy(name: String)
+                            (implicit clock: Clock, uuidProvider: UuidProvider): Option[RuleDecoder[_ <: Rule]] =
+    Rule.Name(name) match {
+      case ActionsRule.name => Some(ActionsRuleDecoder)
+      case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
+      case AuthKeyRule.name => Some(AuthKeyRuleDecoder)
+      case AuthKeySha1Rule.name => Some(AuthKeySha1RuleDecoder)
+      case AuthKeySha256Rule.name => Some(AuthKeySha256RuleDecoder)
+      case AuthKeySha512Rule.name => Some(AuthKeySha512RuleDecoder)
+      case AuthKeyUnixRule.name => Some(AuthKeyUnixRuleDecoder)
+      case FieldsRule.name => Some(FieldsRuleDecoder)
+      case HeadersAndRule.name => Some(HeadersAndRuleDecoder)
+      case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
+      case HostsRule.name => Some(HostsRuleDecoder)
+      case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
+      case KibanaIndexRule.name => Some(KibanaIndexRuleDecoder)
+      case LocalHostsRule.name => Some(LocalHostsRuleDecoder)
+      case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
+      case MethodsRule.name => Some(MethodsRuleDecoder)
+      //case ProxyAuthRule.name => Some(ProxyAuthRuleDecoder) // todo:
+      case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder)
+      case UriRegexRule.name => Some(UriRegexRuleDecoder)
+      case UsersRule.name => Some(UsersRuleDecoder)
+      case XForwardedForRule.name => Some(XForwardedForRuleDecoder)
+      case _ => None
+    }
 }

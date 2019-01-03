@@ -19,7 +19,7 @@ import scala.util.control.Exception._
 class XForwardedForRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("x_forwarded_for")
+  override val name: Rule.Name = XForwardedForRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -51,6 +51,7 @@ class XForwardedForRule(settings: Settings)
 }
 
 object XForwardedForRule {
+  val name = Rule.Name("x_forwarded_for")
 
   final case class Settings private(allowedAddresses: Set[Value[Address]],
                                     allowedIps: Set[IPMask])

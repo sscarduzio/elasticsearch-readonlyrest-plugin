@@ -11,7 +11,7 @@ import tech.beshu.ror.commons.aDomain.Address
 class LocalHostsRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("hosts_local")
+  override val name: Rule.Name = LocalHostsRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -26,7 +26,7 @@ class LocalHostsRule(settings: Settings)
 }
 
 object LocalHostsRule {
+  val name = Rule.Name("hosts_local")
 
   final case class Settings(allowedAddresses: NonEmptySet[Value[Address]])
-
 }

@@ -58,15 +58,15 @@ import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
-import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_LocalHostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
-import tech.beshu.ror.settings.rules.MethodsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
-import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
 import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
 
 import java.util.Map;
@@ -127,16 +127,16 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new FilterSyncRule((FilterSyncRule.Settings) settings))
     );
     this.creators.put(
-        KibanaHideAppsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_KibanaHideAppsSyncRule((KibanaHideAppsRuleSettings) settings, context))
+        __old_KibanaHideAppsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_KibanaHideAppsSyncRule((__old_KibanaHideAppsRuleSettings) settings, context))
     );
     this.creators.put(
         __old_MaxBodyLengthRuleSettings.class,
         settings -> AsyncRuleAdapter.wrap(new __old_MaxBodyLengthSyncRule((__old_MaxBodyLengthRuleSettings) settings))
     );
     this.creators.put(
-        MethodsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_MethodsSyncRule((MethodsRuleSettings) settings))
+        __old_MethodsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_MethodsSyncRule((__old_MethodsRuleSettings) settings))
     );
     this.creators.put(
         __old_HeadersSyncRule.Settings.class,
@@ -155,8 +155,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new SearchlogSyncRule((SearchlogRuleSettings) settings))
     );
     this.creators.put(
-        SessionMaxIdleRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context))
+        __old_SessionMaxIdleRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_SessionMaxIdleSyncRule((__old_SessionMaxIdleRuleSettings) settings, context))
     );
     this.creators.put(
         __old_UriReSyncRule.Settings.class,

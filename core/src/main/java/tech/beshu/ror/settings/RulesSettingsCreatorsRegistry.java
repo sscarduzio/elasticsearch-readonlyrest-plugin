@@ -47,17 +47,17 @@ import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
-import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_LocalHostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
-import tech.beshu.ror.settings.rules.MethodsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
 import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
-import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
 import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
 
 import java.util.HashMap;
@@ -98,7 +98,7 @@ public class RulesSettingsCreatorsRegistry {
         externalAuthenticationSettingsCreator(blockSettings, externalAuthenticationServiceSettingsCollection)
     );
     creators.put(IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
-    creators.put(MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
+    creators.put(__old_MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
     creators.put(__old_HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
     creators.put(__old_HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
     creators.put(__old_HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
@@ -118,10 +118,10 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(__old_KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
     creators.put(__old_FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
     creators.put(FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
-    creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
+    creators.put(__old_KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
     creators.put(__old_ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
     creators.put(__old_MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
-    creators.put(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
+    creators.put(__old_SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
     creators.put(SearchlogRuleSettings.ATTRIBUTE_NAME, searchlogSettingsCreator(blockSettings));
     creators.put(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
     creators.put(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
@@ -199,8 +199,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> methodsSettingsCreator(RawSettings blockSettings) {
-    return () -> MethodsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(MethodsRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_MethodsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(__old_MethodsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
@@ -310,8 +310,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaHideAppsSettingsCreator(RawSettings blockSettings) {
-    return () -> KibanaHideAppsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_KibanaHideAppsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(__old_KibanaHideAppsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
@@ -338,8 +338,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> sessionMaxIdleSettingsCreator(RawSettings blockSettings) {
-    return () -> SessionMaxIdleRuleSettings.from(
-        blockSettings.stringReq(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_SessionMaxIdleRuleSettings.from(
+        blockSettings.stringReq(__old_SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
     );
   }
 

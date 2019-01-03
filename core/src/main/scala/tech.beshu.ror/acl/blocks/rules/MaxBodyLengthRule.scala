@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.request.RequestContext
 class MaxBodyLengthRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("max_body_length")
+  override val name: Rule.Name = MaxBodyLengthRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -21,6 +21,7 @@ class MaxBodyLengthRule(settings: Settings)
 }
 
 object MaxBodyLengthRule {
+  val name = Rule.Name("max_body_length")
 
   final case class Settings(maxContentLength: Information)
 }

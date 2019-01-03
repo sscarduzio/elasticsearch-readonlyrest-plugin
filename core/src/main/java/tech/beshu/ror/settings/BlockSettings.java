@@ -29,7 +29,7 @@ import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserSettingsCollection;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
-import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
 
 import java.util.List;
 import java.util.Set;
@@ -115,9 +115,9 @@ public class BlockSettings {
   }
 
   private void validateIfSessionMaxIdleRuleConfiguredWithUserRule(List<RuleSettings> rules) {
-    if (rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
+    if (rules.stream().anyMatch(r -> r instanceof __old_SessionMaxIdleRuleSettings)) {
       if (rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
-        throw new SettingsMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
+        throw new SettingsMalformedException("'" + __old_SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
             "' rule does not mean anything if you don't also set some authentication rule");
       }
     }

@@ -54,8 +54,10 @@ object orders {
   implicit val ipMaskOrder: Order[IPMask] = Order.by(_.hashCode())
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
+  implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
   implicit val aDocumentFieldOrder: Order[ADocumentField] = Order.by(_.value)
   implicit val negatedDocumentFieldOrder: Order[NegatedDocumentField] = Order.by(_.value)
+  implicit val actionOrder: Order[Action] = Order.by(_.value)
 }
 
 object show {

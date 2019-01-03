@@ -1,19 +1,18 @@
 package tech.beshu.ror.acl.factory.decoders
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.Value
-import tech.beshu.ror.acl.blocks.Variable.ResolvedValue
-import tech.beshu.ror.acl.blocks.rules.HostsRule
+import tech.beshu.ror.acl.blocks.rules.{HostsRule, LocalHostsRule}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithAssociatedFields
+import tech.beshu.ror.acl.factory.decoders.HostRulesDecodersHelper._
+import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.orders._
 
 import scala.collection.immutable.SortedSet
-import HostRuleDecoderHelper._
 
 object HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boolean](
   ruleDecoderCreator = acceptXForwardedFor =>
@@ -31,11 +30,13 @@ object HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boole
   associatedFieldsDecoder = Decoder.instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
 )
 
-// todo: move somewhere else
-object HostRuleDecoderHelper {
+object LocalHostsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+  DecoderOps
+    .decodeStringLikeOrNonEmptySet[Value[Address]]
+    .map(addresses => new LocalHostsRule(LocalHostsRule.Settings(addresses)))
+)
 
-  private def valueDecoder[T](convert: ResolvedValue => T): Decoder[Value[T]] =
-    DecoderOps.decodeStringOrNumber.map(str => Value.fromString(str, convert))
+object HostRulesDecodersHelper {
 
-  implicit val addressValueDecoder: Decoder[Value[Address]] = valueDecoder(rv => Address(rv.value))
+  implicit val addressValueDecoder: Decoder[Value[Address]] = DecoderOps.valueDecoder(rv => Address(rv.value))
 }

@@ -8,7 +8,7 @@ import tech.beshu.ror.utils.BasicAuthUtils
 class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)
   extends BasicAuthenticationRule(settings) {
 
-  override val name: Rule.Name = Rule.Name("auth_key_unix")
+  override val name: Rule.Name = AuthKeyUnixRule.name
 
   override protected def authenticate(configuredAuthKey: String,
                                       basicAuth: BasicAuthUtils.BasicAuth): Boolean = {
@@ -28,5 +28,7 @@ class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)
 }
 
 object AuthKeyUnixRule {
+  val name = Rule.Name("auth_key_unix")
+
   private val pattern = Pattern.compile("((?:[^$]*\\$){3}[^$]*).*")
 }

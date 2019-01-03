@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.MethodsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_MethodsRuleSettings;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -66,7 +66,7 @@ public class __old_MethodsRuleTests {
     when(rc.getMethod()).thenReturn(found);
     when(rc.isReadRequest()).thenReturn(true);
 
-    SyncRule r = new __old_MethodsSyncRule(new MethodsRuleSettings(Sets.newHashSet(configured)));
+    SyncRule r = new __old_MethodsSyncRule(new __old_MethodsRuleSettings(Sets.newHashSet(configured)));
     return r.match(rc);
   }
 

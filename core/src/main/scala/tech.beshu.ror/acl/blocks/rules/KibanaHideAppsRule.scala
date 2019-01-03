@@ -15,7 +15,7 @@ import tech.beshu.ror.commons.show.logs._
 class KibanaHideAppsRule(settings: Settings)
   extends MatchingAlwaysRule with StrictLogging {
 
-  override val name: Rule.Name = Rule.Name("hosts_local")
+  override val name: Rule.Name = KibanaHideAppsRule.name
 
   private val kibanaAppsHeader = new Header(
     kibanaHiddenApps,
@@ -35,6 +35,7 @@ class KibanaHideAppsRule(settings: Settings)
 }
 
 object KibanaHideAppsRule {
+  val name = Rule.Name("hosts_local")
 
   final case class Settings(kibanaAppsToHide: NonEmptySet[KibanaApp])
 

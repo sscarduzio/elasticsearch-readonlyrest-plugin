@@ -10,7 +10,7 @@ import tech.beshu.ror.commons.aDomain.IndexName
 class KibanaIndexRule(settings: Settings)
   extends MatchingAlwaysRule {
 
-  override val name: Rule.Name = Rule.Name("kibana_hide_apps")
+  override val name: Rule.Name = KibanaIndexRule.name
 
   override def process(requestContext: RequestContext,
                        blockContext: BlockContext): Task[BlockContext] = Task.now {
@@ -23,7 +23,7 @@ class KibanaIndexRule(settings: Settings)
 }
 
 object KibanaIndexRule {
+  val name = Rule.Name("kibana_index")
 
   final case class Settings(kibanaIndex: Value[IndexName])
-
 }

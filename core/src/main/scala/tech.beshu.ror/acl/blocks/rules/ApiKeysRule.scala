@@ -13,7 +13,7 @@ import tech.beshu.ror.commons.aDomain.Header.Name._
 class ApiKeysRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("api_keys")
+  override val name: Rule.Name = ApiKeysRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -27,6 +27,8 @@ class ApiKeysRule(settings: Settings)
 }
 
 object ApiKeysRule {
+
+  val name = Rule.Name("api_keys")
 
   final case class Settings(apiKeys: NonEmptySet[ApiKey])
 

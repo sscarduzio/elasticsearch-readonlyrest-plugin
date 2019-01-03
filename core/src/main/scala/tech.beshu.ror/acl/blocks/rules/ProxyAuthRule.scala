@@ -15,7 +15,7 @@ import tech.beshu.ror.commons.domain.{LoggedUser, User}
 class ProxyAuthRule(settings: Settings)
   extends AuthenticationRule {
 
-  override val name: Rule.Name = Rule.Name("proxy_auth")
+  override val name: Rule.Name = ProxyAuthRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -42,7 +42,7 @@ class ProxyAuthRule(settings: Settings)
 }
 
 object ProxyAuthRule {
+  val name = Rule.Name("proxy_auth")
 
   final case class Settings(userIds: NonEmptySet[User.Id], userHeaderName: Header.Name)
-
 }

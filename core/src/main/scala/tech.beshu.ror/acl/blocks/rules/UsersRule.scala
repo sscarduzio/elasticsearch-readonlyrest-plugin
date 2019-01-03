@@ -15,7 +15,7 @@ import scala.collection.JavaConverters._
 class UsersRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("users")
+  override val name: Rule.Name = UsersRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -39,8 +39,8 @@ class UsersRule(settings: Settings)
 }
 
 object UsersRule {
+  val name = Rule.Name("users")
 
   final case class Settings(userIds: NonEmptySet[Value[User.Id]]) // todo: do we need Value here?
-
 }
 

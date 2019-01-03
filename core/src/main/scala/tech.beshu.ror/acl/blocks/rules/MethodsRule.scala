@@ -11,7 +11,7 @@ import tech.beshu.ror.acl.request.RequestContext
 class MethodsRule(settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = Rule.Name("methods")
+  override val name: Rule.Name = MethodsRule.name
 
   /*
     NB: Elasticsearch will parse as GET any HTTP methods that it does not understand.
@@ -27,5 +27,6 @@ class MethodsRule(settings: Settings)
 }
 
 object MethodsRule {
+  val name = Rule.Name("methods")
   final case class Settings(methods: NonEmptySet[Method])
 }

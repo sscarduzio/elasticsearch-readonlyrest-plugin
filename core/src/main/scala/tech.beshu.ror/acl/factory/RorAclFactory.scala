@@ -1,5 +1,7 @@
 package tech.beshu.ror.acl.factory
 
+import java.time.Clock
+
 import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
@@ -12,11 +14,15 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCre
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderOps, DecodingFailureOps}
+import tech.beshu.ror.acl.utils.UuidProvider
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 
 import scala.language.implicitConversions
 
 class RorAclFactory {
+
+  implicit val clock: Clock = ???
+  implicit val uuidProvider: UuidProvider = ???
 
   def createAclFrom(settingsYamlString: String): Either[NonEmptyList[AclCreationError], Acl] = {
     parser.parse(settingsYamlString) match {
@@ -76,7 +82,7 @@ class RorAclFactory {
   })
 
   private implicit val blockDecoder: Decoder[Block] = {
-    implicit val nameDecoder: Decoder[Block.Name] = DecoderOps.decodeStringOrNumber.map(Block.Name.apply)
+    implicit val nameDecoder: Decoder[Block.Name] = DecoderOps.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emap {
       case "allow" => Right(Block.Policy.Allow)
       case "forbid" => Right(Block.Policy.Forbid)

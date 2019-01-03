@@ -20,18 +20,18 @@ import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.Set;
 
-public class KibanaHideAppsRuleSettings implements RuleSettings {
+public class __old_KibanaHideAppsRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "kibana_hide_apps";
 
   private final Set<String> kibanaHideApps;
 
-  private KibanaHideAppsRuleSettings(Set<String> kibanaHideApps) {
+  private __old_KibanaHideAppsRuleSettings(Set<String> kibanaHideApps) {
     this.kibanaHideApps = kibanaHideApps;
   }
 
-  public static KibanaHideAppsRuleSettings from(Set<String> kibanaHideApps) {
-    return new KibanaHideAppsRuleSettings(kibanaHideApps);
+  public static __old_KibanaHideAppsRuleSettings from(Set<String> kibanaHideApps) {
+    return new __old_KibanaHideAppsRuleSettings(kibanaHideApps);
   }
 
   public Set<String> getKibanaHideApps() {

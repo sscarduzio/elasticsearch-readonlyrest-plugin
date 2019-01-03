@@ -17,7 +17,7 @@ class FieldsRuleTests extends WordSpec with MockFactory {
   "A FieldsRule" should {
     "match" when {
       "request is read only" in {
-        val rule = new FieldsRule(FieldsRule.Settings.ofFields(NonEmptySet.of(ADocumentField("_field1"), ADocumentField("_field2"))))
+        val rule = new FieldsRule(FieldsRule.Settings.ofFields(NonEmptySet.of(ADocumentField("_field1"), ADocumentField("_field2")), None))
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
@@ -28,7 +28,7 @@ class FieldsRuleTests extends WordSpec with MockFactory {
     }
     "not match" when {
       "request is not read only" in {
-        val rule = new FieldsRule(FieldsRule.Settings.ofFields(NonEmptySet.of(ADocumentField("_field1"))))
+        val rule = new FieldsRule(FieldsRule.Settings.ofFields(NonEmptySet.of(ADocumentField("_field1")), None))
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         (requestContext.isReadOnlyRequest _).expects().returning(false)

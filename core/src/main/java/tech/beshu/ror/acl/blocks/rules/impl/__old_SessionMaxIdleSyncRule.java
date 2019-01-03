@@ -23,7 +23,7 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
 
 import java.time.Duration;
 
@@ -37,7 +37,7 @@ public class __old_SessionMaxIdleSyncRule extends SyncRule {
   private final Duration maxIdle;
   private final RuleSettings settings;
 
-  public __old_SessionMaxIdleSyncRule(SessionMaxIdleRuleSettings s, ESContext context) {
+  public __old_SessionMaxIdleSyncRule(__old_SessionMaxIdleRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.context = context;
     this.maxIdle = s.getMaxIdle();
