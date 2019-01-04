@@ -48,7 +48,7 @@ object ruleDecoders {
       }
   }
 
-  implicit def ruleDecoderBy(name: String)
+  implicit def ruleDecoderBy(name: String, authProxies: Set[ProxyAuth])
                             (implicit clock: Clock, uuidProvider: UuidProvider): Option[RuleDecoder[_ <: Rule]] =
     Rule.Name(name) match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
@@ -67,7 +67,7 @@ object ruleDecoders {
       case LocalHostsRule.name => Some(LocalHostsRuleDecoder)
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.name => Some(MethodsRuleDecoder)
-      //case ProxyAuthRule.name => Some(ProxyAuthRuleDecoder) // todo:
+      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxies))
       case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder)
       case UriRegexRule.name => Some(UriRegexRuleDecoder)
       case UsersRule.name => Some(UsersRuleDecoder)

@@ -12,17 +12,19 @@ import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
+import tech.beshu.ror.acl.factory.decoders.ProxyAuth
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderOps, DecodingFailureOps}
-import tech.beshu.ror.acl.utils.UuidProvider
+import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
+import tech.beshu.ror.commons.aDomain.Header
 
 import scala.language.implicitConversions
 
 class RorAclFactory {
 
-  implicit val clock: Clock = ???
-  implicit val uuidProvider: UuidProvider = ???
+  implicit val clock: Clock = Clock.systemUTC() // todo:
+  implicit val uuidProvider: UuidProvider = JavaUuidProvider // todo:
 
   def createAclFrom(settingsYamlString: String): Either[NonEmptyList[AclCreationError], Acl] = {
     parser.parse(settingsYamlString) match {
@@ -38,13 +40,13 @@ class RorAclFactory {
       }
   }
 
-  private implicit val rulesNelDecoder: Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
+  private implicit def rulesNelDecoder(authProxies: Set[ProxyAuth]): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
     val (cursor, result) = c.keys.toList.flatten
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName).map(_.map(_.map(_ :: Nil)))
+          current <- decodeRuleInCursorContext(currentRuleName, authProxies).map(_.map(_.map(_ :: Nil)))
         } yield Monoid.combine(last, current)
       }
       .run(c)
@@ -67,21 +69,24 @@ class RorAclFactory {
     }
   }
 
-  private def decodeRuleInCursorContext(name: String): State[ACursor, Option[Decoder.Result[Rule]]] = State(cursor => {
-    ruleDecoderBy(name) match {
-      case Some(decoder) =>
-        val decodingResult = decoder.decode(
-          cursor.downField(name),
-          cursor.withFocus(_.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key))))
-        )
-        val newCursor = cursor.withFocus(_.mapObject(json => decoder.associatedFields.foldLeft(json.remove(name)) { _.remove(_) }))
-        (newCursor, Some(decodingResult))
-      case None =>
-        (cursor, None)
-    }
-  })
+  private def decodeRuleInCursorContext(name: String, authProxies: Set[ProxyAuth]): State[ACursor, Option[Decoder.Result[Rule]]] =
+    State(cursor => {
+      ruleDecoderBy(name, authProxies) match {
+        case Some(decoder) =>
+          val decodingResult = decoder.decode(
+            cursor.downField(name),
+            cursor.withFocus(_.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key))))
+          )
+          val newCursor = cursor.withFocus(_.mapObject(json => decoder.associatedFields.foldLeft(json.remove(name)) {
+            _.remove(_)
+          }))
+          (newCursor, Some(decodingResult))
+        case None =>
+          (cursor, None)
+      }
+    })
 
-  private implicit val blockDecoder: Decoder[Block] = {
+  private implicit def blockDecoder(authProxies: Set[ProxyAuth]): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderOps.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emap {
       case "allow" => Right(Block.Policy.Allow)
@@ -99,7 +104,7 @@ class RorAclFactory {
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- Decoder[NonEmptyList[Rule]].tryDecode(c.withFocus(
+          rules <- rulesNelDecoder(authProxies).tryDecode(c.withFocus(
             _.mapObject(_
               .remove(Attributes.Block.name)
               .remove(Attributes.Block.policy)
@@ -115,25 +120,36 @@ class RorAclFactory {
       }
   }
 
+  private implicit val proxyAuthDecoder: Decoder[ProxyAuth] = {
+    implicit val nameDecoder: Decoder[ProxyAuth.Name] = Decoder.decodeString.map(ProxyAuth.Name.apply)
+    implicit val headerNameDecoder: Decoder[Header.Name] = Decoder.decodeString.map(Header.Name.apply)
+    Decoder.forProduct2("name", "user_id_header")(ProxyAuth.apply)
+  }
+
   private implicit val aclDecoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
-    c.downField(Attributes.acl) match {
-      case hc: HCursor =>
-        Decoder[NonEmptyList[Block]].accumulating.map(new SequentialAcl(_): Acl).apply(hc)
-      case _ =>
-        AccumulatingDecoder
-          .failed[Acl](NonEmptyList.one(DecodingFailureOps.fromError(BlocksLevelCreationError(s"Cannot load ${Attributes.acl} section"))))
-          .apply(c)
-    }
+    val decoder = for {
+      authProxies <- Decoder.forProduct1("proxy_auth_configs")(Set.apply[ProxyAuth])
+      acl <- {
+        implicit val _ = blockDecoder(authProxies)
+        Decoder.forProduct1(Attributes.acl)(NonEmptyList.fromListUnsafe[Block]).map(new SequentialAcl(_): Acl)
+      }
+    } yield acl
+    decoder.accumulating.apply(c)
   }
 }
 
 object RorAclFactory {
 
   sealed trait AclCreationError
+
   object AclCreationError {
+
     final case class UnparsableYamlContent(value: String) extends AclCreationError
+
     final case class BlocksLevelCreationError(message: String) extends AclCreationError
+
     final case class RulesLevelCreationError(message: String) extends AclCreationError
+
   }
 
   private object Attributes {

@@ -41,6 +41,16 @@ object CirceOps {
     def valueDecoder[T](convert: ResolvedValue => T): Decoder[Value[T]] =
       DecoderOps.decodeStringLike.map(str => Value.fromString(str, convert))
 
+    def decodeStringOrJson[T](simpleDecoder: Decoder[T], expandedDecoder: Decoder[T]): Decoder[T] = {
+      Decoder
+        .decodeJson
+        .flatMap { json =>
+          json.asString match {
+            case Some(_) => simpleDecoder
+            case None => expandedDecoder
+          }
+        }
+    }
   }
 
   implicit class DecodingFailureOps(val decodingFailure: DecodingFailure) extends AnyVal {

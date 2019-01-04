@@ -17,15 +17,22 @@ class RorAclFactoryTests extends WordSpec {
           |  - name: "CONTAINER ADMIN"
           |    type: allow
           |    auth_key: admin:container
-          |    ss: 12
+          |    proxy_auth:
+          |      proxy_auth_config: "proxy1"
+          |      users: ["*"]
           |
           |  - name: 4
           |    type: allow
           |    accept_x-forwarded-for_header: true
           |    hosts: [127.0.0.1, 192.168.1.0/24]
-          |    ds: 213
+          |
+          |  proxy_auth_configs:
+          |
+          |  - name: "proxy1"
+          |    user_id_header: "X-Auth-Token"
         """.stripMargin
-      factory.createAclFrom(settings) should be(Left(RorAclFactory.AclCreationError.UnparsableYamlContent))
+      val acl = factory.createAclFrom(settings)
+      acl should be(Left(RorAclFactory.AclCreationError.UnparsableYamlContent))
     }
     "second" in {
 

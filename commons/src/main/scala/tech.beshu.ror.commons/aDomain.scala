@@ -11,6 +11,7 @@ object aDomain {
     final case class Name(value: String)
     object Name {
       val xForwardedFor = Name("X-Forwarded-For")
+      val xForwardedUser = Name("X-Forwarded-User")
       val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
       val cookie = Name("Cookie")
       val setCookie = Name("Set-Cookie")

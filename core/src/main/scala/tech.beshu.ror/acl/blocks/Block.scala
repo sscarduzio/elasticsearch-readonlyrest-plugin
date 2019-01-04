@@ -15,6 +15,7 @@ import tech.beshu.ror.commons.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 
 import scala.util.Success
 
+// todo: rules ordering
 class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
