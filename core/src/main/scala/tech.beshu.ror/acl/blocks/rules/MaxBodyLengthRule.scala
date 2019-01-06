@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.request.RequestContext
 
-class MaxBodyLengthRule(settings: Settings)
+class MaxBodyLengthRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = MaxBodyLengthRule.name

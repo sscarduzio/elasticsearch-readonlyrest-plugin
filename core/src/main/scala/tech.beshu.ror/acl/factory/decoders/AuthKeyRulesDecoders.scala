@@ -3,7 +3,7 @@ package tech.beshu.ror.acl.factory.decoders
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.CirceOps.DecoderOps
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 
 object AuthKeyRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeyRule(_))
@@ -30,5 +30,5 @@ object AuthKeyUnixRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 
 private object AuthKeyDecodersHelper {
   val basicAuthenticationRuleSettingsDecoder: Decoder[BasicAuthenticationRule.Settings] =
-    DecoderOps.decodeStringLike.map(BasicAuthenticationRule.Settings.apply)
+    DecoderHelpers.decodeStringLike.map(BasicAuthenticationRule.Settings.apply)
 }

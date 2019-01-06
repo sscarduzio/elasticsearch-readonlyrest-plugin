@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule.Settings
 import tech.beshu.ror.acl.factory.decoders.XForwardedForRuleDecoderHelper.isInetAddressOrBlock
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.CirceOps.DecoderOps
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.domain.IPMask
 import tech.beshu.ror.commons.orders._
@@ -18,7 +18,7 @@ import scala.collection.SortedSet
 import scala.util.{Failure, Success, Try}
 
 object XForwardedForRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderOps
+  DecoderHelpers
     .decodeStringLikeOrNonEmptySet(identity)
     .emap { stringHosts =>
       val (addressesSet, ipsSet, errorsSet) =

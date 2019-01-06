@@ -11,7 +11,7 @@ import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocu
 import tech.beshu.ror.commons.aDomain.Header.Name
 import tech.beshu.ror.commons.aDomain.{DocumentField, Header}
 
-class FieldsRule(settings: Settings)
+class FieldsRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = FieldsRule.name

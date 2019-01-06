@@ -16,7 +16,7 @@ import tech.beshu.ror.commons.domain.IPMask
 
 import scala.util.control.Exception._
 
-class XForwardedForRule(settings: Settings)
+class XForwardedForRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = XForwardedForRule.name

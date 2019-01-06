@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.{ApiKey, Header}
 import tech.beshu.ror.commons.aDomain.Header.Name._
 
-class ApiKeysRule(settings: Settings)
+class ApiKeysRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = ApiKeysRule.name

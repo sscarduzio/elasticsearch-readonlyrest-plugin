@@ -14,7 +14,7 @@ import tech.beshu.ror.commons.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 
-class ActionsRule(settings: Settings)
+class ActionsRule(val settings: Settings)
   extends RegularRule with StrictLogging {
 
   override val name: Rule.Name = ActionsRule.name

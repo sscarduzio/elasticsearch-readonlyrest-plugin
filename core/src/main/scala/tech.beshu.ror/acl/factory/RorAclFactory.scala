@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory
 
 import java.time.Clock
 
-import cats.data.{NonEmptyList, State}
+import cats.data.{NonEmptyList, NonEmptySet, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe.yaml.parser
@@ -10,14 +10,16 @@ import io.circe._
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, ProxyAuthConfigsCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.acl.factory.decoders.ProxyAuth
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderOps, DecodingFailureOps}
+import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 import tech.beshu.ror.commons.aDomain.Header
+import tech.beshu.ror.acl.utils.CirceOps.DecoderOps
+import tech.beshu.ror.acl.utils.ScalaExt._
 
 import scala.language.implicitConversions
 
@@ -36,7 +38,7 @@ class RorAclFactory {
   private def createFrom(settingsJson: Json) = {
     aclDecoder(HCursor.fromJson(settingsJson))
       .leftMap { failures =>
-        failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(f.message)))
+        failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(f.message))) // todo: leave the message?
       }
   }
 
@@ -87,7 +89,7 @@ class RorAclFactory {
     })
 
   private implicit def blockDecoder(authProxies: Set[ProxyAuth]): Decoder[Block] = {
-    implicit val nameDecoder: Decoder[Block.Name] = DecoderOps.decodeStringLike.map(Block.Name.apply)
+    implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emap {
       case "allow" => Right(Block.Policy.Allow)
       case "forbid" => Right(Block.Policy.Forbid)
@@ -123,15 +125,41 @@ class RorAclFactory {
   private implicit val proxyAuthDecoder: Decoder[ProxyAuth] = {
     implicit val nameDecoder: Decoder[ProxyAuth.Name] = Decoder.decodeString.map(ProxyAuth.Name.apply)
     implicit val headerNameDecoder: Decoder[Header.Name] = Decoder.decodeString.map(Header.Name.apply)
-    Decoder.forProduct2("name", "user_id_header")(ProxyAuth.apply)
+    Decoder
+      .forProduct2("name", "user_id_header")(ProxyAuth.apply)
+      .withError(ProxyAuthConfigsCreationError.apply _)
   }
 
   private implicit val aclDecoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
     val decoder = for {
-      authProxies <- Decoder.forProduct1("proxy_auth_configs")(Set.apply[ProxyAuth])
+      authProxies <-
+        Decoder
+          .instance(_.downField("proxy_auth_configs").as[Option[Set[ProxyAuth]]])
+          .emapE { auths =>
+            auths.map(_.toList) match {
+              case None =>
+                Right(Set.empty[ProxyAuth])
+              case Some(Nil) =>
+                Left(ProxyAuthConfigsCreationError(s"Proxy auth definitions declared, but no defnition found"))
+              case Some(list) =>
+                list.map(_.name).findDuplicates match {
+                  case Nil =>
+                    Right(list.toSet)
+                  case duplicates =>
+                    Left(ProxyAuthConfigsCreationError(s"Proxy auth definitions must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}"))
+                }
+            }
+          }
       acl <- {
         implicit val _ = blockDecoder(authProxies)
-        Decoder.forProduct1(Attributes.acl)(NonEmptyList.fromListUnsafe[Block]).map(new SequentialAcl(_): Acl)
+        Decoder.forProduct1(Attributes.acl)(NonEmptyList.fromListUnsafe[Block])
+          .emapE { blocks =>
+            blocks.map(_.name).toList.findDuplicates match {
+              case Nil => Right(blocks)
+              case duplicates => Left(BlocksLevelCreationError(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}"))
+            }
+          }
+          .map(new SequentialAcl(_): Acl)
       }
     } yield acl
     decoder.accumulating.apply(c)
@@ -141,15 +169,11 @@ class RorAclFactory {
 object RorAclFactory {
 
   sealed trait AclCreationError
-
   object AclCreationError {
-
     final case class UnparsableYamlContent(value: String) extends AclCreationError
-
+    final case class ProxyAuthConfigsCreationError(message: String) extends AclCreationError
     final case class BlocksLevelCreationError(message: String) extends AclCreationError
-
     final case class RulesLevelCreationError(message: String) extends AclCreationError
-
   }
 
   private object Attributes {

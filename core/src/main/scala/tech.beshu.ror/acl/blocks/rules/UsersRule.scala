@@ -12,7 +12,7 @@ import tech.beshu.ror.commons.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 
-class UsersRule(settings: Settings)
+class UsersRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = UsersRule.name

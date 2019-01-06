@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.MatchingAlwaysRule
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.IndexName
 
-class KibanaIndexRule(settings: Settings)
+class KibanaIndexRule(val settings: Settings)
   extends MatchingAlwaysRule {
 
   override val name: Rule.Name = KibanaIndexRule.name

@@ -15,12 +15,13 @@ import scala.collection.SortedSet
 
 object CirceOps {
 
-  object DecoderOps {
+  object DecoderHelpers {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
-    def decodeStringLikeOrNonEmptySet[T : Order](fromString: String => T): Decoder[NonEmptySet[T]] =
+
+    def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike.map(NonEmptySet.one(_)).or(Decoder.decodeNonEmptySet[String]).map(_.map(fromString))
 
-    def decodeStringLikeOrNonEmptySetE[T : Order](fromString: String => Either[String, T]): Decoder[NonEmptySet[T]] =
+    def decodeStringLikeOrNonEmptySetE[T: Order](fromString: String => Either[String, T]): Decoder[NonEmptySet[T]] =
       decodeStringLike.map(NonEmptySet.one(_)).or(Decoder.decodeNonEmptySet[String]).emap { set =>
         val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) {
           case ((errors, values), elem) =>
@@ -29,17 +30,17 @@ object CirceOps {
               case Left(error) => (errors + error, values)
             }
         }
-        if(errorsSet.nonEmpty) Left(errorsSet.mkString(","))
+        if (errorsSet.nonEmpty) Left(errorsSet.mkString(","))
         else Right(NonEmptySet.fromSetUnsafe(SortedSet.empty[T] ++ valuesSet))
       }
 
-    def decodeStringLikeOrNonEmptySet[T : Order : Decoder]: Decoder[NonEmptySet[T]] =
+    def decodeStringLikeOrNonEmptySet[T: Order : Decoder]: Decoder[NonEmptySet[T]] =
       decodeStringLikeOrNonEmptySetE { str =>
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
 
     def valueDecoder[T](convert: ResolvedValue => T): Decoder[Value[T]] =
-      DecoderOps.decodeStringLike.map(str => Value.fromString(str, convert))
+      DecoderHelpers.decodeStringLike.map(str => Value.fromString(str, convert))
 
     def decodeStringOrJson[T](simpleDecoder: Decoder[T], expandedDecoder: Decoder[T]): Decoder[T] = {
       Decoder
@@ -53,12 +54,30 @@ object CirceOps {
     }
   }
 
+  implicit class DecoderOps[A](val decoder: Decoder[A]) extends AnyVal {
+    def withError(error: AclCreationError): Decoder[A] = {
+      Decoder.instance { c =>
+        decoder(c).left.map(_.overrideDefaultErrorWith(error))
+      }
+    }
+
+    def withError(errorCreator: String => AclCreationError): Decoder[A] = {
+      Decoder.instance { c =>
+        decoder(c).left.map(_.overrideDefaultErrorWith(errorCreator(c.value.noSpaces)))
+      }
+    }
+
+    def emapE[B](f: A => Either[AclCreationError, B]): Decoder[B] =
+      decoder.emap { a => f(a).left.map(AclCreationErrorCoders.stringify) }
+  }
+
   implicit class DecodingFailureOps(val decodingFailure: DecodingFailure) extends AnyVal {
-    import DecodingFailureOps._
+
+    import AclCreationErrorCoders._
 
     def overrideDefaultErrorWith(error: AclCreationError): DecodingFailure = {
-      if(aclCreationError.isDefined) decodingFailure
-      else decodingFailure.withMessage(Encoder[AclCreationError].apply(error).noSpaces)
+      if (aclCreationError.isDefined) decodingFailure
+      else decodingFailure.withMessage(stringify(error))
     }
 
     def aclCreationError: Option[AclCreationError] =
@@ -67,11 +86,19 @@ object CirceOps {
   }
 
   object DecodingFailureOps {
-    private implicit val config: Configuration = Configuration.default.withDiscriminator("type")
-    private implicit val aclCreationErrorEncoder: Encoder[AclCreationError] = extras.semiauto.deriveEncoder
-    private implicit val aclCreationErrorDecoder: Decoder[AclCreationError] = extras.semiauto.deriveDecoder
+
+    import AclCreationErrorCoders._
 
     def fromError(error: AclCreationError): DecodingFailure =
       DecodingFailure(Encoder[AclCreationError].apply(error).noSpaces, Nil)
   }
+
+  private[this] object AclCreationErrorCoders {
+    private implicit val config: Configuration = Configuration.default.withDiscriminator("type")
+    implicit val aclCreationErrorEncoder: Encoder[AclCreationError] = extras.semiauto.deriveEncoder
+    implicit val aclCreationErrorDecoder: Decoder[AclCreationError] = extras.semiauto.deriveDecoder
+
+    def stringify(error: AclCreationError): String = Encoder[AclCreationError].apply(error).noSpaces
+  }
+
 }

@@ -16,7 +16,7 @@ import tech.beshu.ror.commons.domain.IPMask
 
 import scala.util.control.Exception._
 
-class HostsRule(settings: Settings)
+class HostsRule(val settings: Settings)
   extends RegularRule with StrictLogging {
 
   override val name: Rule.Name = HostsRule.name

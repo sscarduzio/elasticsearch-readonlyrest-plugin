@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Address
 
-class LocalHostsRule(settings: Settings)
+class LocalHostsRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = LocalHostsRule.name

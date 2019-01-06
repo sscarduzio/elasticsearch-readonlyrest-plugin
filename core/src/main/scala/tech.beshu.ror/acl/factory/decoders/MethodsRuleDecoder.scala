@@ -6,12 +6,12 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.MethodsRule
 import tech.beshu.ror.acl.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.CirceOps.DecoderOps
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import MethodsRuleDecoderHelper.methodDecoder
 import tech.beshu.ror.commons.orders._
 
 object MethodsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderOps
+  DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Method]
     .map(methods => new MethodsRule(Settings(methods)))
 )

@@ -5,7 +5,7 @@ import cats.implicits._
 import tech.beshu.ror.acl.blocks.rules.FieldsRule
 import tech.beshu.ror.acl.factory.decoders.FieldsRuleDecoderHelper._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.CirceOps.DecoderOps
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.commons.Constants
 import tech.beshu.ror.commons.aDomain.DocumentField
 import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
@@ -14,7 +14,7 @@ import tech.beshu.ror.commons.orders._
 import scala.collection.JavaConverters._
 
 object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderOps
+  DecoderHelpers
     .decodeStringLikeOrNonEmptySet(toDocumentField)
     .emap { fields =>
       val notNegatedFields = fields.collect { case f: ADocumentField => f }

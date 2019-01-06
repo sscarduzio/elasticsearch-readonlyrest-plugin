@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.request.RequestContext
 
-class MethodsRule(settings: Settings)
+class MethodsRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = MethodsRule.name

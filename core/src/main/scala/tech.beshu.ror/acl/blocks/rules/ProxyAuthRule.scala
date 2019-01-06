@@ -12,7 +12,7 @@ import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.domain.User.Id
 import tech.beshu.ror.commons.domain.{LoggedUser, User}
 
-class ProxyAuthRule(settings: Settings)
+class ProxyAuthRule(val settings: Settings)
   extends AuthenticationRule {
 
   override val name: Rule.Name = ProxyAuthRule.name

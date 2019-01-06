@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.blocks.rules
 
 import com.typesafe.scalalogging.StrictLogging
 import tech.beshu.ror.acl.utils.BasicAuthOps._
-import tech.beshu.ror.acl.utils.TryOps._
+import tech.beshu.ror.acl.utils.ScalaExt._
 import tech.beshu.ror.utils.BasicAuthUtils
 
 class AuthKeyRule(settings: BasicAuthenticationRule.Settings)

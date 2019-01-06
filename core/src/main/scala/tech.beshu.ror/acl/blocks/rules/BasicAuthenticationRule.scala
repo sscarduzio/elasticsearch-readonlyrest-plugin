@@ -16,7 +16,7 @@ import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
 
-abstract class BasicAuthenticationRule(settings: Settings)
+abstract class BasicAuthenticationRule(val settings: Settings)
   extends AuthenticationRule
     with StrictLogging {
 

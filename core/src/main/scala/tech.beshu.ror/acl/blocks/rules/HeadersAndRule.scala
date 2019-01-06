@@ -15,7 +15,7 @@ import scala.collection.JavaConverters._
 /**
   * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
   **/
-class HeadersAndRule(settings: Settings)
+class HeadersAndRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = HeadersAndRule.name

@@ -17,7 +17,7 @@ import tech.beshu.ror.commons.domain.LoggedUser
 
 import scala.concurrent.duration.FiniteDuration
 
-class SessionMaxIdleRule(settings: Settings)
+class SessionMaxIdleRule(val settings: Settings)
                         (implicit clock: Clock, uuidProvider: UuidProvider)
   extends RegularRule with StrictLogging {
 

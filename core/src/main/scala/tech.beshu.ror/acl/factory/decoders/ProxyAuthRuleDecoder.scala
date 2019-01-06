@@ -7,14 +7,14 @@ import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.ProxyAuthDecoder._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderOps, DecodingFailureOps}
+import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.domain.User
 import tech.beshu.ror.commons.orders._
 import tech.beshu.ror.acl.factory.decoders.ProxyAuthRuleDecoderHelper.nonEmptySetOfUserIdsDecoder
 
 class ProxyAuthRuleDecoder(authProxies: Set[ProxyAuth]) extends RuleDecoderWithoutAssociatedFields(
-  DecoderOps
+  DecoderHelpers
     .decodeStringOrJson(
       simpleDecoder = nonEmptySetOfUserIdsDecoder.map(ProxyAuthRule.Settings(_, Header.Name.xForwardedUser)),
       expandedDecoder =
@@ -34,5 +34,5 @@ class ProxyAuthRuleDecoder(authProxies: Set[ProxyAuth]) extends RuleDecoderWitho
 
 private object ProxyAuthRuleDecoderHelper {
   implicit val nonEmptySetOfUserIdsDecoder: Decoder[NonEmptySet[User.Id]] =
-    DecoderOps.decodeStringLikeOrNonEmptySet(User.Id.apply)
+    DecoderHelpers.decodeStringLikeOrNonEmptySet(User.Id.apply)
 }

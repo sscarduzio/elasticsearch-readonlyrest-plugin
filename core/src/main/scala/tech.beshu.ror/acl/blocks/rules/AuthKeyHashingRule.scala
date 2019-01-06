@@ -5,11 +5,11 @@ import java.nio.charset.Charset
 import com.google.common.hash.{HashFunction, Hashing}
 import com.typesafe.scalalogging.StrictLogging
 import tech.beshu.ror.acl.utils.BasicAuthOps._
-import tech.beshu.ror.acl.utils.TryOps._
+import tech.beshu.ror.acl.utils.ScalaExt._
 import tech.beshu.ror.utils.BasicAuthUtils
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
-                         hashFunction: HashFunction)
+                                  hashFunction: HashFunction)
   extends BasicAuthenticationRule(settings)
     with StrictLogging {
 
@@ -33,6 +33,7 @@ class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings)
 
   override val name: Rule.Name = AuthKeySha1Rule.name
 }
+
 object AuthKeySha1Rule {
   val name = Rule.Name("auth_key_sha1")
 }
@@ -42,6 +43,7 @@ class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings)
 
   override val name: Rule.Name = AuthKeySha256Rule.name
 }
+
 object AuthKeySha256Rule {
   val name = Rule.Name("auth_key_sha256")
 }
@@ -51,6 +53,7 @@ class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings)
 
   override val name: Rule.Name = AuthKeySha512Rule.name
 }
+
 object AuthKeySha512Rule {
   val name = Rule.Name("auth_key_sha512")
 }

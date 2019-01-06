@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.blocks.rules.{HostsRule, LocalHostsRule}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.HostRulesDecodersHelper._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderOps, DecodingFailureOps}
+import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.orders._
 
@@ -31,12 +31,12 @@ object HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boole
 )
 
 object LocalHostsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderOps
+  DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Value[Address]]
     .map(addresses => new LocalHostsRule(LocalHostsRule.Settings(addresses)))
 )
 
 object HostRulesDecodersHelper {
 
-  implicit val addressValueDecoder: Decoder[Value[Address]] = DecoderOps.valueDecoder(rv => Address(rv.value))
+  implicit val addressValueDecoder: Decoder[Value[Address]] = DecoderHelpers.valueDecoder(rv => Address(rv.value))
 }

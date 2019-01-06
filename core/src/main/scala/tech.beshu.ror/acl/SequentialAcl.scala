@@ -12,7 +12,7 @@ import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.aDomain.Header.Name
 import tech.beshu.ror.commons.headerValues._
 
-class SequentialAcl(blocks: NonEmptyList[Block])
+class SequentialAcl(val blocks: NonEmptyList[Block])
   extends Acl {
 
   override def handle(context: RequestContext, handler: AclHandler): Task[(Vector[History], ExecutionResult)] = {

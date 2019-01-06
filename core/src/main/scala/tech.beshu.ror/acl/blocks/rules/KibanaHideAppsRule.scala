@@ -12,7 +12,7 @@ import tech.beshu.ror.commons.aDomain.Header.Name.kibanaHiddenApps
 import tech.beshu.ror.commons.aDomain.{Header, KibanaApp}
 import tech.beshu.ror.commons.show.logs._
 
-class KibanaHideAppsRule(settings: Settings)
+class KibanaHideAppsRule(val settings: Settings)
   extends MatchingAlwaysRule with StrictLogging {
 
   override val name: Rule.Name = KibanaHideAppsRule.name

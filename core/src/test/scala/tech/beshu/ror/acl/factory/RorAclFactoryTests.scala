@@ -1,48 +1,45 @@
 package tech.beshu.ror.acl.factory
 
+import cats.data.NonEmptyList
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{ProxyAuthConfigsCreationError, UnparsableYamlContent}
 
 class RorAclFactoryTests extends WordSpec {
 
-  "A RorAclFactory" should {
-    "one" in {
-      val factory = new RorAclFactory()
-      val settings =
-        """
-          |  # Default policy is to forbid everything, so let's define a whitelist
-          |  access_control_rules:
-          |
-          |  # ES container initializer need this rule to configure ES instance after startup
-          |  - name: "CONTAINER ADMIN"
-          |    type: allow
-          |    auth_key: admin:container
-          |    proxy_auth:
-          |      proxy_auth_config: "proxy1"
-          |      users: ["*"]
-          |
-          |  - name: 4
-          |    type: allow
-          |    accept_x-forwarded-for_header: true
-          |    hosts: [127.0.0.1, 192.168.1.0/24]
-          |
-          |  proxy_auth_configs:
-          |
-          |  - name: "proxy1"
-          |    user_id_header: "X-Auth-Token"
-        """.stripMargin
-      val acl = factory.createAclFrom(settings)
-      acl should be(Left(RorAclFactory.AclCreationError.UnparsableYamlContent))
-    }
-    "second" in {
+  private val factory = new RorAclFactory()
 
-      val factory = new RorAclFactory()
-      val settings =
-        """
-          |  # Default policy is to forbid everything, so let's define a whitelist
-          |  access_control_rules:
-        """.stripMargin
-      factory.createAclFrom(settings) should be(Left(RorAclFactory.AclCreationError.UnparsableYamlContent))
+  "A RorAclFactory" should {
+    "return unparsable content error" when {
+      "config is not valid yaml" in {
+        val yaml =
+          """
+            |  access_control_rules:
+            |
+            |  - name: "CONTAINER ADMIN"
+            |     - name1: "CONTAINER ADMIN"
+            |    type: allow
+          """.stripMargin
+        val acl = factory.createAclFrom(yaml)
+        acl should be(Left(NonEmptyList.one(UnparsableYamlContent(yaml))))
+      }
+    }
+    "return proxy auth configs error" when {
+      "the section exists, but not contain any element" in {
+        val yaml =
+          """
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    type: allow
+            |    auth_key: admin:container
+            |
+            |  proxy_auth_configss:
+            |
+            |""".stripMargin
+        val acl = factory.createAclFrom(yaml)
+        acl should be(Left(NonEmptyList.one(ProxyAuthConfigsCreationError("test"))))
+      }
     }
   }
 }

@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
 
-class UriRegexRule(settings: Settings)
+class UriRegexRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = UriRegexRule.name
