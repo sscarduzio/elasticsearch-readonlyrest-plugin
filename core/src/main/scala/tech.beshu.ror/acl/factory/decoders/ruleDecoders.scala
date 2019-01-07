@@ -6,6 +6,7 @@ import cats.data.NonEmptySet
 import io.circe.Decoder.Result
 import io.circe._
 import tech.beshu.ror.acl.blocks.rules._
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.acl.utils.UuidProvider
@@ -37,7 +38,7 @@ object ruleDecoders {
       }
 
       override def apply(c: HCursor): Result[T] =
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError("Rule with associated fields decoding failed")))
+        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message("Rule with associated fields decoding failed"))))
     }
 
     private[decoders] def failed[T <: Rule](error: RulesLevelCreationError): RuleDecoder[T] =

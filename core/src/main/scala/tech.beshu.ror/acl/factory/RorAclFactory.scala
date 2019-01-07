@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory
 
 import java.time.Clock
 
-import cats.data.{NonEmptyList, NonEmptySet, State}
+import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe.yaml.parser
@@ -10,10 +10,12 @@ import io.circe._
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, ProxyAuthConfigsCreationError, RulesLevelCreationError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError._
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.acl.factory.decoders.ProxyAuth
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
@@ -31,14 +33,14 @@ class RorAclFactory {
   def createAclFrom(settingsYamlString: String): Either[NonEmptyList[AclCreationError], Acl] = {
     parser.parse(settingsYamlString) match {
       case Right(json) => createFrom(json).toEither
-      case Left(_) => Left(NonEmptyList.one(UnparsableYamlContent(settingsYamlString)))
+      case Left(_) => Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
     }
   }
 
   private def createFrom(settingsJson: Json) = {
     aclDecoder(HCursor.fromJson(settingsJson))
       .leftMap { failures =>
-        failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(f.message))) // todo: leave the message?
+        failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n${settingsJson.toString()}"))))
       }
   }
 
@@ -61,13 +63,13 @@ class RorAclFactory {
             case Some(rules) =>
               Right(rules)
             case None =>
-              Left(DecodingFailureOps.fromError(RulesLevelCreationError(s"No rules defined in block")))
+              Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"No rules defined in block"))))
           }
         }
       case (Nil, None) =>
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError(s"No rules defined in block")))
+        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"No rules defined in block"))))
       case (keys, _) =>
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError(s"Unknown rules: ${keys.mkString(",")}")))
+        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Unknown rules: ${keys.mkString(",")}"))))
     }
   }
 
@@ -90,15 +92,15 @@ class RorAclFactory {
 
   private implicit def blockDecoder(authProxies: Set[ProxyAuth]): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
-    implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emap {
+    implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emapE {
       case "allow" => Right(Block.Policy.Allow)
       case "forbid" => Right(Block.Policy.Forbid)
-      case unknown => Left(s"Unknown block policy type: $unknown")
+      case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
     }
-    implicit val verbosityDecoder: Decoder[Verbosity] = Decoder.decodeString.emap {
+    implicit val verbosityDecoder: Decoder[Verbosity] = Decoder.decodeString.emapE {
       case "info" => Right(Verbosity.Info)
       case "error" => Right(Verbosity.Error)
-      case unknown => Left(s"Unknown verbosity value: $unknown")
+      case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
     }
     Decoder
       .instance { c =>
@@ -118,7 +120,7 @@ class RorAclFactory {
           verbosity.getOrElse(Block.Verbosity.Info),
           rules
         )
-        result.left.map(_.overrideDefaultErrorWith(AclCreationError.BlocksLevelCreationError(s"Cannot load block section [${c.value}]")))
+        result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
 
@@ -127,37 +129,40 @@ class RorAclFactory {
     implicit val headerNameDecoder: Decoder[Header.Name] = Decoder.decodeString.map(Header.Name.apply)
     Decoder
       .forProduct2("name", "user_id_header")(ProxyAuth.apply)
-      .withError(ProxyAuthConfigsCreationError.apply _)
+      .withError(value => ProxyAuthConfigsCreationError(MalformedValue(value)))
   }
 
   private implicit val aclDecoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
     val decoder = for {
       authProxies <-
-        Decoder
-          .instance(_.downField("proxy_auth_configs").as[Option[Set[ProxyAuth]]])
-          .emapE { auths =>
-            auths.map(_.toList) match {
-              case None =>
-                Right(Set.empty[ProxyAuth])
-              case Some(Nil) =>
-                Left(ProxyAuthConfigsCreationError(s"Proxy auth definitions declared, but no defnition found"))
-              case Some(list) =>
-                list.map(_.name).findDuplicates match {
-                  case Nil =>
-                    Right(list.toSet)
-                  case duplicates =>
-                    Left(ProxyAuthConfigsCreationError(s"Proxy auth definitions must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}"))
-                }
-            }
+        DecoderHelpers
+          .decodeFieldList[ProxyAuth]("proxy_auth_configs")
+          .emapE {
+            case NoField => Right(Set.empty[ProxyAuth])
+            case FieldListValue(Nil) => Left(ProxyAuthConfigsCreationError(Message(s"Proxy auth definitions declared, but no definition found")))
+            case FieldListValue(list) =>
+              list.map(_.name).findDuplicates match {
+                case Nil =>
+                  Right(list.toSet)
+                case duplicates =>
+                  Left(ProxyAuthConfigsCreationError(Message(s"Proxy auth definitions must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
+              }
           }
       acl <- {
         implicit val _ = blockDecoder(authProxies)
-        Decoder.forProduct1(Attributes.acl)(NonEmptyList.fromListUnsafe[Block])
-          .emapE { blocks =>
-            blocks.map(_.name).toList.findDuplicates match {
-              case Nil => Right(blocks)
-              case duplicates => Left(BlocksLevelCreationError(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}"))
-            }
+        DecoderHelpers
+          .decodeFieldList[Block](Attributes.acl)
+          .emapE {
+            case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
+            case FieldListValue(blocks) =>
+              NonEmptyList.fromList(blocks) match {
+                case None => Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
+                case Some(neBlocks) =>
+                  neBlocks.map(_.name).toList.findDuplicates match {
+                    case Nil => Right(neBlocks)
+                    case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
+                  }
+              }
           }
           .map(new SequentialAcl(_): Acl)
       }
@@ -170,10 +175,16 @@ object RorAclFactory {
 
   sealed trait AclCreationError
   object AclCreationError {
-    final case class UnparsableYamlContent(value: String) extends AclCreationError
-    final case class ProxyAuthConfigsCreationError(message: String) extends AclCreationError
-    final case class BlocksLevelCreationError(message: String) extends AclCreationError
-    final case class RulesLevelCreationError(message: String) extends AclCreationError
+    final case class UnparsableYamlContent(reason: Reason) extends AclCreationError
+    final case class ProxyAuthConfigsCreationError(reason: Reason) extends AclCreationError
+    final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
+    final case class RulesLevelCreationError(reason: Reason) extends AclCreationError
+
+    sealed trait Reason
+    object Reason {
+      final case class Message(value: String) extends Reason
+      final case class MalformedValue(value: Json) extends Reason
+    }
   }
 
   private object Attributes {

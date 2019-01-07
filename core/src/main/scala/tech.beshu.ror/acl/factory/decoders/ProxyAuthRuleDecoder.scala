@@ -4,6 +4,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.ProxyAuthDecoder._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
@@ -25,7 +26,7 @@ class ProxyAuthRuleDecoder(authProxies: Set[ProxyAuth]) extends RuleDecoderWitho
             proxy <- authProxies
               .find(_.name === proxyName)
               .map(Right(_))
-              .getOrElse(Left(DecodingFailureOps.fromError(RulesLevelCreationError(s"Cannot find proxy auth with name: ${proxyName.show}"))))
+              .getOrElse(Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Cannot find proxy auth with name: ${proxyName.show}")))))
           } yield ProxyAuthRule.Settings(users, proxy.userIdHeader)
         }
     )

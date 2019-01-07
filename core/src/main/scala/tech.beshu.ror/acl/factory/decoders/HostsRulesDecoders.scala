@@ -5,6 +5,7 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.{HostsRule, LocalHostsRule}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.HostRulesDecodersHelper._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
@@ -24,7 +25,9 @@ object HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boole
         case Some(nes) =>
           Decoder.const(new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor)))
         case None =>
-          Decoder.failed(DecodingFailureOps.fromError(RulesLevelCreationError(s"At least one host in ${HostsRule.name} rule should be defined")))
+          Decoder.failed(DecodingFailureOps.fromError(
+            RulesLevelCreationError(Message(s"At least one host in ${HostsRule.name} rule should be defined"))
+          ))
       },
   associatedFields = NonEmptySet.one("accept_x-forwarded-for_header"),
   associatedFieldsDecoder = Decoder.instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
