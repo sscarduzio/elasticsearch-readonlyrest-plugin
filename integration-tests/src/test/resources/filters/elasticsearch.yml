@@ -37,6 +37,11 @@ readonlyrest:
     indices: ["testfilterd"]
     filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"d1\"}}}]}}"
     
+  - name: getter_star
+    api_keys: ["star"]
+    indices: ["testfilter*"]
+    filter: "{\"bool\": {\"must\": [{\"term\": {\"title\": {\"value\": \"a1\"}}}]}}"
+
   # ES container initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
     auth_key: admin:container
