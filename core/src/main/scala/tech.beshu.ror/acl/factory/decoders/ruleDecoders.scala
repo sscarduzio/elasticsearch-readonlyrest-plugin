@@ -6,7 +6,7 @@ import cats.data.NonEmptySet
 import io.circe.Decoder.Result
 import io.circe._
 import tech.beshu.ror.acl.blocks.rules._
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.acl.utils.UuidProvider
@@ -16,13 +16,24 @@ import scala.language.implicitConversions
 object ruleDecoders {
 
   sealed abstract class RuleDecoder[T <: Rule](val associatedFields: Set[String]) extends Decoder[T] {
-    def decode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[T]
+    def decode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[T] = {
+      doDecode(value, associatedFieldsJson)
+        .left
+        .map(_.overrideDefaultErrorWith(RulesLevelCreationError {
+          value.top match {
+            case Some(json) => MalformedValue(json)
+            case None => Message("Malformed rule")
+          }
+        }))
+    }
+
+    protected def doDecode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[T]
   }
 
   object RuleDecoder {
     private [decoders] class RuleDecoderWithoutAssociatedFields[T <: Rule](decoder: Decoder[T])
       extends RuleDecoder[T](Set.empty) {
-      override def decode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = decoder.tryDecode(value)
+      override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = decoder.tryDecode(value)
       override def apply(c: HCursor): Result[T] = decoder.apply(c)
     }
 
@@ -30,7 +41,7 @@ object ruleDecoders {
                                                                                associatedFields: NonEmptySet[String],
                                                                                associatedFieldsDecoder: Decoder[S])
       extends RuleDecoder[T](associatedFields.toSortedSet) {
-      override def decode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = {
+      override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = {
         for {
           decodedAssociatedFields <- associatedFieldsDecoder.tryDecode(associatedFieldsJson)
           rule <- ruleDecoderCreator(decodedAssociatedFields).tryDecode(value)
@@ -44,7 +55,7 @@ object ruleDecoders {
     private[decoders] def failed[T <: Rule](error: RulesLevelCreationError): RuleDecoder[T] =
       new RuleDecoder[T](Set.empty) {
         private val decodingFailureResult = Left(DecodingFailureOps.fromError(error))
-        override def decode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = decodingFailureResult
+        override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = decodingFailureResult
         override def apply(c: HCursor): Result[T] = decodingFailureResult
       }
   }

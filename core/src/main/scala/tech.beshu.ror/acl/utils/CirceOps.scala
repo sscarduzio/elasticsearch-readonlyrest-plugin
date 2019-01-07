@@ -21,7 +21,10 @@ object CirceOps {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
-      decodeStringLike.map(NonEmptySet.one(_)).or(Decoder.decodeNonEmptySet[String]).map(_.map(fromString))
+      decodeStringLike
+        .map(NonEmptySet.one(_))
+        .or(Decoder.decodeNonEmptySet[String])
+        .map(_.map(fromString))
 
     def decodeStringLikeOrNonEmptySetE[T: Order](fromString: String => Either[String, T]): Decoder[NonEmptySet[T]] =
       decodeStringLike.map(NonEmptySet.one(_)).or(Decoder.decodeNonEmptySet[String]).emap { set =>

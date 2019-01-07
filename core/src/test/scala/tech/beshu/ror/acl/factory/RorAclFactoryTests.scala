@@ -250,7 +250,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
           |
           |""".stripMargin
 
-      inside(factory.createAclFrom(yaml)) { case Right(acl: SequentialAcl) => {
+      inside(factory.createAclFrom(yaml)) { case Right(acl: SequentialAcl) =>
         val firstBlock = acl.blocks.head
         firstBlock.name should be (Block.Name("test_block1"))
         firstBlock.policy should be (Block.Policy.Forbid)
@@ -262,7 +262,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
         secondBlock.policy should be (Block.Policy.Allow)
         secondBlock.verbosity should be (Block.Verbosity.Error)
         secondBlock.rules should have size 1
-      }}
+      }
     }
   }
 }
