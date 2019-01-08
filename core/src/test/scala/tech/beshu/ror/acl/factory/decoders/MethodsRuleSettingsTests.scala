@@ -1,58 +1,59 @@
 package tech.beshu.ror.acl.factory.decoders
 
 import cats.data.NonEmptySet
+import com.softwaremill.sttp.Method
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.rules.ActionsRule
+import tech.beshu.ror.TestsUtils.jsonFrom
+import tech.beshu.ror.acl.blocks.rules.MethodsRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.Action
 import tech.beshu.ror.commons.orders._
-import tech.beshu.ror.TestsUtils.jsonFrom
 
-class ActionRuleConfigTests extends RuleSettingsDecoderTest[ActionsRule] {
+class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
 
-  "An ActionRule" should {
+  "A MethodsRule" should {
     "be able to read from config" when {
-      "only one action is defined" in {
+      "one http method is defined" in {
         assertDecodingSuccess(
           yaml =
             """
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    actions: "example_action"
+              |    methods: "GET"
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.actions should be(NonEmptySet.one(Action("example_action")))
+            rule.settings.methods should be(NonEmptySet.one(Method.GET))
           }
         )
       }
-      "several actions are defined" in {
+      "several http methods are defined" in {
         assertDecodingSuccess(
           yaml =
             """
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    actions: [one, two, three]
+              |    methods: [GET, POST, PUT, DELETE, HEAD, OPTIONS]
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.actions should be(NonEmptySet.of(Action("one"), Action("two"), Action("three")))
+            val headers = NonEmptySet.of(Method.GET, Method.POST, Method.PUT, Method.DELETE, Method.HEAD, Method.OPTIONS)
+            rule.settings.methods should be(headers)
           }
         )
       }
     }
     "not be able to read from config" when {
-      "no action is defined" in {
+      "no http method is defined" in {
         assertDecodingFailure(
           yaml =
             """
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    actions:
+              |    methods:
               |
               |""".stripMargin,
           assertion = errors => {
@@ -60,9 +61,25 @@ class ActionRuleConfigTests extends RuleSettingsDecoderTest[ActionsRule] {
             errors.head should be (RulesLevelCreationError(MalformedValue(jsonFrom(
               """
                 |[{
-                |  "actions" : null
+                |  "methods" : null
                 |}]
               """.stripMargin))))
+          }
+        )
+      }
+      "unknown http method is defined" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    methods: NEW
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be (RulesLevelCreationError(Message("Unknown/unsupported http method: NEW")))
           }
         )
       }

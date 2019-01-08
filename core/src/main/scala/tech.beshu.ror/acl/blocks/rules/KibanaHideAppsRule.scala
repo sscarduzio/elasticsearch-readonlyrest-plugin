@@ -35,7 +35,7 @@ class KibanaHideAppsRule(val settings: Settings)
 }
 
 object KibanaHideAppsRule {
-  val name = Rule.Name("hosts_local")
+  val name = Rule.Name("kibana_hide_apps")
 
   final case class Settings(kibanaAppsToHide: NonEmptySet[KibanaApp])
 

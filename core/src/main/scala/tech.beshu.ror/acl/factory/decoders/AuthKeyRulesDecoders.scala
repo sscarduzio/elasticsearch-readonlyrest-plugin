@@ -4,6 +4,7 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.commons.aDomain.AuthData
 
 object AuthKeyRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeyRule(_))
@@ -25,10 +26,7 @@ object AuthKeyUnixRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeyUnixRule(_))
 )
 
-// todo: implement
-//object ProxyAuthRuleDecoder extends
-
 private object AuthKeyDecodersHelper {
   val basicAuthenticationRuleSettingsDecoder: Decoder[BasicAuthenticationRule.Settings] =
-    DecoderHelpers.decodeStringLike.map(BasicAuthenticationRule.Settings.apply)
+    DecoderHelpers.decodeStringLike.map(AuthData.apply).map(BasicAuthenticationRule.Settings.apply)
 }

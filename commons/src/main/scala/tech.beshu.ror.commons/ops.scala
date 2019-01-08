@@ -58,6 +58,7 @@ object orders {
   implicit val aDocumentFieldOrder: Order[ADocumentField] = Order.by(_.value)
   implicit val negatedDocumentFieldOrder: Order[NegatedDocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
+  implicit val authKeyOrder: Order[AuthData] = Order.by(_.value)
 }
 
 object show {

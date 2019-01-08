@@ -14,6 +14,6 @@ object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 
 object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers.decodeStringLike
-    .map(Value.fromString(_, rv => IndexName(rv.value)))
+    .map(e => Value.fromString(e, rv => IndexName(rv.value)))
     .map(index => new KibanaIndexRule(KibanaIndexRule.Settings(index)))
 )

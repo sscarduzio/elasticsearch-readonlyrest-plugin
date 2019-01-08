@@ -54,6 +54,12 @@ object aDomain {
     implicit val eqApiKey: Eq[ApiKey] = Eq.fromUniversalEquals
   }
 
+  final case class AuthData(value: String) extends AnyVal
+  object AuthData {
+    implicit val eqAuthKey: Eq[AuthData] = Eq.fromUniversalEquals
+    val empty: AuthData = AuthData("")
+  }
+
   final case class KibanaApp(value: String) extends AnyVal
   object KibanaApp {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals

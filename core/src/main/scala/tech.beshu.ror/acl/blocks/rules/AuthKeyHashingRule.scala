@@ -1,11 +1,13 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import java.nio.charset.Charset
-
+import cats.implicits._
 import com.google.common.hash.{HashFunction, Hashing}
 import com.typesafe.scalalogging.StrictLogging
 import tech.beshu.ror.acl.utils.BasicAuthOps._
 import tech.beshu.ror.acl.utils.ScalaExt._
+import tech.beshu.ror.commons.aDomain.AuthData
+import tech.beshu.ror.commons.aDomain.AuthData._
 import tech.beshu.ror.utils.BasicAuthUtils
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
@@ -13,13 +15,13 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
   extends BasicAuthenticationRule(settings)
     with StrictLogging {
 
-  override protected def authenticate(configuredAuthKey: String,
+  override protected def authenticate(configuredAuthKey: AuthData,
                                       basicAuth: BasicAuthUtils.BasicAuth): Boolean = {
     basicAuth
       .tryDecode
       .map { decodedProvided =>
-        val shaProvided: String = hashFunction.hashString(decodedProvided, Charset.defaultCharset).toString
-        configuredAuthKey == shaProvided
+        val shaProvided = AuthData(hashFunction.hashString(decodedProvided.value, Charset.defaultCharset).toString)
+        configuredAuthKey === shaProvided
       }
       .getOr { ex =>
         logger.warn("Exception while authentication", ex)

@@ -7,6 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.commons.aDomain.AuthData
 import tech.beshu.ror.commons.domain.LoggedUser
 import tech.beshu.ror.commons.domain.User.Id
 import tech.beshu.ror.commons.header.ToTuple._
@@ -20,7 +21,7 @@ abstract class BasicAuthenticationRule(val settings: Settings)
   extends AuthenticationRule
     with StrictLogging {
 
-  protected def authenticate(configuredAuthKey: String, basicAuth: BasicAuth): Boolean
+  protected def authenticate(configuredAuthKey: AuthData, basicAuth: BasicAuth): Boolean
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -42,6 +43,6 @@ abstract class BasicAuthenticationRule(val settings: Settings)
 
 object BasicAuthenticationRule {
 
-  final case class Settings(authKey: String)
+  final case class Settings(authKey: AuthData)
 
 }

@@ -8,7 +8,10 @@ import tech.beshu.ror.acl.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import MethodsRuleDecoderHelper.methodDecoder
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.utils.CirceOps._
 
 object MethodsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
@@ -22,8 +25,8 @@ private object MethodsRuleDecoderHelper {
       .decodeString
       .map(_.toUpperCase)
       .map(Method.apply)
-      .emap {
+      .emapE {
         case m@(GET | POST | PUT | DELETE | OPTIONS | HEAD) => Right(m)
-        case other => Left(s"Unknown/unsupported http method: ${other.m}")
+        case other => Left(RulesLevelCreationError(Message(s"Unknown/unsupported http method: ${other.m}")))
       }
 }
