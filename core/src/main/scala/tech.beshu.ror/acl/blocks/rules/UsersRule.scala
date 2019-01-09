@@ -30,7 +30,7 @@ class UsersRule(val settings: Settings)
       .userIds
       .toNonEmptyList
       .toList
-      .flatMap(_.getValue(requestContext.variablesResolver, blockContext))
+      .flatMap(_.getValue(requestContext.variablesResolver, blockContext).toOption)
       .toSet
     RuleResult.fromCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value).asJava).`match`(user.id.value)

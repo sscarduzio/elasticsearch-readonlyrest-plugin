@@ -18,13 +18,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
     "match" when {
       "configured user id is the same as logged user id" in {
         assertMatchRule(
-          configuredIds = NonEmptySet.of(Value.fromString("asd", rv => Id(rv.value))),
+          configuredIds = NonEmptySet.of(userIdValueFrom("asd")),
           loggedUser = Some(LoggedUser(Id("asd")))
         )
       }
       "configured user id has wildcard and can be applied to logged user id" in {
         assertMatchRule(
-          configuredIds = NonEmptySet.of(Value.fromString("as*", rv => Id(rv.value))),
+          configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
           loggedUser = Some(LoggedUser(Id("asd")))
         )
       }
@@ -32,19 +32,19 @@ class UsersRuleTests extends WordSpec with MockFactory {
     "not match" when {
       "configured user id is different than logged user id" in {
         assertNotMatchRule(
-          configuredIds = NonEmptySet.of(Value.fromString("_asd", rv => Id(rv.value))),
+          configuredIds = NonEmptySet.of(userIdValueFrom("_asd")),
           loggedUser = Some(LoggedUser(Id("asd")))
         )
       }
       "configured user id has wildcard but cannot be applied to logged user id" in {
         assertNotMatchRule(
-          configuredIds = NonEmptySet.of(Value.fromString("as*", rv => Id(rv.value))),
+          configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
           loggedUser = Some(LoggedUser(Id("aXsd")))
         )
       }
       "user is not logged" in {
         assertNotMatchRule(
-          configuredIds = NonEmptySet.of(Value.fromString("asd", rv => Id(rv.value))),
+          configuredIds = NonEmptySet.of(userIdValueFrom("asd")),
           loggedUser = None
         )
       }
@@ -63,5 +63,12 @@ class UsersRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     (blockContext.loggedUser _).expects().returning(loggedUser)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+  }
+
+  private def userIdValueFrom(value: String): Value[User.Id] = {
+    Value
+      .fromString(value, rv => Right(User.Id(rv.value)))
+      .right
+      .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }
 }

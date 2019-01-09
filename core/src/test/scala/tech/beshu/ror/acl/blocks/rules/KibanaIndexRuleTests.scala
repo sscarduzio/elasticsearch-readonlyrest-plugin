@@ -14,7 +14,7 @@ class KibanaIndexRuleTests extends WordSpec with MockFactory {
   "A KibanaIndexRule" should {
     "always match" should {
       "set kibana index if can be resolved" in {
-        val rule = new KibanaIndexRule(KibanaIndexRule.Settings(Value.fromString("kibana_index", rv => IndexName(rv.value))))
+        val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index")))
         val requestContext = MockRequestContext.default
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
@@ -22,12 +22,19 @@ class KibanaIndexRuleTests extends WordSpec with MockFactory {
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
       "not set kibana index if cannot be resolved" in {
-        val rule = new KibanaIndexRule(KibanaIndexRule.Settings(Value.fromString("kibana_index_of_@{user}", rv => IndexName(rv.value))))
+        val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index_of_@{user}")))
         val requestContext = MockRequestContext.default
         val blockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(None)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
       }
     }
+  }
+
+  private def indexNameValueFrom(value: String): Value[IndexName] = {
+    Value
+      .fromString(value, rv => Right(IndexName(rv.value)))
+      .right
+      .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }
 }

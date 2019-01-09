@@ -17,5 +17,5 @@ object UsersRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 )
 
 private object UsersRuleDecoderHelper {
-  implicit val userIdValueDecoder: Decoder[Value[User.Id]] = DecoderHelpers.valueDecoder(rv => User.Id(rv.value))
+  implicit val userIdValueDecoder: Decoder[Value[User.Id]] = DecoderHelpers.alwaysRightValueDecoder(rv => User.Id(rv.value))
 }

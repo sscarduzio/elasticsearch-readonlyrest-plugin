@@ -8,9 +8,11 @@ import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 import io.circe.generic.extras
 import io.circe.parser._
 import tech.beshu.ror.acl.blocks.Value
+import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.blocks.Variable.ResolvedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 
 import scala.collection.SortedSet
@@ -44,8 +46,14 @@ object CirceOps {
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
 
-    def valueDecoder[T](convert: ResolvedValue => T): Decoder[Value[T]] =
-      DecoderHelpers.decodeStringLike.map(str => Value.fromString(str, convert))
+    def valueDecoder[T](convert: ResolvedValue => Either[Value.ConvertError, T]): Decoder[Either[ConvertError, Value[T]]] =
+      DecoderHelpers
+        .decodeStringLike
+        .map { str => Value.fromString(str, convert) }
+
+    def alwaysRightValueDecoder[T](convert: ResolvedValue => T): Decoder[Value[T]] =
+      valueDecoder[T](rv => Right(convert(rv)))
+        .emapE { _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.msg))) }
 
     def decodeStringOrJson[T](simpleDecoder: Decoder[T], expandedDecoder: Decoder[T]): Decoder[T] = {
       Decoder

@@ -32,5 +32,6 @@ private object HostRulesDecodersHelper {
 
   val defaultAcceptForwardedForHeader = false
 
-  implicit val addressValueDecoder: Decoder[Value[Address]] = DecoderHelpers.valueDecoder(rv => Address(rv.value))
+  implicit val addressValueDecoder: Decoder[Value[Address]] =
+    DecoderHelpers.alwaysRightValueDecoder(rv => Address(rv.value))
 }

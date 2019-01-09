@@ -40,7 +40,7 @@ class XForwardedForRule(val settings: Settings)
   private def matchAddress(address: Address, requestContext: RequestContext, blockContext: BlockContext): Boolean =
     settings
       .allowedAddresses
-      .flatMap(_.getValue(requestContext.variablesResolver, blockContext))
+      .flatMap(_.getValue(requestContext.variablesResolver, blockContext).toOption)
       .contains(address)
 
   private def ipMaskOf(address: Address): Option[Inet4Address] = {

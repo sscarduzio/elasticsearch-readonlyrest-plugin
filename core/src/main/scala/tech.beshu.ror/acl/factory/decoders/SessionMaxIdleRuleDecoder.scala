@@ -7,10 +7,13 @@ import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.SessionMaxIdleRuleDecoderHelper.convertStringToFiniteDuration
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.UuidProvider
 import tech.beshu.ror.commons.refined._
+import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success, Try}
@@ -19,16 +22,20 @@ class SessionMaxIdleRuleDecoder(implicit clock: Clock, uuidProvider: UuidProvide
   extends RuleDecoderWithoutAssociatedFields(
     Decoder
       .decodeString
-      .emap(convertStringToFiniteDuration)
-      .emap(refineV[Positive](_))
+      .emapE(convertStringToFiniteDuration)
+      .emapE { value =>
+        refineV[Positive](value)
+          .left
+          .map(_ => RulesLevelCreationError(Message(s"Only positive durations allowed. Found: ${value.toString()}")))
+      }
       .map(maxIdle => new SessionMaxIdleRule(Settings(maxIdle)))
   )
 
 private object SessionMaxIdleRuleDecoderHelper {
-  def convertStringToFiniteDuration(value: String): Either[String, FiniteDuration] = {
+  def convertStringToFiniteDuration(value: String): Either[RulesLevelCreationError, FiniteDuration] = {
     Try(Duration(value)) match {
       case Success(v: FiniteDuration) => Right(v)
-      case Success(_) | Failure(_) => Left(s"Cannot convert value $value to duration")
+      case Success(_) | Failure(_) => Left(RulesLevelCreationError(Message(s"Cannot convert value '$value' to duration")))
     }
   }
 }

@@ -18,13 +18,13 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     "match" when {
       "configured host IP is the same as local host IP in request" in {
         assertMatchRule(
-          configuredAddresses = NonEmptySet.of(Value.fromString("1.1.1.1", rv => Address(rv.value))),
+          configuredAddresses = NonEmptySet.of(addressValueFrom("1.1.1.1")),
           localAddress = Address("1.1.1.1")
         )
       }
       "configured host domain address is the same as local host domain address in request" in {
         assertMatchRule(
-          configuredAddresses = NonEmptySet.of(Value.fromString("google.com", rv => Address(rv.value))),
+          configuredAddresses = NonEmptySet.of(addressValueFrom("google.com")),
           localAddress = Address("google.com")
         )
       }
@@ -32,13 +32,13 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     "not match" when {
       "configured host is unresolvable" in {
         assertNotMatchRule(
-          configuredAddresses = NonEmptySet.of(Value.fromString("cannotresolve.lolol", rv => Address(rv.value))),
+          configuredAddresses = NonEmptySet.of(addressValueFrom("cannotresolve.lolol")),
           localAddress = Address("x")
         )
       }
       "configured host domain address is different than the one from request" in {
         assertNotMatchRule(
-          configuredAddresses = NonEmptySet.of(Value.fromString("google.com", rv => Address(rv.value))),
+          configuredAddresses = NonEmptySet.of(addressValueFrom("google.com")),
           localAddress = Address("yahoo.com")
         )
       }
@@ -56,5 +56,12 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     val requestContext = MockRequestContext(localAddress = localAddress)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+  }
+
+  private def addressValueFrom(value: String): Value[Address] = {
+    Value
+      .fromString(value, rv => Right(Address(rv.value)))
+      .right
+      .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
 }

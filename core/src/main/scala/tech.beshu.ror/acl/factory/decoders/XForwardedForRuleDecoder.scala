@@ -25,7 +25,9 @@ object XForwardedForRuleDecoder extends RuleDecoderWithoutAssociatedFields(
         stringHosts.foldLeft((Set.empty[Value[Address]], Set.empty[IPMask], Set.empty[String])) {
           case ((addresses, ips, errors), stringHost) =>
             if (!isInetAddressOrBlock(stringHost)) {
-              (addresses + Value.fromString(stringHost, rv => Address(rv.value)), ips, errors)
+              val address = Value.fromString(stringHost, rv => Right(Address(rv.value)))
+                .getOrElse(throw new IllegalStateException("Address creation"))
+              (addresses + address, ips, errors)
             } else {
               Try(IPMask.getIPMask(stringHost)) match {
                 case Success(ip) => (addresses, ips + ip, errors)
@@ -33,7 +35,7 @@ object XForwardedForRuleDecoder extends RuleDecoderWithoutAssociatedFields(
               }
             }
         }
-      if(errorsSet.isEmpty) Left(errorsSet.mkString(","))
+      if(errorsSet.nonEmpty) Left(errorsSet.mkString(","))
       else {
         (NonEmptySet.fromSet(SortedSet.empty[Value[Address]] ++ addressesSet), NonEmptySet.fromSet(SortedSet.empty[IPMask] ++ ipsSet)) match {
           case (Some(addresses), Some(ips)) => Right(Settings.createFrom(addresses, ips))

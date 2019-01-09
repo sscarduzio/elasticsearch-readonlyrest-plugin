@@ -39,7 +39,7 @@ class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRu
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = Variable(ValueWithVariable("@{user}_kibana_index"), rv => IndexName(rv.value))
+            val variable = Variable(ValueWithVariable("@{user}_kibana_index"), rv => Right(IndexName(rv.value)))
             rule.settings.kibanaIndex shouldBe a [Variable[_]]
             rule.settings.kibanaIndex.asInstanceOf[Variable[IndexName]].representation should be(variable.representation)
           }

@@ -62,7 +62,7 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Address(rv.value)))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Right(Address(rv.value))))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(false)
           }

@@ -19,7 +19,7 @@ class LocalHostsRule(val settings: Settings)
       settings
         .allowedAddresses
         .toSortedSet
-        .flatMap(_.getValue(requestContext.variablesResolver, blockContext))
+        .flatMap(_.getValue(requestContext.variablesResolver, blockContext).toOption)
         .contains(requestContext.localAddress)
     }
   }

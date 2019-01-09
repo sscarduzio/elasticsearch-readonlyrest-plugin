@@ -30,7 +30,7 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
       }
       "configured domain address is the same as the one passed in X-Forwarded-For header" in {
         assertMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(Value.fromString("google.com", rv => Address(rv.value)))),
+          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("google.com"))),
           xForwardedForHeaderValue = "google.com"
         )
       }
@@ -50,19 +50,19 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
       }
       "configured net address is different than the IP passed in X-Forwarded-For header" in {
         assertNotMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(Value.fromString("1.1.1.1/16", rv => Address(rv.value)))),
+          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("1.1.1.1/16"))),
           xForwardedForHeaderValue = "1.1.1.4"
         )
       }
       "configured domain address different than the one passed in X-Forwarded-For header" in {
         assertNotMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(Value.fromString("google.com", rv => Address(rv.value)))),
+          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("google.com"))),
           xForwardedForHeaderValue = "yahoo.com"
         )
       }
       "X-Forwarded-For header is empty" in {
         assertNotMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(Value.fromString("google.com", rv => Address(rv.value)))),
+          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("google.com"))),
           xForwardedForHeaderValue = ""
         )
       }
@@ -80,5 +80,12 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
     val requestContext = MockRequestContext(headers = Set(Header("X-Forwarded-For" -> xForwardedForHeaderValue)))
     val blockContext = mock[BlockContext]
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+  }
+
+  private def addressValueFrom(value: String): Value[Address] = {
+    Value
+      .fromString(value, rv => Right(Address(rv.value)))
+      .right
+      .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
 }

@@ -30,4 +30,5 @@ object UriRegexRule {
   val name = Rule.Name("uri_re")
 
   final case class Settings(uriPattern: Value[Pattern])
+
 }

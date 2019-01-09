@@ -17,19 +17,19 @@ class HostsRuleTests extends WordSpec with MockFactory {
     "match" when {
       "configured host IP is the same as remote host IP in request" in {
         assertMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1", rv => Address(rv.value))),
+          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1", rv => Right(Address(rv.value))).right.get),
           remoteHost = Address("1.1.1.1")
         )
       }
       "configured host net address is the same as remote host net address in request" in {
         assertMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1/16", rv => Address(rv.value))),
+          configuredHosts = NonEmptySet.of(addressValueFrom("1.1.1.1/16")),
           remoteHost = Address("1.1.1.2")
         )
       }
       "configured host domain address is the same as remote host domain address in request" in {
         assertMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("google.com", rv => Address(rv.value))),
+          configuredHosts = NonEmptySet.of(addressValueFrom("google.com")),
           remoteHost = Address("google.com")
         )
       }
@@ -37,19 +37,19 @@ class HostsRuleTests extends WordSpec with MockFactory {
     "not match" when {
       "configured host is unresolvable" in {
         assertNotMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("cannotresolve.lolol", rv => Address(rv.value))),
+          configuredHosts = NonEmptySet.of(addressValueFrom("cannotresolve.lolol")),
           remoteHost = Address("x")
         )
       }
       "configured host net address is different then remote host net address in request" in {
         assertNotMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("1.1.1.1/24", rv => Address(rv.value))),
+          configuredHosts = NonEmptySet.of(addressValueFrom("1.1.1.1/24")),
           remoteHost = Address("2.2.2.2")
         )
       }
       "configured host domain address is different than the one from request" in {
         assertNotMatchRule(
-          configuredHosts = NonEmptySet.of(Value.fromString("google.com", rv => Address(rv.value))),
+          configuredHosts = NonEmptySet.of(addressValueFrom("google.com")),
           remoteHost = Address("yahoo.com")
         )
       }
@@ -70,5 +70,12 @@ class HostsRuleTests extends WordSpec with MockFactory {
     )
     val blockContext = mock[BlockContext]
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+  }
+
+  private def addressValueFrom(value: String): Value[Address] = {
+    Value
+      .fromString(value, rv => Right(Address(rv.value)))
+      .right
+      .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }
 }
