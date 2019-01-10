@@ -18,6 +18,7 @@
 package tech.beshu.ror.es;
 
 import cats.data.NonEmptyList;
+import com.google.common.base.Joiner;
 import monix.execution.Scheduler$;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
@@ -42,16 +43,18 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.Option;
 import scala.collection.immutable.Map;
+import scala.util.Either;
 import tech.beshu.ror.acl.Acl;
 import tech.beshu.ror.acl.AclHandler;
 import tech.beshu.ror.acl.AclLoggingDecorator;
 import tech.beshu.ror.acl.ResponseWriter;
-import tech.beshu.ror.acl.SequentialAcl;
 import tech.beshu.ror.acl.blocks.BlockContext;
+import tech.beshu.ror.acl.factory.RorAclFactory;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.commons.SecurityPermissionException;
 import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
@@ -75,6 +78,7 @@ import scala.collection.JavaConverters$;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
+  private final RorAclFactory aclFactory = new RorAclFactory();
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
       ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) throws IOException {
@@ -99,14 +103,19 @@ import scala.collection.JavaConverters$;
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        try {
-          // todo: params
-          Acl newAcl = new AclLoggingDecorator(new SequentialAcl(NonEmptyList.one(null)), Option.empty());
-          acl.set(Optional.of(newAcl));
+        Either<NonEmptyList<RorAclFactory.AclCreationError>, Acl> result = aclFactory.createAclFrom(
+            newContext.getSettings().getRaw().yaml());
+        if (result.isRight()) {
+          Acl newAcl = result.right().get();
+          Acl decoratedAcl = new AclLoggingDecorator(newAcl, Option.empty()); // todo: add serialization tool
+          acl.set(Optional.of(decoratedAcl));
           logger.info("Configuration reloaded - ReadonlyREST enabled");
-        } catch (Exception ex) {
-          logger.error("Cannot configure ReadonlyREST plugin", ex);
-          throw ex;
+        }
+        else {
+          NonEmptyList<RorAclFactory.AclCreationError> errors = result.left().get();
+          String errorsMessage = Joiner.on("\n- ").join(JavaConverters$.MODULE$.asJavaCollection(errors.toList()));
+          logger.error("Cannot configure ReadonlyREST plugin.\nErrors:\n" + errorsMessage);
+          throw new SettingsMalformedException(errorsMessage);
         }
       }
       else {
