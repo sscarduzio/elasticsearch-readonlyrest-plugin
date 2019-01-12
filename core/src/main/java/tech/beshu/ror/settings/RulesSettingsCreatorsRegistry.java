@@ -17,16 +17,16 @@
 
 package tech.beshu.ror.settings;
 
-import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_FieldsSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.FilterSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.RepositoriesSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.SnapshotsSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_UriReSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;

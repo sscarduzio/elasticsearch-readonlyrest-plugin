@@ -19,7 +19,7 @@ package tech.beshu.ror.utils;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
-import tech.beshu.ror.acl.blocks.rules.impl.ZeroKnowledgeMatchFilter;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.ZeroKnowledgeMatchFilter;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 
 import java.util.Set;

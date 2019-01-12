@@ -19,7 +19,7 @@ package tech.beshu.ror.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import tech.beshu.ror.acl.__old_BlockPolicy;
+import tech.beshu.ror.unit.acl.__old_BlockPolicy;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;

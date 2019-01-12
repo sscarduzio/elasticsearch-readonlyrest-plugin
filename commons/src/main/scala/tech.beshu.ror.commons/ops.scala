@@ -70,7 +70,7 @@ object show {
     implicit val actionShow: Show[Action] = Show.show(_.value)
     implicit val addressShow: Show[Address] = Show.show(_.value)
     implicit val methodShow: Show[Method] = Show.show(_.m)
-    implicit val uriShow: Show[Uri] = Show.show(_.toString())
+    implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value)
     implicit val headerShow: Show[Header] = Show.show {
       case Header(name@Name.authorization, _) => s"${name.show}=<OMITTED>"

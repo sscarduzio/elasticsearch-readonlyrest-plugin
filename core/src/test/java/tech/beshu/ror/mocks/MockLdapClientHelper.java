@@ -19,11 +19,11 @@ package tech.beshu.ror.mocks;
 
 import com.google.common.collect.Sets;
 import tech.beshu.ror.TestUtils;
-import tech.beshu.ror.acl.definitions.ldaps.AuthenticationLdapClient;
-import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
-import tech.beshu.ror.acl.definitions.ldaps.LdapClientFactory;
-import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
-import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
+import tech.beshu.ror.unit.acl.definitions.ldaps.AuthenticationLdapClient;
+import tech.beshu.ror.unit.acl.definitions.ldaps.GroupsProviderLdapClient;
+import tech.beshu.ror.unit.acl.definitions.ldaps.LdapClientFactory;
+import tech.beshu.ror.unit.acl.definitions.ldaps.LdapGroup;
+import tech.beshu.ror.unit.acl.definitions.ldaps.LdapUser;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;

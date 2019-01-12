@@ -39,7 +39,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.acl.__old_ACL;
+import tech.beshu.ror.unit.acl.__old_ACL;
 import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;

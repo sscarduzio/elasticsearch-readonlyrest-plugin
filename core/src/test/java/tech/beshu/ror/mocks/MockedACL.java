@@ -17,9 +17,9 @@
 package tech.beshu.ror.mocks;
 
 import org.mockito.Mockito;
-import tech.beshu.ror.acl.__old_ACL;
-import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
-import tech.beshu.ror.acl.definitions.DefinitionsFactory;
+import tech.beshu.ror.unit.acl.__old_ACL;
+import tech.beshu.ror.unit.acl.blocks.rules.UserRuleFactory;
+import tech.beshu.ror.unit.acl.definitions.DefinitionsFactory;
 
 /**
  * Created by sscarduzio on 03/06/2017.
