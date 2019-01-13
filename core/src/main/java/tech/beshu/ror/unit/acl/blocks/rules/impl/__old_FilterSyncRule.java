@@ -33,10 +33,10 @@ import java.util.function.Function;
  * When applied, it forwards the filter query to @{@link tech.beshu.ror.es.security.DocumentFieldReader} via a context header in @{@link __old_RequestContext}.
  * Created by sscarduzio on 31/05/2018.
  */
-public class FilterSyncRule extends SyncRule {
-  private final FilterSyncRule.Settings settings;
+public class __old_FilterSyncRule extends SyncRule {
+  private final __old_FilterSyncRule.Settings settings;
 
-  public FilterSyncRule(FilterSyncRule.Settings s) {
+  public __old_FilterSyncRule(__old_FilterSyncRule.Settings s) {
     this.settings = s;
   }
 

@@ -21,6 +21,7 @@ object aDomain {
       val authorization = Name("Authorization")
       val rorUser = Name(Constants.HEADER_USER_ROR)
       val kibanaIndex = Name(Constants.HEADER_KIBANA_INDEX)
+      val transientFilter = Name(Constants.FILTER_TRANSIENT)
 
       implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
     }
@@ -80,4 +81,6 @@ object aDomain {
   }
 
   final case class Type(value: String) extends AnyVal
+
+  final case class Filter(value: String) extends AnyVal
 }

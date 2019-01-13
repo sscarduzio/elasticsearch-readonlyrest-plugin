@@ -18,7 +18,7 @@
 package tech.beshu.ror.settings;
 
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_FieldsSyncRule;
-import tech.beshu.ror.unit.acl.blocks.rules.impl.FilterSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_FilterSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersSyncRule;
@@ -117,7 +117,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
     creators.put(__old_KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
     creators.put(__old_FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
-    creators.put(FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
+    creators.put(__old_FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
     creators.put(__old_KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
     creators.put(__old_ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
     creators.put(__old_MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
@@ -305,7 +305,7 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> filterSettingsCreator(RawSettings blockSettings) {
-    return () -> FilterSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> __old_FilterSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")

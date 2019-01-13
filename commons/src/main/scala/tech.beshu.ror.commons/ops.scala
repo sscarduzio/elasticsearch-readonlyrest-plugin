@@ -11,6 +11,7 @@ import tech.beshu.ror.commons.aDomain.Header.Name
 import tech.beshu.ror.commons.aDomain._
 import tech.beshu.ror.commons.domain._
 import tech.beshu.ror.commons.header.ToHeaderValue
+import tech.beshu.ror.commons.utils.FilterTransient
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -90,4 +91,7 @@ object refined {
 object headerValues {
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
+  implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>
+    FilterTransient.createFromFilter(filter.value).serialize()
+  }
 }

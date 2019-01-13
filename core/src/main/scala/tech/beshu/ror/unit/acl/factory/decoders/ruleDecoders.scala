@@ -71,6 +71,7 @@ object ruleDecoders {
       case AuthKeySha512Rule.name => Some(AuthKeySha512RuleDecoder)
       case AuthKeyUnixRule.name => Some(AuthKeyUnixRuleDecoder)
       case FieldsRule.name => Some(FieldsRuleDecoder)
+      case FilterRule.name => Some(FilterRuleDecoder)
       case HeadersAndRule.name => Some(HeadersAndRuleDecoder)
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(HostsRuleDecoder)

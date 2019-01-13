@@ -22,7 +22,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_ActionsSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_FieldsSyncRule;
-import tech.beshu.ror.unit.acl.blocks.rules.impl.FilterSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_FilterSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.GroupsAsyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
@@ -123,8 +123,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new __old_FieldsSyncRule((__old_FieldsSyncRule.Settings) settings))
     );
     this.creators.put(
-        FilterSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new FilterSyncRule((FilterSyncRule.Settings) settings))
+        __old_FilterSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_FilterSyncRule((__old_FilterSyncRule.Settings) settings))
     );
     this.creators.put(
         __old_KibanaHideAppsRuleSettings.class,
