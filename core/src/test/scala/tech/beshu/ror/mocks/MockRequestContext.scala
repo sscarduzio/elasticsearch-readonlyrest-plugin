@@ -15,6 +15,10 @@ final case class MockRequestContext(override val id: RequestContext.Id = Request
                                     override val uri: Uri = Uri("localhost"),
                                     override val contentLength: Information = Bytes(0),
                                     override val content: String = "",
+                                    override val indices: Set[IndexName] = Set.empty,
+                                    override val allIndicesAndAliases: Set[IndexName] = Set.empty,
+                                    override val involvesIndices: Boolean = false,
+                                    override val isCompositeRequest: Boolean = false,
                                     override val isReadOnlyRequest: Boolean = true)
   extends RequestContext
 

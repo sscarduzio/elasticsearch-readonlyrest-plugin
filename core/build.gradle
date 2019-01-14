@@ -15,6 +15,8 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
+// todo: check if there is no problem with scalatest from gradle console
+
 group = 'org.elasticsearch.plugin'
 version = pluginVersion
 

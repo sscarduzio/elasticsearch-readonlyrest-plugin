@@ -44,7 +44,7 @@ import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
-import tech.beshu.ror.settings.rules.IndicesRuleSettings;
+import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
 import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
@@ -97,7 +97,7 @@ public class RulesSettingsCreatorsRegistry {
         ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME,
         externalAuthenticationSettingsCreator(blockSettings, externalAuthenticationServiceSettingsCollection)
     );
-    creators.put(IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
+    creators.put(__old_IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
     creators.put(__old_MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
     creators.put(__old_HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
     creators.put(__old_HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
@@ -192,8 +192,8 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> indicesSettingsCreator(RawSettings blockSettings) {
-    return () -> IndicesRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(IndicesRuleSettings.ATTRIBUTE_NAME)
+    return () -> __old_IndicesRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(__old_IndicesRuleSettings.ATTRIBUTE_NAME)
     );
   }
 

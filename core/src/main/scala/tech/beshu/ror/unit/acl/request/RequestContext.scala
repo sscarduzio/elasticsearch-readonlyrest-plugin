@@ -22,7 +22,12 @@ trait RequestContext {
   def contentLength: Information
   def content: String
 
+  def indices: Set[IndexName]
+  def allIndicesAndAliases: Set[IndexName]
+
   def isReadOnlyRequest: Boolean
+  def involvesIndices: Boolean
+  def isCompositeRequest: Boolean
 
   def variablesResolver: VariablesResolver = new VariablesManager(this)
 }

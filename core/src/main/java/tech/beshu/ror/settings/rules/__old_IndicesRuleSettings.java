@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class IndicesRuleSettings implements RuleSettings {
+public class __old_IndicesRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "indices";
 
@@ -31,7 +31,7 @@ public class IndicesRuleSettings implements RuleSettings {
   private final Set<String> indicesUnwrapped;
   private boolean containsVariables;
 
-  private IndicesRuleSettings(Set<String> indices) {
+  private __old_IndicesRuleSettings(Set<String> indices) {
     this.indicesUnwrapped = indices;
     containsVariables = indices.stream().filter(i -> i.contains("@{")).findFirst().isPresent();
     this.indices = indices.stream()
@@ -39,8 +39,8 @@ public class IndicesRuleSettings implements RuleSettings {
       .collect(Collectors.toSet());
   }
 
-  public static IndicesRuleSettings from(Set<String> indices) {
-    return new IndicesRuleSettings(indices);
+  public static __old_IndicesRuleSettings from(Set<String> indices) {
+    return new __old_IndicesRuleSettings(indices);
   }
 
   public boolean hasVariables() {

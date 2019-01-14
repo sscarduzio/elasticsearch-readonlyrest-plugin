@@ -34,7 +34,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HostsSyncRule;
-import tech.beshu.ror.unit.acl.blocks.rules.impl.IndicesSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_IndicesSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
@@ -97,7 +97,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         __old_HeadersSyncRule.class,
         __old_HeadersAndSyncRule.class,
         __old_HeadersOrSyncRule.class,
-        IndicesSyncRule.class,
+        __old_IndicesSyncRule.class,
         __old_ActionsSyncRule.class,
         SearchlogSyncRule.class,
         __old_UsersSyncRule.class,

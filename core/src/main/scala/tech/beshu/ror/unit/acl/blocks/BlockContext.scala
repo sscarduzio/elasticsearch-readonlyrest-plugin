@@ -1,5 +1,6 @@
 package tech.beshu.ror.unit.acl.blocks
 
+import cats.data.NonEmptySet
 import tech.beshu.ror.unit.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.unit.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.{Header, IndexName}
@@ -8,14 +9,22 @@ import tech.beshu.ror.commons.domain.LoggedUser
 trait BlockContext {
 
   def loggedUser: Option[LoggedUser]
+
   def setLoggedUser(user: LoggedUser): BlockContext
 
   def responseHeaders: Set[Header]
+
   def addResponseHeader(header: Header): BlockContext
+
   def contextHeaders: Set[Header]
+
   def addContextHeader(header: Header): BlockContext
+
   def kibanaIndex: Option[IndexName]
+
   def setKibanaIndex(index: IndexName): BlockContext
+
+  def setIndices(indices: NonEmptySet[IndexName]): BlockContext
 
 }
 
@@ -41,6 +50,9 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
 
   override def setKibanaIndex(index: IndexName): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
+
+  override def setIndices(indices: NonEmptySet[IndexName]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(indices = indices.toSortedSet))
 }
 
 object RequestContextInitiatedBlockContext {
@@ -48,7 +60,8 @@ object RequestContextInitiatedBlockContext {
   final case class BlockContextData(loggedUser: Option[LoggedUser],
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
-                                    kibanaIndex: Option[IndexName])
+                                    kibanaIndex: Option[IndexName],
+                                    indices: Set[IndexName])
 
   def fromRequestContext(requestContext: RequestContext): RequestContextInitiatedBlockContext =
     new RequestContextInitiatedBlockContext(
@@ -56,7 +69,8 @@ object RequestContextInitiatedBlockContext {
         loggedUser = None,
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
-        kibanaIndex = None
+        kibanaIndex = None,
+        indices = Set.empty
       )
     )
 }

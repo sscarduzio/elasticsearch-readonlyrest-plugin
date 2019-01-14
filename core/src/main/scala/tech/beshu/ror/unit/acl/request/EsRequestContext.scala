@@ -4,8 +4,9 @@ import java.net.URI
 
 import com.softwaremill.sttp.{Method, Uri}
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.commons.aDomain
 import tech.beshu.ror.commons.aDomain.Header.Name
-import tech.beshu.ror.commons.aDomain.{Action, Address, Header, Type}
+import tech.beshu.ror.commons.aDomain._
 import tech.beshu.ror.commons.shims.request.RequestInfoShim
 
 import scala.collection.JavaConverters._
@@ -37,4 +38,12 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
   override def `type`: Type = Type(rInfo.extractType())
 
   override def content: String = rInfo.extractContent()
+
+  override def indices: Set[aDomain.IndexName] = rInfo.extractIndices().asScala.map(IndexName.apply).toSet
+
+  override def allIndicesAndAliases: Set[aDomain.IndexName] = rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
+
+  override def involvesIndices: Boolean = rInfo.involvesIndices()
+
+  override def isCompositeRequest: Boolean = rInfo.extractIsCompositeRequest()
 }

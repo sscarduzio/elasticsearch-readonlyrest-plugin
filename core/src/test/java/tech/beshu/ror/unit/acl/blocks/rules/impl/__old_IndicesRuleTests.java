@@ -27,7 +27,7 @@ import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.mocks.RequestContextMock;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.IndicesRuleSettings;
+import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
 
 import java.util.List;
 import java.util.Set;
@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 18/01/2017.
  */
 
-public class IndicesRuleTests {
+public class __old_IndicesRuleTests {
 
   @Test
   public void test1() {
@@ -113,9 +113,9 @@ public class IndicesRuleTests {
       Sets.newHashSet("another_index")
     );
 
-    SyncRule r = new IndicesSyncRule(
+    SyncRule r = new __old_IndicesSyncRule(
       // Mocks:  indices: ["perfmon*"]
-      IndicesRuleSettings.from(Sets.newHashSet(Sets.newHashSet("perfmon*"))),
+      __old_IndicesRuleSettings.from(Sets.newHashSet(Sets.newHashSet("perfmon*"))),
       MockedESContext.INSTANCE
     );
 
@@ -135,8 +135,8 @@ public class IndicesRuleTests {
     when(rc.getAction()).thenReturn("indices:data/read/search");
     when(rc.isReadRequest()).thenReturn(true);
 
-    SyncRule r = new IndicesSyncRule(
-        IndicesRuleSettings.from(Sets.newHashSet(configured)),
+    SyncRule r = new __old_IndicesSyncRule(
+        __old_IndicesRuleSettings.from(Sets.newHashSet(configured)),
         MockedESContext.INSTANCE
     );
 

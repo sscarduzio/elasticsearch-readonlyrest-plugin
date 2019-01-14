@@ -42,11 +42,19 @@ object aDomain {
 
   final case class Action(value: String) extends AnyVal
   object Action {
+    val searchAction = Action("indices:data/read/search")
+    val mSearchAction = Action("indices:data/read/msearch")
+
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
 
-  final case class IndexName(value: String) extends AnyVal
+  final case class IndexName(value: String) extends AnyVal {
+    def isClusterIndex: Boolean = value.contains(":")
+  }
   object IndexName {
+    val star = IndexName("*")
+    val all = IndexName("_all")
+
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
   }
 

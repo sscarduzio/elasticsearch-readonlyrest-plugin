@@ -75,6 +75,7 @@ object ruleDecoders {
       case HeadersAndRule.name => Some(HeadersAndRuleDecoder)
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(HostsRuleDecoder)
+      case IndicesRule.name => Some(IndicesRuleDecoders)
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
       case KibanaIndexRule.name => Some(KibanaIndexRuleDecoder)
       case LocalHostsRule.name => Some(LocalHostsRuleDecoder)

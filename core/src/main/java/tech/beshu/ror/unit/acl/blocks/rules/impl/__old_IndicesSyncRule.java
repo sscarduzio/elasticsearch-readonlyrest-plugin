@@ -24,7 +24,7 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.IndicesRuleSettings;
+import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
 
 import java.util.List;
 import java.util.Map;
@@ -35,14 +35,14 @@ import java.util.stream.Collectors;
 /**
  * Created by sscarduzio on 20/02/2016.
  */
-public class IndicesSyncRule extends SyncRule {
+public class __old_IndicesSyncRule extends SyncRule {
 
-  private final IndicesRuleSettings settings;
+  private final __old_IndicesRuleSettings settings;
   private final LoggerShim logger;
   private final MatcherWithWildcards matcherNoVar;
   private final ZeroKnowledgeIndexFilter zKindexFilter;
 
-  public IndicesSyncRule(IndicesRuleSettings s, ESContext context) {
+  public __old_IndicesSyncRule(__old_IndicesRuleSettings s, ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = s;
     if (!s.hasVariables()) {
