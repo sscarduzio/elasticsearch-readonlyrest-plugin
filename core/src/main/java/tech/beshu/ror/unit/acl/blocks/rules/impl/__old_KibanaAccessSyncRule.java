@@ -26,7 +26,7 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
+import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
 
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -36,7 +36,7 @@ import static tech.beshu.ror.commons.Constants.HEADER_KIBANA_ACCESS;
 /**
  * Created by sscarduzio on 26/03/2016.
  */
-public class KibanaAccessSyncRule extends SyncRule {
+public class __old_KibanaAccessSyncRule extends SyncRule {
   private static final boolean ROR_KIBANA_METADATA_ENABLED =
       !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
 
@@ -76,11 +76,11 @@ public class KibanaAccessSyncRule extends SyncRule {
   private final LoggerShim logger;
   private final __old_Value<String> kibanaIndex;
   private final Boolean canModifyKibana;
-  private final KibanaAccessRuleSettings settings;
+  private final __old_KibanaAccessRuleSettings settings;
   private Boolean roStrict = false;
   private Boolean isAdmin = false;
 
-  public KibanaAccessSyncRule(KibanaAccessRuleSettings s, ESContext context) {
+  public __old_KibanaAccessSyncRule(__old_KibanaAccessRuleSettings s, ESContext context) {
     settings = s;
     logger = context.logger(getClass());
 

@@ -1,6 +1,8 @@
 package tech.beshu.ror.commons
 
 import cats.{Eq, Show}
+import com.softwaremill.sttp.Uri
+import tech.beshu.ror.commons.Constants.HEADER_KIBANA_ACCESS
 import tech.beshu.ror.commons.aDomain.Header.Name
 import tech.beshu.ror.commons.header.ToHeaderValue
 
@@ -21,6 +23,7 @@ object aDomain {
       val authorization = Name("Authorization")
       val rorUser = Name(Constants.HEADER_USER_ROR)
       val kibanaIndex = Name(Constants.HEADER_KIBANA_INDEX)
+      val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
       val transientFilter = Name(Constants.FILTER_TRANSIENT)
 
       implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
@@ -40,7 +43,9 @@ object aDomain {
     implicit val eqAddress: Eq[Address] = Eq.fromUniversalEquals
   }
 
-  final case class Action(value: String) extends AnyVal
+  final case class Action(value: String) extends AnyVal {
+    def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
+  }
   object Action {
     val searchAction = Action("indices:data/read/search")
     val mSearchAction = Action("indices:data/read/msearch")
@@ -50,10 +55,16 @@ object aDomain {
 
   final case class IndexName(value: String) extends AnyVal {
     def isClusterIndex: Boolean = value.contains(":")
+
+    def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
   }
   object IndexName {
+
     val star = IndexName("*")
     val all = IndexName("_all")
+    val devNullKibana = IndexName(".kibana-devnull")
+    val kibana = IndexName(".kibana")
+    val readonlyrest: IndexName = IndexName(".readonlyrest")
 
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
   }
@@ -91,4 +102,23 @@ object aDomain {
   final case class Type(value: String) extends AnyVal
 
   final case class Filter(value: String) extends AnyVal
+
+  sealed trait KibanaAccess
+  object KibanaAccess {
+    case object RO extends KibanaAccess
+    case object RW extends KibanaAccess
+    case object ROStrict extends KibanaAccess
+    case object Admin extends KibanaAccess
+
+    implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
+  }
+
+  final case class UriPath(value: String) extends AnyVal
+  object UriPath {
+    val restMetadataPath = UriPath(Constants.REST_METADATA_PATH)
+
+    def fromUri(uri: Uri): UriPath = UriPath(uri.path.mkString("/", "/", ""))
+
+    implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
+  }
 }

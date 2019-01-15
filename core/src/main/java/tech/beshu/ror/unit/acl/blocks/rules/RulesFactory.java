@@ -30,7 +30,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_IndicesSyncRule;
-import tech.beshu.ror.unit.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaAccessSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.LdapAuthAsyncRule;
@@ -57,7 +57,7 @@ import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
-import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
+import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
 import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
@@ -111,8 +111,8 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new __old_IndicesSyncRule((__old_IndicesRuleSettings) settings, context))
     );
     this.creators.put(
-        KibanaAccessRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new KibanaAccessSyncRule((KibanaAccessRuleSettings) settings, context))
+        __old_KibanaAccessRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_KibanaAccessSyncRule((__old_KibanaAccessRuleSettings) settings, context))
     );
     this.creators.put(
         __old_KibanaIndexSyncRule.Settings.class,

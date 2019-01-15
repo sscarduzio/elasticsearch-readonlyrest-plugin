@@ -18,10 +18,10 @@ package tech.beshu.ror.commons.domain;
 
 import java.util.Optional;
 
-public enum KibanaAccess {
+public enum __old_KibanaAccess {
   RO, RW, RO_STRICT, ADMIN;
 
-  public static Optional<KibanaAccess> fromString(String value) {
+  public static Optional<__old_KibanaAccess> fromString(String value) {
     switch (value.toLowerCase()) {
       case "ro_strict":
         return Optional.of(RO_STRICT);

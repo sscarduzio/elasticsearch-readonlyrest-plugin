@@ -6,7 +6,6 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.commons.aDomain.Action.{mSearchAction, searchAction}
 import tech.beshu.ror.commons.aDomain.IndexName
-import tech.beshu.ror.commons.aDomain.IndexName._
 import tech.beshu.ror.commons.orders._
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
 import tech.beshu.ror.unit.acl.blocks.rules.IndicesRule.{CanPass, Settings}
@@ -17,7 +16,6 @@ import tech.beshu.ror.unit.acl.blocks.rules.utils.{Matcher, MatcherWithWildcards
 import tech.beshu.ror.unit.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterJavaAdapter.CheckResult
 import tech.beshu.ror.unit.acl.blocks.{BlockContext, Const, Value, Variable}
 import tech.beshu.ror.unit.acl.request.RequestContext
-
 import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 import scala.language.postfixOps
@@ -25,6 +23,8 @@ import scala.language.postfixOps
 
 class IndicesRule(val settings: Settings)
   extends RegularRule with Logging {
+
+  import IndicesRule.stringIndexNameNT
 
   override val name: Rule.Name = KibanaIndexRule.name
 
@@ -201,8 +201,6 @@ class IndicesRule(val settings: Settings)
     case _ => false
   }
 
-  private implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
-    StringTNaturalTransformation[IndexName](IndexName.apply, _.value)
 }
 
 object IndicesRule {
@@ -216,4 +214,6 @@ object IndicesRule {
     case object No extends CanPass
   }
 
+  private implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
+    StringTNaturalTransformation[IndexName](IndexName.apply, _.value)
 }

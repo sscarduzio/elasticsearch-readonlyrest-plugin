@@ -11,7 +11,7 @@ trait Matcher {
   def containsMatcher(str: String): Boolean
 }
 
-class MatcherWithWildcardsJavaAdapter( override val underlying: MatcherWithWildcards)
+class MatcherWithWildcardsJavaAdapter(override val underlying: MatcherWithWildcards)
   extends Matcher {
 
   override def filter[T : StringTNaturalTransformation](remoteClusterAware: Boolean, items: Set[T]): Set[T] = {

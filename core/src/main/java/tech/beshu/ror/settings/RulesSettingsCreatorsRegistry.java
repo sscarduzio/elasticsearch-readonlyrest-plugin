@@ -46,7 +46,7 @@ import tech.beshu.ror.settings.rules.GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
-import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
+import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
 import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
@@ -114,7 +114,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
+    creators.put(__old_KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
     creators.put(__old_KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
     creators.put(__old_FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
     creators.put(__old_FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
@@ -290,7 +290,7 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaAccessSettingsCreator(RawSettings blockSettings) {
-    return () -> KibanaAccessRuleSettings.fromBlockSettings(blockSettings);
+    return () -> __old_KibanaAccessRuleSettings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")

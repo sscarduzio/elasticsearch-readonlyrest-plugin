@@ -60,7 +60,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       )
     }
   }
-  
+
   private def assertMatchRule(configured: NonEmptySet[Value[IndexName]],
                               indices: Set[IndexName],
                               modifyRequestContext: MockRequestContext => MockRequestContext = identity,

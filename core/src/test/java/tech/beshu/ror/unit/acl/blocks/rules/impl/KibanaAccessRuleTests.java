@@ -23,10 +23,10 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.unit.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.unit.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.KibanaAccess;
+import tech.beshu.ror.commons.domain.__old_KibanaAccess;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
+import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
 
 import java.util.Optional;
 import java.util.Set;
@@ -42,46 +42,46 @@ public class KibanaAccessRuleTests {
 
   @Test
   public void testCLUSTER() {
-    for (String action : KibanaAccessSyncRule.CLUSTER.getMatchers()) {
+    for (String action : __old_KibanaAccessSyncRule.CLUSTER.getMatchers()) {
       System.out.println("trying " + action + " as RO");
-      assertTrue(matchRule(KibanaAccess.RO, action).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RO, action).isMatch());
       System.out.println("trying " + action + " as RW");
-      assertTrue(matchRule(KibanaAccess.RW, action).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RW, action).isMatch());
     }
   }
 
   @Test
   public void testRO() {
-    for (String action : KibanaAccessSyncRule.RO.getMatchers()) {
+    for (String action : __old_KibanaAccessSyncRule.RO.getMatchers()) {
       System.out.println("trying " + action + " as RO_STRICT");
-      assertTrue(matchRule(KibanaAccess.RO_STRICT, action).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RO_STRICT, action).isMatch());
       System.out.println("trying " + action + " as RO");
-      assertTrue(matchRule(KibanaAccess.RO, action).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RO, action).isMatch());
       System.out.println("trying " + action + " as RW");
-      assertTrue(matchRule(KibanaAccess.RW, action).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RW, action).isMatch());
     }
   }
 
   @Test
   public void testRW() {
-    for (String action : KibanaAccessSyncRule.RW.getMatchers()) {
+    for (String action : __old_KibanaAccessSyncRule.RW.getMatchers()) {
       String a = action.replace("*", "_");
 
       System.out.println("trying " + a + " as RO_STRICT");
       TestCase.assertFalse(
-        matchRule(KibanaAccess.RO_STRICT, a, Sets.newHashSet(".kibana"), ".kibana", true)
+        matchRule(__old_KibanaAccess.RO_STRICT, a, Sets.newHashSet(".kibana"), ".kibana", true)
           .isMatch()
       );
 
       System.out.println("trying " + a + " as RO");
       TestCase.assertFalse(
-        matchRule(KibanaAccess.RO, a, Sets.newHashSet(".kibana"), ".kibana", true)
+        matchRule(__old_KibanaAccess.RO, a, Sets.newHashSet(".kibana"), ".kibana", true)
           .isMatch()
       );
 
       System.out.println("trying " + a + " as RW");
       assertTrue(
-        matchRule(KibanaAccess.RW, a, Sets.newHashSet(".kibana"), ".kibana", true)
+        matchRule(__old_KibanaAccess.RW, a, Sets.newHashSet(".kibana"), ".kibana", true)
           .isMatch()
       );
     }
@@ -89,37 +89,37 @@ public class KibanaAccessRuleTests {
 
   @Test
   public void testROotherIndices() {
-    for (String action : KibanaAccessSyncRule.RO.getMatchers()) {
-      assertTrue(matchRule(KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx")).isMatch());
-      assertTrue(matchRule(KibanaAccess.RO, action, Sets.newHashSet("xxx")).isMatch());
-      assertTrue(matchRule(KibanaAccess.RW, action, Sets.newHashSet("xxx")).isMatch());
+    for (String action : __old_KibanaAccessSyncRule.RO.getMatchers()) {
+      assertTrue(matchRule(__old_KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx")).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RO, action, Sets.newHashSet("xxx")).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RW, action, Sets.newHashSet("xxx")).isMatch());
     }
   }
 
   @Test
   public void testRWotherIndices() {
-    for (String action : KibanaAccessSyncRule.RW.getMatchers()) {
-      TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx")).isMatch());
-      TestCase.assertFalse(matchRule(KibanaAccess.RO, action, Sets.newHashSet("xxx")).isMatch());
-      TestCase.assertFalse(matchRule(KibanaAccess.RW, action, Sets.newHashSet("xxx")).isMatch());
+    for (String action : __old_KibanaAccessSyncRule.RW.getMatchers()) {
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx")).isMatch());
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RO, action, Sets.newHashSet("xxx")).isMatch());
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RW, action, Sets.newHashSet("xxx")).isMatch());
     }
   }
 
   @Test
   public void testROmixedIndices() {
-    for (String action : KibanaAccessSyncRule.RO.getMatchers()) {
-      assertTrue(matchRule(KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
-      assertTrue(matchRule(KibanaAccess.RO, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
-      assertTrue(matchRule(KibanaAccess.RW, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
+    for (String action : __old_KibanaAccessSyncRule.RO.getMatchers()) {
+      assertTrue(matchRule(__old_KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RO, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RW, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
     }
   }
 
   @Test
   public void testRWmixedIndices() {
-    for (String action : KibanaAccessSyncRule.RW.getMatchers()) {
-      TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
-      TestCase.assertFalse(matchRule(KibanaAccess.RO, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
-      TestCase.assertFalse(matchRule(KibanaAccess.RW, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
+    for (String action : __old_KibanaAccessSyncRule.RW.getMatchers()) {
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RO, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RW, action, Sets.newHashSet("xxx", ".kibana")).isMatch());
     }
   }
 
@@ -128,15 +128,15 @@ public class KibanaAccessRuleTests {
     String customKibanaIndex = ".kibana-custom";
     Set<String> indices = Sets.newHashSet(customKibanaIndex);
 
-    for (String action : KibanaAccessSyncRule.RW.getMatchers()) {
+    for (String action : __old_KibanaAccessSyncRule.RW.getMatchers()) {
       System.out.println("trying " + action + " as RO_STRICT");
-      TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true).isMatch());
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true).isMatch());
 
       System.out.println("trying " + action + " as RO");
-      TestCase.assertFalse(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true).isMatch());
+      TestCase.assertFalse(matchRule(__old_KibanaAccess.RO, action, indices, customKibanaIndex, true).isMatch());
 
       System.out.println("trying " + action + " as RW");
-      assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true).isMatch());
+      assertTrue(matchRule(__old_KibanaAccess.RW, action, indices, customKibanaIndex, true).isMatch());
     }
   }
 
@@ -148,9 +148,9 @@ public class KibanaAccessRuleTests {
     String uri = "/" + customKibanaIndex + "/index-pattern/job";
 
     System.out.println("trying " + action + " as RO");
-    TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
-    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
-    assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertFalse(matchRule(__old_KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(__old_KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertTrue(matchRule(__old_KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
   @Test
@@ -161,9 +161,9 @@ public class KibanaAccessRuleTests {
     String uri = "/" + customKibanaIndex + "/index-pattern/nilb-auh-filebeat-*";
 
     System.out.println("trying " + action + " as RO");
-    TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
-    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
-    assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertFalse(matchRule(__old_KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(__old_KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertTrue(matchRule(__old_KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
   @Test
@@ -173,9 +173,9 @@ public class KibanaAccessRuleTests {
     String action = "indices:admin/template/put";
     String uri = "/_template/kibana_index_template%3A.kibana";
     System.out.println("trying " + action + " as RO");
-    TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
-    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
-    assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertFalse(matchRule(__old_KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(__old_KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertTrue(matchRule(__old_KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
   @Test
@@ -185,9 +185,9 @@ public class KibanaAccessRuleTests {
     String action = "indices:data/write/update";
     String uri = "/" + customKibanaIndex + "/doc/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b/_update?";
     System.out.println("trying " + action + " as RO");
-    TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
-    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
-    assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertFalse(matchRule(__old_KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(__old_KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertTrue(matchRule(__old_KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
 
@@ -198,27 +198,27 @@ public class KibanaAccessRuleTests {
     when(rc.getUri()).thenReturn(found.uri);
     when(rc.resolveVariable(anyString())).then(invocation -> Optional.of((String) invocation.getArguments()[0]));
 
-    SyncRule r = new KibanaAccessSyncRule(
-      new KibanaAccessRuleSettings(configured.accessLevel, configured.kibanaIndex),
+    SyncRule r = new __old_KibanaAccessSyncRule(
+      new __old_KibanaAccessRuleSettings(configured.accessLevel, configured.kibanaIndex),
       MockedESContext.INSTANCE
     );
     return r.match(rc);
   }
 
-  private RuleExitResult matchRule(KibanaAccess accessLevel, String action) {
+  private RuleExitResult matchRule(__old_KibanaAccess accessLevel, String action) {
     return matchRule(accessLevel, action, Sets.newHashSet(".kibana"));
   }
 
-  private RuleExitResult matchRule(KibanaAccess accessLevel, String action, Set<String> indices) {
+  private RuleExitResult matchRule(__old_KibanaAccess accessLevel, String action, Set<String> indices) {
     return matchRule(accessLevel, action, indices, ".kibana", false);
   }
 
-  private RuleExitResult matchRule(KibanaAccess accessLevel, String action, Set<String> indices,
+  private RuleExitResult matchRule(__old_KibanaAccess accessLevel, String action, Set<String> indices,
                                    String kibanaIndex, boolean involvesIndices) {
     return matchRule(accessLevel, action, indices, kibanaIndex, involvesIndices, "");
   }
 
-  private RuleExitResult matchRule(KibanaAccess accessLevel, String action,
+  private RuleExitResult matchRule(__old_KibanaAccess accessLevel, String action,
                                    Set<String> indices, String kibanaIndex, boolean involvesIndices, String uri) {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
@@ -233,7 +233,7 @@ public class KibanaAccessRuleTests {
   }
 
   class Conf {
-    KibanaAccess accessLevel = KibanaAccess.RO;
+    __old_KibanaAccess accessLevel = __old_KibanaAccess.RO;
     String kibanaIndex = ".kibana";
   }
 

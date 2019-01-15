@@ -36,7 +36,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_IndicesSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.JwtAuthSyncRule;
-import tech.beshu.ror.unit.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaAccessSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
 import tech.beshu.ror.unit.acl.blocks.rules.impl.LdapAuthAsyncRule;
@@ -82,7 +82,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         GroupsAsyncRule.class,
 
         // Inspection rules next; these act based on properties of the request.
-        KibanaAccessSyncRule.class,
+        __old_KibanaAccessSyncRule.class,
 
         __old_HostsSyncRule.class,
         __old_LocalHostsSyncRule.class,

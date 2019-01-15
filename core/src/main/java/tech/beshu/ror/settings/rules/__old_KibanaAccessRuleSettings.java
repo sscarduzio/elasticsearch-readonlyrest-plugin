@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.commons.domain.KibanaAccess;
+import tech.beshu.ror.commons.domain.__old_KibanaAccess;
 import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
@@ -24,31 +24,31 @@ import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.function.Function;
 
-public class KibanaAccessRuleSettings implements RuleSettings {
+public class __old_KibanaAccessRuleSettings implements RuleSettings {
 
   public static final String ATTRIBUTE_NAME = "kibana_access";
   public static final String ATTRIBUTE_KIBANA_INDEX = "kibana_index";
 
   private static final String DEFAULT_KIBANA_INDEX = ".kibana";
 
-  private final KibanaAccess kibanaAccess;
+  private final __old_KibanaAccess kibanaAccess;
   private final __old_Value<String> kibanaIndex;
 
-  public KibanaAccessRuleSettings(KibanaAccess kibanaAccess, String kibanaIndex) {
+  public __old_KibanaAccessRuleSettings(__old_KibanaAccess kibanaAccess, String kibanaIndex) {
     this.kibanaAccess = kibanaAccess;
     this.kibanaIndex = __old_Value.fromString(kibanaIndex, Function.identity());
   }
 
-  public static KibanaAccessRuleSettings fromBlockSettings(RawSettings blockSettings) {
+  public static __old_KibanaAccessRuleSettings fromBlockSettings(RawSettings blockSettings) {
     String value = blockSettings.stringReq(ATTRIBUTE_NAME);
-    return new KibanaAccessRuleSettings(
-      KibanaAccess.fromString(value)
+    return new __old_KibanaAccessRuleSettings(
+      __old_KibanaAccess.fromString(value)
         .orElseThrow(() -> new SettingsMalformedException("Unknown kibana_access value: " + value)),
       blockSettings.stringOpt(ATTRIBUTE_KIBANA_INDEX).orElse(DEFAULT_KIBANA_INDEX)
     );
   }
 
-  public KibanaAccess getKibanaAccess() {
+  public __old_KibanaAccess getKibanaAccess() {
     return kibanaAccess;
   }
 
