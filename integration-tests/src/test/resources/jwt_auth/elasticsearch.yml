@@ -28,7 +28,7 @@ readonlyrest:
       type: allow
       jwt_auth: 
         name: "jwt3"
-        roles: ["role_viewer"]
+        roles: ["role_viewer", "role_xyz"]
 
   jwt:
     - name: jwt1
@@ -44,5 +44,6 @@ readonlyrest:
       signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
       user_claim: user
       roles_claim: roles
+
 
 
