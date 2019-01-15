@@ -62,13 +62,13 @@ public class HostsRuleTests {
 
   @Test
   public void testOKnet() {
-    RuleExitResult res = match("1.1.1.1/16", "1.1.1.2");
+    RuleExitResult res = match("1.1.0.0/16", "1.1.1.2");
     assertTrue(res.isMatch());
   }
 
   @Test
   public void testKOnet() {
-    RuleExitResult res = match("1.1.1.1/24", "2.2.2.2");
+    RuleExitResult res = match("1.1.1.0/24", "2.2.2.2");
     assertFalse(res.isMatch());
   }
 

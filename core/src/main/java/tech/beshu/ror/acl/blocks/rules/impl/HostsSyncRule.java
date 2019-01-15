@@ -18,20 +18,22 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.base.Strings;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
+import inet.ipaddr.IPAddressString;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.IPMask;
 import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.HostsRuleSettings;
-import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -64,6 +66,67 @@ public class HostsSyncRule extends SyncRule {
     return null;
   }
 
+  private static Set<String> explodeToIPAddresses(String hostOrIp) throws UnknownHostException {
+
+    Set<String> resolved = Sets.newHashSet();
+
+    if (!new IPAddressString(hostOrIp).isValid()) {
+
+      // Super-late DNS resolution
+      resolved = Arrays.stream(InetAddress.getAllByName(hostOrIp))
+                       .map(x -> x.getHostAddress())
+                       .collect(Collectors.toSet());
+    }
+    else {
+      // It was an ip or net already
+      resolved.add(hostOrIp);
+    }
+    return resolved;
+  }
+
+  public static boolean ipMatchesAddress(String allowedHost, String address, LoggerShim logger) {
+    try {
+      // Crazy optimistic attempt to compare by string
+      if (allowedHost.equalsIgnoreCase(address)) {
+        return true;
+      }
+
+      Set<String> allAddresses = explodeToIPAddresses(address);
+
+      return allAddresses.stream().anyMatch(a -> {
+        try {
+          return compareExplodedAllowedToSingleAddress(allowedHost, a);
+        } catch (UnknownHostException e) {
+          logger.warn("Cannot resolve configured host name! " + e.getClass().getSimpleName() + ": " + allowedHost);
+          return false;
+        }
+      });
+
+    } catch (UnknownHostException e) {
+      logger.warn("Cannot resolve configured host name! " + e.getClass().getSimpleName() + ": " + allowedHost);
+      e.printStackTrace();
+      return false;
+    }
+  }
+
+  private static boolean compareExplodedAllowedToSingleAddress(String allowedHost, String address) throws UnknownHostException {
+    IPAddressString addressIpString = new IPAddressString(address);
+
+    if (addressIpString.getAddress() == null) {
+      // Weird, couldn't find origin ip?
+      return false;
+    }
+
+    return explodeToIPAddresses(allowedHost).stream().map(allowedIp -> {
+      IPAddressString allowedIpString = new IPAddressString(allowedIp);
+      if (allowedIpString.getAddress() == null) {
+        // Did not resolve to IP
+        return false;
+      }
+      return allowedIpString.getAddress().contains(addressIpString.getAddress());
+    }).anyMatch(v -> v);
+  }
+
   public RuleExitResult match(RequestContext rc) {
     boolean res = matchesAddress(rc, rc.getRemoteAddress(), getXForwardedForHeader(rc.getHeaders()));
     return res ? MATCH : NO_MATCH;
@@ -94,28 +157,11 @@ public class HostsSyncRule extends SyncRule {
     }
 
     return allowedAddressesStrings.stream()
-      .anyMatch(value ->
-                  value.getValue(rc)
-                    .map(ip -> ipMatchesAddress(ip, address))
-                    .orElse(false)
-      );
-  }
-
-  private boolean ipMatchesAddress(String allowedHost, String address) {
-    try {
-      String allowedResolvedIp = allowedHost;
-
-      if (!XForwardedForRuleSettings.isInetAddressOrBlock(allowedHost)) {
-        // Super-late DNS resolution
-        allowedResolvedIp = InetAddress.getByName(allowedHost).getHostAddress();
-      }
-
-      IPMask ip = IPMask.getIPMask(allowedResolvedIp);
-      return ip.matches(address);
-    } catch (UnknownHostException e) {
-      logger.warn("Cannot resolve configured host name! " + e.getClass().getSimpleName() + ": " + allowedHost);
-      return false;
-    }
+                                  .anyMatch(value ->
+                                      value.getValue(rc)
+                                           .map(ip -> ipMatchesAddress(ip, address, logger))
+                                           .orElse(false)
+                                  );
   }
 
 }

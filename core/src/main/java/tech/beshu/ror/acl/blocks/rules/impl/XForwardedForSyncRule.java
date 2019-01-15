@@ -21,14 +21,15 @@ import com.google.common.base.Strings;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.domain.Value;
+import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 13/02/2016.
@@ -37,10 +38,12 @@ public class XForwardedForSyncRule extends SyncRule {
 
   private final Set<Value<String>> allowedAddresses;
   private final XForwardedForRuleSettings settings;
+  private final LoggerShim logger;
 
-  public XForwardedForSyncRule(XForwardedForRuleSettings s) {
+  public XForwardedForSyncRule(XForwardedForRuleSettings s, ESContext context) {
     this.allowedAddresses = s.getAllowedIdentifiers();
     this.settings = s;
+    this.logger = context.logger(this.getClass());
   }
 
   private static String getXForwardedForHeader(Map<String, String> headers) {
@@ -63,34 +66,24 @@ public class XForwardedForSyncRule extends SyncRule {
       return NO_MATCH;
     }
 
-    // Handle header as anonimised identifier
-    if (settings.getAllowedIdentifiers().stream()
-      .anyMatch(v -> v.getValue(rc).filter(s -> s.equals(header)).isPresent())) {
+    Set<String> allowedStrings = settings.getAllowedIdentifiers()
+                                         .stream()
+                                         .map(v -> v.getValue(rc))
+                                         .filter(Optional::isPresent)
+                                         .map(Optional::get)
+                                         .collect(Collectors.toSet());
+
+    if (allowedStrings
+        .stream()
+        .anyMatch(v -> v.equals(header))) {
       return MATCH;
     }
 
-    Inet4Address resolved = null;
-    try {
-      resolved = (Inet4Address) InetAddress.getByName(header);
-      if (resolved == null) {
-        return NO_MATCH;
-      }
-    } catch (UnknownHostException e) {
-      // This string cannot be resolved, useless to try match with numeric
-      return NO_MATCH;
-    }
-
-
-    // Handle header as IP
-    Inet4Address finalResolved = resolved;
-    boolean res = settings.getAllowedNumeric().stream()
-      .anyMatch(ip -> {
-        // This resolves names if necessary
-        return ip.matches(finalResolved);
-      });
-
-
-    return res ? MATCH : NO_MATCH;
+    return allowedStrings
+        .stream()
+        .filter(allowed -> HostsSyncRule.ipMatchesAddress(allowed, header, logger))
+        .findFirst()
+        .isPresent() ? MATCH : NO_MATCH;
   }
 
   @Override

@@ -22,6 +22,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
@@ -48,7 +49,7 @@ public class XForwardedForSyncRuleTests {
     when(rc.getHeaders()).thenReturn(headers);
 
     XForwardedForRuleSettings hrset = XForwardedForRuleSettings.from(Lists.newArrayList(configured));
-    SyncRule r = new XForwardedForSyncRule(hrset);
+    SyncRule r = new XForwardedForSyncRule(hrset, MockedESContext.INSTANCE);
     return r.match(rc);
   }
 
@@ -60,7 +61,7 @@ public class XForwardedForSyncRuleTests {
 
   @Test
   public void testOKnet() {
-    RuleExitResult res = match("1.1.1.1/16", "1.1.1.2");
+    RuleExitResult res = match("1.1.0.0/16", "1.1.1.2");
     assertTrue(res.isMatch());
   }
 
@@ -85,7 +86,7 @@ public class XForwardedForSyncRuleTests {
   @Test
   public void testLocal() {
     RuleExitResult res = match("localhost", "127.0.0.1");
-    assertFalse(res.isMatch());
+    assertTrue(res.isMatch());
   }
 
   @Test
