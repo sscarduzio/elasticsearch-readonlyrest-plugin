@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
@@ -94,7 +94,7 @@ public class UserRuleFactory {
 
     this.creators.put(
         JwtAuthRuleSettings.class,
-        settings -> new JwtAuthSyncRule((JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
+        settings -> new JwtAuthAsyncRule((JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
     );
     this.creators.put(
         RorKbnAuthRuleSettings.class,

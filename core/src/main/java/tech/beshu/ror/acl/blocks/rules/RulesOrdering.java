@@ -35,7 +35,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
@@ -72,7 +72,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         AuthKeySha512SyncRule.class,
         AuthKeyUnixAsyncRule.class,
         ProxyAuthSyncRule.class,
-        JwtAuthSyncRule.class,
+        JwtAuthAsyncRule.class,
         RorKbnAuthSyncRule.class,
 
         // then we could check potentially slow async rules
