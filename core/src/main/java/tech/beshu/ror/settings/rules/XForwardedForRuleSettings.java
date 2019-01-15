@@ -14,17 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
-import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses;
-import inet.ipaddr.IPAddressString;
-import tech.beshu.ror.commons.domain.IPMask;
 import tech.beshu.ror.commons.domain.Value;
-import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.RuleSettings;
 
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -42,7 +38,7 @@ public class XForwardedForRuleSettings implements RuleSettings {
   public static XForwardedForRuleSettings from(List<String> hosts) {
     Set<Value<String>> identifiers = Sets.newHashSet();
     hosts.stream()
-      .forEach(allowedHost -> identifiers.add(Value.fromString(allowedHost, Function.identity())));
+         .forEach(allowedHost -> identifiers.add(Value.fromString(allowedHost, Function.identity())));
 
     return new XForwardedForRuleSettings(identifiers);
   }
@@ -50,7 +46,6 @@ public class XForwardedForRuleSettings implements RuleSettings {
   public Set<Value<String>> getAllowedIdentifiers() {
     return allowedIdentifiers;
   }
-
 
   @Override
   public String getName() {
