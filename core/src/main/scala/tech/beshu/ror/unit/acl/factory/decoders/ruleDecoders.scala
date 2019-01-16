@@ -3,6 +3,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import java.time.Clock
 
 import cats.data.NonEmptySet
+import io.circe.CursorOp.DownField
 import io.circe.Decoder.Result
 import io.circe._
 import tech.beshu.ror.unit.acl.blocks.rules._
@@ -19,10 +20,13 @@ object ruleDecoders {
     def decode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[T] = {
       doDecode(value, associatedFieldsJson)
         .left
-        .map(_.overrideDefaultErrorWith(RulesLevelCreationError {
+        .map(df => df.overrideDefaultErrorWith(RulesLevelCreationError {
           value.top match {
-            case Some(json) => MalformedValue(json)
-            case None => Message("Malformed rule")
+            case Some(json) =>
+              MalformedValue(json)
+            case None =>
+              val ruleName = df.history.headOption.collect { case df: DownField => df.k }.getOrElse("")
+              Message(s"Malformed rule $ruleName")
           }
         }))
     }
@@ -76,6 +80,7 @@ object ruleDecoders {
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(HostsRuleDecoder)
       case IndicesRule.name => Some(IndicesRuleDecoders)
+      case KibanaAccessRule.name => Some(KibanaAccessRuleDecoder)
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
       case KibanaIndexRule.name => Some(KibanaIndexRuleDecoder)
       case LocalHostsRule.name => Some(LocalHostsRuleDecoder)

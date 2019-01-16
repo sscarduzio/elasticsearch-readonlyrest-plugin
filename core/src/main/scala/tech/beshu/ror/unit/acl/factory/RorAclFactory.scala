@@ -76,18 +76,21 @@ class RorAclFactory extends Logging {
 
   private def decodeRuleInCursorContext(name: String, authProxies: Set[ProxyAuth]): State[ACursor, Option[Decoder.Result[Rule]]] =
     State(cursor => {
-      ruleDecoderBy(name, authProxies) match {
-        case Some(decoder) =>
-          val decodingResult = decoder.decode(
-            cursor.downField(name),
-            cursor.withFocus(_.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key))))
-          )
-          val newCursor = cursor.withFocus(_.mapObject(json => decoder.associatedFields.foldLeft(json.remove(name)) {
-            _.remove(_)
-          }))
-          (newCursor, Some(decodingResult))
-        case None =>
-          (cursor, None)
+      if(!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
+      else {
+        ruleDecoderBy(name, authProxies) match {
+          case Some(decoder) =>
+            val decodingResult = decoder.decode(
+              cursor.downField(name),
+              cursor.withFocus(_.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key))))
+            )
+            val newCursor = cursor.withFocus(_.mapObject(json => decoder.associatedFields.foldLeft(json.remove(name)) {
+              _.remove(_)
+            }))
+            (newCursor, Some(decodingResult))
+          case None =>
+            (cursor, None)
+        }
       }
     })
 

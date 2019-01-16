@@ -26,6 +26,8 @@ trait BlockContext {
 
   def setIndices(indices: NonEmptySet[IndexName]): BlockContext
 
+  def indices: Set[IndexName]
+
 }
 
 class RequestContextInitiatedBlockContext private(val data: BlockContextData)
@@ -53,6 +55,8 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
 
   override def setIndices(indices: NonEmptySet[IndexName]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(indices = indices.toSortedSet))
+
+  override def indices: Set[IndexName] = data.indices
 }
 
 object RequestContextInitiatedBlockContext {

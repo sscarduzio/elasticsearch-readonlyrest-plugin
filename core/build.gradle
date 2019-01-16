@@ -77,7 +77,6 @@ dependencies {
     testCompile group: 'org.scalamock',             name: 'scalamock-scalatest-support_2.12',   version: '3.6.0'
     testCompile group: 'org.scalatest',             name: 'scalatest_2.12',                     version: '3.0.5'
 
-
     compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'

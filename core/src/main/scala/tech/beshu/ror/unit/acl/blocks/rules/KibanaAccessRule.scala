@@ -5,13 +5,14 @@ import java.util.regex.Pattern
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.commons.Constants
 import tech.beshu.ror.commons.aDomain.Header.Name.kibanaAccess
 import tech.beshu.ror.commons.aDomain.IndexName.devNullKibana
 import tech.beshu.ror.commons.aDomain.KibanaAccess.{RO, ROStrict, RW}
 import tech.beshu.ror.commons.aDomain.KibanaAccess._
 import tech.beshu.ror.commons.aDomain._
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
-import tech.beshu.ror.unit.acl.blocks.rules.KibanaAccessRule.{name, _}
+import tech.beshu.ror.unit.acl.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.unit.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.unit.acl.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -19,8 +20,6 @@ import tech.beshu.ror.unit.acl.blocks.rules.utils.{MatcherWithWildcardsJavaAdapt
 import tech.beshu.ror.unit.acl.request.RequestContext
 import tech.beshu.ror.commons.headerValues._
 import tech.beshu.ror.commons.show.logs._
-
-import scala.collection.JavaConverters._
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
@@ -28,7 +27,7 @@ class KibanaAccessRule(val settings: Settings)
 
   import KibanaAccessRule.stringActionNT
 
-  override val name: Rule.Name = name
+  override val name: Rule.Name = KibanaAccessRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
@@ -62,8 +61,8 @@ class KibanaAccessRule(val settings: Settings)
   private def continueProcessing(requestContext: RequestContext,
                                  blockContext: BlockContext,
                                  kibanaIndex: IndexName): RuleResult = {
-    if(kibanaCanBeModified && isTargetingKibana(requestContext, kibanaIndex)) {
-      if(Matchers.roMatcher.`match`(requestContext.action) ||
+    if (kibanaCanBeModified && isTargetingKibana(requestContext, kibanaIndex)) {
+      if (Matchers.roMatcher.`match`(requestContext.action) ||
         Matchers.rwMatcher.`match`(requestContext.action) ||
         requestContext.action.hasPrefix("indices:data/write")) {
         logger.debug(s"RW access to Kibana index: ${requestContext.id.show}")
@@ -72,7 +71,7 @@ class KibanaAccessRule(val settings: Settings)
         logger.info(s"RW access to Kibana, but unrecognized action ${requestContext.action.show} reqID: ${requestContext.id.show}")
         Rejected
       }
-    } else if(isReadonlyrestAdmin(requestContext)) {
+    } else if (isReadonlyrestAdmin(requestContext)) {
       Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
     } else {
       logger.debug(s"KIBANA ACCESS DENIED ${requestContext.id.show}")
@@ -110,9 +109,17 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def modifyMatched(blockContext: BlockContext, kibanaIndex: Option[IndexName] = None) = {
-    kibanaIndex.foldLeft(blockContext.addResponseHeader(Header(kibanaAccess, settings.access))) {
-      case (currentBlockContext, kibanaIndexName) => currentBlockContext.setKibanaIndex(kibanaIndexName)
+    def applyKibanaAccessHeader = (bc: BlockContext) => {
+      if (settings.kibanaMetadataEnabled) bc.addResponseHeader(Header(kibanaAccess, settings.access))
+      else bc
     }
+    def applyKibanaIndex = (bc: BlockContext) => {
+      kibanaIndex match {
+        case Some(index) => bc.setKibanaIndex(index)
+        case None => bc
+      }
+    }
+    (applyKibanaAccessHeader :: applyKibanaIndex :: Nil).reduceLeft(_ andThen _).apply(blockContext)
   }
 
   private val kibanaCanBeModified: Boolean = settings.access match {
@@ -127,40 +134,10 @@ object KibanaAccessRule {
   final case class Settings(access: KibanaAccess, kibanaIndex: Value[IndexName], kibanaMetadataEnabled: Boolean)
 
   private object Matchers {
-    val roMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Set(
-      "indices:admin/exists",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
-      "indices:admin/validate/query",
-      "indices:admin/get",
-      "indices:admin/refresh*",
-      "indices:data/read/*"
-    ).asJava))
-
-    val rwMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Set(
-      "indices:admin/create",
-      "indices:admin/mapping/put",
-      "indices:data/write/delete*",
-      "indices:data/write/index",
-      "indices:data/write/update*",
-      "indices:data/write/bulk*",
-      "indices:admin/template/*"
-    ).asJava))
-
-    val adminMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Set(
-      "cluster:admin/rradmin/*",
-      "indices:data/write/*", // <-- DEPRECATED!
-      "indices:admin/create"
-    ).asJava))
-
-    val clusterMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Set(
-      "cluster:monitor/nodes/info",
-      "cluster:monitor/main",
-      "cluster:monitor/health",
-      "cluster:monitor/state",
-      "cluster:monitor/xpack/*",
-      "indices:admin/template/get*"
-    ).asJava))
+    val roMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))
+    val rwMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.RW_ACTIONS))
+    val adminMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.ADMIN_ACTIONS))
+    val clusterMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.CLUSTER_ACTIONS))
   }
 
   private implicit val stringActionNT: StringTNaturalTransformation[Action] =

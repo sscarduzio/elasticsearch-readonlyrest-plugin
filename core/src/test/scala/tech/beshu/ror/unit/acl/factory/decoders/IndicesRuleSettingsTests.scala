@@ -15,7 +15,7 @@ import tech.beshu.ror.commons.orders._
 
 class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with MockFactory {
 
-  "A IndicesRule" should {
+  "An IndicesRule" should {
     "be able to read from config" when {
       "one index is defined" in {
         assertDecodingSuccess(

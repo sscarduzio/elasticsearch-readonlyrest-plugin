@@ -20,6 +20,7 @@ package tech.beshu.ror.commons;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
+import scala.reflect.internal.util.HashSet;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -82,4 +83,38 @@ public class Constants {
     return path;
   }
 
+  public static final Set<String> RO_ACTIONS = Sets.newHashSet(
+      "indices:admin/exists",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/mappings/get*",
+      "indices:admin/validate/query",
+      "indices:admin/get",
+      "indices:admin/refresh*",
+      "indices:data/read/*"
+  );
+
+  public static final Set<String> CLUSTER_ACTIONS = Sets.newHashSet(
+      "cluster:monitor/nodes/info",
+      "cluster:monitor/main",
+      "cluster:monitor/health",
+      "cluster:monitor/state",
+      "cluster:monitor/xpack/*",
+      "indices:admin/template/get*"
+  );
+
+  public static final Set<String> RW_ACTIONS = Sets.newHashSet(
+      "indices:admin/create",
+      "indices:admin/mapping/put",
+      "indices:data/write/delete*",
+      "indices:data/write/index",
+      "indices:data/write/update*",
+      "indices:data/write/bulk*",
+      "indices:admin/template/*"
+  );
+
+  public static final Set<String> ADMIN_ACTIONS = Sets.newHashSet(
+      "cluster:admin/rradmin/*",
+      "indices:data/write/*", // <-- DEPRECATED!
+      "indices:admin/create"
+  );
 }

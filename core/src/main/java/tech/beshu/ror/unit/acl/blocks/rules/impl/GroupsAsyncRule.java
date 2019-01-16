@@ -72,8 +72,9 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
 
     // Filter the userSettings to leave only the ones which include the current group
     // #TODO move to proper use of optional
-    final String preferredGroup = rc.getLoggedInUser().isPresent() ?
-        rc.getLoggedInUser().get().resolveCurrentGroup(rc.getHeaders()).orElse(null) : new __old_LoggedUser("x").resolveCurrentGroup(rc.getHeaders()).orElse(null);
+    final String preferredGroup = rc.getLoggedInUser().isPresent()
+        ? rc.getLoggedInUser().get().resolveCurrentGroup(rc.getHeaders()).orElse(null)
+        : new __old_LoggedUser("x").resolveCurrentGroup(rc.getHeaders()).orElse(null);
 
     // Exclude userSettings that don't contain groups in this groupRule
     userSettingsToCheck = userSettingsToCheck.stream()
@@ -107,16 +108,17 @@ public class GroupsAsyncRule extends AsyncRule implements Authorization, Authent
                       .exceptionally(e -> {
                         e.printStackTrace();
                         return NO_MATCH;
-                      }).thenApply(rExitRes -> {
-                if (!rExitRes.isMatch()) {
-                  return rExitRes;
-                }
-                if (!rc.getLoggedInUser().filter(lu -> uSettings.getUsername().equals(lu.getId())).isPresent()) {
-                  // User is authenticated, but was not declared as "username"
-                  return NO_MATCH;
-                }
-                return rExitRes;
-              });
+                      })
+                      .thenApply(rExitRes -> {
+                        if (!rExitRes.isMatch()) {
+                          return rExitRes;
+                        }
+                        if (!rc.getLoggedInUser().filter(lu -> uSettings.getUsername().equals(lu.getId())).isPresent()) {
+                          // User is authenticated, but was not declared as "username"
+                          return NO_MATCH;
+                        }
+                        return rExitRes;
+                      });
         },
 
         // Boolean decision (true = break loop)
