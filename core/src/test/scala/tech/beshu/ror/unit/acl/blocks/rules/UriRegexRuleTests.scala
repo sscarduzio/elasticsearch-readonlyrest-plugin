@@ -7,8 +7,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.unit.acl.blocks.{BlockContext, Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.UriRegexRule
+import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
 import tech.beshu.ror.commons.domain.LoggedUser
 import tech.beshu.ror.commons.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
@@ -79,9 +81,10 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
         (blockContext.loggedUser _).expects().returning(None)
         MockRequestContext.default
     }
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) {
-      isMatched
-    })
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(blockContext)
+      else Rejected
+    }
   }
 
   private def patternValueFrom(value: String): Value[Pattern] = {

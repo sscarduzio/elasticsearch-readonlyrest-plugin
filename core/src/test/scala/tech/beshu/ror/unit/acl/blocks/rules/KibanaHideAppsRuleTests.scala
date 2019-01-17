@@ -5,9 +5,10 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.unit.acl.blocks.BlockContext
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult.Fulfilled
-import tech.beshu.ror.unit.acl.request.RequestContext
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.{Header, KibanaApp}
 import tech.beshu.ror.commons.domain.LoggedUser
 import tech.beshu.ror.commons.domain.User.Id

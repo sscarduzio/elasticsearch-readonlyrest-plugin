@@ -5,9 +5,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.unit.acl.blocks.{Block, BlockContext}
-import tech.beshu.ror.unit.acl.request.RequestContext
+import tech.beshu.ror.acl.blocks.rules.HeadersOrRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.orders._
 
@@ -67,6 +69,9 @@ class HeaderOrRuleTests extends WordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     val blockContext = mock[BlockContext]
     (requestContext.headers _).expects().returning(requestHeaders)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(blockContext)
+      else Rejected
+    }
   }
 }

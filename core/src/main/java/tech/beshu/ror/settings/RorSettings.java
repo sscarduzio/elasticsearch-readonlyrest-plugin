@@ -21,7 +21,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import tech.beshu.ror.unit.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;

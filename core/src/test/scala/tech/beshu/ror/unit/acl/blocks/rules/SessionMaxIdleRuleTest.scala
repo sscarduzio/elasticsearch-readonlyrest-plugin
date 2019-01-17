@@ -12,16 +12,16 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.TestsUtils.scalaFiniteDuration2JavaDuration
-import tech.beshu.ror.unit.acl.blocks.BlockContext
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRule.Settings
-import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest._
-import tech.beshu.ror.unit.acl.request.RequestContext
-import tech.beshu.ror.unit.acl.utils.UuidProvider
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
+import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.utils.UuidProvider
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.domain.{LoggedUser, User}
 import tech.beshu.ror.commons.refined._
+import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, rorSessionCookie, fixedUuidProvider, someday}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -127,7 +127,10 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
     (requestContext.headers _).expects().returning(Set(Header("Cookie" -> rawCookie)))
     (blockContext.loggedUser _).expects().returning(loggedUser)
     if(isMatched) (blockContext.addResponseHeader _).expects(Header("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(newBlockContext) { isMatched })
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(newBlockContext)
+      else Rejected
+    }
   }
 
   private def positive(duration: FiniteDuration) = refineV[Positive](duration).right.get

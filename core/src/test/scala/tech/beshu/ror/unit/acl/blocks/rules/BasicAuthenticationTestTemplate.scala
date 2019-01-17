@@ -3,11 +3,12 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import org.scalatest.Matchers._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.request.RequestContext
+import tech.beshu.ror.acl.request.RequestContext
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.TestsUtils.basicAuthHeader
-import tech.beshu.ror.unit.acl.blocks.BlockContext
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.commons.domain.LoggedUser
 import tech.beshu.ror.commons.domain.User.Id
 

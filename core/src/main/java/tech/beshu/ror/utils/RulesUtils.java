@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.utils;
 
-import tech.beshu.ror.unit.acl.blocks.rules.AsyncRule;
-import tech.beshu.ror.unit.acl.blocks.rules.AsyncRuleAdapter;
-import tech.beshu.ror.unit.acl.blocks.rules.CachedAsyncAuthenticationDecorator;
-import tech.beshu.ror.unit.acl.blocks.rules.CachedAsyncAuthorizationDecorator;
-import tech.beshu.ror.unit.acl.blocks.rules.__old_Rule;
+import tech.beshu.ror.acl.blocks.rules.AsyncRule;
+import tech.beshu.ror.acl.blocks.rules.AsyncRuleAdapter;
+import tech.beshu.ror.acl.blocks.rules.CachedAsyncAuthenticationDecorator;
+import tech.beshu.ror.acl.blocks.rules.CachedAsyncAuthorizationDecorator;
+import tech.beshu.ror.acl.blocks.rules.__old_Rule;
 
 import java.util.Set;
 import java.util.stream.Collectors;

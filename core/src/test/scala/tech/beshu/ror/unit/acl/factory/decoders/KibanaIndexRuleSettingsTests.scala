@@ -2,11 +2,11 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils.jsonFrom
-import tech.beshu.ror.unit.acl.blocks.Variable.ValueWithVariable
-import tech.beshu.ror.unit.acl.blocks.rules.KibanaIndexRule
-import tech.beshu.ror.unit.acl.blocks.{Const, Variable}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
+import tech.beshu.ror.acl.blocks.{Const, Variable}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.commons.aDomain.IndexName
 
 class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRule] {

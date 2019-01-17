@@ -5,8 +5,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.unit.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.commons.aDomain.Address
 import tech.beshu.ror.commons.orders._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -55,7 +57,10 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     val rule = new LocalHostsRule(LocalHostsRule.Settings(configuredAddresses))
     val blockContext = mock[BlockContext]
     val requestContext = MockRequestContext(localAddress = localAddress)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right{
+      if (isMatched) Fulfilled(blockContext)
+      else Rejected
+    }
   }
 
   private def addressValueFrom(value: String): Value[Address] = {

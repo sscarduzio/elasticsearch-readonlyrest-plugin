@@ -5,8 +5,9 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.commons.aDomain.IndexName
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
-import tech.beshu.ror.unit.acl.blocks.rules.impl.ZeroKnowledgeIndexFilter
-import tech.beshu.ror.unit.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterJavaAdapter.CheckResult
+import tech.beshu.ror.acl.blocks.rules.impl.ZeroKnowledgeIndexFilter
+import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsJavaAdapter, ZeroKnowledgeIndexFilterJavaAdapter}
+import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterJavaAdapter.CheckResult
 
 class ZeroKnowledgeIndexFilterTests extends WordSpec {
 

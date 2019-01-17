@@ -3,11 +3,11 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.commons.aDomain.Filter
-import tech.beshu.ror.unit.acl.blocks.Variable.ValueWithVariable
-import tech.beshu.ror.unit.acl.blocks.rules.FilterRule
-import tech.beshu.ror.unit.acl.blocks.{Const, Variable}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.rules.FilterRule
+import tech.beshu.ror.acl.blocks.{Const, Variable}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 
 class FilterRuleSettingsTests extends RuleSettingsDecoderTest[FilterRule] {
 

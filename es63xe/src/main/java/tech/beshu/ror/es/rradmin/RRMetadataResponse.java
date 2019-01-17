@@ -27,7 +27,7 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import scala.collection.JavaConverters$;
-import tech.beshu.ror.unit.acl.blocks.BlockContext;
+import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.aDomain;
 

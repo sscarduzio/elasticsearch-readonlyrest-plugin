@@ -5,12 +5,12 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.commons.aDomain.IndexName
-import tech.beshu.ror.unit.acl.blocks.Value._
-import tech.beshu.ror.unit.acl.blocks.Variable.ValueWithVariable
-import tech.beshu.ror.unit.acl.blocks.rules.IndicesRule
-import tech.beshu.ror.unit.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.Value._
+import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.rules.IndicesRule
+import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.commons.orders._
 
 class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with MockFactory {

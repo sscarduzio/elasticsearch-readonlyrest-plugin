@@ -4,12 +4,13 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Inside, WordSpec}
 import org.scalatest.Matchers._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.unit.acl.{AclHandler, ResponseWriter}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory
+import tech.beshu.ror.acl.ResponseWriter
+import tech.beshu.ror.acl.factory.RorAclFactory
 import tech.beshu.ror.TestsUtils.basicAuthHeader
-import tech.beshu.ror.unit.acl.blocks.Block
-import tech.beshu.ror.unit.acl.blocks.Block.ExecutionResult.Matched
+import tech.beshu.ror.acl.blocks.Block
+import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.acl.{AclHandler, ResponseWriter}
 
 class YamlLoadedAclTests extends WordSpec with MockFactory with Inside {
 

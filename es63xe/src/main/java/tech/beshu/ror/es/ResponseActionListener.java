@@ -20,8 +20,8 @@ package tech.beshu.ror.es;
 import com.google.common.base.Strings;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionResponse;
-import tech.beshu.ror.unit.acl.blocks.BlockContext;
-import tech.beshu.ror.unit.acl.request.RequestContext;
+import tech.beshu.ror.acl.blocks.BlockContext;
+import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.es.rradmin.RRMetadataResponse;
 

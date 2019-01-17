@@ -4,9 +4,9 @@ import cats.data.NonEmptySet
 import com.softwaremill.sttp.Method
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils.jsonFrom
-import tech.beshu.ror.unit.acl.blocks.rules.MethodsRule
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.rules.MethodsRule
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.commons.orders._
 
 class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {

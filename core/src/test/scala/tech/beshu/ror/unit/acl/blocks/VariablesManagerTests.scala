@@ -2,10 +2,11 @@ package tech.beshu.ror.unit.acl.blocks
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.blocks.Variable.{ResolvedValue, ValueWithVariable}
+import tech.beshu.ror.acl.blocks.Variable.{ResolvedValue, ValueWithVariable}
 import tech.beshu.ror.mocks.MockRequestContext
 import org.scalatest.Matchers._
-import tech.beshu.ror.unit.acl.request.RequestContext
+import tech.beshu.ror.acl.blocks.{BlockContext, VariablesManager}
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.aDomain.Header
 import tech.beshu.ror.commons.domain.{LoggedUser, User}
 

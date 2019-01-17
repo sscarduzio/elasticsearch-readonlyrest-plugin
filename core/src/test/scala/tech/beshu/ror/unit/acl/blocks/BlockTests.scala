@@ -6,12 +6,12 @@ import monix.eval.Task
 import org.scalatest.WordSpec
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import tech.beshu.ror.unit.acl.blocks.Block.{ExecutionResult, History, HistoryItem}
-import tech.beshu.ror.unit.acl.blocks.BlockTests.{dummyRequestContext, notPassingRule, passingRule, throwingRule}
-import tech.beshu.ror.unit.acl.blocks.rules.Rule
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.unit.acl.request.RequestContext
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
+import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History, HistoryItem}
+import tech.beshu.ror.acl.blocks.rules.Rule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.acl.request.RequestContext
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -27,18 +27,20 @@ class BlockTests extends WordSpec {
           name = blockName,
           policy = Block.Policy.Allow,
           verbosity = Block.Verbosity.Info,
-          rules = NonEmptyList.fromList(passingRule :: passingRule :: notPassingRule :: passingRule :: Nil).get
+          rules = NonEmptyList.fromListUnsafe(
+            BlockTests.passingRule :: BlockTests.passingRule :: BlockTests.notPassingRule :: BlockTests.passingRule :: Nil
+          )
         )
-        val result = block.execute(dummyRequestContext).runSyncUnsafe(1 second)
+        val result = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
 
         result shouldBe (
           ExecutionResult.Unmatched,
           History(
             blockName,
             Vector(
-              HistoryItem(passingRule.name, matched = true),
-              HistoryItem(passingRule.name, matched = true),
-              HistoryItem(notPassingRule.name, matched = false)
+              HistoryItem(BlockTests.passingRule.name, matched = true),
+              HistoryItem(BlockTests.passingRule.name, matched = true),
+              HistoryItem(BlockTests.notPassingRule.name, matched = false)
             )
           )
         )
@@ -49,18 +51,20 @@ class BlockTests extends WordSpec {
           name = blockName,
           policy = Block.Policy.Allow,
           verbosity = Block.Verbosity.Info,
-          rules = NonEmptyList.fromList(passingRule :: passingRule :: throwingRule :: notPassingRule :: passingRule :: Nil).get
+          rules = NonEmptyList.fromListUnsafe(
+            BlockTests.passingRule :: BlockTests.passingRule :: BlockTests.throwingRule :: BlockTests.notPassingRule :: BlockTests.passingRule :: Nil
+          )
         )
-        val result = block.execute(dummyRequestContext).runSyncUnsafe(1 second)
+        val result = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
 
         result shouldBe (
           ExecutionResult.Unmatched,
           History(
             blockName,
             Vector(
-              HistoryItem(passingRule.name, matched = true),
-              HistoryItem(passingRule.name, matched = true),
-              HistoryItem(throwingRule.name, matched = false)
+              HistoryItem(BlockTests.passingRule.name, matched = true),
+              HistoryItem(BlockTests.passingRule.name, matched = true),
+              HistoryItem(BlockTests.throwingRule.name, matched = false)
             )
           )
         )
@@ -72,17 +76,17 @@ class BlockTests extends WordSpec {
         name = blockName,
         policy = Block.Policy.Allow,
         verbosity = Block.Verbosity.Info,
-        rules = NonEmptyList.fromList(passingRule :: passingRule :: passingRule :: Nil).get
+        rules = NonEmptyList.fromListUnsafe(BlockTests.passingRule :: BlockTests.passingRule :: BlockTests.passingRule :: Nil)
       )
-      val result = block.execute(dummyRequestContext).runSyncUnsafe(1 second)
+      val result = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
 
       result._1 should matchPattern { case ExecutionResult.Matched(_, _) => }
       result._2 shouldBe History(
         blockName,
         Vector(
-          HistoryItem(passingRule.name, matched = true),
-          HistoryItem(passingRule.name, matched = true),
-          HistoryItem(passingRule.name, matched = true)
+          HistoryItem(BlockTests.passingRule.name, matched = true),
+          HistoryItem(BlockTests.passingRule.name, matched = true),
+          HistoryItem(BlockTests.passingRule.name, matched = true)
         )
       )
     }

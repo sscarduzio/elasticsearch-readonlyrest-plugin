@@ -3,11 +3,12 @@ package tech.beshu.ror.unit.acl.factory
 import cats.data.NonEmptyList
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, ProxyAuthConfigsCreationError, RulesLevelCreationError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, ProxyAuthConfigsCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.TestsUtils._
-import tech.beshu.ror.unit.acl.SequentialAcl
-import tech.beshu.ror.unit.acl.blocks.Block
+import tech.beshu.ror.acl.SequentialAcl
+import tech.beshu.ror.acl.blocks.Block
+import tech.beshu.ror.acl.factory.RorAclFactory
 
 class RorAclFactoryTests extends WordSpec with Inside {
 

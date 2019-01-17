@@ -5,11 +5,11 @@ import java.util.regex.Pattern
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils.jsonFrom
-import tech.beshu.ror.unit.acl.blocks.Variable.ValueWithVariable
-import tech.beshu.ror.unit.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.unit.acl.blocks.{BlockContext, Variable, VariablesResolver}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.rules.UriRegexRule
+import tech.beshu.ror.acl.blocks.{BlockContext, Variable, VariablesResolver}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 
 class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 

@@ -5,8 +5,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.blocks.{BlockContext, Value}
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
 import tech.beshu.ror.commons.aDomain.{Address, Header}
 import tech.beshu.ror.commons.domain.IPMask
 import tech.beshu.ror.commons.orders._
@@ -79,7 +80,10 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
     val rule = new XForwardedForRule(settings)
     val requestContext = MockRequestContext(headers = Set(Header("X-Forwarded-For" -> xForwardedForHeaderValue)))
     val blockContext = mock[BlockContext]
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(blockContext)
+      else Rejected
+    }
   }
 
   private def addressValueFrom(value: String): Value[Address] = {

@@ -43,7 +43,7 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.unit.acl.blocks.rules.impl.__old_FieldsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.commons.Constants;
 
 import java.io.IOException;

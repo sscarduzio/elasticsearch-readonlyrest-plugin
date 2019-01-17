@@ -6,11 +6,13 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.acl.blocks.rules.IndicesRule
 import tech.beshu.ror.commons.aDomain.{Action, IndexName}
 import tech.beshu.ror.commons.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.unit.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 
 import scala.collection.SortedSet
 
@@ -94,9 +96,10 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     } else {
       blockContext
     }
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(returnedBlock) {
-      isMatched
-    })
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(returnedBlock)
+      else Rejected
+    }
   }
 
   private def indexNameValueFrom(value: String): Value[IndexName] = {

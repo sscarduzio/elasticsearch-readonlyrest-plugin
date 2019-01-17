@@ -3,11 +3,11 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils.jsonFrom
-import tech.beshu.ror.unit.acl.blocks.Variable.ValueWithVariable
-import tech.beshu.ror.unit.acl.blocks.rules.UsersRule
-import tech.beshu.ror.unit.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.rules.UsersRule
+import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.commons.domain.User
 import tech.beshu.ror.commons.orders._
 

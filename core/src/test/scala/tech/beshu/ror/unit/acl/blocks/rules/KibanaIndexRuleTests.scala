@@ -4,8 +4,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult.Fulfilled
-import tech.beshu.ror.unit.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.commons.aDomain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 

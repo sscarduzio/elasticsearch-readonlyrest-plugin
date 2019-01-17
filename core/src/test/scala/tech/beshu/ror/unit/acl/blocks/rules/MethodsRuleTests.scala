@@ -6,9 +6,11 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.unit.acl.blocks.BlockContext
-import tech.beshu.ror.unit.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.unit.acl.request.RequestContext
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.MethodsRule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.orders._
 
 class MethodsRuleTests extends WordSpec with MockFactory {
@@ -49,6 +51,9 @@ class MethodsRuleTests extends WordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     val blockContext = mock[BlockContext]
     (requestContext.method _).expects().returning(requestMethod)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.fromCondition(blockContext) { isMatched })
+    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(blockContext)
+      else Rejected
+    }
   }
 }

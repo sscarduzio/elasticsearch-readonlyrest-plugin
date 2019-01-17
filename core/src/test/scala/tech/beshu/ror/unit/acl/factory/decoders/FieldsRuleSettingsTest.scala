@@ -3,9 +3,9 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils.jsonFrom
-import tech.beshu.ror.unit.acl.blocks.rules.FieldsRule
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.unit.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.rules.FieldsRule
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.commons.aDomain.DocumentField
 import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.commons.orders.documentFieldOrder
