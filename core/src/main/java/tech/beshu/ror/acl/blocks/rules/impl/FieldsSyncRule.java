@@ -107,6 +107,9 @@ public class FieldsSyncRule extends SyncRule {
     }
 
     public boolean canKeep(String field) {
+      if(field.contains(".")){
+        field = field.substring(0, field.lastIndexOf('.'));
+      }
       if (Constants.FIELDS_ALWAYS_ALLOW.contains(field)) {
         return true;
       }
