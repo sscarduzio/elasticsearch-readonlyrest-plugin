@@ -168,7 +168,7 @@ public class RulesFactory {
     );
     this.creators.put(
         __old_XForwardedForRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_XForwardedForSyncRule((__old_XForwardedForRuleSettings) settings))
+        settings -> AsyncRuleAdapter.wrap(new __old_XForwardedForSyncRule((__old_XForwardedForRuleSettings) settings, context))
     );
     this.creators.put(
         LdapAuthenticationRuleSettings.class,

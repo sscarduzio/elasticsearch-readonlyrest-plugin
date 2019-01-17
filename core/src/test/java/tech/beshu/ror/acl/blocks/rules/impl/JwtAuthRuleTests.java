@@ -513,7 +513,7 @@ public class JwtAuthRuleTests {
         sb.append("\n");
       }
 
-      return Optional.of(new JwtAuthSyncRule(
+      return Optional.of(new JwtAuthAsyncRule(
           JwtAuthRuleSettings.from(
               TestUtils.fromYAMLString(sb.toString()).inner(JwtAuthRuleSettings.ATTRIBUTE_NAME),
               JwtAuthDefinitionSettingsCollection.from(settings)

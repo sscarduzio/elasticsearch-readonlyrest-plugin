@@ -50,14 +50,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-public class JwtAuthSyncRule extends AsyncRule implements Authentication {
+public class JwtAuthAsyncRule extends AsyncRule implements Authentication {
 
   private final LoggerShim logger;
   private final JwtAuthRuleSettings settings;
   private final ExternalAuthenticationServiceClient httpClient;
   private final SecureStringHasher secureStringHasher;
 
-  public JwtAuthSyncRule(JwtAuthRuleSettings settings, ESContext context, DefinitionsFactory factory) {
+  public JwtAuthAsyncRule(JwtAuthRuleSettings settings, ESContext context, DefinitionsFactory factory) {
     this.logger = context.logger(getClass());
     this.settings = settings;
     this.httpClient = settings.getExternalValidator().isPresent() ? factory.getClient(settings) : null;
@@ -76,7 +76,7 @@ public class JwtAuthSyncRule extends AsyncRule implements Authentication {
   @Override
   public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
-                                     .flatMap(JwtAuthSyncRule::extractToken);
+                                     .flatMap(JwtAuthAsyncRule::extractToken);
 
     /*
       JWT ALGO    FAMILY

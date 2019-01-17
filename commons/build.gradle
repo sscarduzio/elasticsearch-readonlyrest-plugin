@@ -63,6 +63,7 @@ dependencies {
     compile group: 'eu.timepit',                    name: 'refined_2.12',                       version: '0.9.3'
 
 
+    compile 'com.github.seancfoley:ipaddress:5.0.0'
     compile 'org.yaml:snakeyaml:1.19'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'

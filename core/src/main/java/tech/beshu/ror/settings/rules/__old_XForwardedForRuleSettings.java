@@ -14,15 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
-import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses;
-import tech.beshu.ror.commons.domain.IPMask;
 import tech.beshu.ror.commons.domain.__old_Value;
 import tech.beshu.ror.settings.RuleSettings;
 
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -32,51 +30,26 @@ public class __old_XForwardedForRuleSettings implements RuleSettings {
   public static final String ATTRIBUTE_NAME = "x_forwarded_for";
 
   private final Set<__old_Value<String>> allowedIdentifiers;
-  private final Set<IPMask> allowedNumeric;
 
-  private __old_XForwardedForRuleSettings(Set<__old_Value<String>> allowedIdentifiers, Set<IPMask> allowedNumeric) {
+  private __old_XForwardedForRuleSettings(Set<__old_Value<String>> allowedIdentifiers) {
     this.allowedIdentifiers = allowedIdentifiers;
-    this.allowedNumeric = allowedNumeric;
   }
 
   public static __old_XForwardedForRuleSettings from(List<String> hosts) {
     Set<__old_Value<String>> identifiers = Sets.newHashSet();
-    Set<IPMask> numerics = Sets.newHashSet();
     hosts.stream()
-      .forEach(allowedHost -> {
-        if (!isInetAddressOrBlock(allowedHost)) {
-          identifiers.add(__old_Value.fromString(allowedHost, Function.identity()));
-        }
-        else {
-          try {
-            numerics.add(IPMask.getIPMask(allowedHost));
-          } catch (UnknownHostException e) {
-            e.printStackTrace();
-          }
-        }
-      });
+         .forEach(allowedHost -> identifiers.add(__old_Value.fromString(allowedHost, Function.identity())));
 
-    return new __old_XForwardedForRuleSettings(identifiers, numerics);
-  }
-
-  public static boolean isInetAddressOrBlock(String address) {
-    int slash = address.lastIndexOf('/');
-    if (slash != -1) {
-      address = address.substring(0, slash);
-    }
-    return InetAddresses.isInetAddress(address);
+    return new __old_XForwardedForRuleSettings(identifiers);
   }
 
   public Set<__old_Value<String>> getAllowedIdentifiers() {
     return allowedIdentifiers;
   }
 
-  public Set<IPMask> getAllowedNumeric() {
-    return allowedNumeric;
-  }
-
   @Override
   public String getName() {
     return ATTRIBUTE_NAME;
   }
+
 }

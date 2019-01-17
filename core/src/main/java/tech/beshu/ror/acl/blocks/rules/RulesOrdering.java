@@ -18,6 +18,7 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.ImmutableList;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ActionsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha1SyncRule;
@@ -35,7 +36,6 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_IndicesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaAccessSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
@@ -72,7 +72,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         __old_AuthKeySha512SyncRule.class,
         __old_AuthKeyUnixAsyncRule.class,
         __old_ProxyAuthSyncRule.class,
-        JwtAuthSyncRule.class,
+        JwtAuthAsyncRule.class,
         RorKbnAuthSyncRule.class,
 
         // then we could check potentially slow async rules

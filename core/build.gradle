@@ -76,7 +76,7 @@ dependencies {
     testCompile group: 'org.scalamock',             name: 'scalamock_2.12',                     version: '3.6.0'
     testCompile group: 'org.scalamock',             name: 'scalamock-scalatest-support_2.12',   version: '3.6.0'
     testCompile group: 'org.scalatest',             name: 'scalatest_2.12',                     version: '3.0.5'
-
+    
     compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'
@@ -84,7 +84,8 @@ dependencies {
     compile 'net.minidev:accessors-smart:1.2'
     compile 'net.minidev:json-smart:2.3'
     compile 'org.jooq:jool:0.9.12'
-
+    compile 'com.github.seancfoley:ipaddress:5.0.0'
+    
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
     compile 'io.jsonwebtoken:jjwt-api:0.10.5'
     runtime 'io.jsonwebtoken:jjwt-impl:0.10.5',

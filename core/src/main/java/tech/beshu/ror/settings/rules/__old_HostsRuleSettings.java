@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.domain.__old_Value;
@@ -41,10 +42,10 @@ public class __old_HostsRuleSettings implements RuleSettings {
 
   public static __old_HostsRuleSettings fromBlockSettings(RawSettings blockSettings) {
     return new __old_HostsRuleSettings(
-      blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
-        .map(obj -> __old_Value.fromString((String) obj, Function.identity()))
-        .collect(Collectors.toSet()),
-      blockSettings.booleanOpt(ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER).orElse(DEFAULT_ACCEPT_X_FOWARDED_FOR)
+        blockSettings.notEmptyListReq(ATTRIBUTE_NAME).stream()
+                     .map(obj -> __old_Value.fromString((String) obj, Function.identity()))
+                     .collect(Collectors.toSet()),
+        blockSettings.booleanOpt(ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER).orElse(DEFAULT_ACCEPT_X_FOWARDED_FOR)
     );
   }
 
@@ -60,6 +61,5 @@ public class __old_HostsRuleSettings implements RuleSettings {
   public String getName() {
     return ATTRIBUTE_NAME;
   }
-
 
 }

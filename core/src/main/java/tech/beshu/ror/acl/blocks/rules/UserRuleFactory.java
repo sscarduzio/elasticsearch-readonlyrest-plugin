@@ -19,12 +19,12 @@ package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
 import tech.beshu.ror.acl.__old_ACL;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha1SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha256SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha512SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
@@ -94,7 +94,7 @@ public class UserRuleFactory {
 
     this.creators.put(
         JwtAuthRuleSettings.class,
-        settings -> new JwtAuthSyncRule((JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
+        settings -> new JwtAuthAsyncRule((JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
     );
     this.creators.put(
         RorKbnAuthRuleSettings.class,

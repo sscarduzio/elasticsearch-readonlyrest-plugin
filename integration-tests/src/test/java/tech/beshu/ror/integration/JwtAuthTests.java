@@ -14,21 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.integration;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import org.junit.ClassRule;
-import org.junit.Test;
 
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -47,11 +51,11 @@ public class JwtAuthTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
-    ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(),
-      "/jwt_auth/elasticsearch.yml",
-      Optional.empty()
-    );
+      ESWithReadonlyRestContainer.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          "/jwt_auth/elasticsearch.yml",
+          Optional.empty()
+      );
 
   @Test
   public void rejectRequestWithoutAuthorizationHeader() throws Exception {
@@ -109,7 +113,11 @@ public class JwtAuthTests {
 
   @Test
   public void acceptValidTokentWithRolesClaim() throws Exception {
-    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "role_viewer")));
+    List<String> roles = Lists.newArrayList();
+    roles.add("role_viewer");
+    roles.add("something_lol");
+    Optional<String> tok = makeToken(KEY_ROLE, makeClaimMap(USER_CLAIM, "user1", ROLES_CLAIM, roles));
+    int sc = test(tok);
     assertEquals(200, sc);
   }
 
@@ -131,8 +139,10 @@ public class JwtAuthTests {
 
   private Optional<String> makeToken(String key, Map<String, Object> claims) {
     JwtBuilder builder = Jwts.builder()
-      .setSubject(SUBJECT)
-      .signWith(SignatureAlgorithm.valueOf(ALGO), key.getBytes());
+                             .setSubject(SUBJECT)
+                             .setExpiration(new Date(System.currentTimeMillis() * 2))
+                             .signWith(SignatureAlgorithm.valueOf(ALGO), key.getBytes());
+
     claims.forEach(builder::claim);
     return Optional.of(builder.compact());
   }
