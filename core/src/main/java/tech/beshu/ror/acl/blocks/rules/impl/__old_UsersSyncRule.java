@@ -21,7 +21,7 @@ import com.google.common.base.Strings;
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
-import tech.beshu.ror.commons.domain.__old_Value;
+import tech.beshu.ror.acl.domain.__old_Value;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.RuleSettings;

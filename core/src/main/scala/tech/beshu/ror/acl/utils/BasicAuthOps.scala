@@ -3,7 +3,7 @@ package tech.beshu.ror.acl.utils
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
-import tech.beshu.ror.commons.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.AuthData
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 
 import scala.language.implicitConversions

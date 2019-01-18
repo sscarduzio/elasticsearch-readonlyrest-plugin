@@ -6,9 +6,11 @@ import cats.data.NonEmptySet
 import io.circe.CursorOp.DownField
 import io.circe.Decoder.Result
 import io.circe._
+import tech.beshu.ror.acl.blocks.definitions.{ProxyAuth, ProxyAuthDefinitions}
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.decoders.rules._
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.acl.utils.UuidProvider
 
@@ -64,7 +66,7 @@ object ruleDecoders {
       }
   }
 
-  implicit def ruleDecoderBy(name: String, authProxies: Set[ProxyAuth])
+  implicit def ruleDecoderBy(name: String, authProxyDefinitions: ProxyAuthDefinitions)
                             (implicit clock: Clock, uuidProvider: UuidProvider): Option[RuleDecoder[_ <: Rule]] =
     Rule.Name(name) match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
@@ -86,7 +88,7 @@ object ruleDecoders {
       case LocalHostsRule.name => Some(LocalHostsRuleDecoder)
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.name => Some(MethodsRuleDecoder)
-      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxies))
+      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions))
       case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder)
       case UriRegexRule.name => Some(UriRegexRuleDecoder)
       case UsersRule.name => Some(UsersRuleDecoder)

@@ -20,7 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.__old_Value;
+import tech.beshu.ror.acl.domain.__old_Value;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.utils.FilterTransient;
 import tech.beshu.ror.requestcontext.__old_RequestContext;

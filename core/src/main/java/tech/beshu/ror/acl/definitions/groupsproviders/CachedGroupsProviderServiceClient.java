@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.definitions.groupsproviders;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import tech.beshu.ror.commons.domain.__old_LoggedUser;
+import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.settings.rules.CacheSettings;
 
 import java.time.Duration;

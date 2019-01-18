@@ -18,7 +18,7 @@
 package tech.beshu.ror.settings.rules;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
-import tech.beshu.ror.commons.domain.__old_Value;
+import tech.beshu.ror.acl.domain.__old_Value;
 import tech.beshu.ror.settings.RuleSettings;
 
 import java.util.List;

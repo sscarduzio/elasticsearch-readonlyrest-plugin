@@ -5,8 +5,8 @@ import java.time.Duration
 import java.util.Base64
 
 import io.circe.Json
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.aDomain.Header.Name
+import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.aDomain.Header.Name
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions

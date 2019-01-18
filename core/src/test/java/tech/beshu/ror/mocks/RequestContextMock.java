@@ -24,7 +24,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.__old_LoggedUser;
+import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 

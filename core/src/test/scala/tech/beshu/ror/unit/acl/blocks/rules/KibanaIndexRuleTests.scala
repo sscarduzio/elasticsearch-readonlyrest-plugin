@@ -7,7 +7,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
-import tech.beshu.ror.commons.aDomain.IndexName
+import tech.beshu.ror.acl.aDomain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 
 class KibanaIndexRuleTests extends WordSpec with MockFactory {

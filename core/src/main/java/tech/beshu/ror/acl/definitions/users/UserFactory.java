@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.acl.definitions.users;
 
-import tech.beshu.ror.settings.definitions.UserSettings;
+import tech.beshu.ror.settings.definitions.__old_UserSettings;
 
 public interface UserFactory {
-  User getUser(UserSettings settings);
+  User getUser(__old_UserSettings settings);
 }

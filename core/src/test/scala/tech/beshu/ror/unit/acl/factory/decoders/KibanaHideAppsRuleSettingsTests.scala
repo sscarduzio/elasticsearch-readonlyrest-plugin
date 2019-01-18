@@ -6,8 +6,8 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.KibanaApp
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.KibanaApp
+import tech.beshu.ror.acl.orders._
 
 class KibanaHideAppsRuleSettingsTests extends RuleSettingsDecoderTest[KibanaHideAppsRule] {
 

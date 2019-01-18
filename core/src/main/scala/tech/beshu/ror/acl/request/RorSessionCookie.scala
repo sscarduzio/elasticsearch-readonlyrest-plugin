@@ -12,10 +12,9 @@ import io.circe.parser._
 import io.circe.{Decoder, Encoder}
 import tech.beshu.ror.acl.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.acl.utils.UuidProvider
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.aDomain.Header.Name.setCookie
-import tech.beshu.ror.commons.domain.{LoggedUser, User}
-import tech.beshu.ror.commons.show.logs._
+import tech.beshu.ror.acl.aDomain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.aDomain.Header.Name.setCookie
+import tech.beshu.ror.acl.show.logs._
 
 import scala.collection.JavaConverters._
 import scala.util.Try

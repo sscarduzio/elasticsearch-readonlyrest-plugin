@@ -30,9 +30,9 @@ public class UserSettingsCollection {
 
   public static final String ATTRIBUTE_NAME = "users";
 
-  private final Map<String, UserSettings> usersSettingsMap;
+  private final Map<String, __old_UserSettings> usersSettingsMap;
 
-  private UserSettingsCollection(List<UserSettings> userSettings) {
+  private UserSettingsCollection(List<__old_UserSettings> userSettings) {
     this.usersSettingsMap = Maps.newLinkedHashMap();
     userSettings.forEach(x -> this.usersSettingsMap.put(x.getUsername(), x));
   }
@@ -42,20 +42,20 @@ public class UserSettingsCollection {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new UserSettings(new RawSettings((Map<String, ?>) l, data.getLogger()), registry))
+               .map(l -> new __old_UserSettings(new RawSettings((Map<String, ?>) l, data.getLogger()), registry))
                .collect(Collectors.toList())
       )
       .map(UserSettingsCollection::new)
       .orElse(new UserSettingsCollection(Lists.newArrayList()));
   }
 
-  public UserSettings get(String name) {
+  public __old_UserSettings get(String name) {
     if (!usersSettingsMap.containsKey(name))
       throw new SettingsMalformedException("Cannot find User definition with name '" + name + "'");
     return usersSettingsMap.get(name);
   }
 
-  public List<UserSettings> getAll() {
+  public List<__old_UserSettings> getAll() {
     return Lists.newArrayList(usersSettingsMap.values());
   }
 }

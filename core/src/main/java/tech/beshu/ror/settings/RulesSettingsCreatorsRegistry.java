@@ -42,7 +42,7 @@ import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.GroupsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
@@ -126,7 +126,7 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
     creators.put(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
     creators.put(__old_XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
-    creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
+    creators.put(__old_GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
     creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
 
@@ -367,8 +367,8 @@ public class RulesSettingsCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> groupsSettingsCreator(RawSettings blockSettings,
       UserSettingsCollection userSettingsCollection) {
-    return () -> GroupsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(GroupsRuleSettings.ATTRIBUTE_NAME),
+    return () -> __old_GroupsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(__old_GroupsRuleSettings.ATTRIBUTE_NAME),
         userSettingsCollection
     );
   }

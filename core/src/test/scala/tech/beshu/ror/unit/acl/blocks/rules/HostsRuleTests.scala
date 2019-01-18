@@ -8,8 +8,8 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.rules.HostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
-import tech.beshu.ror.commons.aDomain.Address
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 
 class HostsRuleTests extends WordSpec with MockFactory {

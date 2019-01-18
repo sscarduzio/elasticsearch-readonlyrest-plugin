@@ -8,9 +8,9 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.MatchingAlwaysRule
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.Header.Name.kibanaHiddenApps
-import tech.beshu.ror.commons.aDomain.{Header, KibanaApp}
-import tech.beshu.ror.commons.show.logs._
+import tech.beshu.ror.acl.aDomain.Header.Name.kibanaHiddenApps
+import tech.beshu.ror.acl.aDomain.{Header, KibanaApp}
+import tech.beshu.ror.acl.show.logs._
 
 class KibanaHideAppsRule(val settings: Settings)
   extends MatchingAlwaysRule with Logging {

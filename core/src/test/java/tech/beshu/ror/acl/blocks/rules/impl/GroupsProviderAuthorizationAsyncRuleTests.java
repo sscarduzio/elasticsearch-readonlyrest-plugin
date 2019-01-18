@@ -29,7 +29,7 @@ import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.domain.__old_LoggedUser;
+import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;

@@ -5,7 +5,7 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.acl.blocks.rules.AuthKeySha1Rule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.AuthData
 
 class AuthKeySha1RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha1Rule] {
 

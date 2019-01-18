@@ -5,12 +5,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.commons.aDomain.{Address, Header}
-import tech.beshu.ror.commons.domain.IPMask
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.{Address, Header}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 
 class XForwardedForRuleTests extends WordSpec with MockFactory {

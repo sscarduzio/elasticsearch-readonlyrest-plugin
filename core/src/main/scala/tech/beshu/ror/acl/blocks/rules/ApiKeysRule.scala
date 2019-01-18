@@ -7,8 +7,8 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule.{Settings, xApiKeyHeaderName}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.{ApiKey, Header}
-import tech.beshu.ror.commons.aDomain.Header.Name._
+import tech.beshu.ror.acl.aDomain.{ApiKey, Header}
+import tech.beshu.ror.acl.aDomain.Header.Name._
 
 class ApiKeysRule(val settings: Settings)
   extends RegularRule {

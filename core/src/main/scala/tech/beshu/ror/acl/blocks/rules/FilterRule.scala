@@ -1,9 +1,9 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.commons.aDomain.Header.Name
-import tech.beshu.ror.commons.aDomain.{Filter, Header}
-import tech.beshu.ror.commons.headerValues.transientFilterHeaderValue
+import tech.beshu.ror.acl.aDomain.Header.Name
+import tech.beshu.ror.acl.aDomain.{Filter, Header}
+import tech.beshu.ror.acl.headerValues.transientFilterHeaderValue
 import tech.beshu.ror.acl.blocks.Value.Unresolvable
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.FilterRule.Settings

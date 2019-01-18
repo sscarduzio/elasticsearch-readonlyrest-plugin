@@ -9,8 +9,8 @@ import tech.beshu.ror.acl.blocks.rules.HostsRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.Address
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.orders._
 
 class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
 

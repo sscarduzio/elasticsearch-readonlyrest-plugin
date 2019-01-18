@@ -5,7 +5,7 @@ import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.MatchingAlwaysRule
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.IndexName
+import tech.beshu.ror.acl.aDomain.IndexName
 
 class KibanaIndexRule(val settings: Settings)
   extends MatchingAlwaysRule {

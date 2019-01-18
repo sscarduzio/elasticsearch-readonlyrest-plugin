@@ -8,9 +8,9 @@ import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.aDomain.Header.Name
-import tech.beshu.ror.commons.headerValues._
+import aDomain.Header
+import aDomain.Header.Name
+import headerValues._
 
 class SequentialAcl(val blocks: NonEmptyList[Block])
   extends Acl {

@@ -2,15 +2,14 @@ package tech.beshu.ror.acl.blocks.rules
 
 import org.apache.logging.log4j.scala.Logging
 import monix.eval.Task
+import tech.beshu.ror.acl.aDomain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.AuthData
-import tech.beshu.ror.commons.domain.LoggedUser
-import tech.beshu.ror.commons.domain.User.Id
-import tech.beshu.ror.commons.header.ToTuple._
+import tech.beshu.ror.acl.aDomain.{AuthData, LoggedUser}
+import tech.beshu.ror.acl.header.ToTuple._
 import tech.beshu.ror.utils.BasicAuthUtils
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 

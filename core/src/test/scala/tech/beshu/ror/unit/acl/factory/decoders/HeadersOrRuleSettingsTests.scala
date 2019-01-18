@@ -6,9 +6,9 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.acl.blocks.rules.HeadersOrRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.aDomain.Header.Name
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.aDomain.Header.Name
+import tech.beshu.ror.acl.orders._
 
 class HeadersOrRuleSettingsTests extends RuleSettingsDecoderTest[HeadersOrRule] {
 

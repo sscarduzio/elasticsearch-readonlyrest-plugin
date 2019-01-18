@@ -6,13 +6,13 @@ import cats.data.NonEmptySet
 import org.apache.logging.log4j.scala.Logging
 import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses
 import monix.eval.Task
+import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
-import tech.beshu.ror.commons.aDomain.Address
-import tech.beshu.ror.commons.domain.IPMask
+import tech.beshu.ror.acl.aDomain.Address
 
 import scala.util.control.Exception._
 

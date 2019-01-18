@@ -3,8 +3,7 @@ package tech.beshu.ror.acl.blocks
 import cats.data.NonEmptySet
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.{Header, IndexName}
-import tech.beshu.ror.commons.domain.LoggedUser
+import tech.beshu.ror.acl.aDomain.{Header, IndexName, LoggedUser}
 
 trait BlockContext {
 

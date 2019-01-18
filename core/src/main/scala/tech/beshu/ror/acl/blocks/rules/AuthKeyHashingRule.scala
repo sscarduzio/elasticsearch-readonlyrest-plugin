@@ -6,8 +6,8 @@ import com.google.common.hash.{HashFunction, Hashing}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.utils.BasicAuthOps._
 import tech.beshu.ror.acl.utils.ScalaExt._
-import tech.beshu.ror.commons.aDomain.AuthData
-import tech.beshu.ror.commons.aDomain.AuthData._
+import tech.beshu.ror.acl.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.AuthData._
 import tech.beshu.ror.utils.BasicAuthUtils
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,

@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
@@ -54,7 +54,7 @@ import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
 import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.GroupsRuleSettings;
+import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
 import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
@@ -207,9 +207,9 @@ public class RulesFactory {
         )
     );
     this.creators.put(
-        GroupsRuleSettings.class,
+        __old_GroupsRuleSettings.class,
         settings ->
-            new GroupsAsyncRule((GroupsRuleSettings) settings, definitionsFactory)
+            new __old_GroupsAsyncRule((__old_GroupsRuleSettings) settings, definitionsFactory)
     );
   }
 

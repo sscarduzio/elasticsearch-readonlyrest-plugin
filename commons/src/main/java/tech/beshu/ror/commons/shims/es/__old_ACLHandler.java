@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.commons.shims.es;
 
-import tech.beshu.ror.commons.domain.__old_Value;
+import tech.beshu.ror.acl.domain.__old_Value;
 
 public interface __old_ACLHandler {
   void onForbidden();

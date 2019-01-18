@@ -7,8 +7,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.{BlockContext, VariablesManager}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.domain.{LoggedUser, User}
+import tech.beshu.ror.acl.aDomain.{Header, LoggedUser, User}
 
 class VariablesManagerTests extends WordSpec with MockFactory {
 

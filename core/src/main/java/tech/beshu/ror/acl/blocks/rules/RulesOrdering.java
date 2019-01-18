@@ -29,7 +29,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
@@ -79,7 +79,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         LdapAuthAsyncRule.class,
         LdapAuthenticationAsyncRule.class,
         ExternalAuthenticationAsyncRule.class,
-        GroupsAsyncRule.class,
+        __old_GroupsAsyncRule.class,
 
         // Inspection rules next; these act based on properties of the request.
         __old_KibanaAccessSyncRule.class,

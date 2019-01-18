@@ -7,9 +7,10 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.commons.aDomain.Header.Name
-import tech.beshu.ror.commons.aDomain.{DocumentField, Header}
+import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.acl.aDomain.Header.Name
+import tech.beshu.ror.acl.aDomain.{DocumentField, Header}
+import tech.beshu.ror.acl.show.logs._
 
 class FieldsRule(val settings: Settings)
   extends RegularRule {

@@ -6,14 +6,14 @@ import org.apache.logging.log4j.scala.Logging
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
+import tech.beshu.ror.acl.aDomain.LoggedUser
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.request.RorSessionCookie.{ExtractingError, toSessionHeader}
 import tech.beshu.ror.acl.request.{RequestContext, RorSessionCookie}
 import tech.beshu.ror.acl.utils.UuidProvider
-import tech.beshu.ror.commons.domain.LoggedUser
 
 import scala.concurrent.duration.FiniteDuration
 

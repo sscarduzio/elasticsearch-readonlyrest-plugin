@@ -6,9 +6,9 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.acl.blocks.rules.FieldsRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.DocumentField
-import tech.beshu.ror.commons.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.commons.orders.documentFieldOrder
+import tech.beshu.ror.acl.aDomain.DocumentField
+import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.acl.orders.documentFieldOrder
 
 class FieldsRuleSettingsTest extends RuleSettingsDecoderTest[FieldsRule] {
 

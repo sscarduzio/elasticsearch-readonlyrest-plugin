@@ -6,11 +6,11 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.commons.Constants
-import tech.beshu.ror.commons.aDomain.Header.Name.kibanaAccess
-import tech.beshu.ror.commons.aDomain.IndexName.devNullKibana
-import tech.beshu.ror.commons.aDomain.KibanaAccess.{RO, ROStrict, RW}
-import tech.beshu.ror.commons.aDomain.KibanaAccess._
-import tech.beshu.ror.commons.aDomain._
+import tech.beshu.ror.acl.aDomain.Header.Name.kibanaAccess
+import tech.beshu.ror.acl.aDomain.IndexName.devNullKibana
+import tech.beshu.ror.acl.aDomain.KibanaAccess.{RO, ROStrict, RW}
+import tech.beshu.ror.acl.aDomain.KibanaAccess._
+import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -18,8 +18,8 @@ import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsJavaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.headerValues._
-import tech.beshu.ror.commons.show.logs._
+import tech.beshu.ror.acl.headerValues._
+import tech.beshu.ror.acl.show.logs._
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)

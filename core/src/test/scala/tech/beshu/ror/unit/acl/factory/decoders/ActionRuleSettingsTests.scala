@@ -5,8 +5,8 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.ActionsRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.Action
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.Action
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.TestsUtils.jsonFrom
 
 class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {

@@ -4,7 +4,7 @@ import java.util.regex.Pattern
 
 import cats.implicits._
 import org.apache.commons.codec.digest.Crypt.crypt
-import tech.beshu.ror.commons.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.AuthData
 import tech.beshu.ror.utils.BasicAuthUtils
 
 class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)

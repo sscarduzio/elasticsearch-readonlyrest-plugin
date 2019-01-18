@@ -7,7 +7,7 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.refined._
+import tech.beshu.ror.acl.refined._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

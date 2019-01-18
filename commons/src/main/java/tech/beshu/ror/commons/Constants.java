@@ -20,7 +20,6 @@ package tech.beshu.ror.commons;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
-import scala.reflect.internal.util.HashSet;
 
 import java.io.File;
 import java.util.ArrayList;

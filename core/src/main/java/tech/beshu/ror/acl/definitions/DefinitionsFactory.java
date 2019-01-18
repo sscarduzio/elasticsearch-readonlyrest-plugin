@@ -47,7 +47,7 @@ import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
-import tech.beshu.ror.settings.definitions.UserSettings;
+import tech.beshu.ror.settings.definitions.__old_UserSettings;
 import tech.beshu.ror.settings.rules.CacheSettings;
 import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.NamedSettings;
@@ -205,7 +205,7 @@ public class DefinitionsFactory implements LdapClientFactory,
   }
 
   @Override
-  public User getUser(UserSettings settings) {
+  public User getUser(__old_UserSettings settings) {
     return new User(
         settings.getUsername(),
         settings.getGroups(),

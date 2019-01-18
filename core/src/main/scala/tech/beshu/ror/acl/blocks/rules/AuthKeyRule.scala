@@ -4,7 +4,7 @@ import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.utils.BasicAuthOps._
 import tech.beshu.ror.acl.utils.ScalaExt._
-import tech.beshu.ror.commons.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.AuthData
 import tech.beshu.ror.utils.BasicAuthUtils
 
 class AuthKeyRule(settings: BasicAuthenticationRule.Settings)

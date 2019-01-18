@@ -1,6 +1,6 @@
 package tech.beshu.ror.acl.blocks.rules.utils
 
-import tech.beshu.ror.commons.aDomain.IndexName
+import tech.beshu.ror.acl.aDomain.IndexName
 import tech.beshu.ror.acl.blocks.rules.impl.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterJavaAdapter.CheckResult
 

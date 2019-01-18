@@ -18,10 +18,9 @@ import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.utils.UuidProvider
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.domain.{LoggedUser, User}
-import tech.beshu.ror.commons.refined._
-import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, rorSessionCookie, fixedUuidProvider, someday}
+import tech.beshu.ror.acl.aDomain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.refined._
+import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

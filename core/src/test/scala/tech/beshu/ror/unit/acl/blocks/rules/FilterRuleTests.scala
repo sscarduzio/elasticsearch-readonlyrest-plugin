@@ -5,9 +5,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.rules.FilterRule
-import tech.beshu.ror.commons.aDomain.Header.Name
-import tech.beshu.ror.commons.aDomain.{Filter, Header}
-import tech.beshu.ror.commons.domain.{LoggedUser, User}
+import tech.beshu.ror.acl.aDomain.Header.Name
+import tech.beshu.ror.acl.aDomain.{Filter, Header, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled

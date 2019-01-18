@@ -5,26 +5,24 @@ import java.time.Clock
 import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
-import io.circe.yaml.parser
 import io.circe._
+import io.circe.yaml.parser
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
+import tech.beshu.ror.acl.blocks.definitions.{ProxyAuth, ProxyAuthDefinitions}
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError._
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.acl.factory.decoders.ProxyAuth
+import tech.beshu.ror.acl.factory.decoders.definitions.ProxyAuthDefinitionsDecoder
+import tech.beshu.ror.acl.factory.decoders.definitions.ProxyAuthDefinitionsDecoder._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
-import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
-import tech.beshu.ror.acl.SequentialAcl
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.acl.utils.CirceOps.DecoderOps
+import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaExt._
+import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
 
 import scala.language.implicitConversions
 
@@ -47,13 +45,13 @@ class RorAclFactory extends Logging {
       }
   }
 
-  private implicit def rulesNelDecoder(authProxies: Set[ProxyAuth]): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
+  private implicit def rulesNelDecoder(authProxyDefinitions: ProxyAuthDefinitions): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
     val (cursor, result) = c.keys.toList.flatten
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, authProxies).map(_.map(_.map(_ :: Nil)))
+          current <- decodeRuleInCursorContext(currentRuleName, authProxyDefinitions).map(_.map(_.map(_ :: Nil)))
         } yield Monoid.combine(last, current)
       }
       .run(c)
@@ -76,11 +74,11 @@ class RorAclFactory extends Logging {
     }
   }
 
-  private def decodeRuleInCursorContext(name: String, authProxies: Set[ProxyAuth]): State[ACursor, Option[Decoder.Result[Rule]]] =
+  private def decodeRuleInCursorContext(name: String, authProxyDefinitions: ProxyAuthDefinitions): State[ACursor, Option[Decoder.Result[Rule]]] =
     State(cursor => {
       if(!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
-        ruleDecoderBy(name, authProxies) match {
+        ruleDecoderBy(name, authProxyDefinitions) match {
           case Some(decoder) =>
             val decodingResult = decoder.decode(
               cursor.downField(name),
@@ -96,7 +94,7 @@ class RorAclFactory extends Logging {
       }
     })
 
-  private implicit def blockDecoder(authProxies: Set[ProxyAuth]): Decoder[Block] = {
+  private implicit def blockDecoder(authProxyDefinitions: ProxyAuthDefinitions): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emapE {
       case "allow" => Right(Block.Policy.Allow)
@@ -114,7 +112,7 @@ class RorAclFactory extends Logging {
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesNelDecoder(authProxies).tryDecode(c.withFocus(
+          rules <- rulesNelDecoder(authProxyDefinitions).tryDecode(c.withFocus(
             _.mapObject(_
               .remove(Attributes.Block.name)
               .remove(Attributes.Block.policy)
@@ -130,30 +128,10 @@ class RorAclFactory extends Logging {
       }
   }
 
-  private implicit val proxyAuthDecoder: Decoder[ProxyAuth] = {
-    implicit val nameDecoder: Decoder[ProxyAuth.Name] = Decoder.decodeString.map(ProxyAuth.Name.apply)
-    implicit val headerNameDecoder: Decoder[Header.Name] = Decoder.decodeString.map(Header.Name.apply)
-    Decoder
-      .forProduct2("name", "user_id_header")(ProxyAuth.apply)
-      .withError(value => ProxyAuthConfigsCreationError(MalformedValue(value)))
-  }
 
   private implicit val aclDecoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
     val decoder = for {
-      authProxies <-
-        DecoderHelpers
-          .decodeFieldList[ProxyAuth]("proxy_auth_configs")
-          .emapE {
-            case NoField => Right(Set.empty[ProxyAuth])
-            case FieldListValue(Nil) => Left(ProxyAuthConfigsCreationError(Message(s"Proxy auth definitions declared, but no definition found")))
-            case FieldListValue(list) =>
-              list.map(_.name).findDuplicates match {
-                case Nil =>
-                  Right(list.toSet)
-                case duplicates =>
-                  Left(ProxyAuthConfigsCreationError(Message(s"Proxy auth definitions must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
-              }
-          }
+      authProxies <- ProxyAuthDefinitionsDecoder.proxyAuthDefinitionsDecoder
       acl <- {
         implicit val _ = blockDecoder(authProxies)
         DecoderHelpers

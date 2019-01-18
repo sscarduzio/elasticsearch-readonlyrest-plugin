@@ -40,7 +40,6 @@ repositories {
 }
 
 apply plugin: 'java'
-apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'license'
 
@@ -57,11 +56,6 @@ test {
     }
 }
 dependencies {
-    compile group: 'org.scala-lang',                name: 'scala-library',                      version: '2.12.7'
-    compile group: 'org.typelevel',                 name: 'cats-core_2.12',                     version: '1.4.0'
-    compile group: 'com.softwaremill.sttp',         name: 'core_2.12',                          version: '1.5.1'
-    compile group: 'eu.timepit',                    name: 'refined_2.12',                       version: '0.9.3'
-
 
     compile 'com.github.seancfoley:ipaddress:5.0.0'
     compile 'org.yaml:snakeyaml:1.19'

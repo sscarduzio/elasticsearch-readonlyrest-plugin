@@ -7,12 +7,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.acl.aDomain.LoggedUser
+import tech.beshu.ror.acl.aDomain.User.Id
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
 import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
-import tech.beshu.ror.commons.domain.LoggedUser
-import tech.beshu.ror.commons.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
 
 import scala.util.Try

@@ -4,9 +4,9 @@ import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.commons.aDomain.Action.{mSearchAction, searchAction}
-import tech.beshu.ror.commons.aDomain.IndexName
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.Action.{mSearchAction, searchAction}
+import tech.beshu.ror.acl.aDomain.IndexName
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.blocks.rules.IndicesRule.{CanPass, Settings}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}

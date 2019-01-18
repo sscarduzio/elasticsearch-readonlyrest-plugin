@@ -9,9 +9,9 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.FieldsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.DocumentField.ADocumentField
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.DocumentField.ADocumentField
+import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.orders._
 
 class FieldsRuleTests extends WordSpec with MockFactory {
 

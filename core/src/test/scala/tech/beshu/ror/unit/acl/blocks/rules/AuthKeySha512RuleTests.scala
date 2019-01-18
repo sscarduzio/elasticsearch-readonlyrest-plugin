@@ -1,7 +1,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import tech.beshu.ror.acl.blocks.rules.{AuthKeySha512Rule, BasicAuthenticationRule}
-import tech.beshu.ror.commons.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.AuthData
 
 class AuthKeySha512RuleTests extends BasicAuthenticationTestTemplate {
 

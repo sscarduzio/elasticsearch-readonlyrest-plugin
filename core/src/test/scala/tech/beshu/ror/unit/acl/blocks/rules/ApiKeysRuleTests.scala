@@ -9,8 +9,8 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.aDomain.{ApiKey, Header}
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.{ApiKey, Header}
+import tech.beshu.ror.acl.orders._
 
 class ApiKeysRuleTests extends WordSpec with MockFactory {
 

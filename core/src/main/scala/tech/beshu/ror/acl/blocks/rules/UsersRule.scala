@@ -2,12 +2,12 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
+import tech.beshu.ror.acl.aDomain.{LoggedUser, User}
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.domain.{LoggedUser, User}
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._

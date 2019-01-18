@@ -6,9 +6,8 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.Header
-import tech.beshu.ror.commons.domain.User
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.{Header, User}
+import tech.beshu.ror.acl.orders._
 
 class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
 

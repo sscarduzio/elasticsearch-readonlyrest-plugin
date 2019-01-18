@@ -6,8 +6,8 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.commons.aDomain.ApiKey
-import tech.beshu.ror.commons.orders._
+import tech.beshu.ror.acl.aDomain.ApiKey
+import tech.beshu.ror.acl.orders._
 
 class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
 
