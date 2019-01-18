@@ -6,10 +6,12 @@ import cats.data.NonEmptySet
 import io.circe.CursorOp.DownField
 import io.circe.Decoder.Result
 import io.circe._
-import tech.beshu.ror.acl.blocks.definitions.{ProxyAuth, ProxyAuthDefinitions}
+import tech.beshu.ror.acl.blocks.definitions.ProxyAuthDefinitions
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.rules._
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
 import tech.beshu.ror.acl.utils.UuidProvider
@@ -66,18 +68,14 @@ object ruleDecoders {
       }
   }
 
-  implicit def ruleDecoderBy(name: String, authProxyDefinitions: ProxyAuthDefinitions)
+  implicit def ruleDecoderBy(name: Rule.Name, definitions: Definitions)
                             (implicit clock: Clock, uuidProvider: UuidProvider): Option[RuleDecoder[_ <: Rule]] =
-    Rule.Name(name) match {
+    name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
-      case AuthKeyRule.name => Some(AuthKeyRuleDecoder)
-      case AuthKeySha1Rule.name => Some(AuthKeySha1RuleDecoder)
-      case AuthKeySha256Rule.name => Some(AuthKeySha256RuleDecoder)
-      case AuthKeySha512Rule.name => Some(AuthKeySha512RuleDecoder)
-      case AuthKeyUnixRule.name => Some(AuthKeyUnixRuleDecoder)
       case FieldsRule.name => Some(FieldsRuleDecoder)
       case FilterRule.name => Some(FilterRuleDecoder)
+      case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))
       case HeadersAndRule.name => Some(HeadersAndRuleDecoder)
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(HostsRuleDecoder)
@@ -88,11 +86,23 @@ object ruleDecoders {
       case LocalHostsRule.name => Some(LocalHostsRuleDecoder)
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.name => Some(MethodsRuleDecoder)
-      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions))
       case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder)
       case UriRegexRule.name => Some(UriRegexRuleDecoder)
       case UsersRule.name => Some(UsersRuleDecoder)
       case XForwardedForRule.name => Some(XForwardedForRuleDecoder)
+      case _ => authenticationRuleDecoderBy(name, definitions.proxies)
+    }
+
+  def authenticationRuleDecoderBy(name: Rule.Name,
+                                  authProxyDefinitions: ProxyAuthDefinitions): Option[RuleDecoder[_ <: AuthenticationRule]] = {
+    name match {
+      case AuthKeyRule.name => Some(AuthKeyRuleDecoder)
+      case AuthKeySha1Rule.name => Some(AuthKeySha1RuleDecoder)
+      case AuthKeySha256Rule.name => Some(AuthKeySha256RuleDecoder)
+      case AuthKeySha512Rule.name => Some(AuthKeySha512RuleDecoder)
+      case AuthKeyUnixRule.name => Some(AuthKeyUnixRuleDecoder)
+      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions))
       case _ => None
     }
+  }
 }

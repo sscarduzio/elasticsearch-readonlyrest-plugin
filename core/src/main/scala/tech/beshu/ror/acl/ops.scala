@@ -9,7 +9,7 @@ import shapeless.Nat
 import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.aDomain._
-import tech.beshu.ror.acl.blocks.definitions.ProxyAuth
+import tech.beshu.ror.acl.blocks.definitions.{ProxyAuth, UserDef}
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.commons.utils.FilterTransient
@@ -62,6 +62,7 @@ object orders {
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[AuthData] = Order.by(_.value)
   implicit val indexOrder: Order[IndexName] = Order.by(_.value)
+  implicit val groupOrder: Order[Group] = Order.by(_.value)
 }
 
 object show {
@@ -84,6 +85,7 @@ object show {
       case f: NegatedDocumentField => s"~${f.value}"
     }
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
+    implicit val userDefNameShow: Show[UserDef.Name] = Show.show(_.value)
   }
 }
 

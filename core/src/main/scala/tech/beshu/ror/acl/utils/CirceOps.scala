@@ -85,6 +85,10 @@ object CirceOps {
         }
     }
 
+    def failed[T](error: AclCreationError): Decoder[T] = {
+      Decoder.failed(DecodingFailureOps.fromError(error))
+    }
+
     sealed trait FieldListResult[+T]
     object FieldListResult {
       case object NoField extends FieldListResult[Nothing]

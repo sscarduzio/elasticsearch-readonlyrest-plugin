@@ -51,24 +51,24 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       }
   }
 
-  def currentGroup: Group = {
+  def currentGroup: RequestGroup = {
     findHeader(Header.Name.currentGroup) match {
-      case None => Group.`N/A`
-      case Some(Header(_, "")) => Group.Empty
-      case Some(Header(_, value)) => Group.AGroup(value)
+      case None => RequestGroup.`N/A`
+      case Some(Header(_, "")) => RequestGroup.Empty
+      case Some(Header(_, value)) => RequestGroup.AGroup(value)
     }
   }
 
   private def findHeader(name: Header.Name) = requestContext.headers.find(_.name === name)
 }
 
-sealed trait Group
-object Group {
-  final case class AGroup(value: String) extends Group
-  case object Empty extends Group
-  case object `N/A` extends Group
+sealed trait RequestGroup
+object RequestGroup {
+  final case class AGroup(value: String) extends RequestGroup
+  case object Empty extends RequestGroup
+  case object `N/A` extends RequestGroup
 
-  implicit val show: Show[Group] = Show.show {
+  implicit val show: Show[RequestGroup] = Show.show {
     case AGroup(name) => name
     case Empty => "<empty>"
     case `N/A` => "N/A"

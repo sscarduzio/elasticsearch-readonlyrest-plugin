@@ -4,7 +4,7 @@ import cats.data.NonEmptyList
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, ProxyAuthConfigsCreationError, RulesLevelCreationError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
@@ -43,7 +43,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |
             |""".stripMargin
         val acl = factory.createAclFrom(yaml)
-        acl should be(Left(NonEmptyList.one(ProxyAuthConfigsCreationError(Message("Proxy auth definitions declared, but no definition found")))))
+        acl should be(Left(NonEmptyList.one(DefinitionsCreationError(Message("Proxy auth definitions declared, but no definition found")))))
       }
       "the section contains proxies with the same names" in {
         val yaml =
@@ -64,7 +64,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |
             |""".stripMargin
         val acl = factory.createAclFrom(yaml)
-        acl should be(Left(NonEmptyList.one(ProxyAuthConfigsCreationError(Message("Proxy auth definitions must have unique names. Duplicates: proxy1")))))
+        acl should be(Left(NonEmptyList.one(DefinitionsCreationError(Message("Proxy auth definitions must have unique names. Duplicates: proxy1")))))
       }
       "proxy definition has no name" in {
         val yaml =
@@ -82,7 +82,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |
             |""".stripMargin
         val acl = factory.createAclFrom(yaml)
-        acl should be(Left(NonEmptyList.one(ProxyAuthConfigsCreationError(MalformedValue(
+        acl should be(Left(NonEmptyList.one(DefinitionsCreationError(MalformedValue(
           jsonFrom(
             """{
               |  "desc" : "proxy1",
@@ -105,7 +105,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |
             |""".stripMargin
         val acl = factory.createAclFrom(yaml)
-        acl should be(Left(NonEmptyList.one(ProxyAuthConfigsCreationError(MalformedValue(
+        acl should be(Left(NonEmptyList.one(DefinitionsCreationError(MalformedValue(
           jsonFrom(
             """{
               |  "name" : "proxy1"
