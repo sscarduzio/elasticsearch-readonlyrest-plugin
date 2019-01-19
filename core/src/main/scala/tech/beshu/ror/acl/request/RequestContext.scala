@@ -55,7 +55,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
     findHeader(Header.Name.currentGroup) match {
       case None => RequestGroup.`N/A`
       case Some(Header(_, "")) => RequestGroup.Empty
-      case Some(Header(_, value)) => RequestGroup.AGroup(value)
+      case Some(Header(_, value)) => RequestGroup.AGroup(Group(value))
     }
   }
 
@@ -64,12 +64,12 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
 sealed trait RequestGroup
 object RequestGroup {
-  final case class AGroup(value: String) extends RequestGroup
+  final case class AGroup(userGroup: Group) extends RequestGroup
   case object Empty extends RequestGroup
   case object `N/A` extends RequestGroup
 
   implicit val show: Show[RequestGroup] = Show.show {
-    case AGroup(name) => name
+    case AGroup(group) => group.value
     case Empty => "<empty>"
     case `N/A` => "N/A"
   }
