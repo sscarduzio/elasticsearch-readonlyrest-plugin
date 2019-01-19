@@ -2,7 +2,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.aDomain.{IndexName, KibanaAccess}
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.{Const, Variable}
@@ -18,6 +18,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -35,6 +37,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -52,6 +56,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -69,6 +75,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -86,6 +94,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -104,6 +114,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -125,6 +137,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -144,6 +158,8 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -152,12 +168,11 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "kibana_access" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - kibana_access: null
+                |""".stripMargin)))
           }
         )
       }

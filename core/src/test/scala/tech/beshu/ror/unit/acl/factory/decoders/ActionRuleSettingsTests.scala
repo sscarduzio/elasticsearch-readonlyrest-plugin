@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Malforme
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.Action
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 
 class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
 
@@ -17,6 +17,8 @@ class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -32,6 +34,8 @@ class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -49,6 +53,8 @@ class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -57,12 +63,12 @@ class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "actions" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - actions: null
+                |""".stripMargin
+            )))
           }
         )
       }

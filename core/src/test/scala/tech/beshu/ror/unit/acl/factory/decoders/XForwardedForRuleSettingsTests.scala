@@ -3,7 +3,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.IPMask
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
@@ -20,6 +20,8 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -37,6 +39,8 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -54,6 +58,8 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -71,6 +77,8 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -88,6 +96,8 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -105,6 +115,8 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -125,6 +137,8 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -133,12 +147,11 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "x_forwarded_for" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - x_forwarded_for: null
+                |""".stripMargin)))
           }
         )
       }

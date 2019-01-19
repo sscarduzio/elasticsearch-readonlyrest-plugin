@@ -2,7 +2,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.aDomain.User
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.UsersRule
@@ -19,6 +19,8 @@ class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -35,6 +37,8 @@ class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -51,6 +55,8 @@ class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -69,6 +75,8 @@ class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -77,12 +85,11 @@ class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "users" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - users: null
+                |""".stripMargin)))
           }
         )
       }

@@ -31,16 +31,31 @@ class RorAclFactory extends Logging {
 
   def createAclFrom(settingsYamlString: String): Either[NonEmptyList[AclCreationError], Acl] = {
     parser.parse(settingsYamlString) match {
-      case Right(json) => createFrom(json).toEither
-      case Left(_) => Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
+      case Right(json) =>
+        createFrom(json)
+          .toEither
+          .left.map { failures =>
+            failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString"))))
+          }
+      case Left(_) =>
+        Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
     }
   }
 
   private def createFrom(settingsJson: Json) = {
-    aclDecoder(HCursor.fromJson(settingsJson))
-      .leftMap { failures =>
-        failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n${settingsJson.toString()}"))))
+    val rorSectionName = "readonlyrest"
+    val decoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
+      c.downField(rorSectionName).success match {
+        case Some(rorCursor) =>
+         aclDecoder.apply(rorCursor)
+        case None =>
+          val failure = DecodingFailureOps.fromError(ReadonlyrestSettingsCreationError(Message(s"No $rorSectionName section found")))
+          AccumulatingDecoder
+            .failed[Acl](NonEmptyList.one(failure))
+            .apply(c)
       }
+    }
+    decoder(HCursor.fromJson(settingsJson))
   }
 
   private implicit def rulesNelDecoder(definitions: Definitions): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
@@ -167,6 +182,7 @@ object RorAclFactory {
 
   object AclCreationError {
     final case class UnparsableYamlContent(reason: Reason) extends AclCreationError
+    final case class ReadonlyrestSettingsCreationError(reason: Reason) extends AclCreationError
     final case class DefinitionsCreationError(reason: Reason) extends AclCreationError
     final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
     final case class RulesLevelCreationError(reason: Reason) extends AclCreationError
@@ -174,7 +190,13 @@ object RorAclFactory {
     sealed trait Reason
     object Reason {
       final case class Message(value: String) extends Reason
-      final case class MalformedValue(value: Json) extends Reason
+      final case class MalformedValue private (value: String) extends Reason
+      object MalformedValue {
+        def apply(json: Json): MalformedValue = from(json)
+        def from(json: Json): MalformedValue = MalformedValue {
+          io.circe.yaml.printer.print(json)
+        }
+      }
     }
   }
 

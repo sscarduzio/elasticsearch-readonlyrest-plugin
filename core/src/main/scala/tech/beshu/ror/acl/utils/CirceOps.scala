@@ -4,13 +4,12 @@ import cats.Order
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.generic.extras.Configuration
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import io.circe._
 import io.circe.generic.extras
 import io.circe.parser._
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.blocks.Variable.ResolvedValue
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
@@ -68,21 +67,21 @@ object CirceOps {
     }
 
     def decodeFieldList[T: Decoder](name: String): Decoder[FieldListResult[T]] = {
-      Decoder
-        .decodeJson
-        .emap { json =>
-          json \\ name match {
-            case Nil =>
-              Right(NoField)
-            case x :: Nil if x.isNull =>
-              Right(FieldListValue(Nil))
-            case xs =>
-              implicitly[Decoder[List[T]]]
-                .decodeJson(xs.head)
-                .map(FieldListValue.apply)
-                .left.map(_.message)
-          }
+      Decoder.instance { c =>
+        c.downField(name) match {
+          case _: FailedCursor =>
+            Right(NoField)
+          case hc =>
+            hc.values match {
+              case None =>
+                Right(FieldListValue(Nil))
+              case Some(_) =>
+                implicitly[Decoder[List[T]]]
+                  .tryDecode(hc)
+                  .map(FieldListValue.apply)
+            }
         }
+      }
     }
 
     def failed[T](error: AclCreationError): Decoder[T] = {

@@ -4,7 +4,7 @@ import java.util.regex.Pattern
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
 import tech.beshu.ror.acl.blocks.{BlockContext, Variable, VariablesResolver}
@@ -19,6 +19,8 @@ class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] wi
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -34,6 +36,8 @@ class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] wi
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -53,6 +57,8 @@ class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] wi
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -61,12 +67,12 @@ class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] wi
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "uri_re" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - uri_re: null
+                |""".stripMargin
+            )))
           }
         )
       }
@@ -74,6 +80,8 @@ class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] wi
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1

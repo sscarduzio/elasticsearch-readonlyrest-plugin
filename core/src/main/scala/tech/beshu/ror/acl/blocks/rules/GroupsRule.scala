@@ -3,7 +3,7 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.acl.aDomain.Group
-import tech.beshu.ror.acl.blocks.definitions.UsersDefinitions
+import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
@@ -22,5 +22,5 @@ object GroupsRule {
   val name = Rule.Name("groups")
 
   final case class Settings(groups: NonEmptySet[Value[Group]],
-                            usersDefinitions: UsersDefinitions)
+                            usersDefinitions: NonEmptySet[UserDef])
 }

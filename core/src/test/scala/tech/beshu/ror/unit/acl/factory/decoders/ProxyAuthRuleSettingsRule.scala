@@ -2,7 +2,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
@@ -17,6 +17,8 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -34,6 +36,8 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -57,6 +61,8 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -82,6 +88,8 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -90,12 +98,11 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "proxy_auth" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - proxy_auth: null
+                |""".stripMargin)))
           }
         )
       }
@@ -103,6 +110,8 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -117,13 +126,14 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              jsonFrom("""[
-                         |  {
-                         |    "proxy_auth" : {
-                         |      "proxy_auth_config" : "proxy1"
-                         |    }
-                         |  }
-                         |]""".stripMargin)
+              """readonlyrest:
+                |  access_control_rules:
+                |  - proxy_auth:
+                |      proxy_auth_config: proxy1
+                |  proxy_auth_configs:
+                |  - name: proxy1
+                |    user_id_header: X-Auth-Token
+                |""".stripMargin
             )))
           }
         )
@@ -132,6 +142,8 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1

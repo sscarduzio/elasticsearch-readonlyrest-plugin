@@ -16,7 +16,7 @@ object RorAclFactoryJavaHelper extends Logging {
           .map(_.reason)
           .map {
             case Reason.Message(msg) => msg
-            case Reason.MalformedValue(json) => s"Malformed config: ${json.noSpaces}"
+            case Reason.MalformedValue(json) => s"Malformed config: ${json}"
           }
           .toList
           .mkString("Errors:\n", "\n", "")

@@ -2,7 +2,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.HostsRule
@@ -20,6 +20,8 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -37,6 +39,8 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -55,6 +59,8 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -72,6 +78,8 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -91,6 +99,8 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -99,12 +109,12 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "hosts" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - hosts: null
+                |""".stripMargin
+            )))
           }
         )
       }

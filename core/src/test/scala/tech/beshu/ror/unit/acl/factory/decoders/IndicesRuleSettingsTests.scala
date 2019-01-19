@@ -3,7 +3,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.aDomain.IndexName
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
@@ -21,6 +21,8 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -37,6 +39,8 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -55,6 +59,8 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -71,6 +77,8 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -94,6 +102,8 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -102,12 +112,11 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "indices" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - indices: null
+                |""".stripMargin)))
           }
         )
       }

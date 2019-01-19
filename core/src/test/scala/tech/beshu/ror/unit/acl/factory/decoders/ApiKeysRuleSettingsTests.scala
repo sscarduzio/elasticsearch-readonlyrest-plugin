@@ -2,7 +2,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
@@ -17,6 +17,8 @@ class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -32,6 +34,8 @@ class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -49,6 +53,8 @@ class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -57,12 +63,11 @@ class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "api_keys" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - api_keys: null
+                |""".stripMargin)))
           }
         )
       }

@@ -5,7 +5,6 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsCreationError, RulesLevelCreationError, UnparsableYamlContent}
-import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.factory.RorAclFactory
@@ -19,6 +18,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "config is not valid yaml" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: "CONTAINER ADMIN"
@@ -33,6 +34,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "the section exists, but not contain any element" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -48,6 +51,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "the section contains proxies with the same names" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -69,6 +74,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "proxy definition has no name" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -83,16 +90,16 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |""".stripMargin
         val acl = factory.createAclFrom(yaml)
         acl should be(Left(NonEmptyList.one(DefinitionsCreationError(MalformedValue(
-          jsonFrom(
-            """{
-              |  "desc" : "proxy1",
-              |  "user_id_header" : "X-Auth-Token2"
-              |}""".stripMargin
-          ))))))
+          """desc: proxy1
+            |user_id_header: X-Auth-Token2
+            |""".stripMargin
+        )))))
       }
       "proxy definition has no user id" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -105,18 +112,15 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |
             |""".stripMargin
         val acl = factory.createAclFrom(yaml)
-        acl should be(Left(NonEmptyList.one(DefinitionsCreationError(MalformedValue(
-          jsonFrom(
-            """{
-              |  "name" : "proxy1"
-              |}""".stripMargin
-          ))))))
+        acl should be(Left(NonEmptyList.one(DefinitionsCreationError(MalformedValue("name: proxy1\n")))))
       }
     }
     "return blocks level error" when {
       "there is no `access_control_rules` section" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  proxy_auth_configs:
             |
             |  - name: "proxy1"
@@ -132,6 +136,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "there is `access_control_rules` section defined, but without any block" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  proxy_auth_configs:
@@ -149,6 +155,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "two blocks has the same names" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -165,6 +173,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "block has no name" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - type: allow
@@ -173,16 +183,16 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |""".stripMargin
         val acl = factory.createAclFrom(yaml)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(MalformedValue(
-          jsonFrom(
-            """{
-              |  "type" : "allow",
-              |  "auth_key" : "admin:container"
-              |}""".stripMargin)
+          """type: allow
+            |auth_key: admin:container
+            |""".stripMargin
         )))))
       }
       "block has unknown type" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -196,6 +206,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "block has unknown verbosity" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -211,6 +223,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "no rules are defined in block" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -223,6 +237,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
       "block has unknown rules" in {
         val yaml =
           """
+            |readonlyrest:
+            |
             |  access_control_rules:
             |
             |  - name: test_block
@@ -237,6 +253,8 @@ class RorAclFactoryTests extends WordSpec with Inside {
     "return ACL with blocks defined in config" in {
       val yaml =
         """
+          |readonlyrest:
+          |
           |  access_control_rules:
           |
           |  - name: test_block1
@@ -253,15 +271,15 @@ class RorAclFactoryTests extends WordSpec with Inside {
 
       inside(factory.createAclFrom(yaml)) { case Right(acl: SequentialAcl) =>
         val firstBlock = acl.blocks.head
-        firstBlock.name should be (Block.Name("test_block1"))
-        firstBlock.policy should be (Block.Policy.Forbid)
-        firstBlock.verbosity should be (Block.Verbosity.Info)
+        firstBlock.name should be(Block.Name("test_block1"))
+        firstBlock.policy should be(Block.Policy.Forbid)
+        firstBlock.verbosity should be(Block.Verbosity.Info)
         firstBlock.rules should have size 1
 
         val secondBlock = acl.blocks.tail.head
-        secondBlock.name should be (Block.Name("test_block2"))
-        secondBlock.policy should be (Block.Policy.Allow)
-        secondBlock.verbosity should be (Block.Verbosity.Error)
+        secondBlock.name should be(Block.Name("test_block2"))
+        secondBlock.policy should be(Block.Policy.Allow)
+        secondBlock.verbosity should be(Block.Verbosity.Error)
         secondBlock.rules should have size 1
       }
     }

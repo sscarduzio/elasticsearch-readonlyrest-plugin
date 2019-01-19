@@ -3,7 +3,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import com.softwaremill.sttp.Method
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.rules.MethodsRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
@@ -17,6 +17,8 @@ class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -32,6 +34,8 @@ class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -50,6 +54,8 @@ class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -58,12 +64,12 @@ class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "methods" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - methods: null
+                |""".stripMargin
+            )))
           }
         )
       }
@@ -71,6 +77,8 @@ class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1

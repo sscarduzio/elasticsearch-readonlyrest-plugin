@@ -2,7 +2,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import squants.information.Bytes
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
@@ -15,6 +15,8 @@ class MaxBodyLengthRuleSettingsTests extends RuleSettingsDecoderTest[MaxBodyLeng
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -30,6 +32,8 @@ class MaxBodyLengthRuleSettingsTests extends RuleSettingsDecoderTest[MaxBodyLeng
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -47,6 +51,8 @@ class MaxBodyLengthRuleSettingsTests extends RuleSettingsDecoderTest[MaxBodyLeng
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -55,12 +61,12 @@ class MaxBodyLengthRuleSettingsTests extends RuleSettingsDecoderTest[MaxBodyLeng
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "max_body_length" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - max_body_length: null
+                |""".stripMargin
+            )))
           }
         )
       }
@@ -68,6 +74,8 @@ class MaxBodyLengthRuleSettingsTests extends RuleSettingsDecoderTest[MaxBodyLeng
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1

@@ -1,7 +1,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
 import tech.beshu.ror.acl.blocks.{Const, Variable}
@@ -17,6 +17,8 @@ class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRu
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -32,6 +34,8 @@ class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRu
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -51,6 +55,8 @@ class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRu
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -59,12 +65,11 @@ class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRu
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(MalformedValue(jsonFrom(
-              """
-                |[{
-                |  "kibana_index" : null
-                |}]
-              """.stripMargin))))
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """readonlyrest:
+                |  access_control_rules:
+                |  - kibana_index: null
+                |""".stripMargin)))
           }
         )
       }

@@ -3,7 +3,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils.jsonFrom
+
 import tech.beshu.ror.acl.aDomain.{AuthData, Group}
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
@@ -22,6 +22,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -36,12 +38,12 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
           assertion = rule => {
             val groups: NonEmptySet[Value[Group]] = NonEmptySet.one(Const(Group("group1")))
             rule.settings.groups should be(groups)
-            rule.settings.usersDefinitions.users.toList should have length 1
-            inside(rule.settings.usersDefinitions.users.head) { case UserDef(name, userGroups, authRule) =>
+            rule.settings.usersDefinitions.length should be(1)
+            inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(UserDef.Name("cartman"))
               userGroups should be(NonEmptySet.of(Group("group1"), Group("group3")))
               authRule shouldBe an[AuthKeyRule]
-              authRule.asInstanceOf[AuthKeyRule].settings should be (BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
+              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
             }
           }
         )
@@ -50,6 +52,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -68,18 +72,19 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
           assertion = rule => {
             val groups: NonEmptySet[Value[Group]] = NonEmptySet.of(Const(Group("group1")), Const(Group("group2")))
             rule.settings.groups should be(groups)
-            rule.settings.usersDefinitions.users.toList should have length 2
-            inside(rule.settings.usersDefinitions.users.head) { case UserDef(name, userGroups, authRule) =>
+            rule.settings.usersDefinitions.length should be(2)
+            val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet
+            inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(UserDef.Name("cartman"))
               userGroups should be(NonEmptySet.of(Group("group1"), Group("group3")))
               authRule shouldBe an[AuthKeyRule]
-              authRule.asInstanceOf[AuthKeyRule].settings should be (BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
+              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
             }
-            inside(rule.settings.usersDefinitions.users.tail.head) { case UserDef(name, userGroups, authRule) =>
+            inside(rule.settings.usersDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
               name should be(UserDef.Name("morgan"))
               userGroups should be(NonEmptySet.of(Group("group2"), Group("group3")))
               authRule shouldBe an[AuthKeySha1Rule]
-              authRule.asInstanceOf[AuthKeySha1Rule].settings should be (BasicAuthenticationRule.Settings(AuthData("d27aaf7fa3c1603948bb29b7339f2559dc02019a")))
+              authRule.asInstanceOf[AuthKeySha1Rule].settings should be(BasicAuthenticationRule.Settings(AuthData("d27aaf7fa3c1603948bb29b7339f2559dc02019a")))
             }
           }
         )
@@ -88,6 +93,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingSuccess(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -105,12 +112,12 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               Variable(ValueWithVariable("group_@{user}"), rv => Right(Group(rv.value)))
             )
             rule.settings.groups should be(groups)
-            rule.settings.usersDefinitions.users.toList should have length 1
-            inside(rule.settings.usersDefinitions.users.head) { case UserDef(name, userGroups, authRule) =>
+            rule.settings.usersDefinitions.length should be(1)
+            inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(UserDef.Name("cartman"))
               userGroups should be(NonEmptySet.of(Group("group1"), Group("group3")))
               authRule shouldBe an[AuthKeyRule]
-              authRule.asInstanceOf[AuthKeyRule].settings should be (BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
+              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
             }
           }
         )
@@ -121,6 +128,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -135,12 +144,16 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              jsonFrom(
-                """[
-                  |  {
-                  |    "groups" : null
-                  |  }
-                  |]""".stripMargin)
+              """readonlyrest:
+                |  access_control_rules:
+                |  - groups: null
+                |  users:
+                |  - username: cartman
+                |    groups:
+                |    - group1
+                |    - group3
+                |    auth_key: cartman:pass
+                |""".stripMargin
             )))
           }
         )
@@ -149,6 +162,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -165,6 +180,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -186,6 +203,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -206,6 +225,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -227,6 +248,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -248,6 +271,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -270,6 +295,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -292,6 +319,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
@@ -317,6 +346,8 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
         assertDecodingFailure(
           yaml =
             """
+              |readonlyrest:
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
