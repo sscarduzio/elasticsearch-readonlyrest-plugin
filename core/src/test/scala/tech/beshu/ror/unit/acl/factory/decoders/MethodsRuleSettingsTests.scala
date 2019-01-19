@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.orders._
 class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
 
   "A MethodsRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "one http method is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -45,7 +45,7 @@ class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no http method is defined" in {
         assertDecodingFailure(
           yaml =

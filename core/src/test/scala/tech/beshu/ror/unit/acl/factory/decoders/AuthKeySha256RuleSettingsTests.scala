@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.aDomain.AuthData
 class AuthKeySha256RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha256Rule] {
 
   "An AuthKeySha256Rule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one SHA256 auth key is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -27,7 +27,7 @@ class AuthKeySha256RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha2
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no SHA256 auth key is defined" in {
         assertDecodingFailure(
           yaml =

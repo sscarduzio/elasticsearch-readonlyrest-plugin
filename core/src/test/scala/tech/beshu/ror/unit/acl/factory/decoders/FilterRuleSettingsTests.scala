@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 class FilterRuleSettingsTests extends RuleSettingsDecoderTest[FilterRule] {
 
   "A FilterRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "filter is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -46,7 +46,7 @@ class FilterRuleSettingsTests extends RuleSettingsDecoderTest[FilterRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no filter is defined" in {
         assertDecodingFailure(
           yaml =

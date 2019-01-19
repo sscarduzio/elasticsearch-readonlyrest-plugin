@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.orders._
 class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
 
   "A ProxyAuthRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one user is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -77,7 +77,7 @@ class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no proxy_auth data is defined" in {
         assertDecodingFailure(
           yaml =

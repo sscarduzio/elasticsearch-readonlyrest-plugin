@@ -15,7 +15,7 @@ import tech.beshu.ror.acl.orders._
 class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
 
   "A HostsRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one host is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -86,7 +86,7 @@ class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no host is defined" in {
         assertDecodingFailure(
           yaml =

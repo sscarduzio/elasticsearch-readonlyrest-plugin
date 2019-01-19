@@ -14,7 +14,7 @@ import tech.beshu.ror.acl.orders._
 class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
 
   "A UsersRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one user is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -64,7 +64,7 @@ class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no user is defined" in {
         assertDecodingFailure(
           yaml =

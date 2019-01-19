@@ -13,7 +13,7 @@ import tech.beshu.ror.acl.orders._
 class HeadersAndRuleSettingsTests extends RuleSettingsDecoderTest[HeadersAndRule] {
 
   "A HeadersAndRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one header is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -46,7 +46,7 @@ class HeadersAndRuleSettingsTests extends RuleSettingsDecoderTest[HeadersAndRule
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no header is defined" in {
         assertDecodingFailure(
           yaml =

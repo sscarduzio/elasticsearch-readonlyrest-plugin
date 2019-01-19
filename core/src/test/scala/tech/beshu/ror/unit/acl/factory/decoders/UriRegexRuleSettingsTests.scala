@@ -14,7 +14,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 
   "A UriRegexRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "uri patten is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -48,7 +48,7 @@ class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] wi
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no uri pattern is defined" in {
         assertDecodingFailure(
           yaml =

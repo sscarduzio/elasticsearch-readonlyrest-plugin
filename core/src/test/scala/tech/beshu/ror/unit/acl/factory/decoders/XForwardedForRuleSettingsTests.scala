@@ -15,7 +15,7 @@ import tech.beshu.ror.acl.orders._
 class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedForRule] {
 
   "A XForwardedForRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one address is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -120,7 +120,7 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no address or ip is defined" in {
         assertDecodingFailure(
           yaml =

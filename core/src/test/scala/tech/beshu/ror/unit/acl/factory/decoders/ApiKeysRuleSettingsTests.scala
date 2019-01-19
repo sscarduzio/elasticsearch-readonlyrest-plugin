@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.orders._
 class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
 
   "An ApiKeysRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one api key is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -44,7 +44,7 @@ class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no api key is defined" in {
         assertDecodingFailure(
           yaml =

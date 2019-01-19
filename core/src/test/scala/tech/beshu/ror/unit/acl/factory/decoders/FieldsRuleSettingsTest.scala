@@ -13,7 +13,7 @@ import tech.beshu.ror.acl.orders.documentFieldOrder
 class FieldsRuleSettingsTest extends RuleSettingsDecoderTest[FieldsRule] {
 
   "A FieldsRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one field is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -79,7 +79,7 @@ class FieldsRuleSettingsTest extends RuleSettingsDecoderTest[FieldsRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no field is defined" in {
         assertDecodingFailure(
           yaml =

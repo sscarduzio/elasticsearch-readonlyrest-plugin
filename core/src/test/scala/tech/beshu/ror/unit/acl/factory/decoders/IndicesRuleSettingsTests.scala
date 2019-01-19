@@ -16,7 +16,7 @@ import tech.beshu.ror.acl.orders._
 class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with MockFactory {
 
   "An IndicesRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "one index is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -89,7 +89,7 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no index is defined" in {
         assertDecodingFailure(
           yaml =

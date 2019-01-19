@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.aDomain.AuthData
 class AuthKeySha512RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha512Rule] {
 
   "An AuthKeySha512Rule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one SHA512 auth key is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -27,7 +27,7 @@ class AuthKeySha512RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha5
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no SHA512 auth key is defined" in {
         assertDecodingFailure(
           yaml =

@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.orders._
 class KibanaHideAppsRuleSettingsTests extends RuleSettingsDecoderTest[KibanaHideAppsRule] {
 
   "A KibanaHideAppsRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one kibana app is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -45,7 +45,7 @@ class KibanaHideAppsRuleSettingsTests extends RuleSettingsDecoderTest[KibanaHide
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no kibana app is defined" in {
         assertDecodingFailure(
           yaml =

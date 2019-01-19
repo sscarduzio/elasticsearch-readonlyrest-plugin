@@ -13,7 +13,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
 
   "A KibanaAccess" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "ro access is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -139,7 +139,7 @@ class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccess
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no access is defined" in {
         assertDecodingFailure(
           yaml =

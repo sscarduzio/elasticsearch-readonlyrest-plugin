@@ -12,7 +12,7 @@ import tech.beshu.ror.TestsUtils.jsonFrom
 class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
 
   "An ActionRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "only one action is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -44,7 +44,7 @@ class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no action is defined" in {
         assertDecodingFailure(
           yaml =

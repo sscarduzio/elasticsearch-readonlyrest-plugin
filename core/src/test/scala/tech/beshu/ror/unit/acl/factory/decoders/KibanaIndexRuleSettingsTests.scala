@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.aDomain.IndexName
 class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRule] {
 
   "A KibanaIndexRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "kibana index is defined" in {
         assertDecodingSuccess(
           yaml =
@@ -46,7 +46,7 @@ class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRu
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "no kibana index is defined" in {
         assertDecodingFailure(
           yaml =

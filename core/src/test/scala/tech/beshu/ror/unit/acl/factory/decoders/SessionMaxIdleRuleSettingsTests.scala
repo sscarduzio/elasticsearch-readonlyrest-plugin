@@ -15,7 +15,7 @@ import scala.language.postfixOps
 class SessionMaxIdleRuleSettingsTests extends RuleSettingsDecoderTest[SessionMaxIdleRule] {
 
   "A SessionMaxIdleRule" should {
-    "be able to read from config" when {
+    "be able to be loaded from config" when {
       "max idle time of session is > 0s" in {
         assertDecodingSuccess(
           yaml =
@@ -47,7 +47,7 @@ class SessionMaxIdleRuleSettingsTests extends RuleSettingsDecoderTest[SessionMax
         )
       }
     }
-    "not be able to read from config" when {
+    "not be able to be loaded from config" when {
       "session max idle time is not defined" in {
         assertDecodingFailure(
           yaml =
