@@ -431,40 +431,47 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
       currentGroup = "N/A";
     }
 
-    return new StringBuilder()
-        .append("{ ID:")
-        .append(getId())
-        .append(", TYP:")
-        .append(getType())
-        .append(", CGR:")
-        .append(currentGroup)
-        .append(", USR:")
-        .append(
-            loggedInUser.isPresent() ? loggedInUser.get() : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]")))
-        .append(", BRS:")
-        .append(!Strings.isNullOrEmpty(getHeaders().get("User-Agent")))
-        .append(", KDX:")
-        .append(kibanaIndex.get())
-        .append(", ACT:")
-        .append(getAction())
-        .append(", OA:")
-        .append(getRemoteAddress())
-        .append(", DA:")
-        .append(getLocalAddress())
-        .append(", IDX:")
-        .append(theIndices)
-        .append(", MET:")
-        .append(getMethod())
-        .append(", PTH:")
-        .append(getUri())
-        .append(", CNT:")
-        .append(content)
-        .append(", HDR:")
-        .append(theHeaders)
-        .append(", HIS:")
-        .append(hist)
-        .append(" }")
-        .toString();
+    StringBuilder sb = new StringBuilder();
+    sb.append("{ ID:")
+      .append(getId())
+      .append(", TYP:")
+      .append(getType())
+      .append(", CGR:")
+      .append(currentGroup)
+      .append(", USR:")
+      .append(
+          loggedInUser.isPresent() ? loggedInUser.get() : (optBasicAuth.map(basicAuth -> basicAuth.getUserName() + "(?)").orElse("[no basic auth header]")))
+      .append(", BRS:")
+      .append(!Strings.isNullOrEmpty(getHeaders().get("User-Agent")))
+      .append(", KDX:")
+      .append(kibanaIndex.get())
+      .append(", ACT:")
+      .append(getAction())
+      .append(", OA:")
+      .append(getRemoteAddress());
+
+    String xff = getHeaders().get("X-Forwarded-For");
+    if (!Strings.isNullOrEmpty(xff)) {
+      sb.append(", XFF:").append(xff);
+    }
+
+    sb.append(", DA:")
+      .append(getLocalAddress())
+      .append(", IDX:")
+      .append(theIndices)
+      .append(", MET:")
+      .append(getMethod())
+      .append(", PTH:")
+      .append(getUri())
+      .append(", CNT:")
+      .append(content)
+      .append(", HDR:")
+      .append(theHeaders)
+      .append(", HIS:")
+      .append(hist)
+      .append(" }");
+
+      return sb.toString();
   }
 
   public boolean isReadRequest() {
