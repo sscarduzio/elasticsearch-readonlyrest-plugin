@@ -29,7 +29,7 @@ abstract class BasicAuthenticationRule(val settings: Settings)
       .map { credentials =>
         logger.debug(s"Attempting Login as: ${credentials.getUserName} rc: $requestContext")
         if (authenticate(settings.authKey, credentials))
-          Fulfilled(blockContext.setLoggedUser(LoggedUser(Id(credentials.getUserName))))
+          Fulfilled(blockContext.withLoggedUser(LoggedUser(Id(credentials.getUserName))))
         else
           Rejected
       }

@@ -110,12 +110,12 @@ class KibanaAccessRule(val settings: Settings)
 
   private def modifyMatched(blockContext: BlockContext, kibanaIndex: Option[IndexName] = None) = {
     def applyKibanaAccessHeader = (bc: BlockContext) => {
-      if (settings.kibanaMetadataEnabled) bc.addResponseHeader(Header(kibanaAccess, settings.access))
+      if (settings.kibanaMetadataEnabled) bc.withAddedResponseHeader(Header(kibanaAccess, settings.access))
       else bc
     }
     def applyKibanaIndex = (bc: BlockContext) => {
       kibanaIndex match {
-        case Some(index) => bc.setKibanaIndex(index)
+        case Some(index) => bc.withKibanaIndex(index)
         case None => bc
       }
     }

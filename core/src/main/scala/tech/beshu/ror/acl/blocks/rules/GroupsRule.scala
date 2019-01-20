@@ -1,24 +1,25 @@
 package tech.beshu.ror.acl.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.aDomain.Group
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
-import tech.beshu.ror.acl.request.RequestContextOps._
-import tech.beshu.ror.acl.request.{RequestContext, RequestGroup}
+import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContext.Id._
 
 import scala.collection.SortedSet
 
 class GroupsRule(val settings: Settings)
-  extends RegularRule with Logging {
+  extends AuthenticationRule
+    with AuthorizationRule
+    with Logging {
 
   override val name: Rule.Name = GroupsRule.name
 
@@ -29,7 +30,7 @@ class GroupsRule(val settings: Settings)
       NonEmptySet.fromSet(resolveGroups(requestContext, blockContext)) match {
         case None => Task.now(Rejected)
         case Some(groups) =>
-          preferredGroupFrom(requestContext) match {
+          blockContext.currentGroup match {
             case Some(preferredGroup) if !groups.contains(preferredGroup) => Task.now(Rejected)
             case _ => continueCheckingWithUserDefinitions(requestContext, blockContext, groups)
           }
@@ -39,14 +40,30 @@ class GroupsRule(val settings: Settings)
 
   private def continueCheckingWithUserDefinitions(requestContext: RequestContext,
                                                   blockContext: BlockContext,
-                                                  groups: NonEmptySet[Group]): Task[RuleResult] = {
-    settings
-      .usersDefinitions
-      .reduceLeftTo(authorizeAndAuthenticate(requestContext, blockContext, groups)) {
+                                                  resolvedGroups: NonEmptySet[Group]): Task[RuleResult] = {
+    blockContext.loggedUser match {
+      case Some(user) =>
+        NonEmptySet.fromSet(settings.usersDefinitions.filter(_.username === user.id)) match {
+          case None =>
+            Task.now(Rejected)
+          case Some(filteredUserDefinitions) =>
+            tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, requestContext, blockContext, resolvedGroups)
+        }
+      case None =>
+        tryToAuthorizeAndAuthenticateUsing(settings.usersDefinitions, requestContext, blockContext, resolvedGroups)
+    }
+  }
+
+  private def tryToAuthorizeAndAuthenticateUsing(userDefs: NonEmptySet[UserDef],
+                                                 requestContext: RequestContext,
+                                                 blockContext: BlockContext,
+                                                 resolvedGroups: NonEmptySet[Group]) = {
+    userDefs
+      .reduceLeftTo(authorizeAndAuthenticate(requestContext, blockContext, resolvedGroups)) {
         case (lastUserDefResult, nextUserDef) =>
           lastUserDefResult.flatMap {
             case success@Some(_) => Task.now(success)
-            case None => authorizeAndAuthenticate(requestContext, blockContext, groups)(nextUserDef)
+            case None => authorizeAndAuthenticate(requestContext, blockContext, resolvedGroups)(nextUserDef)
           }
       }
       .map {
@@ -55,20 +72,22 @@ class GroupsRule(val settings: Settings)
       }
   }
 
-  // todo: what about "populating the headers"?
   private def authorizeAndAuthenticate(requestContext: RequestContext,
                                        blockContext: BlockContext,
-                                       groups: NonEmptySet[Group])
+                                       resolvedGroups: NonEmptySet[Group])
                                       (userDef: UserDef) = {
-    // todo: check user name?
-    if (userDef.groups.intersect(groups).isEmpty) Task.now(None)
+    if (userDef.groups.intersect(resolvedGroups).isEmpty) Task.now(None)
     else {
       userDef
         .authenticationRule
         .check(requestContext, blockContext)
         .map {
           case RuleResult.Rejected => None
-          case RuleResult.Fulfilled(newBlockContext) => Some(newBlockContext)
+          case RuleResult.Fulfilled(newBlockContext) => Some {
+            newBlockContext
+              .withAddedAvailableGroups(userDef.groups)
+              .withCurrentGroup(pickCurrentGroupFrom(resolvedGroups))
+          }
         }
         .onErrorRecover { case ex =>
           logger.error(s"Authentication error; req=${requestContext.id.show}", ex)
@@ -86,11 +105,8 @@ class GroupsRule(val settings: Settings)
       .flatten
   }
 
-  private def preferredGroupFrom(requestContext: RequestContext) = {
-    requestContext.currentGroup match {
-      case RequestGroup.AGroup(userGroup) => Some(userGroup)
-      case RequestGroup.Empty | RequestGroup.`N/A` => None
-    }
+  private def pickCurrentGroupFrom(resolvedGroups: NonEmptySet[Group]): Group = {
+    resolvedGroups.toSortedSet.toList.minBy(_.value)
   }
 }
 

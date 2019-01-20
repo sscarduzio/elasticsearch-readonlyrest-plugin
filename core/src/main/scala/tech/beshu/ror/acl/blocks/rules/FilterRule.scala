@@ -27,7 +27,7 @@ class FilterRule(val settings: Settings)
         case Left(_: Unresolvable) =>
           Rejected
         case Right(filter) =>
-          Fulfilled(blockContext.addContextHeader(Header(Name.transientFilter, filter)))
+          Fulfilled(blockContext.withAddedContextHeader(Header(Name.transientFilter, filter)))
       }
     }
   }

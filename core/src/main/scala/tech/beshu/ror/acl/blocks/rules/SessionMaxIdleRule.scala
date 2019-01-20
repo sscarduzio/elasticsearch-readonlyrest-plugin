@@ -38,7 +38,7 @@ class SessionMaxIdleRule(val settings: Settings)
     RorSessionCookie.extractFrom(requestContext, user) match {
       case Right(_) | Left(ExtractingError.Absent) =>
         val newCookie = RorSessionCookie(user.id, newExpiryDate)
-        Fulfilled(blockContext.addResponseHeader(toSessionHeader(newCookie)))
+        Fulfilled(blockContext.withAddedResponseHeader(toSessionHeader(newCookie)))
       case Left(ExtractingError.Invalid) | Left(ExtractingError.Expired) =>
         Rejected
     }

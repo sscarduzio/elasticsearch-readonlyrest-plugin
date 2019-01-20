@@ -20,7 +20,7 @@ class FieldsRule(val settings: Settings)
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task.now {
     if(!requestContext.isReadOnlyRequest) RuleResult.Rejected
-    else RuleResult.Fulfilled(blockContext.addContextHeader(transientFieldsHeader))
+    else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
   }
 
   private val transientFieldsHeader = new Header(Name.transientFields, settings.fields.map(_.show).mkString(","))

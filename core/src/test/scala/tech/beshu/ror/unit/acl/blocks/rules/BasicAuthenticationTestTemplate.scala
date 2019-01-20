@@ -24,7 +24,7 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val modifiedBlockContext = mock[BlockContext]
         (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:logstash")))
-        (blockContext.setLoggedUser _).expects(LoggedUser(Id("logstash"))).returning(modifiedBlockContext)
+        (blockContext.withLoggedUser _).expects(LoggedUser(Id("logstash"))).returning(modifiedBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(modifiedBlockContext))
       }
     }

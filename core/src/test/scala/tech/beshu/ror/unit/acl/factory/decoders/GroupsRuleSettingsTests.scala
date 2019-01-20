@@ -3,8 +3,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.aDomain.{AuthData, Group}
+import tech.beshu.ror.acl.aDomain.{AuthData, Group, User}
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.definitions.UserDef
@@ -40,7 +39,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(UserDef.Name("cartman"))
+              name should be(User.Id("cartman"))
               userGroups should be(NonEmptySet.of(Group("group1"), Group("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
@@ -74,14 +73,14 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet
-            inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(UserDef.Name("cartman"))
+            inside(sortedUserDefinitions.head) { case UserDef(name, userGroups, authRule) =>
+              name should be(User.Id("cartman"))
               userGroups should be(NonEmptySet.of(Group("group1"), Group("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
             }
-            inside(rule.settings.usersDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(UserDef.Name("morgan"))
+            inside(sortedUserDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
+              name should be(User.Id("morgan"))
               userGroups should be(NonEmptySet.of(Group("group2"), Group("group3")))
               authRule shouldBe an[AuthKeySha1Rule]
               authRule.asInstanceOf[AuthKeySha1Rule].settings should be(BasicAuthenticationRule.Settings(AuthData("d27aaf7fa3c1603948bb29b7339f2559dc02019a")))
@@ -114,7 +113,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(UserDef.Name("cartman"))
+              name should be(User.Id("cartman"))
               userGroups should be(NonEmptySet.of(Group("group1"), Group("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))

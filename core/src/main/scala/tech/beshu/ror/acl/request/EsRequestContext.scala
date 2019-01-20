@@ -12,6 +12,7 @@ import tech.beshu.ror.commons.shims.request.RequestInfoShim
 import scala.collection.JavaConverters._
 
 // fixme: maybe we don;'t need RequestInfoShim
+// todo: eg. current group (should be check if there is single value - where we should place the check?
 class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
   override def id: RequestContext.Id = RequestContext.Id(rInfo.extractId())

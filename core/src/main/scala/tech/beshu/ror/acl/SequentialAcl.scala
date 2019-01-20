@@ -67,7 +67,9 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
 
   private def commitResponseHeaders(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     val responseHeaders =
-      userRelatedHeadersFrom(blockContext) ++ blockContext.responseHeaders ++ kibanaIndexHeaderFrom(blockContext).toSet
+      blockContext.responseHeaders ++ userRelatedHeadersFrom(blockContext) ++
+        kibanaIndexHeaderFrom(blockContext).toSet ++ currentGroupHeaderFrom(blockContext).toSet ++
+        availableGroupsHeaderFrom(blockContext).toSet
     if (responseHeaders.nonEmpty) writer.writeResponseHeaders(responseHeaders.map(h => (h.name.value, h.value)).toMap)
   }
 
@@ -77,18 +79,21 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
     }
   }
 
-  private def userRelatedHeadersFrom(blockContext: BlockContext): Set[Header] = {
-    blockContext.loggedUser match {
-      case Some(user) =>
-        // todo: groups
-        Set(Header(Name.rorUser, user.id))
-      case None =>
-        Set.empty
-    }
+  private def userRelatedHeadersFrom(blockContext: BlockContext): Option[Header] = {
+    blockContext.loggedUser.map(user => Header(Name.rorUser, user.id))
   }
 
   private def kibanaIndexHeaderFrom(blockContext: BlockContext): Option[Header] = {
     blockContext.kibanaIndex.map(i => Header(Name.kibanaIndex, i))
+  }
+
+  private def currentGroupHeaderFrom(blockContext: BlockContext): Option[Header] = {
+    blockContext.currentGroup.map(r => Header(Name.currentGroup, r))
+  }
+
+  private def availableGroupsHeaderFrom(blockContext: BlockContext): Option[Header] = {
+    if(blockContext.availableGroups.isEmpty) None
+    else Some(Header(Name.availableGroups, blockContext.availableGroups))
   }
 
   override val involvesFilter: Boolean = false // todo: impl

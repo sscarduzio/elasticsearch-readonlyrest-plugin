@@ -71,7 +71,6 @@ class AclLoggingDecorator(underlying: Acl, serializationTool: Option[Serializati
     case FinalState.NotFound => Constants.ANSI_YELLOW
   }
 
-  // todo: indices str
   private def resultShow(r: RequestContext, blockContext: Option[BlockContext], history: Vector[Block.History]) = {
     def stringifyLoggedUser = blockContext.flatMap(_.loggedUser) match {
       case Some(user) => s"${user.id.show}"
@@ -83,6 +82,18 @@ class AclLoggingDecorator(underlying: Acl, serializationTool: Option[Serializati
       else if (logger.delegate.isEnabled(Level.DEBUG)) r.content
       else s"<OMITTED, LENGTH=${r.contentLength}> "
     }
+
+    def stringifyIndices = {
+      blockContext
+        .toSet
+        .flatMap { b: BlockContext => b.indices }
+        .toList
+        .map(_.show) match {
+        case Nil => "<N/A>"
+        case nel => nel.mkString(",")
+      }
+    }
+
     s"""{
        | ID:${r.id.show},
        | TYP:${r.`type`.show},
@@ -93,7 +104,7 @@ class AclLoggingDecorator(underlying: Acl, serializationTool: Option[Serializati
        | ACT:${r.action.show},
        | OA:${r.remoteAddress.show},
        | DA:${r.localAddress.show},
-       | IDX:// todo,
+       | IDX:$stringifyIndices,
        | MET:${r.method.show},
        | PTH:${r.uri.show},
        | CNT:$stringifyContentLength,

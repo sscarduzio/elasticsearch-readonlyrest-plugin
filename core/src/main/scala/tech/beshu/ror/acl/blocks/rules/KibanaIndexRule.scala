@@ -17,7 +17,7 @@ class KibanaIndexRule(val settings: Settings)
     settings
       .kibanaIndex
       .getValue(requestContext.variablesResolver, blockContext)
-      .map(blockContext.setKibanaIndex)
+      .map(blockContext.withKibanaIndex)
       .getOrElse(blockContext)
   }
 }

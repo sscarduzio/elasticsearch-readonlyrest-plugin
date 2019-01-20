@@ -32,6 +32,7 @@ object aDomain {
       val setCookie = Name("Set-Cookie")
       val transientFields = Name(Constants.FIELDS_TRANSIENT)
       val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
+      val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
       val userAgent = Name("User-Agent")
       val authorization = Name("Authorization")
       val rorUser = Name(Constants.HEADER_USER_ROR)

@@ -85,7 +85,7 @@ object show {
       case f: NegatedDocumentField => s"~${f.value}"
     }
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
-    implicit val userDefNameShow: Show[UserDef.Name] = Show.show(_.value)
+    implicit val indexNameShow: Show[IndexName] = Show.show(_.value)
   }
 }
 
@@ -98,6 +98,10 @@ object refined {
 }
 
 object headerValues {
+  implicit def setHeaderValue[T : ToHeaderValue]: ToHeaderValue[Set[T]] = ToHeaderValue {
+    val tToHeaderValue = implicitly[ToHeaderValue[T]]
+    _.map(tToHeaderValue.toRawValue).mkString(",")
+  }
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
   implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>
@@ -109,4 +113,5 @@ object headerValues {
     case KibanaAccess.RW => "RW"
     case KibanaAccess.Admin => "ADMIN"
   }
+  implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

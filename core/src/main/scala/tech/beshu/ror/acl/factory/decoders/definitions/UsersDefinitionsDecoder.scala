@@ -3,7 +3,7 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.{ACursor, Decoder, HCursor}
-import tech.beshu.ror.acl.aDomain.Group
+import tech.beshu.ror.acl.aDomain.{Group, User}
 import tech.beshu.ror.acl.blocks.definitions.{ProxyAuthDefinitions, UserDef, UsersDefinitions}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
@@ -35,7 +35,7 @@ object UsersDefinitionsDecoder {
   }
 
   private implicit def userDefDecoder(implicit authProxyDefinitions: ProxyAuthDefinitions): Decoder[UserDef] = {
-    implicit val usernameDecoder: Decoder[UserDef.Name] = DecoderHelpers.decodeStringLike.map(UserDef.Name.apply)
+    implicit val usernameDecoder: Decoder[User.Id] = DecoderHelpers.decodeStringLike.map(User.Id.apply)
     implicit val groupDecoder: Decoder[Group] = DecoderHelpers.decodeStringLike.map(Group.apply)
     implicit val groupsDecoder: Decoder[NonEmptySet[Group]] =
       DecoderHelpers
@@ -46,7 +46,7 @@ object UsersDefinitionsDecoder {
         val usernameKey = "username"
         val groupsKey = "groups"
         for {
-          username <- c.downField(usernameKey).as[UserDef.Name]
+          username <- c.downField(usernameKey).as[User.Id]
           groups <- c.downField(groupsKey).as[NonEmptySet[Group]]
           rule <- tryDecodeAuthRule(removeKeysFromCursor(c, Set(usernameKey, groupsKey)), username)
         } yield UserDef(username, groups, rule)
@@ -54,7 +54,7 @@ object UsersDefinitionsDecoder {
       .withError(DefinitionsCreationError(Message("User definition malformed")))
   }
 
-  private def tryDecodeAuthRule(adjustedCursor: ACursor, username: UserDef.Name)
+  private def tryDecodeAuthRule(adjustedCursor: ACursor, username: User.Id)
                                (implicit authProxyDefinitions: ProxyAuthDefinitions) = {
     adjustedCursor.keys.map(_.toList) match {
       case Some(key :: Nil) =>

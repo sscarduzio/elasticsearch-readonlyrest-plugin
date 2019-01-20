@@ -23,7 +23,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val requestContext = MockRequestContext.default.copy(isReadOnlyRequest = false)
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
-        (blockContext.addContextHeader _)
+        (blockContext.withAddedContextHeader _)
           .expects(Header(Name.transientFilter, "rO0ABXNyACx0ZWNoLmJlc2h1LnJvci5jb21tb25zLnV0aWxzLkZpbHRlclRyYW5zaWVudITzas9SBWxbAgABTAAHX2ZpbHRlcnQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA3eyJib29sIjp7Im11c3QiOlt7InRlcm0iOnsiQ291bnRyeSI6eyJ2YWx1ZSI6IlVLIn19fV19fQ=="))
           .returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
@@ -35,7 +35,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(Some(LoggedUser(User.Id("bob"))))
         val newBlockContext = mock[BlockContext]
-        (blockContext.addContextHeader _)
+        (blockContext.withAddedContextHeader _)
           .expects(Header(Name.transientFilter, "rO0ABXNyACx0ZWNoLmJlc2h1LnJvci5jb21tb25zLnV0aWxzLkZpbHRlclRyYW5zaWVudITzas9SBWxbAgABTAAHX2ZpbHRlcnQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA1eyJib29sIjp7Im11c3QiOlt7InRlcm0iOnsiVXNlciI6eyJ2YWx1ZSI6ImJvYiJ9fX1dfX0="))
           .returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))

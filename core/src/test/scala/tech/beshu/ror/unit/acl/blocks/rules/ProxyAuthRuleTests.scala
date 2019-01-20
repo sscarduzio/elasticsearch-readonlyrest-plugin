@@ -67,7 +67,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     val newBlockContext = mock[BlockContext]
     (requestContext.headers _).expects().returning(Set(header))
-    if(isMatched) (blockContext.setLoggedUser _).expects(LoggedUser(Id(header.value))).returning(newBlockContext)
+    if(isMatched) (blockContext.withLoggedUser _).expects(LoggedUser(Id(header.value))).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(newBlockContext)
       else Rejected

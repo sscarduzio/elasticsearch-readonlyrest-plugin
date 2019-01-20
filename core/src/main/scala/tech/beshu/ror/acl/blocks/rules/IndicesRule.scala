@@ -87,7 +87,7 @@ class IndicesRule(val settings: Settings)
 
   private def blockContextWithIndices(blockContext: BlockContext, indices: Set[IndexName]) = {
     NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ indices) match {
-      case Some(indexes) => blockContext.setIndices(indexes)
+      case Some(indexes) => blockContext.withIndices(indexes)
       case None => blockContext
     }
   }

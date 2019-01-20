@@ -23,7 +23,7 @@ class FieldsRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
         (requestContext.isReadOnlyRequest _).expects().returning(true)
-        (blockContext.addContextHeader _).expects(Header("_fields" -> "_field1,_field2")).returning(newBlockContext)
+        (blockContext.withAddedContextHeader _).expects(Header("_fields" -> "_field1,_field2")).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
     }

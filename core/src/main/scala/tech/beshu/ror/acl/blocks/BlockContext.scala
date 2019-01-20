@@ -1,26 +1,34 @@
 package tech.beshu.ror.acl.blocks
 
 import cats.data.NonEmptySet
+import tech.beshu.ror.acl.aDomain.{Group, Header, IndexName, LoggedUser}
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.aDomain.{Header, IndexName, LoggedUser}
+import tech.beshu.ror.acl.request.RequestContextOps._
+import tech.beshu.ror.acl.request.RequestGroup.{AGroup, Empty, `N/A`}
 
 trait BlockContext {
 
   def loggedUser: Option[LoggedUser]
-  def setLoggedUser(user: LoggedUser): BlockContext
+  def withLoggedUser(user: LoggedUser): BlockContext
+
+  def currentGroup: Option[Group]
+  def withCurrentGroup(group: Group): BlockContext
+
+  def availableGroups: Set[Group]
+  def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext
 
   def responseHeaders: Set[Header]
-  def addResponseHeader(header: Header): BlockContext
+  def withAddedResponseHeader(header: Header): BlockContext
 
   def contextHeaders: Set[Header]
-  def addContextHeader(header: Header): BlockContext
+  def withAddedContextHeader(header: Header): BlockContext
 
   def kibanaIndex: Option[IndexName]
-  def setKibanaIndex(index: IndexName): BlockContext
+  def withKibanaIndex(index: IndexName): BlockContext
 
-  def setIndices(indices: NonEmptySet[IndexName]): BlockContext
   def indices: Set[IndexName]
+  def withIndices(indices: NonEmptySet[IndexName]): BlockContext
 
 }
 
@@ -29,33 +37,46 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
 
   override def loggedUser: Option[LoggedUser] = data.loggedUser
 
-  override def setLoggedUser(user: LoggedUser): BlockContext =
+  override def withLoggedUser(user: LoggedUser): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(loggedUser = Some(user)))
+
+  override def currentGroup: Option[Group] = data.currentGroup
+
+  override def withCurrentGroup(group: Group): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(currentGroup = Some(group)))
+
+  override def availableGroups: Set[Group] = data.availableGroups
+
+  override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(availableGroups = data.availableGroups ++ groups.toSortedSet))
 
   override def responseHeaders: Set[Header] = data.responseHeaders.toSet
 
-  override def addResponseHeader(header: Header): BlockContext =
+  override def withAddedResponseHeader(header: Header): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(responseHeaders = data.responseHeaders :+ header))
 
   override def contextHeaders: Set[Header] = data.contextHeaders.toSet
 
-  override def addContextHeader(header: Header): BlockContext =
+  override def withAddedContextHeader(header: Header): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(contextHeaders = data.contextHeaders :+ header))
 
   override def kibanaIndex: Option[IndexName] = data.kibanaIndex
 
-  override def setKibanaIndex(index: IndexName): BlockContext =
+  override def withKibanaIndex(index: IndexName): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
 
-  override def setIndices(indices: NonEmptySet[IndexName]): BlockContext =
+  override def indices: Set[IndexName] = data.indices
+
+  override def withIndices(indices: NonEmptySet[IndexName]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(indices = indices.toSortedSet))
 
-  override def indices: Set[IndexName] = data.indices
 }
 
 object RequestContextInitiatedBlockContext {
 
   final case class BlockContextData(loggedUser: Option[LoggedUser],
+                                    currentGroup: Option[Group],
+                                    availableGroups: Set[Group],
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
@@ -65,6 +86,11 @@ object RequestContextInitiatedBlockContext {
     new RequestContextInitiatedBlockContext(
       BlockContextData(
         loggedUser = None,
+        currentGroup = requestContext.currentGroup match {
+          case AGroup(userGroup) => Some(userGroup)
+          case Empty | `N/A` => None
+        },
+        availableGroups = Set.empty,
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
         kibanaIndex = None,

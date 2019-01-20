@@ -110,5 +110,9 @@ object BlockTests extends MockFactory {
     override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
-  private val dummyRequestContext = mock[RequestContext]
+  private def dummyRequestContext = {
+    val requestContext = mock[RequestContext]
+    (requestContext.headers _).expects().returning(Set.empty)
+    requestContext
+  }
 }

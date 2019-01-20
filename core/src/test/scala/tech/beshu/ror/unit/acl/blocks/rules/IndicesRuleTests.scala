@@ -91,7 +91,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     val returnedBlock = if(found.nonEmpty) {
       val newBlock = mock[BlockContext]
-      (blockContext.setIndices _).expects(NonEmptySet.fromSetUnsafe(SortedSet.empty[IndexName] ++ found)).returning(newBlock)
+      (blockContext.withIndices _).expects(NonEmptySet.fromSetUnsafe(SortedSet.empty[IndexName] ++ found)).returning(newBlock)
       newBlock
     } else {
       blockContext

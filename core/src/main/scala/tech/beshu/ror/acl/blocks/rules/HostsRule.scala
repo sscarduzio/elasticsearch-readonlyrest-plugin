@@ -16,6 +16,7 @@ import tech.beshu.ror.acl.aDomain.Address
 
 import scala.util.control.Exception._
 
+// todo: check what has changed on upstream and apply changes
 class HostsRule(val settings: Settings)
   extends RegularRule with Logging {
 
