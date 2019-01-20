@@ -103,6 +103,7 @@ class AclLoggingDecorator(underlying: Acl, serializationTool: Option[Serializati
        | KDX:${blockContext.flatMap(_.kibanaIndex).getOrElse("null")},
        | ACT:${r.action.show},
        | OA:${r.remoteAddress.show},
+       | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value).getOrElse("null")},
        | DA:${r.localAddress.show},
        | IDX:$stringifyIndices,
        | MET:${r.method.show},

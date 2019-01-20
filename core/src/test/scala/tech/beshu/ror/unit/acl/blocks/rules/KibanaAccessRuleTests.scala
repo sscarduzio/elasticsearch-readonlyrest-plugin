@@ -3,9 +3,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import com.softwaremill.sttp.Uri
 import monix.execution.Scheduler.Implicits.global
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.TestsUtils.BlockContextAssertion
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.commons.Constants
 import tech.beshu.ror.acl.aDomain.Header.Name
@@ -20,7 +20,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class KibanaAccessRuleTests extends WordSpec with MockFactory with Inside {
+class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssertion[KibanaAccessRule.Settings] {
 
   "A KibanaAccessRule" when {
     "RO action is passed" in {
@@ -177,16 +177,4 @@ class KibanaAccessRuleTests extends WordSpec with MockFactory with Inside {
       assertBlockContext(responseHeaders = Set(Header(Name.kibanaAccess, settings.access)))(blockContext)
     }
 
-  private def assertBlockContext(responseHeaders: Set[Header] = Set.empty,
-                                 contextHeaders: Set[Header] = Set.empty,
-                                 kibanaIndex: Option[IndexName] = None,
-                                 loggedUser: Option[LoggedUser] = None,
-                                 indices: Set[IndexName] = Set.empty)
-                                (blockContext: BlockContext): Unit = {
-    blockContext.responseHeaders should be(responseHeaders)
-    blockContext.contextHeaders should be(contextHeaders)
-    blockContext.kibanaIndex should be(kibanaIndex)
-    blockContext.loggedUser should be(loggedUser)
-    blockContext.indices should be(indices)
-  }
 }
