@@ -14,7 +14,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError._
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, ProxyAuthDefinitionsDecoder, UsersDefinitionsDecoder}
+import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder, ProxyAuthDefinitionsDecoder, UsersDefinitionsDecoder}
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
@@ -28,6 +28,7 @@ class RorAclFactory extends Logging {
 
   implicit val clock: Clock = Clock.systemUTC() // todo:
   implicit val uuidProvider: UuidProvider = JavaUuidProvider // todo:
+  private val httpClientFactory: HttpClientFactory = ??? // todo: + closing
 
   def createAclFrom(settingsYamlString: String): Either[NonEmptyList[AclCreationError], Acl] = {
     parser.parse(settingsYamlString) match {
@@ -146,8 +147,9 @@ class RorAclFactory extends Logging {
     val decoder = for {
       authProxies <- ProxyAuthDefinitionsDecoder.proxyAuthDefinitionsDecoder
       users <- UsersDefinitionsDecoder.usersDefinitionsDecoder(authProxies)
+      authenticationServices <- ExternalAuthenticationServicesDecoder.externalAuthenticationServicesDefinitionsDecoder(httpClientFactory)
       acl <- {
-        implicit val _ = blockDecoder(Definitions(authProxies, users))
+        implicit val _ = blockDecoder(Definitions(authProxies, users, authenticationServices))
         DecoderHelpers
           .decodeFieldList[Block](Attributes.acl)
           .emapE {
@@ -186,6 +188,7 @@ object RorAclFactory {
     final case class DefinitionsCreationError(reason: Reason) extends AclCreationError
     final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
     final case class RulesLevelCreationError(reason: Reason) extends AclCreationError
+    final case class ValueLevelCreationError(reason: Reason) extends AclCreationError
 
     sealed trait Reason
     object Reason {

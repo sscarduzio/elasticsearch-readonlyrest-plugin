@@ -30,7 +30,7 @@ class KibanaAccessRule(val settings: Settings)
   override val name: Rule.Name = KibanaAccessRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     if (UriPath.fromUri(requestContext.uri) === UriPath.restMetadataPath) Fulfilled(modifyMatched(blockContext))
     // Allow other actions if devnull is targeted to readers and writers
     else if (requestContext.indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))

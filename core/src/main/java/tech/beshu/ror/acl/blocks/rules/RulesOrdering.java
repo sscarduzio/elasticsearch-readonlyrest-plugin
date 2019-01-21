@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha256SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha512SyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
@@ -48,7 +48,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
@@ -78,7 +78,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         // then we could check potentially slow async rules
         LdapAuthAsyncRule.class,
         LdapAuthenticationAsyncRule.class,
-        ExternalAuthenticationAsyncRule.class,
+        __old_ExternalAuthenticationAsyncRule.class,
         __old_GroupsAsyncRule.class,
 
         // Inspection rules next; these act based on properties of the request.
@@ -99,7 +99,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         __old_HeadersOrSyncRule.class,
         __old_IndicesSyncRule.class,
         __old_ActionsSyncRule.class,
-        SearchlogSyncRule.class,
+        __old_SearchlogSyncRule.class,
         __old_UsersSyncRule.class,
 
         // all authorization rules should be placed before any authentication rule

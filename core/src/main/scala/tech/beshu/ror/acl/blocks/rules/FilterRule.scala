@@ -20,7 +20,7 @@ class FilterRule(val settings: Settings)
   override val name: Rule.Name = FilterRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     if (requestContext.isReadOnlyRequest) Rejected
     else {
       settings.filter.getValue(requestContext.variablesResolver, blockContext) match {

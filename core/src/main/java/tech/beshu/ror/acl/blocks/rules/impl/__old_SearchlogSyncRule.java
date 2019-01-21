@@ -25,13 +25,13 @@ import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
 /**
  * Created by sscarduzio on 27/03/2017.
  */
-public class SearchlogSyncRule extends SyncRule {
-  // todo: is it no longer used?
+// todo: is it no longer used? (ask Simone)
+public class __old_SearchlogSyncRule extends SyncRule {
 
   private final boolean shouldLog;
   private final SearchlogRuleSettings settings;
 
-  public SearchlogSyncRule(SearchlogRuleSettings s) {
+  public __old_SearchlogSyncRule(SearchlogRuleSettings s) {
     shouldLog = s.isEnabled();
     settings = s;
   }

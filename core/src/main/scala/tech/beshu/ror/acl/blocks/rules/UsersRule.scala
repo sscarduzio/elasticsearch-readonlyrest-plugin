@@ -18,7 +18,7 @@ class UsersRule(val settings: Settings)
   override val name: Rule.Name = UsersRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     blockContext.loggedUser match {
       case None => Rejected
       case Some(user) => matchUser(user, requestContext, blockContext)

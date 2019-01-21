@@ -23,7 +23,7 @@ class XForwardedForRule(val settings: Settings)
   override val name: Rule.Name = XForwardedForRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     requestContext.xForwardedForHeaderValue match {
       case Some(address) if address === Address.unknown => Rejected
       case None => Rejected

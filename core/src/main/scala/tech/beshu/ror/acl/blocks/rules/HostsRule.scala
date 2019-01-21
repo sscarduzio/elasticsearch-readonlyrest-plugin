@@ -23,7 +23,7 @@ class HostsRule(val settings: Settings)
   override val name: Rule.Name = HostsRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>
         if (tryToMatchAddress(xForwardedHeaderValue, requestContext, blockContext))

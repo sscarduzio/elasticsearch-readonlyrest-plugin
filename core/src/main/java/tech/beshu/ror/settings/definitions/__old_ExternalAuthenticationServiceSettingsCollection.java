@@ -27,40 +27,40 @@ import java.util.stream.Collectors;
 
 import static org.jooq.lambda.Seq.seq;
 
-public class ExternalAuthenticationServiceSettingsCollection {
+public class __old_ExternalAuthenticationServiceSettingsCollection {
 
   public static final String ATTRIBUTE_NAME = "external_authentication_service_configs";
 
-  private final Map<String, ExternalAuthenticationServiceSettings> ExternalAuthenticationServiceSettingsMap;
+  private final Map<String, __old_ExternalAuthenticationServiceSettings> ExternalAuthenticationServiceSettingsMap;
 
-  private ExternalAuthenticationServiceSettingsCollection(
-    List<ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
+  private __old_ExternalAuthenticationServiceSettingsCollection(
+    List<__old_ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
     validate(externalAuthenticationServiceSettings);
     this.ExternalAuthenticationServiceSettingsMap = seq(externalAuthenticationServiceSettings)
-      .toMap(ExternalAuthenticationServiceSettings::getName, Function.identity());
+      .toMap(__old_ExternalAuthenticationServiceSettings::getName, Function.identity());
   }
 
   @SuppressWarnings("unchecked")
-  public static ExternalAuthenticationServiceSettingsCollection from(RawSettings data) {
+  public static __old_ExternalAuthenticationServiceSettingsCollection from(RawSettings data) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new ExternalAuthenticationServiceSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
+               .map(l -> new __old_ExternalAuthenticationServiceSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
                .collect(Collectors.toList())
       )
-      .map(ExternalAuthenticationServiceSettingsCollection::new)
-      .orElse(new ExternalAuthenticationServiceSettingsCollection(Lists.newArrayList()));
+      .map(__old_ExternalAuthenticationServiceSettingsCollection::new)
+      .orElse(new __old_ExternalAuthenticationServiceSettingsCollection(Lists.newArrayList()));
   }
 
-  public ExternalAuthenticationServiceSettings get(String name) {
+  public __old_ExternalAuthenticationServiceSettings get(String name) {
     if (!ExternalAuthenticationServiceSettingsMap.containsKey(name))
       throw new SettingsMalformedException("Cannot find External Authentication Service definition with name '" + name + "'");
     return ExternalAuthenticationServiceSettingsMap.get(name);
   }
 
-  private void validate(List<ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
+  private void validate(List<__old_ExternalAuthenticationServiceSettings> externalAuthenticationServiceSettings) {
     List<String> names = seq(externalAuthenticationServiceSettings)
-      .map(ExternalAuthenticationServiceSettings::getName)
+      .map(__old_ExternalAuthenticationServiceSettings::getName)
       .collect(Collectors.toList());
     if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated LDAP name in '" + ATTRIBUTE_NAME + "' section");

@@ -18,7 +18,7 @@ class FieldsRule(val settings: Settings)
   override val name: Rule.Name = FieldsRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     if(!requestContext.isReadOnlyRequest) RuleResult.Rejected
     else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
   }

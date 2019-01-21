@@ -26,27 +26,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class UserSettingsCollection {
+public class __old_UserSettingsCollection {
 
   public static final String ATTRIBUTE_NAME = "users";
 
   private final Map<String, __old_UserSettings> usersSettingsMap;
 
-  private UserSettingsCollection(List<__old_UserSettings> userSettings) {
+  private __old_UserSettingsCollection(List<__old_UserSettings> userSettings) {
     this.usersSettingsMap = Maps.newLinkedHashMap();
     userSettings.forEach(x -> this.usersSettingsMap.put(x.getUsername(), x));
   }
 
   @SuppressWarnings("unchecked")
-  public static UserSettingsCollection from(RawSettings data, AuthMethodCreatorsRegistry registry) {
+  public static __old_UserSettingsCollection from(RawSettings data, AuthMethodCreatorsRegistry registry) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
                .map(l -> new __old_UserSettings(new RawSettings((Map<String, ?>) l, data.getLogger()), registry))
                .collect(Collectors.toList())
       )
-      .map(UserSettingsCollection::new)
-      .orElse(new UserSettingsCollection(Lists.newArrayList()));
+      .map(__old_UserSettingsCollection::new)
+      .orElse(new __old_UserSettingsCollection(Lists.newArrayList()));
   }
 
   public __old_UserSettings get(String name) {

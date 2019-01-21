@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.__old_ACL;
 import tech.beshu.ror.acl.blocks.rules.impl.JwtExternalValidationHttpClient;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
 import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
-import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceHttpClient;
+import tech.beshu.ror.acl.definitions.externalauthenticationservices.__old_ExternalAuthenticationServiceHttpClient;
 import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClient;
 import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClientFactory;
 import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceHttpClient;
@@ -44,7 +44,7 @@ import tech.beshu.ror.acl.definitions.users.UserFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.httpclient.ApacheHttpCoreClient;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettings;
 import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
 import tech.beshu.ror.settings.definitions.__old_UserSettings;
@@ -56,7 +56,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.function.Supplier;
 
-import static tech.beshu.ror.acl.definitions.externalauthenticationservices.CachedExternalAuthenticationServiceClient.wrapInCacheIfCacheIsEnabled;
+import static tech.beshu.ror.acl.definitions.externalauthenticationservices.__old_CachedExternalAuthenticationServiceClient.wrapInCacheIfCacheIsEnabled;
 import static tech.beshu.ror.acl.definitions.groupsproviders.CachedGroupsProviderServiceClient.wrapInCacheIfCacheIsEnabled;
 import static tech.beshu.ror.acl.definitions.ldaps.caching.GroupsProviderLdapClientCacheDecorator.wrapInCacheIfCacheIsEnabled;
 
@@ -166,13 +166,13 @@ public class DefinitionsFactory implements LdapClientFactory,
   }
 
   @Override
-  public ExternalAuthenticationServiceClient getClient(ExternalAuthenticationServiceSettings settings) {
+  public ExternalAuthenticationServiceClient getClient(__old_ExternalAuthenticationServiceSettings settings) {
     return getOrCreate(
         settings,
         externalAuthenticationServiceClientsCache,
         () -> wrapInCacheIfCacheIsEnabled(
             settings,
-            new ExternalAuthenticationServiceHttpClient(
+            new __old_ExternalAuthenticationServiceHttpClient(
                 new ApacheHttpCoreClient(context, settings.getValidate()),
                 settings.getEndpoint(),
                 settings.getSuccessStatusCode()

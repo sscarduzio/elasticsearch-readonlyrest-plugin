@@ -9,7 +9,7 @@ import shapeless.Nat
 import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.aDomain._
-import tech.beshu.ror.acl.blocks.definitions.{ProxyAuth, UserDef}
+import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.commons.utils.FilterTransient
 
@@ -86,6 +86,7 @@ object show {
     }
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value)
+    implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
   }
 }
 

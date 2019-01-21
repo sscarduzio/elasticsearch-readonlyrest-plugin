@@ -29,10 +29,10 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
@@ -40,7 +40,7 @@ import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
-import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
@@ -74,8 +74,8 @@ public class RulesSettingsCreatorsRegistry {
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
       LdapSettingsCollection ldapSettingsCollection,
       UserGroupsProviderSettingsCollection groupsProviderSettingsGroup,
-      ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
-      UserSettingsCollection userSettingsCollection) {
+      __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
+      __old_UserSettingsCollection userSettingsCollection) {
     Map<String, Supplier<RuleSettings>> creators = new HashMap<>();
     creators.put(
         LdapAuthRuleSettings.ATTRIBUTE_NAME,
@@ -94,7 +94,7 @@ public class RulesSettingsCreatorsRegistry {
         groupsProviderAuthorizationRuleSettingsCreator(blockSettings, groupsProviderSettingsGroup)
     );
     creators.put(
-        ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME,
+        __old_ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME,
         externalAuthenticationSettingsCreator(blockSettings, externalAuthenticationServiceSettingsCollection)
     );
     creators.put(__old_IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
@@ -175,15 +175,15 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> externalAuthenticationSettingsCreator(RawSettings blockSettings,
-      ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+      __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
     return () -> {
-      Object settings = blockSettings.req(ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME);
+      Object settings = blockSettings.req(__old_ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String
-          ? ExternalAuthenticationRuleSettings.from(
+          ? __old_ExternalAuthenticationRuleSettings.from(
           (String) settings,
           externalAuthenticationServiceSettingsCollection
       )
-          : ExternalAuthenticationRuleSettings.from(
+          : __old_ExternalAuthenticationRuleSettings.from(
           new RawSettings((Map<String, ?>) settings, blockSettings.getLogger()),
           externalAuthenticationServiceSettingsCollection
       );
@@ -366,7 +366,7 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> groupsSettingsCreator(RawSettings blockSettings,
-      UserSettingsCollection userSettingsCollection) {
+      __old_UserSettingsCollection userSettingsCollection) {
     return () -> __old_GroupsRuleSettings.from(
         (Set<String>) blockSettings.notEmptySetReq(__old_GroupsRuleSettings.ATTRIBUTE_NAME),
         userSettingsCollection

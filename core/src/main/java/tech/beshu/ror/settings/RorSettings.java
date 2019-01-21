@@ -25,13 +25,13 @@ import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 
@@ -82,7 +82,7 @@ public class RorSettings {
     LdapSettingsCollection ldapSettingsCollection = LdapSettingsCollection.from(raw);
     UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = UserGroupsProviderSettingsCollection.from(raw);
     ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
-    ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection = ExternalAuthenticationServiceSettingsCollection.from(raw);
+    __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection = __old_ExternalAuthenticationServiceSettingsCollection.from(raw);
     JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection = JwtAuthDefinitionSettingsCollection.from(raw);
     RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection = RorKbnAuthDefinitionSettingsCollection.from(raw);
     AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(
@@ -100,7 +100,7 @@ public class RorSettings {
                                  ldapSettingsCollection,
                                  userGroupsProviderSettingsCollection,
                                  externalAuthenticationServiceSettingsCollection,
-                                 UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
+                                 __old_UserSettingsCollection.from(raw, authMethodCreatorsRegistry)
                              ))
                              .collect(Collectors.toList());
 

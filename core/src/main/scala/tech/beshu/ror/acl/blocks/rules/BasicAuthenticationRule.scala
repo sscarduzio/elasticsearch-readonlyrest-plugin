@@ -10,34 +10,42 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.aDomain.{AuthData, LoggedUser}
 import tech.beshu.ror.acl.header.ToTuple._
-import tech.beshu.ror.utils.BasicAuthUtils
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
+import tech.beshu.ror.utils.BasicAuthUtils.{BasicAuth, getBasicAuthFromHeaders}
 
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
 
-abstract class BasicAuthenticationRule(val settings: Settings)
+abstract class BaseAuthenticationRule
   extends AuthenticationRule
     with Logging {
 
-  protected def authenticate(configuredAuthKey: AuthData, basicAuth: BasicAuth): Boolean
+  protected def authenticate(basicAuth: BasicAuth): Task[Boolean]
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
-    BasicAuthUtils
-      .getBasicAuthFromHeaders(requestContext.headers.map(_.toTuple).toMap.asJava).asScala
-      .map { credentials =>
-        logger.debug(s"Attempting Login as: ${credentials.getUserName} rc: $requestContext")
-        if (authenticate(settings.authKey, credentials))
-          Fulfilled(blockContext.withLoggedUser(LoggedUser(Id(credentials.getUserName))))
-        else
-          Rejected
+                     blockContext: BlockContext): Task[RuleResult] = Task.unit
+    .flatMap { _ =>
+      getBasicAuthFromHeaders(requestContext.headers.map(_.toTuple).toMap.asJava).asScala match {
+        case Some(credentials) =>
+          logger.debug(s"Attempting Login as: ${credentials.getUserName} rc: $requestContext")
+          authenticate(credentials)
+            .map {
+              case true => Fulfilled(blockContext.withLoggedUser(LoggedUser(Id(credentials.getUserName))))
+              case false => Rejected
+            }
+        case None =>
+          logger.debug("No basic auth")
+          Task.now(Rejected)
       }
-      .getOrElse {
-        logger.debug("No basic auth")
-        Rejected
-      }
-  }
+    }
+}
+
+abstract class BasicAuthenticationRule(val settings: Settings)
+  extends BaseAuthenticationRule {
+
+  override protected def authenticate(basicAuth: BasicAuth): Task[Boolean] =
+    compare(settings.authKey, basicAuth)
+
+  protected def compare(configuredAuthKey: AuthData, basicAuth: BasicAuth): Task[Boolean]
 }
 
 object BasicAuthenticationRule {

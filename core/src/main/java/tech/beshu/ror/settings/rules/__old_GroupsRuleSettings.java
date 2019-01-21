@@ -19,7 +19,7 @@ package tech.beshu.ror.settings.rules;
 import tech.beshu.ror.acl.domain.__old_Value;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.definitions.__old_UserSettings;
-import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 
 import java.util.List;
 import java.util.Set;
@@ -38,7 +38,7 @@ public class __old_GroupsRuleSettings implements RuleSettings {
     this.groups = groups.stream().map(g -> __old_Value.fromString(g, Function.identity())).collect(Collectors.toSet());
   }
 
-  public static __old_GroupsRuleSettings from(Set<String> groups, UserSettingsCollection userSettingsCollection) {
+  public static __old_GroupsRuleSettings from(Set<String> groups, __old_UserSettingsCollection userSettingsCollection) {
     return new __old_GroupsRuleSettings(groups, userSettingsCollection.getAll());
   }
 

@@ -21,7 +21,7 @@ class HeadersOrRule(val settings: Settings)
   override val name: Rule.Name = HeadersOrRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     val headersSubset = requestContext
       .headers
       .filter(h => settings.headers.exists(_.name.value.toLowerCase() == h.name.value.toLowerCase()))

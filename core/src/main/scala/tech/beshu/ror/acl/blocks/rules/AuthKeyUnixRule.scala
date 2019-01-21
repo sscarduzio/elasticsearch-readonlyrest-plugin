@@ -3,6 +3,7 @@ package tech.beshu.ror.acl.blocks.rules
 import java.util.regex.Pattern
 
 import cats.implicits._
+import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.acl.aDomain.AuthData
 import tech.beshu.ror.utils.BasicAuthUtils
@@ -12,8 +13,8 @@ class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)
 
   override val name: Rule.Name = AuthKeyUnixRule.name
 
-  override protected def authenticate(configuredAuthKey: AuthData,
-                                      basicAuth: BasicAuthUtils.BasicAuth): Boolean = {
+  override protected def compare(configuredAuthKey: AuthData,
+                                 basicAuth: BasicAuthUtils.BasicAuth): Task[Boolean] = Task {
     configuredAuthKey.value.split(":").toList match {
       case user :: pass :: Nil if user == basicAuth.getUserName =>
         configuredAuthKey === roundHash(pass, basicAuth)

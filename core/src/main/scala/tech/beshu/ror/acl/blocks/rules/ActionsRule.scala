@@ -22,7 +22,7 @@ class ActionsRule(val settings: Settings)
   private val matcher = new MatcherWithWildcards(settings.actions.map(_.value).toSortedSet.asJava)
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     if (matcher.`match`(requestContext.action.value)) {
       RuleResult.Fulfilled(blockContext)
     } else {

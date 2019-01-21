@@ -23,10 +23,10 @@ import tech.beshu.ror.acl.__old_BlockPolicy;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
@@ -66,8 +66,8 @@ public class BlockSettings {
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
       LdapSettingsCollection ldapSettingsCollection,
       UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
-      ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
-      UserSettingsCollection userSettingsCollection) {
+      __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
+      __old_UserSettingsCollection userSettingsCollection) {
     RulesSettingsCreatorsRegistry registry = new RulesSettingsCreatorsRegistry(
         settings,
         authMethodCreatorsRegistry,

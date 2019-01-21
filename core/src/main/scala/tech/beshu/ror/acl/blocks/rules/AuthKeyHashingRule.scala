@@ -1,8 +1,10 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import java.nio.charset.Charset
+
 import cats.implicits._
 import com.google.common.hash.{HashFunction, Hashing}
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.utils.BasicAuthOps._
 import tech.beshu.ror.acl.utils.ScalaExt._
@@ -15,8 +17,8 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
   extends BasicAuthenticationRule(settings)
     with Logging {
 
-  override protected def authenticate(configuredAuthKey: AuthData,
-                                      basicAuth: BasicAuthUtils.BasicAuth): Boolean = {
+  override protected def compare(configuredAuthKey: AuthData,
+                                 basicAuth: BasicAuthUtils.BasicAuth): Task[Boolean] = Task {
     basicAuth
       .tryDecode
       .map { decodedProvided =>

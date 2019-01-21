@@ -18,7 +18,7 @@ package tech.beshu.ror.settings;
 
 import org.junit.Test;
 import tech.beshu.ror.TestUtils;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 
 import java.net.URISyntaxException;
 
@@ -26,7 +26,7 @@ public class ExternalAuthenticationSettingsTests {
 
   @Test
   public void testSuccessfulCreationFromRequiredSettings() throws URISyntaxException {
-    ExternalAuthenticationServiceSettingsCollection.from(
+    __old_ExternalAuthenticationServiceSettingsCollection.from(
       TestUtils.fromYAMLString("" +
                                  "external_authentication_service_configs:\n" +
                                  "    - name: \"ext1\"\n" +

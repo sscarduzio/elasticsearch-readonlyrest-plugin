@@ -20,7 +20,7 @@ package tech.beshu.ror.acl.blocks.rules;
 import com.google.common.collect.Maps;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ActionsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_ExternalAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
@@ -40,7 +40,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
@@ -52,7 +52,7 @@ import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
-import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
+import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
@@ -152,7 +152,7 @@ public class RulesFactory {
     );
     this.creators.put(
         SearchlogRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new SearchlogSyncRule((SearchlogRuleSettings) settings))
+        settings -> AsyncRuleAdapter.wrap(new __old_SearchlogSyncRule((SearchlogRuleSettings) settings))
     );
     this.creators.put(
         __old_SessionMaxIdleRuleSettings.class,
@@ -191,10 +191,10 @@ public class RulesFactory {
         settings -> new LdapAuthAsyncRule((LdapAuthRuleSettings) settings, definitionsFactory, context)
     );
     this.creators.put(
-        ExternalAuthenticationRuleSettings.class,
+        __old_ExternalAuthenticationRuleSettings.class,
         settings -> CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(
-            new ExternalAuthenticationAsyncRule((ExternalAuthenticationRuleSettings) settings, definitionsFactory, context),
-            (ExternalAuthenticationRuleSettings) settings,
+            new __old_ExternalAuthenticationAsyncRule((__old_ExternalAuthenticationRuleSettings) settings, definitionsFactory, context),
+            (__old_ExternalAuthenticationRuleSettings) settings,
             context
         )
     );

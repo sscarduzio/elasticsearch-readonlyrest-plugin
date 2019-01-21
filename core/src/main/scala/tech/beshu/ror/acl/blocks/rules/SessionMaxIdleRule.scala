@@ -24,7 +24,7 @@ class SessionMaxIdleRule(val settings: Settings)
   override val name: Rule.Name = SessionMaxIdleRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     blockContext.loggedUser match {
       case Some(user) =>
         checkCookieFor(user, requestContext, blockContext)

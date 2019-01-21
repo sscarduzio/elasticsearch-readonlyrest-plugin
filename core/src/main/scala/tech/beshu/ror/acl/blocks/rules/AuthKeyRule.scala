@@ -1,6 +1,7 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import cats.implicits._
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.utils.BasicAuthOps._
 import tech.beshu.ror.acl.utils.ScalaExt._
@@ -13,8 +14,8 @@ class AuthKeyRule(settings: BasicAuthenticationRule.Settings)
 
   override val name: Rule.Name = AuthKeyRule.name
 
-  override protected def authenticate(configuredAuthKey: AuthData,
-                                      basicAuth: BasicAuthUtils.BasicAuth): Boolean = {
+  override protected def compare(configuredAuthKey: AuthData,
+                                 basicAuth: BasicAuthUtils.BasicAuth): Task[Boolean] = Task {
     basicAuth
       .tryDecode
       .map(_ === configuredAuthKey)

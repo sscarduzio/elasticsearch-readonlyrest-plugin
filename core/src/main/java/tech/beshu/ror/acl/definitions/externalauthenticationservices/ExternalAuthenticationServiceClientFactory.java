@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.acl.definitions.externalauthenticationservices;
 
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettings;
 
 public interface ExternalAuthenticationServiceClientFactory {
 
-  ExternalAuthenticationServiceClient getClient(ExternalAuthenticationServiceSettings settings);
+  ExternalAuthenticationServiceClient getClient(__old_ExternalAuthenticationServiceSettings settings);
 }

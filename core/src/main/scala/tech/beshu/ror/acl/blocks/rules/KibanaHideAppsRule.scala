@@ -23,7 +23,7 @@ class KibanaHideAppsRule(val settings: Settings)
   )
 
   override def process(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[BlockContext] = Task.now {
+                       blockContext: BlockContext): Task[BlockContext] = Task {
     blockContext.loggedUser match {
       case Some(user) =>
         logger.debug(s"setting hidden apps for user ${user.show}: ${kibanaAppsHeader.value.show}")

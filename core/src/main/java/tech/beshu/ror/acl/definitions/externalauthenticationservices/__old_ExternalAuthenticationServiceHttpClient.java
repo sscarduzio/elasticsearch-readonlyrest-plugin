@@ -24,13 +24,13 @@ import tech.beshu.ror.utils.BasicAuthUtils;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
-public class ExternalAuthenticationServiceHttpClient implements ExternalAuthenticationServiceClient {
+public class __old_ExternalAuthenticationServiceHttpClient implements ExternalAuthenticationServiceClient {
 
   protected final URI endpoint;
   protected final int successStatusCode;
   protected final HttpClient client;
 
-  public ExternalAuthenticationServiceHttpClient(HttpClient client, URI endpoint, int successStatusCode) {
+  public __old_ExternalAuthenticationServiceHttpClient(HttpClient client, URI endpoint, int successStatusCode) {
     this.client = client;
     this.endpoint = endpoint;
     this.successStatusCode = successStatusCode;

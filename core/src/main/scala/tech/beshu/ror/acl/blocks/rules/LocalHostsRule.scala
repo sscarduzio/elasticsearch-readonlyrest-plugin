@@ -14,7 +14,7 @@ class LocalHostsRule(val settings: Settings)
   override val name: Rule.Name = LocalHostsRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     RuleResult.fromCondition(blockContext) {
       settings
         .allowedAddresses

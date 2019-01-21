@@ -18,12 +18,12 @@ package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettings;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettings;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 
 import java.time.Duration;
 
-public class ExternalAuthenticationRuleSettings implements RuleSettings, CacheSettings {
+public class __old_ExternalAuthenticationRuleSettings implements RuleSettings, CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "external_authentication";
 
@@ -32,33 +32,34 @@ public class ExternalAuthenticationRuleSettings implements RuleSettings, CacheSe
 
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
 
-  private final ExternalAuthenticationServiceSettings externalAuthenticationServiceSettings;
+  private final __old_ExternalAuthenticationServiceSettings externalAuthenticationServiceSettings;
   private final Duration cacheTtl;
 
-  private ExternalAuthenticationRuleSettings(ExternalAuthenticationServiceSettings externalAuthenticationServiceSettings,
+  private __old_ExternalAuthenticationRuleSettings(
+      __old_ExternalAuthenticationServiceSettings externalAuthenticationServiceSettings,
                                              Duration cacheTtl) {
     this.externalAuthenticationServiceSettings = externalAuthenticationServiceSettings;
     this.cacheTtl = cacheTtl;
   }
 
   @SuppressWarnings("unchecked")
-  public static ExternalAuthenticationRuleSettings from(RawSettings settings,
-                                                        ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
-    return new ExternalAuthenticationRuleSettings(
+  public static __old_ExternalAuthenticationRuleSettings from(RawSettings settings,
+                                                        __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+    return new __old_ExternalAuthenticationRuleSettings(
       externalAuthenticationServiceSettingsCollection.get(settings.stringReq(SERVICE)),
       settings.intOpt(CACHE).map(Duration::ofSeconds).orElse(DEFAULT_CACHE_TTL)
     );
   }
 
-  public static ExternalAuthenticationRuleSettings from(String serviceName,
-                                                        ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
-    return new ExternalAuthenticationRuleSettings(
+  public static __old_ExternalAuthenticationRuleSettings from(String serviceName,
+                                                        __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+    return new __old_ExternalAuthenticationRuleSettings(
       externalAuthenticationServiceSettingsCollection.get(serviceName),
       DEFAULT_CACHE_TTL
     );
   }
 
-  public ExternalAuthenticationServiceSettings getExternalAuthenticationServiceSettings() {
+  public __old_ExternalAuthenticationServiceSettings getExternalAuthenticationServiceSettings() {
     return externalAuthenticationServiceSettings;
   }
 

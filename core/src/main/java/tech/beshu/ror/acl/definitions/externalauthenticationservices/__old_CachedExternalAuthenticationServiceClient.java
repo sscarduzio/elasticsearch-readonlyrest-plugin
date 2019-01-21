@@ -28,12 +28,12 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-public class CachedExternalAuthenticationServiceClient implements ExternalAuthenticationServiceClient {
+public class __old_CachedExternalAuthenticationServiceClient implements ExternalAuthenticationServiceClient {
 
   private final ExternalAuthenticationServiceClient underlying;
   private final Cache<String, String> cache;
 
-  private CachedExternalAuthenticationServiceClient(ExternalAuthenticationServiceClient underlying,
+  private __old_CachedExternalAuthenticationServiceClient(ExternalAuthenticationServiceClient underlying,
       Duration ttl) {
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
@@ -45,15 +45,15 @@ public class CachedExternalAuthenticationServiceClient implements ExternalAuthen
       ExternalAuthenticationServiceClient client) {
     return settings.getCacheTtl().isZero()
         ? client
-        : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
+        : new __old_CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
   }
 
   public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(
-      CacheSettings settings, ExternalAuthenticationServiceHttpClient client) {
+      CacheSettings settings, __old_ExternalAuthenticationServiceHttpClient client) {
 
     return settings.getCacheTtl().isZero()
         ? client
-        : new CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
+        : new __old_CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
   }
 
   private static String hashFrom(String password) {

@@ -23,7 +23,7 @@ import tech.beshu.ror.settings.rules.NamedSettings;
 import java.net.URI;
 import java.time.Duration;
 
-public class ExternalAuthenticationServiceSettings implements CacheSettings, NamedSettings {
+public class __old_ExternalAuthenticationServiceSettings implements CacheSettings, NamedSettings {
 
   private static final String NAME = "name";
   private static final String ENDPOINT = "authentication_endpoint";
@@ -40,7 +40,7 @@ public class ExternalAuthenticationServiceSettings implements CacheSettings, Nam
   private final Duration cacheTtl;
   private final boolean validate;
 
-  public ExternalAuthenticationServiceSettings(RawSettings settings) {
+  public __old_ExternalAuthenticationServiceSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
     this.endpoint = settings.uriReq(ENDPOINT);
     this.successStatusCode = settings.intOpt(SUCCESS_STATUS_CODE).orElse(DEFAULT_SUCCESS_STATUS_CODE);

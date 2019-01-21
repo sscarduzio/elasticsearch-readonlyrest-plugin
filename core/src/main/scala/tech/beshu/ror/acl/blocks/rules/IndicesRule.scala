@@ -31,7 +31,7 @@ class IndicesRule(val settings: Settings)
   private val zKindexFilter = new ZeroKnowledgeIndexFilterJavaAdapter(new ZeroKnowledgeIndexFilter(true))
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.now {
+                     blockContext: BlockContext): Task[RuleResult] = Task {
     if (!requestContext.involvesIndices) Fulfilled(blockContext)
     else if (matchAll) Fulfilled(blockContext)
     else process(requestContext, blockContext)

@@ -13,7 +13,7 @@ class KibanaIndexRule(val settings: Settings)
   override val name: Rule.Name = KibanaIndexRule.name
 
   override def process(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[BlockContext] = Task.now {
+                       blockContext: BlockContext): Task[BlockContext] = Task {
     settings
       .kibanaIndex
       .getValue(requestContext.variablesResolver, blockContext)
