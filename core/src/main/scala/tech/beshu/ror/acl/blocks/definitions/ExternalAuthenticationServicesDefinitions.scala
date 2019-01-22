@@ -21,18 +21,20 @@ final case class ExternalAuthenticationServicesDefinitions(services: Set[Externa
 
 trait ExternalAuthenticationService {
   def name: Name
-
   def authenticate(credentials: BasicAuth): Task[Boolean]
 }
 
-// todo: close http client
 class HttpExternalAuthenticationService(override val name: Name,
                                         uri: Uri,
                                         successStatusCode: Int,
                                         httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
-  override def authenticate(credentials: BasicAuth): Task[Boolean] = ???
+  override def authenticate(credentials: BasicAuth): Task[Boolean] = {
+    httpClient
+      .send(sttp.get(uri).header("Authorization", credentials.getBase64Value))
+      .map(_.code === successStatusCode)
+  }
 }
 
 class CachingExternalAuthenticationService(underlying: ExternalAuthenticationService, ttl: FiniteDuration Refined Positive)
@@ -42,7 +44,7 @@ class CachingExternalAuthenticationService(underlying: ExternalAuthenticationSer
     CacheBuilder
       .newBuilder
       .expireAfterWrite(ttl.value.toMillis, TimeUnit.MILLISECONDS)
-      .build
+      .build[String, String]
 
   override val name: Name = underlying.name
 
@@ -55,7 +57,7 @@ class CachingExternalAuthenticationService(underlying: ExternalAuthenticationSer
         underlying
           .authenticate(credentials)
           .map { authenticated =>
-            if(authenticated) {
+            if (authenticated) {
               cache.put(credentials.getUserName, hashFrom(credentials.getPassword))
             }
             authenticated

@@ -1,5 +1,7 @@
 package tech.beshu.ror.unit.acl.factory
 
+import java.time.Clock
+
 import cats.data.NonEmptyList
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
@@ -8,10 +10,16 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCre
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.factory.RorAclFactory
+import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.mocks.MockHttpClientsFactory
 
 class RorAclFactoryTests extends WordSpec with Inside {
 
-  private val factory = new RorAclFactory()
+  private val factory = {
+    implicit val clock: Clock = Clock.systemUTC()
+    implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    new RorAclFactory
+  }
 
   "A RorAclFactory" should {
     "return unparsable content error" when {
@@ -26,7 +34,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |     - name1: "CONTAINER ADMIN"
             |    type: allow
           """.stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $yaml")))))
       }
     }
@@ -45,7 +53,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |  proxy_auth_configs:
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(DefinitionsCreationError(Message("Proxy auth definitions declared, but no definition found")))))
       }
       "the section contains proxies with the same names" in {
@@ -68,7 +76,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(DefinitionsCreationError(Message("Proxy auth definitions must have unique names. Duplicates: proxy1")))))
       }
       "proxy definition has no name" in {
@@ -88,7 +96,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    user_id_header: "X-Auth-Token2"
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(DefinitionsCreationError(MalformedValue(
           """desc: proxy1
             |user_id_header: X-Auth-Token2
@@ -111,7 +119,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |  - name: "proxy1"
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(DefinitionsCreationError(MalformedValue("name: proxy1\n")))))
       }
     }
@@ -130,7 +138,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"No access_control_rules section found")))))
       }
       "there is `access_control_rules` section defined, but without any block" in {
@@ -149,7 +157,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"access_control_rules defined, but no block found")))))
       }
       "two blocks has the same names" in {
@@ -167,7 +175,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: test_block")))))
       }
       "block has no name" in {
@@ -181,7 +189,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(MalformedValue(
           """type: allow
             |auth_key: admin:container
@@ -200,7 +208,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown")))))
       }
       "block has unknown verbosity" in {
@@ -215,7 +223,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown verbosity value: unknown")))))
       }
     }
@@ -231,7 +239,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    type: allow
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(RulesLevelCreationError(Message("No rules defined in block")))))
       }
       "block has unknown rules" in {
@@ -246,7 +254,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |    unknown_rule2: value1
             |
             |""".stripMargin
-        val acl = factory.createAclFrom(yaml)
+        val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(RulesLevelCreationError(Message("Unknown rules: unknown_rule1,unknown_rule2")))))
       }
     }
@@ -269,7 +277,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
           |
           |""".stripMargin
 
-      inside(factory.createAclFrom(yaml)) { case Right(acl: SequentialAcl) =>
+      inside(factory.createAclFrom(yaml, MockHttpClientsFactory)) { case Right(acl: SequentialAcl) =>
         val firstBlock = acl.blocks.head
         firstBlock.name should be(Block.Name("test_block1"))
         firstBlock.policy should be(Block.Policy.Forbid)

@@ -108,6 +108,16 @@ object CirceOps {
       }
     }
 
+    def mapError(newErrorCreator: Reason => AclCreationError): Decoder[A] =
+      Decoder.instance { c =>
+        decoder(c).left.map { df =>
+          df.aclCreationError.map(e => newErrorCreator(e.reason)) match {
+            case Some(newError) => df.withMessage(AclCreationErrorCoders.stringify(newError))
+            case None => df
+          }
+        }
+      }
+
     def emapE[B](f: A => Either[AclCreationError, B]): Decoder[B] =
       decoder.emap { a => f(a).left.map(AclCreationErrorCoders.stringify) }
   }

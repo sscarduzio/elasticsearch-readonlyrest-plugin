@@ -34,18 +34,14 @@ import tech.beshu.ror.commons.Constants;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RRMetadataResponse extends ActionResponse implements ToXContentObject {
 
   private BlockContext blockContext;
-  private Throwable throwable;
 
   public RRMetadataResponse(BlockContext blockContext) {
     this.blockContext = blockContext;
-  }
-
-  public RRMetadataResponse(Throwable t) {
-    this.throwable = t;
   }
 
   @Override
@@ -67,11 +63,21 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
 
     blockContext.loggedUser().foreach(u -> {
       sourceMap.put(Constants.HEADER_USER_ROR, u.id().value());
-      // todo: fixme where user will have groups implemented
-      //sourceMap.put(Constants.HEADER_GROUP_CURRENT, u.getCurrentGroup().orElse(null));
-      //sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, u.getAvailableGroups());
       return null;
     });
+
+    blockContext.currentGroup().foreach(g -> {
+      sourceMap.put(Constants.HEADER_GROUP_CURRENT, g.value());
+      return null;
+    });
+
+    if(!blockContext.availableGroups().isEmpty()) {
+      String availableGroupsString = JavaConverters$.MODULE$.setAsJavaSet(blockContext.availableGroups())
+          .stream()
+          .map(aDomain.Group::value)
+          .collect(Collectors.joining(","));
+      sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, availableGroupsString);
+    }
 
     String hiddenAppsStr = headers
         .stream()

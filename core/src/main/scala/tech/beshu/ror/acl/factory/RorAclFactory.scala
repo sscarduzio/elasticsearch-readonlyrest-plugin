@@ -19,36 +19,34 @@ import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaExt._
-import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.acl.utils.UuidProvider
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 
 import scala.language.implicitConversions
 
-class RorAclFactory extends Logging {
+class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
+  extends Logging {
 
-  implicit val clock: Clock = Clock.systemUTC() // todo:
-  implicit val uuidProvider: UuidProvider = JavaUuidProvider // todo:
-  private val httpClientFactory: HttpClientFactory = ??? // todo: + closing
-
-  def createAclFrom(settingsYamlString: String): Either[NonEmptyList[AclCreationError], Acl] = {
+  def createAclFrom(settingsYamlString: String,
+                    httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], Acl] = {
     parser.parse(settingsYamlString) match {
       case Right(json) =>
-        createFrom(json)
+        createFrom(json, httpClientFactory)
           .toEither
           .left.map { failures =>
-            failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString"))))
-          }
+          failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString"))))
+        }
       case Left(_) =>
         Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
     }
   }
 
-  private def createFrom(settingsJson: Json) = {
+  private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
     val rorSectionName = "readonlyrest"
     val decoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
       c.downField(rorSectionName).success match {
         case Some(rorCursor) =>
-         aclDecoder.apply(rorCursor)
+          aclDecoder(httpClientFactory).apply(rorCursor)
         case None =>
           val failure = DecodingFailureOps.fromError(ReadonlyrestSettingsCreationError(Message(s"No $rorSectionName section found")))
           AccumulatingDecoder
@@ -90,7 +88,7 @@ class RorAclFactory extends Logging {
 
   private def decodeRuleInCursorContext(name: String, definitions: Definitions): State[ACursor, Option[Decoder.Result[Rule]]] =
     State(cursor => {
-      if(!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
+      if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
         ruleDecoderBy(Rule.Name(name), definitions) match {
           case Some(decoder) =>
@@ -143,37 +141,38 @@ class RorAclFactory extends Logging {
   }
 
 
-  private implicit val aclDecoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
-    val decoder = for {
-      authProxies <- ProxyAuthDefinitionsDecoder.proxyAuthDefinitionsDecoder
-      users <- UsersDefinitionsDecoder.usersDefinitionsDecoder(authProxies)
-      authenticationServices <- ExternalAuthenticationServicesDecoder.externalAuthenticationServicesDefinitionsDecoder(httpClientFactory)
-      acl <- {
-        implicit val _ = blockDecoder(Definitions(authProxies, users, authenticationServices))
-        DecoderHelpers
-          .decodeFieldList[Block](Attributes.acl)
-          .emapE {
-            case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
-            case FieldListValue(blocks) =>
-              NonEmptyList.fromList(blocks) match {
-                case None => Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
-                case Some(neBlocks) =>
-                  neBlocks.map(_.name).toList.findDuplicates match {
-                    case Nil => Right(neBlocks)
-                    case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
-                  }
-              }
-          }
-          .map { blocks =>
-            blocks.map { block =>
-              logger.info("ADDING BLOCK:\t" + block.show)
+  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AccumulatingDecoder[Acl] =
+    AccumulatingDecoder.instance { c =>
+      val decoder = for {
+        authProxies <- ProxyAuthDefinitionsDecoder.proxyAuthDefinitionsDecoder
+        users <- UsersDefinitionsDecoder.usersDefinitionsDecoder(authProxies)
+        authenticationServices <- ExternalAuthenticationServicesDecoder.externalAuthenticationServicesDefinitionsDecoder(httpClientFactory)
+        acl <- {
+          implicit val _ = blockDecoder(Definitions(authProxies, users, authenticationServices))
+          DecoderHelpers
+            .decodeFieldList[Block](Attributes.acl)
+            .emapE {
+              case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
+              case FieldListValue(blocks) =>
+                NonEmptyList.fromList(blocks) match {
+                  case None => Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
+                  case Some(neBlocks) =>
+                    neBlocks.map(_.name).toList.findDuplicates match {
+                      case Nil => Right(neBlocks)
+                      case duplicates => Left(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
+                    }
+                }
             }
-            new SequentialAcl(blocks): Acl
-          }
-      }
-    } yield acl
-    decoder.accumulating.apply(c)
-  }
+            .map { blocks =>
+              blocks.map { block =>
+                logger.info("ADDING BLOCK:\t" + block.show)
+              }
+              new SequentialAcl(blocks): Acl
+            }
+        }
+      } yield acl
+      decoder.accumulating.apply(c)
+    }
 }
 
 object RorAclFactory {
@@ -181,7 +180,6 @@ object RorAclFactory {
   sealed trait AclCreationError {
     def reason: Reason
   }
-
   object AclCreationError {
     final case class UnparsableYamlContent(reason: Reason) extends AclCreationError
     final case class ReadonlyrestSettingsCreationError(reason: Reason) extends AclCreationError
@@ -193,14 +191,16 @@ object RorAclFactory {
     sealed trait Reason
     object Reason {
       final case class Message(value: String) extends Reason
-      final case class MalformedValue private (value: String) extends Reason
+      final case class MalformedValue private(value: String) extends Reason
       object MalformedValue {
         def apply(json: Json): MalformedValue = from(json)
+
         def from(json: Json): MalformedValue = MalformedValue {
           io.circe.yaml.printer.print(json)
         }
       }
     }
+
   }
 
   private object Attributes {
@@ -211,5 +211,7 @@ object RorAclFactory {
       val policy = "type"
       val verbosity = "verbosity"
     }
+
   }
+
 }

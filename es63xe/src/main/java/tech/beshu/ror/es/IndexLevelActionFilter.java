@@ -45,6 +45,8 @@ import tech.beshu.ror.acl.Acl;
 import tech.beshu.ror.acl.AclHandler;
 import tech.beshu.ror.acl.ResponseWriter;
 import tech.beshu.ror.acl.blocks.BlockContext;
+import tech.beshu.ror.acl.factory.AsyncHttpClientsFactory;
+import tech.beshu.ror.acl.factory.HttpClientsFactory;
 import tech.beshu.ror.acl.factory.RorAclFactory;
 import tech.beshu.ror.acl.factory.RorAclFactoryJavaHelper$;
 import tech.beshu.ror.acl.request.EsRequestContext;
@@ -72,7 +74,6 @@ import java.util.concurrent.atomic.AtomicReference;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
-  private final RorAclFactory aclFactory = new RorAclFactory();
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
       ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) throws IOException {
@@ -97,7 +98,8 @@ import java.util.concurrent.atomic.AtomicReference;
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        Acl newAcl = RorAclFactoryJavaHelper$.MODULE$.reload(aclFactory, newContext.getSettings().getRaw().yaml());
+        HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down afer reload
+        Acl newAcl = RorAclFactoryJavaHelper$.MODULE$.reload(httpClientsFactory, newContext.getSettings().getRaw().yaml());
         acl.set(Optional.of(newAcl));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }

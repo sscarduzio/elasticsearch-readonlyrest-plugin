@@ -43,6 +43,7 @@ object ExternalAuthenticationRuleDecoder {
         } yield service: ExternalAuthenticationService
       }
       .map(service => new ExternalAuthenticationRule(Settings(service)))
+      .mapError(RulesLevelCreationError.apply)
   }
 
   private def findAuthenticationService(authenticationServices: Set[ExternalAuthenticationService],

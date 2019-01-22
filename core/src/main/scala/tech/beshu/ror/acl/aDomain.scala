@@ -19,7 +19,7 @@ object aDomain {
     }
   }
 
-  final case class Group(value: String) extends AnyVal
+  final case class Group(value: String)
 
   final case class Header(name: Header.Name, value: String)
   object Header {

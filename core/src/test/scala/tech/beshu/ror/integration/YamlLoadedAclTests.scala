@@ -1,19 +1,26 @@
 package tech.beshu.ror.integration
 
+import java.time.Clock
+
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Inside, WordSpec}
 import org.scalatest.Matchers._
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
 import tech.beshu.ror.acl.factory.RorAclFactory
 import tech.beshu.ror.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
 
 class YamlLoadedAclTests extends WordSpec with MockFactory with Inside {
 
-  private val factory = new RorAclFactory
+  private val factory = {
+    implicit val clock: Clock = Clock.systemUTC()
+    implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    new RorAclFactory
+  }
   private val acl: Acl = factory.createAclFrom(
     """
       |readonlyrest:
@@ -27,7 +34,8 @@ class YamlLoadedAclTests extends WordSpec with MockFactory with Inside {
       |  - name: "User 1"
       |    type: allow
       |    auth_key: user1:dev
-    """.stripMargin
+    """.stripMargin,
+    MockHttpClientsFactory
   ) match {
     case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
     case Right(createdAcl) => createdAcl
