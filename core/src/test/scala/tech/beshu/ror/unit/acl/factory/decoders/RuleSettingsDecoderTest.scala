@@ -18,15 +18,15 @@ import scala.reflect.ClassTag
 abstract class RuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
   this: Suite =>
 
-  protected def httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory
-
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     new RorAclFactory
   }
 
-  def assertDecodingSuccess(yaml: String, assertion: T => Unit): Unit = {
+  def assertDecodingSuccess(yaml: String,
+                            assertion: T => Unit,
+                            httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
     inside(factory.createAclFrom(yaml, httpClientsFactory)) { case Right(acl: SequentialAcl) =>
       val rule = acl.blocks.head.rules.head
       rule shouldBe a[T]
@@ -34,7 +34,9 @@ abstract class RuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec wi
     }
   }
 
-  def assertDecodingFailure(yaml: String, assertion: NonEmptyList[AclCreationError] => Unit): Unit = {
+  def assertDecodingFailure(yaml: String,
+                            assertion: NonEmptyList[AclCreationError] => Unit,
+                            httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
     inside(factory.createAclFrom(yaml, httpClientsFactory)) { case Left(error) =>
       assertion(error)
     }

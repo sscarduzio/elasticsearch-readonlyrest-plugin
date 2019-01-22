@@ -73,6 +73,7 @@ object ruleDecoders {
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
+      case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(definitions.authenticationServices))
       case FieldsRule.name => Some(FieldsRuleDecoder)
       case FilterRule.name => Some(FilterRuleDecoder)
       case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))

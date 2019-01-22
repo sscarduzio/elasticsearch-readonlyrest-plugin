@@ -1,6 +1,7 @@
 package tech.beshu.ror.acl.factory.decoders
 
 import java.net.URI
+import java.util.concurrent.TimeUnit
 
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
@@ -18,14 +19,8 @@ import scala.util.{Failure, Success, Try}
 object common {
 
   implicit val positiveFiniteDurationDecoder: Decoder[FiniteDuration Refined Positive] =
-    Decoder
-      .decodeString
-      .emapE { value =>
-        Try(Duration(value)) match {
-          case Success(v: FiniteDuration) => Right(v)
-          case Success(_) | Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to duration")))
-        }
-      }
+    finiteDurationStringDecoder
+      .or(finiteDurationInSecondsDecoder)
       .emapE { value =>
         refineV[Positive](value)
           .left
@@ -41,4 +36,17 @@ object common {
           case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
         }
       }
+
+  private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
+    DecoderHelpers
+      .decodeStringLike
+      .emapE { value =>
+        Try(Duration(value)) match {
+          case Success(v: FiniteDuration) => Right(v)
+          case Success(_) | Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to duration")))
+        }
+      }
+
+  private lazy val finiteDurationInSecondsDecoder: Decoder[FiniteDuration] =
+    Decoder.decodeLong.map(FiniteDuration(_, TimeUnit.SECONDS))
 }

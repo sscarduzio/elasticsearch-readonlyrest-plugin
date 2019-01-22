@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 import tech.beshu.ror.acl.aDomain.{Header, User}
 import tech.beshu.ror.acl.orders._
 
-class ProxyAuthRuleSettingsRule extends RuleSettingsDecoderTest[ProxyAuthRule] {
+class ProxyAuthRuleSettingsTests extends RuleSettingsDecoderTest[ProxyAuthRule] {
 
   "A ProxyAuthRule" should {
     "be able to be loaded from config" when {

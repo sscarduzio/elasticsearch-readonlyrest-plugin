@@ -20,7 +20,8 @@ import scala.concurrent.duration.FiniteDuration
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: ExternalAuthenticationServicesDefinitions)
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule](
-    simpleExternalAuthenticationRuleDecoder(authenticationServices) orElse complexExternalAuthenticationRuleDecoder(authenticationServices)
+    simpleExternalAuthenticationRuleDecoder(authenticationServices)
+      .orElse(complexExternalAuthenticationRuleDecoder(authenticationServices))
   )
 
 object ExternalAuthenticationRuleDecoder {
@@ -54,5 +55,3 @@ object ExternalAuthenticationRuleDecoder {
     }
   }
 }
-
-//external_authentication
