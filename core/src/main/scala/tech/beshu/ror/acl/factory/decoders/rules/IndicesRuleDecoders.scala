@@ -6,7 +6,7 @@ import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.rules.IndicesRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.IndicesRuleDecodersHelper._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.aDomain.IndexName

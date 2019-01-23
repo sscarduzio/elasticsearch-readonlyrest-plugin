@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule.Settings
-import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.XForwardedForRuleDecoderHelper.isInetAddressOrBlock
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.aDomain.Address

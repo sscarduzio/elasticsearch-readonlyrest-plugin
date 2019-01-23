@@ -4,7 +4,7 @@ import eu.timepit.refined._
 import eu.timepit.refined.numeric.Positive
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.refined._
 
@@ -65,12 +65,7 @@ class SessionMaxIdleRuleSettingsTests extends RuleSettingsDecoderTest[SessionMax
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - session_max_idle: null
-                |""".stripMargin
-            )))
+            errors.head should be (RulesLevelCreationError(Message("Cannot convert value 'null' to duration in: session_max_idle: null")))
           }
         )
       }
@@ -88,7 +83,7 @@ class SessionMaxIdleRuleSettingsTests extends RuleSettingsDecoderTest[SessionMax
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Cannot convert value 'unknown format' to duration")))
+            errors.head should be (RulesLevelCreationError(Message("Cannot convert value '\"unknown format\"' to duration in: session_max_idle: unknown format")))
           }
         )
       }
@@ -106,6 +101,7 @@ class SessionMaxIdleRuleSettingsTests extends RuleSettingsDecoderTest[SessionMax
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
+            // todo: I think we should add context info to the message
             errors.head should be (RulesLevelCreationError(Message("Only positive durations allowed. Found: -10 hours")))
           }
         )

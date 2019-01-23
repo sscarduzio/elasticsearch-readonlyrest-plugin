@@ -14,7 +14,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError._
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder, ProxyAuthDefinitionsDecoder, UsersDefinitionsDecoder}
+import tech.beshu.ror.acl.factory.decoders.definitions.{DefinitionsPack, ExternalAuthenticationServicesDecoder, ProxyAuthDefinitionsDecoder, UsersDefinitionsDecoder}
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
@@ -57,7 +57,7 @@ class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
     decoder(HCursor.fromJson(settingsJson))
   }
 
-  private implicit def rulesNelDecoder(definitions: Definitions): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
+  private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
     val (cursor, result) = c.keys.toList.flatten
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
@@ -86,7 +86,7 @@ class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
     }
   }
 
-  private def decodeRuleInCursorContext(name: String, definitions: Definitions): State[ACursor, Option[Decoder.Result[Rule]]] =
+  private def decodeRuleInCursorContext(name: String, definitions: DefinitionsPack): State[ACursor, Option[Decoder.Result[Rule]]] =
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
@@ -106,7 +106,7 @@ class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
       }
     })
 
-  private implicit def blockDecoder(definitions: Definitions): Decoder[Block] = {
+  private implicit def blockDecoder(definitions: DefinitionsPack): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emapE {
       case "allow" => Right(Block.Policy.Allow)
@@ -144,13 +144,13 @@ class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
   private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AccumulatingDecoder[Acl] =
     AccumulatingDecoder.instance { c =>
       val decoder = for {
-        authProxies <- ProxyAuthDefinitionsDecoder.proxyAuthDefinitionsDecoder
-        users <- UsersDefinitionsDecoder.usersDefinitionsDecoder(authProxies)
-        authenticationServices <- ExternalAuthenticationServicesDecoder.externalAuthenticationServicesDefinitionsDecoder(httpClientFactory)
+        authProxies <- new ProxyAuthDefinitionsDecoder
+        users <- new UsersDefinitionsDecoder(authProxies)
+        authenticationServices <- new ExternalAuthenticationServicesDecoder(httpClientFactory)
         acl <- {
-          implicit val _ = blockDecoder(Definitions(authProxies, users, authenticationServices))
+          implicit val _ = blockDecoder(DefinitionsPack(authProxies, users, authenticationServices))
           DecoderHelpers
-            .decodeFieldList[Block](Attributes.acl)
+            .decodeFieldList[Block](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {
               case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
               case FieldListValue(blocks) =>
@@ -183,7 +183,7 @@ object RorAclFactory {
   object AclCreationError {
     final case class UnparsableYamlContent(reason: Reason) extends AclCreationError
     final case class ReadonlyrestSettingsCreationError(reason: Reason) extends AclCreationError
-    final case class DefinitionsCreationError(reason: Reason) extends AclCreationError
+    final case class DefinitionsLevelCreationError(reason: Reason) extends AclCreationError
     final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
     final case class RulesLevelCreationError(reason: Reason) extends AclCreationError
     final case class ValueLevelCreationError(reason: Reason) extends AclCreationError

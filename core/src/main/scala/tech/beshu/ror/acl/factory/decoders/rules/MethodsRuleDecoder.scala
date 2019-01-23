@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.MethodsRule
 import tech.beshu.ror.acl.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.MethodsRuleDecoderHelper.methodDecoder
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
 import tech.beshu.ror.acl.orders._

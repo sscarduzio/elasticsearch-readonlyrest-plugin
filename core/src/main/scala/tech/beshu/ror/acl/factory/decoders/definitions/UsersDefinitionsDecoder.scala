@@ -4,43 +4,30 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.{ACursor, Decoder, HCursor}
 import tech.beshu.ror.acl.aDomain.{Group, User}
-import tech.beshu.ror.acl.blocks.definitions.{ProxyAuthDefinitions, UserDef, UsersDefinitions}
+import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsCreationError
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.authenticationRuleDecoderBy
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.utils.ScalaExt._
+
+class UsersDefinitionsDecoder(authProxyDefinitions: Definitions[ProxyAuth])
+  extends DefinitionsBaseDecoder[UserDef]("users")(
+    UsersDefinitionsDecoder.userDefDecoder(authProxyDefinitions)
+  )
 
 object UsersDefinitionsDecoder {
 
-  implicit def usersDefinitionsDecoder(implicit authProxyDefinitions: ProxyAuthDefinitions): Decoder[UsersDefinitions] = {
-    DecoderHelpers
-      .decodeFieldList[UserDef]("users")
-      .emapE {
-        case NoField => Right(UsersDefinitions(Set.empty[UserDef]))
-        case FieldListValue(Nil) => Left(DefinitionsCreationError(Message(s"Users definitions section declared, but no definition found")))
-        case FieldListValue(list) =>
-          list.map(_.username).findDuplicates match {
-            case Nil =>
-              Right(UsersDefinitions(list.toSet))
-            case duplicates =>
-              Left(DefinitionsCreationError(Message(s"User definitions must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
-          }
-      }
-  }
-
-  private implicit def userDefDecoder(implicit authProxyDefinitions: ProxyAuthDefinitions): Decoder[UserDef] = {
+  private implicit def userDefDecoder(implicit authProxyDefinitions: Definitions[ProxyAuth]): Decoder[UserDef] = {
     implicit val usernameDecoder: Decoder[User.Id] = DecoderHelpers.decodeStringLike.map(User.Id.apply)
     implicit val groupDecoder: Decoder[Group] = DecoderHelpers.decodeStringLike.map(Group.apply)
     implicit val groupsDecoder: Decoder[NonEmptySet[Group]] =
       DecoderHelpers
         .decodeStringLikeOrNonEmptySet[Group]
-        .withError(DefinitionsCreationError(Message("Non empty list of groups are required")))
+        .withError(DefinitionsLevelCreationError(Message("Non empty list of groups are required")))
     Decoder
       .instance { c =>
         val usernameKey = "username"
@@ -51,28 +38,28 @@ object UsersDefinitionsDecoder {
           rule <- tryDecodeAuthRule(removeKeysFromCursor(c, Set(usernameKey, groupsKey)), username)
         } yield UserDef(username, groups, rule)
       }
-      .withError(DefinitionsCreationError(Message("User definition malformed")))
+      .withError(DefinitionsLevelCreationError(Message("User definition malformed")))
   }
 
   private def tryDecodeAuthRule(adjustedCursor: ACursor, username: User.Id)
-                               (implicit authProxyDefinitions: ProxyAuthDefinitions) = {
+                               (implicit authProxyDefinitions: Definitions[ProxyAuth]) = {
     adjustedCursor.keys.map(_.toList) match {
       case Some(key :: Nil) =>
         val decoder = authenticationRuleDecoderBy(Rule.Name(key), authProxyDefinitions) match {
           case Some(authRuleDecoder) => authRuleDecoder
           case None => DecoderHelpers.failed[AuthenticationRule](
-            DefinitionsCreationError(Message(s"Rule $key is not authentication rule"))
+            DefinitionsLevelCreationError(Message(s"Rule $key is not authentication rule"))
           )
         }
         decoder.tryDecode(adjustedCursor.downField(key))
-          .left.map(_.overrideDefaultErrorWith(DefinitionsCreationError(Message(s"Cannot parse '$key' rule declared in user '${username.show}' definition"))))
+          .left.map(_.overrideDefaultErrorWith(DefinitionsLevelCreationError(Message(s"Cannot parse '$key' rule declared in user '${username.show}' definition"))))
       case Some(keys) =>
         Left(DecodingFailureOps.fromError(
-          DefinitionsCreationError(Message(s"Only one authentication should be defined for user ['${username.show}']. Found ${keys.mkString(", ")}"))
+          DefinitionsLevelCreationError(Message(s"Only one authentication should be defined for user ['${username.show}']. Found ${keys.mkString(", ")}"))
         ))
       case None | Some(Nil) =>
         Left(DecodingFailureOps.fromError(
-          DefinitionsCreationError(Message(s"No authentication method defined for user ['${username.show}']"))
+          DefinitionsLevelCreationError(Message(s"No authentication method defined for user ['${username.show}']"))
         ))
     }
   }

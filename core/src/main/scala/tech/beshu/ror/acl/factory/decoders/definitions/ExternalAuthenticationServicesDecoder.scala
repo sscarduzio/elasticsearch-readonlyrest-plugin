@@ -5,19 +5,19 @@ import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, ExternalAuthenticationService, ExternalAuthenticationServicesDefinitions, HttpExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, ExternalAuthenticationService, HttpExternalAuthenticationService}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.Config
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.utils.ScalaExt._
-import tech.beshu.ror.acl.show.logs._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
+
+class ExternalAuthenticationServicesDecoder(httpClientFactory: HttpClientsFactory)
+  extends DefinitionsBaseDecoder[ExternalAuthenticationService]("external_authentication_service_configs") (
+    ExternalAuthenticationServicesDecoder.externalAuthenticationServiceDecoder(httpClientFactory)
+  )
 
 object ExternalAuthenticationServicesDecoder {
 
@@ -36,37 +36,20 @@ object ExternalAuthenticationServicesDecoder {
           validate <- c.downField("validate").as[Option[Boolean]]
         } yield {
           val httpClient: HttpExternalAuthenticationService.HttpClient =
-            httpClientFactory.create(Config(validate.getOrElse(consts.defaultValidate)))
+            httpClientFactory.create(Config(validate.getOrElse(defaults.validate)))
           val externalAuthService: ExternalAuthenticationService =
-            new HttpExternalAuthenticationService(name, url, httpSuccessCode.getOrElse(consts.defaultSuccessHttpCode), httpClient)
+            new HttpExternalAuthenticationService(name, url, httpSuccessCode.getOrElse(defaults.successHttpCode), httpClient)
           cacheTtl.foldLeft(externalAuthService) {
             case (cacheableAuthService, ttl) => new CachingExternalAuthenticationService(cacheableAuthService, ttl)
           }
         }
       }
-      .mapError(DefinitionsCreationError.apply)
+      .mapError(DefinitionsLevelCreationError.apply)
   }
 
-  implicit def externalAuthenticationServicesDefinitionsDecoder(httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthenticationServicesDefinitions] = {
-    implicit val _ = httpClientFactory
-    DecoderHelpers
-      .decodeFieldList[ExternalAuthenticationService]("external_authentication_service_configs")
-      .emapE {
-        case NoField => Right(ExternalAuthenticationServicesDefinitions(Set.empty[ExternalAuthenticationService]))
-        case FieldListValue(Nil) => Left(DefinitionsCreationError(Message(s"External authentication services definitions declared, but no definition found")))
-        case FieldListValue(list) =>
-          list.map(_.name).findDuplicates match {
-            case Nil =>
-              Right(ExternalAuthenticationServicesDefinitions(list.toSet))
-            case duplicates =>
-              Left(DefinitionsCreationError(Message(s"External authentication services definitions must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
-          }
-      }
-  }
-
-  private object consts {
-    val defaultSuccessHttpCode = 204
-    val defaultValidate = true
+  private object defaults {
+    val successHttpCode = 204
+    val validate = true
   }
 
 }

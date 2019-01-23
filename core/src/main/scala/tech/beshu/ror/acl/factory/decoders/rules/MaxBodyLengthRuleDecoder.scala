@@ -6,7 +6,7 @@ import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule
 import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule.Settings
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
 
 object MaxBodyLengthRuleDecoder extends RuleDecoderWithoutAssociatedFields(

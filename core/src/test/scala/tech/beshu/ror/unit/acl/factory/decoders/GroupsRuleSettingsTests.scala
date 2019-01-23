@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{DefinitionsCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.acl.orders._
 
 class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with Inside {
@@ -194,7 +194,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("User definition malformed")))
+            errors.head should be(DefinitionsLevelCreationError(Message("User definition malformed")))
           }
         )
       }
@@ -216,7 +216,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("User definition malformed")))
+            errors.head should be(DefinitionsLevelCreationError(Message("User definition malformed")))
           }
         )
       }
@@ -239,7 +239,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("Non empty list of groups are required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups are required")))
           }
         )
       }
@@ -262,7 +262,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("Non empty list of groups are required")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of groups are required")))
           }
         )
       }
@@ -286,7 +286,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("Only one authentication should be defined for user ['cartman']. Found auth_key, auth_key_sha1")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for user ['cartman']. Found auth_key, auth_key_sha1")))
           }
         )
       }
@@ -310,7 +310,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("Cannot parse 'auth_key' rule declared in user 'cartman' definition")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse 'auth_key' rule declared in user 'cartman' definition")))
           }
         )
       }
@@ -337,7 +337,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("User definitions must have unique names. Duplicates: cartman")))
+            errors.head should be(DefinitionsLevelCreationError(Message("User definitions must have unique names. Duplicates: cartman")))
           }
         )
       }
@@ -361,7 +361,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsCreationError(Message("Only one authentication should be defined for user ['cartman']. Found unknown_field, auth_key")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for user ['cartman']. Found unknown_field, auth_key")))
           }
         )
       }

@@ -1,37 +1,24 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
-import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.{ProxyAuth, ProxyAuthDefinitions}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.blocks.definitions.ProxyAuth
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.utils.ScalaExt._
-import tech.beshu.ror.acl.show.logs._
+
+class ProxyAuthDefinitionsDecoder extends DefinitionsBaseDecoder[ProxyAuth]("proxy_auth_configs")(
+  ProxyAuthDefinitionsDecoder.proxyAuthDecoder
+)
 
 object ProxyAuthDefinitionsDecoder {
 
   implicit val proxyAuthNameDecoder: Decoder[ProxyAuth.Name] = Decoder.decodeString.map(ProxyAuth.Name.apply)
 
-  implicit val proxyAuthDefinitionsDecoder: Decoder[ProxyAuthDefinitions] = {
+  private implicit val proxyAuthDecoder: Decoder[ProxyAuth] = {
     implicit val headerNameDecoder: Decoder[Header.Name] = Decoder.decodeString.map(Header.Name.apply)
-    implicit val proxyAuthDecoder: Decoder[ProxyAuth] = Decoder
+    Decoder
       .forProduct2("name", "user_id_header")(ProxyAuth.apply)
-      .withError(value => DefinitionsCreationError(MalformedValue(value)))
-    DecoderHelpers
-      .decodeFieldList[ProxyAuth]("proxy_auth_configs")
-      .emapE {
-        case NoField => Right(ProxyAuthDefinitions(Set.empty[ProxyAuth]))
-        case FieldListValue(Nil) => Left(DefinitionsCreationError(Message(s"Proxy auth definitions declared, but no definition found")))
-        case FieldListValue(list) =>
-          list.map(_.name).findDuplicates match {
-            case Nil =>
-              Right(ProxyAuthDefinitions(list.toSet))
-            case duplicates =>
-              Left(DefinitionsCreationError(Message(s"Proxy auth definitions must have unique names. Duplicates: ${duplicates.map(_.show).mkString(",")}")))
-          }
-      }
+      .withErrorFromJson(value => DefinitionsLevelCreationError(MalformedValue(value)))
   }
 }

@@ -12,9 +12,12 @@ object ScalaExt {
   implicit class ListOps[T](val list: List[T]) extends AnyVal {
 
     def findDuplicates: List[T] =
+      findDuplicates(identity)
+
+    def findDuplicates[S](provideComparatorOf: T => S): List[T] =
       list
-        .groupBy(identity)
-        .collect { case (x, List(_, _, _*)) => x }
+        .groupBy(provideComparatorOf)
+        .collect { case (_, List(fst, _, _*)) => fst }
         .toList
   }
 

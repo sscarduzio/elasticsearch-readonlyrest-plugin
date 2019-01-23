@@ -62,7 +62,7 @@ object orders {
   implicit val authKeyOrder: Order[AuthData] = Order.by(_.value)
   implicit val indexOrder: Order[IndexName] = Order.by(_.value)
   implicit val groupOrder: Order[Group] = Order.by(_.value)
-  implicit val userDefOrder: Order[UserDef] = Order.by(_.username.value)
+  implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
 }
 
 object show {

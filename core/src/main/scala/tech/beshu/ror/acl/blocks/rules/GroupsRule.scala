@@ -43,7 +43,7 @@ class GroupsRule(val settings: Settings)
                                                   resolvedGroups: NonEmptySet[Group]): Task[RuleResult] = {
     blockContext.loggedUser match {
       case Some(user) =>
-        NonEmptySet.fromSet(settings.usersDefinitions.filter(_.username === user.id)) match {
+        NonEmptySet.fromSet(settings.usersDefinitions.filter(_.id === user.id)) match {
           case None =>
             Task.now(Rejected)
           case Some(filteredUserDefinitions) =>

@@ -7,7 +7,7 @@ import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import io.circe.Decoder
+import io.circe.{Decoder, Json}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.ValueLevelCreationError
 import tech.beshu.ror.acl.refined._
@@ -48,5 +48,10 @@ object common {
       }
 
   private lazy val finiteDurationInSecondsDecoder: Decoder[FiniteDuration] =
-    Decoder.decodeLong.map(FiniteDuration(_, TimeUnit.SECONDS))
+    Decoder
+      .decodeLong
+      .map(FiniteDuration(_, TimeUnit.SECONDS))
+      .withErrorFromCursor { case (element, context) =>
+        ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration in: $context"))
+      }
 }

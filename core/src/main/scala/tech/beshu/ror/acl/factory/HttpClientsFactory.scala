@@ -25,6 +25,7 @@ object HttpClientsFactory {
   final case class Config(validate: Boolean)
 }
 
+// todo: remove synchronized, use more sophisticated lock mechanism
 class AsyncHttpClientsFactory extends HttpClientsFactory {
 
   private val existingClients = new CopyOnWriteArrayList[AsyncHttpClient]()

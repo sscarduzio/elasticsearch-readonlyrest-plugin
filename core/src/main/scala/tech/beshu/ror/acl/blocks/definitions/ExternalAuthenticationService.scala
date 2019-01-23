@@ -3,28 +3,39 @@ package tech.beshu.ror.acl.blocks.definitions
 import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 
+import cats.{Eq, Show}
 import cats.implicits._
-import cats.Eq
 import com.google.common.cache.{Cache, CacheBuilder}
 import com.google.common.hash.Hashing
-import monix.eval.Task
-import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService.Name
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 import com.softwaremill.sttp._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
+import monix.eval.Task
+import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService.Name
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthenticationService.HttpClient
+import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 
 import scala.concurrent.duration.FiniteDuration
 
-final case class ExternalAuthenticationServicesDefinitions(services: Set[ExternalAuthenticationService])
-
-trait ExternalAuthenticationService {
-  def name: Name
+trait ExternalAuthenticationService extends Item {
+  override type Id = Name
+  def id: Name
   def authenticate(credentials: BasicAuth): Task[Boolean]
+
+  override implicit def show: Show[Name] = Name.nameShow
+}
+object ExternalAuthenticationService {
+
+  final case class Name(value: String) extends AnyVal
+  object Name {
+    implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
+    implicit val nameShow: Show[Name] = Show.show(_.value)
+  }
 }
 
-class HttpExternalAuthenticationService(override val name: Name,
+class HttpExternalAuthenticationService(override val id: Name,
                                         uri: Uri,
                                         successStatusCode: Int,
                                         httpClient: HttpClient)
@@ -32,9 +43,13 @@ class HttpExternalAuthenticationService(override val name: Name,
 
   override def authenticate(credentials: BasicAuth): Task[Boolean] = {
     httpClient
-      .send(sttp.get(uri).header("Authorization", credentials.getBase64Value))
+      .send(sttp.get(uri).header(Header.Name.authorization.value, credentials.getBase64Value))
       .map(_.code === successStatusCode)
   }
+}
+
+object HttpExternalAuthenticationService {
+  type HttpClient = SttpBackend[Task, Nothing]
 }
 
 class CachingExternalAuthenticationService(underlying: ExternalAuthenticationService, ttl: FiniteDuration Refined Positive)
@@ -46,7 +61,7 @@ class CachingExternalAuthenticationService(underlying: ExternalAuthenticationSer
       .expireAfterWrite(ttl.value.toMillis, TimeUnit.MILLISECONDS)
       .build[String, String]
 
-  override val name: Name = underlying.name
+  override val id: Name = underlying.id
 
   override def authenticate(credentials: BasicAuth): Task[Boolean] = {
     Option(cache.getIfPresent(credentials.getUserName)) match {
@@ -68,18 +83,4 @@ class CachingExternalAuthenticationService(underlying: ExternalAuthenticationSer
   private def hashFrom(password: String) = {
     Hashing.sha256.hashString(password, Charset.defaultCharset).toString
   }
-}
-
-object HttpExternalAuthenticationService {
-  type HttpClient = SttpBackend[Task, Nothing]
-}
-
-object ExternalAuthenticationService {
-
-  final case class Name(value: String) extends AnyVal
-
-  object Name {
-    implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
-  }
-
 }

@@ -5,10 +5,10 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.{HostsRule, LocalHostsRule}
-import tech.beshu.ror.acl.factory.decoders.ruleDecoders.RuleDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.factory.decoders.rules.HostRulesDecodersHelper._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
 
 object HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boolean](
