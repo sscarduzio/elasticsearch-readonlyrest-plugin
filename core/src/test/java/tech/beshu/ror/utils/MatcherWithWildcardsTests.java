@@ -21,6 +21,7 @@ import com.google.common.collect.Sets;
 import org.junit.Test;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 
+import java.util.Collections;
 import java.util.Set;
 
 import static junit.framework.TestCase.assertFalse;
@@ -109,6 +110,12 @@ public class MatcherWithWildcardsTests {
     assertTrue(matchedMatchers.contains("a*"));
     assertTrue(matchedMatchers.contains("b*"));
     assertTrue(matchedMatchers.size() == 2);
+  }
+
+  @Test
+  public void testMatchingSpecialChar() {
+    MatcherWithWildcards m = new MatcherWithWildcards(Sets.newHashSet("á;_\\äå/*"));
+    assertTrue(m.filter(Collections.singleton("á;_\\äå/2.0")).size() == 1);
   }
 
 }
