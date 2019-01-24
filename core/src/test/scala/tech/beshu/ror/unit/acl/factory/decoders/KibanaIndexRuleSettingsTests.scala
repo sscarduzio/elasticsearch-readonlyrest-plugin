@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Malforme
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.IndexName
 
-class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRule] {
+class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {
 
   "A KibanaIndexRule" should {
     "be able to be loaded from config" when {

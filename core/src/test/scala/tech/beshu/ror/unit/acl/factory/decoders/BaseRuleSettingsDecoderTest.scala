@@ -15,7 +15,7 @@ import tech.beshu.ror.mocks.MockHttpClientsFactory
 import scala.reflect.ClassTag
 
 
-abstract class RuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
+abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
   this: Suite =>
 
   private val factory = {

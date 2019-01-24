@@ -41,7 +41,7 @@ import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
 import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
-import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
+import tech.beshu.ror.settings.rules.__old_GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
@@ -90,7 +90,7 @@ public class RulesSettingsCreatorsRegistry {
         ldapAuthorizationRuleSettingsCreator(blockSettings, ldapSettingsCollection)
     );
     creators.put(
-        GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME,
+        __old_GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME,
         groupsProviderAuthorizationRuleSettingsCreator(blockSettings, groupsProviderSettingsGroup)
     );
     creators.put(
@@ -167,8 +167,8 @@ public class RulesSettingsCreatorsRegistry {
   private Supplier<RuleSettings> groupsProviderAuthorizationRuleSettingsCreator(
       RawSettings blockSettings,
       UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection) {
-    return () -> GroupsProviderAuthorizationRuleSettings.from(
-        blockSettings.inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
+    return () -> __old_GroupsProviderAuthorizationRuleSettings.from(
+        blockSettings.inner(__old_GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
         userGroupsProviderSettingsCollection
     );
   }

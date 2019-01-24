@@ -10,8 +10,8 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{Malform
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 
-class ExternalAuthenticationSettingsTests
-  extends RuleSettingsDecoderTest[ExternalAuthenticationRule] with MockFactory {
+class ExternalAuthenticationRuleSettingsTests
+  extends BaseRuleSettingsDecoderTest[ExternalAuthenticationRule] with MockFactory {
 
   "An ExternalAuthenticationRule" should {
     "be able to be loaded from config" when {

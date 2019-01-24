@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 
-class KibanaAccessRuleSettingsTests extends RuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
+class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
 
   "A KibanaAccess" should {
     "be able to be loaded from config" when {

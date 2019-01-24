@@ -11,7 +11,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.orders._
 
-class LocalHostsRuleSettingsTests extends RuleSettingsDecoderTest[LocalHostsRule] {
+class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHostsRule] {
 
   "A LocalHostsRule" should {
     "be able to be loaded from config" when {

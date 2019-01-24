@@ -13,7 +13,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{Malform
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.acl.orders._
 
-class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with Inside {
+class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] with Inside {
 
   "A GroupsRule" should {
     "be able to be loaded from config" when {

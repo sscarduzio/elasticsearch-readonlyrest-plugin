@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{Malform
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
-class MethodsRuleSettingsTests extends RuleSettingsDecoderTest[MethodsRule] {
+class MethodsRuleSettingsTests extends BaseRuleSettingsDecoderTest[MethodsRule] {
 
   "A MethodsRule" should {
     "be able to be loaded from config" when {

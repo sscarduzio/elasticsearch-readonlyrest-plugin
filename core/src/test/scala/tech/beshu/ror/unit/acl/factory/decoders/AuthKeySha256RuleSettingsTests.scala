@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Malforme
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.AuthData
 
-class AuthKeySha256RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha256Rule] {
+class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha256Rule] {
 
   "An AuthKeySha256Rule" should {
     "be able to be loaded from config" when {

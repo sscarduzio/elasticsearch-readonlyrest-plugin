@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.aDomain.Header
 import tech.beshu.ror.acl.aDomain.Header.Name
 import tech.beshu.ror.acl.orders._
 
-class HeadersAndRuleSettingsTests extends RuleSettingsDecoderTest[HeadersAndRule] {
+class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAndRule] {
 
   "A HeadersAndRule" should {
     "be able to be loaded from config" when {

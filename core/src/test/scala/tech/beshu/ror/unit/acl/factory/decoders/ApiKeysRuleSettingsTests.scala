@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 import tech.beshu.ror.acl.aDomain.ApiKey
 import tech.beshu.ror.acl.orders._
 
-class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
+class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] {
 
   "An ApiKeysRule" should {
     "be able to be loaded from config" when {

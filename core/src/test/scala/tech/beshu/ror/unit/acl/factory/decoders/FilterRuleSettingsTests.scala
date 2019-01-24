@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.blocks.{Const, Variable}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 
-class FilterRuleSettingsTests extends RuleSettingsDecoderTest[FilterRule] {
+class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
 
   "A FilterRule" should {
     "be able to be loaded from config" when {

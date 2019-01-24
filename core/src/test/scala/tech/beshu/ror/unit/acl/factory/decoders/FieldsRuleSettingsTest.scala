@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.aDomain.DocumentField
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.orders.documentFieldOrder
 
-class FieldsRuleSettingsTest extends RuleSettingsDecoderTest[FieldsRule] {
+class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
 
   "A FieldsRule" should {
     "be able to be loaded from config" when {

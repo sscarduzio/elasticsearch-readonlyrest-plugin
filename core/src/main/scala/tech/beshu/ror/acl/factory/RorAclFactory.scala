@@ -14,7 +14,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError._
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.acl.factory.decoders.definitions.{DefinitionsPack, ExternalAuthenticationServicesDecoder, ProxyAuthDefinitionsDecoder, UsersDefinitionsDecoder}
+import tech.beshu.ror.acl.factory.decoders.definitions._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
@@ -145,10 +145,11 @@ class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
     AccumulatingDecoder.instance { c =>
       val decoder = for {
         authProxies <- new ProxyAuthDefinitionsDecoder
-        users <- new UsersDefinitionsDecoder(authProxies)
+        userDefs <- new UsersDefinitionsDecoder(authProxies)
         authenticationServices <- new ExternalAuthenticationServicesDecoder(httpClientFactory)
+        authorizationServices <- new ExternalAuthorizationServicesDecoder(httpClientFactory)
         acl <- {
-          implicit val _ = blockDecoder(DefinitionsPack(authProxies, users, authenticationServices))
+          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices))
           DecoderHelpers
             .decodeFieldList[Block](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {

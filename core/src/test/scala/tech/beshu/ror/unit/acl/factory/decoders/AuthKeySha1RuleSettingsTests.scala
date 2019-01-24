@@ -6,7 +6,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Malforme
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.AuthData
 
-class AuthKeySha1RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha1Rule] {
+class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha1Rule] {
 
   "An AuthKeySha1Rule" should {
     "be able to be loaded from config" when {

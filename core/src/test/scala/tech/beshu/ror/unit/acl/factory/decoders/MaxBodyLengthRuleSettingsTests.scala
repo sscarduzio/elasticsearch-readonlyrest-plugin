@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 
-class MaxBodyLengthRuleSettingsTests extends RuleSettingsDecoderTest[MaxBodyLengthRule] {
+class MaxBodyLengthRuleSettingsTests extends BaseRuleSettingsDecoderTest[MaxBodyLengthRule] {
 
   "A MaxBodyLengthRule" should {
     "be able to be loaded from config" when {

@@ -28,7 +28,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 
-public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, CacheSettings {
+public class __old_GroupsProviderAuthorizationRuleSettings implements RuleSettings, CacheSettings {
 
   public static final String ATTRIBUTE_NAME = "groups_provider_authorization";
 
@@ -44,7 +44,7 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, Ca
   private final UserGroupsProviderSettings userGroupsProviderSettings;
   private final Set<String> users;
 
-  private GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Set<String> users, Duration cacheTtl) {
+  private __old_GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Set<String> users, Duration cacheTtl) {
     this.groups = groups;
     this.users = users;
     this.cacheTtl = cacheTtl;
@@ -67,12 +67,12 @@ public class GroupsProviderAuthorizationRuleSettings implements RuleSettings, Ca
   }
 
   @SuppressWarnings("unchecked")
-  public static GroupsProviderAuthorizationRuleSettings from(RawSettings settings,
+  public static __old_GroupsProviderAuthorizationRuleSettings from(RawSettings settings,
       UserGroupsProviderSettingsCollection groupsProviderSettingsCollection) {
     String providerName = settings.stringReq(GROUPS_PROVIDER_NAME);
     Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     Set<String> users = (Set<String>) settings.notEmptySetOpt(USERS).orElse(Sets.newHashSet("*"));
-    return new GroupsProviderAuthorizationRuleSettings(
+    return new __old_GroupsProviderAuthorizationRuleSettings(
         groupsProviderSettingsCollection.get(providerName),
         groups,
         users,

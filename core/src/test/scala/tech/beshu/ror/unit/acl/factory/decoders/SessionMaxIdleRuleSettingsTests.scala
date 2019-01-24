@@ -11,7 +11,7 @@ import tech.beshu.ror.acl.refined._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class SessionMaxIdleRuleSettingsTests extends RuleSettingsDecoderTest[SessionMaxIdleRule] {
+class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[SessionMaxIdleRule] {
 
   "A SessionMaxIdleRule" should {
     "be able to be loaded from config" when {

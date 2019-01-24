@@ -11,7 +11,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Malforme
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
-class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
+class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
 
   "A UsersRule" should {
     "be able to be loaded from config" when {

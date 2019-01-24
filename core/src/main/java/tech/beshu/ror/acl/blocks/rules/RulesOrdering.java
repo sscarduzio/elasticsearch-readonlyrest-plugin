@@ -30,7 +30,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_ExternalAuthenticationAsyncRul
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
@@ -104,7 +104,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
 
         // all authorization rules should be placed before any authentication rule
         LdapAuthorizationAsyncRule.class,
-        GroupsProviderAuthorizationAsyncRule.class,
+        __old_GroupsProviderAuthorizationAsyncRule.class,
 
         // At the end the sync rule chain are those that can mutate the client request.
         __old_KibanaHideAppsSyncRule.class,

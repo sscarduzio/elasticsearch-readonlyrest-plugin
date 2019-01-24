@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.orders._
 
-class HostsRuleSettingsTests extends RuleSettingsDecoderTest[HostsRule] {
+class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
 
   "A HostsRule" should {
     "be able to be loaded from config" when {

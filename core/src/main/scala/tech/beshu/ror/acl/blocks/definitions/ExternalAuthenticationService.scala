@@ -13,7 +13,7 @@ import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import tech.beshu.ror.acl.aDomain.Header
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService.Name
-import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthenticationService.HttpClient
+import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 
@@ -46,10 +46,6 @@ class HttpExternalAuthenticationService(override val id: Name,
       .send(sttp.get(uri).header(Header.Name.authorization.value, credentials.getBase64Value))
       .map(_.code === successStatusCode)
   }
-}
-
-object HttpExternalAuthenticationService {
-  type HttpClient = SttpBackend[Task, Nothing]
 }
 
 class CachingExternalAuthenticationService(underlying: ExternalAuthenticationService, ttl: FiniteDuration Refined Positive)

@@ -7,7 +7,8 @@ import scala.language.higherKinds
 
 final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  users: Definitions[UserDef],
-                                 authenticationServices: Definitions[ExternalAuthenticationService])
+                                 authenticationServices: Definitions[ExternalAuthenticationService],
+                                 authorizationServices: Definitions[ExternalAuthorizationService])
 
 final case class Definitions[Item](items: Set[Item]) extends AnyVal
 object Definitions {

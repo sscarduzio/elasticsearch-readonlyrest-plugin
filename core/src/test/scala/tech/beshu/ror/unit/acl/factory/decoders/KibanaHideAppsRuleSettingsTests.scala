@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 import tech.beshu.ror.acl.aDomain.KibanaApp
 import tech.beshu.ror.acl.orders._
 
-class KibanaHideAppsRuleSettingsTests extends RuleSettingsDecoderTest[KibanaHideAppsRule] {
+class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {
 
   "A KibanaHideAppsRule" should {
     "be able to be loaded from config" when {

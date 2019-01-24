@@ -13,7 +13,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Malforme
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
-class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with MockFactory {
+class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] with MockFactory {
 
   "An IndicesRule" should {
     "be able to be loaded from config" when {

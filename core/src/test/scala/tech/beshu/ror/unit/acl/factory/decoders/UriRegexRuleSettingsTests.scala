@@ -11,7 +11,7 @@ import tech.beshu.ror.acl.blocks.{BlockContext, Variable, VariablesResolver}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 
-class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] with MockFactory {
+class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 
   "A UriRegexRule" should {
     "be able to be loaded from config" when {

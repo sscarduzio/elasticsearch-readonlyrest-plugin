@@ -35,8 +35,7 @@ object ExternalAuthenticationServicesDecoder {
           cacheTtl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
         } yield {
-          val httpClient: HttpExternalAuthenticationService.HttpClient =
-            httpClientFactory.create(Config(validate.getOrElse(defaults.validate)))
+          val httpClient = httpClientFactory.create(Config(validate.getOrElse(defaults.validate)))
           val externalAuthService: ExternalAuthenticationService =
             new HttpExternalAuthenticationService(name, url, httpSuccessCode.getOrElse(defaults.successHttpCode), httpClient)
           cacheTtl.foldLeft(externalAuthService) {

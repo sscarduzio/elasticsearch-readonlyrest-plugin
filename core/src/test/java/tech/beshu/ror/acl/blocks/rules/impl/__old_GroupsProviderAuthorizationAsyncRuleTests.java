@@ -34,7 +34,7 @@ import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
-import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
+import tech.beshu.ror.settings.rules.__old_GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.utils.containers.WireMockContainer;
 
 import java.util.HashMap;
@@ -48,7 +48,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
-public class GroupsProviderAuthorizationAsyncRuleTests {
+public class __old_GroupsProviderAuthorizationAsyncRuleTests {
 
   @ClassRule
   public static WireMockContainer wireMockContainer = WireMockContainer.create(
@@ -106,9 +106,10 @@ public class GroupsProviderAuthorizationAsyncRuleTests {
       List<String> ruleGroups, String uri, String method, ImmutableMap<String, String> headers,
       ImmutableMap<String, String> query_params, Function<__old_LoggedUser, Void> userAssertions, String currentGroup) throws Exception {
 
-    GroupsProviderAuthorizationAsyncRule rule = new GroupsProviderAuthorizationAsyncRule(
-        GroupsProviderAuthorizationRuleSettings.from(
-            TestUtils.fromYAMLString(groupProviderConfig(ruleGroups)).inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
+    __old_GroupsProviderAuthorizationAsyncRule rule = new __old_GroupsProviderAuthorizationAsyncRule(
+        __old_GroupsProviderAuthorizationRuleSettings.from(
+            TestUtils.fromYAMLString(groupProviderConfig(ruleGroups)).inner(
+                __old_GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
             UserGroupsProviderSettingsCollection.from(
                 TestUtils.fromYAMLString(apiConfigs(uri, method, headers, query_params)
                 )

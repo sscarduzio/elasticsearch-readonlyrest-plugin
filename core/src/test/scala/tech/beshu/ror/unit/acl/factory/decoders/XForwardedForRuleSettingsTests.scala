@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.orders._
 
-class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedForRule] {
+class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwardedForRule] {
 
   "A XForwardedForRule" should {
     "be able to be loaded from config" when {

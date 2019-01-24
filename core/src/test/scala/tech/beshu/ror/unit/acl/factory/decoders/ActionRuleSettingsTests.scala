@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.aDomain.Action
 import tech.beshu.ror.acl.orders._
 
 
-class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
+class ActionRuleSettingsTests extends BaseRuleSettingsDecoderTest[ActionsRule] {
 
   "An ActionRule" should {
     "be able to be loaded from config" when {

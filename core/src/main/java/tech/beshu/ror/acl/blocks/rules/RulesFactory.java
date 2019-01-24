@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_ExternalAuthenticationAsyncRul
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsProviderAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
@@ -53,7 +53,7 @@ import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
-import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
+import tech.beshu.ror.settings.rules.__old_GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
@@ -199,10 +199,10 @@ public class RulesFactory {
         )
     );
     this.creators.put(
-        GroupsProviderAuthorizationRuleSettings.class,
+        __old_GroupsProviderAuthorizationRuleSettings.class,
         settings -> CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled(
-            new GroupsProviderAuthorizationAsyncRule((GroupsProviderAuthorizationRuleSettings) settings, definitionsFactory, context),
-            (GroupsProviderAuthorizationRuleSettings) settings,
+            new __old_GroupsProviderAuthorizationAsyncRule((__old_GroupsProviderAuthorizationRuleSettings) settings, definitionsFactory, context),
+            (__old_GroupsProviderAuthorizationRuleSettings) settings,
             context
         )
     );
