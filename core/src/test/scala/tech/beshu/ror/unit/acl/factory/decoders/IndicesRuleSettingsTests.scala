@@ -113,9 +113,7 @@ class IndicesRuleSettingsTests extends RuleSettingsDecoderTest[IndicesRule] with
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - indices: null
+              """indices: null
                 |""".stripMargin)))
           }
         )

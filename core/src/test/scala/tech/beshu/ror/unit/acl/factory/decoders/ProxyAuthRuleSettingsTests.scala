@@ -99,9 +99,7 @@ class ProxyAuthRuleSettingsTests extends RuleSettingsDecoderTest[ProxyAuthRule] 
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - proxy_auth: null
+              """proxy_auth: null
                 |""".stripMargin)))
           }
         )
@@ -126,13 +124,8 @@ class ProxyAuthRuleSettingsTests extends RuleSettingsDecoderTest[ProxyAuthRule] 
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - proxy_auth:
-                |      proxy_auth_config: proxy1
-                |  proxy_auth_configs:
-                |  - name: proxy1
-                |    user_id_header: X-Auth-Token
+              """proxy_auth:
+                |  proxy_auth_config: proxy1
                 |""".stripMargin
             )))
           }

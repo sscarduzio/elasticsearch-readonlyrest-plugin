@@ -66,9 +66,7 @@ class HeadersAndRuleSettingsTests extends RuleSettingsDecoderTest[HeadersAndRule
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - headers_and: null
+              """headers_and: null
                 |""".stripMargin
             )))
           }

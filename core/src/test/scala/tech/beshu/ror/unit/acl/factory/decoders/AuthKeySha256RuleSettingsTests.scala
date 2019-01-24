@@ -45,9 +45,7 @@ class AuthKeySha256RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha2
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - auth_key_sha256: null
+              """auth_key_sha256: null
                 |""".stripMargin
             )))
           }

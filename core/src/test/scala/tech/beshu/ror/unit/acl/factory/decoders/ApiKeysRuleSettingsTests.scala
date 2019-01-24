@@ -64,9 +64,7 @@ class ApiKeysRuleSettingsTests extends RuleSettingsDecoderTest[ApiKeysRule] {
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - api_keys: null
+              """api_keys: null
                 |""".stripMargin)))
           }
         )

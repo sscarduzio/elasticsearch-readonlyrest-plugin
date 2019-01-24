@@ -62,9 +62,7 @@ class MaxBodyLengthRuleSettingsTests extends RuleSettingsDecoderTest[MaxBodyLeng
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - max_body_length: null
+              """max_body_length: null
                 |""".stripMargin
             )))
           }

@@ -66,9 +66,7 @@ class KibanaIndexRuleSettingsTests extends RuleSettingsDecoderTest[KibanaIndexRu
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - kibana_index: null
+              """kibana_index: null
                 |""".stripMargin)))
           }
         )

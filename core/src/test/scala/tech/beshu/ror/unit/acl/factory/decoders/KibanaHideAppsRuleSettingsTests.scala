@@ -65,9 +65,7 @@ class KibanaHideAppsRuleSettingsTests extends RuleSettingsDecoderTest[KibanaHide
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - kibana_hide_apps: null
+              """kibana_hide_apps: null
                 |""".stripMargin)))
           }
         )

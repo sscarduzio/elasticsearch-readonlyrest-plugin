@@ -86,9 +86,7 @@ class LocalHostsRuleSettingsTests extends RuleSettingsDecoderTest[LocalHostsRule
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - hosts_local: null
+              """hosts_local: null
                 |""".stripMargin)))
           }
         )

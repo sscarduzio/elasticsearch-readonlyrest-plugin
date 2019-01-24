@@ -148,9 +148,7 @@ class XForwardedForRuleSettingsTests extends RuleSettingsDecoderTest[XForwardedF
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - x_forwarded_for: null
+              """x_forwarded_for: null
                 |""".stripMargin)))
           }
         )

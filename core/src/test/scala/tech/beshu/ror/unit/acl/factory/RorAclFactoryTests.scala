@@ -54,7 +54,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |
             |""".stripMargin
         val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
-        acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("Proxy auth definitions declared, but no definition found")))))
+        acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("proxy_auth_configs declared, but no definition found")))))
       }
       "the section contains proxies with the same names" in {
         val yaml =
@@ -77,7 +77,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |
             |""".stripMargin
         val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
-        acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("Proxy auth definitions must have unique names. Duplicates: proxy1")))))
+        acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("proxy_auth_configs definitions must have unique identifiers. Duplicates: proxy1")))))
       }
       "proxy definition has no name" in {
         val yaml =

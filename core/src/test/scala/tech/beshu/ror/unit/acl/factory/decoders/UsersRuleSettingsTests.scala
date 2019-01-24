@@ -86,9 +86,7 @@ class UsersRuleSettingsTests extends RuleSettingsDecoderTest[UsersRule] {
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - users: null
+              """users: null
                 |""".stripMargin)))
           }
         )

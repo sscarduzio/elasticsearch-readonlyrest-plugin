@@ -143,15 +143,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - groups: null
-                |  users:
-                |  - username: cartman
-                |    groups:
-                |    - group1
-                |    - group3
-                |    auth_key: cartman:pass
+              """groups: null
                 |""".stripMargin
             )))
           }
@@ -337,7 +329,7 @@ class GroupsRuleSettingsTests extends RuleSettingsDecoderTest[GroupsRule] with I
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("User definitions must have unique names. Duplicates: cartman")))
+            errors.head should be(DefinitionsLevelCreationError(Message("users definitions must have unique identifiers. Duplicates: cartman")))
           }
         )
       }

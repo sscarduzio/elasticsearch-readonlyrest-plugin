@@ -45,9 +45,7 @@ class AuthKeySha512RuleSettingsTests extends RuleSettingsDecoderTest[AuthKeySha5
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - auth_key_sha512: null
+              """auth_key_sha512: null
                 |""".stripMargin
             )))
           }

@@ -64,9 +64,7 @@ class ActionRuleSettingsTests extends RuleSettingsDecoderTest[ActionsRule] {
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - actions: null
+              """actions: null
                 |""".stripMargin
             )))
           }

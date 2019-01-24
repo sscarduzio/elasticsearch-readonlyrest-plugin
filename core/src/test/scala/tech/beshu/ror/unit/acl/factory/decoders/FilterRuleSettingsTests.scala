@@ -66,9 +66,7 @@ class FilterRuleSettingsTests extends RuleSettingsDecoderTest[FilterRule] {
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - filter: null
+              """filter: null
                 |""".stripMargin)))
           }
         )

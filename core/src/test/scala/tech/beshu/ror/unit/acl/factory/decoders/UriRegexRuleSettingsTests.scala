@@ -68,9 +68,7 @@ class UriRegexRuleSettingsTests extends RuleSettingsDecoderTest[UriRegexRule] wi
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """readonlyrest:
-                |  access_control_rules:
-                |  - uri_re: null
+              """uri_re: null
                 |""".stripMargin
             )))
           }
