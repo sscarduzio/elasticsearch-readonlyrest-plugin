@@ -37,7 +37,9 @@ import tech.beshu.ror.acl.definitions.ldaps.LdapClientException;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 
 import javax.net.ssl.SSLSocketFactory;
+import java.security.AccessController;
 import java.security.GeneralSecurityException;
+import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.Set;
 
@@ -47,7 +49,10 @@ public class UnboundidConnection {
 
   public UnboundidConnection(ConnectionConfig connectionConfig,
       Optional<SearchingUserConfig> searchingUserConfig) {
-    connect(connectionConfig, searchingUserConfig);
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      connect(connectionConfig, searchingUserConfig);
+      return null;
+    });
   }
 
   private static void checkConnectivity(SearchingUserConfig config, LDAPURL ldapServer, SSLSocketFactory sslSocketFactory,
