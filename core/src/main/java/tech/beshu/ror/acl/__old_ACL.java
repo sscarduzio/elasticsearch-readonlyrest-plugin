@@ -98,13 +98,13 @@ public class __old_ACL {
     );
 
     this.involvesFilter = blocks
-      .stream()
-      .anyMatch(b ->
-        b.getSettings()
-          .getRules()
-          .stream()
-          .anyMatch(r -> __old_FilterSyncRule.Settings.ATTRIBUTE_NAME.equals(r.getName()))
-      );
+        .stream()
+        .filter(b ->
+            b.getSettings()
+             .getRules()
+             .stream()
+             .anyMatch(r -> __old_FilterSyncRule.Settings.ATTRIBUTE_NAME.equalsIgnoreCase(r.getName()) || FilterSyncRule.Settings.ATTRIBUTE_NAME.equals(r.getName()))
+        ).findFirst().isPresent();
 
   }
 

@@ -52,6 +52,14 @@ public class __old_HeadersAndRuleTests {
   }
 
   @Test
+  public void testSpecialHeaderMatch() {
+    RuleExitResult res = match(Collections.singletonList("User-Agent:ELB-HealthChecker/2.0"), ImmutableMap.of(
+        "User-Agent", "ELB-HealthChecker/2.0"
+    ));
+    assertTrue(res.isMatch());
+  }
+
+  @Test
   public void testHeaderMultiSeparator() {
     RuleExitResult res = match(Collections.singletonList("hkey:hvalue:123"), ImmutableMap.of(
       "hkey", "hvalue:123"
@@ -63,14 +71,6 @@ public class __old_HeadersAndRuleTests {
   public void testHeaderCapitalSettingsKey() {
     RuleExitResult res = match(Collections.singletonList("Hkey:hvalue:123"), ImmutableMap.of(
       "hkey", "hvalue:123"
-    ));
-    assertTrue(res.isMatch());
-  }
-
-  @Test
-  public void testHeaderCapitalSettingsKeyValue() {
-    RuleExitResult res = match(Collections.singletonList("Hkey:Hvalue:123"),ImmutableMap.of(
-     "hkey", "hvalue:123"
     ));
     assertTrue(res.isMatch());
   }

@@ -94,14 +94,16 @@ public class __old_HeadersSyncRule extends SyncRule {
       });
       this.headers = new HashMap(headersWithValue.size());
       for (String kv : headersWithValue) {
-        String[] kva = kv.toLowerCase().split(":", 2);
+        String[] kva = kv.split(":", 2);
+        if (Strings.isNullOrEmpty(kva[0])) {
+          continue;
+        }
+        kva[0] = kva[0].toLowerCase();
         if (shouldRejectDuplicateHeaderKey() && this.headers.keySet().contains(kva[0])) {
           throw new SettingsMalformedException(
               getName() + " rule: you can't require the same header (" + kva[0] + ") to have two values at the same time!");
         }
-        if (Strings.isNullOrEmpty(kva[0])) {
-          continue;
-        }
+
         Set<String> valueSet = headers.get(kva[0]);
         if(valueSet == null){
           valueSet = Sets.newHashSet();
