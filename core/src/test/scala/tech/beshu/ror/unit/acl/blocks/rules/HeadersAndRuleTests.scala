@@ -7,7 +7,6 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.HeadersAndRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.aDomain.Header
@@ -20,52 +19,52 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
       "one header is configured and one header is passed with request" when {
         "there is no other additional header in request" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("hkey" -> "hvalue")),
-            requestHeaders = Set(Header("hkey" -> "hvalue"))
+            configuredHeaders = NonEmptySet.of(Header.from("hkey" -> "hvalue")),
+            requestHeaders = Set(Header.from("hkey" -> "hvalue"))
           )
         }
         "value of the header contains ':'" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("hkey" -> "hvalue:pass")),
-            requestHeaders = Set(Header("hkey" -> "hvalue:pass"))
+            configuredHeaders = NonEmptySet.of(Header.from("hkey" -> "hvalue:pass")),
+            requestHeaders = Set(Header.from("hkey" -> "hvalue:pass"))
           )
         }
         "contigured header has capitals its name" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("Hkey" -> "hvalue")),
-            requestHeaders = Set(Header("hkey" -> "hvalue"))
+            configuredHeaders = NonEmptySet.of(Header.from("Hkey" -> "hvalue")),
+            requestHeaders = Set(Header.from("hkey" -> "hvalue"))
           )
         }
         "request header has capitals its name" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("hkey" -> "hvalue")),
-            requestHeaders = Set(Header("Hkey" -> "hvalue"))
+            configuredHeaders = NonEmptySet.of(Header.from("hkey" -> "hvalue")),
+            requestHeaders = Set(Header.from("Hkey" -> "hvalue"))
           )
         }
         "there are additional headers in request" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("hkey" -> "hvalue")),
-            requestHeaders = Set(Header("Hkey" -> "hvalue"), Header("other" -> "header"))
+            configuredHeaders = NonEmptySet.of(Header.from("hkey" -> "hvalue")),
+            requestHeaders = Set(Header.from("Hkey" -> "hvalue"), Header.from("other" -> "header"))
           )
         }
         "configured header value has wildcard character in its value" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("hkey" -> "h*")),
-            requestHeaders = Set(Header("Hkey" -> "hvalue"))
+            configuredHeaders = NonEmptySet.of(Header.from("hkey" -> "h*")),
+            requestHeaders = Set(Header.from("Hkey" -> "hvalue"))
           )
         }
       }
       "two headers are configured and two headers are passed with request" when {
         "their names are different" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("hkey1" -> "hvalue2"), Header("hkey2" -> "hvalue2")),
-            requestHeaders = Set(Header("hkey1" -> "hvalue2"), Header("hkey2" -> "hvalue2"))
+            configuredHeaders = NonEmptySet.of(Header.from("hkey1" -> "hvalue2"), Header.from("hkey2" -> "hvalue2")),
+            requestHeaders = Set(Header.from("hkey1" -> "hvalue2"), Header.from("hkey2" -> "hvalue2"))
           )
         }
         "their names are the same" in {
           assertMatchRule(
-            configuredHeaders = NonEmptySet.of(Header("hkey" -> "hvalue1"), Header("hkey" -> "hvalue2")),
-            requestHeaders = Set(Header("hkey" -> "hvalue2"), Header("hkey" -> "hvalue1"))
+            configuredHeaders = NonEmptySet.of(Header.from("hkey" -> "hvalue1"), Header.from("hkey" -> "hvalue2")),
+            requestHeaders = Set(Header.from("hkey" -> "hvalue2"), Header.from("hkey" -> "hvalue1"))
           )
         }
       }
@@ -73,19 +72,19 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
     "not match" when {
       "two headers are configured, but only one is passed" in {
         assertNotMatchRule(
-          configuredHeaders = NonEmptySet.of(Header("hkey1" -> "hvalue1"), Header("hkey2" -> "hvalue2")),
-          requestHeaders = Set(Header("hkey1" -> "hvalue1"))
+          configuredHeaders = NonEmptySet.of(Header.from("hkey1" -> "hvalue1"), Header.from("hkey2" -> "hvalue2")),
+          requestHeaders = Set(Header.from("hkey1" -> "hvalue1"))
         )
       }
       "one header is configured, but request contains one, different header" in {
         assertNotMatchRule(
-          configuredHeaders = NonEmptySet.of(Header("hkey1" -> "hvalue1")),
-          requestHeaders = Set(Header("hkey2" -> "hvalue2"))
+          configuredHeaders = NonEmptySet.of(Header.from("hkey1" -> "hvalue1")),
+          requestHeaders = Set(Header.from("hkey2" -> "hvalue2"))
         )
       }
       "one header is configure, but request has no headers" in {
         assertNotMatchRule(
-          configuredHeaders = NonEmptySet.of(Header("hkey1" -> "hvalue1")),
+          configuredHeaders = NonEmptySet.of(Header.from("hkey1" -> "hvalue1")),
           requestHeaders = Set.empty
         )
       }

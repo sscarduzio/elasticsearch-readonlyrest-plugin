@@ -21,7 +21,7 @@ import scala.concurrent.duration.FiniteDuration
 
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
-  def id: Name
+  def id: Id
   def authenticate(credentials: BasicAuth): Task[Boolean]
 
   override implicit def show: Show[Name] = Name.nameShow
@@ -35,7 +35,7 @@ object ExternalAuthenticationService {
   }
 }
 
-class HttpExternalAuthenticationService(override val id: Name,
+class HttpExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
                                         uri: Uri,
                                         successStatusCode: Int,
                                         httpClient: HttpClient)
@@ -57,7 +57,7 @@ class CachingExternalAuthenticationService(underlying: ExternalAuthenticationSer
       .expireAfterWrite(ttl.value.toMillis, TimeUnit.MILLISECONDS)
       .build[String, String]
 
-  override val id: Name = underlying.id
+  override val id: ExternalAuthenticationService#Id = underlying.id
 
   override def authenticate(credentials: BasicAuth): Task[Boolean] = {
     Option(cache.getIfPresent(credentials.getUserName)) match {

@@ -7,7 +7,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.acl.show.logs.userIdShow
 
-final case class UserDef(id: User.Id,
+final case class UserDef(id: UserDef#Id,
                          groups: NonEmptySet[Group],
                          authenticationRule: AuthenticationRule) extends Item {
   override type Id = User.Id

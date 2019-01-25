@@ -21,7 +21,7 @@ class ApiKeysRuleTests extends WordSpec with MockFactory {
       "x-api-key header contains defined in settings value" in {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
-        (requestContext.headers _).expects().returning(Set(Header("X-Api-Key" -> "1234567890")))
+        (requestContext.headers _).expects().returning(Set(Header.from("X-Api-Key" -> "1234567890")))
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
       }
     }
@@ -30,7 +30,7 @@ class ApiKeysRuleTests extends WordSpec with MockFactory {
       "x-api-key header contains not defined in settings value" in {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
-        (requestContext.headers _).expects().returning(Set(Header("X-Api-Key" -> "x")))
+        (requestContext.headers _).expects().returning(Set(Header.from("X-Api-Key" -> "x")))
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected)
       }
       "x-api-key header is absent" in {

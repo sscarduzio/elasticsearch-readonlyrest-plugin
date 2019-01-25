@@ -78,7 +78,7 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(settings: XForwardedForRule.Settings, xForwardedForHeaderValue: String, isMatched: Boolean) = {
     val rule = new XForwardedForRule(settings)
-    val requestContext = MockRequestContext(headers = Set(Header("X-Forwarded-For" -> xForwardedForHeaderValue)))
+    val requestContext = MockRequestContext(headers = Set(Header.from("X-Forwarded-For" -> xForwardedForHeaderValue)))
     val blockContext = mock[BlockContext]
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

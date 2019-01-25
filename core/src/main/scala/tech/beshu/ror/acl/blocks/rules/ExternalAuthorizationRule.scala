@@ -3,7 +3,7 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.acl.aDomain.{Group, User}
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthorizationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
@@ -22,5 +22,5 @@ object ExternalAuthorizationRule {
 
   final case class Settings(service: ExternalAuthorizationService,
                             permittedGroups: NonEmptySet[Group],
-                            users: NonEmptySet[Value[User.Id]])
+                            users: NonEmptySet[User.Id])
 }

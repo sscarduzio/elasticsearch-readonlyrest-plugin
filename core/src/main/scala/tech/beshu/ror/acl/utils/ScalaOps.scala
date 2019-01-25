@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.utils
 
 import scala.util.Try
 
-object ScalaExt {
+object ScalaOps {
 
   implicit class TryOps[T](val `try`: Try[T]) extends AnyVal {
 
@@ -19,6 +19,14 @@ object ScalaExt {
         .groupBy(provideComparatorOf)
         .collect { case (_, List(fst, _, _*)) => fst }
         .toList
+  }
+
+  implicit class ListOfEitherOps[A, B](val either: List[Either[A, B]]) extends AnyVal {
+
+    def partitionEither: (List[A], List[B]) = {
+      val (lefts, rights) = either.partition(_.isLeft)
+      (lefts.map(_.left.get), rights.map(_.right.get))
+    }
   }
 
 }

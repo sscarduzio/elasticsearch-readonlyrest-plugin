@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
-import tech.beshu.ror.acl.utils.ScalaExt._
+import tech.beshu.ror.acl.utils.ScalaOps._
 
 abstract class DefinitionsBaseDecoder[T <: Item : Decoder](definitionsSectionName: String)
   extends Decoder[Definitions[T]] {

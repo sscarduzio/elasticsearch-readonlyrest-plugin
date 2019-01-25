@@ -18,7 +18,7 @@ import tech.beshu.ror.acl.factory.decoders.definitions._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
-import tech.beshu.ror.acl.utils.ScalaExt._
+import tech.beshu.ror.acl.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.UuidProvider
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 

@@ -5,7 +5,7 @@ import tech.beshu.ror.acl.aDomain.Header
 import tech.beshu.ror.acl.blocks.definitions.ProxyAuth.Name
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 
-final case class ProxyAuth(id: Name, userIdHeader: Header.Name) extends Item {
+final case class ProxyAuth(id: ProxyAuth#Id, userIdHeader: Header.Name) extends Item {
   override type Id = Name
   override implicit val show: Show[Name] = ProxyAuth.nameShow
 }

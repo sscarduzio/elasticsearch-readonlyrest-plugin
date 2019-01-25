@@ -1,9 +1,10 @@
 package tech.beshu.ror.acl
 
-import cats.{Eq, Show}
+import cats.Eq
 import com.softwaremill.sttp.Uri
+import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.commons.Constants
-import header.ToHeaderValue
 
 object aDomain {
 
@@ -43,10 +44,12 @@ object aDomain {
       implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
     }
 
+    // todo: check if header is correct? non empty Strings
     def apply(name: Name, value: String): Header = new Header(name, value)
-    def apply(nameAndValue: (String, String)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
+    def from(nameAndValue: (String, String)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
     def apply[T](name: Name, value: T)
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
+    def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1.value), nameAndValue._2.value)
 
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
   }

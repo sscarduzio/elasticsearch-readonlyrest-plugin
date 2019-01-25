@@ -87,6 +87,7 @@ object show {
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
+    implicit val groupShow: Show[Group] = Show.show(_.value)
   }
 }
 

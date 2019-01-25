@@ -20,7 +20,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
       "one user id is configured and the same id can be find in auth header" in {
         assertMatchRule(
           settings = ProxyAuthRule.Settings(NonEmptySet.of(User.Id("userA")), Header.Name("custom-user-auth-header")),
-          header = Header("custom-user-auth-header" -> "userA")
+          header = Header.from("custom-user-auth-header" -> "userA")
         )
       }
       "several user ids are configured and one of them can be find in auth header" in {
@@ -29,7 +29,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
             NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             Header.Name("custom-user-auth-header")
           ),
-          header = Header("custom-user-auth-header" -> "userB")
+          header = Header.from("custom-user-auth-header" -> "userB")
         )
       }
     }
@@ -40,7 +40,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
             NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             Header.Name("custom-user-auth-header")
           ),
-          header = Header("custom-user-auth-header" -> "userD")
+          header = Header.from("custom-user-auth-header" -> "userD")
         )
       }
       "user id is passed in different header than the configured one" in {
@@ -49,7 +49,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
             NonEmptySet.of(User.Id("userA")),
             Header.Name("custom-user-auth-header")
           ),
-          header = Header("X-Forwarded-User" -> "userD")
+          header = Header.from("X-Forwarded-User" -> "userD")
         )
       }
     }

@@ -3,6 +3,7 @@ package tech.beshu.ror.acl.utils
 import cats.Order
 import cats.data.NonEmptySet
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
 import io.circe._
 import io.circe.generic.extras
@@ -22,6 +23,10 @@ object CirceOps {
 
   object DecoderHelpers {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
+
+    // todo: merge with above
+    val decodeStringLikeNonEmpty: Decoder[NonEmptyString] =
+      Decoder.decodeString.or(Decoder.decodeInt.map(_.show)).emap(NonEmptyString.from)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
