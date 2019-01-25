@@ -24,6 +24,7 @@ import tech.beshu.ror.acl.blocks.BlockExitResult;
 import tech.beshu.ror.acl.blocks.rules.Rule;
 import tech.beshu.ror.acl.blocks.rules.RulesFactory;
 import tech.beshu.ror.acl.blocks.rules.UserRuleFactory;
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.Constants;
@@ -103,7 +104,7 @@ public class ACL {
             b.getSettings()
              .getRules()
              .stream()
-             .anyMatch(r -> FilterSyncRule.Settings.ATTRIBUTE_NAME.equals(r.getName()))
+             .anyMatch(r -> FieldsSyncRule.Settings.ATTRIBUTE_NAME.equalsIgnoreCase(r.getName()) || FilterSyncRule.Settings.ATTRIBUTE_NAME.equals(r.getName()))
         ).findFirst().isPresent();
 
   }
