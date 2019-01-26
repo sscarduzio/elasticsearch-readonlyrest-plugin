@@ -36,8 +36,8 @@ object ExternalAuthorizationRuleDecoder {
           name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
           groups <- c.downField("groups").as[NonEmptySet[Group]]
           users <- c.downField("users").as[Option[NonEmptySet[User.Id]]]
-          ttl <- c.downField("cache_ttl_in_sec").as[FiniteDuration Refined Positive]
-        } yield (name, Option(ttl), groups, users.getOrElse(NonEmptySet.one(User.Id("*"))))
+          ttl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
+        } yield (name, ttl, groups, users.getOrElse(NonEmptySet.one(User.Id("*"))))
       }
       .mapError(RulesLevelCreationError.apply)
       .emapE {

@@ -65,7 +65,7 @@ class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[Sessio
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Cannot convert value 'null' to duration in: session_max_idle: null")))
+            errors.head should be (RulesLevelCreationError(Message("Cannot convert value 'null' to duration")))
           }
         )
       }
@@ -83,7 +83,7 @@ class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[Sessio
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be (RulesLevelCreationError(Message("Cannot convert value '\"unknown format\"' to duration in: session_max_idle: unknown format")))
+            errors.head should be (RulesLevelCreationError(Message("Cannot convert value '\"unknown format\"' to duration")))
           }
         )
       }

@@ -95,7 +95,7 @@ object common {
     Decoder
       .decodeLong
       .map(FiniteDuration(_, TimeUnit.SECONDS))
-      .withErrorFromCursor { case (element, context) =>
-        ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration in: $context"))
+      .withErrorFromCursor { case (element, _) =>
+        ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration"))
       }
 }
