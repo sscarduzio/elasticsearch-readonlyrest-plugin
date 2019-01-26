@@ -14,7 +14,7 @@ class VariablesManager(requestContext: RequestContext)
   )
   private val rawHeadersMap = requestContext
     .headers
-    .map(h => (h.name.value.toLowerCase, h.value))
+    .map(h => (h.name.value.value.toLowerCase, h.value.value))
     .toMap
 
   override def resolve(value: ValueWithVariable, blockContext: BlockContext): Option[ResolvedValue] = {

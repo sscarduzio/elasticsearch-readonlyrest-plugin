@@ -12,6 +12,7 @@ import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.TestsUtils._
 
 class ProxyAuthRuleTests extends WordSpec with MockFactory {
 
@@ -19,17 +20,17 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
     "match" when {
       "one user id is configured and the same id can be find in auth header" in {
         assertMatchRule(
-          settings = ProxyAuthRule.Settings(NonEmptySet.of(User.Id("userA")), Header.Name("custom-user-auth-header")),
-          header = Header.from("custom-user-auth-header" -> "userA")
+          settings = ProxyAuthRule.Settings(NonEmptySet.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
+          header = headerFrom("custom-user-auth-header" -> "userA")
         )
       }
       "several user ids are configured and one of them can be find in auth header" in {
         assertMatchRule(
           settings = ProxyAuthRule.Settings(
             NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
-            Header.Name("custom-user-auth-header")
+            headerNameFrom("custom-user-auth-header")
           ),
-          header = Header.from("custom-user-auth-header" -> "userB")
+          header = headerFrom("custom-user-auth-header" -> "userB")
         )
       }
     }
@@ -38,18 +39,18 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
         assertNotMatchRule(
           settings = ProxyAuthRule.Settings(
             NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
-            Header.Name("custom-user-auth-header")
+            headerNameFrom("custom-user-auth-header")
           ),
-          header = Header.from("custom-user-auth-header" -> "userD")
+          header = headerFrom("custom-user-auth-header" -> "userD")
         )
       }
       "user id is passed in different header than the configured one" in {
         assertNotMatchRule(
           settings = ProxyAuthRule.Settings(
             NonEmptySet.of(User.Id("userA")),
-            Header.Name("custom-user-auth-header")
+            headerNameFrom("custom-user-auth-header")
           ),
-          header = Header.from("X-Forwarded-User" -> "userD")
+          header = headerFrom("X-Forwarded-User" -> "userD")
         )
       }
     }
@@ -67,7 +68,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     val newBlockContext = mock[BlockContext]
     (requestContext.headers _).expects().returning(Set(header))
-    if(isMatched) (blockContext.withLoggedUser _).expects(LoggedUser(Id(header.value))).returning(newBlockContext)
+    if(isMatched) (blockContext.withLoggedUser _).expects(LoggedUser(Id(header.value.value))).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(newBlockContext)
       else Rejected

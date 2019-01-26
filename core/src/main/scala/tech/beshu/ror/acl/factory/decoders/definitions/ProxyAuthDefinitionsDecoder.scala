@@ -16,7 +16,7 @@ object ProxyAuthDefinitionsDecoder {
   implicit val proxyAuthNameDecoder: Decoder[ProxyAuth.Name] = Decoder.decodeString.map(ProxyAuth.Name.apply)
 
   private implicit val proxyAuthDecoder: Decoder[ProxyAuth] = {
-    implicit val headerNameDecoder: Decoder[Header.Name] = Decoder.decodeString.map(Header.Name.apply)
+    implicit val headerNameDecoder: Decoder[Header.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Header.Name.apply)
     Decoder
       .forProduct2("name", "user_id_header")(ProxyAuth.apply)
       .withErrorFromJson(value => DefinitionsLevelCreationError(MalformedValue(value)))

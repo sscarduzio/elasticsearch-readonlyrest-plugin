@@ -66,7 +66,7 @@ object common {
       }
 
   implicit val groupDecoder: Decoder[Group] =
-    DecoderHelpers.decodeStringLike.map(Group.apply)
+    DecoderHelpers.decodeStringLikeNonEmpty.map(Group.apply)
 
   implicit val userIdDecoder: Decoder[User.Id] =
     DecoderHelpers.decodeStringLike.map(User.Id.apply)

@@ -3,12 +3,12 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.ApiKeysRule.{Settings, xApiKeyHeaderName}
-import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
-import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.aDomain.{ApiKey, Header}
+import tech.beshu.ror.acl.aDomain.ApiKey
 import tech.beshu.ror.acl.aDomain.Header.Name._
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.ApiKeysRule.Settings
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.acl.request.RequestContext
 
 class ApiKeysRule(val settings: Settings)
   extends RegularRule {
@@ -31,6 +31,4 @@ object ApiKeysRule {
   val name = Rule.Name("api_keys")
 
   final case class Settings(apiKeys: NonEmptySet[ApiKey])
-
-  val xApiKeyHeaderName = Header.Name("X-Api-Key")
 }

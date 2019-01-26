@@ -24,7 +24,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { basicAuth: BasicAuth => s"Basic ${basicAuth.getBase64Value}" == baHeader.value })
+          .expects(where { basicAuth: BasicAuth => s"Basic ${basicAuth.getBase64Value}" == baHeader.value.value })
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
@@ -43,7 +43,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { basicAuth: BasicAuth => s"Basic ${basicAuth.getBase64Value}" == baHeader.value })
+          .expects(where { basicAuth: BasicAuth => s"Basic ${basicAuth.getBase64Value}" == baHeader.value.value })
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]

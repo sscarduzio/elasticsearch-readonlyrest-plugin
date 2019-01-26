@@ -1,5 +1,6 @@
 package tech.beshu.ror.acl.blocks.rules
 
+import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -24,7 +25,7 @@ class HeadersAndRule(val settings: Settings)
                      blockContext: BlockContext): Task[RuleResult] = Task {
     val headersSubset = requestContext
       .headers
-      .filter(h => settings.headers.exists(_.name.value.toLowerCase() == h.name.value.toLowerCase()))
+      .filter(h => settings.headers.exists(_.name === h.name))
     if (headersSubset.size != settings.headers.length)
       RuleResult.Rejected
     else {

@@ -32,7 +32,7 @@ class ProxyAuthRule(val settings: Settings)
     context
       .headers
       .find(_.name === settings.userHeaderName)
-      .map(h => LoggedUser(Id(h.value)))
+      .map(h => LoggedUser(Id(h.value.value)))
   }
 
   private def shouldAuthenticate(user: LoggedUser) = {

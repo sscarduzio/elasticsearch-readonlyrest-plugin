@@ -10,7 +10,6 @@ import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.authenticationRuleDecoderBy
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
 
@@ -22,12 +21,7 @@ class UsersDefinitionsDecoder(authProxyDefinitions: Definitions[ProxyAuth])
 object UsersDefinitionsDecoder {
 
   private implicit def userDefDecoder(implicit authProxyDefinitions: Definitions[ProxyAuth]): Decoder[UserDef] = {
-    implicit val usernameDecoder: Decoder[User.Id] = DecoderHelpers.decodeStringLike.map(User.Id.apply)
-    implicit val groupDecoder: Decoder[Group] = DecoderHelpers.decodeStringLike.map(Group.apply)
-    implicit val groupsDecoder: Decoder[NonEmptySet[Group]] =
-      DecoderHelpers
-        .decodeStringLikeOrNonEmptySet[Group]
-        .withError(DefinitionsLevelCreationError(Message("Non empty list of groups are required")))
+    import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
         val usernameKey = "username"

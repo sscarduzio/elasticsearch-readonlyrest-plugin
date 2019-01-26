@@ -1,6 +1,5 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
-
 import java.time._
 import java.util.UUID
 
@@ -24,6 +23,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, 
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import tech.beshu.ror.TestsUtils._
 
 class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
 
@@ -123,9 +123,9 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     val blockContext = mock[BlockContext]
     val newBlockContext = mock[BlockContext]
-    (requestContext.headers _).expects().returning(Set(Header.from("Cookie" -> rawCookie)))
+    (requestContext.headers _).expects().returning(Set(headerFrom("Cookie" -> rawCookie)))
     (blockContext.loggedUser _).expects().returning(loggedUser)
-    if(isMatched) (blockContext.withAddedResponseHeader _).expects(Header.from("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
+    if(isMatched) (blockContext.withAddedResponseHeader _).expects(headerFrom("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(newBlockContext)
       else Rejected

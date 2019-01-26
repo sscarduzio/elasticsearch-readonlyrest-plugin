@@ -7,6 +7,7 @@ import java.time.{Clock, Instant}
 import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
+import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import io.circe.parser._
 import io.circe.{Decoder, Encoder}
@@ -44,14 +45,14 @@ object RorSessionCookie extends Logging {
                      (implicit uuidProvider: UuidProvider): Header =
     new Header(
       setCookie,
-      s"$rorCookieName=${coders.encoder((cookie, Signature.sign(cookie))).noSpaces}"
+      NonEmptyString.unsafeFrom(s"$rorCookieName=${coders.encoder((cookie, Signature.sign(cookie))).noSpaces}")
     )
 
   private def extractRorHttpCookie(context: RequestContext) = {
     context
       .headers
       .find(_.name === Header.Name.cookie)
-      .flatMap(h => parseCookie(h.value))
+      .flatMap(h => parseCookie(h.value.value))
       .flatMap(_.find(_.getName === rorCookieName))
   }
 

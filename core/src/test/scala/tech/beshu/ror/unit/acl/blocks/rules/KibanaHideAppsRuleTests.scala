@@ -12,6 +12,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.aDomain.{Header, KibanaApp, LoggedUser}
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.TestsUtils._
 
 class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
 
@@ -23,7 +24,7 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id("user1"))))
-        (blockContext.withAddedResponseHeader _).expects(Header.from("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
+        (blockContext.withAddedResponseHeader _).expects(headerFrom("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext) )
       }
       "not set kibana app header if user is not logged" in {

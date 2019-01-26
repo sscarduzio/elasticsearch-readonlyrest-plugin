@@ -10,6 +10,7 @@ import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
 import tech.beshu.ror.acl.blocks.Value
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.blocks.Variable.ResolvedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
@@ -25,13 +26,19 @@ object CirceOps {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
 
     // todo: merge with above
-    val decodeStringLikeNonEmpty: Decoder[NonEmptyString] =
+    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] =
       Decoder.decodeString.or(Decoder.decodeInt.map(_.show)).emap(NonEmptyString.from)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
         .map(NonEmptySet.one(_))
         .or(Decoder.decodeNonEmptySet[String])
+        .map(_.map(fromString))
+
+    def decodeNonEmptyStringLikeOrNonEmptySet[T: Order](fromString: NonEmptyString => T): Decoder[NonEmptySet[T]] =
+      decodeStringLikeNonEmpty
+        .map(NonEmptySet.one(_))
+        .or(Decoder.decodeNonEmptySet[NonEmptyString])
         .map(_.map(fromString))
 
     def decodeStringLikeOrNonEmptySetE[T: Order](fromString: String => Either[String, T]): Decoder[NonEmptySet[T]] =

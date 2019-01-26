@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.blocks.rules.FieldsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.aDomain.DocumentField.ADocumentField
-import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.orders._
 
 class FieldsRuleTests extends WordSpec with MockFactory {
@@ -23,7 +23,7 @@ class FieldsRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
         (requestContext.isReadOnlyRequest _).expects().returning(true)
-        (blockContext.withAddedContextHeader _).expects(Header.from("_fields" -> "_field1,_field2")).returning(newBlockContext)
+        (blockContext.withAddedContextHeader _).expects(headerFrom("_fields" -> "_field1,_field2")).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
     }

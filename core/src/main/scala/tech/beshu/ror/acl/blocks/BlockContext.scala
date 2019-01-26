@@ -5,7 +5,7 @@ import tech.beshu.ror.acl.aDomain.{Group, Header, IndexName, LoggedUser}
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
-import tech.beshu.ror.acl.request.RequestGroup.{AGroup, Empty, `N/A`}
+import tech.beshu.ror.acl.request.RequestGroup.{AGroup, `N/A`}
 
 trait BlockContext {
 
@@ -88,7 +88,7 @@ object RequestContextInitiatedBlockContext {
         loggedUser = None,
         currentGroup = requestContext.currentGroup match {
           case AGroup(userGroup) => Some(userGroup)
-          case Empty | `N/A` => None
+          case `N/A` => None
         },
         availableGroups = Set.empty,
         responseHeaders = Vector.empty,

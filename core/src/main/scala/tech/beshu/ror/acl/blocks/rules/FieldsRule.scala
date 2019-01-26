@@ -2,10 +2,11 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.implicits._
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.FieldsRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.aDomain.Header.Name
@@ -23,7 +24,10 @@ class FieldsRule(val settings: Settings)
     else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
   }
 
-  private val transientFieldsHeader = new Header(Name.transientFields, settings.fields.map(_.show).mkString(","))
+  private val transientFieldsHeader = new Header(
+    Name.transientFields,
+    NonEmptyString.unsafeFrom(settings.fields.map(_.show).mkString(","))
+  )
 }
 
 object FieldsRule {

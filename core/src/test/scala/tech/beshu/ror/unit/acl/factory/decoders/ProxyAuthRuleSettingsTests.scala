@@ -2,11 +2,11 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-
+import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.acl.aDomain.User
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.{Header, User}
 import tech.beshu.ror.acl.orders._
 
 class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRule] {
@@ -28,7 +28,7 @@ class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRu
               |""".stripMargin,
           assertion = rule => {
             rule.settings.userIds should be(NonEmptySet.one(User.Id("user1")))
-            rule.settings.userHeaderName should be(Header.Name("X-Forwarded-User"))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Forwarded-User"))
           }
         )
       }
@@ -53,7 +53,7 @@ class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRu
               |""".stripMargin,
           assertion = rule => {
             rule.settings.userIds should be(NonEmptySet.one(User.Id("user1")))
-            rule.settings.userHeaderName should be(Header.Name("X-Auth-Token"))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
           }
         )
       }
@@ -78,7 +78,7 @@ class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRu
               |""".stripMargin,
           assertion = rule => {
             rule.settings.userIds should be(NonEmptySet.of(User.Id("user1"), User.Id("user2")))
-            rule.settings.userHeaderName should be(Header.Name("X-Auth-Token"))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
           }
         )
       }

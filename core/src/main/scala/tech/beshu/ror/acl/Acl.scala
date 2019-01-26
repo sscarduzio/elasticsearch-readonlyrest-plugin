@@ -1,5 +1,6 @@
 package tech.beshu.ror.acl
 
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -20,6 +21,6 @@ trait AclHandler {
 }
 
 trait ResponseWriter {
-  def writeResponseHeaders(headers: Map[String, String]): Unit
-  def writeToThreadContextHeader(key: String, value: String): Unit
+  def writeResponseHeaders(headers: Map[NonEmptyString, NonEmptyString]): Unit
+  def writeToThreadContextHeader(key: NonEmptyString, value: NonEmptyString): Unit
 }

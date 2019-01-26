@@ -3,6 +3,7 @@ package tech.beshu.ror.acl.request
 import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.{Method, Uri}
+import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.Information
 import tech.beshu.ror.acl.blocks.VariablesManager
 import tech.beshu.ror.acl.blocks.VariablesResolver
@@ -45,7 +46,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def xForwardedForHeaderValue: Option[Address] = {
     findHeader(Header.Name.xForwardedFor)
       .flatMap { header =>
-        Option(header.value)
+        Option(header.value.value)
           .flatMap(_.split(",").headOption)
           .map(Address.apply)
       }
@@ -54,7 +55,6 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def currentGroup: RequestGroup = {
     findHeader(Header.Name.currentGroup) match {
       case None => RequestGroup.`N/A`
-      case Some(Header(_, "")) => RequestGroup.Empty
       case Some(Header(_, value)) => RequestGroup.AGroup(Group(value))
     }
   }
@@ -65,12 +65,10 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 sealed trait RequestGroup
 object RequestGroup {
   final case class AGroup(userGroup: Group) extends RequestGroup
-  case object Empty extends RequestGroup
   case object `N/A` extends RequestGroup
 
   implicit val show: Show[RequestGroup] = Show.show {
-    case AGroup(group) => group.value
-    case Empty => "<empty>"
+    case AGroup(group) => group.value.value
     case `N/A` => "N/A"
   }
 }

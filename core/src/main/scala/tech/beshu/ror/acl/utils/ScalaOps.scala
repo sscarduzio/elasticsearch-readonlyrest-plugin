@@ -1,5 +1,7 @@
 package tech.beshu.ror.acl.utils
 
+import eu.timepit.refined.types.string.NonEmptyString
+
 import scala.util.Try
 
 object ScalaOps {
@@ -29,4 +31,5 @@ object ScalaOps {
     }
   }
 
+  implicit val nonEmptyStringOrdering: Ordering[NonEmptyString] = Ordering.by(_.value)
 }

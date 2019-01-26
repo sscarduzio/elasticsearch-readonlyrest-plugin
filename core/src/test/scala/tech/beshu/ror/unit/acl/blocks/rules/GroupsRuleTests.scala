@@ -5,8 +5,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.TestsUtils.BlockContextAssertion
 import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.definitions.UserDef
@@ -29,45 +29,45 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion[Gr
       "user is not logged but there is one auth rule which matches" in {
         assertMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Const(Group("g1"))),
+            groups = NonEmptySet.one(Const(groupFrom("g1"))),
             usersDefinitions = NonEmptySet.one(
-              UserDef(User.Id("user1"), NonEmptySet.of(Group("g1"), Group("g2")), alwaysFulfillingAuthRule(User.Id("user1")))
+              UserDef(User.Id("user1"), NonEmptySet.of(groupFrom("g1"), groupFrom("g2")), alwaysFulfillingAuthRule(User.Id("user1")))
             )
           ),
           loggedUser = None,
           preferredGroup = None
         )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1"), Group("g1"), Set(Group("g1"), Group("g2")))
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1"), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
         )
       }
       "user is not logged but there is one auth rule which matches and current group is set" in {
         assertMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Const(Group("g1"))),
+            groups = NonEmptySet.one(Const(groupFrom("g1"))),
             usersDefinitions = NonEmptySet.of(
-              UserDef(User.Id("user2"), NonEmptySet.of(Group("g1"), Group("g2")), alwaysRejectingAuthRule),
-              UserDef(User.Id("user1"), NonEmptySet.of(Group("g1"), Group("g2")), alwaysFulfillingAuthRule(User.Id("user1")))
+              UserDef(User.Id("user2"), NonEmptySet.of(groupFrom("g1"), groupFrom("g2")), alwaysRejectingAuthRule),
+              UserDef(User.Id("user1"), NonEmptySet.of(groupFrom("g1"), groupFrom("g2")), alwaysFulfillingAuthRule(User.Id("user1")))
             )
           ),
           loggedUser = None,
-          preferredGroup = Some(Group("g1"))
+          preferredGroup = Some(groupFrom("g1"))
         )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1"), Group("g1"), Set(Group("g1"), Group("g2")))
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1"), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
         )
       }
       "user is logged and there is one auth rule which matches" in {
         assertMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Const(Group("g1"))),
+            groups = NonEmptySet.one(Const(groupFrom("g1"))),
             usersDefinitions = NonEmptySet.of(
-              UserDef(User.Id("user2"), NonEmptySet.of(Group("g1"), Group("g2")), alwaysRejectingAuthRule),
-              UserDef(User.Id("user1"), NonEmptySet.of(Group("g1"), Group("g2")), alwaysFulfillingAuthRule(User.Id("user1")))
+              UserDef(User.Id("user2"), NonEmptySet.of(groupFrom("g1"), groupFrom("g2")), alwaysRejectingAuthRule),
+              UserDef(User.Id("user1"), NonEmptySet.of(groupFrom("g1"), groupFrom("g2")), alwaysFulfillingAuthRule(User.Id("user1")))
             )
           ),
           loggedUser = Some(User.Id("user1")),
           preferredGroup = None
         )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1"), Group("g1"), Set(Group("g1"), Group("g2")))
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1"), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
         )
       }
     }
@@ -75,8 +75,8 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion[Gr
       "no group can be resolved" in {
         assertNotMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Variable(ValueWithVariable("group_@{user}"), rv => Right(Group(rv.value)))),
-            usersDefinitions = NonEmptySet.one(UserDef(User.Id("user1"), NonEmptySet.one(Group("group_user1")), alwaysRejectingAuthRule))
+            groups = NonEmptySet.one(Variable(ValueWithVariable("group_@{user}"), rv => Right(groupFrom(rv.value)))),
+            usersDefinitions = NonEmptySet.one(UserDef(User.Id("user1"), NonEmptySet.one(groupFrom("group_user1")), alwaysRejectingAuthRule))
           ),
           loggedUser = None,
           preferredGroup = None
@@ -85,18 +85,18 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion[Gr
       "resolved groups don't contain preferred group" in {
         assertNotMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Const(Group("g1"))),
-            usersDefinitions = NonEmptySet.one(UserDef(User.Id("user1"), NonEmptySet.one(Group("g1")), alwaysRejectingAuthRule))
+            groups = NonEmptySet.one(Const(groupFrom("g1"))),
+            usersDefinitions = NonEmptySet.one(UserDef(User.Id("user1"), NonEmptySet.one(groupFrom("g1")), alwaysRejectingAuthRule))
           ),
           loggedUser = None,
-          preferredGroup = Some(Group("g2"))
+          preferredGroup = Some(groupFrom("g2"))
         )
       }
       "there is no user definition for given logged user" in {
         assertNotMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Const(Group("g1"))),
-            usersDefinitions = NonEmptySet.one(UserDef(User.Id("user1"), NonEmptySet.one(Group("g1")), alwaysRejectingAuthRule))
+            groups = NonEmptySet.one(Const(groupFrom("g1"))),
+            usersDefinitions = NonEmptySet.one(UserDef(User.Id("user1"), NonEmptySet.one(groupFrom("g1")), alwaysRejectingAuthRule))
           ),
           loggedUser = Some(User.Id("user2")),
           preferredGroup = None
@@ -105,8 +105,8 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion[Gr
       "there is no matching auth rule for given user" in {
         assertNotMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Const(Group("g1"))),
-            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1"), NonEmptySet.one(Group("g1")), alwaysRejectingAuthRule))
+            groups = NonEmptySet.one(Const(groupFrom("g1"))),
+            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1"), NonEmptySet.one(groupFrom("g1")), alwaysRejectingAuthRule))
           ),
           loggedUser = Some(User.Id("user1")),
           preferredGroup = None
@@ -115,8 +115,8 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion[Gr
       "one auth rule available is throwing an exception" in {
         assertNotMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(Const(Group("g1"))),
-            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1"), NonEmptySet.one(Group("g1")), alwaysThrowingAuthRule))
+            groups = NonEmptySet.one(Const(groupFrom("g1"))),
+            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1"), NonEmptySet.one(groupFrom("g1")), alwaysThrowingAuthRule))
           ),
           loggedUser = Some(User.Id("user1")),
           preferredGroup = None

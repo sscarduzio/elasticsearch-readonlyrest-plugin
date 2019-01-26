@@ -43,7 +43,7 @@ class HttpExternalAuthenticationService(override val id: ExternalAuthenticationS
 
   override def authenticate(credentials: BasicAuth): Task[Boolean] = {
     httpClient
-      .send(sttp.get(uri).header(Header.Name.authorization.value, credentials.getBase64Value))
+      .send(sttp.get(uri).header(Header.Name.authorization.value.value, credentials.getBase64Value))
       .map(_.code === successStatusCode)
   }
 }

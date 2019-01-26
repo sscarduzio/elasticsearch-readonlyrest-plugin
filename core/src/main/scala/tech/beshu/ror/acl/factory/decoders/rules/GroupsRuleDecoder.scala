@@ -2,6 +2,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.implicits._
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.acl.aDomain.Group
 import tech.beshu.ror.acl.blocks.Value
@@ -33,5 +34,15 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef]) extends RuleDeco
 
 private object GroupsRuleDecoderHelper {
   implicit val groupValueDecoder: Decoder[Value[Group]] =
-    DecoderHelpers.alwaysRightValueDecoder[Group](rv => Group(rv.value))
+    DecoderHelpers
+      .valueDecoder[Group] { rv =>
+      NonEmptyString.from(rv.value) match {
+        case Right(nonEmptyResolvedValue) => Right(Group(nonEmptyResolvedValue))
+        case Left(_) => Left(ConvertError(rv, "Group cannot be empty"))
+      }
+    }
+      .emapE {
+        case Right(value) => Right(value)
+        case Left(error) => Left(RulesLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
+      }
 }

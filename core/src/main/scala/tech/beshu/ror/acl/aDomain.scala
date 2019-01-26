@@ -1,6 +1,7 @@
 package tech.beshu.ror.acl
 
 import cats.Eq
+import cats.implicits._
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.acl.header.ToHeaderValue
@@ -20,36 +21,35 @@ object aDomain {
     }
   }
 
-  final case class Group(value: String)
+  final case class Group(value: NonEmptyString)
 
-  final case class Header(name: Header.Name, value: String)
+  final case class Header(name: Header.Name, value: NonEmptyString)
   object Header {
-    final case class Name(value: String)
+    final case class Name(value: NonEmptyString)
     object Name {
-      val xForwardedFor = Name("X-Forwarded-For")
-      val xForwardedUser = Name("X-Forwarded-User")
-      val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
-      val cookie = Name("Cookie")
-      val setCookie = Name("Set-Cookie")
-      val transientFields = Name(Constants.FIELDS_TRANSIENT)
-      val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
-      val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
-      val userAgent = Name("User-Agent")
-      val authorization = Name("Authorization")
-      val rorUser = Name(Constants.HEADER_USER_ROR)
-      val kibanaIndex = Name(Constants.HEADER_KIBANA_INDEX)
-      val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
-      val transientFilter = Name(Constants.FILTER_TRANSIENT)
+      val xApiKeyHeaderName = Header.Name(NonEmptyString.unsafeFrom("X-Api-Key"))
+      val xForwardedFor = Name(NonEmptyString.unsafeFrom("X-Forwarded-For"))
+      val xForwardedUser = Name(NonEmptyString.unsafeFrom("X-Forwarded-User"))
+      val kibanaHiddenApps = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_HIDDEN_APPS))
+      val cookie = Name(NonEmptyString.unsafeFrom("Cookie"))
+      val setCookie = Name(NonEmptyString.unsafeFrom("Set-Cookie"))
+      val transientFields = Name(NonEmptyString.unsafeFrom(Constants.FIELDS_TRANSIENT))
+      val currentGroup = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUP_CURRENT))
+      val availableGroups = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUPS_AVAILABLE))
+      val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))
+      val authorization = Name(NonEmptyString.unsafeFrom("Authorization"))
+      val rorUser = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ROR))
+      val kibanaIndex = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_INDEX))
+      val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
+      val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
 
-      implicit val eqName: Eq[Name] = Eq.fromUniversalEquals
+      implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase)
     }
 
-    // todo: check if header is correct? non empty Strings
-    def apply(name: Name, value: String): Header = new Header(name, value)
-    def from(nameAndValue: (String, String)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
+    def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
     def apply[T](name: Name, value: T)
-                (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
-    def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1.value), nameAndValue._2.value)
+                (implicit ev: ToHeaderValue[T]): Header = new Header(name, NonEmptyString.unsafeFrom(ev.toRawValue(value))) // todo: remove unsafe in future
+    def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
   }
@@ -86,7 +86,7 @@ object aDomain {
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
   }
 
-  final case class ApiKey(value: String) extends AnyVal
+  final case class ApiKey(value: NonEmptyString)
   object ApiKey {
     implicit val eqApiKey: Eq[ApiKey] = Eq.fromUniversalEquals
   }

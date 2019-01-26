@@ -81,7 +81,14 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
   }
 
   private def groupsFromResponseBody(body: String): Set[Group] = {
-    Try(groupsJsonPath.read[java.util.List[String]](body)).map(_.asScala.map(Group.apply)) match {
+    val groupsFromPath =
+      Try(groupsJsonPath.read[java.util.List[String]](body))
+        .map(
+          _.asScala
+            .flatMap(NonEmptyString.from(_).toOption)
+            .map(Group.apply)
+        )
+    groupsFromPath match {
       case Success(groups) =>
         logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
         groups.toSet
@@ -101,7 +108,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
   }
 
   private def headersMap(userId: User.Id): Map[String, String] = {
-    defaultHeaders.map(h => (h.name.value, h.value)).toMap ++
+    defaultHeaders.map(h => (h.name.value.value, h.value.value)).toMap ++
       (authTokenSendMethod match {
         case UsingHeader => Map(tokenName.value.value -> userId.value)
         case UsingQueryParam => Map.empty

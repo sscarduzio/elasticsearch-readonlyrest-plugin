@@ -3,8 +3,9 @@ package tech.beshu.ror
 import java.time.Duration
 import java.util.Base64
 
+import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.aDomain.{Group, Header, IndexName, LoggedUser}
+import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.aDomain.Header.Name
 import tech.beshu.ror.acl.blocks.BlockContext
 
@@ -14,7 +15,7 @@ import scala.language.implicitConversions
 object TestsUtils {
 
   def basicAuthHeader(value: String): Header =
-    Header(Name("Authorization"), "Basic " + Base64.getEncoder.encodeToString(value.getBytes))
+    Header(Name(NonEmptyString.unsafeFrom("Authorization")), NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes)))
 
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
@@ -37,5 +38,30 @@ object TestsUtils {
       blockContext.indices should be(indices)
     }
   }
+
+  def headerFrom(nameAndValue: (String, String)): Header = {
+    (NonEmptyString.unapply(nameAndValue._1), NonEmptyString.unapply(nameAndValue._2)) match {
+      case (Some(nameNes), Some(valueNes)) => Header(Name(nameNes), valueNes)
+      case _ => throw new IllegalArgumentException(s"Cannot convert ${nameAndValue._1}:${nameAndValue._2} to Header")
+    }
+  }
+
+  def headerNameFrom(name: String): Header.Name = {
+    NonEmptyString.unapply(name) match {
+      case Some(nameNes) => Header.Name(nameNes)
+      case None => throw new IllegalArgumentException(s"Cannot convert $name to Header.Name")
+    }
+  }
+
+  def groupFrom(value: String): Group = NonEmptyString.from(value) match {
+    case Right(v) => Group(v)
+    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to Group")
+  }
+
+  def apiKeyFrom(value: String): ApiKey = NonEmptyString.from(value) match {
+    case Right(v) => ApiKey(v)
+    case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
+  }
+
 
 }

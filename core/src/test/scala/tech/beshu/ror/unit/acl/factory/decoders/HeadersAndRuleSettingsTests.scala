@@ -2,12 +2,10 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-
+import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.blocks.rules.HeadersAndRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.Header
-import tech.beshu.ror.acl.aDomain.Header.Name
 import tech.beshu.ror.acl.orders._
 
 class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAndRule] {
@@ -27,7 +25,7 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.headers should be(NonEmptySet.one(Header(Name("X-Some-Header"), "one")))
+            rule.settings.headers should be(NonEmptySet.one(headerFrom("X-Some-Header" -> "one")))
           }
         )
       }
@@ -44,7 +42,7 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               |
               |""".stripMargin,
           assertion = rule => {
-            val headers = NonEmptySet.of(Header(Name("X-Some-Header1"), "one"), Header(Name("X-Some-Header2"), "two"))
+            val headers = NonEmptySet.of(headerFrom("X-Some-Header1" -> "one"), headerFrom("X-Some-Header2" -> "two"))
             rule.settings.headers should be(headers)
           }
         )

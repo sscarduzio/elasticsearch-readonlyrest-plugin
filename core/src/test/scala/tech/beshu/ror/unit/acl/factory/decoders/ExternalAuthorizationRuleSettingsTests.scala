@@ -4,8 +4,8 @@ import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.aDomain.{Group, User}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.acl.aDomain.User
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule.Settings
@@ -13,6 +13,7 @@ import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 
 class ExternalAuthorizationRuleSettingsTests
@@ -48,7 +49,7 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
-              permittedGroups should be(NonEmptySet.one(Group("group3")))
+              permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.one(User.Id("user1")))
             }
           }
@@ -87,7 +88,7 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService2"))
               service shouldBe a[HttpExternalAuthorizationService]
-              permittedGroups should be(NonEmptySet.one(Group("group3")))
+              permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.of(User.Id("user1"), User.Id("user2")))
             }
           }
@@ -122,7 +123,7 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CachingExternalAuthorizationService]
-              permittedGroups should be(NonEmptySet.one(Group("group3")))
+              permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.one(User.Id("user1")))
             }
           }
@@ -154,7 +155,7 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
-              permittedGroups should be(NonEmptySet.one(Group("group3")))
+              permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.of(User.Id("*")))
             }
           }
@@ -191,7 +192,7 @@ class ExternalAuthorizationRuleSettingsTests
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CachingExternalAuthorizationService]
-              permittedGroups should be(NonEmptySet.one(Group("group3")))
+              permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.of(User.Id("*")))
             }
           }

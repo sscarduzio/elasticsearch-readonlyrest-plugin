@@ -11,6 +11,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{AuthorizationRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsJavaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
+import tech.beshu.ror.acl.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 

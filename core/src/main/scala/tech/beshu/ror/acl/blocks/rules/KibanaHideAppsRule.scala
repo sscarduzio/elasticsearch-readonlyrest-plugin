@@ -2,6 +2,7 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -19,7 +20,7 @@ class KibanaHideAppsRule(val settings: Settings)
 
   private val kibanaAppsHeader = new Header(
     kibanaHiddenApps,
-    settings.kibanaAppsToHide.toSortedSet.map(_.value).mkString(",")
+    NonEmptyString.unsafeFrom(settings.kibanaAppsToHide.toSortedSet.map(_.value).mkString(","))
   )
 
   override def process(requestContext: RequestContext,

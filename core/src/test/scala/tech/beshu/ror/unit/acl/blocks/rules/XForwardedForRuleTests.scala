@@ -6,10 +6,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.IPMask
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.acl.aDomain.{Address, Header}
+import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 
@@ -78,7 +79,7 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(settings: XForwardedForRule.Settings, xForwardedForHeaderValue: String, isMatched: Boolean) = {
     val rule = new XForwardedForRule(settings)
-    val requestContext = MockRequestContext(headers = Set(Header.from("X-Forwarded-For" -> xForwardedForHeaderValue)))
+    val requestContext = MockRequestContext(headers = Set(headerFrom("X-Forwarded-For" -> xForwardedForHeaderValue)))
     val blockContext = mock[BlockContext]
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

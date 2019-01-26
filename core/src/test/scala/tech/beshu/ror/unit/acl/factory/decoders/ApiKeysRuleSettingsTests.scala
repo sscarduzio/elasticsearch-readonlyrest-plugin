@@ -2,11 +2,10 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-
+import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.ApiKey
 import tech.beshu.ror.acl.orders._
 
 class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] {
@@ -26,7 +25,7 @@ class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] 
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.apiKeys should be(NonEmptySet.one(ApiKey("example_api_key")))
+            rule.settings.apiKeys should be(NonEmptySet.one(apiKeyFrom("example_api_key")))
           }
         )
       }
@@ -43,7 +42,7 @@ class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] 
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.apiKeys should be(NonEmptySet.of(ApiKey("one"), ApiKey("two"), ApiKey("three")))
+            rule.settings.apiKeys should be(NonEmptySet.of(apiKeyFrom("one"), apiKeyFrom("two"), apiKeyFrom("three")))
           }
         )
       }

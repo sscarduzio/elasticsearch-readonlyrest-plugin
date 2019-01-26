@@ -3,6 +3,7 @@ package tech.beshu.ror.acl.request
 import java.net.URI
 
 import com.softwaremill.sttp.{Method, Uri}
+import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.acl.aDomain
 import tech.beshu.ror.acl.aDomain.Header.Name
@@ -22,7 +23,12 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
   override def headers: Set[Header] =
     rInfo
       .extractRequestHeaders.asScala
-      .map { case (name, value) => Header(Name(name), value) }
+      .flatMap { case (name, value) =>
+        (NonEmptyString.unapply(name), NonEmptyString.unapply(value)) match {
+          case (Some(headerName), Some(headerValue)) => Some(Header(Name(headerName), headerValue))
+          case _ => None
+        }
+      }
       .toSet
 
   override def remoteAddress: Address = Address(rInfo.extractRemoteAddress())

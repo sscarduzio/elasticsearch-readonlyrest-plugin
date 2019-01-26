@@ -4,14 +4,13 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.acl.aDomain.{Filter, LoggedUser, User}
 import tech.beshu.ror.acl.blocks.rules.FilterRule
-import tech.beshu.ror.acl.aDomain.Header.Name
-import tech.beshu.ror.acl.aDomain.{Filter, Header, LoggedUser, User}
-import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
-
+import tech.beshu.ror.mocks.MockRequestContext
 
 class FilterRuleTests extends WordSpec with MockFactory {
 
@@ -24,7 +23,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
         (blockContext.withAddedContextHeader _)
-          .expects(Header(Name.transientFilter, "rO0ABXNyACx0ZWNoLmJlc2h1LnJvci5jb21tb25zLnV0aWxzLkZpbHRlclRyYW5zaWVudITzas9SBWxbAgABTAAHX2ZpbHRlcnQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA3eyJib29sIjp7Im11c3QiOlt7InRlcm0iOnsiQ291bnRyeSI6eyJ2YWx1ZSI6IlVLIn19fV19fQ=="))
+          .expects(headerFrom("_filter" -> "rO0ABXNyACx0ZWNoLmJlc2h1LnJvci5jb21tb25zLnV0aWxzLkZpbHRlclRyYW5zaWVudITzas9SBWxbAgABTAAHX2ZpbHRlcnQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA3eyJib29sIjp7Im11c3QiOlt7InRlcm0iOnsiQ291bnRyeSI6eyJ2YWx1ZSI6IlVLIn19fV19fQ=="))
           .returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
@@ -36,7 +35,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         (blockContext.loggedUser _).expects().returning(Some(LoggedUser(User.Id("bob"))))
         val newBlockContext = mock[BlockContext]
         (blockContext.withAddedContextHeader _)
-          .expects(Header(Name.transientFilter, "rO0ABXNyACx0ZWNoLmJlc2h1LnJvci5jb21tb25zLnV0aWxzLkZpbHRlclRyYW5zaWVudITzas9SBWxbAgABTAAHX2ZpbHRlcnQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA1eyJib29sIjp7Im11c3QiOlt7InRlcm0iOnsiVXNlciI6eyJ2YWx1ZSI6ImJvYiJ9fX1dfX0="))
+          .expects(headerFrom("_filter" -> "rO0ABXNyACx0ZWNoLmJlc2h1LnJvci5jb21tb25zLnV0aWxzLkZpbHRlclRyYW5zaWVudITzas9SBWxbAgABTAAHX2ZpbHRlcnQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA1eyJib29sIjp7Im11c3QiOlt7InRlcm0iOnsiVXNlciI6eyJ2YWx1ZSI6ImJvYiJ9fX1dfX0="))
           .returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
