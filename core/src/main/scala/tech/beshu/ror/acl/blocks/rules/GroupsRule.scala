@@ -24,8 +24,7 @@ class GroupsRule(val settings: Settings)
   override val name: Rule.Name = GroupsRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task
-    .unit
+                     blockContext: BlockContext): Task[RuleResult] = Task.unit
     .flatMap { _ =>
       NonEmptySet.fromSet(resolveGroups(requestContext, blockContext)) match {
         case None => Task.now(Rejected)
