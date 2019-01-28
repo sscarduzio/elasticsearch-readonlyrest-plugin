@@ -30,6 +30,11 @@ trait BlockContext {
   def indices: Set[IndexName]
   def withIndices(indices: NonEmptySet[IndexName]): BlockContext
 
+  def repositories: Set[IndexName]
+  def withRepositories(indices: NonEmptySet[IndexName]): BlockContext
+
+  def snapshots: Set[IndexName]
+  def withSnapshots(indices: NonEmptySet[IndexName]): BlockContext
 }
 
 class RequestContextInitiatedBlockContext private(val data: BlockContextData)
@@ -70,6 +75,15 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withIndices(indices: NonEmptySet[IndexName]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(indices = indices.toSortedSet))
 
+  override def repositories: Set[IndexName] = data.repositories
+
+  override def withRepositories(repositories: NonEmptySet[IndexName]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(repositories = repositories.toSortedSet))
+
+  override def snapshots: Set[IndexName] = data.snapshots
+
+  override def withSnapshots(snapshots: NonEmptySet[IndexName]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(snapshots = snapshots.toSortedSet))
 }
 
 object RequestContextInitiatedBlockContext {
@@ -80,7 +94,9 @@ object RequestContextInitiatedBlockContext {
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
-                                    indices: Set[IndexName])
+                                    indices: Set[IndexName],
+                                    repositories: Set[IndexName],
+                                    snapshots: Set[IndexName])
 
   def fromRequestContext(requestContext: RequestContext): RequestContextInitiatedBlockContext =
     new RequestContextInitiatedBlockContext(
@@ -94,7 +110,9 @@ object RequestContextInitiatedBlockContext {
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
         kibanaIndex = None,
-        indices = Set.empty
+        indices = Set.empty,
+        repositories = Set.empty,
+        snapshots = Set.empty
       )
     )
 }

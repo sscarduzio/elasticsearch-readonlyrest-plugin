@@ -46,11 +46,11 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_XForwardedForSyncRule;
@@ -86,8 +86,8 @@ public class RulesOrdering implements Comparator<AsyncRule> {
 
         __old_HostsSyncRule.class,
         __old_LocalHostsSyncRule.class,
-        SnapshotsSyncRule.class,
-        RepositoriesSyncRule.class,
+        __old_SnapshotsSyncRule.class,
+        __old_RepositoriesSyncRule.class,
         __old_XForwardedForSyncRule.class,
         __old_ApiKeysSyncRule.class,
         __old_SessionMaxIdleSyncRule.class,

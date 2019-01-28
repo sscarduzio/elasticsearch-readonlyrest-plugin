@@ -23,8 +23,8 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_RepositoriesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
@@ -105,8 +105,8 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(__old_ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
     creators.put(__old_HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
     creators.put(__old_LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
-    creators.put(SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
-    creators.put(RepositoriesSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
+    creators.put(__old_SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
+    creators.put(__old_RepositoriesSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
     creators.put(
         __old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
@@ -244,12 +244,12 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> snapshotsRuleSettingsCreator(RawSettings blockSettings) {
-    return () -> SnapshotsSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> __old_SnapshotsSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> repositoriesRuleSettingsCreator(RawSettings blockSettings) {
-    return () -> RepositoriesSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> __old_RepositoriesSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")

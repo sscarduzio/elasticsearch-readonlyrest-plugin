@@ -6,6 +6,7 @@ import java.util.UUID
 import eu.timepit.refined._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
@@ -123,7 +124,11 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     val blockContext = mock[BlockContext]
     val newBlockContext = mock[BlockContext]
-    (requestContext.headers _).expects().returning(Set(headerFrom("Cookie" -> rawCookie)))
+    val headers = NonEmptyString.unapply(rawCookie) match {
+      case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
+      case None => Set.empty[Header]
+    }
+    (requestContext.headers _).expects().returning(headers)
     (blockContext.loggedUser _).expects().returning(loggedUser)
     if(isMatched) (blockContext.withAddedResponseHeader _).expects(headerFrom("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {

@@ -31,7 +31,6 @@ import tech.beshu.ror.requestcontext.__old_RequestContext;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertFalse;
@@ -42,7 +41,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 17/05/2018.
  */
 
-public class SnapshotsRuleTests {
+public class __old_SnapshotsRuleTests {
 
   @Test
   public void testREADSimpleSnapshot() {
@@ -80,15 +79,6 @@ public class SnapshotsRuleTests {
     assertFalse(res.isMatch());
   }
 
-  private RuleExitResult matchAsRead(List<String> configured, List<String> found) {
-    __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
-    when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
-    when(rc.isReadRequest()).thenReturn(true);
-
-    when(rc.getAction()).thenReturn("cluster:admin/snapshot/get");
-    return match(configured, found, rc);
-  }
-
   @Test
   public void testSimpleWildcardForbid() {
     RuleExitResult res = matchAsRead(singletonList("x-*"), singletonList("public-asd"));
@@ -101,22 +91,30 @@ public class SnapshotsRuleTests {
     assertFalse(res.isMatch());
   }
 
+  private RuleExitResult matchAsRead(List<String> configured, List<String> found) {
+    __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
+    when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
+    when(rc.isReadRequest()).thenReturn(true);
+
+    when(rc.getAction()).thenReturn("cluster:admin/snapshot/get");
+    return match(configured, rc);
+  }
+
   private RuleExitResult matchAsWrite(List<String> configured, List<String> found) {
     __old_RequestContext rc = Mockito.mock(__old_RequestContext.class);
     when(rc.getSnapshots()).thenReturn(Sets.newHashSet(found));
     when(rc.isReadRequest()).thenReturn(false);
 
     when(rc.getAction()).thenReturn("cluster:admin/snapshot/get");
-    return match(configured, found, rc);
+    return match(configured, rc);
   }
 
-  private RuleExitResult match(List<String> configured, List<String> found, __old_RequestContext rc) {
-    Set<String> foundSet = Sets.newHashSet();
-    foundSet.addAll(found);
+  private RuleExitResult match(List<String> configured, __old_RequestContext rc) {
     Map<String, Object> yamlMap = new HashMap() {{
       put("snapshots", configured);
     }};
-    SyncRule r = new SnapshotsSyncRule(SnapshotsSyncRule.Settings.fromBlockSettings(new RawSettings(yamlMap, LoggerShim.dummy())), MockedESContext.INSTANCE);
+    SyncRule r = new __old_SnapshotsSyncRule(
+        __old_SnapshotsSyncRule.Settings.fromBlockSettings(new RawSettings(yamlMap, LoggerShim.dummy())), MockedESContext.INSTANCE);
     return r.match(rc);
   }
 

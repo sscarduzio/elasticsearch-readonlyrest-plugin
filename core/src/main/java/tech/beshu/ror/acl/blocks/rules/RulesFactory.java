@@ -39,10 +39,10 @@ import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_LocalHostsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_RepositoriesSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_SnapshotsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_XForwardedForSyncRule;
@@ -99,12 +99,12 @@ public class RulesFactory {
         settings -> AsyncRuleAdapter.wrap(new __old_LocalHostsSyncRule((__old_LocalHostsRuleSettings) settings, context))
     );
     this.creators.put(
-        SnapshotsSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new SnapshotsSyncRule((SnapshotsSyncRule.Settings) settings, context))
+        __old_SnapshotsSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_SnapshotsSyncRule((__old_SnapshotsSyncRule.Settings) settings, context))
     );
     this.creators.put(
-        RepositoriesSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new RepositoriesSyncRule((RepositoriesSyncRule.Settings) settings, context))
+        __old_RepositoriesSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_RepositoriesSyncRule((__old_RepositoriesSyncRule.Settings) settings, context))
     );
     this.creators.put(
         __old_IndicesRuleSettings.class,

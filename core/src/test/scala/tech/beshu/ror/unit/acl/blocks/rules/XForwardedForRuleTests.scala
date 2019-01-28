@@ -1,6 +1,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
@@ -79,7 +80,10 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(settings: XForwardedForRule.Settings, xForwardedForHeaderValue: String, isMatched: Boolean) = {
     val rule = new XForwardedForRule(settings)
-    val requestContext = MockRequestContext(headers = Set(headerFrom("X-Forwarded-For" -> xForwardedForHeaderValue)))
+    val requestContext = NonEmptyString.unapply(xForwardedForHeaderValue) match {
+      case Some(header) => MockRequestContext(headers = Set(headerFrom("X-Forwarded-For" -> header.value)))
+      case None => MockRequestContext.default
+    }
     val blockContext = mock[BlockContext]
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

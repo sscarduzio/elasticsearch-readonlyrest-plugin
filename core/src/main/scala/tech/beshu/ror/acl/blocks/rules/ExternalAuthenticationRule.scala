@@ -5,7 +5,7 @@ import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 
 class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings)
-  extends BaseAuthenticationRule {
+  extends BaseBasicAuthenticationRule {
 
   override val name: Rule.Name = ExternalAuthenticationRule.name
 

@@ -1,16 +1,19 @@
 package tech.beshu.ror.acl
 
-import cats.data.{NonEmptyList, WriterT}
+import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits._
 import monix.eval.Task
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.acl.request.RequestContext
-import aDomain.Header
+import aDomain.{Header, IndexName}
 import aDomain.Header.Name
 import headerValues._
+
+import scala.collection.SortedSet
 
 class SequentialAcl(val blocks: NonEmptyList[Block])
   extends Acl {
@@ -63,6 +66,9 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
   private def commitChanges(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     commitResponseHeaders(blockContext, writer)
     commitContextHeaders(blockContext, writer)
+    commitIndices(blockContext, writer)
+    commitSnapshots(blockContext, writer)
+    commitRepositories(blockContext, writer)
   }
 
   private def commitResponseHeaders(blockContext: BlockContext, writer: ResponseWriter): Unit = {
@@ -76,6 +82,27 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
   private def commitContextHeaders(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     blockContext.contextHeaders.foreach { h =>
       writer.writeToThreadContextHeader(h.name.value, h.value)
+    }
+  }
+
+  private def commitIndices(blockContext: BlockContext, writer: ResponseWriter): Unit = {
+    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.indices) match {
+      case Some(indices) => writer.writeIndices(indices)
+      case None =>
+    }
+  }
+
+  private def commitRepositories(blockContext: BlockContext, writer: ResponseWriter): Unit = {
+    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.repositories) match {
+      case Some(indices) => writer.writeRepositories(indices)
+      case None =>
+    }
+  }
+
+  private def commitSnapshots(blockContext: BlockContext, writer: ResponseWriter): Unit = {
+    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.snapshots) match {
+      case Some(indices) => writer.writeSnapshots(indices)
+      case None =>
     }
   }
 

@@ -134,6 +134,18 @@ object CirceOps {
       }
     }
 
+    def withError(newErrorCreator: Reason => AclCreationError, defaultErrorReason: Reason): Decoder[A] = {
+      Decoder.instance { c =>
+        decoder(c).left.map { df =>
+          val error = df.aclCreationError.map(e => newErrorCreator(e.reason)) match {
+            case Some(newError) => newError
+            case None => newErrorCreator(defaultErrorReason)
+          }
+          df.withMessage(AclCreationErrorCoders.stringify(error))
+        }
+      }
+    }
+
     def withErrorFromCursor(error: (Element, Context) => AclCreationError): Decoder[A] = {
       Decoder.instance { c =>
         val element = c.value

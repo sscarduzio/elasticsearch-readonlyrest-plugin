@@ -16,7 +16,7 @@ import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsJavaAdapter, StringTNaturalTransformation}
+import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.acl.show.logs._
@@ -134,10 +134,10 @@ object KibanaAccessRule {
   final case class Settings(access: KibanaAccess, kibanaIndex: Value[IndexName], kibanaMetadataEnabled: Boolean)
 
   private object Matchers {
-    val roMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))
-    val rwMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.RW_ACTIONS))
-    val adminMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.ADMIN_ACTIONS))
-    val clusterMatcher = new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(Constants.CLUSTER_ACTIONS))
+    val roMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))
+    val rwMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RW_ACTIONS))
+    val adminMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.ADMIN_ACTIONS))
+    val clusterMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.CLUSTER_ACTIONS))
   }
 
   private implicit val stringActionNT: StringTNaturalTransformation[Action] =

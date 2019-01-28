@@ -30,12 +30,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class SnapshotsSyncRule extends SyncRule {
+public class __old_RepositoriesSyncRule extends SyncRule {
 
   private final Settings settings;
   private final ESContext context;
 
-  public SnapshotsSyncRule(Settings s, ESContext context) {
+  public __old_RepositoriesSyncRule(Settings s, ESContext context) {
     this.settings = s;
     this.context = context;
   }
@@ -43,40 +43,39 @@ public class SnapshotsSyncRule extends SyncRule {
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
 
-    if(!rc.getAction().contains("/snapshot/")){
+    if(!rc.getAction().contains("/repository/")){
       return MATCH;
     }
 
-    Set<String> allowedSnapshots = settings.getAllowedSnapshots(rc);
+    Set<String> allowedRepositories = settings.getAllowedRepositories(rc);
 
     // Shortcut if we are matching all (i.e. totally useless rule, should be removed from settings)
-    if(allowedSnapshots.contains("_all") || allowedSnapshots.contains("*")){
-    context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the __old_ACL block.");
+    if(allowedRepositories.contains("_all") || allowedRepositories.contains("*")){
+      context.logger(this.getClass()).warn("Setting up a rule that matches all the values is redundant. Remove this rule from the __old_ACL block.");
       return MATCH;
     }
 
-    Set<String> requestedSnapshots = rc.getSnapshots();
+    Set<String> requestedRepositories = rc.getRepositories();
 
-    Set<String> alteredSnapshots = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(requestedSnapshots, new MatcherWithWildcards(allowedSnapshots));
+    Set<String> alteredRepositories = ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(requestedRepositories, new MatcherWithWildcards(allowedRepositories));
 
     // no changes needed
-    if(alteredSnapshots == null){
+    if(alteredRepositories == null){
       return MATCH;
     }
 
     // Nothing survived the filter, and we should forbid
-    if(alteredSnapshots.isEmpty()){
+    if(alteredRepositories.isEmpty()){
       return NO_MATCH;
     }
 
     // Apply modifications only to read requests, the others can be happily bounced.
     if(rc.isReadRequest()){
-      rc.setSnapshots(alteredSnapshots);
+      rc.setRepositories(alteredRepositories);
       return MATCH;
     }
 
-    return NO_MATCH;
-  }
+    return NO_MATCH;  }
 
   @Override
   public String getKey() {
@@ -85,17 +84,17 @@ public class SnapshotsSyncRule extends SyncRule {
 
   public static class Settings implements RuleSettings {
 
-    public static final String ATTRIBUTE_NAME = "snapshots";
+    public static final String ATTRIBUTE_NAME = "repositories";
 
-    private final Set<__old_Value<String>> allowedSnapshots;
+    private final Set<__old_Value<String>> allowedRepositories;
     private final boolean containsVariables;
     private Set<String> unwrapped;
 
-    public Settings(Set<__old_Value<String>> allowedSnapshots) {
-      this.containsVariables = allowedSnapshots.stream().filter(i -> i.getTemplate().contains("@{")).findFirst().isPresent();
-      this.allowedSnapshots = allowedSnapshots;
+    public Settings(Set<__old_Value<String>> allowedRepositories) {
+      this.containsVariables = allowedRepositories.stream().filter(i -> i.getTemplate().contains("@{")).findFirst().isPresent();
+      this.allowedRepositories = allowedRepositories;
       if (!containsVariables) {
-        this.unwrapped = allowedSnapshots.stream().map(__old_Value::getTemplate).collect(Collectors.toSet());
+        this.unwrapped = allowedRepositories.stream().map(__old_Value::getTemplate).collect(Collectors.toSet());
       }
     }
 
@@ -107,11 +106,11 @@ public class SnapshotsSyncRule extends SyncRule {
       );
     }
 
-    public Set<String> getAllowedSnapshots(__old_Value.__old_VariableResolver rc) {
+    public Set<String> getAllowedRepositories(__old_Value.__old_VariableResolver rc) {
       if (!containsVariables) {
         return unwrapped;
       }
-      return allowedSnapshots.stream().map(v -> v.getValue(rc)).filter(o -> o.isPresent()).map(o -> o.get()).collect(Collectors.toSet());
+      return allowedRepositories.stream().map(v -> v.getValue(rc)).filter(o -> o.isPresent()).map(o -> o.get()).collect(Collectors.toSet());
     }
 
     @Override

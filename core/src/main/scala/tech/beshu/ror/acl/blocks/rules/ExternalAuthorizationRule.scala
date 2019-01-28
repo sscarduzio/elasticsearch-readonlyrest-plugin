@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthorizationRule, RuleResult}
-import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsJavaAdapter, StringTNaturalTransformation}
+import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.commons.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.utils.ScalaOps._
@@ -20,7 +20,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   import ExternalAuthorizationRule.stringUserIdNT
 
-  private val userMatcher: Matcher = new MatcherWithWildcardsJavaAdapter(
+  private val userMatcher: Matcher = new MatcherWithWildcardsScalaAdapter(
     new MatcherWithWildcards(settings.users.map(_.value).toSortedSet.asJava)
   )
 

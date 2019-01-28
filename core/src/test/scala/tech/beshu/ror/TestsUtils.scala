@@ -27,7 +27,9 @@ object TestsUtils {
                            loggedUser: Option[LoggedUser] = None,
                            currentGroup: Option[Group] = None,
                            availableGroups: Set[Group] = Set.empty,
-                           indices: Set[IndexName] = Set.empty)
+                           indices: Set[IndexName] = Set.empty,
+                           repositories: Set[IndexName] = Set.empty,
+                           snapshots: Set[IndexName] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.responseHeaders should be(responseHeaders)
       blockContext.contextHeaders should be(contextHeaders)
@@ -36,6 +38,8 @@ object TestsUtils {
       blockContext.currentGroup should be(currentGroup)
       blockContext.availableGroups should be(availableGroups)
       blockContext.indices should be(indices)
+      blockContext.repositories should be(repositories)
+      blockContext.snapshots should be(snapshots)
     }
   }
 

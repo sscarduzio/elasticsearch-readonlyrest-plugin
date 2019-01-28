@@ -15,7 +15,7 @@ import tech.beshu.ror.utils.BasicAuthUtils.{BasicAuth, getBasicAuthFromHeaders}
 import scala.collection.JavaConverters._
 import scala.compat.java8.OptionConverters._
 
-abstract class BaseAuthenticationRule
+abstract class BaseBasicAuthenticationRule
   extends AuthenticationRule
     with Logging {
 
@@ -40,7 +40,7 @@ abstract class BaseAuthenticationRule
 }
 
 abstract class BasicAuthenticationRule(val settings: Settings)
-  extends BaseAuthenticationRule {
+  extends BaseBasicAuthenticationRule {
 
   override protected def authenticate(basicAuth: BasicAuth): Task[Boolean] =
     compare(settings.authKey, basicAuth)

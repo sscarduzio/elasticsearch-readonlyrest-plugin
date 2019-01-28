@@ -16,11 +16,11 @@ import scala.collection.JavaConverters._
 // todo: eg. current group (should be check if there is single value - where we should place the check?
 class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
-  override def id: RequestContext.Id = RequestContext.Id(rInfo.extractId())
+  override val id: RequestContext.Id = RequestContext.Id(rInfo.extractId())
 
-  override def action: Action = Action(rInfo.extractAction)
+  override val action: Action = Action(rInfo.extractAction)
 
-  override def headers: Set[Header] =
+  override val headers: Set[Header] =
     rInfo
       .extractRequestHeaders.asScala
       .flatMap { case (name, value) =>
@@ -31,27 +31,31 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
       }
       .toSet
 
-  override def remoteAddress: Address = Address(rInfo.extractRemoteAddress())
+  override val remoteAddress: Address = Address(rInfo.extractRemoteAddress())
 
-  override def localAddress: Address = Address(rInfo.extractLocalAddress())
+  override val localAddress: Address = Address(rInfo.extractLocalAddress())
 
-  override def method: Method = Method(rInfo.extractMethod())
+  override val method: Method = Method(rInfo.extractMethod())
 
-  override def uri: Uri = Uri(new URI(rInfo.extractURI()))
+  override val uri: Uri = Uri(new URI(rInfo.extractURI()))
 
-  override def contentLength: Information = Bytes(rInfo.extractContentLength().toLong)
+  override val contentLength: Information = Bytes(rInfo.extractContentLength().toLong)
 
-  override def isReadOnlyRequest: Boolean = rInfo.extractIsReadRequest()
+  override val isReadOnlyRequest: Boolean = rInfo.extractIsReadRequest()
 
-  override def `type`: Type = Type(rInfo.extractType())
+  override val `type`: Type = Type(rInfo.extractType())
 
-  override def content: String = rInfo.extractContent()
+  override val content: String = rInfo.extractContent()
 
-  override def indices: Set[aDomain.IndexName] = rInfo.extractIndices().asScala.map(IndexName.apply).toSet
+  override val indices: Set[aDomain.IndexName] = rInfo.extractIndices().asScala.map(IndexName.apply).toSet
 
-  override def allIndicesAndAliases: Set[aDomain.IndexName] = rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
+  override val allIndicesAndAliases: Set[aDomain.IndexName] = rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
 
-  override def involvesIndices: Boolean = rInfo.involvesIndices()
+  override val repositories: Set[IndexName] = rInfo.extractRepositories().asScala.map(IndexName.apply).toSet
 
-  override def isCompositeRequest: Boolean = rInfo.extractIsCompositeRequest()
+  override val snapshots: Set[IndexName] = rInfo.extractSnapshots().asScala.map(IndexName.apply).toSet
+
+  override val involvesIndices: Boolean = rInfo.involvesIndices()
+
+  override val isCompositeRequest: Boolean = rInfo.extractIsCompositeRequest()
 }

@@ -32,7 +32,7 @@ object UsersDefinitionsDecoder {
           rule <- tryDecodeAuthRule(removeKeysFromCursor(c, Set(usernameKey, groupsKey)), username)
         } yield UserDef(username, groups, rule)
       }
-      .withError(DefinitionsLevelCreationError(Message("User definition malformed")))
+      .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
   }
 
   private def tryDecodeAuthRule(adjustedCursor: ACursor, username: User.Id)

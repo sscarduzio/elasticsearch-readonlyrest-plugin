@@ -62,6 +62,9 @@ object aDomain {
 
   final case class Action(value: String) extends AnyVal {
     def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
+
+    def isSnapshotAction: Boolean = value.contains("/snapshot/")
+    def isRepositoryAction: Boolean = value.contains("/repository/")
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -77,7 +80,7 @@ object aDomain {
   }
   object IndexName {
 
-    val star = IndexName("*")
+    val wildcard = IndexName("*")
     val all = IndexName("_all")
     val devNullKibana = IndexName(".kibana-devnull")
     val kibana = IndexName(".kibana")
@@ -133,4 +136,5 @@ object aDomain {
 
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
   }
+
 }

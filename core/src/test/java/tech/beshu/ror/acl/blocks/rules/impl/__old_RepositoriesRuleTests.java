@@ -40,7 +40,7 @@ import static org.mockito.Mockito.when;
  * Created by sscarduzio on 17/05/2018.
  */
 
-public class RepositoriesRuleTests {
+public class __old_RepositoriesRuleTests {
 
   @Test
   public void testSimpleRepository() {
@@ -73,7 +73,8 @@ public class RepositoriesRuleTests {
     Map<String, Object> yamlMap = new HashMap() {{
       put("repositories", configured);
     }};
-    SyncRule r = new RepositoriesSyncRule(RepositoriesSyncRule.Settings.fromBlockSettings(new RawSettings(yamlMap, LoggerShim.dummy())), MockedESContext.INSTANCE);
+    SyncRule r = new __old_RepositoriesSyncRule(
+        __old_RepositoriesSyncRule.Settings.fromBlockSettings(new RawSettings(yamlMap, LoggerShim.dummy())), MockedESContext.INSTANCE);
     return r.match(rc);
   }
 

@@ -2,11 +2,11 @@ package tech.beshu.ror.acl.blocks.rules.utils
 
 import tech.beshu.ror.acl.aDomain.IndexName
 import tech.beshu.ror.acl.blocks.rules.impl.ZeroKnowledgeIndexFilter
-import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterJavaAdapter.CheckResult
+import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 
 import scala.collection.JavaConverters._
 
-class ZeroKnowledgeIndexFilterJavaAdapter(underlying: ZeroKnowledgeIndexFilter) {
+class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
 
   def check(indices: Set[IndexName], matcher: Matcher): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
@@ -20,7 +20,7 @@ class ZeroKnowledgeIndexFilterJavaAdapter(underlying: ZeroKnowledgeIndexFilter) 
   }
 }
 
-object ZeroKnowledgeIndexFilterJavaAdapter {
+object ZeroKnowledgeIndexFilterScalaAdapter {
   sealed trait CheckResult
   object CheckResult {
     final case class Ok(processedIndices: Set[IndexName]) extends CheckResult

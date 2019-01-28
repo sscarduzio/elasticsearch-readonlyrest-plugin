@@ -1,21 +1,20 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-
 import tech.beshu.ror.acl.aDomain.IndexName
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
-import tech.beshu.ror.acl.blocks.rules.IndicesRule
+import tech.beshu.ror.acl.blocks.rules.RepositoriesRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
-class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] with MockFactory {
 
-  "An IndicesRule" should {
+class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[RepositoriesRule] {
+
+  "A RepositoriesRule" should {
     "be able to be loaded from config" when {
       "one index is defined" in {
         assertDecodingSuccess(
@@ -26,7 +25,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    indices: index1
+              |    repositories: index1
               |
               |""".stripMargin,
           assertion = rule => {
@@ -44,7 +43,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    indices: "index_@{user}"
+              |    repositories: "index_@{user}"
               |
               |""".stripMargin,
           assertion = rule => {
@@ -64,7 +63,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    indices: [index1, index2]
+              |    repositories: [index1, index2]
               |
               |""".stripMargin,
           assertion = rule => {
@@ -82,7 +81,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    indices: [index1, "index_@{user}"]
+              |    repositories: [index1, "index_@{user}"]
               |
               |""".stripMargin,
           assertion = rule => {
@@ -107,14 +106,54 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    indices:
+              |    repositories:
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
-              """indices: null
+              """repositories: null
                 |""".stripMargin)))
+          }
+        )
+      }
+      "there is '_all' index defined" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    repositories: [index1, _all]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message(
+              "Setting up a rule (repositories) that matches all the values is redundant - index _all"
+            )))
+          }
+        )
+      }
+      "there is '*' index defined" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    repositories: ["index1", "*", "index2"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message(
+              "Setting up a rule (repositories) that matches all the values is redundant - index *"
+            )))
           }
         )
       }

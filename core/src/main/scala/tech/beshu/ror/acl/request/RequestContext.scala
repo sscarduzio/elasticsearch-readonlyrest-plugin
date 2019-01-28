@@ -3,7 +3,6 @@ package tech.beshu.ror.acl.request
 import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.{Method, Uri}
-import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.Information
 import tech.beshu.ror.acl.blocks.VariablesManager
 import tech.beshu.ror.acl.blocks.VariablesResolver
@@ -26,6 +25,8 @@ trait RequestContext {
 
   def indices: Set[IndexName]
   def allIndicesAndAliases: Set[IndexName]
+  def repositories: Set[IndexName]
+  def snapshots: Set[IndexName]
 
   def isReadOnlyRequest: Boolean
   def involvesIndices: Boolean

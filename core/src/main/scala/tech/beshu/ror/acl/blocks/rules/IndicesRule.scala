@@ -12,8 +12,8 @@ import tech.beshu.ror.acl.blocks.rules.IndicesRule.{CanPass, Settings}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.impl.ZeroKnowledgeIndexFilter
-import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsJavaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterJavaAdapter}
-import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterJavaAdapter.CheckResult
+import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
 import tech.beshu.ror.acl.request.RequestContext
 import scala.collection.JavaConverters._
@@ -28,7 +28,7 @@ class IndicesRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaIndexRule.name
 
-  private val zKindexFilter = new ZeroKnowledgeIndexFilterJavaAdapter(new ZeroKnowledgeIndexFilter(true))
+  private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
@@ -39,14 +39,14 @@ class IndicesRule(val settings: Settings)
 
   private def process(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
     val matcher: Matcher = initialMatcher.getOrElse {
-      val resolvedIndices = settings.indices.toList
+      val resolvedIndices = settings.allowedIndices.toList
         .flatMap { v =>
           v.getValue(requestContext.variablesResolver, blockContext) match {
             case Right(index) => index :: Nil
             case Left(_) => Nil
           }
         }
-      new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(resolvedIndices.map(_.value).toSet.asJava))
+      new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(resolvedIndices.map(_.value).toSet.asJava))
     }
     // Cross cluster search awareness
     if (isSearchAction(requestContext)) {
@@ -99,7 +99,7 @@ class IndicesRule(val settings: Settings)
     val indices = requestContext.indices
     // 1. Requesting none or all the indices means requesting allowed indices that exist.
     logger.debug("Stage 0")
-    if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.star)) {
+    if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
       val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases)
       val result = if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
       else CanPass.No
@@ -124,7 +124,7 @@ class IndicesRule(val settings: Settings)
       // 2.1 Detect at least 1 non-wildcard requested indices that do not exist, ES will naturally return 404, our job is done.
       val real = requestContext.allIndicesAndAliases
       val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
-        case (acc, index) if index =!= IndexName.star && !real.contains(index) => acc + index
+        case (acc, index) if index =!= IndexName.wildcard && !real.contains(index) => acc + index
         case (acc, _) => acc
       }
       if (nonExistent.nonEmpty) {
@@ -179,25 +179,25 @@ class IndicesRule(val settings: Settings)
   }
 
   private def expandedIndices(requestContext: RequestContext): Set[IndexName] = {
-    new MatcherWithWildcardsJavaAdapter(new MatcherWithWildcards(requestContext.indices.map(_.value).asJava))
+    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(requestContext.indices.map(_.value).asJava))
       .filter(requestContext.allIndicesAndAliases)
   }
 
   private val initialMatcher = {
-    val hasVariables = settings.indices.exists {
+    val hasVariables = settings.allowedIndices.exists {
       case Const(_) => false
       case Variable(_, _) => true
     }
     if (hasVariables) None
     else Some {
-      new MatcherWithWildcardsJavaAdapter(
-        new MatcherWithWildcards(settings.indices.collect { case Const(IndexName(rawValue)) => rawValue } asJava)
+      new MatcherWithWildcardsScalaAdapter(
+        new MatcherWithWildcards(settings.allowedIndices.collect { case Const(IndexName(rawValue)) => rawValue } asJava)
       )
     }
   }
 
-  private val matchAll = settings.indices.exists {
-    case Const(IndexName.star) => true
+  private val matchAll = settings.allowedIndices.exists {
+    case Const(IndexName.`wildcard`) => true
     case _ => false
   }
 
@@ -206,7 +206,7 @@ class IndicesRule(val settings: Settings)
 object IndicesRule {
   val name = Rule.Name("indices")
 
-  final case class Settings(indices: NonEmptySet[Value[IndexName]])
+  final case class Settings(allowedIndices: NonEmptySet[Value[IndexName]])
 
   private sealed trait CanPass
   private object CanPass {
