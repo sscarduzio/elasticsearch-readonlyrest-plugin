@@ -18,7 +18,7 @@ package tech.beshu.ror.settings.definitions;
 
 import tech.beshu.ror.commons.settings.RawSettings;
 
-public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
+public class __old_GroupsProviderLdapSettings extends AuthenticationLdapSettings {
 
   public static final String UNIQUE_MEMBER_DEFAULT = "uniqueMember";
   public static final String GROUP_SEARCH_FILTER_DEFAULT = "(cn=*)";
@@ -38,7 +38,7 @@ public class GroupsProviderLdapSettings extends AuthenticationLdapSettings {
   private final boolean groupsFromUser;
   private final String groupsFromUserAttribute;
 
-  public GroupsProviderLdapSettings(RawSettings settings) {
+  public __old_GroupsProviderLdapSettings(RawSettings settings) {
     super(settings);
     this.searchGroupBaseDn = settings.stringReq(SEARCH_GROUPS);
     this.uniqueMemberAttribute = settings.stringOpt(UNIQUE_MEMBER).orElse(UNIQUE_MEMBER_DEFAULT);

@@ -33,7 +33,7 @@ import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.rules.__old_GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.utils.containers.WireMockContainer;
 
@@ -110,7 +110,7 @@ public class __old_GroupsProviderAuthorizationAsyncRuleTests {
         __old_GroupsProviderAuthorizationRuleSettings.from(
             TestUtils.fromYAMLString(groupProviderConfig(ruleGroups)).inner(
                 __old_GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
-            UserGroupsProviderSettingsCollection.from(
+            __old_UserGroupsProviderSettingsCollection.from(
                 TestUtils.fromYAMLString(apiConfigs(uri, method, headers, query_params)
                 )
             )

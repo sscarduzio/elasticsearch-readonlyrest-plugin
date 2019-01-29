@@ -17,11 +17,11 @@
 package tech.beshu.ror.acl.definitions.ldaps;
 
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
-import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
+import tech.beshu.ror.settings.definitions.__old_GroupsProviderLdapSettings;
 
 public interface LdapClientFactory {
 
-  GroupsProviderLdapClient getClient(GroupsProviderLdapSettings settings);
+  GroupsProviderLdapClient getClient(__old_GroupsProviderLdapSettings settings);
 
   AuthenticationLdapClient getClient(AuthenticationLdapSettings settings);
 }

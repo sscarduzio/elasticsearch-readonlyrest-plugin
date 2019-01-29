@@ -21,23 +21,23 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 
-public class BasicAuthUtils {
+public class __old_BasicAuthUtils {
 
-  private BasicAuthUtils() {
+  private __old_BasicAuthUtils() {
   }
 
   public static String basicAuthHeaderValue(String user, String password) {
     return String.format("Basic %s", Base64.getEncoder().encodeToString(String.format("%s:%s", user, password).getBytes()));
   }
 
-  public static Optional<BasicAuth> getBasicAuthFromHeaders(Map<String, String> headers) {
+  public static Optional<__old_BasicAuth> getBasicAuthFromHeaders(Map<String, String> headers) {
     return Optional.ofNullable(headers.get("Authorization"))
-                   .flatMap(BasicAuthUtils::getInterestingPartOfBasicAuthValue)
-                   .flatMap(BasicAuth::fromBase64Value);
+                   .flatMap(__old_BasicAuthUtils::getInterestingPartOfBasicAuthValue)
+                   .flatMap(__old_BasicAuth::fromBase64Value);
   }
 
-  public static Optional<BasicAuth> getBasicAuthFromString(String base64Value) {
-    return BasicAuth.fromBase64Value(base64Value);
+  public static Optional<__old_BasicAuth> getBasicAuthFromString(String base64Value) {
+    return __old_BasicAuth.fromBase64Value(base64Value);
   }
 
   private static Optional<String> getInterestingPartOfBasicAuthValue(String basicAuthValue) {
@@ -56,12 +56,12 @@ public class BasicAuthUtils {
     }
   }
 
-  public static class BasicAuth {
+  public static class __old_BasicAuth {
     private final String base64Value;
     private final String userName;
     private final String password;
 
-    private BasicAuth(String base64Value) {
+    private __old_BasicAuth(String base64Value) {
       this.base64Value = base64Value;
       String decoded = new String(Base64.getDecoder().decode(base64Value));
       int index = decoded.indexOf(":");
@@ -72,10 +72,10 @@ public class BasicAuthUtils {
       this.password = decoded.substring(index + 1);
     }
 
-    public static Optional<BasicAuth> fromBase64Value(String base64Value) {
-      BasicAuth ba;
+    public static Optional<__old_BasicAuth> fromBase64Value(String base64Value) {
+      __old_BasicAuth ba;
       try {
-        ba = new BasicAuth(base64Value);
+        ba = new __old_BasicAuth(base64Value);
         return Optional.of(ba);
       } catch (Exception e) {
         ba = null;

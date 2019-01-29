@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authorization;
 import tech.beshu.ror.acl.definitions.users.User;
-import tech.beshu.ror.acl.definitions.users.UserFactory;
+import tech.beshu.ror.acl.definitions.users.__old_UserFactory;
 import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.definitions.__old_UserSettings;
@@ -51,7 +51,7 @@ public class __old_GroupsAsyncRule extends AsyncRule implements Authorization, A
   private final __old_GroupsRuleSettings settings;
   private final Map<String, User> users;
 
-  public __old_GroupsAsyncRule(__old_GroupsRuleSettings s, UserFactory userFactory) {
+  public __old_GroupsAsyncRule(__old_GroupsRuleSettings s, __old_UserFactory userFactory) {
     this.settings = s;
     this.users = settings.getUsersSettings().stream()
                          .map(uSettings -> userFactory.getUser(uSettings))

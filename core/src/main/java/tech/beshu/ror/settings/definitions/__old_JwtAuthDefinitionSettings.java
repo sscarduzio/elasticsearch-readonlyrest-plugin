@@ -28,7 +28,7 @@ import java.util.Optional;
 /**
  * @author Datasweet <contact@datasweet.fr>
  */
-public class JwtAuthDefinitionSettings implements NamedSettings {
+public class __old_JwtAuthDefinitionSettings implements NamedSettings {
   private static final String NAME = "name";
   private static final String SIGNATURE_ALGO = "signature_algo";
   private static final String SIGNATURE_KEY = "signature_key";
@@ -52,7 +52,7 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
   private final Boolean externalValidatorValidate;
   private final int externalValidatorSuccessStatusCode;
 
-  public JwtAuthDefinitionSettings(RawSettings settings) {
+  public __old_JwtAuthDefinitionSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
 
     String key = ensureString(settings, SIGNATURE_KEY);

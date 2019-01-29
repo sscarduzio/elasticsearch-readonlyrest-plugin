@@ -19,8 +19,8 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthorization;
-import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClient;
-import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClientFactory;
+import tech.beshu.ror.acl.definitions.groupsproviders.__old_GroupsProviderServiceClient;
+import tech.beshu.ror.acl.definitions.groupsproviders.__old_GroupsProviderServiceClientFactory;
 import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
@@ -32,11 +32,11 @@ import java.util.concurrent.CompletableFuture;
 public class __old_GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
 
   private final __old_GroupsProviderAuthorizationRuleSettings settings;
-  private final GroupsProviderServiceClient client;
+  private final __old_GroupsProviderServiceClient client;
   private final MatcherWithWildcards usersMatcher;
 
   public __old_GroupsProviderAuthorizationAsyncRule(__old_GroupsProviderAuthorizationRuleSettings settings,
-      GroupsProviderServiceClientFactory factory,
+      __old_GroupsProviderServiceClientFactory factory,
       ESContext context) {
     super(context);
     this.settings = settings;

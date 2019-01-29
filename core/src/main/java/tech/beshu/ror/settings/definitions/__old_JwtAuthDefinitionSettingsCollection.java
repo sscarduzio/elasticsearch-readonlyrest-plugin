@@ -31,34 +31,34 @@ import static org.jooq.lambda.Seq.seq;
 /**
  * @author Datasweet <contact@datasweet.fr>
  */
-public class JwtAuthDefinitionSettingsCollection {
+public class __old_JwtAuthDefinitionSettingsCollection {
   private static final String ATTRIBUTE_NAME = "jwt";
 
-  private final Map<String, JwtAuthDefinitionSettings> jwtAuthConfigsSettingsMap;
+  private final Map<String, __old_JwtAuthDefinitionSettings> jwtAuthConfigsSettingsMap;
 
-  private JwtAuthDefinitionSettingsCollection(List<JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
+  private __old_JwtAuthDefinitionSettingsCollection(List<__old_JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
     validate(jwtAuthConfigsSettings);
-    this.jwtAuthConfigsSettingsMap = seq(jwtAuthConfigsSettings).toMap(JwtAuthDefinitionSettings::getName, Function.identity());
+    this.jwtAuthConfigsSettingsMap = seq(jwtAuthConfigsSettings).toMap(__old_JwtAuthDefinitionSettings::getName, Function.identity());
   }
 
   @SuppressWarnings("unchecked")
-  public static JwtAuthDefinitionSettingsCollection from(RawSettings data) {
+  public static __old_JwtAuthDefinitionSettingsCollection from(RawSettings data) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
-      .map(list -> list.stream().map(l -> new JwtAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
+      .map(list -> list.stream().map(l -> new __old_JwtAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
         .collect(Collectors.toList()))
-      .map(JwtAuthDefinitionSettingsCollection::new)
-      .orElse(new JwtAuthDefinitionSettingsCollection(Lists.newArrayList()));
+      .map(__old_JwtAuthDefinitionSettingsCollection::new)
+      .orElse(new __old_JwtAuthDefinitionSettingsCollection(Lists.newArrayList()));
   }
 
-  public JwtAuthDefinitionSettings get(String name) {
+  public __old_JwtAuthDefinitionSettings get(String name) {
     if (!jwtAuthConfigsSettingsMap.containsKey(name))
       throw new SettingsMalformedException("Cannot find Jwt Auth Config definition with name '" + name + "'");
     return jwtAuthConfigsSettingsMap.get(name);
   }
 
-  private void validate(List<JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
+  private void validate(List<__old_JwtAuthDefinitionSettings> jwtAuthConfigsSettings) {
     List<String> names = seq(jwtAuthConfigsSettings)
-      .map(JwtAuthDefinitionSettings::getName)
+      .map(__old_JwtAuthDefinitionSettings::getName)
       .collect(Collectors.toList());
     if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated Jwt Auth Config name in '" + ATTRIBUTE_NAME + "' section");

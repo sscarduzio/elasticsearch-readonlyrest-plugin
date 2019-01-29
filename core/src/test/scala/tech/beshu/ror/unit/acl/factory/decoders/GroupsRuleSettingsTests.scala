@@ -3,7 +3,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.aDomain.{AuthData, Group, User}
+import tech.beshu.ror.acl.aDomain.{Secret, Group, User}
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
@@ -43,7 +43,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               name should be(User.Id("cartman"))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
-              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
+              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(Secret("cartman:pass")))
             }
           }
         )
@@ -78,13 +78,13 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               name should be(User.Id("cartman"))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
-              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
+              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(Secret("cartman:pass")))
             }
             inside(sortedUserDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("morgan"))
               userGroups should be(NonEmptySet.of(groupFrom("group2"), groupFrom("group3")))
               authRule shouldBe an[AuthKeySha1Rule]
-              authRule.asInstanceOf[AuthKeySha1Rule].settings should be(BasicAuthenticationRule.Settings(AuthData("d27aaf7fa3c1603948bb29b7339f2559dc02019a")))
+              authRule.asInstanceOf[AuthKeySha1Rule].settings should be(BasicAuthenticationRule.Settings(Secret("d27aaf7fa3c1603948bb29b7339f2559dc02019a")))
             }
           }
         )
@@ -117,7 +117,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               name should be(User.Id("cartman"))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
-              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(AuthData("cartman:pass")))
+              authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(Secret("cartman:pass")))
             }
           }
         )

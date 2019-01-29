@@ -33,8 +33,8 @@ import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
-import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
+import tech.beshu.ror.settings.definitions.__old_JwtAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
 
 import java.security.KeyException;
 import java.security.KeyFactory;
@@ -269,7 +269,7 @@ public class JwtAuthRuleTests {
   @Test
   public void shouldSupportTextPrefixInSignatureKey() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "text:" + SECRET);
-    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
+    __old_JwtAuthRuleSettings settings = __old_JwtAuthRuleSettings.from(JWT_NAME, __old_JwtAuthDefinitionSettingsCollection.from(raw));
     assertArrayEquals(SECRET.getBytes(), settings.getKey());
   }
 
@@ -287,26 +287,26 @@ public class JwtAuthRuleTests {
     /* ************************************************************* */
 
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "env:" + variable);
-    JwtAuthRuleSettings settings = JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
+    __old_JwtAuthRuleSettings settings = __old_JwtAuthRuleSettings.from(JWT_NAME, __old_JwtAuthDefinitionSettingsCollection.from(raw));
     assertArrayEquals(value.getBytes(), settings.getKey());
   }
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeytIsEmpty() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "", SETTINGS_SIGNATURE_ALGO, "RSA");
-    JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
+    __old_JwtAuthRuleSettings.from(JWT_NAME, __old_JwtAuthDefinitionSettingsCollection.from(raw));
   }
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailWhenKeyFromEnvironmentIsEmpty() {
     RawSettings raw = makeSettings(SETTINGS_SIGNATURE_KEY, "env:" + EMPTY_VAR);
-    JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
+    __old_JwtAuthRuleSettings.from(JWT_NAME, __old_JwtAuthDefinitionSettingsCollection.from(raw));
   }
 
   @Test(expected = SettingsMalformedException.class)
   public void shouldFailInAControlledFashionWhenKeyIsNotAString() {
     RawSettings raw = makeSettings(JWT_NAME, false, SETTINGS_SIGNATURE_KEY, "123456");
-    JwtAuthRuleSettings.from(JWT_NAME, JwtAuthDefinitionSettingsCollection.from(raw));
+    __old_JwtAuthRuleSettings.from(JWT_NAME, __old_JwtAuthDefinitionSettingsCollection.from(raw));
   }
 
   @Test
@@ -513,10 +513,10 @@ public class JwtAuthRuleTests {
         sb.append("\n");
       }
 
-      return Optional.of(new JwtAuthAsyncRule(
-          JwtAuthRuleSettings.from(
-              TestUtils.fromYAMLString(sb.toString()).inner(JwtAuthRuleSettings.ATTRIBUTE_NAME),
-              JwtAuthDefinitionSettingsCollection.from(settings)
+      return Optional.of(new __old_JwtAuthAsyncRule(
+          __old_JwtAuthRuleSettings.from(
+              TestUtils.fromYAMLString(sb.toString()).inner(__old_JwtAuthRuleSettings.ATTRIBUTE_NAME),
+              __old_JwtAuthDefinitionSettingsCollection.from(settings)
           ),
           MockedESContext.INSTANCE,
           MockedACL.getMock().getDefinitionsFactory()

@@ -22,8 +22,8 @@ import tech.beshu.ror.settings.BlockSettings;
 import tech.beshu.ror.settings.RorSettings;
 import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ProxyAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 
 import java.util.Map;
@@ -36,8 +36,8 @@ public abstract class AllowedSettings {
     String rule_prefix = prefix + BlockSettings.ATTRIBUTE_NAME + ".";
     String users_prefix = prefix + __old_UserSettingsCollection.ATTRIBUTE_NAME + ".";
     String ldaps_prefix = prefix + LdapSettingsCollection.ATTRIBUTE_NAME + ".";
-    String proxy_auth_configs_prefix = prefix + ProxyAuthDefinitionSettingsCollection.ATTRIBUTE_NAME + ".";
-    String user_groups_providers_prefix = prefix + UserGroupsProviderSettingsCollection.ATTRIBUTE_NAME + ".";
+    String proxy_auth_configs_prefix = prefix + __old_ProxyAuthDefinitionSettingsCollection.ATTRIBUTE_NAME + ".";
+    String user_groups_providers_prefix = prefix + __old_UserGroupsProviderSettingsCollection.ATTRIBUTE_NAME + ".";
     String external_authentication_service_configs_prefix =
       prefix + __old_ExternalAuthenticationServiceSettingsCollection.ATTRIBUTE_NAME + ".";
 

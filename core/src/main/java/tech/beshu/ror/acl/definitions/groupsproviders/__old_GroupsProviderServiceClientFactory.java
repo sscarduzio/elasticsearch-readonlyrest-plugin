@@ -16,12 +16,9 @@
  */
 package tech.beshu.ror.acl.definitions.groupsproviders;
 
-import tech.beshu.ror.acl.domain.__old_LoggedUser;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettings;
 
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
+public interface __old_GroupsProviderServiceClientFactory {
 
-public interface GroupsProviderServiceClient {
-
-  CompletableFuture<Set<String>> fetchGroupsFor(__old_LoggedUser user);
+  __old_GroupsProviderServiceClient getClient(__old_UserGroupsProviderSettings settings);
 }

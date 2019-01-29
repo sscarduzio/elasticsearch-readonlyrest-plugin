@@ -16,17 +16,16 @@
  */
 package tech.beshu.ror.settings.rules;
 
-public class AuthKeySha256RuleSettings extends __old_AuthKeyRuleSettings {
+public class __old_AuthKeyPlainTextRuleSettings extends __old_AuthKeyRuleSettings {
 
-  public static final String ATTRIBUTE_NAME = "auth_key_sha256";
+  public static final String ATTRIBUTE_NAME = "auth_key";
 
-  public AuthKeySha256RuleSettings(String authKey) {
-
-    super(authKey.toLowerCase());
+  public __old_AuthKeyPlainTextRuleSettings(String authKey) {
+    super(authKey);
   }
 
-  public static AuthKeySha256RuleSettings from(String authKey) {
-    return new AuthKeySha256RuleSettings(authKey);
+  public static __old_AuthKeyPlainTextRuleSettings from(String authKey) {
+    return new __old_AuthKeyPlainTextRuleSettings(authKey);
   }
 
   @Override

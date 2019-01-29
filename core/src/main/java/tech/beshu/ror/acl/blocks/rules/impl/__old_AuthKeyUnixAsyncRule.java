@@ -20,7 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
@@ -32,9 +32,9 @@ import static org.apache.commons.codec.digest.Crypt.crypt;
 public class __old_AuthKeyUnixAsyncRule extends AsyncAuthentication {
 
   private final LoggerShim logger;
-  private final AuthKeyUnixRuleSettings settings;
+  private final __old_AuthKeyUnixRuleSettings settings;
 
-  public __old_AuthKeyUnixAsyncRule(AuthKeyUnixRuleSettings s, ESContext context) {
+  public __old_AuthKeyUnixAsyncRule(__old_AuthKeyUnixRuleSettings s, ESContext context) {
     super(context);
     this.logger = context.logger(__old_AuthKeyUnixAsyncRule.class);
     this.settings = s;

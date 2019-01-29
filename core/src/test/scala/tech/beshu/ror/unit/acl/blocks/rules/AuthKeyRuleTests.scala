@@ -1,10 +1,10 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, BasicAuthenticationRule}
-import tech.beshu.ror.acl.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.Secret
 
 class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {
 
   override protected def ruleName: String = classOf[AuthKeyRule].getSimpleName
-  override protected val rule = new AuthKeyRule(BasicAuthenticationRule.Settings(AuthData("logstash:logstash")))
+  override protected val rule = new AuthKeyRule(BasicAuthenticationRule.Settings(Secret("logstash:logstash")))
 }

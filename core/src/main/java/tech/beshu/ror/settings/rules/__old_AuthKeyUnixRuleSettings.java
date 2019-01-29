@@ -14,33 +14,34 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.settings.rules;
 
-package tech.beshu.ror.acl.blocks.rules.impl;
+import java.time.Duration;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.settings.rules.__old_AuthKeySha256RuleSettings;
+public class __old_AuthKeyUnixRuleSettings extends __old_AuthKeyRuleSettings implements CacheSettings {
 
-/**
- * Created by sscarduzio on 13/02/2016.
- */
-public class __old_AuthKeySha256SyncRule extends __old_AuthKeyHashingRule {
+  public static final String ATTRIBUTE_NAME = "auth_key_unix";
+  public static final String ATTRIBUTE_AUTH_CACHE_TTL = "auth_cache_ttl_sec";
 
-  private final __old_AuthKeySha256RuleSettings settings;
+  public static final Integer DEFAULT_CACHE_TTL = 10;
+  private final Duration ttl;
 
-  public __old_AuthKeySha256SyncRule(__old_AuthKeySha256RuleSettings s, ESContext context) {
-    super(s, context);
-    this.settings = s;
+  public __old_AuthKeyUnixRuleSettings(String authKey, Duration ttl) {
+    super(authKey);
+    this.ttl = ttl;
+  }
+
+  public static __old_AuthKeyUnixRuleSettings from(String authKey, Duration ttl) {
+    return new __old_AuthKeyUnixRuleSettings(authKey, ttl);
   }
 
   @Override
-  protected HashFunction getHashFunction() {
-    return Hashing.sha256();
+  public String getName() {
+    return ATTRIBUTE_NAME;
   }
 
   @Override
-  public String getKey() {
-    return settings.getName();
+  public Duration getCacheTtl() {
+    return ttl;
   }
 }

@@ -11,18 +11,17 @@ import com.softwaremill.sttp._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.aDomain.{BasicAuth, Header, Secret, User}
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService.Name
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 
 import scala.concurrent.duration.FiniteDuration
 
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
   def id: Id
-  def authenticate(credentials: BasicAuth): Task[Boolean]
+  def authenticate(user: User.Id, secret: Secret): Task[Boolean]
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -35,15 +34,29 @@ object ExternalAuthenticationService {
   }
 }
 
-class HttpExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
-                                        uri: Uri,
-                                        successStatusCode: Int,
-                                        httpClient: HttpClient)
+class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
+                                                 uri: Uri,
+                                                 successStatusCode: Int,
+                                                 httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
-  override def authenticate(credentials: BasicAuth): Task[Boolean] = {
+  override def authenticate(user: User.Id, credentials: Secret): Task[Boolean] = {
+    val basicAuthHeader = BasicAuth(user, credentials).header
     httpClient
-      .send(sttp.get(uri).header(Header.Name.authorization.value.value, credentials.getBase64Value))
+      .send(sttp.get(uri).header(basicAuthHeader.name.value.value, basicAuthHeader.value.value))
+      .map(_.code === successStatusCode)
+  }
+}
+
+class JwtExternalAuthenticationService(override val id: ExternalAuthenticationService#Id,
+                                       uri: Uri,
+                                       successStatusCode: Int,
+                                       httpClient: HttpClient)
+  extends ExternalAuthenticationService {
+
+  override def authenticate(user: User.Id, secret: Secret): Task[Boolean] = {
+    httpClient
+      .send(sttp.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${secret.value}"))
       .map(_.code === successStatusCode)
   }
 }
@@ -59,24 +72,25 @@ class CachingExternalAuthenticationService(underlying: ExternalAuthenticationSer
 
   override val id: ExternalAuthenticationService#Id = underlying.id
 
-  override def authenticate(credentials: BasicAuth): Task[Boolean] = {
-    Option(cache.getIfPresent(credentials.getUserName)) match {
+  override def authenticate(user: User.Id, secret: Secret): Task[Boolean] = {
+    Option(cache.getIfPresent(user.value)) match {
       case Some(cachedUserHashedPass) => Task {
-        cachedUserHashedPass === hashFrom(credentials.getPassword)
+        cachedUserHashedPass === hashFrom(secret)
       }
       case None =>
         underlying
-          .authenticate(credentials)
+          .authenticate(user, secret)
           .map { authenticated =>
             if (authenticated) {
-              cache.put(credentials.getUserName, hashFrom(credentials.getPassword))
+              cache.put(user.value, hashFrom(secret))
             }
             authenticated
           }
     }
   }
 
-  private def hashFrom(password: String) = {
-    Hashing.sha256.hashString(password, Charset.defaultCharset).toString
+  private def hashFrom(password: Secret) = {
+    Hashing.sha256.hashString(password.value, Charset.defaultCharset).toString
   }
+
 }

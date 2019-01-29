@@ -27,7 +27,7 @@ import tech.beshu.ror.httpclient.HttpClient;
 import tech.beshu.ror.httpclient.HttpMethod;
 import tech.beshu.ror.httpclient.RRHttpRequest;
 import tech.beshu.ror.httpclient.RRHttpResponse;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettings;
 
 import java.net.URI;
 import java.util.List;
@@ -36,25 +36,25 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
-public class GroupsProviderServiceHttpClient implements GroupsProviderServiceClient {
+public class __old_GroupsProviderServiceHttpClient implements __old_GroupsProviderServiceClient {
 
   private final LoggerShim logger;
   private final HttpClient client;
   private final String name;
   private final URI endpoint;
   private final String authTokenName;
-  private final UserGroupsProviderSettings.TokenPassingMethod passingMethod;
+  private final __old_UserGroupsProviderSettings.TokenPassingMethod passingMethod;
   private final String responseGroupsJsonPath;
   private final ImmutableMap<String, String> defaultHeaders;
   private final ImmutableMap<String, String> defaultQueryParameters;
   private Function<__old_LoggedUser,RRHttpRequest> requestBuilder;
 
-  public GroupsProviderServiceHttpClient(String name,
+  public __old_GroupsProviderServiceHttpClient(String name,
                                          HttpClient client,
                                          URI endpoint,
                                          String authTokenName,
                                          HttpMethod method,
-                                         UserGroupsProviderSettings.TokenPassingMethod passingMethod,
+                                         __old_UserGroupsProviderSettings.TokenPassingMethod passingMethod,
                                          String responseGroupsJsonPath,
                                          ImmutableMap<String, String> defaultHeaders, ImmutableMap<String,
       String> defaultQueryParameters, ESContext context) {
@@ -80,13 +80,13 @@ public class GroupsProviderServiceHttpClient implements GroupsProviderServiceCli
   }
 
   private Map<String, String> createParams(__old_LoggedUser user) {
-    return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.QUERY
+    return passingMethod == __old_UserGroupsProviderSettings.TokenPassingMethod.QUERY
         ? new ImmutableMap.Builder<String, String>().putAll(defaultQueryParameters.entrySet()).put(authTokenName, user.getId()).build()
         : ImmutableMap.copyOf(defaultQueryParameters);
   }
 
   private Map<String, String> createHeaders(__old_LoggedUser user) {
-    return passingMethod == UserGroupsProviderSettings.TokenPassingMethod.HEADER
+    return passingMethod == __old_UserGroupsProviderSettings.TokenPassingMethod.HEADER
         ? new ImmutableMap.Builder<String, String>().putAll(defaultHeaders.entrySet()).put(authTokenName, user.getId()).build()
         : ImmutableMap.copyOf(defaultHeaders);
   }

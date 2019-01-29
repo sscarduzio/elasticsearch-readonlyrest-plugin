@@ -148,8 +148,9 @@ class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
         userDefs <- new UsersDefinitionsDecoder(authProxies)
         authenticationServices <- new ExternalAuthenticationServicesDecoder(httpClientFactory)
         authorizationServices <- new ExternalAuthorizationServicesDecoder(httpClientFactory)
+        jwtDefs <- new JwtDefinitionsDecoder(httpClientFactory)
         acl <- {
-          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices))
+          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs))
           DecoderHelpers
             .decodeFieldList[Block](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {

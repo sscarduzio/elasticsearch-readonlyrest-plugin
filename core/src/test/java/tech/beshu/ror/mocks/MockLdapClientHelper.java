@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
-import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
+import tech.beshu.ror.settings.definitions.__old_GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.LdapSettings;
 import tech.beshu.ror.utils.Tuple;
 
@@ -45,7 +45,7 @@ public class MockLdapClientHelper {
   public static LdapClientFactory simpleFactory(GroupsProviderLdapClient client) {
     return new LdapClientFactory() {
       @Override
-      public GroupsProviderLdapClient getClient(GroupsProviderLdapSettings settings) {
+      public GroupsProviderLdapClient getClient(__old_GroupsProviderLdapSettings settings) {
         return client;
       }
 

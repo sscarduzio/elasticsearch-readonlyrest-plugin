@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.rules.__old_BasicAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.settings.rules.__old_AuthKeyRuleSettings;
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
+import tech.beshu.ror.utils.__old_BasicAuthUtils.__old_BasicAuth;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -37,7 +37,7 @@ public abstract class __old_AuthKeyHashingRule extends __old_BasicAuthentication
   }
 
   @Override
-  protected boolean authenticate(String configuredAuthKey, BasicAuth basicAuth) {
+  protected boolean authenticate(String configuredAuthKey, __old_BasicAuth basicAuth) {
     try {
       String decodedProvided = new String(Base64.getDecoder().decode(basicAuth.getBase64Value()), StandardCharsets.UTF_8);
       String shaProvided = getHashFunction().hashString(decodedProvided, Charset.defaultCharset()).toString();

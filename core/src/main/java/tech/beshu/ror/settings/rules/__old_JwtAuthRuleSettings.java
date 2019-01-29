@@ -20,41 +20,41 @@ package tech.beshu.ror.settings.rules;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettings;
-import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_JwtAuthDefinitionSettings;
+import tech.beshu.ror.settings.definitions.__old_JwtAuthDefinitionSettingsCollection;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
-public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings, CacheSettings, NamedSettings {
+public class __old_JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings, CacheSettings, NamedSettings {
 
   public static final String ATTRIBUTE_NAME = "jwt_auth";
 
   private static final String JWT_NAME = "name";
   private static final String ROLES = "roles";
 
-  private final JwtAuthDefinitionSettings jwtAuthSettings;
+  private final __old_JwtAuthDefinitionSettings jwtAuthSettings;
   private final Set<String> roles;
 
-  private JwtAuthRuleSettings(JwtAuthDefinitionSettings settings, Set<String> roles) {
+  private __old_JwtAuthRuleSettings(__old_JwtAuthDefinitionSettings settings, Set<String> roles) {
     this.jwtAuthSettings = settings;
     this.roles = roles;
   }
 
   @SuppressWarnings("unchecked")
-  public static JwtAuthRuleSettings from(RawSettings settings, JwtAuthDefinitionSettingsCollection jwtSettingsCollection) {
+  public static __old_JwtAuthRuleSettings from(RawSettings settings, __old_JwtAuthDefinitionSettingsCollection jwtSettingsCollection) {
     String jwtName = settings.stringReq(JWT_NAME);
     Set<String> roles = (Set<String>) (settings.notEmptySetOpt(ROLES).orElse(Collections.emptySet()));
-    return new JwtAuthRuleSettings(
+    return new __old_JwtAuthRuleSettings(
         jwtSettingsCollection.get(jwtName),
         roles
     );
   }
 
-  public static JwtAuthRuleSettings from(String jwtName, JwtAuthDefinitionSettingsCollection jwtSettingsCollection) {
-    return new JwtAuthRuleSettings(
+  public static __old_JwtAuthRuleSettings from(String jwtName, __old_JwtAuthDefinitionSettingsCollection jwtSettingsCollection) {
+    return new __old_JwtAuthRuleSettings(
         jwtSettingsCollection.get(jwtName),
         Collections.emptySet()
     );

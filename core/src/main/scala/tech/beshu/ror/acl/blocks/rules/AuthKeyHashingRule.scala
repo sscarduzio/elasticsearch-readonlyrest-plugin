@@ -6,29 +6,18 @@ import cats.implicits._
 import com.google.common.hash.{HashFunction, Hashing}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.utils.BasicAuthOps._
-import tech.beshu.ror.acl.utils.ScalaOps._
-import tech.beshu.ror.acl.aDomain.AuthData
-import tech.beshu.ror.acl.aDomain.AuthData._
-import tech.beshu.ror.utils.BasicAuthUtils
+import tech.beshu.ror.acl.aDomain.Secret._
+import tech.beshu.ror.acl.aDomain.{BasicAuth, Secret}
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
                                   hashFunction: HashFunction)
   extends BasicAuthenticationRule(settings)
     with Logging {
 
-  override protected def compare(configuredAuthKey: AuthData,
-                                 basicAuth: BasicAuthUtils.BasicAuth): Task[Boolean] = Task {
-    basicAuth
-      .tryDecode
-      .map { decodedProvided =>
-        val shaProvided = AuthData(hashFunction.hashString(decodedProvided.value, Charset.defaultCharset).toString)
-        configuredAuthKey === shaProvided
-      }
-      .getOr { ex =>
-        logger.warn("Exception while authentication", ex)
-        false
-      }
+  override protected def compare(configuredAuthKey: Secret,
+                                 basicAuth: BasicAuth): Task[Boolean] = Task {
+    val shaProvided = Secret(hashFunction.hashString(basicAuth.secret.value, Charset.defaultCharset).toString)
+    configuredAuthKey === shaProvided
   }
 }
 

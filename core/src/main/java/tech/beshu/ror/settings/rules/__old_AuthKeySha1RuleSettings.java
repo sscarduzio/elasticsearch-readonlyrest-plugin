@@ -16,32 +16,20 @@
  */
 package tech.beshu.ror.settings.rules;
 
-import java.time.Duration;
+public class __old_AuthKeySha1RuleSettings extends __old_AuthKeyRuleSettings {
 
-public class AuthKeyUnixRuleSettings extends __old_AuthKeyRuleSettings implements CacheSettings {
+  public static final String ATTRIBUTE_NAME = "auth_key_sha1";
 
-  public static final String ATTRIBUTE_NAME = "auth_key_unix";
-  public static final String ATTRIBUTE_AUTH_CACHE_TTL = "auth_cache_ttl_sec";
-
-  public static final Integer DEFAULT_CACHE_TTL = 10;
-  private final Duration ttl;
-
-  public AuthKeyUnixRuleSettings(String authKey, Duration ttl) {
-    super(authKey);
-    this.ttl = ttl;
+  public __old_AuthKeySha1RuleSettings(String authKey) {
+    super(authKey.toLowerCase());
   }
 
-  public static AuthKeyUnixRuleSettings from(String authKey, Duration ttl) {
-    return new AuthKeyUnixRuleSettings(authKey, ttl);
+  public static __old_AuthKeySha1RuleSettings from(String authKey) {
+    return new __old_AuthKeySha1RuleSettings(authKey);
   }
 
   @Override
   public String getName() {
     return ATTRIBUTE_NAME;
-  }
-
-  @Override
-  public Duration getCacheTtl() {
-    return ttl;
   }
 }

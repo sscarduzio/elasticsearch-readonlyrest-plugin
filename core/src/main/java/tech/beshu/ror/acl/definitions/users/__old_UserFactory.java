@@ -14,11 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.definitions.groupsproviders;
+package tech.beshu.ror.acl.definitions.users;
 
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
+import tech.beshu.ror.settings.definitions.__old_UserSettings;
 
-public interface GroupsProviderServiceClientFactory {
-
-  GroupsProviderServiceClient getClient(UserGroupsProviderSettings settings);
+public interface __old_UserFactory {
+  User getUser(__old_UserSettings settings);
 }

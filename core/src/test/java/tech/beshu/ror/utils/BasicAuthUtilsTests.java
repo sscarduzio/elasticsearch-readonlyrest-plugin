@@ -18,7 +18,7 @@
 package tech.beshu.ror.utils;
 
 import org.junit.Test;
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
+import tech.beshu.ror.utils.__old_BasicAuthUtils.__old_BasicAuth;
 
 import java.util.Base64;
 import java.util.Optional;
@@ -34,7 +34,7 @@ public class BasicAuthUtilsTests {
     String passwd = "passwd:";
     byte[] authToken = ((String) user + ":" + passwd).getBytes();
     String base64Value = new String(Base64.getEncoder().encodeToString(authToken));
-    Optional<BasicAuth> basicAuth = BasicAuthUtils.getBasicAuthFromString(base64Value);
+    Optional<__old_BasicAuth> basicAuth = __old_BasicAuthUtils.getBasicAuthFromString(base64Value);
 
     assertTrue(user.equals(basicAuth.get().getUserName()));
     assertTrue(passwd.equals(basicAuth.get().getPassword()));
@@ -46,12 +46,12 @@ public class BasicAuthUtilsTests {
     String passwd = "";
     byte[] authToken = (user + ":" + passwd).getBytes();
     String base64Value = new String(Base64.getEncoder().encodeToString(authToken));
-    assertFalse(BasicAuthUtils.getBasicAuthFromString(base64Value).isPresent());
+    assertFalse(__old_BasicAuthUtils.getBasicAuthFromString(base64Value).isPresent());
   }
 
   @Test
   public void basicAuthNoCredsTest() {
-    assertFalse(BasicAuthUtils.getBasicAuthFromString(null).isPresent());
+    assertFalse(__old_BasicAuthUtils.getBasicAuthFromString(null).isPresent());
   }
 
 }

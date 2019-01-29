@@ -20,16 +20,16 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
-import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ProxyAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
-import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
-import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyPlainTextRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeySha1RuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeySha256RuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeySha512RuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
 import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
@@ -45,21 +45,21 @@ public class AuthMethodCreatorsRegistry {
   private final Map<String, Function<RawSettings, AuthKeyProviderSettings>> authKeyProviderCreators;
 
   public AuthMethodCreatorsRegistry(
-    ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection,
+    __old_ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection,
     LdapSettingsCollection ldapSettingsCollection,
-    JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection,
+    __old_JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection,
     RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection
   ) {
 
     HashMap<String, Function<RawSettings, AuthKeyProviderSettings>> creators = Maps.newHashMap();
-    creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator());
-    creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator());
-    creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
-    creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator());
-    creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator());
+    creators.put(__old_AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator());
+    creators.put(__old_AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator());
+    creators.put(__old_AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator());
+    creators.put(__old_AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator());
+    creators.put(__old_AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator());
     creators.put(__old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
     creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME, ldapAuthenticationRuleSettingsCreator(ldapSettingsCollection));
-    creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(jwtAuthDefinitionSettingsCollection));
+    creators.put(__old_JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(jwtAuthDefinitionSettingsCollection));
     creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(rorKbnAuthDefinitionSettingsCollection));
     this.authKeyProviderCreators = creators;
   }
@@ -73,36 +73,36 @@ public class AuthMethodCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeySettingsCreator() {
-    return settings -> AuthKeyPlainTextRuleSettings.from(settings.stringReq(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME));
+    return settings -> __old_AuthKeyPlainTextRuleSettings.from(settings.stringReq(__old_AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME));
   }
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeySha1SettingsCreator() {
-    return settings -> AuthKeySha1RuleSettings.from(settings.stringReq(AuthKeySha1RuleSettings.ATTRIBUTE_NAME));
+    return settings -> __old_AuthKeySha1RuleSettings.from(settings.stringReq(__old_AuthKeySha1RuleSettings.ATTRIBUTE_NAME));
   }
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeySha256SettingsCreator() {
-    return settings -> AuthKeySha256RuleSettings.from(settings.stringReq(AuthKeySha256RuleSettings.ATTRIBUTE_NAME));
+    return settings -> __old_AuthKeySha256RuleSettings.from(settings.stringReq(__old_AuthKeySha256RuleSettings.ATTRIBUTE_NAME));
   }
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeySha512SettingsCreator() {
-    return settings -> AuthKeySha512RuleSettings.from(settings.stringReq(AuthKeySha512RuleSettings.ATTRIBUTE_NAME));
+    return settings -> __old_AuthKeySha512RuleSettings.from(settings.stringReq(__old_AuthKeySha512RuleSettings.ATTRIBUTE_NAME));
   }
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> authKeyUnixSettingsCreator() {
-    return settings -> AuthKeyUnixRuleSettings.from(
-      settings.stringReq(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME),
-      Duration.ofSeconds(settings.intOpt(AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL)
-                           .orElse(AuthKeyUnixRuleSettings.DEFAULT_CACHE_TTL))
+    return settings -> __old_AuthKeyUnixRuleSettings.from(
+      settings.stringReq(__old_AuthKeyUnixRuleSettings.ATTRIBUTE_NAME),
+      Duration.ofSeconds(settings.intOpt(__old_AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL)
+                           .orElse(__old_AuthKeyUnixRuleSettings.DEFAULT_CACHE_TTL))
     );
   }
 
   @SuppressWarnings("unchecked")
   private Function<RawSettings, AuthKeyProviderSettings> proxyAuthSettingsCreator(
-    ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
+    __old_ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     return settings -> {
       Object s = settings.req(__old_ProxyAuthRuleSettings.ATTRIBUTE_NAME);
       if (s instanceof List<?>) {
@@ -118,12 +118,12 @@ public class AuthMethodCreatorsRegistry {
   }
 
   private Function<RawSettings, AuthKeyProviderSettings> jwtAuthSettingsCreator(
-      JwtAuthDefinitionSettingsCollection definitionSettingsCollection) {
+      __old_JwtAuthDefinitionSettingsCollection definitionSettingsCollection) {
     return settings -> {
-      Object conf = settings.req(JwtAuthRuleSettings.ATTRIBUTE_NAME);
+      Object conf = settings.req(__old_JwtAuthRuleSettings.ATTRIBUTE_NAME);
       return conf instanceof String
-          ? JwtAuthRuleSettings.from((String) conf, definitionSettingsCollection)
-          : JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), definitionSettingsCollection);
+          ? __old_JwtAuthRuleSettings.from((String) conf, definitionSettingsCollection)
+          : __old_JwtAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), definitionSettingsCollection);
     };
   }
 

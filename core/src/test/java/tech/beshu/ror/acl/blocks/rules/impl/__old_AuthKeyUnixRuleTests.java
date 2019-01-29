@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
 
 import java.time.Duration;
 import java.util.Base64;
@@ -50,7 +50,7 @@ public class __old_AuthKeyUnixRuleTests {
   private RuleExitResult match(String configured, String found, __old_RequestContext rc) throws ExecutionException, InterruptedException {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    AsyncRule r = new __old_AuthKeyUnixAsyncRule(new AuthKeyUnixRuleSettings(configured, Duration.ZERO), MockedESContext.INSTANCE);
+    AsyncRule r = new __old_AuthKeyUnixAsyncRule(new __old_AuthKeyUnixRuleSettings(configured, Duration.ZERO), MockedESContext.INSTANCE);
 
     return r.match(rc).get();
   }

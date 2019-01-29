@@ -2,7 +2,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, ExternalAuthenticationService, HttpExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, ExternalAuthenticationService, BasicAuthHttpExternalAuthenticationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
@@ -65,7 +65,7 @@ class ExternalAuthenticationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             rule.settings.service.id should be(ExternalAuthenticationService.Name("ext2"))
-            rule.settings.service shouldBe a[HttpExternalAuthenticationService]
+            rule.settings.service shouldBe a[BasicAuthHttpExternalAuthenticationService]
           }
         )
       }
@@ -88,7 +88,7 @@ class ExternalAuthenticationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
             rule.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
-            rule.settings.service shouldBe a[HttpExternalAuthenticationService]
+            rule.settings.service shouldBe a[BasicAuthHttpExternalAuthenticationService]
           }
         )
       }

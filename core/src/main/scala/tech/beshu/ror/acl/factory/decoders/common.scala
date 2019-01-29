@@ -3,6 +3,7 @@ package tech.beshu.ror.acl.factory.decoders
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
+import cats.implicits._
 import cats.data.NonEmptySet
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
@@ -10,10 +11,13 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.{Group, User}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.aDomain.{Group, Header, User}
+import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.blocks.Value
+import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.ValueLevelCreationError
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.ScalaOps._
@@ -81,6 +85,29 @@ object common {
       .decodeStringLikeOrNonEmptySet[User.Id]
       .withError(ValueLevelCreationError(Message("Non empty list of user IDs are required")))
 
+  implicit val headerName: Decoder[Header.Name] =
+    Decoder
+      .decodeString
+      .emapE { str =>
+        NonEmptyString.unapply(str) match {
+          case Some(value) => Right(Header.Name(value))
+          case None => Left(ValueLevelCreationError(Message(s"Header name cannot be empty string")))
+        }
+      }
+
+  implicit val groupValueDecoder: Decoder[Value[Group]] =
+    DecoderHelpers
+      .valueDecoder[Group] { rv =>
+      NonEmptyString.from(rv.value) match {
+        case Right(nonEmptyResolvedValue) => Right(Group(nonEmptyResolvedValue))
+        case Left(_) => Left(ConvertError(rv, "Group cannot be empty"))
+      }
+    }
+      .emapE {
+        case Right(value) => Right(value)
+        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
+      }
+
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers
       .decodeStringLike
@@ -98,4 +125,5 @@ object common {
       .withErrorFromCursor { case (element, _) =>
         ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration"))
       }
+
 }

@@ -14,11 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.definitions.externalauthenticationservices;
+package tech.beshu.ror.settings.rules;
 
-import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettings;
+public class __old_AuthKeySha512RuleSettings extends __old_AuthKeyRuleSettings {
 
-public interface ExternalAuthenticationServiceClientFactory {
+  public static final String ATTRIBUTE_NAME = "auth_key_sha512";
 
-  ExternalAuthenticationServiceClient getClient(__old_ExternalAuthenticationServiceSettings settings);
+  public __old_AuthKeySha512RuleSettings(String authKey) {
+    super(authKey.toLowerCase());
+  }
+
+  public static __old_AuthKeySha512RuleSettings from(String authKey) {
+    return new __old_AuthKeySha512RuleSettings(authKey);
+  }
+
+  @Override
+  public String getName() {
+    return ATTRIBUTE_NAME;
+  }
 }

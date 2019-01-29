@@ -29,7 +29,7 @@ import tech.beshu.ror.mocks.MockedACL;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.settings.AuthMethodCreatorsRegistry;
 import tech.beshu.ror.settings.BlockSettings;
-import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ProxyAuthDefinitionSettingsCollection;
 
 import java.util.Iterator;
 import java.util.List;
@@ -49,7 +49,7 @@ public class __old_BlockTest {
                                    "proxy_auth: \"*\"\n" +
                                    "indices: [\"allowed-index\"]"
         ),
-        new AuthMethodCreatorsRegistry(ProxyAuthDefinitionSettingsCollection.from(
+        new AuthMethodCreatorsRegistry(__old_ProxyAuthDefinitionSettingsCollection.from(
             RawSettings.empty()), null, null, null),
         null, null,
         null, null

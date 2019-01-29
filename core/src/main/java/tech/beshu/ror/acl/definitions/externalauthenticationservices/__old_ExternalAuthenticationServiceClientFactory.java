@@ -14,10 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.definitions.users;
+package tech.beshu.ror.acl.definitions.externalauthenticationservices;
 
-import tech.beshu.ror.settings.definitions.__old_UserSettings;
+import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettings;
 
-public interface UserFactory {
-  User getUser(__old_UserSettings settings);
+public interface __old_ExternalAuthenticationServiceClientFactory {
+
+  __old_ExternalAuthenticationServiceClient getClient(__old_ExternalAuthenticationServiceSettings settings);
 }

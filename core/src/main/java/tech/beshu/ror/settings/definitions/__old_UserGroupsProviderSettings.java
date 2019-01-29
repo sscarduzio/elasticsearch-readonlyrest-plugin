@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-public class UserGroupsProviderSettings implements CacheSettings, NamedSettings {
+public class __old_UserGroupsProviderSettings implements CacheSettings, NamedSettings {
 
   private static final String NAME = "name";
   private static final String ENDPOINT = "groups_endpoint";
@@ -61,7 +61,7 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
     return ImmutableMap.copyOf(tempMap);
   };
 
-  public UserGroupsProviderSettings(RawSettings settings) {
+  public __old_UserGroupsProviderSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
     this.endpoint = settings.uriReq(ENDPOINT);
     this.authTokenName = settings.stringReq(AUTH_TOKEN_NAME);

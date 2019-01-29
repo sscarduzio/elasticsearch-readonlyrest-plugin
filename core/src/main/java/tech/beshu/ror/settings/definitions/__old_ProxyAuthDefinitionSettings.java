@@ -18,7 +18,7 @@ package tech.beshu.ror.settings.definitions;
 
 import tech.beshu.ror.commons.settings.RawSettings;
 
-public class ProxyAuthDefinitionSettings {
+public class __old_ProxyAuthDefinitionSettings {
 
   private static final String NAME = "name";
   private static final String USER_ID_HEADER = "user_id_header";
@@ -26,7 +26,7 @@ public class ProxyAuthDefinitionSettings {
   private final String name;
   private final String userIdHeader;
 
-  public ProxyAuthDefinitionSettings(RawSettings settings) {
+  public __old_ProxyAuthDefinitionSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
     this.userIdHeader = settings.stringReq(USER_ID_HEADER);
   }

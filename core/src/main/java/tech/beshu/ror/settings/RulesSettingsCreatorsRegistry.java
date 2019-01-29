@@ -31,21 +31,21 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
-import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyPlainTextRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeySha1RuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeySha256RuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeySha512RuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_GroupsProviderAuthorizationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
-import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
 import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
@@ -73,7 +73,7 @@ public class RulesSettingsCreatorsRegistry {
   RulesSettingsCreatorsRegistry(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
       LdapSettingsCollection ldapSettingsCollection,
-      UserGroupsProviderSettingsCollection groupsProviderSettingsGroup,
+      __old_UserGroupsProviderSettingsCollection groupsProviderSettingsGroup,
       __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
       __old_UserSettingsCollection userSettingsCollection) {
     Map<String, Supplier<RuleSettings>> creators = new HashMap<>();
@@ -109,11 +109,11 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(__old_RepositoriesSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
     creators.put(
         __old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(__old_AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(__old_AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(__old_AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(__old_AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(__old_AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(__old_KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
     creators.put(__old_KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
     creators.put(__old_FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
@@ -127,7 +127,8 @@ public class RulesSettingsCreatorsRegistry {
     creators.put(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
     creators.put(__old_XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
     creators.put(__old_GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
-    creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(
+        __old_JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
     creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
 
     this.ruleSettingsCreators = creators;
@@ -166,7 +167,7 @@ public class RulesSettingsCreatorsRegistry {
 
   private Supplier<RuleSettings> groupsProviderAuthorizationRuleSettingsCreator(
       RawSettings blockSettings,
-      UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection) {
+      __old_UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection) {
     return () -> __old_GroupsProviderAuthorizationRuleSettings.from(
         blockSettings.inner(__old_GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
         userGroupsProviderSettingsCollection
@@ -261,31 +262,31 @@ public class RulesSettingsCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(__old_AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySha1SettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(__old_AuthKeySha1RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySha256SettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(__old_AuthKeySha256RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySha512SettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(__old_AuthKeySha512RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeyUnixSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(__old_AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
@@ -376,7 +377,7 @@ public class RulesSettingsCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> jwtAuthSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(JwtAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(__old_JwtAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")

@@ -19,7 +19,7 @@ package tech.beshu.ror.settings.rules;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ProxyAuthDefinitionSettingsCollection;
 
 import java.util.List;
 
@@ -42,7 +42,7 @@ public class __old_ProxyAuthRuleSettings implements RuleSettings, AuthKeyProvide
 
   @SuppressWarnings("unchecked")
   public static __old_ProxyAuthRuleSettings from(RawSettings settings,
-                                           ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
+                                           __old_ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection) {
     String providerName = settings.stringReq(PROXY_AUTH_CONFIG);
     return new __old_ProxyAuthRuleSettings(
       (List<String>) settings.notEmptyListReq(USERS),

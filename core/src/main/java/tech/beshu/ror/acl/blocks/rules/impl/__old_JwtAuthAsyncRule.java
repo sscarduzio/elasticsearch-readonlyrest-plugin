@@ -31,13 +31,13 @@ import tech.beshu.ror.acl.blocks.rules.AsyncRule;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.phantomtypes.Authentication;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
-import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
+import tech.beshu.ror.acl.definitions.externalauthenticationservices.__old_ExternalAuthenticationServiceClient;
 import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.SecureStringHasher;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
 
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
@@ -50,14 +50,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-public class JwtAuthAsyncRule extends AsyncRule implements Authentication {
+public class __old_JwtAuthAsyncRule extends AsyncRule implements Authentication {
 
   private final LoggerShim logger;
-  private final JwtAuthRuleSettings settings;
-  private final ExternalAuthenticationServiceClient httpClient;
+  private final __old_JwtAuthRuleSettings settings;
+  private final __old_ExternalAuthenticationServiceClient httpClient;
   private final SecureStringHasher secureStringHasher;
 
-  public JwtAuthAsyncRule(JwtAuthRuleSettings settings, ESContext context, DefinitionsFactory factory) {
+  public __old_JwtAuthAsyncRule(__old_JwtAuthRuleSettings settings, ESContext context, DefinitionsFactory factory) {
     this.logger = context.logger(getClass());
     this.settings = settings;
     this.httpClient = settings.getExternalValidator().isPresent() ? factory.getClient(settings) : null;
@@ -76,7 +76,7 @@ public class JwtAuthAsyncRule extends AsyncRule implements Authentication {
   @Override
   public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
-                                     .flatMap(JwtAuthAsyncRule::extractToken);
+                                     .flatMap(__old_JwtAuthAsyncRule::extractToken);
 
     /*
       JWT ALGO    FAMILY

@@ -22,8 +22,8 @@ import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.utils.BasicAuthUtils;
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
+import tech.beshu.ror.utils.__old_BasicAuthUtils;
+import tech.beshu.ror.utils.__old_BasicAuthUtils.__old_BasicAuth;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -40,7 +40,7 @@ public abstract class AsyncAuthentication extends AsyncRule implements Authentic
 
   @Override
   public CompletableFuture<RuleExitResult> match(__old_RequestContext rc) {
-    Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(rc.getHeaders());
+    Optional<__old_BasicAuthUtils.__old_BasicAuth> optBasicAuth = __old_BasicAuthUtils.getBasicAuthFromHeaders(rc.getHeaders());
 
     if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {
       try {
@@ -55,7 +55,7 @@ public abstract class AsyncAuthentication extends AsyncRule implements Authentic
       return CompletableFuture.completedFuture(NO_MATCH);
     }
 
-    BasicAuth basicAuth = optBasicAuth.get();
+    __old_BasicAuth basicAuth = optBasicAuth.get();
     return authenticate(basicAuth.getUserName(), basicAuth.getPassword())
       .thenApply(result -> {
         RuleExitResult r = result != null && result ? MATCH : NO_MATCH;

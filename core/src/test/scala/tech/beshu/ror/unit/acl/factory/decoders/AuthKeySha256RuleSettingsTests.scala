@@ -5,7 +5,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.AuthKeySha256Rule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.AuthData
+import tech.beshu.ror.acl.aDomain.Secret
 
 class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha256Rule] {
 
@@ -24,7 +24,7 @@ class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.authKey should be(AuthData("bdf2f78928097ae90a029c33fe06a83e3a572cb48371fb2de290d1c2ffee010b"))
+            rule.settings.authKey should be(Secret("bdf2f78928097ae90a029c33fe06a83e3a572cb48371fb2de290d1c2ffee010b"))
           }
         )
       }

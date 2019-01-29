@@ -6,7 +6,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.TestsUtils.basicAuthHeader
-import tech.beshu.ror.acl.aDomain.LoggedUser
+import tech.beshu.ror.acl.aDomain.{LoggedUser, Secret, User}
 import tech.beshu.ror.acl.aDomain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
@@ -14,7 +14,6 @@ import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 
 class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
 
@@ -24,7 +23,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { basicAuth: BasicAuth => s"Basic ${basicAuth.getBase64Value}" == baHeader.value.value })
+          .expects(where { (user: User.Id, secret: Secret) => user.value === "user" && secret.value == "pass" })
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
@@ -43,7 +42,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { basicAuth: BasicAuth => s"Basic ${basicAuth.getBase64Value}" == baHeader.value.value })
+          .expects(where { (user: User.Id, secret: Secret) => user.value === "user" && secret.value == "pass" })
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]

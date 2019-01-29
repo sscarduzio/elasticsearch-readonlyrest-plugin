@@ -26,12 +26,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-public class CachedGroupsProviderServiceClient implements GroupsProviderServiceClient {
+public class __old_CachedGroupsProviderServiceClient implements __old_GroupsProviderServiceClient {
 
-  private final GroupsProviderServiceClient underlying;
+  private final __old_GroupsProviderServiceClient underlying;
   private final Cache<String, Set<String>> cache;
 
-  private CachedGroupsProviderServiceClient(GroupsProviderServiceClient underlying,
+  private __old_CachedGroupsProviderServiceClient(__old_GroupsProviderServiceClient underlying,
                                             Duration ttl) {
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
@@ -39,11 +39,11 @@ public class CachedGroupsProviderServiceClient implements GroupsProviderServiceC
       .build();
   }
 
-  public static GroupsProviderServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
-                                                                        GroupsProviderServiceClient client) {
+  public static __old_GroupsProviderServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
+                                                                        __old_GroupsProviderServiceClient client) {
     return settings.getCacheTtl().isZero()
       ? client
-      : new CachedGroupsProviderServiceClient(client, settings.getCacheTtl());
+      : new __old_CachedGroupsProviderServiceClient(client, settings.getCacheTtl());
   }
 
   @Override

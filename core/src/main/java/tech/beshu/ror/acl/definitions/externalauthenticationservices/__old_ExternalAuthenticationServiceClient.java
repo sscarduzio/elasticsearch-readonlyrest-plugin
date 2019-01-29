@@ -14,22 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.rules;
+package tech.beshu.ror.acl.definitions.externalauthenticationservices;
 
-public class AuthKeySha1RuleSettings extends __old_AuthKeyRuleSettings {
+import java.util.concurrent.CompletableFuture;
 
-  public static final String ATTRIBUTE_NAME = "auth_key_sha1";
-
-  public AuthKeySha1RuleSettings(String authKey) {
-    super(authKey.toLowerCase());
-  }
-
-  public static AuthKeySha1RuleSettings from(String authKey) {
-    return new AuthKeySha1RuleSettings(authKey);
-  }
-
-  @Override
-  public String getName() {
-    return ATTRIBUTE_NAME;
-  }
+public interface __old_ExternalAuthenticationServiceClient {
+  CompletableFuture<Boolean> authenticate(String user, String password);
 }

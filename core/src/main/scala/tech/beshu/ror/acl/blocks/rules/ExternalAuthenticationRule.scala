@@ -1,8 +1,8 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
+import tech.beshu.ror.acl.aDomain.BasicAuth
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth
 
 class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings)
   extends BaseBasicAuthenticationRule {
@@ -10,7 +10,7 @@ class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settin
   override val name: Rule.Name = ExternalAuthenticationRule.name
 
   override protected def authenticate(credentials: BasicAuth): Task[Boolean] =
-    settings.service.authenticate(credentials)
+    settings.service.authenticate(credentials.user, credentials.secret)
 }
 
 object ExternalAuthenticationRule {

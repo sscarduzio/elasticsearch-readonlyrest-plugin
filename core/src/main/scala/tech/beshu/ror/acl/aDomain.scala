@@ -1,11 +1,17 @@
 package tech.beshu.ror.acl
 
+import java.nio.charset.StandardCharsets.UTF_8
+import java.util.Base64
+
 import cats.Eq
 import cats.implicits._
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.types.string.NonEmptyString
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.commons.Constants
+
+import scala.util.Try
 
 object aDomain {
 
@@ -54,6 +60,52 @@ object aDomain {
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
   }
 
+  final case class BasicAuth private(user: User.Id, secret: Secret) {
+    def header: Header = Header(
+      Header.Name.authorization,
+      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${user.value}:${secret.value}".getBytes(UTF_8))}")
+    )
+  }
+  object BasicAuth extends Logging {
+    def fromHeader(header: Header): Option[BasicAuth] = {
+      header.name match {
+        case Header.Name.authorization => parseToBasicAuth(header.value)
+        case _ => None
+      }
+    }
+
+    private def parseToBasicAuth(headerValue: NonEmptyString) = {
+      val authMethodName = "Basic "
+      val rawValue = headerValue.value
+      if(rawValue.startsWith(authMethodName) && rawValue.length > authMethodName.length) {
+        val basicAuth = base64ToBasicAuth(rawValue.substring(authMethodName.length))
+        basicAuth match {
+          case None =>
+            logger.warn(s"Cannot decode value '$headerValue' to Basic Auth")
+          case Some(_) =>
+        }
+        basicAuth
+      } else {
+        None
+      }
+    }
+
+    private def base64ToBasicAuth(base64Value: String) = {
+      Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
+        .map { decoded =>
+          decoded.indexOf(":") match {
+            case -1 => None
+            case index if index == decoded.length -1 => None
+            case index => Some(BasicAuth(
+              User.Id(decoded.substring(0, index)),
+              Secret(decoded.substring(index + 1))
+            ))
+          }
+        }
+        .getOrElse(None)
+    }
+  }
+
   final case class Address(value: String) extends AnyVal
   object Address {
     val unknown = Address("unknown")
@@ -94,10 +146,10 @@ object aDomain {
     implicit val eqApiKey: Eq[ApiKey] = Eq.fromUniversalEquals
   }
 
-  final case class AuthData(value: String) extends AnyVal
-  object AuthData {
-    implicit val eqAuthKey: Eq[AuthData] = Eq.fromUniversalEquals
-    val empty: AuthData = AuthData("")
+  final case class Secret(value: String) extends AnyVal
+  object Secret {
+    implicit val eqAuthKey: Eq[Secret] = Eq.fromUniversalEquals
+    val empty: Secret = Secret("")
   }
 
   final case class KibanaApp(value: String) extends AnyVal

@@ -17,8 +17,8 @@
 package tech.beshu.ror.acl.blocks.rules.impl;
 
 import tech.beshu.ror.acl.blocks.rules.AsyncAuthentication;
-import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClient;
-import tech.beshu.ror.acl.definitions.externalauthenticationservices.ExternalAuthenticationServiceClientFactory;
+import tech.beshu.ror.acl.definitions.externalauthenticationservices.__old_ExternalAuthenticationServiceClient;
+import tech.beshu.ror.acl.definitions.externalauthenticationservices.__old_ExternalAuthenticationServiceClientFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
 
@@ -27,10 +27,10 @@ import java.util.concurrent.CompletableFuture;
 public class __old_ExternalAuthenticationAsyncRule extends AsyncAuthentication {
 
   private final __old_ExternalAuthenticationRuleSettings settings;
-  private final ExternalAuthenticationServiceClient client;
+  private final __old_ExternalAuthenticationServiceClient client;
 
   public __old_ExternalAuthenticationAsyncRule(__old_ExternalAuthenticationRuleSettings settings,
-                                         ExternalAuthenticationServiceClientFactory factory,
+                                         __old_ExternalAuthenticationServiceClientFactory factory,
                                          ESContext context) {
     super(context);
     this.settings = settings;

@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeySha256RuleSettings;
 
 import java.util.Base64;
 
@@ -44,7 +44,7 @@ public class __old_AuthKeySha256RuleTests {
   private RuleExitResult match(String configured, String found, __old_RequestContext rc) {
     when(rc.getHeaders()).thenReturn(ImmutableMap.of("Authorization", found));
 
-    SyncRule r = new __old_AuthKeySha256SyncRule(new AuthKeySha256RuleSettings(configured), MockedESContext.INSTANCE);
+    SyncRule r = new __old_AuthKeySha256SyncRule(new __old_AuthKeySha256RuleSettings(configured), MockedESContext.INSTANCE);
 
     return r.match(rc);
   }

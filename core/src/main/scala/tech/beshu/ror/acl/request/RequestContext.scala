@@ -60,6 +60,15 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
     }
   }
 
+  def basicAuth: Option[BasicAuth] = {
+    requestContext
+      .headers
+      .toStream
+      .map(BasicAuth.fromHeader)
+      .find(_.isDefined)
+      .flatten
+  }
+
   private def findHeader(name: Header.Name) = requestContext.headers.find(_.name === name)
 }
 

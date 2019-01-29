@@ -19,12 +19,12 @@ package tech.beshu.ror.acl.definitions.externalauthenticationservices;
 import com.google.common.collect.ImmutableMap;
 import tech.beshu.ror.httpclient.HttpClient;
 import tech.beshu.ror.httpclient.RRHttpRequest;
-import tech.beshu.ror.utils.BasicAuthUtils;
+import tech.beshu.ror.utils.__old_BasicAuthUtils;
 
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
-public class __old_ExternalAuthenticationServiceHttpClient implements ExternalAuthenticationServiceClient {
+public class __old_ExternalAuthenticationServiceHttpClient implements __old_ExternalAuthenticationServiceClient {
 
   protected final URI endpoint;
   protected final int successStatusCode;
@@ -39,7 +39,7 @@ public class __old_ExternalAuthenticationServiceHttpClient implements ExternalAu
   @Override
   public CompletableFuture<Boolean> authenticate(String user, String password) {
     return client.send(RRHttpRequest.get(
-      endpoint, ImmutableMap.of("Authorization", BasicAuthUtils.basicAuthHeaderValue(user, password))
+      endpoint, ImmutableMap.of("Authorization", __old_BasicAuthUtils.basicAuthHeaderValue(user, password))
     )).thenApply(response -> response.getStatusCode() == successStatusCode);
   }
 }

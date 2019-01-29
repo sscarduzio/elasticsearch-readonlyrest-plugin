@@ -25,9 +25,9 @@ import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
-import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
 import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
 
@@ -44,7 +44,7 @@ public class BlockSettings {
   private static final String VERBOSITY = "verbosity";
   public static final Set<String> ruleModifiersToSkip = Sets.newHashSet(
       NAME, POLICY, VERBOSITY, __old_HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
-      AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
+      __old_AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
   );
 
   private static final __old_BlockPolicy DEFAULT_BLOCK_POLICY = __old_BlockPolicy.ALLOW;
@@ -65,7 +65,7 @@ public class BlockSettings {
   public static BlockSettings from(RawSettings settings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
       LdapSettingsCollection ldapSettingsCollection,
-      UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
+      __old_UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
       __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
       __old_UserSettingsCollection userSettingsCollection) {
     RulesSettingsCreatorsRegistry registry = new RulesSettingsCreatorsRegistry(

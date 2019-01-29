@@ -26,11 +26,11 @@ import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
-import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_ProxyAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
@@ -80,10 +80,10 @@ public class RorSettings {
     final RawSettings raw = raw_global.opt(ATTRIBUTE_NAME).isPresent() ? raw_global.inner(ATTRIBUTE_NAME) : raw_global;
 
     LdapSettingsCollection ldapSettingsCollection = LdapSettingsCollection.from(raw);
-    UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = UserGroupsProviderSettingsCollection.from(raw);
-    ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = ProxyAuthDefinitionSettingsCollection.from(raw);
+    __old_UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection = __old_UserGroupsProviderSettingsCollection.from(raw);
+    __old_ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = __old_ProxyAuthDefinitionSettingsCollection.from(raw);
     __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection = __old_ExternalAuthenticationServiceSettingsCollection.from(raw);
-    JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection = JwtAuthDefinitionSettingsCollection.from(raw);
+    __old_JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection = __old_JwtAuthDefinitionSettingsCollection.from(raw);
     RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection = RorKbnAuthDefinitionSettingsCollection.from(raw);
     AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(
         proxyAuthDefinitionSettingsCollection,

@@ -21,8 +21,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettings;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettings;
+import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
 
 import java.time.Duration;
 import java.util.Map;
@@ -41,10 +41,10 @@ public class __old_GroupsProviderAuthorizationRuleSettings implements RuleSettin
 
   private final Set<String> groups;
   private final Duration cacheTtl;
-  private final UserGroupsProviderSettings userGroupsProviderSettings;
+  private final __old_UserGroupsProviderSettings userGroupsProviderSettings;
   private final Set<String> users;
 
-  private __old_GroupsProviderAuthorizationRuleSettings(UserGroupsProviderSettings settings, Set<String> groups, Set<String> users, Duration cacheTtl) {
+  private __old_GroupsProviderAuthorizationRuleSettings(__old_UserGroupsProviderSettings settings, Set<String> groups, Set<String> users, Duration cacheTtl) {
     this.groups = groups;
     this.users = users;
     this.cacheTtl = cacheTtl;
@@ -68,7 +68,7 @@ public class __old_GroupsProviderAuthorizationRuleSettings implements RuleSettin
 
   @SuppressWarnings("unchecked")
   public static __old_GroupsProviderAuthorizationRuleSettings from(RawSettings settings,
-      UserGroupsProviderSettingsCollection groupsProviderSettingsCollection) {
+      __old_UserGroupsProviderSettingsCollection groupsProviderSettingsCollection) {
     String providerName = settings.stringReq(GROUPS_PROVIDER_NAME);
     Set<String> groups = (Set<String>) settings.notEmptySetReq(GROUPS);
     Set<String> users = (Set<String>) settings.notEmptySetOpt(USERS).orElse(Sets.newHashSet("*"));
@@ -93,7 +93,7 @@ public class __old_GroupsProviderAuthorizationRuleSettings implements RuleSettin
     return groups;
   }
 
-  public UserGroupsProviderSettings getUserGroupsProviderSettings() {
+  public __old_UserGroupsProviderSettings getUserGroupsProviderSettings() {
     return userGroupsProviderSettings;
   }
 

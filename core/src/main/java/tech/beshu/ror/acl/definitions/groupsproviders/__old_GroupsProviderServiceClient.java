@@ -14,22 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.settings.rules;
+package tech.beshu.ror.acl.definitions.groupsproviders;
 
-public class AuthKeySha512RuleSettings extends __old_AuthKeyRuleSettings {
+import tech.beshu.ror.acl.domain.__old_LoggedUser;
 
-  public static final String ATTRIBUTE_NAME = "auth_key_sha512";
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
-  public AuthKeySha512RuleSettings(String authKey) {
-    super(authKey.toLowerCase());
-  }
+public interface __old_GroupsProviderServiceClient {
 
-  public static AuthKeySha512RuleSettings from(String authKey) {
-    return new AuthKeySha512RuleSettings(authKey);
-  }
-
-  @Override
-  public String getName() {
-    return ATTRIBUTE_NAME;
-  }
+  CompletableFuture<Set<String>> fetchGroupsFor(__old_LoggedUser user);
 }

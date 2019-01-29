@@ -25,8 +25,8 @@ import tech.beshu.ror.httpclient.RRHttpRequest;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
-public class JwtExternalValidationHttpClient extends __old_ExternalAuthenticationServiceHttpClient {
-  public JwtExternalValidationHttpClient(HttpClient client, URI endpoint, int successStatusCode) {
+public class __old_JwtExternalValidationHttpClient extends __old_ExternalAuthenticationServiceHttpClient {
+  public __old_JwtExternalValidationHttpClient(HttpClient client, URI endpoint, int successStatusCode) {
     super(client, endpoint, successStatusCode);
   }
 

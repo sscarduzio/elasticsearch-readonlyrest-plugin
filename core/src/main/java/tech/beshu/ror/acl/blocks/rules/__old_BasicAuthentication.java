@@ -23,8 +23,8 @@ import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
 import tech.beshu.ror.settings.rules.__old_AuthKeyRuleSettings;
-import tech.beshu.ror.utils.BasicAuthUtils;
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
+import tech.beshu.ror.utils.__old_BasicAuthUtils;
+import tech.beshu.ror.utils.__old_BasicAuthUtils.__old_BasicAuth;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -39,11 +39,11 @@ public abstract class __old_BasicAuthentication extends SyncRule implements Auth
     this.authKey = s.getAuthKey();
   }
 
-  protected abstract boolean authenticate(String configuredAuthKey, BasicAuth basicAuth);
+  protected abstract boolean authenticate(String configuredAuthKey, __old_BasicAuth basicAuth);
 
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
-    Optional<BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(rc.getHeaders());
+    Optional<__old_BasicAuth> optBasicAuth = __old_BasicAuthUtils.getBasicAuthFromHeaders(rc.getHeaders());
 
     if (optBasicAuth.isPresent() && logger.isDebugEnabled()) {
       try {
@@ -58,7 +58,7 @@ public abstract class __old_BasicAuthentication extends SyncRule implements Auth
       return NO_MATCH;
     }
 
-    BasicAuth basicAuth = optBasicAuth.get();
+    __old_BasicAuthUtils.__old_BasicAuth basicAuth = optBasicAuth.get();
     RuleExitResult res = authenticate(authKey, basicAuth) ? MATCH : NO_MATCH;
     if (res.isMatch()) {
       rc.setLoggedInUser(new __old_LoggedUser(basicAuth.getUserName()));

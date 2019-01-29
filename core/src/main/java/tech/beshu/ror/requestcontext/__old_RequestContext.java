@@ -31,7 +31,7 @@ import tech.beshu.ror.acl.domain.__old_Value;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.request.RequestContextShim;
 import tech.beshu.ror.httpclient.HttpMethod;
-import tech.beshu.ror.utils.BasicAuthUtils;
+import tech.beshu.ror.utils.__old_BasicAuthUtils;
 
 import java.util.Collections;
 import java.util.Date;
@@ -417,7 +417,7 @@ public abstract class __old_RequestContext extends __old_Delayed implements Requ
     }
 
     String hist = Joiner.on(", ").join(getHistory());
-    Optional<BasicAuthUtils.BasicAuth> optBasicAuth = BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
+    Optional<__old_BasicAuthUtils.__old_BasicAuth> optBasicAuth = __old_BasicAuthUtils.getBasicAuthFromHeaders(getHeaders());
 
     Optional<__old_LoggedUser> loggedInUser = getLoggedInUser();
 

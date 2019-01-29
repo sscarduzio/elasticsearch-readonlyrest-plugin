@@ -27,6 +27,7 @@ object ruleDecoders {
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(HostsRuleDecoder)
       case IndicesRule.name => Some(IndicesRuleDecoders)
+      case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(definitions.jwts))
       case KibanaAccessRule.name => Some(KibanaAccessRuleDecoder)
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
       case KibanaIndexRule.name => Some(KibanaIndexRuleDecoder)

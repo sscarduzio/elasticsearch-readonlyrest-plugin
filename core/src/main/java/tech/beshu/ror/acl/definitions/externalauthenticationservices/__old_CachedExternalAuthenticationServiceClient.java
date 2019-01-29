@@ -28,12 +28,12 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-public class __old_CachedExternalAuthenticationServiceClient implements ExternalAuthenticationServiceClient {
+public class __old_CachedExternalAuthenticationServiceClient implements __old_ExternalAuthenticationServiceClient {
 
-  private final ExternalAuthenticationServiceClient underlying;
+  private final __old_ExternalAuthenticationServiceClient underlying;
   private final Cache<String, String> cache;
 
-  private __old_CachedExternalAuthenticationServiceClient(ExternalAuthenticationServiceClient underlying,
+  private __old_CachedExternalAuthenticationServiceClient(__old_ExternalAuthenticationServiceClient underlying,
       Duration ttl) {
     this.underlying = underlying;
     this.cache = CacheBuilder.newBuilder()
@@ -41,14 +41,14 @@ public class __old_CachedExternalAuthenticationServiceClient implements External
                              .build();
   }
 
-  public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
-      ExternalAuthenticationServiceClient client) {
+  public static __old_ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(CacheSettings settings,
+      __old_ExternalAuthenticationServiceClient client) {
     return settings.getCacheTtl().isZero()
         ? client
         : new __old_CachedExternalAuthenticationServiceClient(client, settings.getCacheTtl());
   }
 
-  public static ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(
+  public static __old_ExternalAuthenticationServiceClient wrapInCacheIfCacheIsEnabled(
       CacheSettings settings, __old_ExternalAuthenticationServiceHttpClient client) {
 
     return settings.getCacheTtl().isZero()

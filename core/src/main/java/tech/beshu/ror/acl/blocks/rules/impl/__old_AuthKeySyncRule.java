@@ -20,8 +20,8 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import tech.beshu.ror.acl.blocks.rules.__old_BasicAuthentication;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
-import tech.beshu.ror.utils.BasicAuthUtils.BasicAuth;
+import tech.beshu.ror.settings.rules.__old_AuthKeyPlainTextRuleSettings;
+import tech.beshu.ror.utils.__old_BasicAuthUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -32,16 +32,16 @@ import java.util.Base64;
 public class __old_AuthKeySyncRule extends __old_BasicAuthentication {
 
   private final LoggerShim logger;
-  private final AuthKeyPlainTextRuleSettings settings;
+  private final __old_AuthKeyPlainTextRuleSettings settings;
 
-  public __old_AuthKeySyncRule(AuthKeyPlainTextRuleSettings s, ESContext context) {
+  public __old_AuthKeySyncRule(__old_AuthKeyPlainTextRuleSettings s, ESContext context) {
     super(s, context);
     this.logger = context.logger(__old_AuthKeySyncRule.class);
     this.settings = s;
   }
 
   @Override
-  protected boolean authenticate(String configuredAuthKey, BasicAuth basicAuth) {
+  protected boolean authenticate(String configuredAuthKey, __old_BasicAuthUtils.__old_BasicAuth basicAuth) {
     try {
       String decodedProvided = new String(Base64.getDecoder().decode(basicAuth.getBase64Value()), StandardCharsets.UTF_8);
       return decodedProvided.equals(configuredAuthKey);

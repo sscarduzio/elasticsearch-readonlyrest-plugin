@@ -27,37 +27,37 @@ import java.util.stream.Collectors;
 
 import static org.jooq.lambda.Seq.seq;
 
-public class UserGroupsProviderSettingsCollection {
+public class __old_UserGroupsProviderSettingsCollection {
 
   public static final String ATTRIBUTE_NAME = "user_groups_providers";
 
-  private final Map<String, UserGroupsProviderSettings> userGroupsProviderSettingsMap;
+  private final Map<String, __old_UserGroupsProviderSettings> userGroupsProviderSettingsMap;
 
-  private UserGroupsProviderSettingsCollection(List<UserGroupsProviderSettings> groupsProviderSettingsList) {
+  private __old_UserGroupsProviderSettingsCollection(List<__old_UserGroupsProviderSettings> groupsProviderSettingsList) {
     validate(groupsProviderSettingsList);
-    this.userGroupsProviderSettingsMap = seq(groupsProviderSettingsList).toMap(UserGroupsProviderSettings::getName, Function.identity());
+    this.userGroupsProviderSettingsMap = seq(groupsProviderSettingsList).toMap(__old_UserGroupsProviderSettings::getName, Function.identity());
   }
 
   @SuppressWarnings("unchecked")
-  public static UserGroupsProviderSettingsCollection from(RawSettings data) {
+  public static __old_UserGroupsProviderSettingsCollection from(RawSettings data) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new UserGroupsProviderSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
+               .map(l -> new __old_UserGroupsProviderSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
                .collect(Collectors.toList())
       )
-      .map(UserGroupsProviderSettingsCollection::new)
-      .orElse(new UserGroupsProviderSettingsCollection(Lists.newArrayList()));
+      .map(__old_UserGroupsProviderSettingsCollection::new)
+      .orElse(new __old_UserGroupsProviderSettingsCollection(Lists.newArrayList()));
   }
 
-  public UserGroupsProviderSettings get(String name) {
+  public __old_UserGroupsProviderSettings get(String name) {
     if (!userGroupsProviderSettingsMap.containsKey(name))
       throw new SettingsMalformedException("Cannot find User Groups Provider definition with name '" + name + "'");
     return userGroupsProviderSettingsMap.get(name);
   }
 
-  private void validate(List<UserGroupsProviderSettings> grouspProviderSettings) {
-    List<String> names = seq(grouspProviderSettings).map(UserGroupsProviderSettings::getName).collect(Collectors.toList());
+  private void validate(List<__old_UserGroupsProviderSettings> grouspProviderSettings) {
+    List<String> names = seq(grouspProviderSettings).map(__old_UserGroupsProviderSettings::getName).collect(Collectors.toList());
     if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated User Groups Provider name in '" + ATTRIBUTE_NAME + "' section");
     }

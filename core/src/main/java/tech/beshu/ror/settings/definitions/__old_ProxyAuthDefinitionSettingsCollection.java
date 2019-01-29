@@ -27,37 +27,37 @@ import java.util.stream.Collectors;
 
 import static org.jooq.lambda.Seq.seq;
 
-public class ProxyAuthDefinitionSettingsCollection {
+public class __old_ProxyAuthDefinitionSettingsCollection {
 
   public static final String ATTRIBUTE_NAME = "proxy_auth_configs";
 
-  private final Map<String, ProxyAuthDefinitionSettings> proxyAuthConfigsSettingsMap;
+  private final Map<String, __old_ProxyAuthDefinitionSettings> proxyAuthConfigsSettingsMap;
 
-  private ProxyAuthDefinitionSettingsCollection(List<ProxyAuthDefinitionSettings> proxyAuthConfigsSettings) {
+  private __old_ProxyAuthDefinitionSettingsCollection(List<__old_ProxyAuthDefinitionSettings> proxyAuthConfigsSettings) {
     validate(proxyAuthConfigsSettings);
-    this.proxyAuthConfigsSettingsMap = seq(proxyAuthConfigsSettings).toMap(ProxyAuthDefinitionSettings::getName, Function.identity());
+    this.proxyAuthConfigsSettingsMap = seq(proxyAuthConfigsSettings).toMap(__old_ProxyAuthDefinitionSettings::getName, Function.identity());
   }
 
   @SuppressWarnings("unchecked")
-  public static ProxyAuthDefinitionSettingsCollection from(RawSettings data) {
+  public static __old_ProxyAuthDefinitionSettingsCollection from(RawSettings data) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
       .map(list ->
              list.stream()
-               .map(l -> new ProxyAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
+               .map(l -> new __old_ProxyAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
                .collect(Collectors.toList())
       )
-      .map(ProxyAuthDefinitionSettingsCollection::new)
-      .orElse(new ProxyAuthDefinitionSettingsCollection(Lists.newArrayList()));
+      .map(__old_ProxyAuthDefinitionSettingsCollection::new)
+      .orElse(new __old_ProxyAuthDefinitionSettingsCollection(Lists.newArrayList()));
   }
 
-  public ProxyAuthDefinitionSettings get(String name) {
+  public __old_ProxyAuthDefinitionSettings get(String name) {
     if (!proxyAuthConfigsSettingsMap.containsKey(name))
       throw new SettingsMalformedException("Cannot find Proxy Auth Config definition with name '" + name + "'");
     return proxyAuthConfigsSettingsMap.get(name);
   }
 
-  private void validate(List<ProxyAuthDefinitionSettings> proxyAuthConfigsSettings) {
-    List<String> names = seq(proxyAuthConfigsSettings).map(ProxyAuthDefinitionSettings::getName).collect(Collectors.toList());
+  private void validate(List<__old_ProxyAuthDefinitionSettings> proxyAuthConfigsSettings) {
+    List<String> names = seq(proxyAuthConfigsSettings).map(__old_ProxyAuthDefinitionSettings::getName).collect(Collectors.toList());
     if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated Proxy Auth Config name in '" + ATTRIBUTE_NAME + "' section");
     }
