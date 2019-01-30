@@ -10,7 +10,6 @@ import tech.beshu.ror.acl.AclLoggingDecorator.FinalState
 import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.acl.request.RequestGroup._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps.toRequestContextOps
 import tech.beshu.ror.acl.utils.TaskOps._

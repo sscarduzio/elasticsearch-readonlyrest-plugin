@@ -47,7 +47,6 @@ import tech.beshu.ror.acl.ResponseWriter;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.factory.AsyncHttpClientsFactory;
 import tech.beshu.ror.acl.factory.HttpClientsFactory;
-import tech.beshu.ror.acl.factory.RorAclFactory;
 import tech.beshu.ror.acl.factory.RorAclFactoryJavaHelper$;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
@@ -99,7 +98,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
       if (newContext.getSettings().isEnabled()) {
         HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down afer reload
-        Acl newAcl = RorAclFactoryJavaHelper$.MODULE$.reload(httpClientsFactory, newContext.getSettings().getRaw().yaml());
+        Acl newAcl = RorAclFactoryJavaHelper$.MODULE$.reload(httpClientsFactory,
+            newContext.getSettings().getRaw().yaml());
         acl.set(Optional.of(newAcl));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }
@@ -166,6 +166,21 @@ import java.util.concurrent.atomic.AtomicReference;
         @Override
         public void writeToThreadContextHeader(String key, String value) {
           requestInfo.writeToThreadContextHeader(key, value);
+        }
+
+        @Override
+        public void writeIndices(scala.collection.immutable.Set<String> indices) {
+          requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(indices));
+        }
+
+        @Override
+        public void writeSnapshots(scala.collection.immutable.Set<String> indices) {
+          requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(indices));
+        }
+
+        @Override
+        public void writeRepositories(scala.collection.immutable.Set<String> indices) {
+          requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(indices));
         }
       };
 

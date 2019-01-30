@@ -1,5 +1,7 @@
 package tech.beshu.ror.acl.blocks.definitions
 
+import java.security.PublicKey
+
 import cats.{Eq, Show}
 import tech.beshu.ror.acl.aDomain.Header
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Claim, Name, SignatureCheckMethod}
@@ -20,10 +22,10 @@ object JwtDef {
 
   sealed trait SignatureCheckMethod
   object SignatureCheckMethod {
-    final case class None(service: ExternalAuthenticationService) extends SignatureCheckMethod
+    final case class NoCheck(service: ExternalAuthenticationService) extends SignatureCheckMethod
     final case class Hmac(rawKey: String) extends SignatureCheckMethod
-    final case class Rsa(rawKey: String) extends SignatureCheckMethod
-    final case class Ec(rawKey: String) extends SignatureCheckMethod
+    final case class Rsa(pubKey: PublicKey) extends SignatureCheckMethod
+    final case class Ec(pubKey: PublicKey) extends SignatureCheckMethod
   }
 
   final case class Claim(value: String) extends AnyVal

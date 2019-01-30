@@ -59,6 +59,20 @@ object CirceOps {
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
 
+    def decodeStringLikeOrSet[T: Order : Decoder]: Decoder[Set[T]] = {
+      decodeStringLike.map(Set(_)).or(Decoder.decodeSet[String]).emap { set =>
+        val (errorsSet, valuesSet) = set.foldLeft((Set.empty[String], Set.empty[T])) {
+          case ((errors, values), elem) =>
+            Decoder[T].decodeJson(Json.fromString(elem)) match {
+              case Right(value) => (errors, values + value)
+              case Left(error) => (errors + error.message, values)
+            }
+        }
+        if (errorsSet.nonEmpty) Left(errorsSet.mkString(","))
+        else Right(valuesSet)
+      }
+    }
+
     def valueDecoder[T](convert: ResolvedValue => Either[Value.ConvertError, T]): Decoder[Either[ConvertError, Value[T]]] =
       DecoderHelpers
         .decodeStringLike

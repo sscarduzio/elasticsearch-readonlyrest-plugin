@@ -12,7 +12,6 @@ import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.acl.aDomain.{Group, Header, User}
-import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message

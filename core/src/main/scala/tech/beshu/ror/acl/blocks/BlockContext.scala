@@ -4,8 +4,8 @@ import cats.data.NonEmptySet
 import tech.beshu.ror.acl.aDomain.{Group, Header, IndexName, LoggedUser}
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.request.RequestContextOps.RequestGroup._
 import tech.beshu.ror.acl.request.RequestContextOps._
-import tech.beshu.ror.acl.request.RequestGroup.{AGroup, `N/A`}
 
 trait BlockContext {
 

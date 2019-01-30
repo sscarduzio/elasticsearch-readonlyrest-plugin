@@ -56,6 +56,7 @@ dependencies {
 
     compile group: 'org.scala-lang',                name: 'scala-library',                      version: '2.12.4'
 
+
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 }

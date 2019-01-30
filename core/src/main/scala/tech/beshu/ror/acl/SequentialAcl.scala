@@ -76,32 +76,32 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
       blockContext.responseHeaders ++ userRelatedHeadersFrom(blockContext) ++
         kibanaIndexHeaderFrom(blockContext).toSet ++ currentGroupHeaderFrom(blockContext).toSet ++
         availableGroupsHeaderFrom(blockContext).toSet
-    if (responseHeaders.nonEmpty) writer.writeResponseHeaders(responseHeaders.map(h => (h.name.value, h.value)).toMap)
+    if (responseHeaders.nonEmpty) writer.writeResponseHeaders(responseHeaders.map(h => (h.name.value.value, h.value.value)).toMap)
   }
 
   private def commitContextHeaders(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     blockContext.contextHeaders.foreach { h =>
-      writer.writeToThreadContextHeader(h.name.value, h.value)
+      writer.writeToThreadContextHeader(h.name.value.value, h.value.value)
     }
   }
 
   private def commitIndices(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.indices) match {
-      case Some(indices) => writer.writeIndices(indices)
+      case Some(indices) => writer.writeIndices(indices.toSortedSet.map(_.value))
       case None =>
     }
   }
 
   private def commitRepositories(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.repositories) match {
-      case Some(indices) => writer.writeRepositories(indices)
+      case Some(indices) => writer.writeRepositories(indices.toSortedSet.map(_.value))
       case None =>
     }
   }
 
   private def commitSnapshots(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.snapshots) match {
-      case Some(indices) => writer.writeSnapshots(indices)
+      case Some(indices) => writer.writeSnapshots(indices.toSortedSet.map(_.value))
       case None =>
     }
   }

@@ -8,6 +8,7 @@ import tech.beshu.ror.acl.blocks.VariablesManager
 import tech.beshu.ror.acl.blocks.VariablesResolver
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.request.RequestContextOps.{BearerToken, RequestGroup}
 
 import scala.language.implicitConversions
 
@@ -69,20 +70,37 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .flatten
   }
 
-  private def findHeader(name: Header.Name) = requestContext.headers.find(_.name === name)
-}
-
-sealed trait RequestGroup
-object RequestGroup {
-  final case class AGroup(userGroup: Group) extends RequestGroup
-  case object `N/A` extends RequestGroup
-
-  implicit val show: Show[RequestGroup] = Show.show {
-    case AGroup(group) => group.value.value
-    case `N/A` => "N/A"
+  def bearerToken(headerName: Header.Name): Option[BearerToken] = {
+    requestContext
+      .headers
+      .find(_.name === headerName)
+      .flatMap { h =>
+        val authMethodName = "Bearer "
+        if(h.value.value.startsWith(authMethodName)) Some(BearerToken(h.value.value.substring(authMethodName.length)))
+        else None
+      }
   }
+
+  private def findHeader(name: Header.Name) = requestContext.headers.find(_.name === name)
 }
 
 object RequestContextOps {
   implicit def toRequestContextOps(rc: RequestContext): RequestContextOps = new RequestContextOps(rc)
+
+  sealed trait RequestGroup
+  object RequestGroup {
+    final case class AGroup(userGroup: Group) extends RequestGroup
+    case object `N/A` extends RequestGroup
+
+    implicit val show: Show[RequestGroup] = Show.show {
+      case AGroup(group) => group.value.value
+      case `N/A` => "N/A"
+    }
+  }
+
+  final case class BearerToken(value: String) extends AnyVal
+  object BearerToken {
+
+  }
 }
+
