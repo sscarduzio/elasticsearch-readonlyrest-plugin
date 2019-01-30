@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class DocumentFieldReader extends FilterLeafReader {
-  static protected final Logger logger = Loggers.getLogger(DocumentFieldReader.class, new String[0]);
+  static protected final Logger logger = Loggers.getLogger(DocumentFieldReader.class, DocumentFieldReader.class.getName());
   private final FieldInfos remainingFieldsInfo;
   private final FieldsSyncRule.FieldPolicy policy;
 
