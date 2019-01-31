@@ -12,6 +12,7 @@ import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocument
 import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.header.ToHeaderValue
+import tech.beshu.ror.acl.request.RequestContextOps.BearerToken
 import tech.beshu.ror.commons.utils.FilterTransient
 
 import scala.concurrent.duration.FiniteDuration
@@ -91,6 +92,7 @@ object show {
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
+    implicit val tokenShow: Show[BearerToken] = Show.show(_.value.value)
   }
 }
 

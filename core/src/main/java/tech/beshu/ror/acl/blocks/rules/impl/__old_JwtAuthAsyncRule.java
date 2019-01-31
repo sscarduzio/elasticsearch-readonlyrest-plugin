@@ -162,13 +162,14 @@ public class __old_JwtAuthAsyncRule extends AsyncRule implements Authentication 
 
       Claims finalJws = jws;
       Optional<String> user = settings.getUserClaim().map(claim -> finalJws.get(claim, String.class));
-      if (settings.getUserClaim().isPresent())
+      if (settings.getUserClaim().isPresent()) {
         if (!user.isPresent()) {
           return CompletableFuture.completedFuture(NO_MATCH);
         }
         else {
           rc.setLoggedInUser(new __old_LoggedUser(user.get()));
         }
+      }
 
       Optional<Set<String>> roles = this.extractRoles(jws);
       if (settings.getRolesClaim().isPresent() && !roles.isPresent()) {

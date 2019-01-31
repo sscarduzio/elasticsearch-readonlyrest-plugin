@@ -23,7 +23,7 @@ object JwtDef {
   sealed trait SignatureCheckMethod
   object SignatureCheckMethod {
     final case class NoCheck(service: ExternalAuthenticationService) extends SignatureCheckMethod
-    final case class Hmac(rawKey: String) extends SignatureCheckMethod
+    final case class Hmac(key: Array[Byte]) extends SignatureCheckMethod
     final case class Rsa(pubKey: PublicKey) extends SignatureCheckMethod
     final case class Ec(pubKey: PublicKey) extends SignatureCheckMethod
   }

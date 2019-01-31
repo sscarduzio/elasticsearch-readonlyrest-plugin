@@ -55,7 +55,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class JwtAuthRuleTests {
+public class __old_JwtAuthRuleTests {
 
   private static final String JWT_NAME = "test-jwt";
   ;

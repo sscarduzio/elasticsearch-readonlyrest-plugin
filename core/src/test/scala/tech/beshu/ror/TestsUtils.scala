@@ -1,16 +1,21 @@
 package tech.beshu.ror
 
+import java.math.BigInteger
+import java.security.{KeyFactory, KeyPairGenerator, PrivateKey, PublicKey}
+import java.security.spec.{RSAPrivateKeySpec, RSAPublicKeySpec}
 import java.time.Duration
 import java.util.Base64
 
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.aDomain._
+import org.testcontainers.shaded.org.bouncycastle.jce.provider.BouncyCastleProvider
 import tech.beshu.ror.acl.aDomain.Header.Name
+import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.BlockContext
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
+import scala.util.Random
 
 object TestsUtils {
 
@@ -66,6 +71,5 @@ object TestsUtils {
     case Right(v) => ApiKey(v)
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
   }
-
 
 }

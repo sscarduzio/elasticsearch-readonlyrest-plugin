@@ -1,21 +1,16 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
-import java.security.KeyFactory
-import java.security.spec.X509EncodedKeySpec
-
 import io.circe.{Decoder, HCursor}
-import org.apache.commons.codec.binary.Base64
 import tech.beshu.ror.acl.aDomain.Header
-import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Claim, Name, SignatureCheckMethod}
+import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CirceOps._
-
-import scala.util.Try
+import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
 
 class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory) extends DefinitionsBaseDecoder[JwtDef]("jwt")(
   JwtDefinitionsDecoder.jwtDefDecoder(httpClientFactory)
@@ -45,12 +40,6 @@ object JwtDefinitionsDecoder {
   private def signatureCheckMethod(c: HCursor)
                                   (implicit httpClientFactory: HttpClientsFactory): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey = c.downField("signature_key").as[String]
-
-    def keyStringToPublicKey(key: String) = Try {
-      val keyBytes = Base64.decodeBase64(key)
-      val kf = KeyFactory.getInstance("RSA")
-      kf.generatePublic(new X509EncodedKeySpec(keyBytes))
-    }
     import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
     for {
       alg <- c.downField("signature_algo").as[Option[String]]
@@ -62,18 +51,19 @@ object JwtDefinitionsDecoder {
             .map(SignatureCheckMethod.NoCheck.apply)
         case Some("HMAC") =>
           decodeSignatureKey
+            .map(_.getBytes)
             .map(SignatureCheckMethod.Hmac.apply)
         case Some("RSA") =>
           decodeSignatureKey
             .flatMap { key =>
-              keyStringToPublicKey(key).toEither
+              keyStringToPublicKey("RSA", key).toEither
                 .left.map(_ => fromError(AclCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Rsa.apply)
         case Some("EC") =>
           decodeSignatureKey
             .flatMap { key =>
-              keyStringToPublicKey(key).toEither
+              keyStringToPublicKey("EC", key).toEither
                 .left.map(_ => fromError(AclCreationError.DefinitionsLevelCreationError(Message(s"Key '$key' seems to be invalid"))))
             }
             .map(SignatureCheckMethod.Ec.apply)

@@ -33,17 +33,17 @@ private object JwtAuthRuleDecoder {
 
   private implicit val groupsSetDecoder: Decoder[Set[Value[Group]]] = DecoderHelpers.decodeStringLikeOrSet[Value[Group]]
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Value[Group]])] =
+  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Group])] =
     DecoderHelpers
       .decodeStringLike
       .map(JwtDef.Name.apply)
       .map((_, Set.empty))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, Set[Value[Group]])] =
+  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, Set[Group])] =
     Decoder.instance { c =>
       for {
         jwtDefName <- c.downField("name").as[JwtDef.Name]
-        groups <- c.downField("roles").as[Option[Set[Value[Group]]]]
+        groups <- c.downField("roles").as[Option[Set[Group]]]
       } yield (jwtDefName, groups.getOrElse(Set.empty))
     }
 
