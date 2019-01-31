@@ -43,7 +43,6 @@ public class __old_ProxyAuthSyncRule extends SyncRule implements Authentication 
     this.userListMatcher = new MatcherWithWildcards(
       s.getUsers().stream()
         .filter(i -> !Strings.isNullOrEmpty(i))
-        .distinct()
         .collect(Collectors.toSet())
     );
   }

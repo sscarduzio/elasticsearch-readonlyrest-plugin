@@ -17,6 +17,8 @@
 
 package tech.beshu.ror.es;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -29,7 +31,6 @@ import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -56,7 +57,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Created by sscarduzio on 19/12/2015.
  */
 @Singleton
-public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
+public class IndexLevelActionFilter implements ActionFilter {
 
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
@@ -65,6 +66,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
+  private final Logger logger;
 
   public IndexLevelActionFilter(Settings settings,
       ClusterService clusterService,
@@ -72,9 +74,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       ThreadPool threadPool,
       SettingsObservableImpl settingsObservable,
       Environment env
-  )
-      throws IOException {
-    super(settings);
+  ) {
+    logger = LogManager.getLogger(this.getClass());
     loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     BasicSettings baseSettings = BasicSettings.fromFileObj(loggerShim, env.configFile().toAbsolutePath(), settings);

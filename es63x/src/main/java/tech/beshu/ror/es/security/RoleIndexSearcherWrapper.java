@@ -66,7 +66,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     if (indexService == null) {
       throw new IllegalArgumentException("Please provide an indexService");
     }
-    Logger logger = Loggers.getLogger(this.getClass(), new String[0]);
+    Logger logger = Loggers.getLogger(this.getClass(), getClass().getSimpleName());
     logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
     this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null, null);
     this.threadContext = indexService.getThreadPool().getThreadContext();
