@@ -160,14 +160,16 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     settings.jwt.groupsClaim
       .map { name =>
         name.value.split("[.]").toList match {
-          case Nil | _ :: Nil => Option(claims.get(name.value, classOf[Any]))
+          case Nil | _ :: Nil => Option(claims.get(name.value, classOf[Object]))
           case path :: restPaths =>
-            restPaths.foldLeft(Option(claims.get(path, classOf[Any]))) {
+            restPaths.foldLeft(Option(claims.get(path, classOf[Object]))) {
               case (None, _) => None
               case (Some(value), currentPath) =>
                 value match {
-                  case map: Map[String, Any] => map.get(currentPath)
-                  case _ => Some(value)
+                  case map: util.Map[String, Object] =>
+                    Option(map.get(currentPath))
+                  case _ =>
+                    Some(value)
                 }
             }
         }

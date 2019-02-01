@@ -73,6 +73,10 @@ object CirceOps {
       }
     }
 
+    def decodeStringLikeWithVarResolvedInPlace: Decoder[String] = {
+      decodeStringLike.map(StaticResolver.resolve)
+    }
+
     def valueDecoder[T](convert: ResolvedValue => Either[Value.ConvertError, T]): Decoder[Either[ConvertError, Value[T]]] =
       DecoderHelpers
         .decodeStringLike

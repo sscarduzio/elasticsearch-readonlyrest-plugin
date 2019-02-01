@@ -12,9 +12,10 @@ import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
 
-class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory) extends DefinitionsBaseDecoder[JwtDef]("jwt")(
-  JwtDefinitionsDecoder.jwtDefDecoder(httpClientFactory)
-)
+class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory)
+  extends DefinitionsBaseDecoder[JwtDef]("jwt")(
+    JwtDefinitionsDecoder.jwtDefDecoder(httpClientFactory)
+  )
 
 object JwtDefinitionsDecoder {
 
@@ -39,7 +40,11 @@ object JwtDefinitionsDecoder {
 
   private def signatureCheckMethod(c: HCursor)
                                   (implicit httpClientFactory: HttpClientsFactory): Decoder.Result[SignatureCheckMethod] = {
-    def decodeSignatureKey = c.downField("signature_key").as[String]
+    def decodeSignatureKey =
+      DecoderHelpers
+        .decodeStringLikeWithVarResolvedInPlace
+        .tryDecode(c.downField("signature_key"))
+
     import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
     for {
       alg <- c.downField("signature_algo").as[Option[String]]

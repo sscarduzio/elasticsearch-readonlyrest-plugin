@@ -10,8 +10,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.TestsUtils.BlockContextAssertion
-import tech.beshu.ror.acl.aDomain.{Group, Header, Secret}
+import tech.beshu.ror.TestsUtils
+import tech.beshu.ror.TestsUtils.{BlockContextAssertion, groupFrom}
+import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
@@ -19,6 +20,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.mocks.MockRequestContext
 
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -84,6 +86,108 @@ class JwtAuthRuleTests
           blockContext => assertBlockContext()(blockContext)
         }
       }
+      "user claim name is defined and userId is passed in JWT token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = None
+          ),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setSubject("test").claim("userId", "user1").signWith(key).compact}")
+          )
+        ) {
+          blockContext => assertBlockContext(
+            loggedUser = Some(LoggedUser(User.Id("user1")))
+          )(blockContext)
+        }
+      }
+      "groups claim name is defined and groups are passed in JWT token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = Some(JwtDef.Claim("groups"))
+          ),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("userId", "user1")
+                .claim("groups", List("group1", "group2").asJava)
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
+          )
+        ) {
+          blockContext => assertBlockContext(
+            loggedUser = Some(LoggedUser(User.Id("user1")))
+          )(blockContext)
+        }
+      }
+      "groups claim path is defined and groups are passed in JWT token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups"))
+          ),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("userId", "user1")
+                .claim("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
+          )
+        ) {
+          blockContext => assertBlockContext(
+            loggedUser = Some(LoggedUser(User.Id("user1")))
+          )(blockContext)
+        }
+      }
+      "rule groups are defined and intersection between those groups and JWT ones is not empty" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = Some(JwtDef.Claim("groups"))
+          ),
+          configuredGroups = Set(groupFrom("group3"), groupFrom("group2")),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("userId", "user1")
+                .claim("groups", List("group1", "group2").asJava)
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
+          )
+        ) {
+          blockContext => assertBlockContext(
+            loggedUser = Some(LoggedUser(User.Id("user1")))
+          )(blockContext)
+        }
+      }
     }
     "not match" when {
       "token has invalid HS256 signature" in {
@@ -133,6 +237,85 @@ class JwtAuthRuleTests
           tokenHeader = Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer $rawToken")
+          )
+        )
+      }
+      "user claim name is defined but userId isn't passed in JWT token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertNotMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = None
+          ),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setSubject("test").signWith(key).compact}")
+          )
+        )
+      }
+      "groups claim name is defined but groups aren't passed in JWT token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertNotMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = Some(JwtDef.Claim("groups"))
+          ),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setSubject("test").signWith(key).compact}")
+          )
+        )
+      }
+      "groups claim path is wrong" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertNotMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups.subgroups"))
+          ),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("userId", "user1")
+                .claim("groups", List("group1", "group2").asJava)
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
+          )
+        )
+      }
+      "rule groups are defined and intersection between those groups and JWT ones is empty" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertNotMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test"),
+            Header.Name.authorization,
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(JwtDef.Claim("userId")),
+            groupsClaim = Some(JwtDef.Claim("groups"))
+          ),
+          configuredGroups = Set(groupFrom("group3"), groupFrom("group4")),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("userId", "user1")
+                .claim("groups", List("group1", "group2").asJava)
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
           )
         )
       }
