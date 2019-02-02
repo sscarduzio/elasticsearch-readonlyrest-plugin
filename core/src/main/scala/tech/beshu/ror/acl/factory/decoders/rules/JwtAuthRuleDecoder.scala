@@ -21,7 +21,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef]) extends RuleDecode
     .emapE { case (name, groups) =>
       jwtDefinitions.items.find(_.id === name) match {
         case Some(jwtDef) => Right((jwtDef, groups))
-        case None => Left(RulesLevelCreationError(Message(s"Cannot JWT definition with name: ${name.show}")))
+        case None => Left(RulesLevelCreationError(Message(s"Cannot find JWT definition with name: ${name.show}")))
       }
     }
     .map { case (jwtDef, groups) =>
@@ -35,7 +35,7 @@ private object JwtAuthRuleDecoder {
 
   private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Group])] =
     DecoderHelpers
-      .decodeStringLike
+      .decodeStringLikeNonEmpty
       .map(JwtDef.Name.apply)
       .map((_, Set.empty))
 

@@ -24,28 +24,6 @@ import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 import scala.util.Try
 
-
-/*
-      JWT ALGO    FAMILY
-      =======================
-      NONE        None
-
-      HS256       HMAC
-      HS384       HMAC
-      HS512       HMAC
-
-      RS256       RSA
-      RS384       RSA
-      RS512       RSA
-      PS256       RSA
-      PS384       RSA
-      PS512       RSA
-
-      ES256       EC
-      ES384       EC
-      ES512       EC
-    */
-
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
     with AuthorizationRule
@@ -148,7 +126,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
   private def userIdFrom(claims: Claims): ClaimSearchResult[User.Id] = {
     settings.jwt.userClaim
       .map { name =>
-        Option(claims.get(name.value, classOf[String])) match {
+        Option(claims.get(name.value.value, classOf[String])) match {
           case Some(id) => Found(User.Id(id))
           case None => NotFound
         }
@@ -156,11 +134,12 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       .getOrElse(NotApplicable)
   }
 
+  // todo: use json path (with jackson? or maybe we can convert java map to json?)
   private def groupsFrom(claims: Claims) = {
     settings.jwt.groupsClaim
       .map { name =>
-        name.value.split("[.]").toList match {
-          case Nil | _ :: Nil => Option(claims.get(name.value, classOf[Object]))
+        name.value.value.split("[.]").toList match {
+          case Nil | _ :: Nil => Option(claims.get(name.value.value, classOf[Object]))
           case path :: restPaths =>
             restPaths.foldLeft(Option(claims.get(path, classOf[Object]))) {
               case (None, _) => None

@@ -72,4 +72,7 @@ object TestsUtils {
     case Left(_) => throw new IllegalArgumentException(s"Cannot convert $value to ApiKey")
   }
 
+  implicit class StringOps(val value: String) extends AnyVal {
+    def nonempty: NonEmptyString = NonEmptyString.unsafeFrom(value)
+  }
 }

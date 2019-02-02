@@ -10,7 +10,6 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.TestsUtils
 import tech.beshu.ror.TestsUtils.{BlockContextAssertion, groupFrom}
 import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
@@ -19,6 +18,7 @@ import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.TestsUtils._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -33,7 +33,7 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
             userClaim = None,
@@ -54,7 +54,7 @@ class JwtAuthRuleTests
         }
         assertMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
@@ -72,7 +72,7 @@ class JwtAuthRuleTests
         val rawToken = Jwts.builder.setSubject("test").compact
         assertMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.NoCheck(authService(rawToken, authenticated = true)),
             userClaim = None,
@@ -90,10 +90,10 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
             groupsClaim = None
           ),
           tokenHeader = Header(
@@ -110,11 +110,11 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
-            groupsClaim = Some(JwtDef.Claim("groups"))
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -137,11 +137,11 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
-            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups"))
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -164,11 +164,11 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
-            groupsClaim = Some(JwtDef.Claim("groups"))
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
           ),
           configuredGroups = Set(groupFrom("group3"), groupFrom("group2")),
           tokenHeader = Header(
@@ -195,7 +195,7 @@ class JwtAuthRuleTests
         val key2: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key1.getEncoded),
             userClaim = None,
@@ -212,7 +212,7 @@ class JwtAuthRuleTests
         val secret = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPrivate
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Rsa(pub),
             userClaim = None,
@@ -228,7 +228,7 @@ class JwtAuthRuleTests
         val rawToken = Jwts.builder.setSubject("test").compact
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.NoCheck(authService(rawToken, authenticated = false)),
             userClaim = None,
@@ -244,10 +244,10 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
             groupsClaim = None
           ),
           tokenHeader = Header(
@@ -260,11 +260,11 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
-            groupsClaim = Some(JwtDef.Claim("groups"))
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -276,11 +276,11 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
-            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups.subgroups"))
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups.subgroups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -299,11 +299,11 @@ class JwtAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
-            JwtDef.Name("test"),
+            JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId")),
-            groupsClaim = Some(JwtDef.Claim("groups"))
+            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
           ),
           configuredGroups = Set(groupFrom("group3"), groupFrom("group4")),
           tokenHeader = Header(

@@ -1,5 +1,6 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
+import cats.implicits._
 import com.jayway.jsonpath.JsonPath
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
@@ -71,7 +72,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthorizationService.Name]
-          url <- c.downField("groups_endpoint").as[Uri]
+          url <- c.downField("groups_endpoint").as[Uri].orElse(c.downField("url").as[Uri])
           authTokenName <- c.downField("auth_token_name").as[AuthTokenName]
           sendUsing <- c.downField("auth_token_passed_as").as[AuthTokenSendMethod]
           httpMethod <- c.downField("http_method").as[Option[SupportedHttpMethod]]
