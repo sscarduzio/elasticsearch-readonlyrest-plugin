@@ -29,7 +29,7 @@ import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSe
 import tech.beshu.ror.settings.definitions.__old_JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_ProxyAuthDefinitionSettingsCollection;
-import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_RorKbnAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
@@ -84,7 +84,7 @@ public class RorSettings {
     __old_ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection = __old_ProxyAuthDefinitionSettingsCollection.from(raw);
     __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection = __old_ExternalAuthenticationServiceSettingsCollection.from(raw);
     __old_JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection = __old_JwtAuthDefinitionSettingsCollection.from(raw);
-    RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection = RorKbnAuthDefinitionSettingsCollection.from(raw);
+    __old_RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection = __old_RorKbnAuthDefinitionSettingsCollection.from(raw);
     AuthMethodCreatorsRegistry authMethodCreatorsRegistry = new AuthMethodCreatorsRegistry(
         proxyAuthDefinitionSettingsCollection,
         ldapSettingsCollection,

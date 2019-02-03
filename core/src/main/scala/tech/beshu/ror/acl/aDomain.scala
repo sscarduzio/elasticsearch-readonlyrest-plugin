@@ -190,4 +190,7 @@ object aDomain {
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
   }
 
+
+  final case class ClaimName(value: NonEmptyString)
+
 }

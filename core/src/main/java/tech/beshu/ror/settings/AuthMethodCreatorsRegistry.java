@@ -23,7 +23,7 @@ import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.__old_JwtAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.definitions.__old_ProxyAuthDefinitionSettingsCollection;
-import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_RorKbnAuthDefinitionSettingsCollection;
 import tech.beshu.ror.settings.rules.__old_AuthKeyPlainTextRuleSettings;
 import tech.beshu.ror.settings.rules.__old_AuthKeySha1RuleSettings;
 import tech.beshu.ror.settings.rules.__old_AuthKeySha256RuleSettings;
@@ -32,7 +32,7 @@ import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
-import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_RorKbnAuthRuleSettings;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -48,7 +48,7 @@ public class AuthMethodCreatorsRegistry {
     __old_ProxyAuthDefinitionSettingsCollection proxyAuthDefinitionSettingsCollection,
     LdapSettingsCollection ldapSettingsCollection,
     __old_JwtAuthDefinitionSettingsCollection jwtAuthDefinitionSettingsCollection,
-    RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection
+    __old_RorKbnAuthDefinitionSettingsCollection rorKbnAuthDefinitionSettingsCollection
   ) {
 
     HashMap<String, Function<RawSettings, AuthKeyProviderSettings>> creators = Maps.newHashMap();
@@ -60,7 +60,7 @@ public class AuthMethodCreatorsRegistry {
     creators.put(__old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(proxyAuthDefinitionSettingsCollection));
     creators.put(LdapAuthenticationRuleSettings.ATTRIBUTE_NAME, ldapAuthenticationRuleSettingsCreator(ldapSettingsCollection));
     creators.put(__old_JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(jwtAuthDefinitionSettingsCollection));
-    creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(rorKbnAuthDefinitionSettingsCollection));
+    creators.put(__old_RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(rorKbnAuthDefinitionSettingsCollection));
     this.authKeyProviderCreators = creators;
   }
 
@@ -128,12 +128,12 @@ public class AuthMethodCreatorsRegistry {
   }
 
   private Function<RawSettings, AuthKeyProviderSettings> rorKbnAuthSettingsCreator(
-      RorKbnAuthDefinitionSettingsCollection definitionSettingsCollection) {
+      __old_RorKbnAuthDefinitionSettingsCollection definitionSettingsCollection) {
     return settings -> {
-      Object conf = settings.req(RorKbnAuthRuleSettings.ATTRIBUTE_NAME);
+      Object conf = settings.req(__old_RorKbnAuthRuleSettings.ATTRIBUTE_NAME);
       return conf instanceof String
-          ? RorKbnAuthRuleSettings.from((String) conf, definitionSettingsCollection)
-          : RorKbnAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), definitionSettingsCollection);
+          ? __old_RorKbnAuthRuleSettings.from((String) conf, definitionSettingsCollection)
+          : __old_RorKbnAuthRuleSettings.from(new RawSettings((Map<String, ?>) conf, settings.getLogger()), definitionSettingsCollection);
     };
   }
 

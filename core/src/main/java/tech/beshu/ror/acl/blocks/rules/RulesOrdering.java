@@ -47,7 +47,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_RepositoriesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_RorKbnAuthSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SearchlogSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_SnapshotsSyncRule;
@@ -73,7 +73,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
         __old_AuthKeyUnixAsyncRule.class,
         __old_ProxyAuthSyncRule.class,
         __old_JwtAuthAsyncRule.class,
-        RorKbnAuthSyncRule.class,
+        __old_RorKbnAuthSyncRule.class,
 
         // then we could check potentially slow async rules
         LdapAuthAsyncRule.class,

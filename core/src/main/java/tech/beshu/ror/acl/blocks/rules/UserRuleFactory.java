@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.__old_RorKbnAuthSyncRule;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
@@ -40,7 +40,7 @@ import tech.beshu.ror.settings.rules.CacheSettings;
 import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
-import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_RorKbnAuthRuleSettings;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -97,8 +97,8 @@ public class UserRuleFactory {
         settings -> new __old_JwtAuthAsyncRule((__old_JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
     );
     this.creators.put(
-        RorKbnAuthRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new RorKbnAuthSyncRule((RorKbnAuthRuleSettings) settings, context))
+        __old_RorKbnAuthRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new __old_RorKbnAuthSyncRule((__old_RorKbnAuthRuleSettings) settings, context))
     );
   }
 

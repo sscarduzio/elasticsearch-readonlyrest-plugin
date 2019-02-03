@@ -238,6 +238,7 @@ object CirceOps {
       fields.toList.foldLeft(value.downField(field)) {
         case (_: FailedCursor, nextField) => value.downField(nextField)
         case (found: HCursor, _) => found
+        case (other, _) => other
       }
     }
   }

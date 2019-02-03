@@ -1,33 +1,31 @@
 package tech.beshu.ror.acl.blocks.rules
 
-import java.util
-
 import cats.data._
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.{Claims, Jwts}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.aDomain.{Group, LoggedUser, Secret, User}
-import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
-import tech.beshu.ror.acl.orders.groupOrder
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
+import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
+import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.commons.utils.SecureStringHasher
 
-import scala.collection.JavaConverters._
-import scala.collection.SortedSet
 import scala.util.Try
 
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
     with AuthorizationRule
     with Logging {
+
+  override val name: Rule.Name = ExternalAuthenticationRule.name
 
   private val parser = settings.jwt.checkMethod match {
     case NoCheck(_) => Jwts.parser
@@ -38,15 +36,13 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
 
   private val hasher = new SecureStringHasher("sha256")
 
-  override val name: Rule.Name = ExternalAuthenticationRule.name
-
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task
     .unit
     .flatMap { _ =>
       requestContext.bearerToken(settings.jwt.headerName) match {
         case None =>
-          logger.debug("Authorization header is missing or does not contain a bearer token")
+          logger.debug(s"Authorization header ${settings.jwt.headerName.show} is missing or does not contain a bearer token")
           Task.now(Rejected)
         case Some(token) =>
           process(token, blockContext)
@@ -78,25 +74,6 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
-  private def handleUserClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[User.Id]) = {
-    result match {
-      case NotFound => Left(())
-      case NotApplicable => Right(blockContext)
-      case Found(userId) => Right(blockContext.withLoggedUser(LoggedUser(userId)))
-    }
-  }
-
-  private def handleGroupsClaimSearchResult(result: ClaimSearchResult[NonEmptySet[Group]]) = {
-    result match {
-      case NotFound => Left(())
-      case Found(groups) if settings.groups.nonEmpty =>
-        if (groups.toSortedSet.intersect(settings.groups).isEmpty) Left(())
-        else Right(())
-      case NotApplicable if settings.groups.nonEmpty => Left(())
-      case Found(_) | NotApplicable => Right(())
-    }
-  }
-
   private def userAndGroupsFromJwtToken(token: BearerToken) = {
     claimsFrom(token).map { claims => (userIdFrom(claims), groupsFrom(claims)) }
   }
@@ -123,59 +100,32 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
-  private def userIdFrom(claims: Claims): ClaimSearchResult[User.Id] = {
-    settings.jwt.userClaim
-      .map { name =>
-        Option(claims.get(name.value.value, classOf[String])) match {
-          case Some(id) => Found(User.Id(id))
-          case None => NotFound
-        }
-      }
-      .getOrElse(NotApplicable)
+  private def userIdFrom(claims: Claims) = {
+    settings.jwt.userClaim.map(claims.userIdClaim)
   }
 
-  // todo: use json path (with jackson? or maybe we can convert java map to json?)
   private def groupsFrom(claims: Claims) = {
-    settings.jwt.groupsClaim
-      .map { name =>
-        name.value.value.split("[.]").toList match {
-          case Nil | _ :: Nil => Option(claims.get(name.value.value, classOf[Object]))
-          case path :: restPaths =>
-            restPaths.foldLeft(Option(claims.get(path, classOf[Object]))) {
-              case (None, _) => None
-              case (Some(value), currentPath) =>
-                value match {
-                  case map: util.Map[String, Object] =>
-                    Option(map.get(currentPath))
-                  case _ =>
-                    Some(value)
-                }
-            }
-        }
-      }
-      .map {
-        case Some(value: String) =>
-          toGroup(value).map(NonEmptySet.one(_)).map(Found.apply).getOrElse(NotFound)
-        case Some(values) if values.isInstanceOf[util.Collection[String]] =>
-          val collection = values.asInstanceOf[util.Collection[String]]
-          NonEmptySet
-            .fromSet(SortedSet.empty[Group] ++ collection.asScala.toList.flatMap(toGroup).toSet)
-            .map(Found.apply)
-            .getOrElse(NotFound)
-        case _ =>
-          NotFound
-      }
-      .getOrElse(NotApplicable)
+    settings.jwt.groupsClaim.map(claims.groupsClaim)
   }
 
-  private def toGroup(value: String) = {
-    NonEmptyString.unapply(value).map(Group.apply)
+  private def handleUserClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[User.Id]]) = {
+    result match {
+      case None => Right(blockContext)
+      case Some(Found(userId)) => Right(blockContext.withLoggedUser(LoggedUser(userId)))
+      case Some(NotFound) => Left(())
+    }
   }
 
-  private trait ClaimSearchResult[+T]
-  private final case class Found[+T](value: T) extends ClaimSearchResult[T]
-  private case object NotFound extends ClaimSearchResult[Nothing]
-  private case object NotApplicable extends ClaimSearchResult[Nothing]
+  private def handleGroupsClaimSearchResult(result: Option[ClaimSearchResult[NonEmptySet[Group]]]) = {
+    result match {
+      case Some(NotFound) => Left(())
+      case Some(Found(groups)) if settings.groups.nonEmpty =>
+        if (groups.toSortedSet.intersect(settings.groups).isEmpty) Left(())
+        else Right(())
+      case None if settings.groups.nonEmpty => Left(())
+      case Some(Found(_)) | None => Right(())
+    }
+  }
 
 }
 

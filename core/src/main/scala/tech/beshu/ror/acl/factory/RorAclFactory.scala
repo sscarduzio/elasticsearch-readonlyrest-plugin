@@ -147,12 +147,13 @@ class RorAclFactory(implicit clock: Clock,
     AccumulatingDecoder.instance { c =>
       val decoder = for {
         authProxies <- new ProxyAuthDefinitionsDecoder
-        userDefs <- new UsersDefinitionsDecoder(authProxies)
         authenticationServices <- new ExternalAuthenticationServicesDecoder(httpClientFactory)
         authorizationServices <- new ExternalAuthorizationServicesDecoder(httpClientFactory)
         jwtDefs <- new JwtDefinitionsDecoder(httpClientFactory, resolver)
+        rorKbnDefs <- new RorKbnDefinitionsDecoder(resolver)
+        userDefs <- new UsersDefinitionsDecoder(authenticationServices, authProxies, jwtDefs, rorKbnDefs)
         acl <- {
-          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs))
+          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs))
           DecoderHelpers
             .decodeFieldList[Block](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {

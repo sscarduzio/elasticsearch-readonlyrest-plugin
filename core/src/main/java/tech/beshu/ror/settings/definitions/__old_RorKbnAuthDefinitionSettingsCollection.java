@@ -31,34 +31,34 @@ import static org.jooq.lambda.Seq.seq;
 /**
  * @author Datasweet <contact@datasweet.fr>
  */
-public class RorKbnAuthDefinitionSettingsCollection {
+public class __old_RorKbnAuthDefinitionSettingsCollection {
   private static final String ATTRIBUTE_NAME = "ror_kbn";
 
-  private final Map<String, RorKbnAuthDefinitionSettings> jwtAuthConfigsSettingsMap;
+  private final Map<String, __old_RorKbnAuthDefinitionSettings> jwtAuthConfigsSettingsMap;
 
-  private RorKbnAuthDefinitionSettingsCollection(List<RorKbnAuthDefinitionSettings> jwtAuthConfigsSettings) {
+  private __old_RorKbnAuthDefinitionSettingsCollection(List<__old_RorKbnAuthDefinitionSettings> jwtAuthConfigsSettings) {
     validate(jwtAuthConfigsSettings);
-    this.jwtAuthConfigsSettingsMap = seq(jwtAuthConfigsSettings).toMap(RorKbnAuthDefinitionSettings::getName, Function.identity());
+    this.jwtAuthConfigsSettingsMap = seq(jwtAuthConfigsSettings).toMap(__old_RorKbnAuthDefinitionSettings::getName, Function.identity());
   }
 
   @SuppressWarnings("unchecked")
-  public static RorKbnAuthDefinitionSettingsCollection from(RawSettings data) {
+  public static __old_RorKbnAuthDefinitionSettingsCollection from(RawSettings data) {
     return data.notEmptyListOpt(ATTRIBUTE_NAME)
-               .map(list -> list.stream().map(l -> new RorKbnAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
+               .map(list -> list.stream().map(l -> new __old_RorKbnAuthDefinitionSettings(new RawSettings((Map<String, ?>) l, data.getLogger())))
                                 .collect(Collectors.toList()))
-               .map(RorKbnAuthDefinitionSettingsCollection::new)
-               .orElse(new RorKbnAuthDefinitionSettingsCollection(Lists.newArrayList()));
+               .map(__old_RorKbnAuthDefinitionSettingsCollection::new)
+               .orElse(new __old_RorKbnAuthDefinitionSettingsCollection(Lists.newArrayList()));
   }
 
-  public RorKbnAuthDefinitionSettings get(String name) {
+  public __old_RorKbnAuthDefinitionSettings get(String name) {
     if (!jwtAuthConfigsSettingsMap.containsKey(name))
       throw new SettingsMalformedException("Cannot find " + ATTRIBUTE_NAME + " Auth Config definition with name '" + name + "'");
     return jwtAuthConfigsSettingsMap.get(name);
   }
 
-  private void validate(List<RorKbnAuthDefinitionSettings> jwtAuthConfigsSettings) {
+  private void validate(List<__old_RorKbnAuthDefinitionSettings> jwtAuthConfigsSettings) {
     List<String> names = seq(jwtAuthConfigsSettings)
-        .map(RorKbnAuthDefinitionSettings::getName)
+        .map(__old_RorKbnAuthDefinitionSettings::getName)
         .collect(Collectors.toList());
     if (names.stream().distinct().count() != names.size()) {
       throw new SettingsMalformedException("Duplicated " + ATTRIBUTE_NAME + " Auth Config name in '" + ATTRIBUTE_NAME + "' section");

@@ -93,7 +93,7 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            userClaim = Some(ClaimName("userId".nonempty)),
             groupsClaim = None
           ),
           tokenHeader = Header(
@@ -113,8 +113,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
-            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
+            userClaim = Some(ClaimName("userId".nonempty)),
+            groupsClaim = Some(ClaimName("groups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -140,8 +140,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
-            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups".nonempty))
+            userClaim = Some(ClaimName("userId".nonempty)),
+            groupsClaim = Some(ClaimName("tech.beshu.groups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -167,8 +167,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
-            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
+            userClaim = Some(ClaimName("userId".nonempty)),
+            groupsClaim = Some(ClaimName("groups".nonempty))
           ),
           configuredGroups = Set(groupFrom("group3"), groupFrom("group2")),
           tokenHeader = Header(
@@ -247,7 +247,7 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
+            userClaim = Some(ClaimName("userId".nonempty)),
             groupsClaim = None
           ),
           tokenHeader = Header(
@@ -263,8 +263,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
-            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
+            userClaim = Some(ClaimName("userId".nonempty)),
+            groupsClaim = Some(ClaimName("groups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -279,8 +279,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
-            groupsClaim = Some(JwtDef.Claim("tech.beshu.groups.subgroups".nonempty))
+            userClaim = Some(ClaimName("userId".nonempty)),
+            groupsClaim = Some(ClaimName("tech.beshu.groups.subgroups".nonempty))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -302,8 +302,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             Header.Name.authorization,
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(JwtDef.Claim("userId".nonempty)),
-            groupsClaim = Some(JwtDef.Claim("groups".nonempty))
+            userClaim = Some(ClaimName("userId".nonempty)),
+            groupsClaim = Some(ClaimName("groups".nonempty))
           ),
           configuredGroups = Set(groupFrom("group3"), groupFrom("group4")),
           tokenHeader = Header(

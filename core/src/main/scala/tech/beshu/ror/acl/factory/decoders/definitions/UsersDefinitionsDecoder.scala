@@ -13,14 +13,20 @@ import tech.beshu.ror.acl.factory.decoders.ruleDecoders.authenticationRuleDecode
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
 
-class UsersDefinitionsDecoder(authProxyDefinitions: Definitions[ProxyAuth])
+class UsersDefinitionsDecoder(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                              authProxyDefinitions: Definitions[ProxyAuth],
+                              jwtDefinitions: Definitions[JwtDef],
+                              rorKbnDefinitions: Definitions[RorKbnDef])
   extends DefinitionsBaseDecoder[UserDef]("users")(
-    UsersDefinitionsDecoder.userDefDecoder(authProxyDefinitions)
+    UsersDefinitionsDecoder.userDefDecoder(authenticationServiceDefinitions, authProxyDefinitions, jwtDefinitions, rorKbnDefinitions)
   )
 
 object UsersDefinitionsDecoder {
 
-  private implicit def userDefDecoder(implicit authProxyDefinitions: Definitions[ProxyAuth]): Decoder[UserDef] = {
+  private implicit def userDefDecoder(implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                                      authProxyDefinitions: Definitions[ProxyAuth],
+                                      jwtDefinitions: Definitions[JwtDef],
+                                      rorKbnDefinitions: Definitions[RorKbnDef]): Decoder[UserDef] = {
     import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
@@ -36,10 +42,19 @@ object UsersDefinitionsDecoder {
   }
 
   private def tryDecodeAuthRule(adjustedCursor: ACursor, username: User.Id)
-                               (implicit authProxyDefinitions: Definitions[ProxyAuth]) = {
+                               (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                                authProxyDefinitions: Definitions[ProxyAuth],
+                                jwtDefinitions: Definitions[JwtDef],
+                                rorKbnDefinitions: Definitions[RorKbnDef]) = {
     adjustedCursor.keys.map(_.toList) match {
       case Some(key :: Nil) =>
-        val decoder = authenticationRuleDecoderBy(Rule.Name(key), authProxyDefinitions) match {
+        val decoder = authenticationRuleDecoderBy(
+          Rule.Name(key),
+          authenticationServiceDefinitions,
+          authProxyDefinitions,
+          jwtDefinitions,
+          rorKbnDefinitions
+        ) match {
           case Some(authRuleDecoder) => authRuleDecoder
           case None => DecoderHelpers.failed[AuthenticationRule](
             DefinitionsLevelCreationError(Message(s"Rule $key is not authentication rule"))

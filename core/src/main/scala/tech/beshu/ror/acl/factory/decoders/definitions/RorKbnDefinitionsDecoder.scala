@@ -1,42 +1,33 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
-import io.circe.{Decoder, HCursor, Json}
-import tech.beshu.ror.acl.aDomain.{ClaimName, Header}
-import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
-import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
-import tech.beshu.ror.acl.factory.HttpClientsFactory
+import io.circe.{Decoder, HCursor}
+import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
+import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
-import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
+import tech.beshu.ror.acl.utils.CirceOps._
 
-class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory,
-                            resolver: StaticVariablesResolver)
-  extends DefinitionsBaseDecoder[JwtDef]("jwt")(
-    JwtDefinitionsDecoder.jwtDefDecoder(httpClientFactory, resolver)
+class RorKbnDefinitionsDecoder(resolver: StaticVariablesResolver)
+  extends DefinitionsBaseDecoder[RorKbnDef]("ror_kbn")(
+    RorKbnDefinitionsDecoder.rorKbnDefDecoder(resolver)
   )
 
-object JwtDefinitionsDecoder {
+object RorKbnDefinitionsDecoder {
 
-  implicit val jwtDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
+  implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private implicit val claimDecoder: Decoder[ClaimName] = DecoderHelpers.decodeStringLikeNonEmpty.map(ClaimName.apply)
-
-  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
-                            resolver: StaticVariablesResolver): Decoder[JwtDef] = {
-    import tech.beshu.ror.acl.factory.decoders.common._
+  private def rorKbnDefDecoder(implicit resolver: StaticVariablesResolver): Decoder[RorKbnDef] =  {
     Decoder
       .instance { c =>
         for {
           name <- c.downField("name").as[Name]
           checkMethod <- signatureCheckMethod(c)
-          headerName <- c.downField("header_name").as[Option[Header.Name]]
-          userClaim <- c.downField("user_claim").as[Option[ClaimName]]
-          groupsClaim <- c.downField("roles_claim").as[Option[ClaimName]]
-        } yield JwtDef(name, headerName.getOrElse(Header.Name.authorization), checkMethod, userClaim, groupsClaim)
+        } yield RorKbnDef(name, checkMethod)
       }
       .mapError(DefinitionsLevelCreationError.apply)
   }
@@ -62,25 +53,14 @@ object JwtDefinitionsDecoder {
       ES512       EC
     */
   private def signatureCheckMethod(c: HCursor)
-                                  (implicit httpClientFactory: HttpClientsFactory,
-                                   resolver: StaticVariablesResolver): Decoder.Result[SignatureCheckMethod] = {
+                                  (implicit resolver: StaticVariablesResolver): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithVarResolvedInPlace
         .tryDecode(c.downField("signature_key"))
-
-    import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
     for {
       alg <- c.downField("signature_algo").as[Option[String]]
       checkMethod <- alg.map(_.toUpperCase) match {
-        case Some("NONE") =>
-          Decoder[ExternalAuthenticationService]
-            .tryDecode(c
-              .downField("external_validator")
-              .withFocus(_.mapObject(_.add("name", Json.fromString("jwt"))))
-            )
-            .left.map(_.overrideDefaultErrorWith(DefinitionsLevelCreationError(Message("External validator has to be defined when signature algorithm is None"))))
-            .map(SignatureCheckMethod.NoCheck.apply)
         case Some("HMAC") | None =>
           decodeSignatureKey
             .map(_.getBytes)

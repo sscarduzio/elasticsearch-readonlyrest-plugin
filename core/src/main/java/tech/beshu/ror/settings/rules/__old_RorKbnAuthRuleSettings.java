@@ -20,40 +20,40 @@ package tech.beshu.ror.settings.rules;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettings;
-import tech.beshu.ror.settings.definitions.RorKbnAuthDefinitionSettingsCollection;
+import tech.beshu.ror.settings.definitions.__old_RorKbnAuthDefinitionSettings;
+import tech.beshu.ror.settings.definitions.__old_RorKbnAuthDefinitionSettingsCollection;
 
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
-public class RorKbnAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
+public class __old_RorKbnAuthRuleSettings implements RuleSettings, AuthKeyProviderSettings {
 
   public static final String ATTRIBUTE_NAME = "ror_kbn_auth";
 
   private static final String JWT_NAME = "name";
   private static final String ROLES = "roles";
 
-  private final RorKbnAuthDefinitionSettings authSettings;
+  private final __old_RorKbnAuthDefinitionSettings authSettings;
   private final Set<String> roles;
 
-  private RorKbnAuthRuleSettings(RorKbnAuthDefinitionSettings settings, Set<String> roles) {
+  private __old_RorKbnAuthRuleSettings(__old_RorKbnAuthDefinitionSettings settings, Set<String> roles) {
     this.authSettings = settings;
     this.roles = roles;
   }
 
   @SuppressWarnings("unchecked")
-  public static RorKbnAuthRuleSettings from(RawSettings settings, RorKbnAuthDefinitionSettingsCollection jwtSettingsCollection) {
+  public static __old_RorKbnAuthRuleSettings from(RawSettings settings, __old_RorKbnAuthDefinitionSettingsCollection jwtSettingsCollection) {
     String jwtName = settings.stringReq(JWT_NAME);
     Set<String> roles = (Set<String>) (settings.notEmptySetOpt(ROLES).orElse(Collections.emptySet()));
-    return new RorKbnAuthRuleSettings(
+    return new __old_RorKbnAuthRuleSettings(
         jwtSettingsCollection.get(jwtName),
         roles
     );
   }
 
-  public static RorKbnAuthRuleSettings from(String jwtName, RorKbnAuthDefinitionSettingsCollection jwtSettingsCollection) {
-    return new RorKbnAuthRuleSettings(
+  public static __old_RorKbnAuthRuleSettings from(String jwtName, __old_RorKbnAuthDefinitionSettingsCollection jwtSettingsCollection) {
+    return new __old_RorKbnAuthRuleSettings(
         jwtSettingsCollection.get(jwtName),
         Collections.emptySet()
     );

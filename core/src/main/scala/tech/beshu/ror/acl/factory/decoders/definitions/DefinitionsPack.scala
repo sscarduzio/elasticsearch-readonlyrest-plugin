@@ -9,7 +9,8 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  users: Definitions[UserDef],
                                  authenticationServices: Definitions[ExternalAuthenticationService],
                                  authorizationServices: Definitions[ExternalAuthorizationService],
-                                 jwts: Definitions[JwtDef])
+                                 jwts: Definitions[JwtDef],
+                                 rorKbns: Definitions[RorKbnDef])
 
 final case class Definitions[Item](items: Set[Item]) extends AnyVal
 object Definitions {

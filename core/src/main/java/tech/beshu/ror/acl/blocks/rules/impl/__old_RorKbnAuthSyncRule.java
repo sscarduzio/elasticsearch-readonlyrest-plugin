@@ -35,7 +35,7 @@ import tech.beshu.ror.acl.domain.__old_LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.requestcontext.__old_RequestContext;
-import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
+import tech.beshu.ror.settings.rules.__old_RorKbnAuthRuleSettings;
 
 import java.security.AccessController;
 import java.security.Key;
@@ -49,13 +49,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public class RorKbnAuthSyncRule extends SyncRule implements Authentication {
+public class __old_RorKbnAuthSyncRule extends SyncRule implements Authentication {
 
   private final LoggerShim logger;
-  private final RorKbnAuthRuleSettings settings;
+  private final __old_RorKbnAuthRuleSettings settings;
   private final Optional<Key> signingKeyForAlgo;
 
-  public RorKbnAuthSyncRule(RorKbnAuthRuleSettings settings, ESContext context) {
+  public __old_RorKbnAuthSyncRule(__old_RorKbnAuthRuleSettings settings, ESContext context) {
     this.logger = context.logger(getClass());
     this.settings = settings;
     this.signingKeyForAlgo = getSigningKeyForAlgo();
@@ -87,7 +87,7 @@ public class RorKbnAuthSyncRule extends SyncRule implements Authentication {
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
-                                     .flatMap(RorKbnAuthSyncRule::extractToken);
+                                     .flatMap(__old_RorKbnAuthSyncRule::extractToken);
 
     if (!token.isPresent()) {
       logger.debug("Authorization header is missing or does not contain a bearer token");
