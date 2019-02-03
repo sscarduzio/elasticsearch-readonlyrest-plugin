@@ -38,7 +38,7 @@ public class __old_KibanaIndexSyncRule extends SyncRule {
 
   @Override
   public RuleExitResult match(__old_RequestContext rc) {
-    rc.setKibanaIndex(settings.kibanaIndex.getValue(rc).orElse(null));
+    rc.setKibanaIndex(settings.kibanaIndex.getValue(rc).map(v -> v.replace(" ", "_").toLowerCase()).orElse(null));
     return MATCH;
   }
 

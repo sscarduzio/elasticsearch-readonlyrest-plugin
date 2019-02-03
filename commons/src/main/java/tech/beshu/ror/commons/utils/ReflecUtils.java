@@ -50,7 +50,11 @@ public class ReflecUtils {
           result[0] = m.invoke(o);
           return null;
         }
-        m = c.getDeclaredMethod(method);
+        try {
+          m = c.getDeclaredMethod(method);
+        } catch (NoSuchMethodException nsme) {
+          m = c.getMethod(method);
+        }
         m.setAccessible(true);
         methodsCache.put(cacheKey, m);
         return m.invoke(o);

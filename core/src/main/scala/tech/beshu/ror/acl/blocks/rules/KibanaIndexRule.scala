@@ -12,6 +12,7 @@ class KibanaIndexRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaIndexRule.name
 
+  // todo: check changes from upstream
   override def process(requestContext: RequestContext,
                        blockContext: BlockContext): Task[BlockContext] = Task {
     settings
