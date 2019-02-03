@@ -7,16 +7,19 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.aDomain.Header
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Claim, SignatureCheckMethod}
+import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.utils.EnvVarsProvider
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 
 class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] with MockFactory {
+
+
 
   "A JwtAuthRule" should {
     "be able to be loaded from config" when {
@@ -219,8 +222,6 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
         )
       }
       "RSA family algorithm can be used in JWT signature and key is being read from system env in old format" in {
-        val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-        System.setProperty("SECRET_KEY", Base64.getEncoder.encodeToString(pkey.getEncoded))
         assertDecodingSuccess(
           yaml =
             s"""
@@ -236,7 +237,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
                |  - name: jwt1
                |    roles_claim: groups
                |    signature_algo: "RSA"
-               |    signature_key: "env:SECRET_KEY"
+               |    signature_key: "env:SECRET_RSA"
                |
               |""".stripMargin,
           assertion = rule => {
@@ -267,7 +268,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
                |  - name: jwt1
                |    roles_claim: groups
                |    signature_algo: "RSA"
-               |    signature_key: "@{env:SECRET_KEY}"
+               |    signature_key: "@{env:SECRET_RSA}"
                |
               |""".stripMargin,
           assertion = rule => {
@@ -637,7 +638,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Key 'malformed_key' seems to be invalid")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Cannot resolve variable: @{env:SECRET}")))
           }
         )
       }
@@ -717,6 +718,15 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
     }
   }
 
+  override protected def envVarsProvider: EnvVarsProvider = new EnvVarsProvider {
+    override def getEnv(name: String): Option[String] = name match {
+      case "SECRET_RSA" =>
+        val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
+        Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
+      case _ =>
+        None
+    }
+  }
   private val mockedHttpClientsFactory: HttpClientsFactory = {
     val httpClientMock = mock[HttpClient]
     new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)

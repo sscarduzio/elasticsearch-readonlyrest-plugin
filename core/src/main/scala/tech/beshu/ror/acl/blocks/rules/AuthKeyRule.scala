@@ -13,7 +13,7 @@ class AuthKeyRule(settings: BasicAuthenticationRule.Settings)
 
   override protected def compare(configuredAuthKey: Secret,
                                  basicAuth: BasicAuth): Task[Boolean] = Task {
-    configuredAuthKey === basicAuth.secret
+    configuredAuthKey === Secret(basicAuth.colonSeparatedString)
   }
 }
 

@@ -19,12 +19,14 @@ import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaOps._
-import tech.beshu.ror.acl.utils.UuidProvider
+import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 
 import scala.language.implicitConversions
 
-class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
+class RorAclFactory(implicit clock: Clock,
+                    uuidProvider: UuidProvider,
+                    resolver: StaticVariablesResolver)
   extends Logging {
 
   def createAclFrom(settingsYamlString: String,
@@ -148,7 +150,7 @@ class RorAclFactory(implicit clock: Clock, uuidProvider: UuidProvider)
         userDefs <- new UsersDefinitionsDecoder(authProxies)
         authenticationServices <- new ExternalAuthenticationServicesDecoder(httpClientFactory)
         authorizationServices <- new ExternalAuthorizationServicesDecoder(httpClientFactory)
-        jwtDefs <- new JwtDefinitionsDecoder(httpClientFactory)
+        jwtDefs <- new JwtDefinitionsDecoder(httpClientFactory, resolver)
         acl <- {
           implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs))
           DecoderHelpers

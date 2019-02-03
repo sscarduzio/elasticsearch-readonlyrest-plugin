@@ -16,7 +16,7 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
 
   override protected def compare(configuredAuthKey: Secret,
                                  basicAuth: BasicAuth): Task[Boolean] = Task {
-    val shaProvided = Secret(hashFunction.hashString(basicAuth.secret.value, Charset.defaultCharset).toString)
+    val shaProvided = Secret(hashFunction.hashString(basicAuth.colonSeparatedString, Charset.defaultCharset).toString)
     configuredAuthKey === shaProvided
   }
 }

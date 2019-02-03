@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.factory.{HttpClientsFactory, RorAclFactory}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
-import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 
 import scala.reflect.ClassTag
@@ -18,9 +18,12 @@ import scala.reflect.ClassTag
 abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
   this: Suite =>
 
+  protected def envVarsProvider: EnvVarsProvider = JavaEnvVarsProvider
+
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(envVarsProvider)
     new RorAclFactory
   }
 

@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCre
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.factory.RorAclFactory
-import tech.beshu.ror.acl.utils.{JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 
 class RorAclFactoryTests extends WordSpec with Inside {
@@ -18,6 +18,7 @@ class RorAclFactoryTests extends WordSpec with Inside {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
     new RorAclFactory
   }
 

@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.utils
 
 import scala.util.Try
 
-object StaticResolver {
+class StaticVariablesResolver(envVarsProvider: EnvVarsProvider) {
 
   def resolve(value: String): Option[String] = {
     tryToResolveOldStyle(value).orElse(tryToResolve(value))
@@ -11,7 +11,7 @@ object StaticResolver {
   private def tryToResolveOldStyle(value: String) = {
     if (value.startsWith(Variables.env)) findVariable("env", value.substring(Variables.env.length))
     else if (value.startsWith(Variables.text)) Some(value.substring(Variables.text.length))
-    else Some(value)
+    else None
   }
 
   private def tryToResolve(withVariable: String) = {
@@ -35,7 +35,7 @@ object StaticResolver {
 
   private def findVariable(`type`: String, name: String): Option[String] =
     `type` match {
-      case "env" => Try(Option(System.getenv(name))).toOption.flatten
+      case "env" => envVarsProvider.getEnv(name)
       case _ => None
     }
 
@@ -46,4 +46,13 @@ object StaticResolver {
     val text = "text:"
   }
 
+}
+
+trait EnvVarsProvider {
+  def getEnv(name: String): Option[String]
+}
+
+object JavaEnvVarsProvider extends EnvVarsProvider {
+  override def getEnv(name: String): Option[String] =
+    Try(Option(System.getenv(name))).toOption.flatten
 }

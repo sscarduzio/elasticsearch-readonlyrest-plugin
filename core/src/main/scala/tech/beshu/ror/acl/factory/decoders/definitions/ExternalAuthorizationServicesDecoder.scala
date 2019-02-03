@@ -72,7 +72,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthorizationService.Name]
-          url <- c.downField("groups_endpoint").as[Uri].orElse(c.downField("url").as[Uri])
+          url <- c.downFields("groups_endpoint", "url").as[Uri]
           authTokenName <- c.downField("auth_token_name").as[AuthTokenName]
           sendUsing <- c.downField("auth_token_passed_as").as[AuthTokenSendMethod]
           httpMethod <- c.downField("http_method").as[Option[SupportedHttpMethod]]

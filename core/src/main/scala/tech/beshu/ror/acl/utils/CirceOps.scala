@@ -73,9 +73,9 @@ object CirceOps {
       }
     }
 
-    def decodeStringLikeWithVarResolvedInPlace: Decoder[String] = {
+    def decodeStringLikeWithVarResolvedInPlace(implicit resolver: StaticVariablesResolver): Decoder[String] = {
       decodeStringLike.emapE { variable =>
-        StaticResolver.resolve(variable) match {
+        resolver.resolve(variable) match {
           case Some(resolved) => Right(resolved)
           case None => Left(ValueLevelCreationError(Message(s"Cannot resolve variable: $variable")))
         }
@@ -231,6 +231,15 @@ object CirceOps {
     }
 
     def stringify(error: AclCreationError): String = Encoder[AclCreationError].apply(error).noSpaces
+  }
+
+  implicit class HCursorOps(val value: HCursor) extends AnyVal {
+    def downFields(field: String, fields: String*): ACursor = {
+      fields.toList.foldLeft(value.downField(field)) {
+        case (_: FailedCursor, nextField) => value.downField(nextField)
+        case (found: HCursor, _) => found
+      }
+    }
   }
 
 }

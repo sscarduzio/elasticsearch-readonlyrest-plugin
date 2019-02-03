@@ -11,10 +11,12 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
+import tech.beshu.ror.acl.utils.StaticVariablesResolver
 
-class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory)
+class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory,
+                            resolver: StaticVariablesResolver)
   extends DefinitionsBaseDecoder[JwtDef]("jwt")(
-    JwtDefinitionsDecoder.jwtDefDecoder(httpClientFactory)
+    JwtDefinitionsDecoder.jwtDefDecoder(httpClientFactory, resolver)
   )
 
 object JwtDefinitionsDecoder {
@@ -23,7 +25,8 @@ object JwtDefinitionsDecoder {
 
   private implicit val claimDecoder: Decoder[Claim] = DecoderHelpers.decodeStringLikeNonEmpty.map(Claim.apply)
 
-  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[JwtDef] = {
+  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
+                            resolver: StaticVariablesResolver): Decoder[JwtDef] = {
     import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
@@ -59,7 +62,8 @@ object JwtDefinitionsDecoder {
       ES512       EC
     */
   private def signatureCheckMethod(c: HCursor)
-                                  (implicit httpClientFactory: HttpClientsFactory): Decoder.Result[SignatureCheckMethod] = {
+                                  (implicit httpClientFactory: HttpClientsFactory,
+                                   resolver: StaticVariablesResolver): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithVarResolvedInPlace

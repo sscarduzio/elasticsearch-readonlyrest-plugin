@@ -47,7 +47,7 @@ object ExternalAuthenticationServicesDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthenticationService.Name]
-          url <- c.downField("authentication_endpoint").as[Uri].orElse(c.downField("url").as[Uri])
+          url <- c.downFields("authentication_endpoint", "url").as[Uri]
           httpSuccessCode <- c.downField("success_status_code").as[Option[Int]]
           cacheTtl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
