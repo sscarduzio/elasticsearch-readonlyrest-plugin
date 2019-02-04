@@ -3,7 +3,7 @@ package tech.beshu.ror.acl.factory
 import java.util.concurrent.CopyOnWriteArrayList
 
 import com.softwaremill.sttp.SttpBackend
-import com.softwaremill.sttp.asynchttpclient.monix.AsyncHttpClientMonixBackend
+import com.softwaremill.sttp.asynchttpclient.cats.AsyncHttpClientCatsBackend
 import io.netty.util.HashedWheelTimer
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
@@ -35,7 +35,7 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
     if(isWorking.get()) {
       val asyncHttpClient = newAsyncHttpClient(config)
       existingClients.add(asyncHttpClient)
-      AsyncHttpClientMonixBackend.usingClient(asyncHttpClient)
+      AsyncHttpClientCatsBackend.usingClient(asyncHttpClient)
     } else {
       throw new IllegalStateException("Cannot create http client - factory was closed")
     }

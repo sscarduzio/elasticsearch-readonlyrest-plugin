@@ -6,7 +6,6 @@ import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
-import io.circe.yaml.parser
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Block
@@ -20,7 +19,7 @@ import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaOps._
-import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider}
+import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider, YamlOps}
 import tech.beshu.ror.acl.{Acl, SequentialAcl}
 
 import scala.language.implicitConversions
@@ -202,7 +201,7 @@ object RorAclFactory {
         def apply(json: Json): MalformedValue = from(json)
 
         def from(json: Json): MalformedValue = MalformedValue {
-          io.circe.yaml.printer.print(json)
+          YamlOps.jsonToYamlString(json)
         }
       }
     }

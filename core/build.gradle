@@ -70,9 +70,8 @@ dependencies {
     compile group: 'io.circe',                      name: 'circe-core_2.12',                        version: '0.10.1'
     compile group: 'io.circe',                      name: 'circe-generic-extras_2.12',              version: '0.10.1'
     compile group: 'io.circe',                      name: 'circe-parser_2.12',                      version: '0.10.1'
-    compile group: 'io.circe',                      name: 'circe-yaml_2.12',                        version: '0.9.0'
     compile group: 'org.apache.logging.log4j',      name: 'log4j-api-scala_2.12',                   version: '11.0'
-    compile group: 'com.softwaremill.sttp',         name: 'async-http-client-backend-monix_2.12',   version: '1.5.7'
+    compile group: 'com.softwaremill.sttp',         name: 'async-http-client-backend-cats_2.12',    version: '1.5.8'
 
     testCompile group: 'org.scalamock',             name: 'scalamock_2.12',                         version: '3.6.0'
     testCompile group: 'org.scalamock',             name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
@@ -88,6 +87,7 @@ dependencies {
     compile 'com.github.seancfoley:ipaddress:5.0.0'
     
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
+    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.6'
     compile 'io.jsonwebtoken:jjwt-api:0.10.5'
     runtime 'io.jsonwebtoken:jjwt-impl:0.10.5',
             // Uncomment the next line if you want to use RSASSA-PSS (PS256, PS384, PS512) algorithms:
@@ -101,7 +101,7 @@ dependencies {
     testCompile 'org.gradle:gradle-tooling-api:4.10.2'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
-    testCompile 'org.yaml:snakeyaml:1.15'
+    //testCompile 'org.yaml:snakeyaml:1.15'
 
 }
 

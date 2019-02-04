@@ -172,7 +172,7 @@ object CirceOps {
     def withErrorFromCursor(error: (Element, Context) => AclCreationError): Decoder[A] = {
       Decoder.instance { c =>
         val element = c.value
-        val context = io.circe.yaml.printer.print(c.up.focus.get).trim
+        val context = YamlOps.jsonToYamlString(c.up.focus.get).trim
         decoder(c).left.map(_.overrideDefaultErrorWith(error(element, context)))
       }
     }
