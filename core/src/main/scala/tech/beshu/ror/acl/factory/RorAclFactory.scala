@@ -8,6 +8,7 @@ import cats.kernel.Monoid
 import io.circe._
 import io.circe.yaml.parser
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
@@ -136,7 +137,7 @@ class RorAclFactory(implicit clock: Clock,
           name,
           policy.getOrElse(Block.Policy.Allow),
           verbosity.getOrElse(Block.Verbosity.Info),
-          rules
+          rules.sorted
         )
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }

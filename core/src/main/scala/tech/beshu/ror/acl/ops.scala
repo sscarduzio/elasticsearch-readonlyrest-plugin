@@ -10,7 +10,10 @@ import shapeless.Nat
 import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.blocks.RuleOrdering
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
+import tech.beshu.ror.acl.blocks.rules.Rule
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, MatchingAlwaysRule, RegularRule}
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.acl.request.RequestContextOps.BearerToken
 import tech.beshu.ror.commons.utils.FilterTransient
@@ -66,6 +69,8 @@ object orders {
   implicit val indexOrder: Order[IndexName] = Order.by(_.value)
   implicit val groupOrder: Order[Group] = Order.by(_.value.value)
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
+  implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
+  implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
 }
 
 object show {
