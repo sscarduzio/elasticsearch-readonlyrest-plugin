@@ -605,11 +605,11 @@ public class RequestInfo implements RequestInfoShim {
     }
     if (actionRequest instanceof SearchRequest) {
       SearchRequest sr = (SearchRequest) actionRequest;
-      if (sr.source() != null) {
-        if (sr.source().suggest() != null || sr.source().profile()) {
-          return false;
-        }
-
+      if (sr.source() == null) {
+        return true;
+      }
+      if (sr.source().profile() || (sr.source().suggest() != null && !sr.source().suggest().getSuggestions().isEmpty())) {
+        return false;
       }
     }
     return true;

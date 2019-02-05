@@ -592,6 +592,7 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean extractIsAllowedForDLS() {
+    // NOT IMPLEMENTED IN 2.x
     return extractIsReadRequest();
   }
 

@@ -84,6 +84,11 @@ public final class DocumentFilterReader extends FilterLeafReader {
   }
 
   @Override
+  public boolean hasDeletions() {
+    return true;
+  }
+
+  @Override
   public Bits getLiveDocs() {
     return liveDocs;
   }

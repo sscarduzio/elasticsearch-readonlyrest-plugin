@@ -30,7 +30,6 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.elasticsearch.ExceptionsHelper;
-import org.elasticsearch.search.SearchService;
 
 import java.io.IOException;
 
