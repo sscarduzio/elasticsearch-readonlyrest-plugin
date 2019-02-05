@@ -42,7 +42,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     .flatMap { _ =>
       requestContext.bearerToken(settings.jwt.headerName) match {
         case None =>
-          logger.debug(s"Authorization header ${settings.jwt.headerName.show} is missing or does not contain a bearer token")
+          logger.debug(s"Authorization header '${settings.jwt.headerName.show}' is missing or does not contain a bearer token")
           Task.now(Rejected)
         case Some(token) =>
           process(token, blockContext)

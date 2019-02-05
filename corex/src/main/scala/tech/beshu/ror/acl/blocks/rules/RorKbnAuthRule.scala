@@ -39,7 +39,7 @@ class RorKbnAuthRule(val settings: Settings)
     val authHeaderName = Header.Name.authorization
     requestContext.bearerToken(authHeaderName) match {
       case None =>
-        logger.debug(s"Authorization header ${authHeaderName.show} is missing or does not contain a bearer token")
+        logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
         Rejected
       case Some(token) =>
         process(token, blockContext)

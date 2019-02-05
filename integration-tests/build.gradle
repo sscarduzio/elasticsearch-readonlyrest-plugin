@@ -54,8 +54,11 @@ dependencies {
     testCompile 'io.jsonwebtoken:jjwt:0.9.1'
     testCompile 'com.jayway.jsonpath:json-path:2.2.0'
     testCompile 'org.gradle:gradle-tooling-api:4.10.2'
-    //testCompile 'org.toile-libre.libe:curl:0.0.12'
     testCompile 'com.mashape.unirest:unirest-java:1.4.9'
+    testCompile 'org.slf4j:slf4j-api:1.7.25'
+    testCompile 'ch.qos.logback:logback-classic:1.2.3'
+    testCompile 'ch.qos.logback:logback-core:1.2.3'
+
 }
 
 license {
