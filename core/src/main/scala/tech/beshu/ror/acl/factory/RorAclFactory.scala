@@ -6,6 +6,7 @@ import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
+import io.circe.yaml.parser
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Block
@@ -38,7 +39,8 @@ class RorAclFactory(implicit clock: Clock,
           .left.map { failures =>
           failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString"))))
         }
-      case Left(_) =>
+      case Left(ex) =>
+        logger.debug("Unparsable yaml", ex)
         Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
     }
   }

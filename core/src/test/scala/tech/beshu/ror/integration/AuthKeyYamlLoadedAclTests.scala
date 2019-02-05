@@ -14,7 +14,7 @@ import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 
-class YamlLoadedAclTests extends WordSpec with MockFactory with Inside {
+class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()

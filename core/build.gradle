@@ -70,6 +70,7 @@ dependencies {
     compile group: 'io.circe',                      name: 'circe-core_2.12',                        version: '0.10.1'
     compile group: 'io.circe',                      name: 'circe-generic-extras_2.12',              version: '0.10.1'
     compile group: 'io.circe',                      name: 'circe-parser_2.12',                      version: '0.10.1'
+    compile group: 'io.circe',                      name: 'circe-yaml_2.12',                        version: '0.9.0'
     compile group: 'org.apache.logging.log4j',      name: 'log4j-api-scala_2.12',                   version: '11.0'
     compile group: 'com.softwaremill.sttp',         name: 'async-http-client-backend-cats_2.12',    version: '1.5.8'
 
