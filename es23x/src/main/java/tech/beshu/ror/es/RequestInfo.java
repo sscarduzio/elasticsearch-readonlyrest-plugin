@@ -591,6 +591,11 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
+  public boolean extractIsAllowedForDLS() {
+    return extractIsReadRequest();
+  }
+
+  @Override
   public boolean extractIsCompositeRequest() {
     return actionRequest instanceof CompositeIndicesRequest;
   }

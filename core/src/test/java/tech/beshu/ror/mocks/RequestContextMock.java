@@ -121,6 +121,11 @@ public class RequestContextMock {
       }
 
       @Override
+      public Boolean extractIsAllowedForDLS() {
+        return true;
+      }
+
+      @Override
       protected void writeIndices(Set<String> indices) {
 
       }

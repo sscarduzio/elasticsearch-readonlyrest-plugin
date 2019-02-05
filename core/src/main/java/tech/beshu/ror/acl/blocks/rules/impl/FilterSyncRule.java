@@ -38,13 +38,11 @@ public class FilterSyncRule extends SyncRule {
 
   public FilterSyncRule(FilterSyncRule.Settings s) {
     this.settings = s;
-
-
   }
 
   @Override
   public RuleExitResult match(RequestContext rc) {
-    if (!rc.isReadRequest()) {
+    if (!rc.extractIsAllowedForDLS()) {
       return NO_MATCH;
     }
 

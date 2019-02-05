@@ -80,6 +80,8 @@ public interface RequestInfoShim {
 
   boolean extractIsReadRequest();
 
+  boolean extractIsAllowedForDLS();
+
   boolean extractIsCompositeRequest();
 
   void writeToThreadContextHeader(String key, String value);

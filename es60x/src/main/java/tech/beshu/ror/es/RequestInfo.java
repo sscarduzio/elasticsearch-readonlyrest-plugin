@@ -563,6 +563,23 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
+  public boolean extractIsAllowedForDLS() {
+    if (!extractIsReadRequest()) {
+      return false;
+    }
+    if (actionRequest instanceof SearchRequest) {
+      SearchRequest sr = (SearchRequest) actionRequest;
+      if (sr.source() != null) {
+        if (sr.source().suggest() != null || sr.source().profile()) {
+          return false;
+        }
+
+      }
+    }
+    return true;
+  }
+
+  @Override
   public boolean extractIsCompositeRequest() {
     return actionRequest instanceof CompositeIndicesRequest;
   }

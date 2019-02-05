@@ -402,6 +402,11 @@ public class ACL {
       protected Boolean extractIsCompositeRequest() {
         return rInfo.extractIsCompositeRequest();
       }
+
+      @Override
+      public Boolean extractIsAllowedForDLS() {
+        return rInfo.extractIsAllowedForDLS();
+      }
     };
   }
 

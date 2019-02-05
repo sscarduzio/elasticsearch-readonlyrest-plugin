@@ -283,6 +283,8 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
 
   abstract protected Boolean extractIsCompositeRequest();
 
+  abstract public Boolean extractIsAllowedForDLS();
+
   abstract protected void writeIndices(Set<String> indices);
 
   abstract protected void commitResponseHeaders(Map<String, String> hmap);
@@ -478,7 +480,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
     if (Constants.REST_METADATA_PATH.equals(getUri()) && HttpMethod.GET.equals(getMethod())) {
       return true;
     }
-    return extractIsReadRequest();
+    return extractIsAllowedForDLS();
   }
 
   public boolean isComposite() {
