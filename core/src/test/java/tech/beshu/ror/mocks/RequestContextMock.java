@@ -24,9 +24,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.acl.domain.__old_LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.httpclient.HttpMethod;
-import tech.beshu.ror.requestcontext.__old_RequestContext;
+import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.util.Base64;
 import java.util.HashMap;
@@ -37,24 +37,24 @@ import java.util.UUID;
 
 public class RequestContextMock {
 
-  public static __old_RequestContext mockedRequestContext(String user, String pass) {
-    __old_RequestContext mock = mock(__old_RequestContext.class);
+  public static RequestContext mockedRequestContext(String user, String pass) {
+    RequestContext mock = mock(RequestContext.class);
     when(mock.getHeaders()).thenReturn(
         Maps.newHashMap(ImmutableMap.<String, String>builder()
             .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
             .build()));
-    when(mock.getLoggedInUser()).thenReturn(Optional.of(new __old_LoggedUser(user)));
+    when(mock.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser(user)));
     return mock;
   }
 
-  public static __old_RequestContext mockedRequestContext(String user, String pass, String preferredGroup) {
-    __old_RequestContext mock = mock(__old_RequestContext.class);
+  public static RequestContext  mockedRequestContext(String user, String pass, String preferredGroup) {
+    RequestContext mock = mock(RequestContext.class);
     when(mock.getHeaders()).thenReturn(
         Maps.newHashMap(ImmutableMap.<String, String>builder()
             .put("Authorization", "Basic " + Base64.getEncoder().encodeToString((user + ":" + pass).getBytes()))
             .put(Constants.HEADER_GROUP_CURRENT,preferredGroup)
             .build()));
-    when(mock.getLoggedInUser()).thenReturn(Optional.of(new __old_LoggedUser(user)));
+    when(mock.getLoggedInUser()).thenReturn(Optional.of(new LoggedUser(user)));
     HashMap<String, String> respHeaders = Maps.newHashMap();
 
     when(mock.getResponseHeaders()).thenReturn(respHeaders);
@@ -68,8 +68,8 @@ public class RequestContextMock {
   }
 
 
-  public static __old_RequestContext mkSearchRequest(Set<String> initialIndices, Set<String> indicesInCluster, Set<String> expandedIndices) {
-    return new __old_RequestContext("search_test", new MockedESContext()) {
+  public static RequestContext mkSearchRequest(Set<String> initialIndices, Set<String> indicesInCluster, Set<String> expandedIndices) {
+    return new RequestContext("search_test", new MockedESContext()) {
       @Override
       protected Set<String> extractSnapshots() {
         return null;
@@ -118,6 +118,11 @@ public class RequestContextMock {
       @Override
       protected Boolean extractIsCompositeRequest() {
         return false;
+      }
+
+      @Override
+      public Boolean extractIsAllowedForDLS() {
+        return true;
       }
 
       @Override

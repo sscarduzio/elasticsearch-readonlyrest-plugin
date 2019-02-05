@@ -18,56 +18,56 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ActionsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ExternalAuthenticationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsProviderAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_IndicesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaAccessSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ActionsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ApiKeysSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_LocalHostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_RepositoriesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_SearchlogSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_SnapshotsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_XForwardedForSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.UsersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.acl.definitions.DefinitionsFactory;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
-import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
-import tech.beshu.ror.settings.rules.__old_GroupsProviderAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
-import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
-import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
+import tech.beshu.ror.settings.rules.ActionsRuleSettings;
+import tech.beshu.ror.settings.rules.ApiKeysRuleSettings;
+import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
+import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
+import tech.beshu.ror.settings.rules.GroupsRuleSettings;
+import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.IndicesRuleSettings;
+import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
+import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.__old_LocalHostsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
-import tech.beshu.ror.settings.rules.__old_MethodsRuleSettings;
+import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
+import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
+import tech.beshu.ror.settings.rules.MethodsRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
-import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
-import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
+import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -83,92 +83,92 @@ public class RulesFactory {
     this.context = context;
     this.creators = Maps.newHashMap();
     this.creators.put(
-        __old_ActionsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_ActionsSyncRule((__old_ActionsRuleSettings) settings, context))
+        ActionsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new ActionsSyncRule((ActionsRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_ApiKeysRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_ApiKeysSyncRule((__old_ApiKeysRuleSettings) settings))
+        ApiKeysRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new ApiKeysSyncRule((ApiKeysRuleSettings) settings))
     );
     this.creators.put(
-        __old_HostsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_HostsSyncRule((__old_HostsRuleSettings) settings, context))
+        HostsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new HostsSyncRule((HostsRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_LocalHostsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_LocalHostsSyncRule((__old_LocalHostsRuleSettings) settings, context))
+        LocalHostsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new LocalHostsSyncRule((LocalHostsRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_SnapshotsSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_SnapshotsSyncRule((__old_SnapshotsSyncRule.Settings) settings, context))
+        SnapshotsSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new SnapshotsSyncRule((SnapshotsSyncRule.Settings) settings, context))
     );
     this.creators.put(
-        __old_RepositoriesSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_RepositoriesSyncRule((__old_RepositoriesSyncRule.Settings) settings, context))
+        RepositoriesSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new RepositoriesSyncRule((RepositoriesSyncRule.Settings) settings, context))
     );
     this.creators.put(
-        __old_IndicesRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_IndicesSyncRule((__old_IndicesRuleSettings) settings, context))
+        IndicesRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new IndicesSyncRule((IndicesRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_KibanaAccessRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_KibanaAccessSyncRule((__old_KibanaAccessRuleSettings) settings, context))
+        KibanaAccessRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new KibanaAccessSyncRule((KibanaAccessRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_KibanaIndexSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_KibanaIndexSyncRule((__old_KibanaIndexSyncRule.Settings) settings))
+        KibanaIndexSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new KibanaIndexSyncRule((KibanaIndexSyncRule.Settings) settings))
     );
     this.creators.put(
-        __old_FieldsSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_FieldsSyncRule((__old_FieldsSyncRule.Settings) settings))
+        FieldsSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new FieldsSyncRule((FieldsSyncRule.Settings) settings))
     );
     this.creators.put(
-        __old_FilterSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_FilterSyncRule((__old_FilterSyncRule.Settings) settings))
+        FilterSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new FilterSyncRule((FilterSyncRule.Settings) settings))
     );
     this.creators.put(
-        __old_KibanaHideAppsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_KibanaHideAppsSyncRule((__old_KibanaHideAppsRuleSettings) settings, context))
+        KibanaHideAppsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new KibanaHideAppsSyncRule((KibanaHideAppsRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_MaxBodyLengthRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_MaxBodyLengthSyncRule((__old_MaxBodyLengthRuleSettings) settings))
+        MaxBodyLengthRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new MaxBodyLengthSyncRule((MaxBodyLengthRuleSettings) settings))
     );
     this.creators.put(
-        __old_MethodsRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_MethodsSyncRule((__old_MethodsRuleSettings) settings))
+        MethodsRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new MethodsSyncRule((MethodsRuleSettings) settings))
     );
     this.creators.put(
-        __old_HeadersSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_HeadersSyncRule((__old_HeadersSyncRule.Settings) settings))
+        HeadersSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new HeadersSyncRule((HeadersSyncRule.Settings) settings))
     );
     this.creators.put(
-        __old_HeadersAndSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_HeadersAndSyncRule((__old_HeadersAndSyncRule.Settings) settings))
+        HeadersAndSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new HeadersAndSyncRule((HeadersAndSyncRule.Settings) settings))
     );
     this.creators.put(
-        __old_HeadersOrSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_HeadersOrSyncRule((__old_HeadersOrSyncRule.Settings) settings))
+        HeadersOrSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new HeadersOrSyncRule((HeadersOrSyncRule.Settings) settings))
     );
     this.creators.put(
         SearchlogRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_SearchlogSyncRule((SearchlogRuleSettings) settings))
+        settings -> AsyncRuleAdapter.wrap(new SearchlogSyncRule((SearchlogRuleSettings) settings))
     );
     this.creators.put(
-        __old_SessionMaxIdleRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_SessionMaxIdleSyncRule((__old_SessionMaxIdleRuleSettings) settings, context))
+        SessionMaxIdleRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new SessionMaxIdleSyncRule((SessionMaxIdleRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_UriReSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_UriReSyncRule((__old_UriReSyncRule.Settings) settings))
+        UriReSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new UriReSyncRule((UriReSyncRule.Settings) settings))
     );
     this.creators.put(
-        __old_UsersSyncRule.Settings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_UsersSyncRule((__old_UsersSyncRule.Settings) settings))
+        UsersSyncRule.Settings.class,
+        settings -> AsyncRuleAdapter.wrap(new UsersSyncRule((UsersSyncRule.Settings) settings))
     );
     this.creators.put(
-        __old_XForwardedForRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_XForwardedForSyncRule((__old_XForwardedForRuleSettings) settings, context))
+        XForwardedForRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new XForwardedForSyncRule((XForwardedForRuleSettings) settings, context))
     );
     this.creators.put(
         LdapAuthenticationRuleSettings.class,
@@ -191,25 +191,25 @@ public class RulesFactory {
         settings -> new LdapAuthAsyncRule((LdapAuthRuleSettings) settings, definitionsFactory, context)
     );
     this.creators.put(
-        __old_ExternalAuthenticationRuleSettings.class,
+        ExternalAuthenticationRuleSettings.class,
         settings -> CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(
-            new __old_ExternalAuthenticationAsyncRule((__old_ExternalAuthenticationRuleSettings) settings, definitionsFactory, context),
-            (__old_ExternalAuthenticationRuleSettings) settings,
+            new ExternalAuthenticationAsyncRule((ExternalAuthenticationRuleSettings) settings, definitionsFactory, context),
+            (ExternalAuthenticationRuleSettings) settings,
             context
         )
     );
     this.creators.put(
-        __old_GroupsProviderAuthorizationRuleSettings.class,
+        GroupsProviderAuthorizationRuleSettings.class,
         settings -> CachedAsyncAuthorizationDecorator.wrapInCacheIfCacheIsEnabled(
-            new __old_GroupsProviderAuthorizationAsyncRule((__old_GroupsProviderAuthorizationRuleSettings) settings, definitionsFactory, context),
-            (__old_GroupsProviderAuthorizationRuleSettings) settings,
+            new GroupsProviderAuthorizationAsyncRule((GroupsProviderAuthorizationRuleSettings) settings, definitionsFactory, context),
+            (GroupsProviderAuthorizationRuleSettings) settings,
             context
         )
     );
     this.creators.put(
-        __old_GroupsRuleSettings.class,
+        GroupsRuleSettings.class,
         settings ->
-            new __old_GroupsAsyncRule((__old_GroupsRuleSettings) settings, definitionsFactory)
+            new GroupsAsyncRule((GroupsRuleSettings) settings, definitionsFactory)
     );
   }
 

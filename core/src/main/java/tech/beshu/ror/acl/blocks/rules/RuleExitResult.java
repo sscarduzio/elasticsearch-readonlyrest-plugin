@@ -21,10 +21,10 @@ package tech.beshu.ror.acl.blocks.rules;
  * Created by sscarduzio on 13/02/2016.
  */
 public class RuleExitResult {
-  private final __old_Rule condition;
+  private final Rule condition;
   private final Boolean match;
 
-  public RuleExitResult(Boolean match, __old_Rule condition) {
+  public RuleExitResult(Boolean match, Rule condition) {
     this.match = match;
     this.condition = condition;
   }
@@ -33,7 +33,7 @@ public class RuleExitResult {
     return match;
   }
 
-  public __old_Rule getCondition() {
+  public Rule getCondition() {
     return condition;
   }
 

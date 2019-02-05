@@ -126,7 +126,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       return wrappedReader;
     } catch (IOException e) {
       this.logger.error("Unable to setup document security");
-      throw ExceptionsHelper.convertToElastic((Exception) e);
+      throw ExceptionsHelper.convertToElastic(e);
     }
   }
 

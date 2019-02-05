@@ -30,6 +30,7 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.search.SearchService;
 
 import java.io.IOException;
 
@@ -69,9 +70,9 @@ public final class DocumentFilterReader extends FilterLeafReader {
         }
       }
     }
-
     this.liveDocs = bits;
     this.numDocs = bits.cardinality();
+
   }
 
   public static DocumentFilterDirectoryReader wrap(DirectoryReader in, Query filterQuery) throws IOException {
@@ -81,6 +82,11 @@ public final class DocumentFilterReader extends FilterLeafReader {
   @Override
   public int numDocs() {
     return numDocs;
+  }
+
+  @Override
+  public boolean hasDeletions() {
+    return true;
   }
 
   @Override

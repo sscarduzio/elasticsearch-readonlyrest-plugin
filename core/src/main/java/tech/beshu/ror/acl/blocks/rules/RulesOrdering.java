@@ -18,101 +18,101 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.ImmutableList;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_JwtAuthAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ActionsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ApiKeysSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha1SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha256SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha512SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ExternalAuthenticationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_GroupsProviderAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_IndicesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaAccessSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaHideAppsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ActionsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ApiKeysSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ExternalAuthenticationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.GroupsAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.GroupsProviderAuthorizationAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.IndicesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.KibanaAccessSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.KibanaHideAppsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthorizationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_LocalHostsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_MaxBodyLengthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_MethodsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_RepositoriesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_RorKbnAuthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_SearchlogSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_SessionMaxIdleSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_SnapshotsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_XForwardedForSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.LocalHostsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.MaxBodyLengthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.MethodsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SearchlogSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SessionMaxIdleSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.UsersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.XForwardedForSyncRule;
 import tech.beshu.ror.utils.RulesUtils;
 
 import java.util.Comparator;
 
 public class RulesOrdering implements Comparator<AsyncRule> {
 
-  private final ImmutableList<Class<? extends __old_Rule>> ordering;
+  private final ImmutableList<Class<? extends Rule>> ordering;
 
   public RulesOrdering() {
     this.ordering = ImmutableList.of(
 
         // Authentication rules must come first because they set the user information which further rules might rely on.
-        __old_AuthKeySyncRule.class,
-        __old_AuthKeySha1SyncRule.class,
-        __old_AuthKeySha256SyncRule.class,
-        __old_AuthKeySha512SyncRule.class,
-        __old_AuthKeyUnixAsyncRule.class,
-        __old_ProxyAuthSyncRule.class,
-        __old_JwtAuthAsyncRule.class,
-        __old_RorKbnAuthSyncRule.class,
+        AuthKeySyncRule.class,
+        AuthKeySha1SyncRule.class,
+        AuthKeySha256SyncRule.class,
+        AuthKeySha512SyncRule.class,
+        AuthKeyUnixAsyncRule.class,
+        ProxyAuthSyncRule.class,
+        JwtAuthAsyncRule.class,
+        RorKbnAuthSyncRule.class,
 
         // then we could check potentially slow async rules
         LdapAuthAsyncRule.class,
         LdapAuthenticationAsyncRule.class,
-        __old_ExternalAuthenticationAsyncRule.class,
-        __old_GroupsAsyncRule.class,
+        ExternalAuthenticationAsyncRule.class,
+        GroupsAsyncRule.class,
 
         // Inspection rules next; these act based on properties of the request.
-        __old_KibanaAccessSyncRule.class,
+        KibanaAccessSyncRule.class,
 
-        __old_HostsSyncRule.class,
-        __old_LocalHostsSyncRule.class,
-        __old_SnapshotsSyncRule.class,
-        __old_RepositoriesSyncRule.class,
-        __old_XForwardedForSyncRule.class,
-        __old_ApiKeysSyncRule.class,
-        __old_SessionMaxIdleSyncRule.class,
-        __old_UriReSyncRule.class,
-        __old_MaxBodyLengthSyncRule.class,
-        __old_MethodsSyncRule.class,
-        __old_HeadersSyncRule.class,
-        __old_HeadersAndSyncRule.class,
-        __old_HeadersOrSyncRule.class,
-        __old_IndicesSyncRule.class,
-        __old_ActionsSyncRule.class,
-        __old_SearchlogSyncRule.class,
-        __old_UsersSyncRule.class,
+        HostsSyncRule.class,
+        LocalHostsSyncRule.class,
+        SnapshotsSyncRule.class,
+        RepositoriesSyncRule.class,
+        XForwardedForSyncRule.class,
+        ApiKeysSyncRule.class,
+        SessionMaxIdleSyncRule.class,
+        UriReSyncRule.class,
+        MaxBodyLengthSyncRule.class,
+        MethodsSyncRule.class,
+        HeadersSyncRule.class,
+        HeadersAndSyncRule.class,
+        HeadersOrSyncRule.class,
+        IndicesSyncRule.class,
+        ActionsSyncRule.class,
+        SearchlogSyncRule.class,
+        UsersSyncRule.class,
 
         // all authorization rules should be placed before any authentication rule
         LdapAuthorizationAsyncRule.class,
-        __old_GroupsProviderAuthorizationAsyncRule.class,
+        GroupsProviderAuthorizationAsyncRule.class,
 
         // At the end the sync rule chain are those that can mutate the client request.
-        __old_KibanaHideAppsSyncRule.class,
-        __old_KibanaIndexSyncRule.class,
+        KibanaHideAppsSyncRule.class,
+        KibanaIndexSyncRule.class,
 
         // Stuff to do later, at search time
-        __old_FieldsSyncRule.class,
-        __old_FilterSyncRule.class
+        FieldsSyncRule.class,
+        FilterSyncRule.class
         );
   }
 
@@ -124,7 +124,7 @@ public class RulesOrdering implements Comparator<AsyncRule> {
     );
   }
 
-  private int indexOfRuleClass(Class<? extends __old_Rule> ruleClass) {
+  private int indexOfRuleClass(Class<? extends Rule> ruleClass) {
     int index = ordering.indexOf(ruleClass);
     if (index < 0)
       throw new IllegalStateException("Cannot find class '" + ruleClass.getName() + "' in rules ordering " +

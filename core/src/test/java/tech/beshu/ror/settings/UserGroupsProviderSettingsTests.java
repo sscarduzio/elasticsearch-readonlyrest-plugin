@@ -18,7 +18,7 @@ package tech.beshu.ror.settings;
 
 import org.junit.Test;
 import tech.beshu.ror.TestUtils;
-import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
 
 import java.net.URISyntaxException;
 
@@ -26,7 +26,7 @@ public class UserGroupsProviderSettingsTests {
 
   @Test
   public void testSuccessfulCreationFromRequiredSettings() throws URISyntaxException {
-    __old_UserGroupsProviderSettingsCollection.from(
+    UserGroupsProviderSettingsCollection.from(
       TestUtils.fromYAMLString("" +
                                  "user_groups_providers:\n" +
                                  "\n" +

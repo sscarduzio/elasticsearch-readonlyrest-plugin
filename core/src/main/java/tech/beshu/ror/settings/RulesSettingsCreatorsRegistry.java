@@ -17,48 +17,48 @@
 
 package tech.beshu.ror.settings;
 
-import tech.beshu.ror.acl.blocks.rules.impl.__old_FieldsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_FilterSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersAndSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersOrSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_HeadersSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_KibanaIndexSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_RepositoriesSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_SnapshotsSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UriReSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_UsersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.FilterSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersAndSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersOrSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.HeadersSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.KibanaIndexSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.RepositoriesSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.SnapshotsSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.UriReSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.UsersSyncRule;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
-import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
-import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
-import tech.beshu.ror.settings.rules.__old_ActionsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_ApiKeysRuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeyPlainTextRuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeySha1RuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeySha256RuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeySha512RuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
-import tech.beshu.ror.settings.rules.__old_ExternalAuthenticationRuleSettings;
-import tech.beshu.ror.settings.rules.__old_GroupsProviderAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.__old_GroupsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_IndicesRuleSettings;
-import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
-import tech.beshu.ror.settings.rules.__old_KibanaAccessRuleSettings;
-import tech.beshu.ror.settings.rules.__old_KibanaHideAppsRuleSettings;
+import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.rules.ActionsRuleSettings;
+import tech.beshu.ror.settings.rules.ApiKeysRuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.ExternalAuthenticationRuleSettings;
+import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
+import tech.beshu.ror.settings.rules.GroupsRuleSettings;
+import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.IndicesRuleSettings;
+import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
+import tech.beshu.ror.settings.rules.KibanaAccessRuleSettings;
+import tech.beshu.ror.settings.rules.KibanaHideAppsRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
-import tech.beshu.ror.settings.rules.__old_LocalHostsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_MaxBodyLengthRuleSettings;
-import tech.beshu.ror.settings.rules.__old_MethodsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
-import tech.beshu.ror.settings.rules.__old_RorKbnAuthRuleSettings;
+import tech.beshu.ror.settings.rules.LocalHostsRuleSettings;
+import tech.beshu.ror.settings.rules.MaxBodyLengthRuleSettings;
+import tech.beshu.ror.settings.rules.MethodsRuleSettings;
+import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 import tech.beshu.ror.settings.rules.SearchlogRuleSettings;
-import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
-import tech.beshu.ror.settings.rules.__old_XForwardedForRuleSettings;
+import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.rules.XForwardedForRuleSettings;
 
 import java.util.HashMap;
 import java.util.List;
@@ -73,9 +73,9 @@ public class RulesSettingsCreatorsRegistry {
   RulesSettingsCreatorsRegistry(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
       LdapSettingsCollection ldapSettingsCollection,
-      __old_UserGroupsProviderSettingsCollection groupsProviderSettingsGroup,
-      __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
-      __old_UserSettingsCollection userSettingsCollection) {
+      UserGroupsProviderSettingsCollection groupsProviderSettingsGroup,
+      ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
+      UserSettingsCollection userSettingsCollection) {
     Map<String, Supplier<RuleSettings>> creators = new HashMap<>();
     creators.put(
         LdapAuthRuleSettings.ATTRIBUTE_NAME,
@@ -90,47 +90,44 @@ public class RulesSettingsCreatorsRegistry {
         ldapAuthorizationRuleSettingsCreator(blockSettings, ldapSettingsCollection)
     );
     creators.put(
-        __old_GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME,
+        GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME,
         groupsProviderAuthorizationRuleSettingsCreator(blockSettings, groupsProviderSettingsGroup)
     );
     creators.put(
-        __old_ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME,
+        ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME,
         externalAuthenticationSettingsCreator(blockSettings, externalAuthenticationServiceSettingsCollection)
     );
-    creators.put(__old_IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
-    creators.put(__old_MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
-    creators.put(__old_HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
-    creators.put(__old_HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
-    creators.put(__old_HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
-    creators.put(__old_ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
-    creators.put(__old_HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
-    creators.put(__old_LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
-    creators.put(__old_SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
-    creators.put(__old_RepositoriesSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
-    creators.put(
-        __old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(__old_AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(__old_AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(__old_AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(__old_AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(__old_AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(__old_KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
-    creators.put(__old_KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
-    creators.put(__old_FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
-    creators.put(__old_FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
-    creators.put(__old_KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
-    creators.put(__old_ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
-    creators.put(__old_MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
-    creators.put(__old_SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
+    creators.put(IndicesRuleSettings.ATTRIBUTE_NAME, indicesSettingsCreator(blockSettings));
+    creators.put(MethodsRuleSettings.ATTRIBUTE_NAME, methodsSettingsCreator(blockSettings));
+    creators.put(HeadersSyncRule.Settings.ATTRIBUTE_NAME, headersSettingsCreator(blockSettings));
+    creators.put(HeadersAndSyncRule.Settings.ATTRIBUTE_NAME, headersAndSettingsCreator(blockSettings));
+    creators.put(HeadersOrSyncRule.Settings.ATTRIBUTE_NAME, headersOrSettingsCreator(blockSettings));
+    creators.put(ActionsRuleSettings.ATTRIBUTE_NAME, actionsSettingsCreator(blockSettings));
+    creators.put(HostsRuleSettings.ATTRIBUTE_NAME, hostsSettingsCreator(blockSettings));
+    creators.put(LocalHostsRuleSettings.ATTRIBUTE_NAME, localHostsSettingsCreator(blockSettings));
+    creators.put(SnapshotsSyncRule.Settings.ATTRIBUTE_NAME, snapshotsRuleSettingsCreator(blockSettings));
+    creators.put(RepositoriesSyncRule.Settings.ATTRIBUTE_NAME, repositoriesRuleSettingsCreator(blockSettings));
+    creators.put(ProxyAuthRuleSettings.ATTRIBUTE_NAME, proxyAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, authKeySettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, authKeySha1SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, authKeySha256SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, authKeySha512SettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, authKeyUnixSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(KibanaAccessRuleSettings.ATTRIBUTE_NAME, kibanaAccessSettingsCreator(blockSettings));
+    creators.put(KibanaIndexSyncRule.Settings.ATTRIBUTE_NAME, kibanaIndexSettingsCreator(blockSettings));
+    creators.put(FieldsSyncRule.Settings.ATTRIBUTE_NAME, fieldsSettingsCreator(blockSettings));
+    creators.put(FilterSyncRule.Settings.ATTRIBUTE_NAME, filterSettingsCreator(blockSettings));
+    creators.put(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME, kibanaHideAppsSettingsCreator(blockSettings));
+    creators.put(ApiKeysRuleSettings.ATTRIBUTE_NAME, apiKeysSettingsCreator(blockSettings));
+    creators.put(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME, maxBodyLengthSettingsCreator(blockSettings));
+    creators.put(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME, sessionMaxIdleSettingsCreator(blockSettings));
     creators.put(SearchlogRuleSettings.ATTRIBUTE_NAME, searchlogSettingsCreator(blockSettings));
-    creators.put(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
-    creators.put(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
-    creators.put(__old_XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
-    creators.put(__old_GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
-    creators.put(
-        __old_JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
-    creators.put(
-        __old_RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(UriReSyncRule.Settings.ATTRIBUTE_NAME, uriReSettingsCreator(blockSettings));
+    creators.put(UsersSyncRule.Settings.ATTRIBUTE_NAME, usersSettingsCreator(blockSettings));
+    creators.put(XForwardedForRuleSettings.ATTRIBUTE_NAME, xForwardedForSettingsCreator(blockSettings));
+    creators.put(GroupsRuleSettings.ATTRIBUTE_NAME, groupsSettingsCreator(blockSettings, userSettingsCollection));
+    creators.put(JwtAuthRuleSettings.ATTRIBUTE_NAME, jwtAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
+    creators.put(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, rorKbnAuthSettingsCreator(blockSettings, authMethodCreatorsRegistry));
 
     this.ruleSettingsCreators = creators;
   }
@@ -168,24 +165,24 @@ public class RulesSettingsCreatorsRegistry {
 
   private Supplier<RuleSettings> groupsProviderAuthorizationRuleSettingsCreator(
       RawSettings blockSettings,
-      __old_UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection) {
-    return () -> __old_GroupsProviderAuthorizationRuleSettings.from(
-        blockSettings.inner(__old_GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
+      UserGroupsProviderSettingsCollection userGroupsProviderSettingsCollection) {
+    return () -> GroupsProviderAuthorizationRuleSettings.from(
+        blockSettings.inner(GroupsProviderAuthorizationRuleSettings.ATTRIBUTE_NAME),
         userGroupsProviderSettingsCollection
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> externalAuthenticationSettingsCreator(RawSettings blockSettings,
-      __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
+      ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection) {
     return () -> {
-      Object settings = blockSettings.req(__old_ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME);
+      Object settings = blockSettings.req(ExternalAuthenticationRuleSettings.ATTRIBUTE_NAME);
       return settings instanceof String
-          ? __old_ExternalAuthenticationRuleSettings.from(
+          ? ExternalAuthenticationRuleSettings.from(
           (String) settings,
           externalAuthenticationServiceSettingsCollection
       )
-          : __old_ExternalAuthenticationRuleSettings.from(
+          : ExternalAuthenticationRuleSettings.from(
           new RawSettings((Map<String, ?>) settings, blockSettings.getLogger()),
           externalAuthenticationServiceSettingsCollection
       );
@@ -194,140 +191,140 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> indicesSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_IndicesRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(__old_IndicesRuleSettings.ATTRIBUTE_NAME)
+    return () -> IndicesRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(IndicesRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> methodsSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_MethodsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(__old_MethodsRuleSettings.ATTRIBUTE_NAME)
+    return () -> MethodsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(MethodsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> headersSettingsCreator(RawSettings blockSettings) {
-    return () -> new __old_HeadersSyncRule.Settings(
-        (Set<String>) blockSettings.notEmptySetReq(__old_HeadersSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> new HeadersSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(HeadersSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> headersOrSettingsCreator(RawSettings blockSettings) {
-    return () -> new __old_HeadersOrSyncRule.Settings(
-        (Set<String>) blockSettings.notEmptySetReq(__old_HeadersOrSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> new HeadersOrSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(HeadersOrSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> headersAndSettingsCreator(RawSettings blockSettings) {
-    return () -> new __old_HeadersAndSyncRule.Settings(
-        (Set<String>) blockSettings.notEmptySetReq(__old_HeadersAndSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> new HeadersAndSyncRule.Settings(
+        (Set<String>) blockSettings.notEmptySetReq(HeadersAndSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> actionsSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_ActionsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(__old_ActionsRuleSettings.ATTRIBUTE_NAME)
+    return () -> ActionsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(ActionsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> hostsSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_HostsRuleSettings.fromBlockSettings(blockSettings);
+    return () -> HostsRuleSettings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> localHostsSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_LocalHostsRuleSettings.fromBlockSettings(blockSettings);
+    return () -> LocalHostsRuleSettings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> snapshotsRuleSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_SnapshotsSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> SnapshotsSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> repositoriesRuleSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_RepositoriesSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> RepositoriesSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> proxyAuthSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_ProxyAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(ProxyAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(AuthKeyPlainTextRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySha1SettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_AuthKeySha1RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(AuthKeySha1RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySha256SettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_AuthKeySha256RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(AuthKeySha256RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeySha512SettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_AuthKeySha512RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(AuthKeySha512RuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> authKeyUnixSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(AuthKeyUnixRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaAccessSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_KibanaAccessRuleSettings.fromBlockSettings(blockSettings);
+    return () -> KibanaAccessRuleSettings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaIndexSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_KibanaIndexSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> KibanaIndexSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> fieldsSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_FieldsSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> FieldsSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> filterSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_FilterSyncRule.Settings.fromBlockSettings(blockSettings);
+    return () -> FilterSyncRule.Settings.fromBlockSettings(blockSettings);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> kibanaHideAppsSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_KibanaHideAppsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(__old_KibanaHideAppsRuleSettings.ATTRIBUTE_NAME)
+    return () -> KibanaHideAppsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(KibanaHideAppsRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> apiKeysSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_ApiKeysRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(__old_ApiKeysRuleSettings.ATTRIBUTE_NAME)
+    return () -> ApiKeysRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(ApiKeysRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> maxBodyLengthSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_MaxBodyLengthRuleSettings.from(
-        blockSettings.intReq(__old_MaxBodyLengthRuleSettings.ATTRIBUTE_NAME)
+    return () -> MaxBodyLengthRuleSettings.from(
+        blockSettings.intReq(MaxBodyLengthRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
@@ -340,37 +337,37 @@ public class RulesSettingsCreatorsRegistry {
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> sessionMaxIdleSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_SessionMaxIdleRuleSettings.from(
-        blockSettings.stringReq(__old_SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
+    return () -> SessionMaxIdleRuleSettings.from(
+        blockSettings.stringReq(SessionMaxIdleRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> uriReSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_UriReSyncRule.Settings.from(
-        blockSettings.stringReq(__old_UriReSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> UriReSyncRule.Settings.from(
+        blockSettings.stringReq(UriReSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> usersSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_UsersSyncRule.Settings.from(
-        (List<String>) blockSettings.notEmptyListReq(__old_UsersSyncRule.Settings.ATTRIBUTE_NAME)
+    return () -> UsersSyncRule.Settings.from(
+        (List<String>) blockSettings.notEmptyListReq(UsersSyncRule.Settings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> xForwardedForSettingsCreator(RawSettings blockSettings) {
-    return () -> __old_XForwardedForRuleSettings.from(
-        (List<String>) blockSettings.notEmptyListReq(__old_XForwardedForRuleSettings.ATTRIBUTE_NAME)
+    return () -> XForwardedForRuleSettings.from(
+        (List<String>) blockSettings.notEmptyListReq(XForwardedForRuleSettings.ATTRIBUTE_NAME)
     );
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> groupsSettingsCreator(RawSettings blockSettings,
-      __old_UserSettingsCollection userSettingsCollection) {
-    return () -> __old_GroupsRuleSettings.from(
-        (Set<String>) blockSettings.notEmptySetReq(__old_GroupsRuleSettings.ATTRIBUTE_NAME),
+      UserSettingsCollection userSettingsCollection) {
+    return () -> GroupsRuleSettings.from(
+        (Set<String>) blockSettings.notEmptySetReq(GroupsRuleSettings.ATTRIBUTE_NAME),
         userSettingsCollection
     );
   }
@@ -378,13 +375,13 @@ public class RulesSettingsCreatorsRegistry {
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> jwtAuthSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_JwtAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(JwtAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   @SuppressWarnings("unchecked")
   private Supplier<RuleSettings> rorKbnAuthSettingsCreator(RawSettings blockSettings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry) {
-    return authRuleFrom(__old_RorKbnAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
+    return authRuleFrom(RorKbnAuthRuleSettings.ATTRIBUTE_NAME, blockSettings, authMethodCreatorsRegistry);
   }
 
   private Supplier<RuleSettings> authRuleFrom(String attribute, RawSettings settings,

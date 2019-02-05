@@ -42,10 +42,8 @@ public class SerializationTool {
   private static ObjectMapper mapper;
   private final AuditLogSerializer auditLogSerializer;
   private final LoggerShim logger;
-  private final ESContext esContext;
 
   public SerializationTool(ESContext esContext) {
-    this.esContext = esContext;
     String pattern = esContext.getSettings().getAuditIndexTemplate();
     try {
       indexNameFormatter = new SimpleDateFormat(pattern);
@@ -111,11 +109,5 @@ public class SerializationTool {
     });
 
     return res[0];
-  }
-
-  public void submit(String requestId, ResponseContext res) {
-    if (esContext.getSettings().isAuditorCollectorEnabled()) {
-      esContext.submit(mkIndexName(), requestId, toJson(res));
-    }
   }
 }

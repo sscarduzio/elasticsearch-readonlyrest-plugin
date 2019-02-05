@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.definitions.ldaps.unboundid;
 
-import tech.beshu.ror.settings.definitions.__old_GroupsProviderLdapSettings;
+import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 
 public class UserGroupsSearchFilterConfig {
 
@@ -65,11 +65,11 @@ public class UserGroupsSearchFilterConfig {
   public static class Builder {
 
     private final String searchGroupBaseDN;
-    private String uniqueMemberAttribute = __old_GroupsProviderLdapSettings.UNIQUE_MEMBER_DEFAULT;
-    private String groupSearchFilter = __old_GroupsProviderLdapSettings.GROUP_SEARCH_FILTER_DEFAULT;
-    private String groupNameAttribute = __old_GroupsProviderLdapSettings.GROUP_NAME_ATTRIBUTE_DEFAULT;
-    private boolean isGroupsFromUser = __old_GroupsProviderLdapSettings.GROUPS_FROM_USER_DEFAULT;
-    private String groupsFromUserAttribute = __old_GroupsProviderLdapSettings.GROUPS_FROM_USER_ATTRIBUTE_DEFAULT;
+    private String uniqueMemberAttribute = GroupsProviderLdapSettings.UNIQUE_MEMBER_DEFAULT;
+    private String groupSearchFilter = GroupsProviderLdapSettings.GROUP_SEARCH_FILTER_DEFAULT;
+    private String groupNameAttribute = GroupsProviderLdapSettings.GROUP_NAME_ATTRIBUTE_DEFAULT;
+    private boolean isGroupsFromUser = GroupsProviderLdapSettings.GROUPS_FROM_USER_DEFAULT;
+    private String groupsFromUserAttribute = GroupsProviderLdapSettings.GROUPS_FROM_USER_ATTRIBUTE_DEFAULT;
 
     public Builder(String searchGroupBaseDN) {
       this.searchGroupBaseDN = searchGroupBaseDN;

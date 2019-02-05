@@ -18,29 +18,29 @@
 package tech.beshu.ror.acl.blocks.rules;
 
 import com.google.common.collect.Maps;
-import tech.beshu.ror.acl.__old_ACL;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_JwtAuthAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha1SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha256SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySha512SyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeySyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_AuthKeyUnixAsyncRule;
+import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha1SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha256SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySha512SyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeySyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.AuthKeyUnixAsyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.JwtAuthAsyncRule;
 import tech.beshu.ror.acl.blocks.rules.impl.LdapAuthenticationAsyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_ProxyAuthSyncRule;
-import tech.beshu.ror.acl.blocks.rules.impl.__old_RorKbnAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.ProxyAuthSyncRule;
+import tech.beshu.ror.acl.blocks.rules.impl.RorKbnAuthSyncRule;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeyPlainTextRuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeySha1RuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeySha256RuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeySha512RuleSettings;
-import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeyPlainTextRuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha1RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha256RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeySha512RuleSettings;
+import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
 import tech.beshu.ror.settings.rules.CacheSettings;
-import tech.beshu.ror.settings.rules.__old_JwtAuthRuleSettings;
+import tech.beshu.ror.settings.rules.JwtAuthRuleSettings;
 import tech.beshu.ror.settings.rules.LdapAuthenticationRuleSettings;
-import tech.beshu.ror.settings.rules.__old_ProxyAuthRuleSettings;
-import tech.beshu.ror.settings.rules.__old_RorKbnAuthRuleSettings;
+import tech.beshu.ror.settings.rules.ProxyAuthRuleSettings;
+import tech.beshu.ror.settings.rules.RorKbnAuthRuleSettings;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -49,42 +49,42 @@ public class UserRuleFactory {
 
   private final Map<Class<? extends RuleSettings>, Function<RuleSettings, ? extends AsyncRule>> creators;
   private final ESContext context;
-  private final __old_ACL acl;
+  private final ACL acl;
 
-  public UserRuleFactory(ESContext context, __old_ACL acl) {
+  public UserRuleFactory(ESContext context, ACL acl) {
     this.acl = acl;
     this.context = context;
     this.creators = Maps.newHashMap();
     this.creators.put(
-        __old_AuthKeySha1RuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySha1SyncRule((__old_AuthKeySha1RuleSettings) settings, context))
+        AuthKeySha1RuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new AuthKeySha1SyncRule((AuthKeySha1RuleSettings) settings, context))
     );
     this.creators.put(
-        __old_AuthKeySha256RuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySha256SyncRule((__old_AuthKeySha256RuleSettings) settings, context))
+        AuthKeySha256RuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new AuthKeySha256SyncRule((AuthKeySha256RuleSettings) settings, context))
     );
     this.creators.put(
-        __old_AuthKeySha512RuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySha512SyncRule((__old_AuthKeySha512RuleSettings) settings, context))
+        AuthKeySha512RuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new AuthKeySha512SyncRule((AuthKeySha512RuleSettings) settings, context))
     );
 
     // Infinitely cached because the crypto is super heavy; the in-mem cache has salt+hashed keys for security.
     this.creators.put(
-        __old_AuthKeyUnixRuleSettings.class,
+        AuthKeyUnixRuleSettings.class,
         settings -> {
-          __old_AuthKeyUnixRuleSettings ruleSettings = (__old_AuthKeyUnixRuleSettings) settings;
-          __old_AuthKeyUnixAsyncRule rule = new __old_AuthKeyUnixAsyncRule(ruleSettings, context);
+          AuthKeyUnixRuleSettings ruleSettings = (AuthKeyUnixRuleSettings) settings;
+          AuthKeyUnixAsyncRule rule = new AuthKeyUnixAsyncRule(ruleSettings, context);
           return CachedAsyncAuthenticationDecorator.wrapInCacheIfCacheIsEnabled(rule, (CacheSettings) settings, context);
         }
     );
 
     this.creators.put(
-        __old_AuthKeyPlainTextRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_AuthKeySyncRule((__old_AuthKeyPlainTextRuleSettings) settings, context))
+        AuthKeyPlainTextRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new AuthKeySyncRule((AuthKeyPlainTextRuleSettings) settings, context))
     );
     this.creators.put(
-        __old_ProxyAuthRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_ProxyAuthSyncRule((__old_ProxyAuthRuleSettings) settings))
+        ProxyAuthRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new ProxyAuthSyncRule((ProxyAuthRuleSettings) settings))
     );
 
     this.creators.put(
@@ -93,12 +93,12 @@ public class UserRuleFactory {
     );
 
     this.creators.put(
-        __old_JwtAuthRuleSettings.class,
-        settings -> new __old_JwtAuthAsyncRule((__old_JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
+        JwtAuthRuleSettings.class,
+        settings -> new JwtAuthAsyncRule((JwtAuthRuleSettings) settings, context, acl.getDefinitionsFactory())
     );
     this.creators.put(
-        __old_RorKbnAuthRuleSettings.class,
-        settings -> AsyncRuleAdapter.wrap(new __old_RorKbnAuthSyncRule((__old_RorKbnAuthRuleSettings) settings, context))
+        RorKbnAuthRuleSettings.class,
+        settings -> AsyncRuleAdapter.wrap(new RorKbnAuthSyncRule((RorKbnAuthRuleSettings) settings, context))
     );
   }
 

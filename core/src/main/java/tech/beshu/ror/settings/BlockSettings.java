@@ -19,17 +19,17 @@ package tech.beshu.ror.settings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import tech.beshu.ror.acl.__old_BlockPolicy;
+import tech.beshu.ror.acl.BlockPolicy;
 import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
-import tech.beshu.ror.settings.definitions.__old_ExternalAuthenticationServiceSettingsCollection;
+import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.__old_UserGroupsProviderSettingsCollection;
-import tech.beshu.ror.settings.definitions.__old_UserSettingsCollection;
-import tech.beshu.ror.settings.rules.__old_AuthKeyUnixRuleSettings;
-import tech.beshu.ror.settings.rules.__old_HostsRuleSettings;
-import tech.beshu.ror.settings.rules.__old_SessionMaxIdleRuleSettings;
+import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
+import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import tech.beshu.ror.settings.rules.AuthKeyUnixRuleSettings;
+import tech.beshu.ror.settings.rules.HostsRuleSettings;
+import tech.beshu.ror.settings.rules.SessionMaxIdleRuleSettings;
 
 import java.util.List;
 import java.util.Set;
@@ -43,18 +43,18 @@ public class BlockSettings {
   private static final String POLICY = "type";
   private static final String VERBOSITY = "verbosity";
   public static final Set<String> ruleModifiersToSkip = Sets.newHashSet(
-      NAME, POLICY, VERBOSITY, __old_HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
-      __old_AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
+      NAME, POLICY, VERBOSITY, HostsRuleSettings.ATTRIBUTE_ACCEPT_X_FORWARDED_FOR_HEADER,
+      AuthKeyUnixRuleSettings.ATTRIBUTE_AUTH_CACHE_TTL
   );
 
-  private static final __old_BlockPolicy DEFAULT_BLOCK_POLICY = __old_BlockPolicy.ALLOW;
+  private static final BlockPolicy DEFAULT_BLOCK_POLICY = BlockPolicy.ALLOW;
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
   private final String name;
-  private final __old_BlockPolicy policy;
+  private final BlockPolicy policy;
   private final List<RuleSettings> rules;
   private final Verbosity verbosity;
 
-  private BlockSettings(String name, __old_BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
+  private BlockSettings(String name, BlockPolicy policy, Verbosity verbosity, List<RuleSettings> rules) {
     validate(rules);
     this.name = name;
     this.policy = policy;
@@ -65,9 +65,9 @@ public class BlockSettings {
   public static BlockSettings from(RawSettings settings,
       AuthMethodCreatorsRegistry authMethodCreatorsRegistry,
       LdapSettingsCollection ldapSettingsCollection,
-      __old_UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
-      __old_ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
-      __old_UserSettingsCollection userSettingsCollection) {
+      UserGroupsProviderSettingsCollection groupsProviderSettingsCollection,
+      ExternalAuthenticationServiceSettingsCollection externalAuthenticationServiceSettingsCollection,
+      UserSettingsCollection userSettingsCollection) {
     RulesSettingsCreatorsRegistry registry = new RulesSettingsCreatorsRegistry(
         settings,
         authMethodCreatorsRegistry,
@@ -77,8 +77,8 @@ public class BlockSettings {
         userSettingsCollection
     );
     String name = settings.stringReq(NAME);
-    __old_BlockPolicy policy = settings.stringOpt(POLICY)
-                                 .map(value -> __old_BlockPolicy.fromString(value)
+    BlockPolicy policy = settings.stringOpt(POLICY)
+                                 .map(value -> BlockPolicy.fromString(value)
                                      .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown block policy type: " + value)))
                                  .orElse(DEFAULT_BLOCK_POLICY);
     Verbosity verbosity = settings.stringOpt(VERBOSITY)
@@ -102,7 +102,7 @@ public class BlockSettings {
     return name;
   }
 
-  public __old_BlockPolicy getPolicy() {
+  public BlockPolicy getPolicy() {
     return policy;
   }
 
@@ -115,9 +115,9 @@ public class BlockSettings {
   }
 
   private void validateIfSessionMaxIdleRuleConfiguredWithUserRule(List<RuleSettings> rules) {
-    if (rules.stream().anyMatch(r -> r instanceof __old_SessionMaxIdleRuleSettings)) {
+    if (rules.stream().anyMatch(r -> r instanceof SessionMaxIdleRuleSettings)) {
       if (rules.stream().noneMatch(r -> r instanceof AuthKeyProviderSettings)) {
-        throw new SettingsMalformedException("'" + __old_SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
+        throw new SettingsMalformedException("'" + SessionMaxIdleRuleSettings.ATTRIBUTE_NAME +
             "' rule does not mean anything if you don't also set some authentication rule");
       }
     }

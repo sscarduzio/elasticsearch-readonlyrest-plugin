@@ -22,7 +22,7 @@ import org.junit.Test;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.definitions.AuthenticationLdapSettings;
-import tech.beshu.ror.settings.definitions.__old_GroupsProviderLdapSettings;
+import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.utils.containers.LdapContainer;
 
 public class LdapSettingsTests {
@@ -32,7 +32,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testSuccessfulCreationFromRequiredSettings() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "name: ldap1\n" +
                                                               "host: " + ldapContainer.getLdapHost() + "\n" +
                                                               "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -46,7 +46,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenNameWasNotPresentInSettings() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "host: " + ldapContainer.getLdapHost() + "\n" +
                                                               "port: " + ldapContainer.getLdapPort() + "\n" +
                                                               "ssl_enabled: false\n" +
@@ -57,7 +57,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenSearchGroupBaseDnIsNotPresent() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "name: ldap1\n" +
                                                               "host: " + ldapContainer.getLdapHost() + "\n" +
                                                               "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -83,7 +83,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenHostWasNotPresentInSettings() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "name: ldap1\n" +
                                                               "search_user_base_DN: ou=People,dc=example,dc=com\n" +
                                                               "search_groups_base_DN: ou=Group,dc=example,dc=com\n"
@@ -92,7 +92,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testCreationFailedWhenSearchUserBaseDNWasNotPresentInSettings() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "name: ldap1\n" +
                                                               "host: " + ldapContainer.getLdapHost() + "\n" +
                                                               "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -103,7 +103,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testWhenSearchGroupsBaseDNWasPresentGroupProviderLdapClientIsBeingCreated() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "name: ldap1\n" +
                                                               "host: " + ldapContainer.getLdapHost() + "\n" +
                                                               "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -115,7 +115,7 @@ public class LdapSettingsTests {
 
   @Test
   public void testBindDnAndPasswordAreNotRequiredParam() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "name: ldap1\n" +
                                                               "host: " + ldapContainer.getLdapHost() + "\n" +
                                                               "port: " + ldapContainer.getLdapPort() + "\n" +
@@ -127,7 +127,7 @@ public class LdapSettingsTests {
 
   @Test(expected = SettingsMalformedException.class)
   public void testIfBindDnIsPresentBindPasswordMustBeProvided() {
-    new __old_GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
+    new GroupsProviderLdapSettings(TestUtils.fromYAMLString("" +
                                                               "name: ldap1\n" +
                                                               "host: " + ldapContainer.getLdapHost() + "\n" +
                                                               "port: " + ldapContainer.getLdapPort() + "\n" +

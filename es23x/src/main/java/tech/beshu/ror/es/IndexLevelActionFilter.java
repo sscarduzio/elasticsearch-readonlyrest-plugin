@@ -39,11 +39,11 @@ import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
-import tech.beshu.ror.acl.__old_ACL;
-import tech.beshu.ror.acl.domain.__old_Value;
+import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.commons.domain.Variable;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.commons.shims.es.__old_ACLHandler;
+import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
@@ -61,7 +61,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<__old_ACL>> acl;
+  private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
@@ -106,7 +106,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
           if (newContext.getSettings().isEnabled()) {
             try {
-              __old_ACL newAcl = new __old_ACL(newContext);
+              ACL newAcl = new ACL(newContext);
               acl.set(Optional.of(newAcl));
               logger.info("Configuration reloaded - ReadonlyREST enabled");
             } catch (Exception ex) {
@@ -169,7 +169,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-      Optional<__old_ACL> acl = this.acl.get();
+      Optional<ACL> acl = this.acl.get();
       if (acl.isPresent()) {
         handleRequest(acl.get(), task, action, request, listener, chain);
       }
@@ -182,7 +182,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(__old_ACL acl,
+  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,
                                                                                               Task task,
                                                                                               String action,
                                                                                               Request request,
@@ -194,12 +194,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
     boolean chanNull = channel == null;
     boolean reqNull = channel == null ? true : channel.request() == null;
-    if (__old_ACL.shouldSkipACL(chanNull, reqNull)) {
+    if (ACL.shouldSkipACL(chanNull, reqNull)) {
       chain.proceed(task, action, request, listener);
       return;
     }
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, context.get(), indexResolver);
-    acl.check(requestInfo, new __old_ACLHandler() {
+    acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {
         sendNotAuthResponse(channel, context.get().getSettings());
@@ -211,7 +211,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       }
 
       @Override
-      public void onAllow(Object blockExitResult, __old_Value.__old_VariableResolver rc) {
+      public void onAllow(Object blockExitResult, Variable.VariableResolver rc) {
         boolean hasProceeded = false;
         try {
           //         @SuppressWarnings("unchecked")
@@ -256,7 +256,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private void sendNotAuthResponse(RestChannel channel, BasicSettings basicSettings) {
     BytesRestResponse resp;
-    boolean doesRequirePassword = acl.get().map(__old_ACL::doesRequirePassword).orElse(false);
+    boolean doesRequirePassword = acl.get().map(ACL::doesRequirePassword).orElse(false);
     if (doesRequirePassword) {
       resp = new BytesRestResponse(RestStatus.UNAUTHORIZED, BytesRestResponse.TEXT_CONTENT_TYPE, basicSettings.getForbiddenMessage());
       logger.debug("Sending login prompt header...");

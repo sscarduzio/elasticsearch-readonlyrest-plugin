@@ -15,8 +15,6 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-// todo: check if there is no problem with scalatest from gradle console
-
 group = 'org.elasticsearch.plugin'
 version = pluginVersion
 
@@ -42,7 +40,7 @@ repositories {
 }
 
 apply plugin: 'java'
-apply plugin: 'scala'
+apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'license'
 
@@ -60,35 +58,18 @@ test {
 }
 dependencies {
     compile project(':commons')
-
-    compile group: 'io.monix',                      name: 'monix_2.12',                             version: '3.0.0-RC2'
-    compile group: 'org.scala-lang',                name: 'scala-library',                          version: '2.12.4'
-    compile group: 'org.scala-lang.modules',        name: 'scala-java8-compat_2.12',                version: '0.9.0'
-    compile group: 'com.softwaremill.sttp',         name: 'core_2.12',                              version: '1.5.1'
-    compile group: 'org.typelevel',                 name: 'squants_2.12',                           version: '1.4.0'
-    compile group: 'eu.timepit',                    name: 'refined_2.12',                           version: '0.9.3'
-    compile group: 'io.circe',                      name: 'circe-core_2.12',                        version: '0.10.1'
-    compile group: 'io.circe',                      name: 'circe-generic-extras_2.12',              version: '0.10.1'
-    compile group: 'io.circe',                      name: 'circe-parser_2.12',                      version: '0.10.1'
-    compile group: 'io.circe',                      name: 'circe-yaml_2.12',                        version: '0.9.0'
-    compile group: 'org.apache.logging.log4j',      name: 'log4j-api-scala_2.12',                   version: '11.0'
-    compile group: 'com.softwaremill.sttp',         name: 'async-http-client-backend-cats_2.12',    version: '1.5.8'
-
-    testCompile group: 'org.scalamock',             name: 'scalamock_2.12',                         version: '3.6.0'
-    testCompile group: 'org.scalamock',             name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
-    testCompile group: 'org.scalatest',             name: 'scalatest_2.12',                         version: '3.0.5'
-    
-    compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
+    compile group: 'commons-codec', name: 'commons-codec', version: '1.11'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile 'com.jayway.jsonpath:json-path:2.2.0'
     compile 'com.unboundid:unboundid-ldapsdk:4.0.9'
     compile 'net.minidev:accessors-smart:1.2'
     compile 'net.minidev:json-smart:2.3'
+    compile 'org.apache.logging.log4j:log4j-core:2.11.0'
     compile 'org.jooq:jool:0.9.12'
     compile 'com.github.seancfoley:ipaddress:5.0.0'
-    
+    compile 'org.slf4j:slf4j-api:1.7.25'
+
     compile 'com.fasterxml.jackson.core:jackson-databind:2.8.6'
-    compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.6'
     compile 'io.jsonwebtoken:jjwt-api:0.10.5'
     runtime 'io.jsonwebtoken:jjwt-impl:0.10.5',
             // Uncomment the next line if you want to use RSASSA-PSS (PS256, PS384, PS512) algorithms:
@@ -102,7 +83,8 @@ dependencies {
     testCompile 'org.gradle:gradle-tooling-api:4.10.2'
     testCompile 'org.mockito:mockito-all:1.10.19'
     testCompile 'junit:junit:4.12'
-    //testCompile 'org.yaml:snakeyaml:1.15'
+    testCompile 'io.jsonwebtoken:jjwt:0.9.1'
+    testCompile 'org.yaml:snakeyaml:1.15'
 
 }
 
@@ -113,8 +95,4 @@ license {
     mapping {
         java = 'SLASHSTAR_STYLE'
     }
-}
-
-compileScala {
-    options.compilerArgs << "-Ywarn-macros:after"
 }

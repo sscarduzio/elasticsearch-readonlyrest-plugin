@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.rules.AsyncAuthorization;
 import tech.beshu.ror.acl.definitions.ldaps.GroupsProviderLdapClient;
 import tech.beshu.ror.acl.definitions.ldaps.LdapClientFactory;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
-import tech.beshu.ror.acl.domain.__old_LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 
@@ -45,7 +45,7 @@ public class LdapAuthorizationAsyncRule extends AsyncAuthorization {
   }
 
   @Override
-  protected CompletableFuture<Boolean> authorize(__old_LoggedUser user) {
+  protected CompletableFuture<Boolean> authorize(LoggedUser user) {
 
     // Fail early if we have they are looking for a current group that is not within the allowed ones
     if (user.getCurrentGroup().isPresent()) {

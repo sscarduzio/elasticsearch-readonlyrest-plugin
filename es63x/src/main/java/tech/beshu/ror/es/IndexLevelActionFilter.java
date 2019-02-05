@@ -39,13 +39,13 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.acl.__old_ACL;
-import tech.beshu.ror.acl.domain.__old_Value;
+import tech.beshu.ror.acl.ACL;
+import tech.beshu.ror.commons.domain.Value;
 import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.__old_ACLHandler;
+import tech.beshu.ror.commons.shims.es.ACLHandler;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.__old_RequestContext;
+import tech.beshu.ror.requestcontext.RequestContext;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -62,7 +62,7 @@ public class IndexLevelActionFilter implements ActionFilter {
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<__old_ACL>> acl;
+  private final AtomicReference<Optional<ACL>> acl;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
@@ -96,7 +96,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       if (newContext.getSettings().isEnabled()) {
         try {
-          __old_ACL newAcl = new __old_ACL(newContext);
+          ACL newAcl = new ACL(newContext);
           acl.set(Optional.of(newAcl));
           logger.info("Configuration reloaded - ReadonlyREST enabled");
         } catch (Exception ex) {
@@ -130,7 +130,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-      Optional<__old_ACL> acl = this.acl.get();
+      Optional<ACL> acl = this.acl.get();
       if (acl.isPresent()) {
         handleRequest(acl.get(), task, action, request, listener, chain);
       }
@@ -143,7 +143,7 @@ public class IndexLevelActionFilter implements ActionFilter {
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse>
-  void handleRequest(__old_ACL acl, Task task, String action, Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
+  void handleRequest(ACL acl, Task task, String action, Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
     RestChannel channel = ThreadRepo.channel.get();
     if (channel != null) {
       ThreadRepo.channel.remove();
@@ -151,48 +151,12 @@ public class IndexLevelActionFilter implements ActionFilter {
 
     boolean chanNull = channel == null;
     boolean reqNull = channel == null ? true : channel.request() == null;
-    if (__old_ACL.shouldSkipACL(chanNull, reqNull)) {
+    if (ACL.shouldSkipACL(chanNull, reqNull)) {
       chain.proceed(task, action, request, listener);
       return;
     }
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
-    acl.check(requestInfo, new __old_ACLHandler() {
-      @Override
-      public void onAllow(Object blockExitResult, __old_Value.__old_VariableResolver rc) {
-
-        boolean hasProceeded = false;
-        try {
-          // Cache disabling for those 2 kind of request is crucial for
-          // document level security to work. Otherwise we'd get an answer from
-          // the cache some times and would not be filtered
-          if (acl.involvesFilter()) {
-            if (request instanceof SearchRequest) {
-              logger.debug("__old_ACL involves filters, will disable request cache for SearchRequest");
-
-              ((SearchRequest) request).requestCache(Boolean.FALSE);
-            }
-            else if (request instanceof MultiSearchRequest) {
-              logger.debug("__old_ACL involves filters, will disable request cache for MultiSearchRequest");
-              for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
-                sr.requestCache(Boolean.FALSE);
-              }
-            }
-          }
-
-          ResponseActionListener searchListener =
-              new ResponseActionListener(action, request, (ActionListener<ActionResponse>) listener, (__old_RequestContext) rc, logger);
-          chain.proceed(task, action, request, (ActionListener<Response>) searchListener);
-
-          hasProceeded = true;
-          return;
-        } catch (Throwable e) {
-          e.printStackTrace();
-        }
-        if (!hasProceeded) {
-          chain.proceed(task, action, request, listener);
-        }
-      }
-
+    acl.check(requestInfo, new ACLHandler() {
       @Override
       public void onForbidden() {
         ElasticsearchStatusException exc = new ElasticsearchStatusException(
@@ -209,6 +173,42 @@ public class IndexLevelActionFilter implements ActionFilter {
           exc.addHeader("WWW-Authenticate", "Basic");
         }
         listener.onFailure(exc);
+      }
+
+      @Override
+      public void onAllow(Object blockExitResult, Value.VariableResolver rc) {
+
+        boolean hasProceeded = false;
+        try {
+          // Cache disabling for those 2 kind of request is crucial for
+          // document level security to work. Otherwise we'd get an answer from
+          // the cache some times and would not be filtered
+          if (acl.involvesFilter()) {
+            if (request instanceof SearchRequest) {
+              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
+
+              ((SearchRequest) request).requestCache(Boolean.FALSE);
+            }
+            else if (request instanceof MultiSearchRequest) {
+              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
+              for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
+                sr.requestCache(Boolean.FALSE);
+              }
+            }
+          }
+
+          ResponseActionListener searchListener =
+              new ResponseActionListener(action, request, (ActionListener<ActionResponse>) listener, (RequestContext) rc, logger);
+          chain.proceed(task, action, request, (ActionListener<Response>) searchListener);
+
+          hasProceeded = true;
+          return;
+        } catch (Throwable e) {
+          e.printStackTrace();
+        }
+        if (!hasProceeded) {
+          chain.proceed(task, action, request, listener);
+        }
       }
 
       @Override

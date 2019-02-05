@@ -19,7 +19,7 @@ package tech.beshu.ror.settings.rules;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.settings.RuleSettings;
-import tech.beshu.ror.settings.definitions.__old_GroupsProviderLdapSettings;
+import tech.beshu.ror.settings.definitions.GroupsProviderLdapSettings;
 import tech.beshu.ror.settings.definitions.LdapSettings;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 
@@ -38,15 +38,15 @@ public class LdapAuthRuleSettings implements RuleSettings, CacheSettings {
 
   private final Set<String> groups;
   private final Duration cacheTtl;
-  private final __old_GroupsProviderLdapSettings ldapSettings;
+  private final GroupsProviderLdapSettings ldapSettings;
 
   private LdapAuthRuleSettings(LdapSettings settings, Set<String> groups, Duration cacheTtl) {
-    if (!(settings instanceof __old_GroupsProviderLdapSettings))
+    if (!(settings instanceof GroupsProviderLdapSettings))
       throw new SettingsMalformedException("'" + ATTRIBUTE_NAME + "' rule cannot use simplified ldap client settings " +
-                                             "(without '" + __old_GroupsProviderLdapSettings.SEARCH_GROUPS + "' attribute defined)");
+                                             "(without '" + GroupsProviderLdapSettings.SEARCH_GROUPS + "' attribute defined)");
     this.groups = groups;
     this.cacheTtl = cacheTtl;
-    this.ldapSettings = (__old_GroupsProviderLdapSettings) settings;
+    this.ldapSettings = (GroupsProviderLdapSettings) settings;
   }
 
   @SuppressWarnings("unchecked")

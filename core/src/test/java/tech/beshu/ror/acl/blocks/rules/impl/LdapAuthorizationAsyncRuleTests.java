@@ -23,11 +23,11 @@ import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.definitions.ldaps.LdapGroup;
 import tech.beshu.ror.acl.definitions.ldaps.LdapUser;
-import tech.beshu.ror.acl.domain.__old_LoggedUser;
+import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.mocks.MockLdapClientHelper;
 import tech.beshu.ror.mocks.MockedESContext;
 import tech.beshu.ror.mocks.RequestContextMock;
-import tech.beshu.ror.requestcontext.__old_RequestContext;
+import tech.beshu.ror.requestcontext.RequestContext;
 import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
 import tech.beshu.ror.settings.rules.LdapAuthorizationRuleSettings;
 
@@ -56,12 +56,12 @@ public class LdapAuthorizationAsyncRuleTests {
         )),
         MockedESContext.INSTANCE
     );
-    __old_RequestContext rc = RequestContextMock.mockedRequestContext("user", "pass", "group2");
+    RequestContext rc = RequestContextMock.mockedRequestContext("user", "pass", "group2");
     RuleExitResult match = rule.match(rc).get();
 
     // Available groups
     assertEquals(true, match.isMatch());
-    __old_LoggedUser lu = rc.getLoggedInUser().get();
+    LoggedUser lu = rc.getLoggedInUser().get();
     Set<String> availGroups = lu.getAvailableGroups();
     assertEquals(1, availGroups.size());
     assertEquals("group2", availGroups.iterator().next());
