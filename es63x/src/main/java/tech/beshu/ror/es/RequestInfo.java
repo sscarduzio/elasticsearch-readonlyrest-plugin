@@ -62,6 +62,7 @@ import tech.beshu.ror.commons.utils.RCUtils;
 import tech.beshu.ror.commons.utils.ReflecUtils;
 
 import java.lang.reflect.Field;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -444,7 +445,17 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public String extractRemoteAddress() {
-    String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
+    InetSocketAddress remoteAddress = (InetSocketAddress) request.getRemoteAddress();
+    String remoteHost = null;
+    if (remoteAddress != null) {
+    	InetAddress address = remoteAddress.getAddress();
+    	if (address != null) {
+    		remoteHost = address.getHostAddress();
+    	}
+    }
+    if (remoteHost == null) {
+    	remoteHost = request.header("X-Forwarded-For");
+    }
     // Make sure we recognize localhost even when IPV6 is involved
     if (RCUtils.isLocalHost(remoteHost)) {
       remoteHost = RCUtils.LOCALHOST;
