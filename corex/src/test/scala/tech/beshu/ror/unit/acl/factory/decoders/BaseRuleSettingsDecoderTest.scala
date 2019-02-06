@@ -30,7 +30,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
   def assertDecodingSuccess(yaml: String,
                             assertion: T => Unit,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(factory.createAclFrom(yaml, httpClientsFactory)) { case Right(acl: SequentialAcl) =>
+    inside(factory.createAclFrom(yaml, httpClientsFactory)) { case Right((acl: SequentialAcl, _)) =>
       val rule = acl.blocks.head.rules.head
       rule shouldBe a[T]
       assertion(rule.asInstanceOf[T])

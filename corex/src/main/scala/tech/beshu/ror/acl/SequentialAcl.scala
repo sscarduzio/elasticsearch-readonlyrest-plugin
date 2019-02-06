@@ -18,7 +18,8 @@ import scala.collection.SortedSet
 class SequentialAcl(val blocks: NonEmptyList[Block])
   extends Acl {
 
-  override def handle(context: RequestContext, handler: AclHandler): Task[(Vector[History], ExecutionResult)] = {
+  override def handle(context: RequestContext,
+                      handler: AclHandler): Task[(Vector[History], ExecutionResult)] = {
     blocks
       .tail
       .foldLeft(checkBlock(blocks.head, context)) { case (currentResult, block) =>
@@ -122,8 +123,4 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
     if(blockContext.availableGroups.isEmpty) None
     else Some(Header(Name.availableGroups, blockContext.availableGroups))
   }
-
-  override val involvesFilter: Boolean = false // todo: impl
-
-  override val doesRequirePassword: Boolean = false // todo: impl
 }

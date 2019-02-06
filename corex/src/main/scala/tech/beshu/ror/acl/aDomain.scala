@@ -193,4 +193,5 @@ object aDomain {
 
   final case class ClaimName(value: NonEmptyString)
 
+  final case class JwtToken(value: NonEmptyString)
 }

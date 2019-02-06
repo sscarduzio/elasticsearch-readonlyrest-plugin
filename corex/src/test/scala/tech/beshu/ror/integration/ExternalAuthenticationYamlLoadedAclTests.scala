@@ -79,7 +79,7 @@ class ExternalAuthenticationYamlLoadedAclTests extends WordSpec with MockFactory
     new AsyncHttpClientsFactory
   ) match {
     case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-    case Right(createdAcl) => createdAcl
+    case Right(result) => result._1
   }
 
 //  "A test" in {

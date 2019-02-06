@@ -41,19 +41,18 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import scala.collection.immutable.Map;
-import tech.beshu.ror.acl.Acl;
 import tech.beshu.ror.acl.AclHandler;
 import tech.beshu.ror.acl.ResponseWriter;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.factory.AsyncHttpClientsFactory;
 import tech.beshu.ror.acl.factory.HttpClientsFactory;
-import tech.beshu.ror.acl.factory.RorAclFactoryJavaHelper$;
+import tech.beshu.ror.acl.factory.RorEngineFactory$;
+import tech.beshu.ror.acl.factory.RorEngineFactory.Engine;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.commons.SecurityPermissionException;
 import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -69,24 +68,23 @@ import java.util.concurrent.atomic.AtomicReference;
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<Acl>> acl;
+  private final AtomicReference<Optional<Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final LoggerShim loggerShim;
   private final IndexNameExpressionResolver indexResolver;
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
       ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) throws IOException {
     super(settings);
-    loggerShim = ESContextImpl.mkLoggerShim(logger);
 
-    BasicSettings baseSettings = BasicSettings.fromFileObj(loggerShim, env.configFile().toAbsolutePath(), settings);
+    BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
+        env.configFile().toAbsolutePath(), settings);
 
     this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
     this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
-    this.acl = new AtomicReference<>(Optional.empty());
+    this.rorEngine = new AtomicReference<>(Optional.empty());
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
@@ -97,14 +95,13 @@ import java.util.concurrent.atomic.AtomicReference;
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down afer reload
-        Acl newAcl = RorAclFactoryJavaHelper$.MODULE$.reload(httpClientsFactory,
-            newContext.getSettings().getRaw().yaml());
-        acl.set(Optional.of(newAcl));
+        HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down after reload
+        Engine engine = RorEngineFactory$.MODULE$.reload(httpClientsFactory, newContext.getSettings().getRaw().yaml());
+        rorEngine.set(Optional.of(engine));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }
       else {
-        acl.set(Optional.empty());
+        rorEngine.set(Optional.empty());
         logger.info("Configuration reloaded - ReadonlyREST disabled");
       }
     });
@@ -113,7 +110,6 @@ import java.util.concurrent.atomic.AtomicReference;
     logger.info("Readonly REST plugin was loaded...");
 
     settingsObservable.pollForIndex(context.get());
-
   }
 
   @Override
@@ -126,19 +122,18 @@ import java.util.concurrent.atomic.AtomicReference;
       Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
-      Optional<Acl> acl = this.acl.get();
-      if (acl.isPresent()) {
-        handleRequest(acl.get(), task, action, request, listener, chain);
+      Optional<Engine> engine = this.rorEngine.get();
+      if (engine.isPresent()) {
+        handleRequest(engine.get(), task, action, request, listener, chain);
       }
       else {
         chain.proceed(task, action, request, listener);
       }
       return null;
-
     });
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(Acl acl, Task task,
+  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(Engine engine, Task task,
       String action, Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
     RestChannel channel = ThreadRepo.channel.get();
     if (channel != null) {
@@ -156,7 +151,7 @@ import java.util.concurrent.atomic.AtomicReference;
     RequestContext requestContext = new EsRequestContext(requestInfo);
 
     // todo: optimize handler creation
-    acl.handle(requestContext, new AclHandler() {
+    engine.acl().handle(requestContext, new AclHandler() {
       ResponseWriter writer = new ResponseWriter() {
         @Override
         public void writeResponseHeaders(Map<String, String> headers) {
@@ -191,7 +186,7 @@ import java.util.concurrent.atomic.AtomicReference;
           // Cache disabling for those 2 kind of request is crucial for
           // document level security to work. Otherwise we'd get an answer from
           // the cache some times and would not be filtered
-          if (acl.involvesFilter()) {
+          if (engine.context().involvesFilter()) {
             if (request instanceof SearchRequest) {
               logger.debug("__old_ACL involves filters, will disable request cache for SearchRequest");
 
@@ -225,14 +220,14 @@ import java.util.concurrent.atomic.AtomicReference;
       public void onForbidden() {
         ElasticsearchStatusException exc = new ElasticsearchStatusException(
             context.get().getSettings().getForbiddenMessage(),
-            acl.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN) {
+            engine.context().doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN) {
           @Override
           public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
             builder.field("reason", context.get().getSettings().getForbiddenMessage());
             return builder;
           }
         };
-        if (acl.doesRequirePassword()) {
+        if (engine.context().doesRequirePassword()) {
           exc.addHeader("WWW-Authenticate", "Basic");
         }
         listener.onFailure(exc);

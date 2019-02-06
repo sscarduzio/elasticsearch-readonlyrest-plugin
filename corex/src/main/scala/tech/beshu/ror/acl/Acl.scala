@@ -7,8 +7,6 @@ import tech.beshu.ror.acl.request.RequestContext
 
 trait Acl {
   def handle(requestContext: RequestContext, handler: AclHandler): Task[(Vector[History], ExecutionResult)]
-  def involvesFilter: Boolean
-  def doesRequirePassword: Boolean
 }
 
 trait AclHandler {

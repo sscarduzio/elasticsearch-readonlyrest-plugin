@@ -21,7 +21,7 @@ import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldLi
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider, YamlOps}
-import tech.beshu.ror.acl.{Acl, SequentialAcl}
+import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
 
 import scala.language.implicitConversions
 
@@ -31,7 +31,7 @@ class RorAclFactory(implicit clock: Clock,
   extends Logging {
 
   def createAclFrom(settingsYamlString: String,
-                    httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], Acl] = {
+                    httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], (Acl, AclStaticContext)] = {
     parser.parse(settingsYamlString) match {
       case Right(json) =>
         createFrom(json, httpClientFactory)
@@ -47,14 +47,14 @@ class RorAclFactory(implicit clock: Clock,
 
   private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
     val rorSectionName = "readonlyrest"
-    val decoder: AccumulatingDecoder[Acl] = AccumulatingDecoder.instance { c =>
+    val decoder: AccumulatingDecoder[(Acl, AclStaticContext)] = AccumulatingDecoder.instance { c =>
       c.downField(rorSectionName).success match {
         case Some(rorCursor) =>
           aclDecoder(httpClientFactory).apply(rorCursor)
         case None =>
           val failure = DecodingFailureOps.fromError(ReadonlyrestSettingsCreationError(Message(s"No $rorSectionName section found")))
           AccumulatingDecoder
-            .failed[Acl](NonEmptyList.one(failure))
+            .failed(NonEmptyList.one(failure))
             .apply(c)
       }
     }
@@ -134,6 +134,7 @@ class RorAclFactory(implicit clock: Clock,
               .remove(Attributes.Block.policy)
               .remove(Attributes.Block.verbosity))
           ))
+          // todo: validate rules (eg authz without authc)
         } yield new Block(
           name,
           policy.getOrElse(Block.Policy.Allow),
@@ -145,7 +146,7 @@ class RorAclFactory(implicit clock: Clock,
   }
 
 
-  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AccumulatingDecoder[Acl] =
+  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AccumulatingDecoder[(Acl, AclStaticContext)] =
     AccumulatingDecoder.instance { c =>
       val decoder = for {
         authProxies <- new ProxyAuthDefinitionsDecoder
@@ -154,7 +155,7 @@ class RorAclFactory(implicit clock: Clock,
         jwtDefs <- new JwtDefinitionsDecoder(httpClientFactory, resolver)
         rorKbnDefs <- new RorKbnDefinitionsDecoder(resolver)
         userDefs <- new UsersDefinitionsDecoder(authenticationServices, authProxies, jwtDefs, rorKbnDefs)
-        acl <- {
+        blocks <- {
           implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs))
           DecoderHelpers
             .decodeFieldList[Block](Attributes.acl, RulesLevelCreationError.apply)
@@ -170,14 +171,12 @@ class RorAclFactory(implicit clock: Clock,
                     }
                 }
             }
-            .map { blocks =>
-              blocks.map { block =>
-                logger.info("ADDING BLOCK:\t" + block.show)
-              }
-              new SequentialAcl(blocks): Acl
-            }
         }
-      } yield acl
+        acl = {
+          blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+          new SequentialAcl(blocks): Acl
+        }
+      } yield (acl, new AclStaticContext(blocks))
       decoder.accumulating.apply(c)
     }
 }

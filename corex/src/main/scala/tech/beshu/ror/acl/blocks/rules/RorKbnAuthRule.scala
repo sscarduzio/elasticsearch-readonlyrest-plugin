@@ -37,7 +37,7 @@ class RorKbnAuthRule(val settings: Settings)
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
     val authHeaderName = Header.Name.authorization
-    requestContext.bearerToken(authHeaderName) match {
+    requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
         Rejected
@@ -46,7 +46,7 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def process(token: BearerToken, blockContext: BlockContext) = {
+  private def process(token: JwtToken, blockContext: BlockContext) = {
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
         Rejected
@@ -64,17 +64,17 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def userAndGroupsFromJwtToken(token: BearerToken) = {
+  private def userAndGroupsFromJwtToken(token: JwtToken) = {
     claimsFrom(token)
       .map { claims =>
         (claims.userIdClaim(RorKbnAuthRule.userClaimName), claims.groupsClaim(RorKbnAuthRule.groupsClaimName))
       }
   }
 
-  private def claimsFrom(token: BearerToken) = {
-    Try(parser.parseClaimsJws(token.value).getBody).toEither.left.map {
+  private def claimsFrom(token: JwtToken) = {
+    Try(parser.parseClaimsJws(token.value.value).getBody).toEither.left.map {
       ex =>
-        logger.error(s"JWT token '${token.show}' parsing error", ex)
+        logger.debug(s"JWT token '${token.show}' parsing error", ex)
         ()
     }
   }

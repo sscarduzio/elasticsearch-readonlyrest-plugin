@@ -112,10 +112,6 @@ class AclLoggingDecorator(underlying: Acl, serializationTool: Option[Serializati
        | HIS:${history.map(_.show).mkString(", ")}
        | }""".stripMargin.replaceAll("\n", " ")
   }
-
-  override def involvesFilter: Boolean = underlying.involvesFilter
-
-  override def doesRequirePassword: Boolean = underlying.doesRequirePassword
 }
 
 object AclLoggingDecorator {

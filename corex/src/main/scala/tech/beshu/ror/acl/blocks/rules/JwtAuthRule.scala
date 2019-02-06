@@ -5,7 +5,7 @@ import cats.implicits._
 import io.jsonwebtoken.{Claims, Jwts}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.{Group, LoggedUser, Secret, User}
+import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod._
@@ -40,16 +40,30 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
                      blockContext: BlockContext): Task[RuleResult] = Task
     .unit
     .flatMap { _ =>
-      requestContext.bearerToken(settings.jwt.headerName) match {
+      jwtTokenFrom(requestContext) match {
         case None =>
-          logger.debug(s"Authorization header '${settings.jwt.headerName.show}' is missing or does not contain a bearer token")
+          logger.debug(s"Authorization header '${settings.jwt.headerName.show}' is missing or does not contain a JWT token")
           Task.now(Rejected)
         case Some(token) =>
           process(token, blockContext)
       }
     }
 
-  private def process(token: BearerToken, blockContext: BlockContext) = {
+  private def jwtTokenFrom(requestContext: RequestContext) = {
+    settings.jwt.headerName match {
+      case Header.Name.authorization =>
+        requestContext
+          .bearerToken
+          .map(t => JwtToken(t.value))
+      case customHeaderName =>
+        requestContext
+          .headers
+          .find(_.name === customHeaderName)
+          .map(h => JwtToken(h.value))
+    }
+  }
+
+  private def process(token: JwtToken, blockContext: BlockContext) = {
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
         Task.now(Rejected)
@@ -65,7 +79,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
             settings.jwt.checkMethod match {
               case NoCheck(service) =>
                 service
-                  .authenticate(User.Id(hasher.hash(token.value)), Secret(token.value))
+                  .authenticate(User.Id(hasher.hash(token.value.value)), Secret(token.value.value))
                   .map(RuleResult.fromCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))
@@ -74,27 +88,27 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
-  private def userAndGroupsFromJwtToken(token: BearerToken) = {
+  private def userAndGroupsFromJwtToken(token: JwtToken) = {
     claimsFrom(token).map { claims => (userIdFrom(claims), groupsFrom(claims)) }
   }
 
-  private def claimsFrom(token: BearerToken) = {
+  private def claimsFrom(token: JwtToken) = {
     settings.jwt.checkMethod match {
       case NoCheck(_) =>
-        token.value.split("\\.").toList match {
+        token.value.value.split("\\.").toList match {
           case fst :: snd :: _ =>
             Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody).toEither.left.map {
               ex =>
-                logger.error(s"JWT token '${token.show}' parsing error", ex)
+                logger.debug(s"JWT token '${token.show}' parsing error", ex)
                 ()
             }
           case _ =>
             Left(())
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
-        Try(parser.parseClaimsJws(token.value).getBody).toEither.left.map {
+        Try(parser.parseClaimsJws(token.value.value).getBody).toEither.left.map {
           ex =>
-            logger.error(s"JWT token '${token.show}' parsing error", ex)
+            logger.debug(s"JWT token '${token.show}' parsing error", ex)
             ()
         }
     }

@@ -3,6 +3,7 @@ package tech.beshu.ror.acl.request
 import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.{Method, Uri}
+import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.Information
 import tech.beshu.ror.acl.blocks.VariablesManager
 import tech.beshu.ror.acl.blocks.VariablesResolver
@@ -70,14 +71,19 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .flatten
   }
 
-  def bearerToken(headerName: Header.Name): Option[BearerToken] = {
+  def bearerToken: Option[BearerToken] = {
     requestContext
       .headers
-      .find(_.name === headerName)
+      .find(_.name === Header.Name.authorization)
       .flatMap { h =>
         val authMethodName = "Bearer "
-        if(h.value.value.startsWith(authMethodName)) Some(BearerToken(h.value.value.substring(authMethodName.length)))
-        else None
+        if (h.value.value.startsWith(authMethodName)) {
+          NonEmptyString
+            .unapply(h.value.value.substring(authMethodName.length))
+            .map(BearerToken.apply)
+        } else {
+          None
+        }
       }
   }
 
@@ -98,9 +104,6 @@ object RequestContextOps {
     }
   }
 
-  final case class BearerToken(value: String) extends AnyVal
-  object BearerToken {
-
-  }
+  final case class BearerToken(value: NonEmptyString)
 }
 

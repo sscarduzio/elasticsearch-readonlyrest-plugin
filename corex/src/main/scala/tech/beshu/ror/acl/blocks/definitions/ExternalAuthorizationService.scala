@@ -93,7 +93,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
         logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
         groups.toSet
       case Failure(ex) =>
-        logger.error(s"Group based authorization response exception - provider '${id.show}'", ex)
+        logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
         Set.empty
     }
   }

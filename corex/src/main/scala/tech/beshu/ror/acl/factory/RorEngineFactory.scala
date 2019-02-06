@@ -3,12 +3,12 @@ package tech.beshu.ror.acl.factory
 import java.time.Clock
 
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.{Acl, AclLoggingDecorator}
+import tech.beshu.ror.acl.{Acl, AclLoggingDecorator, AclStaticContext}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.commons.settings.SettingsMalformedException
 
-object RorAclFactoryJavaHelper extends Logging {
+object RorEngineFactory extends Logging {
 
   private implicit val clock: Clock = Clock.systemUTC()
   private implicit val uuidProvider: UuidProvider = JavaUuidProvider
@@ -16,10 +16,13 @@ object RorAclFactoryJavaHelper extends Logging {
   private val aclFactory = new RorAclFactory
 
   def reload(httpClientFactory: HttpClientsFactory,
-             settingsYaml: String): Acl = synchronized {
+             settingsYaml: String): Engine = synchronized {
     aclFactory.createAclFrom(settingsYaml, httpClientFactory) match {
-      case Right(acl) =>
-        new AclLoggingDecorator(acl, Option.empty) // todo: add serialization tool
+      case Right((acl, context)) =>
+        Engine(
+          new AclLoggingDecorator(acl, Option.empty), // todo: add serialization tool
+          context
+        )
       case Left(errors) =>
         val errorsMessage = errors
           .map(_.reason)
@@ -32,4 +35,7 @@ object RorAclFactoryJavaHelper extends Logging {
         throw new SettingsMalformedException(errorsMessage)
     }
   }
+
+  final case class Engine(acl: Acl, context: AclStaticContext)
+
 }

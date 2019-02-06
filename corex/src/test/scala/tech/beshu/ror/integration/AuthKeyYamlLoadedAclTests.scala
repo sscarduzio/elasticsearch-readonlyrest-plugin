@@ -39,7 +39,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
     MockHttpClientsFactory
   ) match {
     case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-    case Right(createdAcl) => createdAcl
+    case Right(result) => result._1
   }
 
   "An ACL" when {

@@ -90,7 +90,7 @@ class GroupsRule(val settings: Settings)
           }
         }
         .onErrorRecover { case ex =>
-          logger.error(s"Authentication error; req=${requestContext.id.show}", ex)
+          logger.debug(s"Authentication error; req=${requestContext.id.show}", ex)
           None
         }
     }

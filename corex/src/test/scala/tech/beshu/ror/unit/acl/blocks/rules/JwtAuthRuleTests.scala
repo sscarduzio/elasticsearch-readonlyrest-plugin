@@ -188,6 +188,24 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
+      "custom authorization header is used" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test".nonempty),
+            Header.Name("x-jwt-custom-header".nonempty),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = None,
+            groupsClaim = None
+          ),
+          tokenHeader = Header(
+            Header.Name("x-jwt-custom-header".nonempty),
+            NonEmptyString.unsafeFrom(Jwts.builder.setSubject("test").signWith(key).compact)
+          )
+        ) {
+          blockContext => assertBlockContext()(blockContext)
+        }
+      }
     }
     "not match" when {
       "token has invalid HS256 signature" in {
