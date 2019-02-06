@@ -152,7 +152,6 @@ public class JwtAuthAsyncRule extends AsyncRule implements Authentication {
       }
       else {
         String[] ar = token.get().split("\\.");
-        logger.info("1--- " +  ar.toString());
         if (ar.length < 2) {
           // token is not a valid JWT
           return CompletableFuture.completedFuture(NO_MATCH);
