@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.utils.containers;
 
+import com.google.common.base.Strings;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -71,6 +72,9 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     return create(project, ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
   }
   private static boolean greaterOrEqualThan(String esVersion, int maj, int min, int patchLevel){
+    if(Strings.isNullOrEmpty(esVersion)){
+      throw new IllegalArgumentException("invalid esVersion: " + esVersion);
+    }
     return VersionUtil
         .parseVersion( esVersion, "x", "y")
         .compareTo(
@@ -86,7 +90,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
 
 
-    String dockerImage = greaterOrEqualThan(esVersion,6,3,0) ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
+    String dockerImage = greaterOrEqualThan(project.getESVersion(),6,3,0) ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
     String javaOptionsFileName = "jvm.options";
@@ -124,7 +128,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 //                    .run("yum update -y && yum install -y nc java-1.8.0-openjdk-headless && yum clean all");
 //              }
 
-              if(greaterOrEqualThan(esVersion,6,6,0)){
+              if(greaterOrEqualThan(project.getESVersion(),6,6,0)){
                   builder.run("echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml");
               }
 
