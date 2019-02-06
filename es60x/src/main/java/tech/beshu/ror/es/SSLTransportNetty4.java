@@ -48,6 +48,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   private final BasicSettings basicSettings;
   private final LoggerShim logger;
+  private  BasicSettings.SSLSettings sslSettings;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
@@ -57,7 +58,8 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     Environment env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
     this.basicSettings = baseSettings;
-    if (basicSettings.isSSLEnabled()) {
+    if (basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      this.sslSettings = basicSettings.getSslInternodeSettings().get();
       logger.info("creating SSL transport");
     }
   }
@@ -86,7 +88,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
 
-      new SSLCertParser(basicSettings, logger, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -96,11 +98,11 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           );
 
           logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, basicSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
 
-          basicSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
+          sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
-          basicSettings.getAllowedSSLProtocols()
+          sslSettings.getAllowedSSLProtocols()
                        .map(protoList -> protoList.toArray(new String[protoList.size()]))
                        .ifPresent(sslCtxBuilder::protocols);
 

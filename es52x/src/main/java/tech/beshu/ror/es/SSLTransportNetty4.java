@@ -50,46 +50,47 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   protected final LoggerShim logger;
   private final BasicSettings basicSettings;
+  private  BasicSettings.SSLSettings sslSettngs;
   protected SslContext sslContext;
 
-
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-                            ThreadPool threadPool, NamedXContentRegistry xContentRegistry) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
 
     Environment env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
     this.basicSettings = baseSettings;
-    if (basicSettings.isSSLEnabled()) {
+
+    if (basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
       logger.info("creating SSL transport");
+      this.sslSettngs = baseSettings.getSslInternodeSettings().get();
+
+      new SSLCertParser(sslSettngs, logger, (certChain, privateKey) -> {
+
+        try {
+          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+          SslContextBuilder sslcb = SslContextBuilder.forServer(
+              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+              null
+          );
+
+          // Creating one SSL engine just for protocol/cipher validation and logging
+          sslContext = sslcb.build();
+          SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
+
+          logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
+          SSLCertParser.validateProtocolAndCiphers(eng, logger, sslSettngs);
+
+        } catch (Exception e) {
+          logger.error("Failed to load SSL CertChain & private key from Keystore! "
+              + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+        }
+      });
     }
 
-
-    new SSLCertParser(basicSettings, logger, (certChain, privateKey) -> {
-
-      try {
-        // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-        SslContextBuilder sslcb = SslContextBuilder.forServer(
-          new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-          new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-          null
-        );
-
-        // Creating one SSL engine just for protocol/cipher validation and logging
-        sslContext = sslcb.build();
-        SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
-
-        logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-        SSLCertParser.validateProtocolAndCiphers(eng, logger, basicSettings);
-
-      } catch (Exception e) {
-        logger.error("Failed to load SSL CertChain & private key from Keystore! "
-                       + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-      }
-    });
   }
-
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
     if (!this.lifecycle.started()) {
@@ -119,15 +120,15 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      if(!basicSettings.isSSLEnabled()) {
+      if (!sslSettngs.isSSLEnabled()) {
         return;
       }
       SSLEngine eng = sslContext.newEngine(ch.alloc());
 
-      basicSettings.getAllowedSSLProtocols()
-        .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
-      basicSettings.getAllowedSSLCiphers()
-        .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
+      sslSettngs.getAllowedSSLProtocols()
+                   .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
+      sslSettngs.getAllowedSSLCiphers()
+                   .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
 
       ch.pipeline().addFirst("ssl_netty4_handler", new SslHandler(eng));
 
