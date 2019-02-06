@@ -45,7 +45,9 @@ public class InternodeSSLTest {
 
   @Test
   public void testSSLnoVerification() throws Exception {
-
+    if(Integer.parseInt(container.getEsVersion().replace(".","")) < 660 ) {
+      return;
+    }
     TransportClient client = new PreBuiltXPackTransportClient(
         Settings.builder()
                 .put("client.transport.sniff", true)

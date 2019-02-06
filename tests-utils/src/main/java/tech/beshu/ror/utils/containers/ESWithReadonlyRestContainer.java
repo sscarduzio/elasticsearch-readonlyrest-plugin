@@ -58,11 +58,11 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 
-  private final String esVersion;
+  private  static String esVersion;
 
   private ESWithReadonlyRestContainer(String esVersion, ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
-    this.esVersion = esVersion;
+    ESWithReadonlyRestContainer.esVersion = esVersion;
   }
 
   public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
@@ -70,7 +70,12 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     return create(project, ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
   }
-
+  private static boolean greaterOrEqualThan(String esVersion, int maj, int min, int patchLevel){
+    return VersionUtil
+        .parseVersion( esVersion, "x", "y")
+        .compareTo(
+            new Version(maj, min, patchLevel, "", "x", "y")) >= 0;
+  }
   public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
       File elasticsearchConfigFile,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
@@ -78,12 +83,8 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         new ContainerCreationException("Plugin file assembly failed")
     );
 
-    boolean greaterOrEqualThan630 = VersionUtil
-        .parseVersion(project.getESVersion(), "x", "y")
-        .compareTo(
-            new Version(6, 3, 0, "", "x", "y")) >= 0;
 
-    String dockerImage = greaterOrEqualThan630 ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
+    String dockerImage = greaterOrEqualThan(esVersion,6,3,0) ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
     String javaOptionsFileName = "jvm.options";
@@ -108,10 +109,8 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                   .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
                   .copy(javaOptionsFileName, "/usr/share/elasticsearch/config/")
                   .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/readonlyrest.yml")
-                  .run(
-                      "grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
+                  .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-                  .run("echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
                   .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
                   .user("root")
@@ -122,6 +121,10 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 //                    .env("JAVA_HOME", "/usr/lib/jvm/jre-1.8.0-openjdk")
 //                    .run("yum update -y && yum install -y nc java-1.8.0-openjdk-headless && yum clean all");
 //              }
+
+              if(greaterOrEqualThan(esVersion,6,6,0)){
+                  builder.run("echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml");
+              }
 
               builder.user("elasticsearch")
                      .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms")
