@@ -1,4 +1,5 @@
 #discovery.type: single-node
 #transport.type: local
 http.type: ssl_netty4
+transport.type: ror_ssl_internode
 path.repo: "/tmp/lolrepo1"

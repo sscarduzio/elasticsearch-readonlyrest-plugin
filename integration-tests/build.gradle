@@ -29,6 +29,7 @@ repositories {
     mavenCentral()
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
+    maven { url 'https://artifacts.elastic.co/maven' }
 }
 
 test {
@@ -56,6 +57,8 @@ dependencies {
     testCompile 'org.gradle:gradle-tooling-api:4.10.2'
     //testCompile 'org.toile-libre.libe:curl:0.0.12'
     testCompile 'com.mashape.unirest:unirest-java:1.4.9'
+    testCompile "org.elasticsearch.client:x-pack-transport:6.6.0"
+
 }
 
 license {

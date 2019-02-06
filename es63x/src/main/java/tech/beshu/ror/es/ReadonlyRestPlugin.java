@@ -36,6 +36,7 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
@@ -53,6 +54,7 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.Transport;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.configuration.AllowedSettings;
@@ -136,15 +138,42 @@ public class ReadonlyRestPlugin extends Plugin
       HttpServerTransport.Dispatcher dispatcher) {
     return Collections.singletonMap(
         "ssl_netty4", () ->
-            new SSLTransportNetty4(
+            new SSLNetty4HttpServerTransport(
                 settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, environment
             ));
+  }
+
+  @Override
+  public Map<String, Supplier<Transport>> getTransports(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
+      CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService) {
+    return Collections.singletonMap("ror_ssl_internode", () ->
+        new SSLNetty4InternodeServerTransport(
+            settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, environment)
+    );
   }
 
   @Override
   public void close() throws IOException {
     ESContextImpl.shutDownObservable.shutDown();
   }
+
+  //  @Override
+  //  public List<TransportInterceptor> getTransportInterceptors(NamedWriteableRegistry namedWriteableRegistry, ThreadContext threadContext) {
+  //    TransportInterceptor ti = new TransportInterceptor() {
+  //      @Override
+  //      public AsyncSender interceptSender(AsyncSender sender) {
+  //        return null;
+  //      }
+  //
+  //      @Override
+  //      public <T extends TransportRequest> TransportRequestHandler<T> interceptHandler(String action, String executor, boolean forceExecution,
+  //          TransportRequestHandler<T> actualHandler) {
+  //        return null;
+  //      }
+  //    };
+  //
+  //    return Collections.singletonList(ti);
+  //  }
 
   @Override
   public List<Setting<?>> getSettings() {

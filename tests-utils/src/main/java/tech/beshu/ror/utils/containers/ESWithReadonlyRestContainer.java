@@ -52,8 +52,9 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   private static int ES_PORT = 9200;
+  private static int ES_TRANSPORT_PORT = 9300;
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
-  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
+  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(2400);
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 
@@ -85,6 +86,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     String dockerImage = greaterOrEqualThan630 ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
+    String javaOptionsFileName = "jvm.options";
     String keystoreFileName = "keystore.jks";
 
     logger.info(sdf.format(System.currentTimeMillis()) + " Creating ES container ...");
@@ -96,6 +98,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
             .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
             .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
             .withFileFromFile(keystoreFileName, ContainerUtils.getResourceFile("/" + keystoreFileName))
+            .withFileFromFile(javaOptionsFileName, ContainerUtils.getResourceFile("/" + javaOptionsFileName))
             .withDockerfileFromBuilder(builder -> {
               builder
                   .from(dockerImage + ":" + project.getESVersion())
@@ -103,10 +106,12 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                   .copy(pluginFile.getAbsolutePath(), "/tmp/")
                   .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
                   .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
+                  .copy(javaOptionsFileName, "/usr/share/elasticsearch/config/")
                   .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/readonlyrest.yml")
                   .run(
                       "grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+                  .run("echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
                   .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
                   .user("root")
@@ -119,7 +124,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 //              }
 
               builder.user("elasticsearch")
-                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms")
                      .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + pluginFile.getName());
               logger.info("Dockerfile\n" + builder.build());
             })
@@ -134,7 +139,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               .toString();
           System.out.print(logLine);
         })
-        .withExposedPorts(ES_PORT)
+        .withExposedPorts(ES_PORT, ES_TRANSPORT_PORT)
         .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 
   }
@@ -150,7 +155,9 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   public Integer getESPort() {
     return this.getMappedPort(ES_PORT);
   }
-
+  public Integer getTransportPort() {
+    return this.getMappedPort(ES_TRANSPORT_PORT);
+  }
   public RestClient getClient(Header... headers) {
     return new RestClient(true, getESHost(), getESPort(), Optional.empty(), headers);
   }

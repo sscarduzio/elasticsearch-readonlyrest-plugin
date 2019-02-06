@@ -39,13 +39,13 @@ public class SSLCertParser {
   private final SSLContextCreator creator;
   private final LoggerShim logger;
 
-  public SSLCertParser(BasicSettings settings, LoggerShim logger, SSLContextCreator creator) {
+  public SSLCertParser(BasicSettings.SSLSettings settings, LoggerShim logger, SSLContextCreator creator) {
     this.creator = creator;
     this.logger = logger;
     createContext(settings);
   }
 
-  public static boolean validateProtocolAndCiphers(SSLEngine eng, LoggerShim logger, BasicSettings basicSettings) {
+  public static boolean validateProtocolAndCiphers(SSLEngine eng, LoggerShim logger, BasicSettings.SSLSettings basicSettings) {
     try {
       String[] defaultProtocols = eng.getEnabledProtocols();
 
@@ -71,7 +71,7 @@ public class SSLCertParser {
     }
   }
 
-  private void createContext(BasicSettings settings) {
+  private void createContext(BasicSettings.SSLSettings settings) {
     if (!settings.isSSLEnabled()) {
       logger.info("ROR SSL: SSL is disabled");
       return;

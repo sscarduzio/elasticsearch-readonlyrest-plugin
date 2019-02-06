@@ -1,0 +1,25 @@
+http.bind_host: _eth0:ipv4_
+network.host: _eth0:ipv4_
+
+http.type: ssl_netty4
+transport.type: ror_ssl_internode
+
+readonlyrest:
+  enable: true
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  ssl_internode:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+    - name: who cares
+      type: allow
+
+
