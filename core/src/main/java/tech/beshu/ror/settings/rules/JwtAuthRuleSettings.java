@@ -80,6 +80,10 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
     return jwtAuthSettings.getHeaderName();
   }
 
+  public String getHeaderPrefix() {
+    return jwtAuthSettings.getHeaderPrefix();
+  }
+
   public Optional<String> getExternalValidator() {
     return jwtAuthSettings.getExternalValidator();
   }
