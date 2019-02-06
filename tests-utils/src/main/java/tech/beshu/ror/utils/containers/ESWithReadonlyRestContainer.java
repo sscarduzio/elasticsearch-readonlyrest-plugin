@@ -74,14 +74,16 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     return VersionUtil
         .parseVersion( esVersion, "x", "y")
         .compareTo(
-            new Version(maj, min, patchLevel, "", "x", "y")) >= 0;
+            new Version(maj, min, patchLevel, "", "x", "y")) <= 0;
   }
+
   public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
       File elasticsearchConfigFile,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File pluginFile = project.assemble().orElseThrow(() ->
         new ContainerCreationException("Plugin file assembly failed")
     );
+
 
 
     String dockerImage = greaterOrEqualThan(esVersion,6,3,0) ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
