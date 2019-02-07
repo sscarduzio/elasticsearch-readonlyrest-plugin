@@ -3,17 +3,19 @@ package tech.beshu.ror.unit.acl.factory
 import java.time.Clock
 
 import cats.data.NonEmptyList
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
+import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.RorAclFactory
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
-import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 
-class RorAclFactoryTests extends WordSpec with Inside {
+class RorAclFactoryTests extends WordSpec with Inside with MockFactory {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
@@ -226,6 +228,31 @@ class RorAclFactoryTests extends WordSpec with Inside {
             |""".stripMargin
         val acl = factory.createAclFrom(yaml, MockHttpClientsFactory)
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown verbosity value: unknown")))))
+      }
+      "block has authorization rule, but no authentication rule" in {
+        val yaml =
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    groups_provider_authorization:
+            |      user_groups_provider: "GroupsService1"
+            |      groups: ["group3"]
+            |      users: user1
+            |
+            |  user_groups_providers:
+            |
+            |  - name: GroupsService1
+            |    groups_endpoint: "http://localhost:8080/groups"
+            |    auth_token_name: "user"
+            |    auth_token_passed_as: QUERY_PARAM
+            |    response_groups_json_path: "$..groups[?(@.name)].name"
+            |
+            |""".stripMargin
+        val acl = factory.createAclFrom(yaml, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))))
       }
     }
     "return rule level error" when {

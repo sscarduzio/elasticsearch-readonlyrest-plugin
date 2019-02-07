@@ -135,12 +135,6 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
-  public Set<String> getExpandedIndices(Set<String> ixsSet) {
-    //todo: fixme
-    return null;
-  }
-
-  @Override
   public Set<String> extractIndexMetadata(String index) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
     return lookup.get(index).getIndices().stream().map(IndexMetaData::getIndexUUID).collect(Collectors.toSet());
@@ -598,8 +592,19 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean extractIsAllowedForDLS() {
-    // todo: fixme
-    return false;
+    if (!extractIsReadRequest()) {
+      return false;
+    }
+    if (actionRequest instanceof SearchRequest) {
+      SearchRequest sr = (SearchRequest) actionRequest;
+      if (sr.source() == null) {
+        return true;
+      }
+      if (sr.source().profile() || (sr.source().suggest() != null && !sr.source().suggest().getSuggestions().isEmpty())) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

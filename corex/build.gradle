@@ -77,6 +77,7 @@ dependencies {
     testCompile group: 'org.scalamock',             name: 'scalamock_2.12',                         version: '3.6.0'
     testCompile group: 'org.scalamock',             name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
     testCompile group: 'org.scalatest',             name: 'scalatest_2.12',                         version: '3.0.5'
+    testCompile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.11'
     
     compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
@@ -87,7 +88,7 @@ dependencies {
     compile 'org.jooq:jool:0.9.12'
     compile 'com.github.seancfoley:ipaddress:5.0.0'
 
-    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.8.11'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.11'
     compileOnly 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.11'
     compile 'io.jsonwebtoken:jjwt-api:0.10.5'
     runtime 'io.jsonwebtoken:jjwt-impl:0.10.5',

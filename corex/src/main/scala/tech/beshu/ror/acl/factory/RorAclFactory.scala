@@ -15,6 +15,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError._
 import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
+import tech.beshu.ror.acl.factory.RulesValidator.ValidationError
 import tech.beshu.ror.acl.factory.decoders.definitions._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
@@ -32,6 +33,7 @@ class RorAclFactory(implicit clock: Clock,
 
   def createAclFrom(settingsYamlString: String,
                     httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], (Acl, AclStaticContext)] = {
+    // todo: maybe we should parse only ROR part of yaml?
     parser.parse(settingsYamlString) match {
       case Right(json) =>
         createFrom(json, httpClientFactory)
@@ -110,6 +112,17 @@ class RorAclFactory(implicit clock: Clock,
       }
     })
 
+  private def rulesDecoder(blockName: Block.Name, definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = {
+    rulesNelDecoder(definitions)
+      .emapE { rules =>
+        RulesValidator.validate(rules) match {
+          case Right(_) => Right(rules)
+          case Left(ValidationError.AuthorizationWithoutAuthentication) =>
+            Left(BlocksLevelCreationError(Message(s"The '${blockName.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))
+        }
+      }
+  }
+
   private implicit def blockDecoder(definitions: DefinitionsPack): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emapE {
@@ -128,13 +141,13 @@ class RorAclFactory(implicit clock: Clock,
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesNelDecoder(definitions).tryDecode(c.withFocus(
-            _.mapObject(_
-              .remove(Attributes.Block.name)
-              .remove(Attributes.Block.policy)
-              .remove(Attributes.Block.verbosity))
-          ))
-          // todo: validate rules (eg authz without authc)
+          rules <- rulesDecoder(name, definitions)
+            .tryDecode(c.withFocus(
+              _.mapObject(_
+                .remove(Attributes.Block.name)
+                .remove(Attributes.Block.policy)
+                .remove(Attributes.Block.verbosity))
+            ))
         } yield new Block(
           name,
           policy.getOrElse(Block.Policy.Allow),
@@ -145,6 +158,13 @@ class RorAclFactory(implicit clock: Clock,
       }
   }
 
+  private def aclStaticContextDecoder(blocks: NonEmptyList[Block]): Decoder[AclStaticContext] = {
+    Decoder.instance { c =>
+      for {
+        basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
+      } yield new AclStaticContext(blocks, basicAuthPrompt.getOrElse(true))
+    }
+  }
 
   private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AccumulatingDecoder[(Acl, AclStaticContext)] =
     AccumulatingDecoder.instance { c =>
@@ -172,11 +192,12 @@ class RorAclFactory(implicit clock: Clock,
                 }
             }
         }
+        staticContext <- aclStaticContextDecoder(blocks)
         acl = {
           blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
           new SequentialAcl(blocks): Acl
         }
-      } yield (acl, new AclStaticContext(blocks))
+      } yield (acl, staticContext)
       decoder.accumulating.apply(c)
     }
 }
@@ -186,18 +207,29 @@ object RorAclFactory {
   sealed trait AclCreationError {
     def reason: Reason
   }
+
   object AclCreationError {
+
     final case class UnparsableYamlContent(reason: Reason) extends AclCreationError
+
     final case class ReadonlyrestSettingsCreationError(reason: Reason) extends AclCreationError
+
     final case class DefinitionsLevelCreationError(reason: Reason) extends AclCreationError
+
     final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
+
     final case class RulesLevelCreationError(reason: Reason) extends AclCreationError
+
     final case class ValueLevelCreationError(reason: Reason) extends AclCreationError
 
     sealed trait Reason
+
     object Reason {
+
       final case class Message(value: String) extends Reason
+
       final case class MalformedValue private(value: String) extends Reason
+
       object MalformedValue {
         def apply(json: Json): MalformedValue = from(json)
 
@@ -205,6 +237,7 @@ object RorAclFactory {
           YamlOps.jsonToYamlString(json)
         }
       }
+
     }
 
   }

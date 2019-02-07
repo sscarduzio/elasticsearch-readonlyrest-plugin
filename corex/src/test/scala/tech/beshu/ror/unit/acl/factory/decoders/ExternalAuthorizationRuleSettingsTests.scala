@@ -30,6 +30,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
               |    groups_provider_authorization:
               |      user_groups_provider: "GroupsService1"
               |      groups: ["group3"]
@@ -64,6 +65,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
               |    groups_provider_authorization:
               |      user_groups_provider: GroupsService2
               |      groups: ["group3"]
@@ -103,6 +105,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
               |    groups_provider_authorization:
               |      user_groups_provider: "GroupsService1"
               |      groups: ["group3"]
@@ -138,6 +141,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
               |    groups_provider_authorization:
               |      user_groups_provider: GroupsService1
               |      groups: ["group3"]
@@ -170,6 +174,7 @@ class ExternalAuthorizationRuleSettingsTests
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
               |    groups_provider_authorization:
               |      user_groups_provider: GroupsService1
               |      groups: ["group3"]
