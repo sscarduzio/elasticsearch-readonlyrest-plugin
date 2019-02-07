@@ -14,8 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.commons.utils;
 
+package tech.beshu.ror.commons.utils;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.hash.HashCode;
 import cz.seznam.euphoria.shaded.guava.com.google.common.hash.HashFunction;
@@ -23,10 +23,18 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing;
 import cz.seznam.euphoria.shaded.guava.com.google.common.primitives.Bytes;
 
 import java.security.SecureRandom;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SecureStringHasher implements Hasher {
 
   private static byte[] salt;
+  // Salt is expensive because it blocks the JVM on boot when waiting for higher entropy levels
+  // This is a pain especially in Docker.
+  // 
+  // This Java option helps -Djava.security.egd=file:/dev/./urandom
+  // Using Haveged helps https://www.digitalocean.com/community/tutorials/how-to-setup-additional-entropy-for-cloud-servers-using-haveged
+  private static Map<Integer, byte[]> saltCache = new HashMap<>();
   private final HashFunction hf;
   private final String algo;
 
@@ -50,10 +58,15 @@ public class SecureStringHasher implements Hasher {
         hf = Hashing.sha256();
         saltSize = 256;
     }
-    this.salt = SecureRandom.getSeed(saltSize);
+
+    this.salt = saltCache.get(saltSize);
+    if (this.salt == null) {
+      this.salt = SecureRandom.getSeed(saltSize);
+      saltCache.put(saltSize, this.salt);
+    }
+
     this.algo = algo;
   }
-
 
   private static void rotate(byte[] arr, int order) {
     if (arr == null || order < 0) {
