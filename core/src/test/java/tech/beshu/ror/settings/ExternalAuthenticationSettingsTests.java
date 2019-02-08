@@ -21,7 +21,6 @@ import org.junit.Test;
 import tech.beshu.ror.TestUtils;
 import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
 
-import java.net.URISyntaxException;
 import java.time.Duration;
 
 public class ExternalAuthenticationSettingsTests {
