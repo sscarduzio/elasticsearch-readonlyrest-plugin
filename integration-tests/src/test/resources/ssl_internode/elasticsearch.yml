@@ -1,10 +1,7 @@
 http.bind_host: _eth0:ipv4_
 network.host: _eth0:ipv4_
-
 http.type: ssl_netty4
-
-# added by docker
-#transport.type: ror_ssl_internode
+transport.type: ror_ssl_internode
 
 readonlyrest:
   enable: true

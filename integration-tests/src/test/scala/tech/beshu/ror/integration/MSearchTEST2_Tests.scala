@@ -67,7 +67,7 @@ object MSearchTEST2_Tests {
         |http.bind_host: _eth0:ipv4_
         |network.host: _eth0:ipv4_
         |http.type: ssl_netty4
-        |#transport.type: local
+        |transport.type: local
         |
         |readonlyrest:
         |  ssl:

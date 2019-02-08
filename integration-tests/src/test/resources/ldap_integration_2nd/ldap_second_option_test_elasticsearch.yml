@@ -3,7 +3,7 @@ http.host: 0.0.0.0
 
 
 http.type: ssl_netty4
-#transport.type: local
+transport.type: local
 
 readonlyrest:
   ssl:

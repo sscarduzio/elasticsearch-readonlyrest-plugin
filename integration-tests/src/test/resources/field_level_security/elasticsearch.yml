@@ -1,7 +1,6 @@
 http.host: 0.0.0.0
-
+transport.type: local
 http.type: ssl_netty4
-#transport.type: local
 readonlyrest:
   ssl:
     enable: true
