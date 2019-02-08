@@ -1,5 +1,5 @@
 http.host: 0.0.0.0
-transport.type: local
+#transport.type: local
 http.type: ssl_netty4
 readonlyrest:
   ssl:

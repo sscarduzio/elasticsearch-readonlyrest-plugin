@@ -69,7 +69,7 @@ object MSearchTEST1_Tests {
         |network.host: _eth0:ipv4_
         |
         |http.type: ssl_netty4
-        |transport.type: local
+        |#transport.type: local
         |
         |readonlyrest:
         |  ssl:

@@ -1,6 +1,6 @@
 http.bind_host: _eth0:ipv4_
 network.host: _eth0:ipv4_
-transport.type: local
+#transport.type: local
 http.type: ssl_netty4
 
 readonlyrest:
