@@ -88,6 +88,12 @@ public class JwtAuthTests {
   }
 
   @Test
+  public void acceptValidTokentWithUserClaimAndCustomHeaderAndCustomHeaderPrefix() throws Exception {
+    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user")), Optional.of("x-custom-header2"), Optional.of("x-custom-prefix"));
+    assertEquals(200, sc);
+  }
+
+  @Test
   public void rejectTokentWithUserClaimAndCustomHeader() throws Exception {
     int sc = test(makeToken(KEY, makeClaimMap("inexistent_claim", "user")), Optional.of("x-custom-header"), false);
     assertEquals(401, sc);
@@ -126,9 +132,13 @@ public class JwtAuthTests {
   }
 
   private int test(Optional<String> token, Optional<String> headerName, boolean withBearer) throws Exception {
+    return test(token, headerName, Optional.of(withBearer ? "Bearer " : ""));
+  }
+
+  private int test(Optional<String> token, Optional<String> headerName, Optional<String> headerPrefix) throws Exception {
     RestClient rc = container.getClient();
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
-    token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), (withBearer ? "Bearer " : "") + t));
+    token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), headerPrefix.orElse("") + t));
     HttpResponse resp = rc.execute(req);
     return resp.getStatusLine().getStatusCode();
   }

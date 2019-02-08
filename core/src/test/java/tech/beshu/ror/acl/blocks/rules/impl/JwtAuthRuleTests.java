@@ -62,6 +62,8 @@ public class JwtAuthRuleTests {
   private static final String SETTINGS_SIGNATURE_ALGO = "signature_algo";
   private static final String SETTINGS_USER_CLAIM = "user_claim";
   private static final String SETTINGS_ROLES_CLAIM = "roles_claim";
+  private static final String SETTINGS_HEADER_NAME = "header_name";
+  private static final String SETTINGS_HEADER_PREFIX = "header_prefix";
   private static final String ALGO = "HS256";
   private static final String SECRET = "123456";
   private static final String BAD_SECRET = "abcdef";
@@ -117,6 +119,28 @@ public class JwtAuthRuleTests {
 
     RawSettings settings = makeSettings(
         SETTINGS_SIGNATURE_ALGO, "NONE"
+    );
+
+    RequestContext rc = getMock(token);
+
+    Optional<AsyncRule> rule = makeRule(settings);
+    Optional<CompletableFuture<RuleExitResult>> res = rule.map(r -> r.match(rc));
+    rc.commit();
+
+    assertTrue(rule.isPresent());
+    assertTrue(res.isPresent());
+    res.get().thenAccept(r -> assertTrue(r.isMatch()));
+  }
+
+  @Test
+  public void shouldAcceptTokenWithCustomHeaderNameAndPrefix() throws KeyException {
+    String token = Jwts.builder()
+                       .setSubject(SUBJECT)
+                       .compact();
+
+    RawSettings settings = makeSettings(
+        SETTINGS_HEADER_NAME, "Cookie",
+        SETTINGS_HEADER_PREFIX, "JWT="
     );
 
     RequestContext rc = getMock(token);

@@ -30,6 +30,10 @@ readonlyrest:
         name: "jwt3"
         roles: ["role_viewer", "role_xyz"]
 
+    - name: Valid JWT token is present in custom header and header prefix
+      type: allow
+      jwt_auth: "jwt4"
+
   jwt:
     - name: jwt1
       signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
@@ -44,6 +48,12 @@ readonlyrest:
       signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
       user_claim: user
       roles_claim: roles
+
+    - name: jwt4
+      header_name: x-custom-header2
+      header_prefix: x-custom-prefix
+      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+      user_claim: user
 
 
 
