@@ -172,7 +172,7 @@ public class DefinitionsFactory implements LdapClientFactory,
         () -> wrapInCacheIfCacheIsEnabled(
             settings,
             new ExternalAuthenticationServiceHttpClient(
-                new ApacheHttpCoreClient(context, settings.getValidate()),
+                new ApacheHttpCoreClient(context, settings.getHttpConnectionSettings()),
                 settings.getEndpoint(),
                 settings.getSuccessStatusCode()
             )
@@ -189,7 +189,7 @@ public class DefinitionsFactory implements LdapClientFactory,
             settings,
             new GroupsProviderServiceHttpClient(
                 settings.getName(),
-                new ApacheHttpCoreClient(context, true),
+                new ApacheHttpCoreClient(context, settings.getHttpConnectionSettings()),
                 settings.getEndpoint(),
                 settings.getAuthTokenName(),
                 settings.getMethod(),
@@ -232,7 +232,7 @@ public class DefinitionsFactory implements LdapClientFactory,
     URI finalExternalUrl = externalUrl;
     NamedSettings ns = settings;
     ExternalAuthenticationServiceClient authcli = new JwtExternalValidationHttpClient(
-        new ApacheHttpCoreClient(context, settings.getExternalValidatorValidate()),
+        new ApacheHttpCoreClient(context, settings.getExternalValidatorHttpConnectionSettings()),
         finalExternalUrl,
         settings.getExternalValidatorSuccessStatusCode()
     );

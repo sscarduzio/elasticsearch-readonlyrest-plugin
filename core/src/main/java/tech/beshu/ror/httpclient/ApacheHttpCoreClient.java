@@ -19,6 +19,7 @@ package tech.beshu.ror.httpclient;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -32,6 +33,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContexts;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.settings.HttpConnectionSettings;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -43,6 +45,8 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivilegedAction;
 import java.security.cert.X509Certificate;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -57,9 +61,14 @@ public class ApacheHttpCoreClient implements HttpClient {
   private final ESContext context;
   private CloseableHttpAsyncClient hcHttpClient;
 
-  public ApacheHttpCoreClient(ESContext esContext, boolean validate) {
+  public ApacheHttpCoreClient(ESContext esContext, HttpConnectionSettings settings) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      this.hcHttpClient = validate ? HttpAsyncClients.createDefault() : getNonValidatedHttpClient();
+
+      CloseableHttpAsyncClient client = HttpAsyncClients.custom()
+              .setDefaultRequestConfig(settings.toRequestConfig())
+              .setMaxConnTotal(settings.getConnectionPoolSize())
+              .build();
+      this.hcHttpClient = settings.getValidateHttps() ? client : getNonValidatedHttpClient(settings);
       this.hcHttpClient.start();
       return null;
     });
@@ -74,9 +83,13 @@ public class ApacheHttpCoreClient implements HttpClient {
     });
   }
 
-  private CloseableHttpAsyncClient getNonValidatedHttpClient() {
+  private CloseableHttpAsyncClient getNonValidatedHttpClient(HttpConnectionSettings settings) {
     try {
-      return HttpAsyncClients.custom().setSSLHostnameVerifier(new NoopHostnameVerifier()).setSSLContext(SSLContexts.custom().loadTrustMaterial(null, (X509Certificate[] chain, String authType) -> true).build()).build();
+      return HttpAsyncClients.custom()
+              .setDefaultRequestConfig(settings.toRequestConfig())
+              .setMaxConnTotal(settings.getConnectionPoolSize())
+              .setSSLHostnameVerifier(new NoopHostnameVerifier()).setSSLContext(SSLContexts.custom().loadTrustMaterial(null, (X509Certificate[] chain, String authType) -> true).build())
+              .build();
     } catch (KeyManagementException | NoSuchAlgorithmException | KeyStoreException e) {
       logger.error("cannot create non-validating Apache HTTP Core client.. ", e);
       return HttpAsyncClients.createDefault();
