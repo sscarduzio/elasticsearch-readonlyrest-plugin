@@ -76,7 +76,6 @@ public class DefinitionsFactory implements LdapClientFactory,
 
   public DefinitionsFactory(ESContext context, ACL acl) {
     this.acl = acl;
-    //this.httpClient = new ApacheHttpCoreClient(context);
     this.context = context;
     this.groupsProviderLdapClientsCache = CacheBuilder.newBuilder().build();
     this.authenticationLdapClientsCache = CacheBuilder.newBuilder().build();
