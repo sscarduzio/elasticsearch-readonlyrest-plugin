@@ -64,9 +64,9 @@ public class JwtAuthAsyncRule extends AsyncRule implements Authentication {
     this.secureStringHasher = new SecureStringHasher("sha256");
   }
 
-  private static Optional<String> extractToken(String authHeader) {
-    if (authHeader.startsWith("Bearer ")) {
-      String token = authHeader.substring(7).trim();
+  private Optional<String> extractToken(String authHeader) {
+    if (authHeader.startsWith(settings.getHeaderPrefix())) {
+      String token = authHeader.substring(settings.getHeaderPrefix().length()).trim();
       return Optional.ofNullable(Strings.emptyToNull(token));
     }
 
@@ -76,7 +76,7 @@ public class JwtAuthAsyncRule extends AsyncRule implements Authentication {
   @Override
   public CompletableFuture<RuleExitResult> match(RequestContext rc) {
     Optional<String> token = Optional.of(rc.getHeaders()).map(m -> m.get(settings.getHeaderName()))
-                                     .flatMap(JwtAuthAsyncRule::extractToken);
+                                     .flatMap(this::extractToken);
 
     /*
       JWT ALGO    FAMILY
