@@ -25,6 +25,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -45,10 +46,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
-
+  private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
   private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
   private final Environment environment;
+  private  Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
@@ -65,6 +67,8 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     if (basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
       sslSettings = basicSettings.getSslHttpSettings().get();
       logger.info("creating SSL HTTP transport");
+      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
+
     }
     else {
       sslSettings = null;
@@ -108,6 +112,10 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
 
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
+
+          if(sslVerification) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+          }
 
           sslSettings.getAllowedSSLProtocols()
                      .map(protoList -> protoList.toArray(new String[protoList.size()]))

@@ -58,6 +58,7 @@ public class BasicSettings {
   public static final String ATTRIBUTE_SSL_KEY_ALIAS = "key_alias";
   public static final String ATTRIBUTE_SSL_ALLOWED_CIPHERS = "allowed_ciphers";
   public static final String ATTRIBUTE_SSL_ALLOWED_PROTOCOLS = "allowed_protocols";
+  public static final String ATTRIBUTE_SSL_CLIENT_VERIFICATION = "verification";
 
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "forbidden";
   private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
@@ -219,6 +220,7 @@ public class BasicSettings {
     private Optional<List<String>> allowedSSLProtocols = Optional.empty();
     private Optional<String> keyAlias;
     private String keystoreFile;
+    private Optional<Boolean> verifyClient;
 
     public SSLSettings(RawSettings raw, String prefix) {
       // SSL
@@ -240,6 +242,7 @@ public class BasicSettings {
         this.keystorePass = raw.stringOpt(prefix + ATTRIBUTE_SSL_KEYSTORE_PASS);
         this.allowedSSLCiphers = raw.opt(prefix + ATTRIBUTE_SSL_ALLOWED_CIPHERS);
         this.allowedSSLProtocols = raw.opt(prefix + ATTRIBUTE_SSL_ALLOWED_PROTOCOLS);
+        this.verifyClient = raw.booleanOpt(prefix + ATTRIBUTE_SSL_CLIENT_VERIFICATION);
       }
     }
 
@@ -271,5 +274,8 @@ public class BasicSettings {
       return keyAlias;
     }
 
+    public Optional<Boolean> isClientAuthVerify() {
+      return verifyClient;
+    }
   }
 }

@@ -23,6 +23,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
@@ -52,7 +54,8 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
   private final Environment environment;
   private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
-  private boolean sslEnabled = true;
+  private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
+  private boolean sslVerification = DEFAULT_SSL_VERIFICATION_INTERNODE;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
       CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService, Environment environment) {
@@ -68,29 +71,35 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     if (basicSettings.getSslInternodeSettings().isPresent()) {
       this.sslSettings = basicSettings.getSslInternodeSettings().get();
+      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
     }
     else {
       this.sslSettings = null;
     }
   }
 
-
-
   @Override
   protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
-    final boolean verifyHostname;
 
     return new Netty4Transport.ClientChannelInitializer() {
 
       @Override
       protected void initChannel(Channel ch) throws Exception {
         super.initChannel(ch);
-        SslContext sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+        logger.info(">> internode SSL channel initializing");
+
+        SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
+        if (!sslVerification) {
+          sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
+        }
+        SslContext sslCtx = sslCtxBuilder.build();
         ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {
           @Override
           public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
             SSLEngine sslEngine = sslCtx.newEngine(ctx.alloc());
             sslEngine.setUseClientMode(true);
+            sslEngine.setNeedClientAuth(true);
+
             ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine));
             super.connect(ctx, remoteAddress, localAddress, promise);
           }
@@ -99,7 +108,13 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
       @Override
       public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        super.exceptionCaught(ctx, cause);
+        if (cause instanceof NotSslRecordException || (cause.getCause() != null && cause.getCause() instanceof NotSslRecordException)) {
+          logger.error("Receiving non-SSL connections from: (" + ctx.channel().remoteAddress() + "). Will disconnect");
+          ctx.channel().close();
+        }
+        else {
+          super.exceptionCaught(ctx, cause);
+        }
       }
     };
   }
@@ -107,7 +122,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
   @Override
   public final ChannelHandler getServerChannelInitializer(String name) {
     super.getServerChannelInitializer(name);
-    if (sslEnabled) {
+    if (sslSettings != null && sslSettings.isSSLEnabled()) {
       return new SslChannelInitializer(name);
     }
     else {
@@ -129,9 +144,13 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
               null
           );
 
-          logger.info("ROR Internode SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          // Cert verification enable by default for internode
+          if (sslVerification) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+          }
 
+          logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
           sslSettings.getAllowedSSLProtocols()
@@ -151,9 +170,13 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     @Override
     protected void initChannel(Channel ch) throws Exception {
       super.initChannel(ch);
-      context.ifPresent(sslCtx -> {
-        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
-      });
+
+      if (sslSettings != null && sslSettings.isSSLEnabled()) {
+        context.ifPresent(sslCtx -> {
+          ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
+        });
+      }
+
     }
   }
 

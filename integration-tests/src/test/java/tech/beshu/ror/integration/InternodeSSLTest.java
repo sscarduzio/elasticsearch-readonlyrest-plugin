@@ -17,7 +17,9 @@
 
 package tech.beshu.ror.integration;
 
+import com.google.common.net.HostAndPort;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.settings.Settings;
@@ -35,38 +37,68 @@ import static junit.framework.TestCase.assertTrue;
 
 public class InternodeSSLTest {
 
-  @ClassRule
-  public static ESWithReadonlyRestContainer container =
-      ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/ssl_internode/elasticsearch.yml",
-          Optional.empty()
-      );
+//  @ClassRule
+//  public static ESWithReadonlyRestContainer container =
+//      ESWithReadonlyRestContainer.create(
+//          RorPluginGradleProject.fromSystemProperty(),
+//          "/ssl_internode/elasticsearch.yml",
+//          Optional.empty()
+//      );
 
-  @Test
+  private HostAndPort getHostAndPort() {
+    return HostAndPort.fromParts("localhost", 9300);
+    //return HostAndPort.fromParts(container.getESHost(), container.getTransportPort());
+  }
+
+@Test
   public void testSSLnoVerification() throws Exception {
-    if(Integer.parseInt(container.getEsVersion().replace(".","")) < 660 ) {
-      return;
-    }
+//    if (Integer.parseInt(container.getEsVersion().replace(".", "")) < 660) {
+//      return;
+//    }
+//    System.out.println("transport port:   " + container.getTransportPort());
+
     TransportClient client = new PreBuiltXPackTransportClient(
         Settings.builder()
                 .put("client.transport.sniff", true)
-                .put("xpack.security.transport.ssl.verification_mode", "none")
                 .put("xpack.security.transport.ssl.enabled", "true")
+                .put("xpack.ssl.verification_mode", "none")
                 .build())
         .addTransportAddress(new TransportAddress(
             InetAddress.getByName(
-                container.getESHost()
-                //  "localhost"
+                getHostAndPort().getHost()
             ),
-            //9300
-            container.getTransportPort()
+            getHostAndPort().getPort()
         ));
     ClusterHealthResponse resp = client.admin().cluster().prepareHealth().get();
     System.out.println(resp.getStatus());
     assertTrue(resp.getStatus().equals(ClusterHealthStatus.YELLOW));
-    //  client.close();
+    client.close();
+  }
 
+  @Test(expected = NoNodeAvailableException.class)
+  public void testSSLwithServerVerification() throws Exception {
+    //    if (Integer.parseInt(container.getEsVersion().replace(".", "")) < 660) {
+    //      return;
+    //    }
+    //    System.out.println("transport port:   " + container.getTransportPort());
+
+    TransportClient client = new PreBuiltXPackTransportClient(
+        Settings.builder()
+                .put("client.transport.sniff", true)
+                .put("xpack.security.transport.ssl.enabled", "true")
+               // .put("xpack.ssl.verification_mode", "none")
+
+                .build())
+        .addTransportAddress(new TransportAddress(
+            InetAddress.getByName(
+                getHostAndPort().getHost()
+            ),
+            getHostAndPort().getPort()
+        ));
+    ClusterHealthResponse resp = client.admin().cluster().prepareHealth().get();
+    System.out.println(resp.getStatus());
+    assertTrue(resp.getStatus().equals(ClusterHealthStatus.YELLOW));
+    client.close();
   }
 
 }
