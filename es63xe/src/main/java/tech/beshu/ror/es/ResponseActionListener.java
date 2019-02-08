@@ -17,12 +17,11 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Strings;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionResponse;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.request.RequestContext;
-import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.acl.request.RequestContextOps;
 import tech.beshu.ror.es.rradmin.RRMetadataResponse;
 
 public class ResponseActionListener implements ActionListener<ActionResponse> {
@@ -39,12 +38,11 @@ public class ResponseActionListener implements ActionListener<ActionResponse> {
 
   @Override
   public void onResponse(ActionResponse actionResponse) {
-    String uri = requestContext.uri().toString();
-    if (!Strings.isNullOrEmpty(uri) && uri.startsWith(Constants.REST_METADATA_PATH)) {
+    if (new RequestContextOps(requestContext).isRestMetadataPath()) {
       baseListener.onResponse(new RRMetadataResponse(blockContext));
-      return;
+    } else {
+      baseListener.onResponse(actionResponse);
     }
-    baseListener.onResponse(actionResponse);
   }
 
   @Override

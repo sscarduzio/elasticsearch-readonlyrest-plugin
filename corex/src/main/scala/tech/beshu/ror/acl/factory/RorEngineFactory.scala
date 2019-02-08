@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.commons.settings.SettingsMalformedException
 
-object RorEngineFactory extends Logging {
+object RorEngineFactory {
 
   private implicit val clock: Clock = Clock.systemUTC()
   private implicit val uuidProvider: UuidProvider = JavaUuidProvider

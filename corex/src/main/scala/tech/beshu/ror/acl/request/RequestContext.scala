@@ -10,6 +10,7 @@ import tech.beshu.ror.acl.blocks.VariablesResolver
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.request.RequestContextOps.{BearerToken, RequestGroup}
+import tech.beshu.ror.commons.Constants
 
 import scala.language.implicitConversions
 
@@ -86,6 +87,8 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
         }
       }
   }
+
+  def isRestMetadataPath: Boolean = requestContext.uri.toString().startsWith(Constants.REST_METADATA_PATH)
 
   private def findHeader(name: Header.Name) = requestContext.headers.find(_.name === name)
 }

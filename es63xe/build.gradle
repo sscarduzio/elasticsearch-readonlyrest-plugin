@@ -52,11 +52,11 @@ compileJava {
 
 dependencies {
     compile project(':commons')
-    compile project(':corex')
+    compile project(path: ':corex', configuration: 'shadow')
 
     compile group: 'org.scala-lang',                name: 'scala-library',                      version: '2.12.4'
-
-
+    compile group: 'io.monix',                      name: 'monix_2.12',                         version: '3.0.0-RC2'
+    
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 }
