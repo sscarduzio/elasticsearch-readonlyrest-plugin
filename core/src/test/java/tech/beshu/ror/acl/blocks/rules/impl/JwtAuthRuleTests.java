@@ -58,7 +58,6 @@ import static org.mockito.Mockito.when;
 public class JwtAuthRuleTests {
 
   private static final String JWT_NAME = "test-jwt";
-  ;
   private static final String SETTINGS_SIGNATURE_KEY = "signature_key";
   private static final String SETTINGS_SIGNATURE_ALGO = "signature_algo";
   private static final String SETTINGS_USER_CLAIM = "user_claim";

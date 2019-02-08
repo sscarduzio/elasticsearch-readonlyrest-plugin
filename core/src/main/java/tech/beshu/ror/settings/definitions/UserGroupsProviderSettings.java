@@ -22,6 +22,7 @@ import com.google.common.collect.Maps;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
 import tech.beshu.ror.httpclient.HttpMethod;
+import tech.beshu.ror.settings.HttpConnectionSettings;
 import tech.beshu.ror.settings.rules.CacheSettings;
 import tech.beshu.ror.settings.rules.NamedSettings;
 
@@ -41,10 +42,14 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   private static final String PASSED_AS = "auth_token_passed_as";
   private static final String JSON_PATH = "response_groups_json_path";
   private static final String CACHE = "cache_ttl_in_sec";
+  private static final String VALIDATE = "validate";
+  private static final String HTTP_METHOD = "http_method";
+  private static final String HTTP_CONNECTION_SETTINGS = "http_connection_settings";
+
   private static final String DEFAULT_QUERY_PARAMS = "default_query_parameters";
   private static final String DEFAULT_HEADERS = "default_headers";
   private static final Duration DEFAULT_CACHE_TTL = Duration.ZERO;
-  private static final String HTTP_METHOD = "http_method";
+
   private final String name;
   private final URI endpoint;
   private final String authTokenName;
@@ -55,6 +60,9 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   private final ImmutableMap<String, String> defaultQueryParameters;
   private final HttpMethod method;
   private final Map<String, Set<String>> user2availGroups = Maps.newHashMap();
+  private final HttpConnectionSettings httpConnectionSettings;
+
+
   private Function<LinkedHashMap<String, Object>, ImmutableMap<String, String>> toMap = (map) -> {
     Map<String, String> tempMap = new HashMap<>();
     map.entrySet().forEach(e -> tempMap.put(e.getKey(), String.valueOf(e.getValue())));
@@ -74,6 +82,9 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
         (LinkedHashMap) settings.asMap().get(DEFAULT_QUERY_PARAMS)) : ImmutableMap.<String, String>of();
     this.method = settings.opt(HTTP_METHOD).isPresent() ? httpMethodFromString(settings.stringReq(HTTP_METHOD)) :
         HttpMethod.GET;
+
+    boolean validate = settings.booleanOpt(VALIDATE).orElse(true);
+    this.httpConnectionSettings = new HttpConnectionSettings(settings.innerOpt(HTTP_CONNECTION_SETTINGS).orElse(RawSettings.empty()), validate);
   }
 
   public Map<String, Set<String>> getUser2availGroups() {
@@ -132,8 +143,12 @@ public class UserGroupsProviderSettings implements CacheSettings, NamedSettings 
   public HttpMethod getMethod() {
     return method;
   }
-
   public enum TokenPassingMethod {
     QUERY, HEADER
   }
+
+  public HttpConnectionSettings getHttpConnectionSettings() {
+    return httpConnectionSettings;
+  }
+
 }
