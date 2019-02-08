@@ -81,7 +81,6 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
     this.userClaim = settings.stringOpt(USER_CLAIM);
     this.rolesClaim = settings.stringOpt(ROLES_CLAIM);
     this.externalValidator = settings.stringOpt(EXTERNAL_VALIDATOR);
-    this.headerName = settings.stringOpt(HEADER_NAME).orElse(DEFAULT_HEADER_NAME);
     this.externalValidatorSuccessStatusCode = settings.intOpt(EXTERNAL_VALIDATOR_SUCCESS_STATUS_CODE).orElse(200);
     this.externalValidatorCacheTtlSec = settings.intOpt(EXTERNAL_VALIDATOR_CACHE_TTL).orElse(60);
     this.headerName = settings.stringOpt(HEADER_NAME).orElse(DEFAULT_HEADER_NAME);
