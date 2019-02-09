@@ -106,9 +106,12 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     ctx.channel().flush().close();
   }
 
+  @Override
   public ChannelHandler configureServerChannelHandler() {
-    SSLHandler handler = new SSLHandler(this);
-    return handler;
+    if(sslSettings != null) {
+      return new SSLHandler(this);
+    }
+    return super.configureServerChannelHandler();
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {

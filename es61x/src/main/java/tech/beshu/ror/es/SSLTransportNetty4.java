@@ -49,7 +49,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private final BasicSettings basicSettings;
   private final LoggerShim logger;
   private final Environment environment;
-  private  BasicSettings.SSLSettings sslSettings;
+  private BasicSettings.SSLSettings sslSettings;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
@@ -69,6 +69,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     }
   }
 
+  @Override
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
     if (!this.lifecycle.started()) {
       return;
@@ -83,8 +84,12 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     ctx.channel().flush().close();
   }
 
+  @Override
   public ChannelHandler configureServerChannelHandler() {
-    return new SSLHandler(this);
+    if(sslSettings != null) {
+      return new SSLHandler(this);
+    }
+    return super.configureServerChannelHandler();
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {

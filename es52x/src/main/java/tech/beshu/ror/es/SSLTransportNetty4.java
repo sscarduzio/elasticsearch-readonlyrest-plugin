@@ -50,7 +50,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   protected final LoggerShim logger;
   private final BasicSettings basicSettings;
-  private  BasicSettings.SSLSettings sslSettngs;
+  private  BasicSettings.SSLSettings sslSettings;
   protected SslContext sslContext;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
@@ -64,9 +64,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     if (basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
       logger.info("creating SSL transport");
-      this.sslSettngs = baseSettings.getSslInternodeSettings().get();
+      this.sslSettings = baseSettings.getSslInternodeSettings().get();
 
-      new SSLCertParser(sslSettngs, logger, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
 
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
@@ -81,7 +81,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
 
           logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(eng, logger, sslSettngs);
+          SSLCertParser.validateProtocolAndCiphers(eng, logger, sslSettings);
 
         } catch (Exception e) {
           logger.error("Failed to load SSL CertChain & private key from Keystore! "
@@ -107,9 +107,12 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     ctx.channel().flush().close();
   }
 
+  @Override
   public ChannelHandler configureServerChannelHandler() {
-    SSLHandler handler = new SSLHandler(this);
-    return handler;
+    if(this.sslSettings != null) {
+      return new SSLHandler(this);
+    }
+    return super.configureServerChannelHandler();
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
@@ -120,15 +123,15 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      if (!sslSettngs.isSSLEnabled()) {
+      if (!sslSettings.isSSLEnabled()) {
         return;
       }
       SSLEngine eng = sslContext.newEngine(ch.alloc());
 
-      sslSettngs.getAllowedSSLProtocols()
-                   .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
-      sslSettngs.getAllowedSSLCiphers()
-                   .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
+      sslSettings.getAllowedSSLProtocols()
+                 .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
+      sslSettings.getAllowedSSLCiphers()
+                 .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
 
       ch.pipeline().addFirst("ssl_netty4_handler", new SslHandler(eng));
 
