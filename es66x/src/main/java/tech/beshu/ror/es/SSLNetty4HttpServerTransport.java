@@ -25,6 +25,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -44,23 +45,33 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
-public class SSLTransportNetty4 extends Netty4HttpServerTransport {
-
-  private final BasicSettings basicSettings;
+public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
+  private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
+  private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
-  private  BasicSettings.SSLSettings sslSettings;
+  private final Environment environment;
+  private  Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
 
-  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
+  public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
 
-    Environment env = new Environment(settings);
-    BasicSettings baseSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
-    this.basicSettings = baseSettings;
-    if (basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
-      this.sslSettings = basicSettings.getSslInternodeSettings().get();
-      logger.info("creating SSL transport");
+    this.environment = environment;
+    BasicSettings basicSettings = BasicSettings.fromFileObj(
+        logger,
+        this.environment.configFile().toAbsolutePath(),
+        settings
+    );
+
+    if (basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      sslSettings = basicSettings.getSslHttpSettings().get();
+      logger.info("creating SSL HTTP transport");
+      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
+
+    }
+    else {
+      sslSettings = null;
     }
   }
 
@@ -69,7 +80,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       return;
     }
     if (cause.getCause() instanceof NotSslRecordException) {
-      logger.warn(cause.getMessage());
+      logger.warn(cause.getMessage() + " connecting from: " + ctx.channel().remoteAddress());
     }
     else {
       cause.printStackTrace();
@@ -78,19 +89,15 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     ctx.channel().flush().close();
   }
 
-  @Override
   public ChannelHandler configureServerChannelHandler() {
-    if(sslSettings != null) {
-      return new SSLHandler(this);
-    }
-    return super.configureServerChannelHandler();
+    return new SSLHandler(this);
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
     private Optional<SslContext> context = Optional.empty();
 
     SSLHandler(final Netty4HttpServerTransport transport) {
-      super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+      super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
 
       new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
         try {
@@ -101,20 +108,24 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
               null
           );
 
-          logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
+          logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
 
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
+          if(sslVerification) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+          }
+
           sslSettings.getAllowedSSLProtocols()
-                       .map(protoList -> protoList.toArray(new String[protoList.size()]))
-                       .ifPresent(sslCtxBuilder::protocols);
+                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
+                     .ifPresent(sslCtxBuilder::protocols);
 
           context = Optional.of(sslCtxBuilder.build());
 
         } catch (Exception e) {
           context = Optional.empty();
-          logger.error("Failed to load SSL CertChain & private key from Keystore! "
+          logger.error("Failed to load SSL HTTP CertChain & private key from Keystore! "
               + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
       });

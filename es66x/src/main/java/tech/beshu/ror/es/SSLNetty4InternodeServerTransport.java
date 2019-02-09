@@ -35,7 +35,6 @@ import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
@@ -58,9 +57,9 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
   private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
   private boolean sslVerification = DEFAULT_SSL_VERIFICATION_INTERNODE;
 
-  public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, NetworkService networkService, BigArrays bigArrays,
-      NamedWriteableRegistry namedWriteableRegistry, CircuitBreakerService circuitBreakerService, Environment environment) {
-    super(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService);
+  public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
+      CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService, Environment environment) {
+    super(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
     this.environment = environment;
 

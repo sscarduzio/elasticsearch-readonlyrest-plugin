@@ -144,11 +144,11 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  public Map<String, Supplier<Transport>> getTransports(Settings settings, ThreadPool threadPool, BigArrays bigArrays, PageCacheRecycler pageCacheRecycler,
+  public Map<String, Supplier<Transport>> getTransports(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
       CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService) {
-
     return Collections.singletonMap("ror_ssl_internode", () ->
-        new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, environment)
+        new SSLNetty4InternodeServerTransport(
+            settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, environment)
     );
   }
 
