@@ -17,19 +17,13 @@
 
 package tech.beshu.ror.es;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
-
+import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
@@ -39,6 +33,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
@@ -47,26 +42,40 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
-
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
-public class ReadonlyRestPlugin extends Plugin
-  implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
+public class ReadonlyRestPlugin extends Plugin
+    implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+
+  private final BasicSettings basicSettings;
+  private final LoggerShim logger;
   private Settings settings;
   private Environment environment;
-  
+
   public ReadonlyRestPlugin(Settings s) {
-	  this.settings = s;
-	  this.environment = new Environment(s);
+    this.settings = s;
+    this.environment = new Environment(s);
+    Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
 
@@ -77,18 +86,23 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-    Settings settings,
-    ThreadPool threadPool,
-    BigArrays bigArrays,
-    CircuitBreakerService circuitBreakerService,
-    NamedWriteableRegistry namedWriteableRegistry,
-    NamedXContentRegistry xContentRegistry,
-    NetworkService networkService) {
+      Settings settings,
+      ThreadPool threadPool,
+      BigArrays bigArrays,
+      CircuitBreakerService circuitBreakerService,
+      NamedWriteableRegistry namedWriteableRegistry,
+      NamedXContentRegistry xContentRegistry,
+      NetworkService networkService) {
+
+    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      return Collections.EMPTY_MAP;
+    }
+
     return Collections.singletonMap(
-      "ssl_netty4", () ->
-        new SSLTransportNetty4(
-          settings, networkService, bigArrays, threadPool, xContentRegistry
-        ));
+        "ssl_netty4", () ->
+            new SSLTransportNetty4(
+                settings, networkService, bigArrays, threadPool, xContentRegistry, basicSettings.getSslHttpSettings().get()
+            ));
   }
 
   @Override
@@ -115,10 +129,10 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override
@@ -134,16 +148,16 @@ public class ReadonlyRestPlugin extends Plugin
       restHandler.handleRequest(request, channel, client);
     };
   }
-  
+
   @Override
   public void onIndexModule(IndexModule module) {
-	module.setSearcherWrapper(indexService -> {
-		try {
-			return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	});
+    module.setSearcherWrapper(indexService -> {
+      try {
+        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return null;
+    });
   }
 }

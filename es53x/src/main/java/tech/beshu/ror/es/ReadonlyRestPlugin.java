@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -24,6 +25,7 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
@@ -36,6 +38,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
@@ -45,14 +48,16 @@ import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.settings.BasicSettings;
 import tech.beshu.ror.commons.shims.es.AbstractESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -63,16 +68,21 @@ import java.util.stream.Collectors;
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
+  private final LoggerShim logger;
+  private final BasicSettings basicSettings;
   private Settings settings;
   private Environment environment;
 
   public ReadonlyRestPlugin(Settings s) {
     this.settings = s;
     this.environment = new Environment(s);
+    Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     AbstractESContext.shutDownObservable.shutDown();
   }
 
@@ -91,10 +101,15 @@ public class ReadonlyRestPlugin extends Plugin
       NamedXContentRegistry xContentRegistry,
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
+
+    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      return Collections.EMPTY_MAP;
+    }
+
     return Collections.singletonMap(
         "ssl_netty4", () ->
             new SSLTransportNetty4(
-                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, basicSettings.getSslHttpSettings().get()
             ));
   }
 

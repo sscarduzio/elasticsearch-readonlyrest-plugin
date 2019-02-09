@@ -29,15 +29,12 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import org.elasticsearch.Version;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
-import org.elasticsearch.common.util.PageCacheRecycler;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
@@ -52,31 +49,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
-  private final Environment environment;
+  private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
   private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
-  private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
-  private boolean sslVerification = DEFAULT_SSL_VERIFICATION_INTERNODE;
+  private final boolean sslVerification;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, NetworkService networkService, BigArrays bigArrays,
-      NamedWriteableRegistry namedWriteableRegistry, CircuitBreakerService circuitBreakerService, Environment environment) {
+      NamedWriteableRegistry namedWriteableRegistry, CircuitBreakerService circuitBreakerService, BasicSettings.SSLSettings sslSettings) {
     super(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
-    this.environment = environment;
-
-    BasicSettings basicSettings = BasicSettings.fromFileObj(
-        logger,
-        this.environment.configFile().toAbsolutePath(),
-        settings
-    );
-
-    if (basicSettings.getSslInternodeSettings().isPresent()) {
-      this.sslSettings = basicSettings.getSslInternodeSettings().get();
-      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
-    }
-    else {
-      this.sslSettings = null;
-    }
+    this.sslSettings = sslSettings;
+    this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
   }
 
   @Override
@@ -122,13 +105,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   @Override
   public final ChannelHandler getServerChannelInitializer(String name) {
-    super.getServerChannelInitializer(name);
-    if (sslSettings != null && sslSettings.isSSLEnabled()) {
-      return new SslChannelInitializer(name);
-    }
-    else {
-      return super.getServerChannelInitializer(name);
-    }
+    return new SslChannelInitializer(name);
   }
 
   public class SslChannelInitializer extends ServerChannelInitializer {
@@ -171,13 +148,9 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     @Override
     protected void initChannel(Channel ch) throws Exception {
       super.initChannel(ch);
-
-      if (sslSettings != null && sslSettings.isSSLEnabled()) {
-        context.ifPresent(sslCtx -> {
-          ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
-        });
-      }
-
+      context.ifPresent(sslCtx -> {
+        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
+      });
     }
   }
 

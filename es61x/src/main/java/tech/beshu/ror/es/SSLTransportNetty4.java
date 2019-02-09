@@ -33,7 +33,6 @@ import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.commons.SSLCertParser;
@@ -46,27 +45,15 @@ import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
-  private final BasicSettings basicSettings;
   private final LoggerShim logger;
-  private final Environment environment;
   private BasicSettings.SSLSettings sslSettings;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, BasicSettings.SSLSettings sslSettings) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
-
-    this.environment = environment;
-    BasicSettings basicSettings = BasicSettings.fromFileObj(
-        logger,
-        this.environment.configFile().toAbsolutePath(),
-        settings
-    );
-    this.basicSettings = basicSettings;
-    if (this.basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
-      logger.info("creating SSL transport");
-      sslSettings = basicSettings.getSslInternodeSettings().get();
-    }
+    logger.info("creating SSL transport");
+    this.sslSettings = sslSettings;
   }
 
   @Override
@@ -86,7 +73,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   @Override
   public ChannelHandler configureServerChannelHandler() {
-    if(sslSettings != null) {
+    if (sslSettings != null) {
       return new SSLHandler(this);
     }
     return super.configureServerChannelHandler();

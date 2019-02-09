@@ -51,31 +51,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
-  private final Environment environment;
+
+  private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
   private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
-  private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
   private boolean sslVerification = DEFAULT_SSL_VERIFICATION_INTERNODE;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
-      CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService, Environment environment) {
+      CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService,
+      BasicSettings.SSLSettings sslSettings) {
+
     super(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService);
+
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
-    this.environment = environment;
-
-    BasicSettings basicSettings = BasicSettings.fromFileObj(
-        logger,
-        this.environment.configFile().toAbsolutePath(),
-        settings
-    );
-
-    if (basicSettings.getSslInternodeSettings().isPresent()) {
-      this.sslSettings = basicSettings.getSslInternodeSettings().get();
-      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
-    }
-    else {
-      this.sslSettings = null;
-    }
+    this.sslSettings = sslSettings;
+    this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
   }
 
   @Override
@@ -121,13 +111,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   @Override
   public final ChannelHandler getServerChannelInitializer(String name) {
-    super.getServerChannelInitializer(name);
-    if (sslSettings != null && sslSettings.isSSLEnabled()) {
-      return new SslChannelInitializer(name);
-    }
-    else {
-      return super.getServerChannelInitializer(name);
-    }
+    return new SslChannelInitializer(name);
   }
 
   public class SslChannelInitializer extends ServerChannelInitializer {
@@ -171,12 +155,9 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     protected void initChannel(Channel ch) throws Exception {
       super.initChannel(ch);
 
-      if (sslSettings != null && sslSettings.isSSLEnabled()) {
-        context.ifPresent(sslCtx -> {
-          ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
-        });
-      }
-
+      context.ifPresent(sslCtx -> {
+        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
+      });
     }
   }
 

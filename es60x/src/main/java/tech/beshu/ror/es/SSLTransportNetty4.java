@@ -46,22 +46,17 @@ import java.util.Optional;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
-  private final BasicSettings basicSettings;
   private final LoggerShim logger;
-  private  BasicSettings.SSLSettings sslSettings;
+  private final BasicSettings.SSLSettings sslSettings;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher) {
-    super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, BasicSettings.SSLSettings sslSettings) {
 
-    Environment env = new Environment(settings);
-    BasicSettings baseSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
-    this.basicSettings = baseSettings;
-    if (basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
-      this.sslSettings = basicSettings.getSslInternodeSettings().get();
-      logger.info("creating SSL transport");
-    }
+    super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
+
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    this.sslSettings = sslSettings;
+    logger.info("creating SSL transport");
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -80,7 +75,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   @Override
   public ChannelHandler configureServerChannelHandler() {
-    if(sslSettings != null) {
+    if (sslSettings != null) {
       return new SSLHandler(this);
     }
     return super.configureServerChannelHandler();
@@ -107,8 +102,8 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
           sslSettings.getAllowedSSLProtocols()
-                       .map(protoList -> protoList.toArray(new String[protoList.size()]))
-                       .ifPresent(sslCtxBuilder::protocols);
+                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
+                     .ifPresent(sslCtxBuilder::protocols);
 
           context = Optional.of(sslCtxBuilder.build());
 

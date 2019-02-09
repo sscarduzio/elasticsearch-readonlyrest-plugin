@@ -33,7 +33,6 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.commons.SSLCertParser;
@@ -48,46 +47,43 @@ import java.nio.charset.StandardCharsets;
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   protected final LoggerShim logger;
-  private  BasicSettings.SSLSettings sslSettings;
   protected SslContext sslContext;
+  private BasicSettings.SSLSettings sslSettings;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool) {
+      ThreadPool threadPool, BasicSettings.SSLSettings sslSettings) {
     super(settings, networkService, bigArrays, threadPool);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    logger.info("creating SSL transport");
+    this.sslSettings = sslSettings;
 
-    Environment env = new Environment(settings);
-    BasicSettings basicSettings = BasicSettings.fromFile(logger, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
-    if (basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
-      this.sslSettings = basicSettings.getSslInternodeSettings().get();
-      logger.info("creating SSL transport");
+    new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
 
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+      try {
+        // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+        SslContextBuilder sslcb = SslContextBuilder.forServer(
+            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+            null
+        );
 
-        try {
-          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslcb = SslContextBuilder.forServer(
-              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-              null
-          );
+        // Creating one SSL engine just for protocol/cipher validation and logging
+        sslContext = sslcb.build();
+        SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
 
-          // Creating one SSL engine just for protocol/cipher validation and logging
-          sslContext = sslcb.build();
-          SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
+        logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
+        SSLCertParser.validateProtocolAndCiphers(eng, logger, sslSettings);
 
-          logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(eng, logger, sslSettings);
+      } catch (Exception e) {
+        logger.error("Failed to load SSL CertChain & private key from Keystore! "
+            + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+      }
+    });
 
-        } catch (Exception e) {
-          logger.error("Failed to load SSL CertChain & private key from Keystore! "
-              + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-        }
-      });
-    }
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
+
     if (!this.lifecycle.started()) {
       return;
     }
@@ -104,10 +100,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   @Override
   public ChannelHandler configureServerChannelHandler() {
-    if(sslSettings != null) {
-      return new SSLHandler(this);
-    }
-    return super.configureServerChannelHandler();
+    return new SSLHandler(this);
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
@@ -118,15 +111,12 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     protected void initChannel(final Channel ch) throws Exception {
       super.initChannel(ch);
-      if (!sslSettings.isSSLEnabled()) {
-        return;
-      }
       SSLEngine eng = sslContext.newEngine(ch.alloc());
 
       sslSettings.getAllowedSSLProtocols()
-                   .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
+                 .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
       sslSettings.getAllowedSSLCiphers()
-                   .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
+                 .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
 
       ch.pipeline().addFirst("ssl_netty4_handler", new SslHandler(eng));
 
