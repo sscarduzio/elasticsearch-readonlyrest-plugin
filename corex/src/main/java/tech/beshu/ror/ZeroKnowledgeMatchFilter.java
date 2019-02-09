@@ -17,8 +17,8 @@
 
 package tech.beshu.ror;
 
-import com.google.common.collect.Sets;
-import tech.beshu.ror.commons.utils.MatcherWithWildcards;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
+import tech.beshu.ror.utils.MatcherWithWildcards;
 
 import java.util.Set;
 import java.util.function.Consumer;

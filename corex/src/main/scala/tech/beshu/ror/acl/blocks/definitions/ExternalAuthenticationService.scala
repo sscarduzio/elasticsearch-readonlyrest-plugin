@@ -5,9 +5,9 @@ import java.util.concurrent.TimeUnit
 
 import cats.{Eq, Show}
 import cats.implicits._
-import com.google.common.cache.{Cache, CacheBuilder}
-import com.google.common.hash.Hashing
 import com.softwaremill.sttp._
+import cz.seznam.euphoria.shaded.guava.com.google.common.cache.{Cache, CacheBuilder}
+import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task

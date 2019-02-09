@@ -29,7 +29,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.acl.aDomain;
 import tech.beshu.ror.acl.blocks.BlockContext;
-import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.Constants;
 
 import java.io.IOException;
 import java.util.Map;
@@ -58,8 +58,8 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
     Map<String, Object> sourceMap = Maps.newHashMap();
 
-    Set<aDomain.Header> headers = JavaConverters$.MODULE$.setAsJavaSet(blockContext.responseHeaders());
-    headers.forEach(h -> sourceMap.put(h.name().copy$default$1(), h.value()));
+    Set<aDomain.Header> headers = JavaConverters$.MODULE$.<aDomain.Header>setAsJavaSet(blockContext.responseHeaders());
+    headers.forEach(h -> sourceMap.put(h.name().value().toString(), h.value().toString()));
 
     blockContext.loggedUser().foreach(u -> {
       sourceMap.put(Constants.HEADER_USER_ROR, u.id().value());
@@ -67,23 +67,23 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
     });
 
     blockContext.currentGroup().foreach(g -> {
-      sourceMap.put(Constants.HEADER_GROUP_CURRENT, g.value());
+      sourceMap.put(Constants.HEADER_GROUP_CURRENT, g.value().toString());
       return null;
     });
 
     if(!blockContext.availableGroups().isEmpty()) {
-      String availableGroupsString = JavaConverters$.MODULE$.setAsJavaSet(blockContext.availableGroups())
+      String availableGroupsString = JavaConverters$.MODULE$.<aDomain.Group>setAsJavaSet(blockContext.availableGroups())
           .stream()
-          .map(aDomain.Group::value)
+          .map(g -> g.value().toString())
           .collect(Collectors.joining(","));
       sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, availableGroupsString);
     }
 
     String hiddenAppsStr = headers
         .stream()
-        .filter(h -> Constants.HEADER_KIBANA_HIDDEN_APPS.equals(h.name().value()))
+        .filter(h -> Constants.HEADER_KIBANA_HIDDEN_APPS.equals(h.name().value().toString()))
         .findFirst()
-        .map(aDomain.Header::value)
+        .map(h -> h.value().toString())
         .orElse(null);
 
     String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");

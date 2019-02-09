@@ -15,7 +15,7 @@ import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, Pro
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.acl.request.RequestContextOps.BearerToken
-import tech.beshu.ror.commons.utils.FilterTransient
+import tech.beshu.ror.utils.FilterTransient
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions

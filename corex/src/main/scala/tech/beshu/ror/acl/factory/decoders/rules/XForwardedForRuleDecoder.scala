@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import com.google.common.net.InetAddresses
+import cz.seznam.euphoria.shaded.guava.com.google.common.net.InetAddresses
 import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value._

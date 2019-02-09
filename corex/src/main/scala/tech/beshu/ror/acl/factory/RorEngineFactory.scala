@@ -2,11 +2,10 @@ package tech.beshu.ror.acl.factory
 
 import java.time.Clock
 
-import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.{Acl, AclLoggingDecorator, AclStaticContext}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
-import tech.beshu.ror.commons.settings.SettingsMalformedException
+import tech.beshu.ror.acl.{Acl, AclLoggingDecorator, AclStaticContext}
+import tech.beshu.ror.settings.SettingsMalformedException
 
 object RorEngineFactory {
 

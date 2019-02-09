@@ -16,7 +16,7 @@ import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
-import tech.beshu.ror.commons.utils.SecureStringHasher
+import tech.beshu.ror.utils.SecureStringHasher
 
 import scala.util.Try
 

@@ -55,11 +55,11 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.reflections.ReflectionUtils;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.shims.request.RequestInfoShim;
-import tech.beshu.ror.commons.utils.RCUtils;
-import tech.beshu.ror.commons.utils.ReflecUtils;
+import tech.beshu.ror.shims.es.ESContext;
+import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.request.RequestInfoShim;
+import tech.beshu.ror.utils.RCUtils;
+import tech.beshu.ror.utils.ReflecUtils;
 
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
@@ -74,8 +74,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.commons.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
-import static tech.beshu.ror.commons.utils.ReflecUtils.invokeMethodCached;
+import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+import static tech.beshu.ror.utils.ReflecUtils.invokeMethodCached;
 
 public class RequestInfo implements RequestInfoShim {
 

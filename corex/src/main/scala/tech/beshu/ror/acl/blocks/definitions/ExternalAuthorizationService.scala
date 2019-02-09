@@ -4,7 +4,6 @@ import java.util.concurrent.TimeUnit
 
 import cats.implicits._
 import cats.{Eq, Show}
-import com.google.common.cache.{Cache, CacheBuilder}
 import com.jayway.jsonpath.JsonPath
 import com.softwaremill.sttp.Uri
 import monix.eval.Task
@@ -12,6 +11,7 @@ import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService.Name
 import com.softwaremill.sttp._
+import cz.seznam.euphoria.shaded.guava.com.google.common.cache.{Cache, CacheBuilder}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString

@@ -22,10 +22,10 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
 import org.elasticsearch.client.Client;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.AbstractESContext;
-import tech.beshu.ror.commons.shims.es.ESVersion;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.AbstractESContext;
+import tech.beshu.ror.shims.es.ESVersion;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 public class ESContextImpl extends AbstractESContext {
   private static AuditSinkImpl auditSink;

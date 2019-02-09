@@ -5,13 +5,13 @@ import java.util.regex.Pattern
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.commons.Constants
+import tech.beshu.ror.Constants
 import tech.beshu.ror.acl.aDomain.Header.Name.kibanaAccess
 import tech.beshu.ror.acl.aDomain.IndexName.devNullKibana
 import tech.beshu.ror.acl.aDomain.KibanaAccess.{RO, ROStrict, RW}
 import tech.beshu.ror.acl.aDomain.KibanaAccess._
 import tech.beshu.ror.acl.aDomain._
-import tech.beshu.ror.commons.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}

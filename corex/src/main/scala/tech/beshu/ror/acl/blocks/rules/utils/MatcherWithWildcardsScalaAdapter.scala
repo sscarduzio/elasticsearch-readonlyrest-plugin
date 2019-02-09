@@ -1,6 +1,6 @@
 package tech.beshu.ror.acl.blocks.rules.utils
 
-import tech.beshu.ror.commons.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.MatcherWithWildcards
 import scala.collection.JavaConverters._
 
 trait Matcher {

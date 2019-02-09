@@ -27,7 +27,7 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
-import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.RRAdminRequest;
 import tech.beshu.ror.es.rradmin.RRAdminResponse;

@@ -50,9 +50,9 @@ import tech.beshu.ror.acl.factory.RorEngineFactory$;
 import tech.beshu.ror.acl.factory.RorEngineFactory.Engine;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
-import tech.beshu.ror.commons.SecurityPermissionException;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.SecurityPermissionException;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.ESContext;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -188,12 +188,12 @@ import java.util.concurrent.atomic.AtomicReference;
           // the cache some times and would not be filtered
           if (engine.context().involvesFilter()) {
             if (request instanceof SearchRequest) {
-              logger.debug("__old_ACL involves filters, will disable request cache for SearchRequest");
+              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
 
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
-              logger.debug("__old_ACL involves filters, will disable request cache for MultiSearchRequest");
+              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
               for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
                 sr.requestCache(Boolean.FALSE);
               }

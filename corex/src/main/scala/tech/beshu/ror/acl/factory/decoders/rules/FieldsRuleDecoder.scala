@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreat
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.FieldsRuleDecoderHelper._
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
-import tech.beshu.ror.commons.Constants
+import tech.beshu.ror.Constants
 import tech.beshu.ror.acl.aDomain.DocumentField
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.orders._

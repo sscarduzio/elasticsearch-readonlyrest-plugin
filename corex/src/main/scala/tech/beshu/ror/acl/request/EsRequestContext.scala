@@ -8,7 +8,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.acl.aDomain
 import tech.beshu.ror.acl.aDomain.Header.Name
 import tech.beshu.ror.acl.aDomain._
-import tech.beshu.ror.commons.shims.request.RequestInfoShim
+import tech.beshu.ror.shims.request.RequestInfoShim
 
 import scala.collection.JavaConverters._
 

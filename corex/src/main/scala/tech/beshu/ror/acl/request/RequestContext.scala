@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.blocks.VariablesResolver
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.request.RequestContextOps.{BearerToken, RequestGroup}
-import tech.beshu.ror.commons.Constants
+import tech.beshu.ror.Constants
 
 import scala.language.implicitConversions
 

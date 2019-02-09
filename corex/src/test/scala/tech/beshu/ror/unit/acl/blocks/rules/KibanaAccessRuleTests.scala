@@ -7,7 +7,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.TestsUtils.BlockContextAssertion
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
-import tech.beshu.ror.commons.Constants
+import tech.beshu.ror.Constants
 import tech.beshu.ror.acl.aDomain.Header.Name
 import tech.beshu.ror.acl.aDomain.KibanaAccess.{RO, ROStrict, RW}
 import tech.beshu.ror.acl.aDomain._

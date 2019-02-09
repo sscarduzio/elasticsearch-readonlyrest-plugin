@@ -12,7 +12,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 import scala.collection.SortedSet

@@ -8,7 +8,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.commons.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 

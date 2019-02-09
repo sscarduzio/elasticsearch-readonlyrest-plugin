@@ -7,7 +7,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.aDomain.Action.{mSearchAction, searchAction}
 import tech.beshu.ror.acl.aDomain.IndexName
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.commons.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.blocks.rules.IndicesRule.{CanPass, Settings}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}

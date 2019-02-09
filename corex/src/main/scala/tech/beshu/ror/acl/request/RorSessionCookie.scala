@@ -6,7 +6,7 @@ import java.time.{Clock, Instant}
 
 import cats.implicits._
 import cats.{Eq, Show}
-import com.google.common.hash.Hashing
+import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import io.circe.parser._

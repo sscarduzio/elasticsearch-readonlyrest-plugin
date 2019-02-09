@@ -51,12 +51,19 @@ compileJava {
 }
 
 dependencies {
-    compile project(':commons')
     compile project(path: ':corex', configuration: 'shadow')
+    compile project(path: ':corex', configuration: 'simpleCompile')
 
-    compile group: 'org.scala-lang',                name: 'scala-library',                      version: '2.12.4'
-    compile group: 'io.monix',                      name: 'monix_2.12',                         version: '3.0.0-RC2'
-    
+    compile group: 'org.scala-lang', name: 'scala-library', version: '2.12.4'
+    compile group: 'io.monix', name: 'monix_2.12', version: '3.0.0-RC2'
+
+    compile 'cz.seznam.euphoria:shaded-guava:21.0'
+    compile('org.reflections:reflections:0.9.11') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+        exclude group: 'org.slf4j', module: 'slf4j-simple'
+        exclude group: 'dom4j', module: 'dom4j'
+    }
+
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 }
@@ -128,9 +135,8 @@ task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) 
 task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDescriptorTemplate]) {
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
-    into('.')
-            {
-        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
+    into('.') {
+        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && !x.name.contains('jts') }
         from 'build/libs/' + pluginFullName + '.jar'
         from 'build/tmp/' + pluginFullName
     }

@@ -4,7 +4,7 @@ import com.google.common.collect.Sets
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.aDomain.IndexName
-import tech.beshu.ror.commons.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult

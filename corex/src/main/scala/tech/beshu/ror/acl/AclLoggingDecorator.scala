@@ -13,10 +13,9 @@ import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps.toRequestContextOps
 import tech.beshu.ror.acl.utils.TaskOps._
-import tech.beshu.ror.commons.Constants
+import tech.beshu.ror.{Constants, SerializationTool}
 import aDomain.Header
 import show.logs._
-import tech.beshu.ror.requestcontext.SerializationTool
 
 import scala.util.{Failure, Success}
 

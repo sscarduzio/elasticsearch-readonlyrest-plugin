@@ -44,8 +44,8 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.utils.MatcherWithWildcardsAndNegations;
+import tech.beshu.ror.Constants;
+import tech.beshu.ror.utils.MatcherWithWildcardsAndNegations;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

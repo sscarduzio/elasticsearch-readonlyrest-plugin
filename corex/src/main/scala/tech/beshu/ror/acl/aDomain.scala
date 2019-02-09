@@ -9,7 +9,7 @@ import com.softwaremill.sttp.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.header.ToHeaderValue
-import tech.beshu.ror.commons.Constants
+import tech.beshu.ror.Constants
 
 import scala.util.Try
 
