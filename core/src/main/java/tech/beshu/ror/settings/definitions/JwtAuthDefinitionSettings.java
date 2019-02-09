@@ -20,6 +20,7 @@ package tech.beshu.ror.settings.definitions;
 import com.google.common.base.Strings;
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.commons.settings.SettingsMalformedException;
+import tech.beshu.ror.settings.HttpConnectionSettings;
 import tech.beshu.ror.settings.rules.NamedSettings;
 
 import java.time.Duration;
@@ -35,11 +36,14 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
   private static final String USER_CLAIM = "user_claim";
   private static final String ROLES_CLAIM = "roles_claim";
   private static final String HEADER_NAME = "header_name";
+  private static final String HEADER_PREFIX = "header_prefix";
   private static final String EXTERNAL_VALIDATOR = "external_validator.url";
   private static final String EXTERNAL_VALIDATOR_VALIDATE = "external_validator.validate";
   private static final String EXTERNAL_VALIDATOR_SUCCESS_STATUS_CODE = "external_validator.success_status_code";
   private static final String EXTERNAL_VALIDATOR_CACHE_TTL = "external_validator.cache_ttl_in_sec";
+  private static final String EXTERNAL_VALIDATOR_HTTP_CONNECTION_SETTINGS = "external_validator.http_connection_settings";
   private static final String DEFAULT_HEADER_NAME = "Authorization";
+  private static final String DEFAULT_HEADER_PREFIX = "Bearer ";
 
   private final String name;
   private final byte[] key;
@@ -48,9 +52,10 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
   private final Optional<String> algo;
   private final Optional<String> externalValidator;
   private final String headerName;
+  private final String headerPrefix;
   private final int externalValidatorCacheTtlSec;
-  private final Boolean externalValidatorValidate;
   private final int externalValidatorSuccessStatusCode;
+  private HttpConnectionSettings externalValidatorHttpConnectionSettings;
 
   public JwtAuthDefinitionSettings(RawSettings settings) {
     this.name = settings.stringReq(NAME);
@@ -76,10 +81,13 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
     this.userClaim = settings.stringOpt(USER_CLAIM);
     this.rolesClaim = settings.stringOpt(ROLES_CLAIM);
     this.externalValidator = settings.stringOpt(EXTERNAL_VALIDATOR);
-    this.externalValidatorValidate = settings.booleanOpt(EXTERNAL_VALIDATOR_VALIDATE).orElse(true);
     this.externalValidatorSuccessStatusCode = settings.intOpt(EXTERNAL_VALIDATOR_SUCCESS_STATUS_CODE).orElse(200);
     this.externalValidatorCacheTtlSec = settings.intOpt(EXTERNAL_VALIDATOR_CACHE_TTL).orElse(60);
     this.headerName = settings.stringOpt(HEADER_NAME).orElse(DEFAULT_HEADER_NAME);
+    this.headerPrefix = settings.stringOpt(HEADER_PREFIX).orElse(DEFAULT_HEADER_PREFIX);
+
+    boolean externalValidatorValidate = settings.booleanOpt(EXTERNAL_VALIDATOR_VALIDATE).orElse(true);
+    this.externalValidatorHttpConnectionSettings = new HttpConnectionSettings(settings.innerOpt(EXTERNAL_VALIDATOR_HTTP_CONNECTION_SETTINGS).orElse(RawSettings.empty()), externalValidatorValidate);
   }
 
   private static String ensureString(RawSettings settings, String key) {
@@ -139,11 +147,15 @@ public class JwtAuthDefinitionSettings implements NamedSettings {
     return headerName;
   }
 
-  public boolean getExternalValidatorValidate() {
-    return externalValidatorValidate;
+  public String getHeaderPrefix() {
+    return headerPrefix;
   }
 
   public int getExternalValidatorSuccessStatusCode() {
     return externalValidatorSuccessStatusCode;
+  }
+
+  public HttpConnectionSettings getExternalValidatorHttpConnectionSettings() {
+    return externalValidatorHttpConnectionSettings;
   }
 }

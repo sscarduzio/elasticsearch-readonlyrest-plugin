@@ -19,6 +19,7 @@ package tech.beshu.ror.settings.rules;
 
 import tech.beshu.ror.commons.settings.RawSettings;
 import tech.beshu.ror.settings.AuthKeyProviderSettings;
+import tech.beshu.ror.settings.HttpConnectionSettings;
 import tech.beshu.ror.settings.RuleSettings;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettings;
 import tech.beshu.ror.settings.definitions.JwtAuthDefinitionSettingsCollection;
@@ -80,6 +81,10 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
     return jwtAuthSettings.getHeaderName();
   }
 
+  public String getHeaderPrefix() {
+    return jwtAuthSettings.getHeaderPrefix();
+  }
+
   public Optional<String> getExternalValidator() {
     return jwtAuthSettings.getExternalValidator();
   }
@@ -93,10 +98,6 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
     return ATTRIBUTE_NAME;
   }
 
-  public boolean getExternalValidatorValidate() {
-    return jwtAuthSettings.getExternalValidatorValidate();
-  }
-
   public int getExternalValidatorSuccessStatusCode() {
     return jwtAuthSettings.getExternalValidatorSuccessStatusCode();
   }
@@ -104,5 +105,9 @@ public class JwtAuthRuleSettings implements RuleSettings, AuthKeyProviderSetting
   @Override
   public Duration getCacheTtl() {
     return jwtAuthSettings.getExternalValidatorCacheTtl();
+  }
+
+  public HttpConnectionSettings getExternalValidatorHttpConnectionSettings() {
+    return jwtAuthSettings.getExternalValidatorHttpConnectionSettings();
   }
 }

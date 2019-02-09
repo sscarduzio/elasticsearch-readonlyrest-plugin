@@ -133,7 +133,7 @@ task relocateShadowJar(type: ConfigureShadowRelocation) {
 
 tasks.shadowJar.dependsOn tasks.relocateShadowJar
 
-//tasks.withType(AbstractArchiveTask) {
-//    preserveFileTimestamps = false
-//    reproducibleFileOrder = true
-//}
+tasks.withType(AbstractArchiveTask) {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
