@@ -94,7 +94,7 @@ public class ReadonlyRestPlugin extends Plugin
     this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
     this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 

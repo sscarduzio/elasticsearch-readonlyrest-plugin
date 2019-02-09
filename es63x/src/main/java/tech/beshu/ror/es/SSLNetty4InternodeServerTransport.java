@@ -62,7 +62,11 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
   }
 
-  @Override
+
+  protected ChannelHandler getClientChannelInitializer() {
+    return getClientChannelInitializer(null);
+  }
+
   protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
 
     return new Netty4Transport.ClientChannelInitializer() {
