@@ -15,6 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
+/*
 package tech.beshu.ror.integration;
 
 import com.google.common.net.HostAndPort;
@@ -102,3 +103,4 @@ public class InternodeSSLTest {
   }
 
 }
+*/
