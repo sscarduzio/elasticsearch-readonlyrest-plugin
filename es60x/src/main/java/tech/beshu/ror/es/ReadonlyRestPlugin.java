@@ -27,6 +27,7 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
@@ -63,6 +64,8 @@ import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
@@ -79,21 +82,19 @@ public class ReadonlyRestPlugin extends Plugin
 
   private final Settings settings;
   private final LoggerShim logger;
+  private final BasicSettings basicSettings;
+
+  private IndexLevelActionFilter ilaf;
   private SettingsObservableImpl settingsObservable;
   private Environment environment;
-  private BasicSettings basicSettings;
 
-  public ReadonlyRestPlugin(Settings s) {
+  @Inject
+  public ReadonlyRestPlugin(Settings s, Path p) {
     this.settings = s;
-    this.environment = new Environment(s);
+    this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
     this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
-  }
-
-  @Override
-  public List<Class<? extends ActionFilter>> getActionFilters() {
-    return Collections.singletonList(IndexLevelActionFilter.class);
   }
 
   @Override
@@ -107,7 +108,8 @@ public class ReadonlyRestPlugin extends Plugin
       try {
         this.environment = environment;
         settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      } catch (Exception e) {
+        this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
+      } catch (IOException e) {
         e.printStackTrace();
       }
       components.add(settingsObservable);
@@ -115,6 +117,23 @@ public class ReadonlyRestPlugin extends Plugin
     });
 
     return components;
+  }
+
+  @Override
+  public List<Class<? extends ActionFilter>> getActionFilters() {
+    return Collections.singletonList(IndexLevelActionFilter.class);
+  }
+
+  @Override
+  public void onIndexModule(IndexModule indexModule) {
+    indexModule.setSearcherWrapper(indexService -> {
+      try {
+        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return null;
+    });
   }
 
   @Override
@@ -135,7 +154,7 @@ public class ReadonlyRestPlugin extends Plugin
     return Collections.singletonMap(
         "ssl_netty4", () ->
             new SSLTransportNetty4(
-                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, basicSettings.getSslInternodeSettings().get()
+                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, basicSettings.getSslHttpSettings().get()
             ));
   }
 
@@ -192,15 +211,4 @@ public class ReadonlyRestPlugin extends Plugin
     };
   }
 
-  @Override
-  public void onIndexModule(IndexModule module) {
-    module.setSearcherWrapper(indexService -> {
-      try {
-        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-      return null;
-    });
-  }
 }

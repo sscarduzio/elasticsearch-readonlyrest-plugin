@@ -33,7 +33,6 @@ import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.commons.SSLCertParser;
@@ -47,18 +46,17 @@ import java.util.Optional;
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   private final LoggerShim logger;
-  private final BasicSettings.SSLSettings sslSettings;
+  private BasicSettings.SSLSettings sslSettings;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, BasicSettings.SSLSettings sslSettings) {
-
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
-    this.sslSettings = sslSettings;
     logger.info("creating SSL transport");
+    this.sslSettings = sslSettings;
   }
 
+  @Override
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
     if (!this.lifecycle.started()) {
       return;
