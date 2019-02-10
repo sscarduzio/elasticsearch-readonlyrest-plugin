@@ -18,6 +18,8 @@
 package tech.beshu.ror.es;
 
 import monix.execution.Scheduler$;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -30,7 +32,6 @@ import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -41,18 +42,20 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import scala.collection.immutable.Map;
+import tech.beshu.ror.SecurityPermissionException;
 import tech.beshu.ror.acl.AclHandler;
 import tech.beshu.ror.acl.ResponseWriter;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.factory.AsyncHttpClientsFactory;
 import tech.beshu.ror.acl.factory.HttpClientsFactory;
+import tech.beshu.ror.acl.factory.RorEngineFactory;
 import tech.beshu.ror.acl.factory.RorEngineFactory$;
 import tech.beshu.ror.acl.factory.RorEngineFactory.Engine;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
-import tech.beshu.ror.SecurityPermissionException;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -63,19 +66,19 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Created by sscarduzio on 19/12/2015.
  */
-@Singleton public class IndexLevelActionFilter extends AbstractComponent implements ActionFilter {
+@Singleton public class IndexLevelActionFilter implements ActionFilter {
 
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<Engine>> rorEngine;
+  private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final IndexNameExpressionResolver indexResolver;
+  private final Logger logger;
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
-      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) throws IOException {
-    super(settings);
-
+      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) {
+    logger = LogManager.getLogger(this.getClass());
     BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
         env.configFile().toAbsolutePath(), settings);
 
@@ -121,7 +124,6 @@ import java.util.concurrent.atomic.AtomicReference;
   public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task, String action,
       Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
       Optional<Engine> engine = this.rorEngine.get();
       if (engine.isPresent()) {
         handleRequest(engine.get(), task, action, request, listener, chain);

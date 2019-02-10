@@ -22,7 +22,7 @@ object ruleDecoders {
       case FieldsRule.name => Some(FieldsRuleDecoder)
       case FilterRule.name => Some(FilterRuleDecoder)
       case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))
-      case HeadersAndRule.name => Some(HeadersAndRuleDecoder)
+      case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(HostsRuleDecoder)
       case IndicesRule.name => Some(IndicesRuleDecoders)

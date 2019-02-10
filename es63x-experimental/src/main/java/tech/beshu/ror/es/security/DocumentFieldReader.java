@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class DocumentFieldReader extends FilterLeafReader {
-  static protected final Logger logger = Loggers.getLogger(DocumentFieldReader.class, new String[0]);
+  static protected final Logger logger = Loggers.getLogger(DocumentFieldReader.class, DocumentFieldReader.class.getName());
   private final FieldInfos remainingFieldsInfo;
   private final FieldPolicy policy;
 
@@ -276,13 +276,13 @@ public class DocumentFieldReader extends FilterLeafReader {
     private final Set<String> fields;
 
     DocumentFieldDirectoryReader(DirectoryReader in, Set<String> fields) throws IOException {
-      super(in, new DocumentFieldDirectorySubReader(fields));
+      super(in, new DocumentFieldReader.DocumentFieldDirectorySubReader(fields));
       this.fields = fields;
     }
 
     @Override
     protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
-      return new DocumentFieldDirectoryReader(in, fields);
+      return new DocumentFieldReader.DocumentFieldDirectoryReader(in, fields);
     }
 
     @Override

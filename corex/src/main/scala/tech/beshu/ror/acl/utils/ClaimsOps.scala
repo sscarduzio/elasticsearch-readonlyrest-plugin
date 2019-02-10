@@ -2,16 +2,12 @@ package tech.beshu.ror.acl.utils
 
 import java.util
 
-import cats.implicits._
-import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import tech.beshu.ror.acl.aDomain.{ClaimName, Group, User}
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult._
 
-import scala.collection.SortedSet
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
@@ -25,7 +21,7 @@ class ClaimsOps(val claims: Claims) extends AnyVal {
   }
 
   // todo: use json path (with jackson? or maybe we can convert java map to json?)
-  def groupsClaim(name: ClaimName): ClaimSearchResult[NonEmptySet[Group]] = {
+  def groupsClaim(name: ClaimName): ClaimSearchResult[Set[Group]] = {
     val result = name.value.value.split("[.]").toList match {
       case Nil | _ :: Nil => Option(claims.get(name.value.value, classOf[Object]))
       case path :: restPaths =>
@@ -42,13 +38,10 @@ class ClaimsOps(val claims: Claims) extends AnyVal {
     }
     result match {
       case Some(value: String) =>
-        toGroup(value).map(NonEmptySet.one(_)).map(Found.apply).getOrElse(NotFound)
+        Found(toGroup(value).map(Set(_)).getOrElse(Set.empty))
       case Some(values) if values.isInstanceOf[util.Collection[String]] =>
         val collection = values.asInstanceOf[util.Collection[String]]
-        NonEmptySet
-          .fromSet(SortedSet.empty[Group] ++ collection.asScala.toList.flatMap(toGroup).toSet)
-          .map(Found.apply)
-          .getOrElse(NotFound)
+        Found(collection.asScala.toList.flatMap(toGroup).toSet)
       case _ =>
         NotFound
     }

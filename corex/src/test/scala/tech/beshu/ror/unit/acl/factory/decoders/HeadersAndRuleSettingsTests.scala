@@ -47,6 +47,23 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
           }
         )
       }
+      "deprecated rule name is used" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    headers: "X-Some-Header:one"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.headers should be(NonEmptySet.one(headerFrom("X-Some-Header" -> "one")))
+          }
+        )
+      }
     }
     "not be able to be loaded from config" when {
       "no header is defined" in {

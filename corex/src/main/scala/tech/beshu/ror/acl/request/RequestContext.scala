@@ -4,13 +4,16 @@ import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.{Method, Uri}
 import eu.timepit.refined.types.string.NonEmptyString
-import squants.information.Information
-import tech.beshu.ror.acl.blocks.VariablesManager
-import tech.beshu.ror.acl.blocks.VariablesResolver
+import org.apache.logging.log4j.Level
+import org.apache.logging.log4j.scala.Logging
+import squants.information.{Bytes, Information}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext, VariablesManager, VariablesResolver}
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.request.RequestContextOps.{BearerToken, RequestGroup}
 import tech.beshu.ror.Constants
+import RequestContextOps._
 
 import scala.language.implicitConversions
 
@@ -38,11 +41,57 @@ trait RequestContext {
   def variablesResolver: VariablesResolver = new VariablesManager(this)
 }
 
-object RequestContext {
+object RequestContext extends Logging {
+
   final case class Id(value: String) extends AnyVal
   object Id {
     implicit val show: Show[Id] = Show.show(_.value)
   }
+
+  def show(blockContext: Option[BlockContext],
+           history: Vector[Block.History]): Show[RequestContext] =
+    Show.show { r =>
+      def stringifyLoggedUser = blockContext.flatMap(_.loggedUser) match {
+        case Some(user) => s"${user.id.show}"
+        case None => "[no basic auth header]"
+      }
+
+      def stringifyContentLength = {
+        if (r.contentLength == Bytes(0)) "<N/A>"
+        else if (logger.delegate.isEnabled(Level.DEBUG)) r.content
+        else s"<OMITTED, LENGTH=${r.contentLength}> "
+      }
+
+      def stringifyIndices = {
+        blockContext
+          .toSet
+          .flatMap { b: BlockContext => b.indices }
+          .toList
+          .map(_.show) match {
+          case Nil => "<N/A>"
+          case nel => nel.mkString(",")
+        }
+      }
+
+      s"""{
+         | ID:${r.id.show},
+         | TYP:${r.`type`.show},
+         | CGR:${r.currentGroup.show},
+         | USR:$stringifyLoggedUser,
+         | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
+         | KDX:${blockContext.flatMap(_.kibanaIndex).getOrElse("null")},
+         | ACT:${r.action.show},
+         | OA:${r.remoteAddress.show},
+         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value).getOrElse("null")},
+         | DA:${r.localAddress.show},
+         | IDX:$stringifyIndices,
+         | MET:${r.method.show},
+         | PTH:${r.uri.show},
+         | CNT:$stringifyContentLength,
+         | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
+         | HIS:${history.map(_.show).mkString(", ")}
+         | }""".stripMargin.replaceAll("\n", " ")
+    }
 }
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {

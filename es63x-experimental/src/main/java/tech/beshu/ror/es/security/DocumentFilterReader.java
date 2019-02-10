@@ -69,9 +69,9 @@ public final class DocumentFilterReader extends FilterLeafReader {
         }
       }
     }
-
     this.liveDocs = bits;
     this.numDocs = bits.cardinality();
+
   }
 
   public static DocumentFilterDirectoryReader wrap(DirectoryReader in, Query filterQuery) throws IOException {
@@ -81,6 +81,11 @@ public final class DocumentFilterReader extends FilterLeafReader {
   @Override
   public int numDocs() {
     return numDocs;
+  }
+
+  @Override
+  public boolean hasDeletions() {
+    return true;
   }
 
   @Override

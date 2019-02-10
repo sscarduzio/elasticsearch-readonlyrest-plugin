@@ -85,7 +85,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     return new SSLHandler(this);
   }
 
-  private class SSLHandler extends HttpChannelHandler {
+  private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
     private Optional<SslContext> context = Optional.empty();
 
     SSLHandler(final Netty4HttpServerTransport transport) {

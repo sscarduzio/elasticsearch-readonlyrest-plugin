@@ -1,6 +1,5 @@
 package tech.beshu.ror.acl.blocks.rules
 
-import cats.data._
 import cats.implicits._
 import io.jsonwebtoken.{Claims, Jwts}
 import monix.eval.Task
@@ -99,7 +98,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
           case fst :: snd :: _ =>
             Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody).toEither.left.map {
               ex =>
-                logger.debug(s"JWT token '${token.show}' parsing error", ex)
+                logger.error(s"JWT token '${token.show}' parsing error", ex)
                 ()
             }
           case _ =>
@@ -108,7 +107,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       case Hmac(_) | Rsa(_) | Ec(_) =>
         Try(parser.parseClaimsJws(token.value.value).getBody).toEither.left.map {
           ex =>
-            logger.debug(s"JWT token '${token.show}' parsing error", ex)
+            logger.error(s"JWT token '${token.show}' parsing error", ex)
             ()
         }
     }
@@ -130,11 +129,11 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
-  private def handleGroupsClaimSearchResult(result: Option[ClaimSearchResult[NonEmptySet[Group]]]) = {
+  private def handleGroupsClaimSearchResult(result: Option[ClaimSearchResult[Set[Group]]]) = {
     result match {
       case Some(NotFound) => Left(())
       case Some(Found(groups)) if settings.groups.nonEmpty =>
-        if (groups.toSortedSet.intersect(settings.groups).isEmpty) Left(())
+        if (groups.intersect(settings.groups).isEmpty) Left(())
         else Right(())
       case None if settings.groups.nonEmpty => Left(())
       case Some(Found(_)) | None => Right(())

@@ -45,7 +45,6 @@ abstract public class SettingsObservable extends Observable {
     return current;
   }
 
-
   protected abstract boolean isClusterReady();
 
   protected abstract Map<String, ?> getNodeSettings();

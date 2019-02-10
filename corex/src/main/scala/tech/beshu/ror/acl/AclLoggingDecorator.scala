@@ -3,19 +3,14 @@ package tech.beshu.ror.acl
 import cats.Show
 import cats.implicits._
 import monix.eval.Task
-import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
-import squants.information.Bytes
 import tech.beshu.ror.acl.AclLoggingDecorator.FinalState
-import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.request.RequestContextOps.toRequestContextOps
 import tech.beshu.ror.acl.utils.TaskOps._
 import tech.beshu.ror.{Constants, SerializationTool}
-import aDomain.Header
-import show.logs._
 
 import scala.util.{Failure, Success}
 
@@ -50,8 +45,9 @@ class AclLoggingDecorator(underlying: Acl, serializationTool: Option[Serializati
                   blockContext: Option[BlockContext],
                   history: Vector[Block.History]): Unit = {
     if (!shouldSkipLog(state, blockVerbosity)) {
+      implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext, history)
       logger.info {
-        s"""${stateColor(state)}${state.show} by $reason req=${resultShow(requestContext, blockContext, history)}${Constants.ANSI_RESET}"""
+        s"""${stateColor(state)}${state.show} by $reason req=${requestContext.show}${Constants.ANSI_RESET}"""
       }
       //todo:
       //serializationTool.foreach(_.submit(requestContext.id.value, null))
@@ -69,48 +65,6 @@ class AclLoggingDecorator(underlying: Acl, serializationTool: Option[Serializati
     case FinalState.NotFound => Constants.ANSI_YELLOW
   }
 
-  private def resultShow(r: RequestContext, blockContext: Option[BlockContext], history: Vector[Block.History]) = {
-    def stringifyLoggedUser = blockContext.flatMap(_.loggedUser) match {
-      case Some(user) => s"${user.id.show}"
-      case None => "[no basic auth header]"
-    }
-
-    def stringifyContentLength = {
-      if (r.contentLength == Bytes(0)) "<N/A>"
-      else if (logger.delegate.isEnabled(Level.DEBUG)) r.content
-      else s"<OMITTED, LENGTH=${r.contentLength}> "
-    }
-
-    def stringifyIndices = {
-      blockContext
-        .toSet
-        .flatMap { b: BlockContext => b.indices }
-        .toList
-        .map(_.show) match {
-        case Nil => "<N/A>"
-        case nel => nel.mkString(",")
-      }
-    }
-
-    s"""{
-       | ID:${r.id.show},
-       | TYP:${r.`type`.show},
-       | CGR:${r.currentGroup.show},
-       | USR:$stringifyLoggedUser,
-       | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
-       | KDX:${blockContext.flatMap(_.kibanaIndex).getOrElse("null")},
-       | ACT:${r.action.show},
-       | OA:${r.remoteAddress.show},
-       | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value).getOrElse("null")},
-       | DA:${r.localAddress.show},
-       | IDX:$stringifyIndices,
-       | MET:${r.method.show},
-       | PTH:${r.uri.show},
-       | CNT:$stringifyContentLength,
-       | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
-       | HIS:${history.map(_.show).mkString(", ")}
-       | }""".stripMargin.replaceAll("\n", " ")
-  }
 }
 
 object AclLoggingDecorator {

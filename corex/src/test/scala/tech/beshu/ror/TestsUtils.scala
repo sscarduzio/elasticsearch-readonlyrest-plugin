@@ -17,6 +17,9 @@ object TestsUtils {
   def basicAuthHeader(value: String): Header =
     Header(Name(NonEmptyString.unsafeFrom("Authorization")), NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes)))
 
+  def header(name: String, value: String): Header =
+    Header(Name(NonEmptyString.unsafeFrom(name)), NonEmptyString.unsafeFrom(value))
+
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
   trait BlockContextAssertion[SETTINGS] {

@@ -36,6 +36,7 @@ import tech.beshu.ror.settings.RawSettings;
 import tech.beshu.ror.settings.SettingsObservable;
 import tech.beshu.ror.settings.SettingsUtils;
 import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.settings.SettingsObservable;
 
 import java.nio.file.Path;
 import java.util.Map;
