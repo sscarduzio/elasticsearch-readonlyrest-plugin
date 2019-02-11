@@ -53,7 +53,7 @@ object RequestContext extends Logging {
     Show.show { r =>
       def stringifyLoggedUser = blockContext.flatMap(_.loggedUser) match {
         case Some(user) => s"${user.id.show}"
-        case None => "[no basic auth header]"
+        case None => "[user not logged]"
       }
 
       def stringifyContentLength = {
@@ -73,6 +73,7 @@ object RequestContext extends Logging {
         }
       }
 
+      // todo: check pth!!
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},

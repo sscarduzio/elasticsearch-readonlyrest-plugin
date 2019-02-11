@@ -1,8 +1,10 @@
 package tech.beshu.ror.acl.blocks.rules
 
+import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.aDomain.{BasicAuth, LoggedUser, Secret}
+import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -21,14 +23,14 @@ abstract class BaseBasicAuthenticationRule
     .flatMap { _ =>
       requestContext.basicAuth match {
         case Some(credentials) =>
-          logger.debug(s"Attempting Login as: ${credentials.user} rc: $requestContext")
+          logger.debug(s"Attempting Login as: ${credentials.user.show} rc: ${requestContext.id.show}")
           authenticate(credentials)
             .map {
               case true => Fulfilled(blockContext.withLoggedUser(LoggedUser(credentials.user)))
               case false => Rejected
             }
         case None =>
-          logger.debug("No basic auth")
+          logger.debug(s"No basic auth, rc: ${requestContext.id.show}")
           Task.now(Rejected)
       }
     }

@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
@@ -491,6 +492,7 @@ public class RequestInfo implements RequestInfoShim {
 
         // This contains global indices
         if (sr.indices().length == 0 || Sets.newHashSet(sr.indices()).contains("*")) {
+
           sr.indices(newIndices.toArray(new String[newIndices.size()]));
           continue;
         }

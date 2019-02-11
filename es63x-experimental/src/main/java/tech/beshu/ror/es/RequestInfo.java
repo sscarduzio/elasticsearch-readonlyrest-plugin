@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
@@ -240,7 +241,7 @@ public class RequestInfo implements RequestInfoShim {
       Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
                                  .flatMap(Collection::stream)
                                  .collect(Collectors.toSet());
-      indices = (String[]) indicesSet.toArray();
+      indices = indicesSet.toArray(new String[indicesSet.size()]);
     }
 
     // Buggy cases here onwards

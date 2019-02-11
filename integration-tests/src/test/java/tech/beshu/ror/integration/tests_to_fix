@@ -3,6 +3,6 @@
 - FieldLevelSecurityTests
 - FiltersAndFieldsSecurityTests
 - FiltersDocLevelSecurityTests
-- IndicesAliasesTests
 - IndicesReverseWildcardTests
 - LocalGroupsTest
+- MSearchTEST3_Tests

@@ -128,8 +128,8 @@ object aDomain {
 
   final case class IndexName(value: String) extends AnyVal {
     def isClusterIndex: Boolean = value.contains(":")
-
     def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
+    def hasWildcard: Boolean = value.contains("*")
   }
   object IndexName {
 

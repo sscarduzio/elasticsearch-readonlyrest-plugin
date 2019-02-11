@@ -49,7 +49,7 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
   override val indices: Set[aDomain.IndexName] = rInfo.extractIndices().asScala.map(IndexName.apply).toSet
 
-  override val allIndicesAndAliases: Set[aDomain.IndexName] = rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
+  override def allIndicesAndAliases: Set[aDomain.IndexName] = rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
 
   override val repositories: Set[IndexName] = rInfo.extractRepositories().asScala.map(IndexName.apply).toSet
 

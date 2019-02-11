@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
@@ -166,6 +167,7 @@ public class IndicesSyncRule extends SyncRule {
           nonExistent.add(idx);
         }
       }
+
       if (!nonExistent.isEmpty()) {
         if (!src.isComposite()) {
           // This goes to 404 naturally, so let it through
@@ -188,6 +190,7 @@ public class IndicesSyncRule extends SyncRule {
 
       // --- 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
       logger.debug("Stage 4");
+
       if (expansion.size() == 0) {
         return true;
       }
@@ -204,6 +207,7 @@ public class IndicesSyncRule extends SyncRule {
 
       // 6. You requested some indices, I can allow you only SOME (we made sure the allowed set is not empty!).
       logger.debug("Stage 6");
+
       src.setIndices(allowedExpansion);
       return true;
     }

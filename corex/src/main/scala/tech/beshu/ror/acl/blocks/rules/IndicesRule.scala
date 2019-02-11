@@ -2,6 +2,7 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.implicits._
 import cats.data.NonEmptySet
+import com.google.common.base.Joiner
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.aDomain.Action.{mSearchAction, searchAction}
@@ -16,6 +17,7 @@ import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScala
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
 import tech.beshu.ror.acl.request.RequestContext
+
 import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 import scala.language.postfixOps
@@ -26,7 +28,7 @@ class IndicesRule(val settings: Settings)
 
   import IndicesRule.stringIndexNameNT
 
-  override val name: Rule.Name = KibanaIndexRule.name
+  override val name: Rule.Name = IndicesRule.name
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
@@ -101,8 +103,9 @@ class IndicesRule(val settings: Settings)
     logger.debug("Stage 0")
     if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
       val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases)
-      val result = if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
-      else CanPass.No
+      val result =
+        if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
+        else CanPass.No
       return result
     }
 
@@ -124,9 +127,10 @@ class IndicesRule(val settings: Settings)
       // 2.1 Detect at least 1 non-wildcard requested indices that do not exist, ES will naturally return 404, our job is done.
       val real = requestContext.allIndicesAndAliases
       val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
-        case (acc, index) if index =!= IndexName.wildcard && !real.contains(index) => acc + index
+        case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
         case (acc, _) => acc
       }
+
       if (nonExistent.nonEmpty) {
         if (!requestContext.isCompositeRequest) {
           // This goes to 404 naturally, so let it through
@@ -144,6 +148,7 @@ class IndicesRule(val settings: Settings)
       val expansion = expandedIndices(requestContext)
       // --- 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
       logger.debug("Stage 4")
+
       if (expansion.isEmpty) {
         return CanPass.Yes(Set.empty)
       }
