@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.collect.Sets;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -26,7 +27,9 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
@@ -40,6 +43,7 @@ import org.elasticsearch.env.Environment;
 import org.elasticsearch.env.NodeEnvironment;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.plugins.ActionPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
@@ -51,6 +55,9 @@ import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.watcher.ResourceWatcherService;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
@@ -58,6 +65,7 @@ import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
@@ -73,16 +81,20 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final Settings settings;
+  private final LoggerShim logger;
+  private final BasicSettings basicSettings;
+
+  private IndexLevelActionFilter ilaf;
   private SettingsObservableImpl settingsObservable;
   private Environment environment;
 
-  public ReadonlyRestPlugin(Settings s) {
+  @Inject
+  public ReadonlyRestPlugin(Settings s, Path p) {
     this.settings = s;
-  }
-
-  @Override
-  public List<Class<? extends ActionFilter>> getActionFilters() {
-    return Collections.singletonList(IndexLevelActionFilter.class);
+    this.environment = new Environment(s, p);
+    Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override
@@ -96,7 +108,8 @@ public class ReadonlyRestPlugin extends Plugin
       try {
         this.environment = environment;
         settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      } catch (Exception e) {
+        this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
+      } catch (IOException e) {
         e.printStackTrace();
       }
       components.add(settingsObservable);
@@ -104,6 +117,23 @@ public class ReadonlyRestPlugin extends Plugin
     });
 
     return components;
+  }
+
+  @Override
+  public List<Class<? extends ActionFilter>> getActionFilters() {
+    return Collections.singletonList(IndexLevelActionFilter.class);
+  }
+
+  @Override
+  public void onIndexModule(IndexModule indexModule) {
+    indexModule.setSearcherWrapper(indexService -> {
+      try {
+        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return null;
+    });
   }
 
   @Override
@@ -116,15 +146,20 @@ public class ReadonlyRestPlugin extends Plugin
       NamedXContentRegistry xContentRegistry,
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
+
+    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      return Collections.EMPTY_MAP;
+    }
+
     return Collections.singletonMap(
         "ssl_netty4", () ->
             new SSLTransportNetty4(
-                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher
+                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, basicSettings.getSslHttpSettings().get()
             ));
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
 
@@ -176,15 +211,4 @@ public class ReadonlyRestPlugin extends Plugin
     };
   }
 
-  @Override
-  public void onIndexModule(IndexModule module) {
-    module.setSearcherWrapper(indexService -> {
-      try {
-        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-      return null;
-    });
-  }
 }

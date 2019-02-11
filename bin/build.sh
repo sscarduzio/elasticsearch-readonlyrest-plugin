@@ -9,60 +9,49 @@ export TERM=dumb
 
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then
-
     echo  ">>> Check all license headers are in place"
     ./gradlew license
-
 fi
 
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
-
     echo ">>> Running unit tests.."
     ./gradlew --stacktrace test ror
+fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
+    echo ">>> es66x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es66x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
-
-    echo ">>> es61x => Running testcontainers.."
+    echo ">>> es63x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
-
     echo ">>> es61x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es61x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
-
     echo ">>> es60x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es60x' || ( find . |grep hs_err |xargs cat && exit 1 )
-
 fi
 
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x" ]]; then
-
     echo ">>> es53x => Running testcontainers.."
     ./gradlew  integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x" ]]; then
-
     echo ">>> es52x => Running testcontainers.."
     ./gradlew  integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x" ]]; then
-
     echo ">>> es51x => Running testcontainers.."
     ./gradlew  integration-tests:test '-PesModule=es51x' || ( find . |grep hs_err |xargs cat && exit 1 )
-
 fi
 
 
@@ -71,13 +60,12 @@ if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; the
     exit 0
 fi
 
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     # es66
-    ./gradlew --stacktrace es63x:ror '-PesVersion=6.6.0'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.0'
 
     # es65
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.0'

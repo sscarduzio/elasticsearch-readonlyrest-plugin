@@ -29,6 +29,7 @@ import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
@@ -55,6 +56,8 @@ import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
@@ -78,6 +81,8 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final Settings settings;
+  private final LoggerShim logger;
+  private final BasicSettings basicSettings;
 
   private IndexLevelActionFilter ilaf;
   private SettingsObservableImpl settingsObservable;
@@ -86,7 +91,10 @@ public class ReadonlyRestPlugin extends Plugin
   @Inject
   public ReadonlyRestPlugin(Settings s, Path p) {
     this.settings = s;
+    this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override
@@ -138,15 +146,20 @@ public class ReadonlyRestPlugin extends Plugin
       NamedXContentRegistry xContentRegistry,
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
+
+    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      return Collections.EMPTY_MAP;
+    }
+
     return Collections.singletonMap(
         "ssl_netty4", () ->
             new SSLTransportNetty4(
-                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, environment
+                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, basicSettings.getSslHttpSettings().get()
             ));
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
 

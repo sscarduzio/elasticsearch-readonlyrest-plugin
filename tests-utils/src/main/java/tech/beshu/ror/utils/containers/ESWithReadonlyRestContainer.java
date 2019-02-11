@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.utils.containers;
 
+import com.google.common.base.Strings;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -33,7 +34,6 @@ import tech.beshu.ror.utils.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,22 +52,37 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   private static int ES_PORT = 9200;
+  private static int ES_TRANSPORT_PORT = 9300;
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
-  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
+  private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(2400);
   private static String ADMIN_LOGIN = "admin";
   private static String ADMIN_PASSWORD = "container";
 
-  private final String esVersion;
+  private static String esVersion;
 
   private ESWithReadonlyRestContainer(String esVersion, ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
-    this.esVersion = esVersion;
+    ESWithReadonlyRestContainer.esVersion = esVersion;
   }
 
   public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
       String elasticsearchConfig,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     return create(project, ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
+  }
+
+  private static boolean greaterOrEqualThan(String esVersion, int maj, int min, int patchLevel) {
+    if (Strings.isNullOrEmpty(esVersion)) {
+      throw new IllegalArgumentException("invalid esVersion: " + esVersion);
+    }
+    return VersionUtil
+        .parseVersion(esVersion, "x", "y")
+        .compareTo(
+            new Version(maj, min, patchLevel, "", "x", "y")) >= 0;
+  }
+
+  public static void main(String[] args) {
+
   }
 
   public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
@@ -77,14 +92,12 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         new ContainerCreationException("Plugin file assembly failed")
     );
 
-    boolean greaterOrEqualThan630 = VersionUtil
-        .parseVersion(project.getESVersion(), "x", "y")
-        .compareTo(
-            new Version(6, 3, 0, "", "x", "y")) >= 0;
-
-    String dockerImage = greaterOrEqualThan630 ? "docker.elastic.co/elasticsearch/elasticsearch-oss" : "docker.elastic.co/elasticsearch/elasticsearch";
+    String dockerImage = greaterOrEqualThan(project.getESVersion(), 6, 3, 0) ?
+        "docker.elastic.co/elasticsearch/elasticsearch-oss" :
+        "docker.elastic.co/elasticsearch/elasticsearch";
     String elasticsearchConfigName = "elasticsearch.yml";
     String log4j2FileName = "log4j2.properties";
+    String javaOptionsFileName = "jvm.options";
     String keystoreFileName = "keystore.jks";
 
     logger.info(sdf.format(System.currentTimeMillis()) + " Creating ES container ...");
@@ -96,6 +109,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
             .withFileFromFile(elasticsearchConfigName, elasticsearchConfigFile)
             .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
             .withFileFromFile(keystoreFileName, ContainerUtils.getResourceFile("/" + keystoreFileName))
+            .withFileFromFile(javaOptionsFileName, ContainerUtils.getResourceFile("/" + javaOptionsFileName))
             .withDockerfileFromBuilder(builder -> {
               builder
                   .from(dockerImage + ":" + project.getESVersion())
@@ -103,6 +117,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                   .copy(pluginFile.getAbsolutePath(), "/tmp/")
                   .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
                   .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
+                  .copy(javaOptionsFileName, "/usr/share/elasticsearch/config/")
                   .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/readonlyrest.yml")
                   .run(
                       "grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -112,14 +127,15 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                   .user("root")
                   .run("chown elasticsearch:elasticsearch config/*");
 
-//              if (greaterOrEqualThan630) {
-//                builder
-//                    .env("JAVA_HOME", "/usr/lib/jvm/jre-1.8.0-openjdk")
-//                    .run("yum update -y && yum install -y nc java-1.8.0-openjdk-headless && yum clean all");
-//              }
+              //              if (greaterOrEqualThan630) {
+              //                builder
+              //                    .env("JAVA_HOME", "/usr/lib/jvm/jre-1.8.0-openjdk")
+              //                    .run("yum update -y && yum install -y nc java-1.8.0-openjdk-headless && yum clean all");
+              //              }
+
 
               builder.user("elasticsearch")
-                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms")
                      .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + pluginFile.getName());
               logger.info("Dockerfile\n" + builder.build());
             })
@@ -134,7 +150,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               .toString();
           System.out.print(logLine);
         })
-        .withExposedPorts(ES_PORT)
+        .withExposedPorts(ES_PORT, ES_TRANSPORT_PORT)
         .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 
   }
@@ -149,6 +165,10 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
   public Integer getESPort() {
     return this.getMappedPort(ES_PORT);
+  }
+
+  public Integer getTransportPort() {
+    return this.getMappedPort(ES_TRANSPORT_PORT);
   }
 
   public RestClient getClient(Header... headers) {

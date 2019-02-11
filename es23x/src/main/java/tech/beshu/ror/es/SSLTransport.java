@@ -42,7 +42,7 @@ import java.util.Optional;
 
 public class SSLTransport extends NettyHttpServerTransport {
 
-  private final BasicSettings sslSettings;
+  private  BasicSettings.SSLSettings sslSettings;
   private final LoggerShim loggerShim;
 
   @Inject
@@ -51,9 +51,9 @@ public class SSLTransport extends NettyHttpServerTransport {
     loggerShim = ESContextImpl.mkLoggerShim(logger);
     Environment env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
-    this.sslSettings = baseSettings;
-    if (sslSettings.isSSLEnabled()) {
+    if (baseSettings.getSslHttpSettings().map(x->x.isSSLEnabled()).orElse(false)) {
       logger.info("creating SSL transport");
+      this.sslSettings = baseSettings.getSslHttpSettings().get();
     }
   }
 
