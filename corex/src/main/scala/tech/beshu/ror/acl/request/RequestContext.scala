@@ -2,18 +2,16 @@ package tech.beshu.ror.acl.request
 
 import cats.Show
 import cats.implicits._
-import com.softwaremill.sttp.{Method, Uri}
+import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.{Block, BlockContext, VariablesManager, VariablesResolver}
 import tech.beshu.ror.acl.request.RequestContext.Id
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.request.RequestContextOps.{BearerToken, RequestGroup, _}
 import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.acl.request.RequestContextOps.{BearerToken, RequestGroup}
-import tech.beshu.ror.Constants
-import RequestContextOps._
 
 import scala.language.implicitConversions
 
@@ -25,7 +23,7 @@ trait RequestContext {
   def remoteAddress: Address
   def localAddress: Address
   def method: Method
-  def uri: Uri
+  def uriPath: UriPath
   def contentLength: Information
   def content: String
 
@@ -73,21 +71,20 @@ object RequestContext extends Logging {
         }
       }
 
-      // todo: check pth!!
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
          | CGR:${r.currentGroup.show},
          | USR:$stringifyLoggedUser,
          | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
-         | KDX:${blockContext.flatMap(_.kibanaIndex).getOrElse("null")},
+         | KDX:${blockContext.flatMap(_.kibanaIndex).map(_.show).getOrElse("null")},
          | ACT:${r.action.show},
          | OA:${r.remoteAddress.show},
-         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value).getOrElse("null")},
+         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.show).getOrElse("null")},
          | DA:${r.localAddress.show},
          | IDX:$stringifyIndices,
          | MET:${r.method.show},
-         | PTH:${r.uri.show},
+         | PTH:${r.uriPath.show},
          | CNT:$stringifyContentLength,
          | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
          | HIS:${history.map(_.show).mkString(", ")}
@@ -137,8 +134,6 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
         }
       }
   }
-
-  def isRestMetadataPath: Boolean = requestContext.uri.toString().startsWith(Constants.REST_METADATA_PATH)
 
   private def findHeader(name: Header.Name) = requestContext.headers.find(_.name === name)
 }

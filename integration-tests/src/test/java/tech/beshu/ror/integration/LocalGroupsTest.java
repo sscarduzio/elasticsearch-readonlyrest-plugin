@@ -135,7 +135,7 @@ public class LocalGroupsTest {
     assertEquals(".kibana_user", bodyMap.get(Constants.HEADER_KIBANA_INDEX));
     assertEquals("user", bodyMap.get(Constants.HEADER_USER_ROR));
     assertEquals("[timelion]", bodyMap.get(Constants.HEADER_KIBANA_HIDDEN_APPS).toString());
-    assertEquals("admin", bodyMap.get(Constants.HEADER_KIBANA_ACCESS));
+    assertEquals("admin", bodyMap.get(Constants.HEADER_KIBANA_ACCESS).toString().toLowerCase());
     assertEquals("testgroup", bodyMap.get(Constants.HEADER_GROUP_CURRENT));
     assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("testgroup"));
     assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("extra_group"));

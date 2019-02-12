@@ -2,14 +2,12 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import java.util.regex.Pattern
 
-import com.softwaremill.sttp.{Uri, UriContext}
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.aDomain.LoggedUser
 import tech.beshu.ror.acl.aDomain.User.Id
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.aDomain.{LoggedUser, UriPath}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
 import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
@@ -24,14 +22,14 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
       "configured pattern matches uri from request" in {
         assertMatchRule(
           uriRegex = patternValueFrom("""^http:\/\/one.com\/\d\d\d$"""),
-          uri = uri"http://one.com/123",
+          uriPath = UriPath("/123"),
           isUserLogged = false
         )
       }
       "configured pattern with variable matches uri from request when user is logged" in {
         assertMatchRule(
           uriRegex = patternValueFrom("""^http:\/\/one.com\/@{user}$"""),
-          uri = uri"http://one.com/mia",
+          uriPath = UriPath("/mia"),
           isUserLogged = true
         )
       }
@@ -40,21 +38,21 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
       "configured pattern doesn't match uri from request" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom("""^http:\/\/one.com\/\d\d\d$"""),
-          uri = uri"http://one.com/one",
+          uriPath = UriPath("/one"),
           isUserLogged = false
         )
       }
       "configured pattern with variable doesn't match uri from request when user is not logged" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom("""^http:\/\/one.com\/@{user}$"""),
-          uri = uri"http://one.com/mia",
+          uriPath = UriPath("/mia"),
           isUserLogged = false
         )
       }
       "configured pattern with variable isn't able to compile to pattern after resolve" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom("""^http:\/\/one.com\/@{user}$"""),
-          uri = uri"http://one.com/mia",
+          uriPath = UriPath("/mia"),
           isUserLogged = true,
           userName = "["
         )
@@ -62,21 +60,21 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(uriRegex: Value[Pattern], uri: Uri, isUserLogged: Boolean, userName: String = "mia") =
-    assertRule(uriRegex, uri, isMatched = true, isUserLogged, userName)
+  private def assertMatchRule(uriRegex: Value[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
+    assertRule(uriRegex, uriPath, isMatched = true, isUserLogged, userName)
 
-  private def assertNotMatchRule(uriRegex: Value[Pattern], uri: Uri, isUserLogged: Boolean, userName: String = "mia") =
-    assertRule(uriRegex, uri, isMatched = false, isUserLogged, userName)
+  private def assertNotMatchRule(uriRegex: Value[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
+    assertRule(uriRegex, uriPath, isMatched = false, isUserLogged, userName)
 
-  private def assertRule(uriRegex: Value[Pattern], uri: Uri, isMatched: Boolean, isUserLogged: Boolean, userName: String) = {
+  private def assertRule(uriRegex: Value[Pattern], uriPath: UriPath, isMatched: Boolean, isUserLogged: Boolean, userName: String) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val blockContext = mock[BlockContext]
     val requestContext = uriRegex match {
       case Const(_) =>
-        MockRequestContext(uri = uri)
+        MockRequestContext(uriPath = uriPath)
       case Variable(_, _) if isUserLogged =>
         (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id(userName))))
-        MockRequestContext(uri = uri)
+        MockRequestContext(uriPath = uriPath)
       case Variable(_, _) =>
         (blockContext.loggedUser _).expects().returning(None)
         MockRequestContext.default

@@ -5,7 +5,6 @@ import java.util.Base64
 
 import cats.Eq
 import cats.implicits._
-import com.softwaremill.sttp.Uri
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.header.ToHeaderValue
@@ -126,7 +125,7 @@ object aDomain {
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
 
-  final case class IndexName(value: String) extends AnyVal {
+  final case class IndexName(value: String) {
     def isClusterIndex: Boolean = value.contains(":")
     def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
     def hasWildcard: Boolean = value.contains("*")
@@ -181,12 +180,13 @@ object aDomain {
     implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
   }
 
-  final case class UriPath(value: String) extends AnyVal
+  final case class UriPath(value: String) {
+    def isRestMetadataPath: Boolean = {
+      value.startsWith(UriPath.restMetadataPath.value)
+    }
+  }
   object UriPath {
     val restMetadataPath = UriPath(Constants.REST_METADATA_PATH)
-
-    def fromUri(uri: Uri): UriPath = UriPath(uri.path.mkString("/", "/", ""))
-
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
   }
 

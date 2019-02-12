@@ -69,20 +69,20 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
       return null;
     });
 
-    if(!blockContext.availableGroups().isEmpty()) {
-      String availableGroupsString = JavaConverters$.MODULE$.<aDomain.Group>setAsJavaSet(blockContext.availableGroups())
-          .stream()
-          .map(g -> g.value().toString())
-          .collect(Collectors.joining(","));
+    blockContext.kibanaIndex().foreach(i -> {
+      sourceMap.put(Constants.HEADER_KIBANA_INDEX, i.value());
+      return null;
+    });
+
+    if (!blockContext.availableGroups().isEmpty()) {
+      String availableGroupsString = JavaConverters$.MODULE$.<aDomain.Group>setAsJavaSet(
+          blockContext.availableGroups()).stream().map(g -> g.value().toString()).collect(Collectors.joining(","));
       sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, availableGroupsString);
     }
 
-    String hiddenAppsStr = headers
-        .stream()
-        .filter(h -> Constants.HEADER_KIBANA_HIDDEN_APPS.equals(h.name().value().toString()))
-        .findFirst()
-        .map(h -> h.value().toString())
-        .orElse(null);
+    String hiddenAppsStr = headers.stream().filter(
+        h -> Constants.HEADER_KIBANA_HIDDEN_APPS.equals(h.name().value().toString())).findFirst().map(
+        h -> h.value().toString()).orElse(null);
 
     String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");
     sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);

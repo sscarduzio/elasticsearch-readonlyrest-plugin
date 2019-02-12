@@ -97,7 +97,8 @@ object show {
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
     implicit val tokenShow: Show[BearerToken] = Show.show(_.value.value)
-    implicit val jwtToken: Show[JwtToken] = Show.show(_.value.value)
+    implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
+    implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
   }
 }
 

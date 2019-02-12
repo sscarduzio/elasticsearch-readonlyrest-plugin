@@ -569,7 +569,12 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeResponseHeaders(Map<String, String> hMap) {
+    // todo: remove dummy logging
+    logger.debug("HTW: " + Joiner.on(",").join(hMap.entrySet().stream().map(h -> h.getKey() + ":" + h.getValue()).collect(
+        Collectors.toSet())));
     hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
+    logger.debug("HHH: " + Joiner.on(",").join(threadPool.getThreadContext().getResponseHeaders().entrySet().stream().map(h -> h.getKey() + ":" + h.getValue().get(0)).collect(
+        Collectors.toSet())));
   }
 
   @Override

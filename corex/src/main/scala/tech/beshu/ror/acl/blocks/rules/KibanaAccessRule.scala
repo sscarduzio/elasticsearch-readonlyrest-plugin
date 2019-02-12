@@ -31,7 +31,7 @@ class KibanaAccessRule(val settings: Settings)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
-    if (UriPath.fromUri(requestContext.uri) === UriPath.restMetadataPath) Fulfilled(modifyMatched(blockContext))
+    if (requestContext.uriPath.isRestMetadataPath) Fulfilled(modifyMatched(blockContext))
     // Allow other actions if devnull is targeted to readers and writers
     else if (requestContext.indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))
     // Any index, read op
@@ -89,7 +89,7 @@ class KibanaAccessRule(val settings: Settings)
     isTargetingKibana(requestContext, kibanaIndex) &&
       settings.access =!= ROStrict &&
       !kibanaCanBeModified &&
-      nonStrictAllowedPaths.matcher(UriPath.fromUri(requestContext.uri).value).find() &&
+      nonStrictAllowedPaths.matcher(requestContext.uriPath.value).find() &&
       (requestContext.action.hasPrefix("indices:data/write/") || requestContext.action.hasPrefix("indices:admin/template/put"))
   }
 

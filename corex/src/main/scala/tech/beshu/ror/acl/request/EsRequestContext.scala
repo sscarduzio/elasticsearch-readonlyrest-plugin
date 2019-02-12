@@ -37,7 +37,7 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
   override val method: Method = Method(rInfo.extractMethod())
 
-  override val uri: Uri = Uri(new URI(rInfo.extractURI()))
+  override val uriPath: UriPath = UriPath(rInfo.extractURI())
 
   override val contentLength: Information = Bytes(rInfo.extractContentLength().toLong)
 

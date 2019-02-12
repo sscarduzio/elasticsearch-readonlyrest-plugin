@@ -82,7 +82,7 @@ object Block {
   final case class History(block: Block.Name, items: Vector[HistoryItem])
   object History {
     implicit val show: Show[History] = Show.show { h =>
-      s"""[${h.block.show}]->[${h.items.map(_.show).mkString(", ")}]"""
+      s"""[${h.block.show}->[${h.items.map(_.show).mkString(", ")}]]"""
     }
   }
 

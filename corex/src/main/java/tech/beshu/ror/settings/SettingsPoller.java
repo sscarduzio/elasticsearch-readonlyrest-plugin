@@ -67,7 +67,7 @@ public class SettingsPoller {
           }
           else {
             result.complete(null);
-            e.printStackTrace();
+            logger.error("error", e);
             throw e;
           }
         }

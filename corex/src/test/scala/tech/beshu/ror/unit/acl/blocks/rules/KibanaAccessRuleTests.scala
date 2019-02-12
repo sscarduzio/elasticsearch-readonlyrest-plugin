@@ -1,7 +1,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 
-import com.softwaremill.sttp.Uri
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
@@ -96,41 +95,41 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
       testNonStrictOperations(
         customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
-        uri = Uri("localhost", 8080, ".custom_kibana" :: "index-pattern" :: "job" :: Nil)
+        uriPath = UriPath("/.custom_kibana/index-pattern/job")
       )
     }
     "non strict operations (2)" in {
       testNonStrictOperations(
         customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/delete"),
-        uri = Uri("localhost", 8080, ".custom_kibana" :: "index-pattern" :: "nilb-auh-filebeat-*" :: Nil)
+        uriPath = UriPath("/.custom_kibana/index-pattern/nilb-auh-filebeat-*")
       )
     }
     "non strict operations (3)" in {
       testNonStrictOperations(
         customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:admin/template/put"),
-        uri = Uri("localhost", 8080, "_template" :: "kibana_index_template%3A.kibana" :: Nil)
+        uriPath = UriPath("/_template/kibana_index_template%3A.kibana")
       )
     }
     "non strict operations (4)" in {
       testNonStrictOperations(
         customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
-        uri = Uri("localhost", 8080, ".custom_kibana" :: "doc" :: "index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b " :: "_update?" :: Nil)
+        uriPath = UriPath("/.custom_kibana/doc/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b/_update?")
       )
     }
   }
 
-  private def testNonStrictOperations(customKibanaIndex: IndexName, action: Action, uri: Uri): Unit = {
-    assertNotMatchRule(settingsOf(ROStrict, customKibanaIndex), action, Set(customKibanaIndex), Some(uri))
-    assertMatchRule(settingsOf(RO, customKibanaIndex), action, Set(customKibanaIndex), Some(uri)){
+  private def testNonStrictOperations(customKibanaIndex: IndexName, action: Action, uriPath: UriPath): Unit = {
+    assertNotMatchRule(settingsOf(ROStrict, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath))
+    assertMatchRule(settingsOf(RO, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)){
       assertBlockContext(
         responseHeaders = Set(Header(Name.kibanaAccess, RO: KibanaAccess)),
         kibanaIndex = Some(customKibanaIndex)
       )
     }
-    assertMatchRule(settingsOf(RW, customKibanaIndex), action, Set(customKibanaIndex), Some(uri)) {
+    assertMatchRule(settingsOf(RW, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)) {
       assertBlockContext(
         responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
         kibanaIndex = Some(customKibanaIndex)
@@ -138,23 +137,23 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
     }
   }
 
-  private def assertMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, url: Option[Uri] = None)
+  private def assertMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, uriPath: Option[UriPath] = None)
                              (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings)) =
-    assertRule(settings, action, indices, url, Some(blockContextAssertion))
+    assertRule(settings, action, indices, uriPath, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, url: Option[Uri] = None) =
-    assertRule(settings, action, indices, url, blockContextAssertion = None)
+  private def assertNotMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, uriPath: Option[UriPath] = None) =
+    assertRule(settings, action, indices, uriPath, blockContextAssertion = None)
 
   private def assertRule(settings: KibanaAccessRule.Settings,
                          action: Action,
                          indices: Set[IndexName],
-                         url: Option[Uri] = None,
+                         uriPath: Option[UriPath] = None,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new KibanaAccessRule(settings)
     val requestContext = MockRequestContext(
       action = action,
       indices = indices,
-      uri = url.getOrElse(Uri("localhost"))
+      uriPath = uriPath.getOrElse(UriPath.restMetadataPath)
     )
     val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)

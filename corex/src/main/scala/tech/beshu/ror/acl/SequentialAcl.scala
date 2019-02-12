@@ -12,6 +12,7 @@ import tech.beshu.ror.acl.request.RequestContext
 import aDomain.{Header, IndexName}
 import aDomain.Header.Name
 import headerValues._
+import org.apache.logging.log4j.scala.Logging
 
 import scala.collection.SortedSet
 
