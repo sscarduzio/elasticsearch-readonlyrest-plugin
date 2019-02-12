@@ -55,7 +55,6 @@ import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
-import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -124,6 +123,7 @@ import java.util.concurrent.atomic.AtomicReference;
   public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task, String action,
       Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      logger.debug("THREAD_CTX: " + threadPool.getThreadContext().hashCode());
       Optional<Engine> engine = this.rorEngine.get();
       if (engine.isPresent()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
@@ -154,36 +154,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
     // todo: optimize handler creation
     engine.acl().handle(requestContext, new AclHandler() {
-      ResponseWriter writer = new ResponseWriter() {
-        @Override
-        public void writeResponseHeaders(Map<String, String> headers) {
-          requestInfo.writeResponseHeaders(JavaConverters$.MODULE$.mapAsJavaMap(headers));
-        }
-
-        @Override
-        public void writeToThreadContextHeader(String key, String value) {
-          requestInfo.writeToThreadContextHeader(key, value);
-        }
-
-        @Override
-        public void writeIndices(scala.collection.immutable.Set<String> indices) {
-          requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(indices));
-        }
-
-        @Override
-        public void writeSnapshots(scala.collection.immutable.Set<String> indices) {
-          requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(indices));
-        }
-
-        @Override
-        public void writeRepositories(scala.collection.immutable.Set<String> indices) {
-          requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(indices));
-        }
-      };
-
       @Override
       public ResponseWriter onAllow(BlockContext blockContext) {
-        boolean hasProceeded = false;
         try {
           // Cache disabling for those 2 kind of request is crucial for
           // document level security to work. Otherwise we'd get an answer from
@@ -204,18 +176,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
           ResponseActionListener searchListener = new ResponseActionListener((ActionListener<ActionResponse>) listener,
               requestContext, blockContext);
-          chain.proceed(task, action, request, (ActionListener<Response>) searchListener);
-
-          hasProceeded = true;
-          return writer;
+          return createWriter(task, action, request, chain, requestInfo, (ActionListener<Response>) searchListener);
         } catch (Throwable e) {
-          e.printStackTrace();
+          logger.error("on allow exception", e);
+          return createWriter(task, action, request, chain, requestInfo, listener);
         }
-        if (!hasProceeded) {
-          chain.proceed(task, action, request, listener);
-        }
-
-        return writer;
       }
 
       @Override
@@ -250,6 +215,42 @@ import java.util.concurrent.atomic.AtomicReference;
         listener.onFailure((Exception) t);
       }
     }).runAsyncAndForget(Scheduler$.MODULE$.global());
+  }
+
+  private <Request extends ActionRequest, Response extends ActionResponse> ResponseWriter createWriter(Task task,
+      String action, Request request, ActionFilterChain<Request, Response> chain, RequestInfo requestInfo,
+      ActionListener<Response> searchListener) {
+    return new ResponseWriter() {
+      @Override
+      public void writeResponseHeaders(Map<String, String> headers) {
+        requestInfo.writeResponseHeaders(JavaConverters$.MODULE$.mapAsJavaMap(headers));
+      }
+
+      @Override
+      public void writeToThreadContextHeader(String key, String value) {
+        requestInfo.writeToThreadContextHeader(key, value);
+      }
+
+      @Override
+      public void writeIndices(scala.collection.immutable.Set<String> indices) {
+        requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(indices));
+      }
+
+      @Override
+      public void writeSnapshots(scala.collection.immutable.Set<String> indices) {
+        requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(indices));
+      }
+
+      @Override
+      public void writeRepositories(scala.collection.immutable.Set<String> indices) {
+        requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(indices));
+      }
+
+      @Override
+      public void commit() {
+        chain.proceed(task, action, request, searchListener);
+      }
+    };
   }
 
   private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {

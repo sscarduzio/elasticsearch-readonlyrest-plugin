@@ -3,16 +3,15 @@ package tech.beshu.ror.acl
 import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.blocks.{Block, BlockContext}
+import tech.beshu.ror.acl.aDomain.Header.Name
+import tech.beshu.ror.acl.aDomain.{Header, IndexName}
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
+import tech.beshu.ror.acl.headerValues._
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
-import aDomain.{Header, IndexName}
-import aDomain.Header.Name
-import headerValues._
-import org.apache.logging.log4j.scala.Logging
 
 import scala.collection.SortedSet
 
@@ -34,16 +33,15 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
           }
         } yield newCurrentResult
       }
-      .mapBoth {
-        case res@(_, Matched(block, blockContext)) =>
-          block.policy match {
+      .flatMap {
+        case res@Matched(block, blockContext) =>
+          val handled = block.policy match {
             case Allow => commitChanges(blockContext, handler.onAllow(blockContext))
-            case Forbid => handler.onForbidden()
+            case Forbid => Task(handler.onForbidden())
           }
-          res
-        case res@(_, Unmatched) =>
-          handler.onForbidden()
-          res
+          lift(handled.map(_ => res))
+        case res@Unmatched =>
+          lift(Task(handler.onForbidden()).map(_ => res))
       }
       .run
       .onErrorHandleWith { ex =>
@@ -65,12 +63,17 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
     WriterT.value[Task, Vector[History], ExecutionResult](executionResult)
   }
 
-  private def commitChanges(blockContext: BlockContext, writer: ResponseWriter): Unit = {
+  private def lift(task: Task[ExecutionResult]): WriterT[Task, Vector[History], ExecutionResult] = {
+    WriterT.liftF(task)
+  }
+
+  private def commitChanges(blockContext: BlockContext, writer: ResponseWriter): Task[Unit] = Task {
     commitResponseHeaders(blockContext, writer)
     commitContextHeaders(blockContext, writer)
     commitIndices(blockContext, writer)
     commitSnapshots(blockContext, writer)
     commitRepositories(blockContext, writer)
+    writer.commit()
   }
 
   private def commitResponseHeaders(blockContext: BlockContext, writer: ResponseWriter): Unit = {
@@ -121,7 +124,7 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
   }
 
   private def availableGroupsHeaderFrom(blockContext: BlockContext): Option[Header] = {
-    if(blockContext.availableGroups.isEmpty) None
+    if (blockContext.availableGroups.isEmpty) None
     else Some(Header(Name.availableGroups, blockContext.availableGroups))
   }
 }

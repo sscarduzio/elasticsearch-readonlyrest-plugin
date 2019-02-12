@@ -23,4 +23,5 @@ trait ResponseWriter {
   def writeIndices(indices: Set[String]): Unit
   def writeSnapshots(indices: Set[String]): Unit
   def writeRepositories(indices: Set[String]): Unit
+  def commit(): Unit
 }

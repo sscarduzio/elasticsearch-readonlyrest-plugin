@@ -64,9 +64,9 @@ public class LocalGroupsTest {
     assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
     assertEquals(".kibana_user", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
     assertEquals("timelion", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());
-    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue());
+    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue().toLowerCase());
     assertEquals("testgroup", r.getHeaders(Constants.HEADER_GROUP_CURRENT)[0].getValue());
-    assertEquals("testgroup,extra_group,foogroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
+    assertEquals("extra_group,foogroup,testgroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
   }
 
   @Test
@@ -82,9 +82,9 @@ public class LocalGroupsTest {
     assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
     assertEquals(".kibana_foogroup", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
     assertEquals("foo:app", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());
-    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue());
+    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue().toLowerCase());
     assertEquals("foogroup", r.getHeaders(Constants.HEADER_GROUP_CURRENT)[0].getValue());
-    assertEquals("testgroup,extra_group,foogroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
+    assertEquals("extra_group,foogroup,testgroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
   }
 
   @Test
