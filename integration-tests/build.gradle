@@ -29,6 +29,7 @@ repositories {
     mavenCentral()
     maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     maven { url 'https://jitpack.io' }
+    maven { url 'https://artifacts.elastic.co/maven' }
 }
 
 test {
@@ -58,7 +59,7 @@ dependencies {
     testCompile 'org.slf4j:slf4j-api:1.7.25'
     testCompile 'ch.qos.logback:logback-classic:1.2.3'
     testCompile 'ch.qos.logback:logback-core:1.2.3'
-
+    testCompile "org.elasticsearch.client:x-pack-transport:6.6.0"
 }
 
 license {

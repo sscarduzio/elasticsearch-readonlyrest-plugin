@@ -17,6 +17,39 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.support.ActionFilter;
+import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.network.NetworkService;
+import org.elasticsearch.common.settings.Setting;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.env.Environment;
+import org.elasticsearch.http.HttpServerTransport;
+import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.mapper.MapperService;
+import org.elasticsearch.indices.breaker.CircuitBreakerService;
+import org.elasticsearch.plugins.ActionPlugin;
+import org.elasticsearch.plugins.IngestPlugin;
+import org.elasticsearch.plugins.NetworkPlugin;
+import org.elasticsearch.plugins.Plugin;
+import org.elasticsearch.plugins.ScriptPlugin;
+import org.elasticsearch.rest.RestHandler;
+import org.elasticsearch.threadpool.ThreadPool;
+import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.configuration.AllowedSettings;
+import tech.beshu.ror.es.rradmin.RRAdminAction;
+import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
+import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
+import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
+
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Collections;
@@ -26,44 +59,20 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.support.ActionFilter;
-import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.network.NetworkService;
-import org.elasticsearch.common.settings.Setting;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.util.BigArrays;
-import org.elasticsearch.env.Environment;
-import org.elasticsearch.http.HttpServerTransport;
-import org.elasticsearch.index.IndexModule;
-import org.elasticsearch.indices.breaker.CircuitBreakerService;
-import org.elasticsearch.plugins.ActionPlugin;
-import org.elasticsearch.plugins.IngestPlugin;
-import org.elasticsearch.plugins.NetworkPlugin;
-import org.elasticsearch.plugins.Plugin;
-import org.elasticsearch.plugins.ScriptPlugin;
-import org.elasticsearch.rest.RestHandler;
-import org.elasticsearch.threadpool.ThreadPool;
-
-import com.google.common.collect.Lists;
-
-import tech.beshu.ror.configuration.AllowedSettings;
-import tech.beshu.ror.es.rradmin.RRAdminAction;
-import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
-import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
-
 public class ReadonlyRestPlugin extends Plugin
-  implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
+    implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
+  private final BasicSettings basicSettings;
+  private final LoggerShim logger;
   private Settings settings;
   private Environment environment;
-  
+
   public ReadonlyRestPlugin(Settings s) {
-	  this.settings = s;
-	  this.environment = new Environment(s);
+    this.settings = s;
+    this.environment = new Environment(s);
+    Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override
@@ -78,19 +87,23 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
-    Settings settings,
-    ThreadPool threadPool,
-    BigArrays bigArrays,
-    CircuitBreakerService circuitBreakerService,
-    NamedWriteableRegistry namedWriteableRegistry,
-    NetworkService networkService
+      Settings settings,
+      ThreadPool threadPool,
+      BigArrays bigArrays,
+      CircuitBreakerService circuitBreakerService,
+      NamedWriteableRegistry namedWriteableRegistry,
+      NetworkService networkService
   ) {
+
+    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      return Collections.EMPTY_MAP;
+    }
+
     AtomicReference<Map<String, Supplier<HttpServerTransport>>> result = new AtomicReference<>();
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
       result.set(Collections.singletonMap(
           "ssl_netty4", () ->
-              new SSLTransportNetty4(settings, networkService, bigArrays, threadPool)));
+              new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, basicSettings.getSslHttpSettings().get())));
       return null;
     });
 
@@ -119,10 +132,10 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  @SuppressWarnings({"unchecked", "rawtypes"})
+  @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-      new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override
@@ -132,13 +145,13 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public void onIndexModule(IndexModule module) {
-	module.setSearcherWrapper(indexService -> {
-		try {
-			return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	});
+    module.setSearcherWrapper(indexService -> {
+      try {
+        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+      return null;
+    });
   }
 }
