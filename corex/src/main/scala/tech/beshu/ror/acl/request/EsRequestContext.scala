@@ -1,8 +1,6 @@
 package tech.beshu.ror.acl.request
 
-import java.net.URI
-
-import com.softwaremill.sttp.{Method, Uri}
+import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.acl.aDomain
@@ -49,7 +47,7 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
 
   override val indices: Set[aDomain.IndexName] = rInfo.extractIndices().asScala.map(IndexName.apply).toSet
 
-  override def allIndicesAndAliases: Set[aDomain.IndexName] = rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
+  override val allIndicesAndAliases: Set[aDomain.IndexName] = rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
 
   override val repositories: Set[IndexName] = rInfo.extractRepositories().asScala.map(IndexName.apply).toSet
 
@@ -58,4 +56,6 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
   override val involvesIndices: Boolean = rInfo.involvesIndices()
 
   override val isCompositeRequest: Boolean = rInfo.extractIsCompositeRequest()
+
+  override val isAllowedForDLS: Boolean = rInfo.extractIsAllowedForDLS()
 }

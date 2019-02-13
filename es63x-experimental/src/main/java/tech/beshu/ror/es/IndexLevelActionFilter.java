@@ -77,6 +77,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
       ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) {
+    System.setProperty("es.set.netty.runtime.available.processors", "false");
+
     logger = LogManager.getLogger(this.getClass());
     BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
         env.configFile().toAbsolutePath(), settings);

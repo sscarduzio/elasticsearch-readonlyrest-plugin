@@ -1,12 +1,12 @@
 package tech.beshu.ror.acl.factory
 
 import java.util.concurrent.CopyOnWriteArrayList
-
-import com.softwaremill.sttp.SttpBackend
 import com.softwaremill.sttp.asynchttpclient.cats.AsyncHttpClientCatsBackend
+import com.softwaremill.sttp.{MonadError, Request, Response, SttpBackend}
 import io.netty.util.HashedWheelTimer
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
+import org.apache.logging.log4j.scala.Logging
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
@@ -17,12 +17,15 @@ import scala.collection.JavaConverters._
 trait HttpClientsFactory {
 
   def create(config: Config): HttpClient
+
   def shutdown(): Unit
 }
 
 object HttpClientsFactory {
   type HttpClient = SttpBackend[Task, Nothing]
+
   final case class Config(validate: Boolean)
+
 }
 
 // todo: remove synchronized, use more sophisticated lock mechanism
@@ -32,10 +35,10 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
   private val isWorking = AtomicBoolean(true)
 
   override def create(config: Config): HttpClient = synchronized {
-    if(isWorking.get()) {
+    if (isWorking.get()) {
       val asyncHttpClient = newAsyncHttpClient(config)
       existingClients.add(asyncHttpClient)
-      AsyncHttpClientCatsBackend.usingClient(asyncHttpClient)
+      new LoggingSttpBackend[Task, Nothing](AsyncHttpClientCatsBackend.usingClient(asyncHttpClient))
     } else {
       throw new IllegalStateException("Cannot create http client - factory was closed")
     }
@@ -57,4 +60,32 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
         .build()
     }
   }
+}
+
+private class LoggingSttpBackend[R[_], S](delegate: SttpBackend[R, S])
+  extends SttpBackend[R, S]
+    with Logging {
+
+  override def send[T](request: Request[T, S]): R[Response[T]] = {
+    responseMonad
+      .map(
+        responseMonad
+          .handleError(delegate.send(request)) {
+            case e: Exception =>
+              logger.error(s"Exception when sending request: $request", e)
+              responseMonad.error(e)
+          }
+      ) { response =>
+        if (response.isSuccess) {
+          logger.debug(s"For request: $request got response: $response")
+        } else {
+          logger.warn(s"For request: $request got response: $response")
+        }
+        response
+      }
+  }
+
+  override def close(): Unit = delegate.close()
+
+  override def responseMonad: MonadError[R] = delegate.responseMonad
 }

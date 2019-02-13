@@ -88,6 +88,7 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside
 
           val responseWriter = mock[ResponseWriter]
           (responseWriter.writeResponseHeaders _).expects(*).returning({})
+          (responseWriter.commit _).expects().returning({})
           val handler = mock[AclHandler]
           (handler.onAllow _).expects(*).returning(responseWriter)
           val request = MockRequestContext.default.copy(headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}")))

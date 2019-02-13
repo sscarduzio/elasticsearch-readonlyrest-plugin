@@ -21,7 +21,8 @@ final case class MockRequestContext(override val id: RequestContext.Id = Request
                                     override val snapshots: Set[IndexName] = Set.empty,
                                     override val involvesIndices: Boolean = false,
                                     override val isCompositeRequest: Boolean = false,
-                                    override val isReadOnlyRequest: Boolean = true)
+                                    override val isReadOnlyRequest: Boolean = true,
+                                    override val isAllowedForDLS: Boolean = true)
   extends RequestContext
 
 object MockRequestContext {

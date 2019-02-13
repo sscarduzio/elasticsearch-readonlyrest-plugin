@@ -1,6 +1,8 @@
 package tech.beshu.ror.acl.blocks.rules.utils
 
+import tech.beshu.ror.acl.aDomain.User
 import tech.beshu.ror.utils.MatcherWithWildcards
+
 import scala.collection.JavaConverters._
 
 trait Matcher {
@@ -42,3 +44,8 @@ class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildc
 }
 
 final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
+object StringTNaturalTransformation {
+  object instances {
+    implicit val stringUserIdNT: StringTNaturalTransformation[User.Id] = StringTNaturalTransformation[User.Id](User.Id.apply, _.value)
+  }
+}

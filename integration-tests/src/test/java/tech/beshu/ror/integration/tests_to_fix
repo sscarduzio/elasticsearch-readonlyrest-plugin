@@ -1,8 +1,0 @@
-- ExternalAuthenticationTests // availableProcessors is already set to [2], rejecting [2]
-- ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests // availableProcessors is already set to [2], rejecting [2]
-- FieldLevelSecurityTests
-- FiltersAndFieldsSecurityTests
-- FiltersDocLevelSecurityTests
-- IndicesReverseWildcardTests
-- LocalGroupsTest
-- MSearchTEST3_Tests

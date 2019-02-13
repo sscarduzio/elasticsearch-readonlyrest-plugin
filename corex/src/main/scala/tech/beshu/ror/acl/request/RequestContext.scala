@@ -35,6 +35,7 @@ trait RequestContext {
   def isReadOnlyRequest: Boolean
   def involvesIndices: Boolean
   def isCompositeRequest: Boolean
+  def isAllowedForDLS: Boolean
 
   def variablesResolver: VariablesResolver = new VariablesManager(this)
 }

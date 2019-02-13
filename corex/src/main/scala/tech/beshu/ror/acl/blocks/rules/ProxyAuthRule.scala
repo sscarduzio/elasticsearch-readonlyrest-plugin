@@ -3,6 +3,7 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.aDomain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule.Settings
@@ -10,9 +11,19 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.aDomain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
+import tech.beshu.ror.utils.MatcherWithWildcards
+
+import scala.collection.JavaConverters._
 
 class ProxyAuthRule(val settings: Settings)
-  extends AuthenticationRule {
+  extends AuthenticationRule with Logging {
+
+  import StringTNaturalTransformation.instances.stringUserIdNT
+
+  private val userMatcher = new MatcherWithWildcardsScalaAdapter(
+    new MatcherWithWildcards(settings.userIds.toSortedSet.map(_.value).asJava)
+  )
 
   override val name: Rule.Name = ProxyAuthRule.name
 
@@ -36,7 +47,7 @@ class ProxyAuthRule(val settings: Settings)
   }
 
   private def shouldAuthenticate(user: LoggedUser) = {
-    settings.userIds.contains(user.id)
+    userMatcher.`match`(user.id)
   }
 }
 

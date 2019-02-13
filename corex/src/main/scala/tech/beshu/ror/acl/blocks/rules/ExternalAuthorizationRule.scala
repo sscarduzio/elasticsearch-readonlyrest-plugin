@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings)
   extends AuthorizationRule {
 
-  import ExternalAuthorizationRule.stringUserIdNT
+  import StringTNaturalTransformation.instances.stringUserIdNT
 
   private val userMatcher: Matcher = new MatcherWithWildcardsScalaAdapter(
     new MatcherWithWildcards(settings.users.map(_.value).toSortedSet.asJava)
@@ -73,7 +73,4 @@ object ExternalAuthorizationRule {
                             permittedGroups: NonEmptySet[Group], // todo: shouldn't group be variable?
                             users: NonEmptySet[User.Id])
 
-
-  private implicit val stringUserIdNT: StringTNaturalTransformation[User.Id] =
-    StringTNaturalTransformation[User.Id](User.Id.apply, _.value)
 }

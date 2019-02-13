@@ -1,6 +1,7 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.aDomain.Header.Name
 import tech.beshu.ror.acl.aDomain.{Filter, Header}
 import tech.beshu.ror.acl.headerValues.transientFilterHeaderValue
@@ -15,13 +16,13 @@ import tech.beshu.ror.acl.request.RequestContext
   * Document level security (DLS) rule.
   */
 class FilterRule(val settings: Settings)
-  extends RegularRule {
+  extends RegularRule with Logging {
 
   override val name: Rule.Name = FilterRule.name
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
-    if (requestContext.isReadOnlyRequest) Rejected
+    if (!requestContext.isAllowedForDLS) Rejected
     else {
       settings.filter.getValue(requestContext.variablesResolver, blockContext) match {
         case Left(_: Unresolvable) =>

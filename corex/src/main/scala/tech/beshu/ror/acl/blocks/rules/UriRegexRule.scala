@@ -20,7 +20,7 @@ class UriRegexRule(val settings: Settings)
         .uriPattern
         .getValue(requestContext.variablesResolver, blockContext)
         .exists {
-          _.matcher(requestContext.uriPath.toString()).find()
+          _.matcher(requestContext.uriPath.value).find()
         }
     }
   }

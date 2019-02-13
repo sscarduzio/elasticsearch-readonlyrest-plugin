@@ -21,14 +21,14 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     "match" when {
       "configured pattern matches uri from request" in {
         assertMatchRule(
-          uriRegex = patternValueFrom("""^http:\/\/one.com\/\d\d\d$"""),
+          uriRegex = patternValueFrom("""^\/\d\d\d$"""),
           uriPath = UriPath("/123"),
           isUserLogged = false
         )
       }
       "configured pattern with variable matches uri from request when user is logged" in {
         assertMatchRule(
-          uriRegex = patternValueFrom("""^http:\/\/one.com\/@{user}$"""),
+          uriRegex = patternValueFrom("""^\/@{user}$"""),
           uriPath = UriPath("/mia"),
           isUserLogged = true
         )
@@ -37,21 +37,21 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     "not matched" when {
       "configured pattern doesn't match uri from request" in {
         assertNotMatchRule(
-          uriRegex = patternValueFrom("""^http:\/\/one.com\/\d\d\d$"""),
+          uriRegex = patternValueFrom("""\/\d\d\d$"""),
           uriPath = UriPath("/one"),
           isUserLogged = false
         )
       }
       "configured pattern with variable doesn't match uri from request when user is not logged" in {
         assertNotMatchRule(
-          uriRegex = patternValueFrom("""^http:\/\/one.com\/@{user}$"""),
+          uriRegex = patternValueFrom("""^\/@{user}$"""),
           uriPath = UriPath("/mia"),
           isUserLogged = false
         )
       }
       "configured pattern with variable isn't able to compile to pattern after resolve" in {
         assertNotMatchRule(
-          uriRegex = patternValueFrom("""^http:\/\/one.com\/@{user}$"""),
+          uriRegex = patternValueFrom("""^\/@{user}$"""),
           uriPath = UriPath("/mia"),
           isUserLogged = true,
           userName = "["
