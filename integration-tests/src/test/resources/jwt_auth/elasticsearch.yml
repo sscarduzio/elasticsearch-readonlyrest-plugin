@@ -41,6 +41,7 @@ readonlyrest:
 
     - name: jwt2
       header_name: x-custom-header
+      header_prefix: ""
       signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
       user_claim: user
 

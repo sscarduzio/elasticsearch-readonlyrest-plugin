@@ -4,12 +4,13 @@ import java.security.PublicKey
 
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.acl.aDomain.{ClaimName, Header}
+import tech.beshu.ror.acl.aDomain.{ClaimName, AuthorizationTokenDef, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 
+// todo: add header prefix: acceptValidTokentWithUserClaimAndCustomHeaderAndCustomHeaderPrefix test
 final case class JwtDef(id: Name,
-                        headerName: Header.Name,
+                        authorizationTokenDef: AuthorizationTokenDef,
                         checkMethod: SignatureCheckMethod,
                         userClaim: Option[ClaimName],
                         groupsClaim: Option[ClaimName])

@@ -194,4 +194,8 @@ object aDomain {
   final case class ClaimName(value: NonEmptyString)
 
   final case class JwtToken(value: NonEmptyString)
+
+  final case class AuthorizationTokenDef(headerName: Header.Name, prefix: String)
+
+  final case class AuthorizationToken(value: NonEmptyString)
 }

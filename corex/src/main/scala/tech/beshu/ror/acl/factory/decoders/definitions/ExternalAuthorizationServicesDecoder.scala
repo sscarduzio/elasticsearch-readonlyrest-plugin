@@ -15,7 +15,7 @@ import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.Config
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.decoders.common.decoderTupleList
+import tech.beshu.ror.acl.factory.decoders.common.decoderTupleListDecoder
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
 
 import scala.concurrent.duration.FiniteDuration
@@ -61,10 +61,10 @@ object ExternalAuthorizationServicesDecoder extends Logging {
     }
 
   private implicit val headerSetDecoder: Decoder[Set[Header]] =
-    decoderTupleList.map(_.map(Header.apply).toSet)
+    decoderTupleListDecoder.map(_.map(Header.apply).toSet)
 
   private implicit val queryParamSetDecoder: Decoder[Set[QueryParam]] =
-    decoderTupleList.map(_.map(t => QueryParam(t._1, t._2)).toSet)
+    decoderTupleListDecoder.map(_.map(t => QueryParam(t._1, t._2)).toSet)
 
   private implicit def externalAuthorizationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthorizationService] = {
     import tech.beshu.ror.acl.factory.decoders.common._

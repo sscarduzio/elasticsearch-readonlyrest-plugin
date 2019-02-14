@@ -14,7 +14,6 @@ import tech.beshu.ror.acl.blocks.RuleOrdering
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.header.ToHeaderValue
-import tech.beshu.ror.acl.request.RequestContextOps.BearerToken
 import tech.beshu.ror.utils.FilterTransient
 
 import scala.concurrent.duration.FiniteDuration
@@ -96,7 +95,7 @@ object show {
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
-    implicit val tokenShow: Show[BearerToken] = Show.show(_.value.value)
+    implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
   }

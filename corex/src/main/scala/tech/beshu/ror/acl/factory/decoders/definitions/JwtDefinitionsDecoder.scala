@@ -1,7 +1,7 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
 import io.circe.{Decoder, HCursor, Json}
-import tech.beshu.ror.acl.aDomain.{ClaimName, Header}
+import tech.beshu.ror.acl.aDomain.{ClaimName, AuthorizationTokenDef, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
@@ -34,9 +34,19 @@ object JwtDefinitionsDecoder {
           name <- c.downField("name").as[Name]
           checkMethod <- signatureCheckMethod(c)
           headerName <- c.downField("header_name").as[Option[Header.Name]]
+          authTokenPrefix <- c.downField("header_prefix").as[Option[String]]
           userClaim <- c.downField("user_claim").as[Option[ClaimName]]
           groupsClaim <- c.downField("roles_claim").as[Option[ClaimName]]
-        } yield JwtDef(name, headerName.getOrElse(Header.Name.authorization), checkMethod, userClaim, groupsClaim)
+        } yield JwtDef(
+          name,
+          AuthorizationTokenDef(
+            headerName.getOrElse(Header.Name.authorization),
+            authTokenPrefix.getOrElse("Bearer ")
+          ),
+          checkMethod,
+          userClaim,
+          groupsClaim
+        )
       }
       .mapError(DefinitionsLevelCreationError.apply)
   }

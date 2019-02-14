@@ -10,7 +10,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.{Block, BlockContext, VariablesManager, VariablesResolver}
 import tech.beshu.ror.acl.request.RequestContext.Id
-import tech.beshu.ror.acl.request.RequestContextOps.{BearerToken, RequestGroup, _}
+import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
 
 import scala.language.implicitConversions
@@ -120,16 +120,19 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .flatten
   }
 
-  def bearerToken: Option[BearerToken] = {
+  def bearerToken: Option[AuthorizationToken] = authorizationToken {
+    AuthorizationTokenDef(Header.Name.authorization, "Bearer ")
+  }
+
+  def authorizationToken(config: AuthorizationTokenDef): Option[AuthorizationToken] = {
     requestContext
       .headers
-      .find(_.name === Header.Name.authorization)
+      .find(_.name === config.headerName)
       .flatMap { h =>
-        val authMethodName = "Bearer "
-        if (h.value.value.startsWith(authMethodName)) {
+        if (h.value.value.startsWith(config.prefix)) {
           NonEmptyString
-            .unapply(h.value.value.substring(authMethodName.length))
-            .map(BearerToken.apply)
+            .unapply(h.value.value.substring(config.prefix.length))
+            .map(AuthorizationToken.apply)
         } else {
           None
         }
@@ -152,7 +155,5 @@ object RequestContextOps {
       case `N/A` => "N/A"
     }
   }
-
-  final case class BearerToken(value: NonEmptyString)
 }
 

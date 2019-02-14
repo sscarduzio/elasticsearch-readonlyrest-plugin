@@ -41,7 +41,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     .flatMap { _ =>
       jwtTokenFrom(requestContext) match {
         case None =>
-          logger.debug(s"Authorization header '${settings.jwt.headerName.show}' is missing or does not contain a JWT token")
+          logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
           Task.now(Rejected)
         case Some(token) =>
           process(token, blockContext)
@@ -49,17 +49,9 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
 
   private def jwtTokenFrom(requestContext: RequestContext) = {
-    settings.jwt.headerName match {
-      case Header.Name.authorization =>
-        requestContext
-          .bearerToken
-          .map(t => JwtToken(t.value))
-      case customHeaderName =>
-        requestContext
-          .headers
-          .find(_.name === customHeaderName)
-          .map(h => JwtToken(h.value))
-    }
+    requestContext
+        .authorizationToken(settings.jwt.authorizationTokenDef)
+        .map(t => JwtToken(t.value))
   }
 
   private def process(token: JwtToken, blockContext: BlockContext) = {

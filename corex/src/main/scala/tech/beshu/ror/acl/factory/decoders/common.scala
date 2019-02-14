@@ -26,7 +26,7 @@ import scala.util.{Failure, Success, Try}
 
 object common {
 
-  implicit val decoderTupleList: Decoder[List[(NonEmptyString, NonEmptyString)]] =
+  implicit val decoderTupleListDecoder: Decoder[List[(NonEmptyString, NonEmptyString)]] =
     Decoder
       .decodeString
       .emapE { str =>
