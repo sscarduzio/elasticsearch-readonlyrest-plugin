@@ -4,7 +4,7 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 
 import cats.implicits._
-import io.circe.Encoder
+import monix.eval.Task
 import tech.beshu.ror.acl.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.logging.AuditingTool.Settings
@@ -14,16 +14,17 @@ import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditRespo
 class AuditingTool(settings: Settings,
                    auditSink: AuditSink) {
 
-  def audit(response: ResponseContext): Unit =  {
-    settings.logSerializer.onResponse(toAuditResponse(response)) match {
-      case Some(entry) =>
-        auditSink.submit(
-          settings.indexNameFormatter.format(Instant.now()),
-          response.requestContext.id.value,
-          toJson(entry).noSpaces
-        )
-      case None =>
-    }
+  def audit(response: ResponseContext): Task[Unit] = {
+    safeRunSerializer(response)
+      .map {
+        case Some(entry) =>
+          auditSink.submit(
+            settings.indexNameFormatter.format(Instant.now()),
+            response.requestContext.id.value,
+            entry.toString
+          )
+        case None =>
+      }
   }
 
   private def toAuditResponse(responseContext: ResponseContext) = {
@@ -77,14 +78,16 @@ class AuditingTool(settings: Settings,
     case Verbosity.Error => AuditResponseContext.Verbosity.Error
   }
 
-  private def toJson(entry: Map[String, String]) = {
-    Encoder[Map[String, String]].apply(entry)
+  private def safeRunSerializer(response: ResponseContext) = {
+    Task(settings.logSerializer.onResponse(toAuditResponse(response)))
   }
 }
 
 object AuditingTool {
+
   final case class Settings(indexNameFormatter: DateTimeFormatter,
                             logSerializer: AuditLogSerializer)
+
 }
 
 trait AuditSink {

@@ -13,7 +13,9 @@ import tech.beshu.ror.acl.logging.ResponseContext._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.utils.TaskOps._
 import tech.beshu.ror.acl.{Acl, AclHandler}
+import monix.execution.Scheduler.Implicits.global
 
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
@@ -40,11 +42,20 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
   }
 
   private def log(responseContext: ResponseContext): Unit = {
-    if(isLoggableEntry(responseContext)) {
+    if (isLoggableEntry(responseContext)) {
       import tech.beshu.ror.acl.logging.AclLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
     }
-    auditingTool.foreach(_.audit(responseContext))
+    auditingTool.foreach {
+      _
+        .audit(responseContext)
+        .timeout(1 second)
+        .runAsync {
+          case Right(_) =>
+          case Left(ex) =>
+            logger.warn("Auditing issue", ex)
+        }
+    }
   }
 
 

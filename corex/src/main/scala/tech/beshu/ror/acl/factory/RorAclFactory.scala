@@ -26,6 +26,7 @@ import tech.beshu.ror.acl.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider, YamlOps}
 import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
 import tech.beshu.ror.audit.AuditLogSerializer
+import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 
 import scala.language.implicitConversions
@@ -235,7 +236,10 @@ class RorAclFactory(implicit clock: Clock,
       .emapE { fullClassName =>
         Try {
           Class.forName(fullClassName).newInstance() match {
-            case serializer: AuditLogSerializer => Some(serializer)
+            case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
+              Some(serializer)
+            case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
+              Some(new DeprecatedAuditLogSerializerAdapter(serializer))
             case _ => None
           }
         } match {
@@ -248,9 +252,9 @@ class RorAclFactory(implicit clock: Clock,
   private val auditingSettingsDecoder: Decoder[Option[AuditingTool.Settings]] =
     Decoder.instance { c =>
       for {
-        auditCollectorEnabled <- c.downField("audit_collector").as[Boolean]
+        auditCollectorEnabled <- c.downField("audit_collector").as[Option[Boolean]]
         settings <-
-          if (auditCollectorEnabled) {
+          if (auditCollectorEnabled.getOrElse(false)) {
             for {
               indexNameFormatter <- c.downField("audit_index_template").as[Option[DateTimeFormatter]]
               customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
