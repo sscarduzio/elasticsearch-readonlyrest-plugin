@@ -1,8 +1,9 @@
 package tech.beshu.ror.acl.factory
 
 import java.time.Clock
+import java.time.format.DateTimeFormatter
 
-import cats.data.{NonEmptyList, State}
+import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
@@ -18,21 +19,27 @@ import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.acl.factory.RulesValidator.ValidationError
 import tech.beshu.ror.acl.factory.decoders.definitions._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
+import tech.beshu.ror.acl.logging.AuditingTool
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider, YamlOps}
 import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
+import tech.beshu.ror.audit.AuditLogSerializer
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
+
+final case class CoreSettings(aclEngine: Acl, aclStaticContext: AclStaticContext, auditingSettings: Option[AuditingTool.Settings])
 
 class RorAclFactory(implicit clock: Clock,
                     uuidProvider: UuidProvider,
                     resolver: StaticVariablesResolver)
   extends Logging {
 
-  def createAclFrom(settingsYamlString: String,
-                    httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], (Acl, AclStaticContext)] = {
+  def createCoreFrom(settingsYamlString: String,
+                     httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], CoreSettings] = {
     // todo: maybe we should parse only ROR part of yaml?
     parser.parse(settingsYamlString) match {
       case Right(json) =>
@@ -49,10 +56,19 @@ class RorAclFactory(implicit clock: Clock,
 
   private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
     val rorSectionName = "readonlyrest"
-    val decoder: AccumulatingDecoder[(Acl, AclStaticContext)] = AccumulatingDecoder.instance { c =>
+    val decoder: AccumulatingDecoder[CoreSettings] = AccumulatingDecoder.instance { c =>
       c.downField(rorSectionName).success match {
         case Some(rorCursor) =>
-          aclDecoder(httpClientFactory).apply(rorCursor)
+          Validated.fromEither(
+            aclDecoder(httpClientFactory).apply(rorCursor).toEither
+              .flatMap { case (acl, context) =>
+                AccumulatingDecoder
+                  .fromDecoder(auditingSettingsDecoder)
+                  .map(CoreSettings(acl, context, _))
+                  .apply(rorCursor)
+                  .toEither
+              }
+          )
         case None =>
           val failure = DecodingFailureOps.fromError(ReadonlyrestSettingsCreationError(Message(s"No $rorSectionName section found")))
           AccumulatingDecoder
@@ -200,6 +216,53 @@ class RorAclFactory(implicit clock: Clock,
       } yield (acl, staticContext)
       decoder.accumulating.apply(c)
     }
+
+  private implicit val indexNameFormatterDecoder: Decoder[DateTimeFormatter] =
+    Decoder
+      .decodeString
+      .emapE { patternStr =>
+        Try(DateTimeFormatter.ofPattern(patternStr)) match {
+          case Success(formatter) => Right(formatter)
+          case Failure(ex) => Left(AuditingSettingsCreationError(Message(
+            s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: $patternStr error: ${ex.getMessage}"
+          )))
+        }
+      }
+
+  private implicit val customAuditLogSerializer: Decoder[AuditLogSerializer] =
+    Decoder
+      .decodeString
+      .emapE { fullClassName =>
+        Try {
+          Class.forName(fullClassName).newInstance() match {
+            case serializer: AuditLogSerializer => Some(serializer)
+            case _ => None
+          }
+        } match {
+          case Success(Some(customSerializer)) => Right(customSerializer)
+          case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class $fullClassName is not a subclass of ${classOf[AuditLogSerializer].getName}")))
+          case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '$fullClassName', error: ${ex.getMessage}")))
+        }
+      }
+
+  private val auditingSettingsDecoder: Decoder[Option[AuditingTool.Settings]] =
+    Decoder.instance { c =>
+      for {
+        auditCollectorEnabled <- c.downField("audit_collector").as[Boolean]
+        settings <-
+          if (auditCollectorEnabled) {
+            for {
+              indexNameFormatter <- c.downField("audit_index_template").as[Option[DateTimeFormatter]]
+              customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
+            } yield Some(AuditingTool.Settings(
+              indexNameFormatter.getOrElse(DateTimeFormatter.ofPattern("'readonlyrest_audit-'yyyy-MM-dd")),
+              customAuditSerializer.getOrElse(new DefaultAuditLogSerializer)
+            ))
+          } else {
+            Decoder.const(Option.empty[AuditingTool.Settings]).tryDecode(c)
+          }
+      } yield settings
+    }
 }
 
 object RorAclFactory {
@@ -211,25 +274,18 @@ object RorAclFactory {
   object AclCreationError {
 
     final case class UnparsableYamlContent(reason: Reason) extends AclCreationError
-
     final case class ReadonlyrestSettingsCreationError(reason: Reason) extends AclCreationError
-
     final case class DefinitionsLevelCreationError(reason: Reason) extends AclCreationError
-
     final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
-
     final case class RulesLevelCreationError(reason: Reason) extends AclCreationError
-
     final case class ValueLevelCreationError(reason: Reason) extends AclCreationError
+    final case class AuditingSettingsCreationError(reason: Reason) extends AclCreationError
 
     sealed trait Reason
-
     object Reason {
 
       final case class Message(value: String) extends Reason
-
       final case class MalformedValue private(value: String) extends Reason
-
       object MalformedValue {
         def apply(json: Json): MalformedValue = from(json)
 

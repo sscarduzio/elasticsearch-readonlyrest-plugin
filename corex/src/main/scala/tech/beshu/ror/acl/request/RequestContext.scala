@@ -1,5 +1,7 @@
 package tech.beshu.ror.acl.request
 
+import java.time.Instant
+
 import cats.Show
 import cats.implicits._
 import com.softwaremill.sttp.Method
@@ -16,6 +18,9 @@ import tech.beshu.ror.acl.show.logs._
 import scala.language.implicitConversions
 
 trait RequestContext {
+  def timestamp: Instant
+  def taskId: Long
+
   def id: Id
   def `type`: Type
   def action: Action

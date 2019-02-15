@@ -1,5 +1,7 @@
 package tech.beshu.ror.acl.request
 
+import java.time.Instant
+
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.{Bytes, Information}
@@ -11,8 +13,11 @@ import tech.beshu.ror.shims.request.RequestInfoShim
 import scala.collection.JavaConverters._
 
 // fixme: maybe we don;'t need RequestInfoShim
-// todo: eg. current group (should be check if there is single value - where we should place the check?
 class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
+
+  override val timestamp: Instant = Instant.now()
+
+  override val taskId: Long = rInfo.extractTaskId()
 
   override val id: RequestContext.Id = RequestContext.Id(rInfo.extractId())
 

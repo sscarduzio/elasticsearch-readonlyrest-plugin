@@ -7,7 +7,7 @@ import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.{HttpClientsFactory, RorAclFactory}
+import tech.beshu.ror.acl.factory.{CoreSettings, HttpClientsFactory, RorAclFactory}
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.mocks.MockHttpClientsFactory
@@ -30,7 +30,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
   def assertDecodingSuccess(yaml: String,
                             assertion: T => Unit,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(factory.createAclFrom(yaml, httpClientsFactory)) { case Right((acl: SequentialAcl, _)) =>
+    inside(factory.createCoreFrom(yaml, httpClientsFactory)) { case Right(CoreSettings(acl: SequentialAcl, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]
@@ -41,7 +41,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
   def assertDecodingFailure(yaml: String,
                             assertion: NonEmptyList[AclCreationError] => Unit,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(factory.createAclFrom(yaml, httpClientsFactory)) { case Left(error) =>
+    inside(factory.createCoreFrom(yaml, httpClientsFactory)) { case Left(error) =>
       assertion(error)
     }
   }

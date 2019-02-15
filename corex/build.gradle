@@ -72,7 +72,10 @@ test {
         events "standardOut", "started", "passed", "skipped", "failed"
     }
 }
+
 dependencies {
+    simpleCompile project(':audit')
+
     simpleCompile group: 'io.monix',                              name: 'monix_2.12',                             version: '3.0.0-RC2'
     simpleCompile group: 'org.scala-lang',                        name: 'scala-library',                          version: '2.12.4'
     simpleCompile group: 'org.scala-lang.modules',                name: 'scala-java8-compat_2.12',                version: '0.9.0'

@@ -7,7 +7,7 @@ import org.scalatest.{Inside, WordSpec}
 import org.scalatest.Matchers._
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
-import tech.beshu.ror.acl.factory.RorAclFactory
+import tech.beshu.ror.acl.factory.{CoreSettings, RorAclFactory}
 import tech.beshu.ror.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
@@ -22,7 +22,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
     new RorAclFactory
   }
-  private val acl: Acl = factory.createAclFrom(
+  private val acl: Acl = factory.createCoreFrom(
     """
       |readonlyrest:
       |
@@ -39,7 +39,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
     MockHttpClientsFactory
   ) match {
     case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-    case Right(result) => result._1
+    case Right(CoreSettings(aclEngine, _, _)) => aclEngine
   }
 
   "An ACL" when {

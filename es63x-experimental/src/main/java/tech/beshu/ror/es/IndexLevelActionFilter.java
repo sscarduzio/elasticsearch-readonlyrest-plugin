@@ -29,6 +29,7 @@ import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -51,6 +52,7 @@ import tech.beshu.ror.acl.factory.HttpClientsFactory;
 import tech.beshu.ror.acl.factory.RorEngineFactory;
 import tech.beshu.ror.acl.factory.RorEngineFactory$;
 import tech.beshu.ror.acl.factory.RorEngineFactory.Engine;
+import tech.beshu.ror.acl.logging.AuditSink;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.settings.BasicSettings;
@@ -100,7 +102,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
       if (newContext.getSettings().isEnabled()) {
         HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down after reload
-        Engine engine = RorEngineFactory$.MODULE$.reload(httpClientsFactory, newContext.getSettings().getRaw().yaml());
+        Engine engine = RorEngineFactory$.MODULE$.reload(httpClientsFactory, createAuditSink(client, newBasicSettings),
+            newContext.getSettings().getRaw().yaml());
         rorEngine.set(Optional.of(engine));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }
@@ -251,6 +254,17 @@ import java.util.concurrent.atomic.AtomicReference;
       @Override
       public void commit() {
         chain.proceed(task, action, request, searchListener);
+      }
+    };
+  }
+
+  private AuditSink createAuditSink(Client client, BasicSettings settings) {
+    return new AuditSink() {
+      AuditSinkImpl auditSink = new AuditSinkImpl(client, settings);
+
+      @Override
+      public void submit(String indexName, String documentId, String jsonRecord) {
+        auditSink.submit(indexName, documentId, jsonRecord);
       }
     };
   }

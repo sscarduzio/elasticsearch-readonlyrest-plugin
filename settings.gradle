@@ -16,6 +16,7 @@
  */
 
 rootProject.name = 'readonlyrest'
+include 'audit'
 include 'core'
 include 'corex'
 include 'commons'

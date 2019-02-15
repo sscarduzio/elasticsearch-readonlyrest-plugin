@@ -11,7 +11,7 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
-import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, RorAclFactory}
+import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreSettings, RorAclFactory}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -23,7 +23,7 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
     new RorAclFactory
   }
-  private val acl: Acl = factory.createAclFrom(
+  private val acl: Acl = factory.createCoreFrom(
     """http.bind_host: _eth0:ipv4_
       |network.host: _eth0:ipv4_
       |
@@ -73,7 +73,7 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside
     new AsyncHttpClientsFactory
   ) match {
     case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-    case Right(result) => result._1
+    case Right(CoreSettings(aclEngine, _, _)) => aclEngine
   }
 
   "A ACL" when {

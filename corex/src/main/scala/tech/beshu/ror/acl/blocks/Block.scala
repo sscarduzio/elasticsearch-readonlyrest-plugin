@@ -113,6 +113,8 @@ object Block {
   object Verbosity {
     case object Info extends Verbosity
     case object Error extends Verbosity
+
+    implicit val eq: Eq[Verbosity] = Eq.fromUniversalEquals
   }
 
   implicit val blockShow: Show[Block] = Show.show { b =>

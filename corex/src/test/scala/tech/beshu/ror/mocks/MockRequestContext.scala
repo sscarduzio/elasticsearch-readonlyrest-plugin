@@ -1,11 +1,15 @@
 package tech.beshu.ror.mocks
 
+import java.time.Instant
+
 import com.softwaremill.sttp.Method
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.request.RequestContext
 
-final case class MockRequestContext(override val id: RequestContext.Id = RequestContext.Id("mock"),
+final case class MockRequestContext(override val timestamp: Instant = Instant.now(),
+                                    override val taskId: Long = 0L,
+                                    override val id: RequestContext.Id = RequestContext.Id("mock"),
                                     override val `type`: Type = Type("default-type"),
                                     override val action: Action = Action("default-action"),
                                     override val headers: Set[Header] = Set.empty,

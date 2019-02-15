@@ -3,8 +3,9 @@ package tech.beshu.ror.acl.factory
 import java.time.Clock
 
 import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason
+import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditSink, AuditingTool}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
-import tech.beshu.ror.acl.{Acl, AclLoggingDecorator, AclStaticContext}
+import tech.beshu.ror.acl.{Acl, AclStaticContext}
 import tech.beshu.ror.settings.SettingsMalformedException
 
 object RorEngineFactory {
@@ -15,12 +16,16 @@ object RorEngineFactory {
   private val aclFactory = new RorAclFactory
 
   def reload(httpClientFactory: HttpClientsFactory,
+             auditSink: AuditSink,
              settingsYaml: String): Engine = synchronized {
-    aclFactory.createAclFrom(settingsYaml, httpClientFactory) match {
-      case Right((acl, context)) =>
+    aclFactory.createCoreFrom(settingsYaml, httpClientFactory) match {
+      case Right(coreSettings) =>
         Engine(
-          new AclLoggingDecorator(acl, Option.empty), // todo: add serialization tool
-          context
+          new AclLoggingDecorator(
+            coreSettings.aclEngine,
+            coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+          ),
+          coreSettings.aclStaticContext
         )
       case Left(errors) =>
         val errorsMessage = errors

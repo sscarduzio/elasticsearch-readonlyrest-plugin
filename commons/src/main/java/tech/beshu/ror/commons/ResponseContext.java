@@ -69,7 +69,6 @@ public class ResponseContext {
     return finalState;
   }
 
-
   public enum FinalState {
     FORBIDDEN,
     ALLOWED,
