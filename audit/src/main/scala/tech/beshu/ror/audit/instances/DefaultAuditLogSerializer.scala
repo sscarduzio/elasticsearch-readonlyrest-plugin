@@ -1,16 +1,18 @@
 package tech.beshu.ror.audit.instances
 
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import scala.collection.JavaConverters._
 
 import scala.concurrent.duration.FiniteDuration
 
 class DefaultAuditLogSerializer extends AuditLogSerializer {
 
-  private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+  private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneId.of("GMT"))
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = responseContext match {
     case Allowed(_, verbosity, _) if verbosity == Verbosity.Info =>
@@ -48,13 +50,13 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("origin", requestContext.remoteAddress)
       .put("destination", requestContext.localAddress)
       .put("xff", requestContext.headers.get("X-Forwarded-For").orNull)
-      .put("task_id", requestContext.taskId.toString)
+      .put("task_id", requestContext.taskId)
       .put("req_method", requestContext.httpMethod)
-      .put("headers", requestContext.headers.keys)
+      .put("headers", requestContext.headers.keys.toList.asJava)
       .put("path", requestContext.uriPath)
       .put("user", requestContext.loggedInUserName.orNull)
       .put("action", requestContext.action)
-      .put("indices", if (requestContext.involvesIndices) requestContext.indices else Set.empty)
+      .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
       .put("acl_history", requestContext.history)
   }
 }

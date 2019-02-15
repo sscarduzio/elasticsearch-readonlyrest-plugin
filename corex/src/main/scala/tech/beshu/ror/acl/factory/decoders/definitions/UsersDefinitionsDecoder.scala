@@ -7,8 +7,8 @@ import tech.beshu.ror.acl.aDomain.{Group, User}
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.authenticationRuleDecoderBy
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._

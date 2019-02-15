@@ -4,7 +4,7 @@ import java.time.Clock
 
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.common
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.UuidProvider

@@ -3,8 +3,8 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 import io.circe.Decoder
 import tech.beshu.ror.acl.aDomain.Header
 import tech.beshu.ror.acl.blocks.definitions.ProxyAuth
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.utils.CirceOps._
 
 class ProxyAuthDefinitionsDecoder extends DefinitionsBaseDecoder[ProxyAuth]("proxy_auth_configs")(

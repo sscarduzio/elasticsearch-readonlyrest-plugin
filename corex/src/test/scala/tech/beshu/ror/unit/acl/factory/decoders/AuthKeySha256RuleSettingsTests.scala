@@ -3,8 +3,8 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import org.scalatest.Matchers._
 
 import tech.beshu.ror.acl.blocks.rules.AuthKeySha256Rule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.Secret
 
 class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha256Rule] {

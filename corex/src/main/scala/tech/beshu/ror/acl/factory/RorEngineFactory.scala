@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory
 
 import java.time.Clock
 
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditSink, AuditingTool}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
@@ -13,7 +13,7 @@ object RorEngineFactory {
   private implicit val clock: Clock = Clock.systemUTC()
   private implicit val uuidProvider: UuidProvider = JavaUuidProvider
   private implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
-  private val aclFactory = new RorAclFactory
+  private val aclFactory = new CoreFactory
 
   def reload(httpClientFactory: HttpClientsFactory,
              auditSink: AuditSink,

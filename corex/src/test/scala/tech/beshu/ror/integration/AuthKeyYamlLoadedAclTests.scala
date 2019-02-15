@@ -7,7 +7,7 @@ import org.scalatest.{Inside, WordSpec}
 import org.scalatest.Matchers._
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
-import tech.beshu.ror.acl.factory.{CoreSettings, RorAclFactory}
+import tech.beshu.ror.acl.factory.{CoreSettings, CoreFactory}
 import tech.beshu.ror.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
@@ -20,7 +20,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
-    new RorAclFactory
+    new CoreFactory
   }
   private val acl: Acl = factory.createCoreFrom(
     """

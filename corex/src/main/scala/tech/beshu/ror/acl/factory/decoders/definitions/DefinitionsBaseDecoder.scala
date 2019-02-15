@@ -3,8 +3,8 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 import cats.implicits._
 import io.circe.Decoder.Result
 import io.circe.{Decoder, HCursor}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}

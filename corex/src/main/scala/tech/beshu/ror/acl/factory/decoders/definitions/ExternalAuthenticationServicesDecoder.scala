@@ -8,7 +8,7 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CachingExternalAuthenticationService, ExternalAuthenticationService, JwtExternalAuthenticationService}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.{Config, HttpClient}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration

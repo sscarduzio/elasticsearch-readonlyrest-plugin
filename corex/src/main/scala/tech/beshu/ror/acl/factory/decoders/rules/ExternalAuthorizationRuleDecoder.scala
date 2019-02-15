@@ -9,9 +9,9 @@ import tech.beshu.ror.acl.aDomain.{Group, User}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthorizationService, ExternalAuthorizationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.definitions.ExternalAuthorizationServicesDecoder._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields

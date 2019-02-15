@@ -5,8 +5,8 @@ import io.circe.CursorOp.DownField
 import io.circe.Decoder.Result
 import io.circe.{ACursor, Decoder, HCursor}
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
 
 sealed abstract class RuleBaseDecoder[T <: Rule](val associatedFields: Set[String])

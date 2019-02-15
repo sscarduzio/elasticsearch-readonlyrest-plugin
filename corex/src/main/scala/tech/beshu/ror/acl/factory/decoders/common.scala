@@ -14,8 +14,8 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.aDomain.{Group, Header, User}
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value.ConvertError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.ValueLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.ValueLevelCreationError
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._

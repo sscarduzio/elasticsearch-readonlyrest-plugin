@@ -1,6 +1,6 @@
 package tech.beshu.ror.acl.logging
 
-import java.time.Instant
+import java.time.{Clock, Instant}
 import java.time.format.DateTimeFormatter
 
 import cats.implicits._
@@ -12,14 +12,15 @@ import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 
 class AuditingTool(settings: Settings,
-                   auditSink: AuditSink) {
+                   auditSink: AuditSink)
+                  (implicit clock: Clock) {
 
   def audit(response: ResponseContext): Task[Unit] = {
     safeRunSerializer(response)
       .map {
         case Some(entry) =>
           auditSink.submit(
-            settings.indexNameFormatter.format(Instant.now()),
+            settings.indexNameFormatter.format(Instant.now(clock)),
             response.requestContext.id.value,
             entry.toString
           )
@@ -52,7 +53,7 @@ class AuditingTool(settings: Settings,
 
   private def toAuditRequestContext(requestContext: RequestContext,
                                     blockContext: Option[BlockContext],
-                                    history: Vector[History]): AuditRequestContext = {
+                                    historyEntries: Vector[History]): AuditRequestContext = {
     new AuditRequestContext {
       override val timestamp: Instant = requestContext.timestamp
       override val id: String = requestContext.id.value
@@ -60,7 +61,7 @@ class AuditingTool(settings: Settings,
       override val action: String = requestContext.action.value
       override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
       override val uriPath: String = requestContext.uriPath.value
-      override val history: String = history.map(_.show).mkString(", ")
+      override val history: String = historyEntries.map(_.show).mkString(", ")
       override val content: String = requestContext.content
       override val contentLength: Integer = requestContext.contentLength.toBytes.toInt
       override val remoteAddress: String = requestContext.remoteAddress.value

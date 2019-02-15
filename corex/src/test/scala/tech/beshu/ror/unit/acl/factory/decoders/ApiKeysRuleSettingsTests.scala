@@ -4,8 +4,8 @@ import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
 class ApiKeysRuleSettingsTests extends BaseRuleSettingsDecoderTest[ApiKeysRule] {

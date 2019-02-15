@@ -8,8 +8,8 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, RorKbnDefinitionsDecoder}
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._

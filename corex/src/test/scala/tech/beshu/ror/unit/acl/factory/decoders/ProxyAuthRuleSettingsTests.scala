@@ -5,8 +5,8 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.aDomain.User
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
 class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRule] {

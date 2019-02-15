@@ -6,22 +6,22 @@ import cats.data.NonEmptyList
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.{CoreSettings, RorAclFactory}
+import tech.beshu.ror.acl.factory.{CoreSettings, CoreFactory}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 
-class RorAclFactoryTests extends WordSpec with Inside with MockFactory {
+class CoreFactoryTests extends WordSpec with Inside with MockFactory {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
-    new RorAclFactory
+    new CoreFactory
   }
 
   "A RorAclFactory" should {

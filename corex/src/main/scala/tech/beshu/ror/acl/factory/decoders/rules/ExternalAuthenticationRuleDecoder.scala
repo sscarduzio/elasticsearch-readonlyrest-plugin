@@ -7,9 +7,9 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, ExternalAuthenticationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder}
 import tech.beshu.ror.acl.factory.decoders.definitions.ExternalAuthenticationServicesDecoder._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields

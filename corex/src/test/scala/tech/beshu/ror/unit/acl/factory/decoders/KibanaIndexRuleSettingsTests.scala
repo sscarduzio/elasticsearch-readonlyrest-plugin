@@ -5,8 +5,8 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
 import tech.beshu.ror.acl.blocks.{Const, Variable}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.IndexName
 
 class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {

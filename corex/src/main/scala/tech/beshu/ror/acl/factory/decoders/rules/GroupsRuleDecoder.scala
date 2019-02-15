@@ -7,8 +7,8 @@ import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields

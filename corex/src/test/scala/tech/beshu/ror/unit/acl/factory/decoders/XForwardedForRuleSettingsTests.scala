@@ -7,8 +7,8 @@ import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.orders._
 

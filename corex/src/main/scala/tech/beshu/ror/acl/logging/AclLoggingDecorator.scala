@@ -49,7 +49,7 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
     auditingTool.foreach {
       _
         .audit(responseContext)
-        .timeout(1 second)
+        .timeout(500 millis)
         .runAsync {
           case Right(_) =>
           case Left(ex) =>

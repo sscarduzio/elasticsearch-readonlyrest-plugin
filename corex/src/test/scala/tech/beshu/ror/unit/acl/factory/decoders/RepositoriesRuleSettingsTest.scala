@@ -7,8 +7,8 @@ import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.RepositoriesRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
 

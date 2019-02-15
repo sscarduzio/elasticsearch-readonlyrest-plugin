@@ -13,10 +13,11 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError._
-import tech.beshu.ror.acl.factory.RorAclFactory.{AclCreationError, Attributes}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError._
+import tech.beshu.ror.acl.factory.CoreFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.acl.factory.RulesValidator.ValidationError
+import tech.beshu.ror.acl.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.acl.factory.decoders.definitions._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.logging.AuditingTool
@@ -34,9 +35,9 @@ import scala.util.{Failure, Success, Try}
 
 final case class CoreSettings(aclEngine: Acl, aclStaticContext: AclStaticContext, auditingSettings: Option[AuditingTool.Settings])
 
-class RorAclFactory(implicit clock: Clock,
-                    uuidProvider: UuidProvider,
-                    resolver: StaticVariablesResolver)
+class CoreFactory(implicit clock: Clock,
+                  uuidProvider: UuidProvider,
+                  resolver: StaticVariablesResolver)
   extends Logging {
 
   def createCoreFrom(settingsYamlString: String,
@@ -64,7 +65,7 @@ class RorAclFactory(implicit clock: Clock,
             aclDecoder(httpClientFactory).apply(rorCursor).toEither
               .flatMap { case (acl, context) =>
                 AccumulatingDecoder
-                  .fromDecoder(auditingSettingsDecoder)
+                  .fromDecoder(AuditingSettingsDecoder.instance)
                   .map(CoreSettings(acl, context, _))
                   .apply(rorCursor)
                   .toEither
@@ -217,59 +218,9 @@ class RorAclFactory(implicit clock: Clock,
       } yield (acl, staticContext)
       decoder.accumulating.apply(c)
     }
-
-  private implicit val indexNameFormatterDecoder: Decoder[DateTimeFormatter] =
-    Decoder
-      .decodeString
-      .emapE { patternStr =>
-        Try(DateTimeFormatter.ofPattern(patternStr)) match {
-          case Success(formatter) => Right(formatter)
-          case Failure(ex) => Left(AuditingSettingsCreationError(Message(
-            s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: $patternStr error: ${ex.getMessage}"
-          )))
-        }
-      }
-
-  private implicit val customAuditLogSerializer: Decoder[AuditLogSerializer] =
-    Decoder
-      .decodeString
-      .emapE { fullClassName =>
-        Try {
-          Class.forName(fullClassName).newInstance() match {
-            case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
-              Some(serializer)
-            case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>
-              Some(new DeprecatedAuditLogSerializerAdapter(serializer))
-            case _ => None
-          }
-        } match {
-          case Success(Some(customSerializer)) => Right(customSerializer)
-          case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class $fullClassName is not a subclass of ${classOf[AuditLogSerializer].getName}")))
-          case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '$fullClassName', error: ${ex.getMessage}")))
-        }
-      }
-
-  private val auditingSettingsDecoder: Decoder[Option[AuditingTool.Settings]] =
-    Decoder.instance { c =>
-      for {
-        auditCollectorEnabled <- c.downField("audit_collector").as[Option[Boolean]]
-        settings <-
-          if (auditCollectorEnabled.getOrElse(false)) {
-            for {
-              indexNameFormatter <- c.downField("audit_index_template").as[Option[DateTimeFormatter]]
-              customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
-            } yield Some(AuditingTool.Settings(
-              indexNameFormatter.getOrElse(DateTimeFormatter.ofPattern("'readonlyrest_audit-'yyyy-MM-dd")),
-              customAuditSerializer.getOrElse(new DefaultAuditLogSerializer)
-            ))
-          } else {
-            Decoder.const(Option.empty[AuditingTool.Settings]).tryDecode(c)
-          }
-      } yield settings
-    }
 }
 
-object RorAclFactory {
+object CoreFactory {
 
   sealed trait AclCreationError {
     def reason: Reason

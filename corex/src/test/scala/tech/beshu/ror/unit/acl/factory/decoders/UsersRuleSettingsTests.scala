@@ -7,8 +7,8 @@ import tech.beshu.ror.acl.aDomain.User
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.UsersRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
 class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {

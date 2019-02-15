@@ -4,8 +4,8 @@ import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 
 import tech.beshu.ror.acl.blocks.rules.FieldsRule
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.aDomain.DocumentField
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.orders.documentFieldOrder

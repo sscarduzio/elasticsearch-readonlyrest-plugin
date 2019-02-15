@@ -7,8 +7,8 @@ import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.{CoreSettings, HttpClientsFactory, RorAclFactory}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError
+import tech.beshu.ror.acl.factory.{CoreSettings, HttpClientsFactory, CoreFactory}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 
@@ -24,7 +24,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(envVarsProvider)
-    new RorAclFactory
+    new CoreFactory
   }
 
   def assertDecodingSuccess(yaml: String,

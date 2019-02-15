@@ -12,8 +12,8 @@ import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationServi
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RorAclFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.acl.utils.EnvVarsProvider
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 
