@@ -42,7 +42,7 @@ class CoreFactory(implicit clock: Clock,
 
   def createCoreFrom(settingsYamlString: String,
                      httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], CoreSettings] = {
-    // todo: maybe we should parse only ROR part of yaml?
+    // todo: maybe we should parse only ROR part of yaml? (high prio)
     parser.parse(settingsYamlString) match {
       case Right(json) =>
         createFrom(json, httpClientFactory)

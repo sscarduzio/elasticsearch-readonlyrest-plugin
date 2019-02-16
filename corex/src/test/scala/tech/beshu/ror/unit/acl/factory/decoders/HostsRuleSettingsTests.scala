@@ -2,14 +2,13 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-
+import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.HostsRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.orders._
 
 class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
@@ -29,7 +28,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address("192.168.0.1")))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address.from("192.168.0.1").get))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(false)
           }
@@ -49,7 +48,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address("192.168.0.1")))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address.from("192.168.0.1").get))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(true)
           }
@@ -68,7 +67,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Right(Address(rv.value))))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Right(Address.from(rv.value).get)))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(false)
           }
@@ -87,7 +86,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address("192.168.0.1")), Const(Address("192.168.0.2")))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("192.168.0.2").get))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(false)
           }

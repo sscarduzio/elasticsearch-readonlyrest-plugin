@@ -11,10 +11,12 @@ import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.shims.request.RequestInfoShim
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 // fixme: maybe we don;'t need RequestInfoShim
-class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
+class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
 
+  // todo: what about null checking? (high prio)
   override val timestamp: Instant = Instant.now()
 
   override val taskId: Long = rInfo.extractTaskId()
@@ -34,9 +36,9 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
       }
       .toSet
 
-  override val remoteAddress: Address = Address(rInfo.extractRemoteAddress())
+  override val remoteAddress: Address = forceCreateAddressFrom(rInfo.extractRemoteAddress())
 
-  override val localAddress: Address = Address(rInfo.extractLocalAddress())
+  override val localAddress: Address = forceCreateAddressFrom(rInfo.extractLocalAddress())
 
   override val method: Method = Method(rInfo.extractMethod())
 
@@ -63,4 +65,12 @@ class EsRequestContext(rInfo: RequestInfoShim) extends RequestContext {
   override val isCompositeRequest: Boolean = rInfo.extractIsCompositeRequest()
 
   override val isAllowedForDLS: Boolean = rInfo.extractIsAllowedForDLS()
+
+  private def forceCreateAddressFrom(value: String) = {
+    Address.from(value).getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname from ${value}"))
+  }
+}
+
+object EsRequestContext {
+  def from(rInfo: RequestInfoShim): Try[RequestContext] = Try(new EsRequestContext(rInfo))
 }

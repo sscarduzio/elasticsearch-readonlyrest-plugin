@@ -4,6 +4,7 @@ import java.time.Instant
 
 import cats.Show
 import cats.implicits._
+import com.comcast.ip4s.{Hostname, IpAddress}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
@@ -105,7 +106,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .flatMap { header =>
         Option(header.value.value)
           .flatMap(_.split(",").headOption)
-          .map(Address.apply)
+          .flatMap(Address.from)
       }
   }
 

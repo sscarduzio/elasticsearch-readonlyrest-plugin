@@ -2,7 +2,6 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.IPMask
 
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
@@ -29,9 +28,8 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address("proxy1")))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address.from("proxy1").get))
             rule.settings.allowedAddresses should be(addresses)
-            rule.settings.allowedIps should be(Set.empty[IPMask])
           }
         )
       }
@@ -48,9 +46,8 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address("proxy1")), Const(Address("proxy2")))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("proxy1").get), Const(Address.from("proxy2").get))
             rule.settings.allowedAddresses should be(addresses)
-            rule.settings.allowedIps should be(Set.empty[IPMask])
           }
         )
       }
@@ -67,9 +64,8 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address("proxy1")), Variable(ValueWithVariable("@{user}_proxy"), rv => Right(Address(rv.value))))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("proxy1").get), Variable(ValueWithVariable("@{user}_proxy"), rv => Right(Address.from(rv.value).get)))
             rule.settings.allowedAddresses should be(addresses)
-            rule.settings.allowedIps should be(Set.empty[IPMask])
           }
         )
       }
@@ -86,9 +82,8 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val ips: NonEmptySet[IPMask] = NonEmptySet.of(IPMask.getIPMask("192.168.0.1"))
-            rule.settings.allowedAddresses should be(Set.empty[IPMask])
-            rule.settings.allowedIps should be (ips)
+            val ips: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get))
+            rule.settings.allowedAddresses should be(ips)
           }
         )
       }
@@ -105,9 +100,8 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val ips: NonEmptySet[IPMask] = NonEmptySet.of(IPMask.getIPMask("192.168.0.1"), IPMask.getIPMask("192.168.0.2"))
-            rule.settings.allowedAddresses should be(Set.empty[IPMask])
-            rule.settings.allowedIps should be (ips)
+            val ips: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("192.168.0.2").get))
+            rule.settings.allowedAddresses should be(ips)
           }
         )
       }
@@ -124,10 +118,8 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address("proxy1")))
-            val ips: NonEmptySet[IPMask] = NonEmptySet.of(IPMask.getIPMask("192.168.0.1"))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("proxy1").get))
             rule.settings.allowedAddresses should be(addresses)
-            rule.settings.allowedIps should be (ips)
           }
         )
       }

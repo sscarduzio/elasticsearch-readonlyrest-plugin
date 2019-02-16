@@ -5,13 +5,14 @@ import java.util.concurrent.TimeUnit
 
 import cats.implicits._
 import cats.data.NonEmptySet
+import com.comcast.ip4s.{Hostname, IpAddress}
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.{Group, Header, User}
+import tech.beshu.ror.acl.aDomain.{Address, Group, Header, User}
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
@@ -107,6 +108,20 @@ object common {
         case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
       }
 
+  implicit val addressValueDecoder: Decoder[Value[Address]] = {
+    DecoderHelpers
+      .valueDecoder[Address] { rv =>
+      Address.from(rv.value) match {
+        case Some(address) => Right(address)
+        case None => Left(ConvertError(rv, s"Cannot create address (IP or hostname) from ${rv.value}"))
+      }
+    }
+      .emapE {
+        case Right(value) => Right(value)
+        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
+      }
+  }
+
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers
       .decodeStringLike
@@ -124,5 +139,6 @@ object common {
       .withErrorFromCursor { case (element, _) =>
         ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration"))
       }
+
 
 }

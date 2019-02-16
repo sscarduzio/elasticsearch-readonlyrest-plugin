@@ -101,7 +101,6 @@ class SessionMaxIdleRuleSettingsTests extends BaseRuleSettingsDecoderTest[Sessio
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            // todo: I think we should add context info to the message
             errors.head should be (RulesLevelCreationError(Message("Only positive durations allowed. Found: -10 hours")))
           }
         )

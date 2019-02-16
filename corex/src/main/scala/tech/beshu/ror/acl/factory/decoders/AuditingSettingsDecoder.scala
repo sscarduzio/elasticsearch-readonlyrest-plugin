@@ -4,6 +4,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 import io.circe.Decoder
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.logging.AuditingTool
@@ -14,7 +15,7 @@ import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.util.{Failure, Success, Try}
 
-object AuditingSettingsDecoder {
+object AuditingSettingsDecoder extends Logging {
 
   lazy val instance: Decoder[Option[AuditingTool.Settings]] =
     Decoder.instance { c =>
@@ -61,7 +62,9 @@ object AuditingSettingsDecoder {
             case _ => None
           }
         } match {
-          case Success(Some(customSerializer)) => Right(customSerializer)
+          case Success(Some(customSerializer)) =>
+            logger.info(s"Using custom serializer: ${customSerializer.getClass.getName}")
+            Right(customSerializer)
           case Success(None) => Left(AuditingSettingsCreationError(Message(s"Class $fullClassName is not a subclass of ${classOf[AuditLogSerializer].getName} or ${classOf[tech.beshu.ror.requestcontext.AuditLogSerializer[_]].getName}")))
           case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '$fullClassName', error: ${ex.getMessage}")))
         }

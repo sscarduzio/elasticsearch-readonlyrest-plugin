@@ -3,13 +3,14 @@ package tech.beshu.ror.acl.factory.decoders.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
+import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.{HostsRule, LocalHostsRule}
+import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.rules.HostRulesDecodersHelper._
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 
 object HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boolean](
   ruleDecoderCreator = acceptXForwardedFor =>
@@ -32,6 +33,4 @@ private object HostRulesDecodersHelper {
 
   val defaultAcceptForwardedForHeader = false
 
-  implicit val addressValueDecoder: Decoder[Value[Address]] =
-    DecoderHelpers.alwaysRightValueDecoder(rv => Address(rv.value))
 }

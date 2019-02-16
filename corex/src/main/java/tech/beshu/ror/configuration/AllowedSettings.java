@@ -21,7 +21,7 @@ import tech.beshu.ror.settings.BasicSettings;
 
 import java.util.Map;
 
-// todo: fixme
+// todo: refactor
 public class AllowedSettings {
 
   public static Map<String, SettingType> list() {

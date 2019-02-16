@@ -7,7 +7,6 @@ import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
 import shapeless.Nat
-import tech.beshu.ror.IPMask
 import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.aDomain._
 import tech.beshu.ror.acl.blocks.RuleOrdering
@@ -45,18 +44,16 @@ object header {
   }
 }
 
-object unresolvedaddress {
-  implicit val order: Order[Address] = Order.fromOrdering(Ordering.by { u: Address => u.value })
-}
-
 object orders {
   implicit val nonEmptyStringOrder: Order[NonEmptyString] = Order.by(_.value)
   implicit val headerNameOrder: Order[Header.Name] = Order.by(_.value.value)
   implicit val headerOrder: Order[Header] = Order.by(h => (h.name, h.value.value))
-  implicit val unresolvedAddressOrder: Order[Address] = Order.by(_.value)
+  implicit val addressOrder: Order[Address] = Order.by {
+    case Address.Ip(value) => value.toString()
+    case Address.Name(value) => value.toString
+  }
   implicit val methodOrder: Order[Method] = Order.by(_.m)
   implicit val userIdOrder: Order[User.Id] = Order.by(_.value)
-  implicit val ipMaskOrder: Order[IPMask] = Order.by(_.hashCode())
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
@@ -79,7 +76,10 @@ object show {
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value)
     implicit val typeShow: Show[Type] = Show.show(_.value)
     implicit val actionShow: Show[Action] = Show.show(_.value)
-    implicit val addressShow: Show[Address] = Show.show(_.value)
+    implicit val addressShow: Show[Address] = Show.show {
+      case Address.Ip(value) => value.toString
+      case Address.Name(value) => value.toString
+    }
     implicit val methodShow: Show[Method] = Show.show(_.m)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)

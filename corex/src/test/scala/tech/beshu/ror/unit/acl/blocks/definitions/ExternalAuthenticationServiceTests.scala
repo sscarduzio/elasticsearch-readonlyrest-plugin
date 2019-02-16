@@ -1,5 +1,5 @@
 package tech.beshu.ror.unit.acl.blocks.definitions
 
 class ExternalAuthenticationServiceTests {
- // todo: implement
+ // todo: it'd be nice to have them
 }

@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-// todo: check if there is no problem with scalatest from gradle console
+// todo: check if there is no problem with scalatest from gradle console (high prio)
 
 group = 'org.elasticsearch.plugin'
 version = pluginVersion
@@ -76,37 +76,37 @@ test {
 dependencies {
     simpleCompile project(':audit')
 
-    simpleCompile group: 'io.monix',                              name: 'monix_2.12',                             version: '3.0.0-RC2'
-    simpleCompile group: 'org.scala-lang',                        name: 'scala-library',                          version: '2.12.4'
-    simpleCompile group: 'org.scala-lang.modules',                name: 'scala-java8-compat_2.12',                version: '0.9.0'
+    simpleCompile group: 'com.comcast',                           name: 'ip4s-cats_2.12',                         version: '1.1.1'
+    shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.8.11'
+    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.8.11'
+    simpleCompile group: 'com.google.code.gson',                  name: 'gson',                                   version: '2.8.2'
+    shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.2.0'
+    simpleCompile group: 'com.softwaremill.sttp',                 name: 'async-http-client-backend-cats_2.12',    version: '1.5.8'
     simpleCompile group: 'com.softwaremill.sttp',                 name: 'core_2.12',                              version: '1.5.1'
-    simpleCompile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
+    simpleCompile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.10'
+    simpleCompile group: 'cz.seznam.euphoria',                    name: 'shaded-guava',                           version: '21.0'
     simpleCompile group: 'eu.timepit',                            name: 'refined_2.12',                           version: '0.9.3'
     simpleCompile group: 'io.circe',                              name: 'circe-core_2.12',                        version: '0.10.1'
     simpleCompile group: 'io.circe',                              name: 'circe-generic-extras_2.12',              version: '0.10.1'
-    simpleCompile          group: 'io.circe',                              name: 'circe-parser_2.12',                      version: '0.10.1'
+    simpleCompile group: 'io.circe',                              name: 'circe-parser_2.12',                      version: '0.10.1'
     simpleCompile group: 'io.circe',                              name: 'circe-yaml_2.12',                        version: '0.9.0'
-    simpleCompile group: 'org.apache.logging.log4j',              name: 'log4j-api-scala_2.12',                   version: '11.0'
-    simpleCompile group: 'com.softwaremill.sttp',                 name: 'async-http-client-backend-cats_2.12',    version: '1.5.8'
-    simpleCompile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.10'
-    shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.8.11'
-    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.8.11'
-    shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.2.0'
     simpleCompile group: 'io.jsonwebtoken',                       name: 'jjwt-api',                               version: '0.10.5'
     simpleCompile group: 'io.jsonwebtoken',                       name: 'jjwt-impl',                              version: '0.10.5'
     simpleCompile group: 'io.jsonwebtoken',                       name: 'jjwt-jackson',                           version: '0.10.5'
-    simpleCompile 'cz.seznam.euphoria:shaded-guava:21.0'
-    simpleCompile 'com.google.code.gson:gson:2.8.2'
+    simpleCompile group: 'io.monix',                              name: 'monix_2.12',                             version: '3.0.0-RC2'
+    simpleCompile group: 'org.apache.logging.log4j',              name: 'log4j-api-scala_2.12',                   version: '11.0'
     simpleCompile('org.reflections:reflections:0.9.11') {
         exclude group: 'org.slf4j', module: 'slf4j-api'
         exclude group: 'org.slf4j', module: 'slf4j-simple'
         exclude group: 'dom4j', module: 'dom4j'
     }
+    simpleCompile group: 'org.scala-lang',                        name: 'scala-library',                          version: '2.12.4'
+    simpleCompile group: 'org.scala-lang.modules',                name: 'scala-java8-compat_2.12',                version: '0.9.0'
+    simpleCompile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
 
-    testCompile group: 'org.scalatest',                     name: 'scalatest_2.12',                         version: '3.0.5'
-    testCompile group: 'org.scalamock',                     name: 'scalamock_2.12',                         version: '3.6.0'
-    testCompile group: 'org.scalamock',                     name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
-
+    testCompile group: 'org.scalatest',                           name: 'scalatest_2.12',                         version: '3.0.5'
+    testCompile group: 'org.scalamock',                           name: 'scalamock_2.12',                         version: '3.6.0'
+    testCompile group: 'org.scalamock',                           name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
 }
 
 license {

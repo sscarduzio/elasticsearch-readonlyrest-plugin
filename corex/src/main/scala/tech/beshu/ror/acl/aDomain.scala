@@ -4,8 +4,12 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 
 import cats.Eq
+import cats.data.NonEmptyList
 import cats.implicits._
+import com.comcast.ip4s.interop.cats.HostnameResolver
+import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.Constants
@@ -106,10 +110,23 @@ object aDomain {
     }
   }
 
-  final case class Address(value: String) extends AnyVal
+  sealed trait Address
   object Address {
-    val unknown = Address("unknown")
-    implicit val eqAddress: Eq[Address] = Eq.fromUniversalEquals
+    final case class Ip(value: Cidr[IpAddress]) extends Address {
+      def contains(ip: Ip): Boolean = value.contains(ip.value.address)
+    }
+    final case class Name(value: Hostname) extends Address
+
+    def from(value: String): Option[Address] = {
+      Cidr.fromString(value).map(Ip.apply) orElse
+        IpAddress(value).map(ip => Ip(Cidr(ip, 32))) orElse
+        Hostname(value).map(Name.apply)
+    }
+
+    // fixme: (improvements) blocking resolving (shift to another EC)
+    def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
+      HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
+    }
   }
 
   final case class Action(value: String) extends AnyVal {

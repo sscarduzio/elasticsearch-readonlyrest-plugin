@@ -42,7 +42,7 @@ object HeadersAndRule {
   val name = Rule.Name("headers_and")
   val deprecatedName = Rule.Name("headers")
 
-  // todo: clarify "should reject duplicated headers" feature
+  // todo: clarify "should reject duplicated headers" feature (high prio)
   final case class Settings(headers: NonEmptySet[Header])
 
 }

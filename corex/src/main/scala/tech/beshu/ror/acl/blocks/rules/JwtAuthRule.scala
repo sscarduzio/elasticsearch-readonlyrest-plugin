@@ -19,6 +19,7 @@ import tech.beshu.ror.utils.SecureStringHasher
 
 import scala.util.Try
 
+// todo: groups (from jira) (high prio)
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
     with AuthorizationRule

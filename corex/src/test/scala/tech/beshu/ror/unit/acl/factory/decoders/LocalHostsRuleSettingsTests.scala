@@ -28,7 +28,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address("192.168.0.1")))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address.from("192.168.0.1").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -46,7 +46,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Right(Address(rv.value))))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Right(Address.from(rv.value).get)))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -64,7 +64,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address("192.168.0.1")), Const(Address("192.168.0.2")))
+            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("192.168.0.2").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )

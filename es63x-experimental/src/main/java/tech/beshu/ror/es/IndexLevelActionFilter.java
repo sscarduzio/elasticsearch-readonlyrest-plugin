@@ -101,7 +101,7 @@ import java.util.concurrent.atomic.AtomicReference;
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down after reload
+        HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down after reload (high prio)
         Engine engine = RorEngineFactory$.MODULE$.reload(httpClientsFactory, createAuditSink(client, newBasicSettings),
             newContext.getSettings().getRaw().yaml());
         rorEngine.set(Optional.of(engine));
@@ -157,7 +157,6 @@ import java.util.concurrent.atomic.AtomicReference;
         context.get(), indexResolver);
     RequestContext requestContext = new EsRequestContext(requestInfo);
 
-    // todo: optimize handler creation
     engine.acl().handle(requestContext, new AclHandler() {
       @Override
       public ResponseWriter onAllow(BlockContext blockContext) {

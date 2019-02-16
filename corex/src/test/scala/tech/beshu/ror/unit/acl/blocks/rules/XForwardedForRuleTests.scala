@@ -6,7 +6,6 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.IPMask
 import tech.beshu.ror.TestsUtils._
 import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -21,25 +20,25 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
     "match" when {
       "configured IP is the same as the IP passed in X-Forwarded-For header" in {
         assertMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedIps(NonEmptySet.of(IPMask.getIPMask("1.1.1.1"))),
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1"))),
           xForwardedForHeaderValue = "1.1.1.1"
         )
       }
       "configured net address is the same as the IP passed in X-Forwarded-For header" in {
         assertMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedIps(NonEmptySet.of(IPMask.getIPMask("1.1.1.1/16"))),
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1/16"))),
           xForwardedForHeaderValue = "1.1.1.2"
         )
       }
       "configured domain address is the same as the one passed in X-Forwarded-For header" in {
         assertMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("google.com"))),
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("google.com"))),
           xForwardedForHeaderValue = "google.com"
         )
       }
       "localhost is configured and X-Forwarded-For is also localhost" in {
         assertMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedIps(NonEmptySet.of(IPMask.getIPMask("127.0.0.1"))),
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("127.0.0.1"))),
           xForwardedForHeaderValue = "localhost"
         )
       }
@@ -47,25 +46,25 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
     "not matched" when {
       "configured IP is different than the IP passed in X-Forwarded-For header" in {
         assertNotMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedIps(NonEmptySet.of(IPMask.getIPMask("1.1.1.1"))),
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1"))),
           xForwardedForHeaderValue = "1.1.1.2"
         )
       }
       "configured net address is different than the IP passed in X-Forwarded-For header" in {
         assertNotMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("1.1.1.1/16"))),
-          xForwardedForHeaderValue = "1.1.1.4"
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("1.1.1.1/16"))),
+          xForwardedForHeaderValue = "2.1.1.1"
         )
       }
       "configured domain address different than the one passed in X-Forwarded-For header" in {
         assertNotMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("google.com"))),
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("google.com"))),
           xForwardedForHeaderValue = "yahoo.com"
         )
       }
       "X-Forwarded-For header is empty" in {
         assertNotMatchRule(
-          settings = XForwardedForRule.Settings.createFromAllowedAddresses(NonEmptySet.of(addressValueFrom("google.com"))),
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("google.com"))),
           xForwardedForHeaderValue = ""
         )
       }
@@ -93,7 +92,7 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
 
   private def addressValueFrom(value: String): Value[Address] = {
     Value
-      .fromString(value, rv => Right(Address(rv.value)))
+      .fromString(value, rv => Right(Address.from(rv.value).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

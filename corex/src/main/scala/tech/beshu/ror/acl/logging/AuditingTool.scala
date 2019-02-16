@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter
 
 import cats.implicits._
 import monix.eval.Task
+import tech.beshu.ror.acl.aDomain.Address
 import tech.beshu.ror.acl.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.logging.AuditingTool.Settings
@@ -64,8 +65,14 @@ class AuditingTool(settings: Settings,
       override val history: String = historyEntries.map(_.show).mkString(", ")
       override val content: String = requestContext.content
       override val contentLength: Integer = requestContext.contentLength.toBytes.toInt
-      override val remoteAddress: String = requestContext.remoteAddress.value
-      override val localAddress: String = requestContext.localAddress.value
+      override val remoteAddress: String = requestContext.remoteAddress match {
+        case Address.Ip(value) => value.toString
+        case Address.Name(value) => value.toString
+      }
+      override val localAddress: String = requestContext.localAddress  match {
+        case Address.Ip(value) => value.toString
+        case Address.Name(value) => value.toString
+      }
       override val `type`: String = requestContext.`type`.value
       override val taskId: Long = requestContext.taskId
       override val httpMethod: String = requestContext.method.m

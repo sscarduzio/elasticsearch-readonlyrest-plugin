@@ -8,7 +8,6 @@ import tech.beshu.ror.acl.aDomain.{ClaimName, AuthorizationTokenDef, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 
-// todo: add header prefix: acceptValidTokentWithUserClaimAndCustomHeaderAndCustomHeaderPrefix test
 final case class JwtDef(id: Name,
                         authorizationTokenDef: AuthorizationTokenDef,
                         checkMethod: SignatureCheckMethod,
