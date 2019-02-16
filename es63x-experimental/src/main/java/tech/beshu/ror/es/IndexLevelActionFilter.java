@@ -55,6 +55,7 @@ import tech.beshu.ror.acl.factory.RorEngineFactory.Engine;
 import tech.beshu.ror.acl.logging.AuditSink;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
+import tech.beshu.ror.acl.utils.ScalaJavaHelper$;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
 
@@ -155,7 +156,7 @@ import java.util.concurrent.atomic.AtomicReference;
     }
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
         context.get(), indexResolver);
-    RequestContext requestContext = new EsRequestContext(requestInfo);
+    RequestContext requestContext = requestContextFrom(requestInfo);
 
     engine.acl().handle(requestContext, new AclHandler() {
       @Override
@@ -171,7 +172,7 @@ import java.util.concurrent.atomic.AtomicReference;
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
-              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
+              logger.debug("ACL involves filters,requestContextFrom(requestInfo) will disable request cache for MultiSearchRequest");
               for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
                 sr.requestCache(Boolean.FALSE);
               }
@@ -266,6 +267,14 @@ import java.util.concurrent.atomic.AtomicReference;
         auditSink.submit(indexName, documentId, jsonRecord);
       }
     };
+  }
+
+  private RequestContext requestContextFrom(RequestInfo requestInfo) {
+    try {
+      return ScalaJavaHelper$.MODULE$.force(EsRequestContext.from(requestInfo));
+    } catch (Exception ex) {
+      throw new SecurityPermissionException("Cannot create request context object", ex);
+    }
   }
 
   private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {
