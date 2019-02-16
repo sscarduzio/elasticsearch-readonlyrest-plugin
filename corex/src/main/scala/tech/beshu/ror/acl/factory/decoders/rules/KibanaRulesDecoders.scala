@@ -58,7 +58,7 @@ private object KibanaRulesDecoderHelper {
   implicit val kibanaIndexDecoder: Decoder[Value[IndexName]] =
     DecoderHelpers
       .decodeStringLike
-      .map(e => Value.fromString(e, rv => Right(IndexName(rv.value))))
+      .map(e => Value.fromString(e, rv => Right(IndexName(rv.value.replace(" ", "_")))))
       .emapE {
         case Right(index) => Right(index)
         case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
