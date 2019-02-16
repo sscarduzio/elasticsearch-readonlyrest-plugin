@@ -30,7 +30,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
+        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
         classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.4'
         classpath 'gradle.plugin.com.github.maiflai:gradle-scalatest:0.23'
     }
@@ -44,10 +44,10 @@ repositories {
 
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'com.github.maiflai.scalatest'
+apply plugin: "com.github.hierynomus.license"
 apply plugin: 'java'
 apply plugin: 'scala'
 apply plugin: 'maven'
-apply plugin: 'license'
 
 configurations {
     shadowCompile
@@ -117,7 +117,10 @@ license {
     useDefaultMappings = false
     mapping {
         java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
     }
+
+    include "**/*.scala"
 }
 
 compileScala {
