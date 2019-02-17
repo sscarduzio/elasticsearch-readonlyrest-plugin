@@ -44,6 +44,7 @@ object HttpClientsFactory {
 
 }
 
+// todo: check changes: https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/410/files
 // todo: remove synchronized, use more sophisticated lock mechanism
 class AsyncHttpClientsFactory extends HttpClientsFactory {
 
