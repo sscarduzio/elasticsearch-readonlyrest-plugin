@@ -17,7 +17,6 @@
 package tech.beshu.ror.acl.factory
 
 import java.time.Clock
-import java.time.format.DateTimeFormatter
 
 import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
@@ -25,7 +24,7 @@ import cats.kernel.Monoid
 import io.circe._
 import io.circe.yaml.parser
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.orders._
+import org.yaml.snakeyaml.Yaml
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
@@ -37,14 +36,12 @@ import tech.beshu.ror.acl.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.acl.factory.decoders.definitions._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.logging.AuditingTool
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider, YamlOps}
 import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
-import tech.beshu.ror.audit.AuditLogSerializer
-import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
@@ -58,41 +55,50 @@ class CoreFactory(implicit clock: Clock,
 
   def createCoreFrom(settingsYamlString: String,
                      httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], CoreSettings] = {
-    // todo: maybe we should parse only ROR part of yaml? (high prio)
-    parser.parse(settingsYamlString) match {
-      case Right(json) =>
-        createFrom(json, httpClientFactory)
-          .toEither
-          .left.map { failures =>
-          failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString"))))
+    trimToRorPartOnly(settingsYamlString)
+      .left.map(NonEmptyList.one)
+      .right
+      .flatMap { rorPartYamlString =>
+        parser.parse(rorPartYamlString) match {
+          case Right(json) =>
+            createFrom(json, httpClientFactory)
+              .toEither
+              .left.map { failures =>
+              failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString"))))
+            }
+          case Left(ex) =>
+            logger.debug("Unparsable yaml", ex)
+            Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
         }
-      case Left(ex) =>
+      }
+  }
+
+  private def trimToRorPartOnly(settingsYamlString: String): Either[AclCreationError, String] = {
+    val yaml = new Yaml()
+    Try(yaml.load[java.util.Map[String, Object]](settingsYamlString)) match {
+      case Success(map) =>
+        Option(map.get(Attributes.rorSectionName)).map(yaml.dump) match {
+          case Some(value) => Right(value)
+          case None => Left(ReadonlyrestSettingsCreationError(Message(s"No ${Attributes.rorSectionName} section found")))
+        }
+      case Failure(ex) =>
         logger.debug("Unparsable yaml", ex)
-        Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
+        Left(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString")))
     }
   }
 
   private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
-    val rorSectionName = "readonlyrest"
-    val decoder: AccumulatingDecoder[CoreSettings] = AccumulatingDecoder.instance { c =>
-      c.downField(rorSectionName).success match {
-        case Some(rorCursor) =>
-          Validated.fromEither(
-            aclDecoder(httpClientFactory).apply(rorCursor).toEither
-              .flatMap { case (acl, context) =>
-                AccumulatingDecoder
-                  .fromDecoder(AuditingSettingsDecoder.instance)
-                  .map(CoreSettings(acl, context, _))
-                  .apply(rorCursor)
-                  .toEither
-              }
-          )
-        case None =>
-          val failure = DecodingFailureOps.fromError(ReadonlyrestSettingsCreationError(Message(s"No $rorSectionName section found")))
-          AccumulatingDecoder
-            .failed(NonEmptyList.one(failure))
-            .apply(c)
-      }
+    val decoder = AccumulatingDecoder.instance { c =>
+      Validated.fromEither(
+        aclDecoder(httpClientFactory).apply(c).toEither
+          .flatMap { case (acl, context) =>
+            AccumulatingDecoder
+              .fromDecoder(AuditingSettingsDecoder.instance)
+              .map(CoreSettings(acl, context, _))
+              .apply(c)
+              .toEither
+          }
+      )
     }
     decoder(HCursor.fromJson(settingsJson))
   }
@@ -270,6 +276,7 @@ object CoreFactory {
   }
 
   private object Attributes {
+    val rorSectionName = "readonlyrest"
     val acl = "access_control_rules"
 
     object Block {

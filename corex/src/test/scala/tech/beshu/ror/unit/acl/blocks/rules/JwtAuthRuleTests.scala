@@ -200,7 +200,9 @@ class JwtAuthRuleTests
           )
         ) {
           blockContext => assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1")))
+            loggedUser = Some(LoggedUser(User.Id("user1"))),
+            currentGroup = Some(Group("group2".nonempty)),
+            availableGroups = Set(Group("group2".nonempty))
           )(blockContext)
         }
       }

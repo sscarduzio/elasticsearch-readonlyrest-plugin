@@ -31,17 +31,18 @@ object RorEngineFactory {
   private implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
   private val aclFactory = new CoreFactory
 
-  def reload(httpClientFactory: HttpClientsFactory,
-             auditSink: AuditSink,
+  def reload(auditSink: AuditSink,
              settingsYaml: String): Engine = synchronized {
-    aclFactory.createCoreFrom(settingsYaml, httpClientFactory) match {
+    val httpClientsFactory = new AsyncHttpClientsFactory
+    aclFactory.createCoreFrom(settingsYaml, httpClientsFactory) match {
       case Right(coreSettings) =>
-        Engine(
+        new Engine(
           new AclLoggingDecorator(
             coreSettings.aclEngine,
             coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
           ),
-          coreSettings.aclStaticContext
+          coreSettings.aclStaticContext,
+          httpClientsFactory
         )
       case Left(errors) =>
         val errorsMessage = errors
@@ -56,6 +57,10 @@ object RorEngineFactory {
     }
   }
 
-  final case class Engine(acl: Acl, context: AclStaticContext)
+  final class Engine(val acl: Acl, val context: AclStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
+    def shutdown(): Unit = {
+      httpClientsFactory.shutdown()
+    }
+  }
 
 }

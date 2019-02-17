@@ -17,6 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import cats.implicits._
+import cats.data.NonEmptySet
 import io.jsonwebtoken.{Claims, Jwts}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -29,13 +30,14 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRu
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.utils.SecureStringHasher
 
+import scala.collection.SortedSet
 import scala.util.Try
 
-// todo: groups (from jira) (high prio)
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
     with AuthorizationRule
@@ -78,8 +80,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       case Right((user, groups)) =>
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
-          _ <- handleGroupsClaimSearchResult(groups)
-        } yield newBlockContext
+          finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
+        } yield finalBlockContext
         claimProcessingResult match {
           case Left(_) =>
             Task.now(Rejected)
@@ -138,14 +140,20 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
-  private def handleGroupsClaimSearchResult(result: Option[ClaimSearchResult[Set[Group]]]) = {
+  private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[Set[Group]]]) = {
     result match {
+      case None if settings.groups.nonEmpty => Left(())
       case Some(NotFound) => Left(())
       case Some(Found(groups)) if settings.groups.nonEmpty =>
-        if (groups.intersect(settings.groups).isEmpty) Left(())
-        else Right(())
-      case None if settings.groups.nonEmpty => Left(())
-      case Some(Found(_)) | None => Right(())
+        NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups.intersect(settings.groups)) match {
+          case Some(matchedGroups) => Right {
+            blockContext
+              .withCurrentGroup(matchedGroups.head)
+              .withAddedAvailableGroups(matchedGroups)
+          }
+          case None => Left(())
+        }
+      case Some(Found(_)) | None => Right(blockContext)
     }
   }
 

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.blocks.rules
 
+import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
@@ -31,9 +32,11 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRu
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 
+import scala.collection.SortedSet
 import scala.util.Try
 
 class RorKbnAuthRule(val settings: Settings)
@@ -68,8 +71,8 @@ class RorKbnAuthRule(val settings: Settings)
       case Right((user, groups)) =>
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
-          _ <- handleGroupsClaimSearchResult(groups)
-        } yield newBlockContext
+          finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
+        } yield finalBlockContext
         claimProcessingResult match {
           case Left(_) =>
             Rejected
@@ -101,13 +104,19 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def handleGroupsClaimSearchResult(result: ClaimSearchResult[Set[Group]]) = {
+  private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[Set[Group]]) = {
     result match {
       case NotFound => Left(())
       case Found(groups) if settings.groups.nonEmpty =>
-        if (groups.intersect(settings.groups).isEmpty) Left(())
-        else Right(())
-      case Found(_) => Right(())
+        NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups.intersect(settings.groups)) match {
+          case Some(matchedGroups) => Right {
+            blockContext
+              .withCurrentGroup(matchedGroups.head)
+              .withAddedAvailableGroups(matchedGroups)
+          }
+          case None => Left(())
+        }
+      case Found(_) => Right(blockContext)
     }
   }
 

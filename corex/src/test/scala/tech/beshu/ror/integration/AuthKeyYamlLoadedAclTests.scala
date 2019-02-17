@@ -40,6 +40,10 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
   }
   private val acl: Acl = factory.createCoreFrom(
     """
+      |other_non_ror_settings:
+      |
+      |  sth: "sth"
+      |
       |readonlyrest:
       |
       |  access_control_rules:

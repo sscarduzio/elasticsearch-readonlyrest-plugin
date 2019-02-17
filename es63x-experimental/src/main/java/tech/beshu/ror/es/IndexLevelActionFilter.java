@@ -47,8 +47,6 @@ import tech.beshu.ror.SecurityPermissionException;
 import tech.beshu.ror.acl.AclHandler;
 import tech.beshu.ror.acl.ResponseWriter;
 import tech.beshu.ror.acl.blocks.BlockContext;
-import tech.beshu.ror.acl.factory.AsyncHttpClientsFactory;
-import tech.beshu.ror.acl.factory.HttpClientsFactory;
 import tech.beshu.ror.acl.factory.RorEngineFactory;
 import tech.beshu.ror.acl.factory.RorEngineFactory$;
 import tech.beshu.ror.acl.factory.RorEngineFactory.Engine;
@@ -62,8 +60,13 @@ import tech.beshu.ror.shims.es.ESContext;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -77,6 +80,8 @@ import java.util.concurrent.atomic.AtomicReference;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final IndexNameExpressionResolver indexResolver;
   private final Logger logger;
+
+  private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
       ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) {
@@ -102,14 +107,15 @@ import java.util.concurrent.atomic.AtomicReference;
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        HttpClientsFactory httpClientsFactory = new AsyncHttpClientsFactory(); // todo: have to be shut down after reload (high prio)
-        Engine engine = RorEngineFactory$.MODULE$.reload(httpClientsFactory, createAuditSink(client, newBasicSettings),
+        Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
             newContext.getSettings().getRaw().yaml());
-        rorEngine.set(Optional.of(engine));
+        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
+        oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }
       else {
-        rorEngine.set(Optional.empty());
+        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
+        oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST disabled");
       }
     });
@@ -275,6 +281,20 @@ import java.util.concurrent.atomic.AtomicReference;
     } catch (Exception ex) {
       throw new SecurityPermissionException("Cannot create request context object", ex);
     }
+  }
+
+  private Consumer<Engine> scheduleDelayedEngineShutdown(Duration delay) {
+    return new Consumer<Engine>() {
+      @Override
+      public void accept(Engine engine) {
+        scheduler.schedule(new Runnable() {
+          @Override
+          public void run() {
+            engine.shutdown();
+          }
+        }, delay.toMillis(), TimeUnit.MILLISECONDS);
+      }
+    };
   }
 
   private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {
