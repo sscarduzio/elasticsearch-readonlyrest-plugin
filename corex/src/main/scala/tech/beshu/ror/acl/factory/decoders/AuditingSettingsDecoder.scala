@@ -71,7 +71,7 @@ object AuditingSettingsDecoder extends Logging {
       .decodeString
       .emapE { fullClassName =>
         Try {
-          Class.forName(fullClassName).newInstance() match {
+          Class.forName(fullClassName).getDeclaredConstructor().newInstance() match {
             case serializer: tech.beshu.ror.audit.AuditLogSerializer =>
               Some(serializer)
             case serializer: tech.beshu.ror.requestcontext.AuditLogSerializer[_] =>

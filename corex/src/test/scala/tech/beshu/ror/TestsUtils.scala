@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror
 
+import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
 import java.time.Duration
 import java.util.Base64
 
@@ -88,5 +89,13 @@ object TestsUtils {
 
   implicit class StringOps(val value: String) extends AnyVal {
     def nonempty: NonEmptyString = NonEmptyString.unsafeFrom(value)
+  }
+
+  def generateRsaRandomKeys: (PublicKey, PrivateKey) = {
+    val keyGen = KeyPairGenerator.getInstance("RSA")//.generateKeyPair()
+    val random = SecureRandom.getInstance("SHA1PRNG", "SUN")
+    keyGen.initialize(2048, random)
+    val pair = keyGen.generateKeyPair()
+    (pair.getPublic, pair.getPrivate)
   }
 }

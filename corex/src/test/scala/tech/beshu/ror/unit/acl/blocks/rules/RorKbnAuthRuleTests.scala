@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import java.security.{Key, KeyPairGenerator}
+import java.security.Key
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.security.Keys
@@ -25,13 +25,14 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.TestsUtils
 import tech.beshu.ror.TestsUtils.{BlockContextAssertion, groupFrom, _}
-import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 
 import scala.collection.JavaConverters._
@@ -69,10 +70,7 @@ class RorKbnAuthRuleTests
         }
       }
       "token has valid RS256 signature" in {
-        val (pub, secret) = {
-          val pair = KeyPairGenerator.getInstance("RSA").generateKeyPair()
-          (pair.getPublic, pair.getPrivate)
-        }
+        val (pub, secret) = TestsUtils.generateRsaRandomKeys
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
@@ -148,8 +146,8 @@ class RorKbnAuthRuleTests
         )
       }
       "token has invalid RS256 signature" in {
-        val pub = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-        val secret = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPrivate
+        val pub = TestsUtils.generateRsaRandomKeys._1
+        val secret = TestsUtils.generateRsaRandomKeys._2
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
