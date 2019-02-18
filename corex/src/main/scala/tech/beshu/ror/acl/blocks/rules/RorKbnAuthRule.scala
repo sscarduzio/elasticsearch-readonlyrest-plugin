@@ -22,17 +22,17 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 
@@ -65,14 +65,14 @@ class RorKbnAuthRule(val settings: Settings)
   }
 
   private def process(token: JwtToken, blockContext: BlockContext) = {
-    userAndGroupsFromJwtToken(token) match {
+    jwtTokenData(token) match {
       case Left(_) =>
         Rejected
-      case Right((user, groups)) =>
+      case Right((user, groups, userOrigin)) =>
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
-        } yield finalBlockContext
+        } yield handleUserOriginResult(finalBlockContext, userOrigin)
         claimProcessingResult match {
           case Left(_) =>
             Rejected
@@ -82,10 +82,14 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def userAndGroupsFromJwtToken(token: JwtToken) = {
+  private def jwtTokenData(token: JwtToken) = {
     claimsFrom(token)
       .map { claims =>
-        (claims.userIdClaim(RorKbnAuthRule.userClaimName), claims.groupsClaim(RorKbnAuthRule.groupsClaimName))
+        (
+          claims.userIdClaim(RorKbnAuthRule.userClaimName),
+          claims.groupsClaim(RorKbnAuthRule.groupsClaimName),
+          claims.headerNameClaim(Header.Name.xUserOrigin)
+        )
       }
   }
 
@@ -117,6 +121,13 @@ class RorKbnAuthRule(val settings: Settings)
           case None => Left(())
         }
       case Found(_) => Right(blockContext)
+    }
+  }
+
+  private def handleUserOriginResult(blockContext: BlockContext, result: ClaimSearchResult[Header]): BlockContext = {
+    result match {
+      case Found(header) => blockContext.withAddedResponseHeader(header)
+      case ClaimSearchResult.NotFound => blockContext
     }
   }
 

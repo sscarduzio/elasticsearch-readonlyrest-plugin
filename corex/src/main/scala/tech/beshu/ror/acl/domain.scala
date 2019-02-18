@@ -32,7 +32,7 @@ import tech.beshu.ror.Constants
 
 import scala.util.Try
 
-object aDomain {
+object domain {
 
   final case class LoggedUser(id: User.Id)
   object LoggedUser {
@@ -55,6 +55,7 @@ object aDomain {
       val xApiKeyHeaderName = Header.Name(NonEmptyString.unsafeFrom("X-Api-Key"))
       val xForwardedFor = Name(NonEmptyString.unsafeFrom("X-Forwarded-For"))
       val xForwardedUser = Name(NonEmptyString.unsafeFrom("X-Forwarded-User"))
+      val xUserOrigin = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ORIGIN))
       val kibanaHiddenApps = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_HIDDEN_APPS))
       val cookie = Name(NonEmptyString.unsafeFrom("Cookie"))
       val setCookie = Name(NonEmptyString.unsafeFrom("Set-Cookie"))
@@ -89,16 +90,16 @@ object aDomain {
   object BasicAuth extends Logging {
     def fromHeader(header: Header): Option[BasicAuth] = {
       header.name match {
-        case Header.Name.authorization => parseToBasicAuth(header.value)
+        case Header.Name.authorization => parse(header.value)
         case _ => None
       }
     }
 
-    private def parseToBasicAuth(headerValue: NonEmptyString) = {
+    private def parse(headerValue: NonEmptyString) = {
       val authMethodName = "Basic "
       val rawValue = headerValue.value
       if(rawValue.startsWith(authMethodName) && rawValue.length > authMethodName.length) {
-        val basicAuth = base64ToBasicAuth(rawValue.substring(authMethodName.length))
+        val basicAuth = fromBase64(rawValue.substring(authMethodName.length))
         basicAuth match {
           case None =>
             logger.warn(s"Cannot decode value '$headerValue' to Basic Auth")
@@ -110,7 +111,7 @@ object aDomain {
       }
     }
 
-    private def base64ToBasicAuth(base64Value: String) = {
+    private def fromBase64(base64Value: String) = {
       Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
         .map { decoded =>
           decoded.indexOf(":") match {
@@ -148,8 +149,8 @@ object aDomain {
   final case class Action(value: String) extends AnyVal {
     def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
 
-    def isSnapshotAction: Boolean = value.contains("/snapshot/")
-    def isRepositoryAction: Boolean = value.contains("/repository/")
+    def isSnapshot: Boolean = value.contains("/snapshot/")
+    def isRepository: Boolean = value.contains("/repository/")
   }
   object Action {
     val searchAction = Action("indices:data/read/search")

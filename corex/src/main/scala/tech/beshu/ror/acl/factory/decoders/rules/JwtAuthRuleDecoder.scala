@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.Group
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.definitions.JwtDef

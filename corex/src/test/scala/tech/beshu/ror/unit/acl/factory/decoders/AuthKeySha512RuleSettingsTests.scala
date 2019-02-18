@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.AuthKeySha512Rule
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.Secret
+import tech.beshu.ror.acl.domain.Secret
 
 class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha512Rule] {
 

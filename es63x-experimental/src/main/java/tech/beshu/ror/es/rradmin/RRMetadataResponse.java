@@ -26,7 +26,7 @@ import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.acl.aDomain;
+import tech.beshu.ror.acl.domain;
 import tech.beshu.ror.acl.blocks.BlockContext;
 
 import java.io.IOException;
@@ -56,7 +56,7 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
     Map<String, Object> sourceMap = Maps.newHashMap();
 
-    Set<aDomain.Header> headers = JavaConverters$.MODULE$.<aDomain.Header>setAsJavaSet(blockContext.responseHeaders());
+    Set<domain.Header> headers = JavaConverters$.MODULE$.<domain.Header>setAsJavaSet(blockContext.responseHeaders());
     headers.forEach(h -> sourceMap.put(h.name().value().toString(), h.value().toString()));
 
     blockContext.loggedUser().foreach(u -> {
@@ -75,7 +75,7 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
     });
 
     if (!blockContext.availableGroups().isEmpty()) {
-      String availableGroupsString = JavaConverters$.MODULE$.<aDomain.Group>setAsJavaSet(
+      String availableGroupsString = JavaConverters$.MODULE$.<domain.Group>setAsJavaSet(
           blockContext.availableGroups()).stream().map(g -> g.value().toString()).collect(Collectors.joining(","));
       sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, availableGroupsString);
     }

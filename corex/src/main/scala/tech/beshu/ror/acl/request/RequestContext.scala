@@ -26,7 +26,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.{Block, BlockContext, VariablesManager, VariablesResolver}
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -165,7 +165,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 }
 
 object RequestContextOps {
-  implicit def toRequestContextOps(rc: RequestContext): RequestContextOps = new RequestContextOps(rc)
+  implicit def from(rc: RequestContext): RequestContextOps = new RequestContextOps(rc)
 
   sealed trait RequestGroup
   object RequestGroup {

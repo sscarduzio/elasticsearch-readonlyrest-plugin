@@ -23,8 +23,8 @@ import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
 import shapeless.Nat
-import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.RuleOrdering
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
@@ -40,7 +40,7 @@ object header {
     def flatten: String = s"${header.name.value.value.toLowerCase()}:${header.value}"
   }
   object FlatHeader {
-    implicit def toFlatHeader(header: Header): FlatHeader = new FlatHeader(header)
+    implicit def from(header: Header): FlatHeader = new FlatHeader(header)
   }
 
   class ToTuple(val header: Header) extends AnyVal {

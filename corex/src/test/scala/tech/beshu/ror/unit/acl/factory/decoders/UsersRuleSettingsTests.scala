@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 
-import tech.beshu.ror.acl.aDomain.User
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.UsersRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}

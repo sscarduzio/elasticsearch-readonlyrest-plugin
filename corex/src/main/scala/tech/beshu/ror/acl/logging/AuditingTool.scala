@@ -21,7 +21,7 @@ import java.time.format.DateTimeFormatter
 
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.logging.AuditingTool.Settings

@@ -44,7 +44,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.uriPattern.getValue(mock[VariablesResolver], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
+            rule.settings.uriPattern.get(mock[VariablesResolver], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
           }
         )
       }

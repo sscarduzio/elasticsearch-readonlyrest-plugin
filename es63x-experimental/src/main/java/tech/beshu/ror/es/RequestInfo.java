@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
@@ -45,7 +44,6 @@ import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
@@ -86,7 +84,6 @@ public class RequestInfo implements RequestInfoShim {
   private final String id;
   private final ClusterService clusterService;
   private final Long taskId;
-  private final IndexNameExpressionResolver indexResolver;
   private final ThreadPool threadPool;
   private final LoggerShim logger;
   private final RestChannel channel;
@@ -96,7 +93,7 @@ public class RequestInfo implements RequestInfoShim {
 
   RequestInfo(
       RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
+      ClusterService clusterService, ThreadPool threadPool, ESContext context) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -105,7 +102,6 @@ public class RequestInfo implements RequestInfoShim {
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
     this.taskId = taskId;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     if (taskId != null) {

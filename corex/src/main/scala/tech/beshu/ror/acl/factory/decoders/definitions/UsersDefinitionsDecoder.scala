@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.{ACursor, Decoder, HCursor}
-import tech.beshu.ror.acl.aDomain.{Group, User}
+import tech.beshu.ror.acl.domain.{Group, User}
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
@@ -28,6 +28,7 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.authenticationRuleDecoderBy
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.acl.factory.decoders.common._
 
 class UsersDefinitionsDecoder(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                               authProxyDefinitions: Definitions[ProxyAuth],
@@ -43,7 +44,6 @@ object UsersDefinitionsDecoder {
                                       authProxyDefinitions: Definitions[ProxyAuth],
                                       jwtDefinitions: Definitions[JwtDef],
                                       rorKbnDefinitions: Definitions[RorKbnDef]): Decoder[UserDef] = {
-    import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
         val usernameKey = "username"

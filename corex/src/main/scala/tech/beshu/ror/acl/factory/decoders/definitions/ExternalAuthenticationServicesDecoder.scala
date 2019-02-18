@@ -29,6 +29,7 @@ import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
+import tech.beshu.ror.acl.factory.decoders.common._
 
 class ExternalAuthenticationServicesDecoder(httpClientFactory: HttpClientsFactory)
   extends DefinitionsBaseDecoder[ExternalAuthenticationService]("external_authentication_service_configs")(
@@ -58,7 +59,6 @@ object ExternalAuthenticationServicesDecoder {
 
   private def cacheableAuthenticationServiceDecoder(creator: (ExternalAuthenticationService#Id, Uri, Int, HttpClient) => ExternalAuthenticationService,
                                                     httpClientFactory: HttpClientsFactory) = {
-    import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
         for {

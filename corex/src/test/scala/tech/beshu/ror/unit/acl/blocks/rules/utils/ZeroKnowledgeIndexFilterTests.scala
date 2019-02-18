@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.rules.utils
 import com.google.common.collect.Sets
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.aDomain.IndexName
+import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter}

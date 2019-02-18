@@ -22,8 +22,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.TestsUtils.basicAuthHeader
-import tech.beshu.ror.acl.aDomain.{LoggedUser, Secret, User}
-import tech.beshu.ror.acl.aDomain.User.Id
+import tech.beshu.ror.acl.domain.{LoggedUser, Secret, User}
+import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule

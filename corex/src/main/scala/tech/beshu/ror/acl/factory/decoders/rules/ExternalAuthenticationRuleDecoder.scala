@@ -34,6 +34,7 @@ import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
+import tech.beshu.ror.acl.factory.decoders.common._
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService])
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule](
@@ -57,7 +58,6 @@ object ExternalAuthenticationRuleDecoder {
       .map((_, None))
 
   private def complexExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[FiniteDuration Refined Positive])] = {
-    import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
         for {

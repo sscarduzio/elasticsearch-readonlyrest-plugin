@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 
 class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHostsRule] {

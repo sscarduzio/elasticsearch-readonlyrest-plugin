@@ -21,7 +21,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.{Group, User}
+import tech.beshu.ror.acl.domain.{Group, User}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthorizationService, ExternalAuthorizationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule
@@ -34,6 +34,7 @@ import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWith
 import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
+import tech.beshu.ror.acl.factory.decoders.common._
 
 class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[ExternalAuthorizationService])
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
@@ -45,7 +46,6 @@ class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[Extern
 object ExternalAuthorizationRuleDecoder {
 
   private def settingsDecoder(authorizationServices: Definitions[ExternalAuthorizationService]): Decoder[ExternalAuthorizationRule.Settings] = {
-    import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
         for {

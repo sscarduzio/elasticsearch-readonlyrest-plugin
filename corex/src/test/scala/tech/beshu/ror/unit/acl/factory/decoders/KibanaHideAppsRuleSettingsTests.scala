@@ -22,7 +22,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.KibanaApp
+import tech.beshu.ror.acl.domain.KibanaApp
 import tech.beshu.ror.acl.orders._
 
 class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {

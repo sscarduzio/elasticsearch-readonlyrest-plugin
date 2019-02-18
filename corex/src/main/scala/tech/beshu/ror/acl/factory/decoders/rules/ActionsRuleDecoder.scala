@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.factory.decoders.rules
 
-import tech.beshu.ror.acl.aDomain.Action
+import tech.beshu.ror.acl.domain.Action
 import tech.beshu.ror.acl.blocks.rules.ActionsRule
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._

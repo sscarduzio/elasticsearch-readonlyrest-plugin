@@ -21,8 +21,7 @@ import tech.beshu.ror.acl.blocks.rules.FilterRule
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.acl.aDomain.Filter
+import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.utils.CirceOps._
 
 object FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(

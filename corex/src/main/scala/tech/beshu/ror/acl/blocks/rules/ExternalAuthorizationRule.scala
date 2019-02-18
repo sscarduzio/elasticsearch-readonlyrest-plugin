@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.{Group, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -30,11 +30,10 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
+import StringTNaturalTransformation.instances.stringUserIdNT
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings)
   extends AuthorizationRule {
-
-  import StringTNaturalTransformation.instances.stringUserIdNT
 
   private val userMatcher: Matcher = new MatcherWithWildcardsScalaAdapter(
     new MatcherWithWildcards(settings.users.map(_.value).toSortedSet.asJava)

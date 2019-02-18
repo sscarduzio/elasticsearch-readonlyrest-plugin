@@ -20,7 +20,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.TestsUtils._
-import tech.beshu.ror.acl.aDomain.{LoggedUser, User}
+import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.blocks.Variable.{ResolvedValue, ValueWithVariable}
 import tech.beshu.ror.acl.blocks.{BlockContext, VariablesManager}
 import tech.beshu.ror.acl.request.RequestContext

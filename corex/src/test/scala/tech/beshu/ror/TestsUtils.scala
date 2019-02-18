@@ -21,8 +21,8 @@ import java.util.Base64
 
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.aDomain.Header.Name
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.BlockContext
 
 import scala.concurrent.duration.FiniteDuration

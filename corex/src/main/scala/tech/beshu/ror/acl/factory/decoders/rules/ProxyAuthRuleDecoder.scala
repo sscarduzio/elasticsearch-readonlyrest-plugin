@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.{Header, User}
+import tech.beshu.ror.acl.domain.{Header, User}
 import tech.beshu.ror.acl.blocks.definitions.ProxyAuth
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message

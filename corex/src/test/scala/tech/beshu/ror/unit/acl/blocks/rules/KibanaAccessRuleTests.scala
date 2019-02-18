@@ -23,9 +23,9 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.TestsUtils.BlockContextAssertion
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.aDomain.Header.Name
-import tech.beshu.ror.acl.aDomain.KibanaAccess.{RO, ROStrict, RW}
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.domain.KibanaAccess.{RO, ROStrict, RW}
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}

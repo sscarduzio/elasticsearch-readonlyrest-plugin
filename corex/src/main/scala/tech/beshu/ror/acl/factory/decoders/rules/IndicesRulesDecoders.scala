@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreatio
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.IndicesDecodersHelper._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.aDomain.IndexName
+import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.orders._
 

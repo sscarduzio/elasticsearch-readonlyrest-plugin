@@ -39,7 +39,6 @@ import static tech.beshu.ror.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-  private final NodeClient client;
   private final SettingsObservableImpl settingsObservable;
 
   @Inject
@@ -49,9 +48,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
     super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
         RRAdminRequest::new
     );
-    this.client = client;
     this.settingsObservable = settingsObservable;
-
   }
 
   private String normalisePath(String s) {

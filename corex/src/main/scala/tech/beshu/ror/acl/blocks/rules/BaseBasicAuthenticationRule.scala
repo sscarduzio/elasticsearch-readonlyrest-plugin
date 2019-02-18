@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.{BasicAuth, LoggedUser, Secret}
+import tech.beshu.ror.acl.domain.{BasicAuth, LoggedUser, Secret}
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings

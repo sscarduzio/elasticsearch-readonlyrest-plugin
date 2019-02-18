@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.acl.blocks.rules.impl;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;

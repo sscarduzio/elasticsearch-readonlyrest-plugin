@@ -161,7 +161,7 @@ import java.util.function.Consumer;
       return;
     }
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-        context.get(), indexResolver);
+        context.get());
     RequestContext requestContext = requestContextFrom(requestInfo);
 
     engine.acl().handle(requestContext, new AclHandler() {

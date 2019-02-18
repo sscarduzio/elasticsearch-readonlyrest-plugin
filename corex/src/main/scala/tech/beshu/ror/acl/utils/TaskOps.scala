@@ -36,5 +36,5 @@ class TaskOps[T](val task: Task[T]) extends AnyVal {
 }
 
 object TaskOps {
-  implicit def toTaskOps[T](task: Task[T]): TaskOps[T] = new TaskOps[T](task)
+  implicit def from[T](task: Task[T]): TaskOps[T] = new TaskOps[T](task)
 }

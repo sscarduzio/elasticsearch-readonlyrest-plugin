@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 
-import tech.beshu.ror.acl.aDomain.{IndexName, KibanaAccess}
+import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess}
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.{Const, Variable}
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule

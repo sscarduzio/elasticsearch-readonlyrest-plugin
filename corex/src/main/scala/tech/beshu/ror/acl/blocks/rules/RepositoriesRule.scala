@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
-import tech.beshu.ror.acl.aDomain.{Action, IndexName}
+import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BaseSpecializedIndicesRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
@@ -28,7 +28,7 @@ class RepositoriesRule(override val settings: Settings)
 
   override val name: Rule.Name = RepositoriesRule.name
 
-  override protected def isSpecializedIndexAction(action: Action): Boolean = action.isRepositoryAction
+  override protected def isSpecializedIndexAction(action: Action): Boolean = action.isRepository
 
   override protected def specializedIndicesFromRequest(request: RequestContext): Set[IndexName] = request.repositories
 

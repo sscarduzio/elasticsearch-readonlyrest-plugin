@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
 import io.circe.{Decoder, HCursor, Json}
-import tech.beshu.ror.acl.aDomain.{ClaimName, AuthorizationTokenDef, Header}
+import tech.beshu.ror.acl.domain.{ClaimName, AuthorizationTokenDef, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
@@ -28,6 +28,8 @@ import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
+import tech.beshu.ror.acl.factory.decoders.common._
+import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
 
 class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory,
                             resolver: StaticVariablesResolver)
@@ -43,7 +45,6 @@ object JwtDefinitionsDecoder {
 
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
                             resolver: StaticVariablesResolver): Decoder[JwtDef] = {
-    import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
         for {
@@ -95,7 +96,6 @@ object JwtDefinitionsDecoder {
         .decodeStringLikeWithVarResolvedInPlace
         .tryDecode(c.downField("signature_key"))
 
-    import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
     for {
       alg <- c.downField("signature_algo").as[Option[String]]
       checkMethod <- alg.map(_.toUpperCase) match {

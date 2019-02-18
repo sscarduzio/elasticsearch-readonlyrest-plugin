@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
 import tech.beshu.ror.acl.blocks.{Const, Variable}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.aDomain.IndexName
+import tech.beshu.ror.acl.domain.IndexName
 
 class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {
 

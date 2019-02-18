@@ -21,7 +21,7 @@ import java.util.regex.Pattern
 import cats.implicits._
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
-import tech.beshu.ror.acl.aDomain.{BasicAuth, Secret, User}
+import tech.beshu.ror.acl.domain.{BasicAuth, Secret, User}
 
 class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)
   extends BasicAuthenticationRule(settings) {

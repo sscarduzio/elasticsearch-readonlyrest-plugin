@@ -20,7 +20,6 @@ package tech.beshu.ror.es;
 /**
  * Created by sscarduzio on 28/11/2016.
  */
-
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -48,17 +47,15 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   private final BasicSettings basicSettings;
   private final LoggerShim logger;
-  private final Environment environment;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.logger = ESContextImpl.mkLoggerShim(LogManager.getLogger(getClass().getName()));
 
-    this.environment = environment;
     BasicSettings basicSettings = BasicSettings.fromFileObj(
         logger,
-        this.environment.configFile().toAbsolutePath(),
+        environment.configFile().toAbsolutePath(),
         settings
     );
     this.basicSettings = basicSettings;

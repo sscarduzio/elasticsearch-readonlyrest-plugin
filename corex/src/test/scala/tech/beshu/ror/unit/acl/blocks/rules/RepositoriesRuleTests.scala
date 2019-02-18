@@ -21,7 +21,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.TestsUtils.BlockContextAssertion
-import tech.beshu.ror.acl.aDomain.{Action, IndexName}
+import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, RepositoriesRule}
 import tech.beshu.ror.acl.blocks.{BlockContext, Const, RequestContextInitiatedBlockContext, Value}

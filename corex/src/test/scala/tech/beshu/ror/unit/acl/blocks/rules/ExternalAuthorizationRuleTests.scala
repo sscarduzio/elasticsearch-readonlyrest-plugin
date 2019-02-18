@@ -24,7 +24,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.TestsUtils._
-import tech.beshu.ror.acl.aDomain.{Group, Header, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{Group, Header, LoggedUser, User}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule

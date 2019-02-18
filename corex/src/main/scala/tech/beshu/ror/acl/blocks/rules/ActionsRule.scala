@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ActionsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.aDomain.Action
+import tech.beshu.ror.acl.domain.Action
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.utils.MatcherWithWildcards
 

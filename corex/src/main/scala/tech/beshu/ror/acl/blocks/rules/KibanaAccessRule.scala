@@ -22,11 +22,11 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.aDomain.Header.Name.kibanaAccess
-import tech.beshu.ror.acl.aDomain.IndexName.devNullKibana
-import tech.beshu.ror.acl.aDomain.KibanaAccess.{RO, ROStrict, RW}
-import tech.beshu.ror.acl.aDomain.KibanaAccess._
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain.Header.Name.kibanaAccess
+import tech.beshu.ror.acl.domain.IndexName.devNullKibana
+import tech.beshu.ror.acl.domain.KibanaAccess.{RO, ROStrict, RW}
+import tech.beshu.ror.acl.domain.KibanaAccess._
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -60,7 +60,7 @@ class KibanaAccessRule(val settings: Settings)
   private def processCheck(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
     val kibanaIndex = settings
       .kibanaIndex
-      .getValue(requestContext.variablesResolver, blockContext)
+      .get(requestContext.variablesResolver, blockContext)
       .getOrElse(IndexName.kibana)
 
     // Save UI state in discover & Short urls
@@ -114,7 +114,10 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def isTargetingKibana(requestContext: RequestContext, kibanaIndex: IndexName) = {
-    requestContext.indices.size == 1 && requestContext.indices.head === kibanaIndex
+    requestContext.indices.toList match {
+      case head :: Nil => head === kibanaIndex
+      case _ => false
+    }
   }
 
   private def kibanaIndexPattern(kibanaIndex: IndexName) = {
@@ -129,12 +132,14 @@ class KibanaAccessRule(val settings: Settings)
       if (settings.kibanaMetadataEnabled) bc.withAddedResponseHeader(Header(kibanaAccess, settings.access))
       else bc
     }
+
     def applyKibanaIndex = (bc: BlockContext) => {
       kibanaIndex match {
         case Some(index) => bc.withKibanaIndex(index)
         case None => bc
       }
     }
+
     (applyKibanaAccessHeader :: applyKibanaIndex :: Nil).reduceLeft(_ andThen _).apply(blockContext)
   }
 

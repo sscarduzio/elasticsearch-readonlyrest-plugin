@@ -28,7 +28,7 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.{Address, Group, Header, User}
+import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message

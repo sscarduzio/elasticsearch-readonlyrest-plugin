@@ -22,8 +22,8 @@ import cats.implicits._
 import cz.seznam.euphoria.shaded.guava.com.google.common.hash.{HashFunction, Hashing}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.Secret._
-import tech.beshu.ror.acl.aDomain.{BasicAuth, Secret}
+import tech.beshu.ror.acl.domain.Secret._
+import tech.beshu.ror.acl.domain.{BasicAuth, Secret}
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
                                   hashFunction: HashFunction)

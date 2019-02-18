@@ -65,10 +65,6 @@ public class RawSettings {
     return out;
   }
 
-  public static RawSettings empty() {
-    return new RawSettings("readonlyrest:", LoggerShim.dummy());
-  }
-
   static RawSettings fromMap(Map<String, ?> r, LoggerShim logger) {
     String syntheticYaml = SettingsUtils.map2yaml(r);
     return new RawSettings(syntheticYaml, logger);

@@ -20,7 +20,7 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.acl.aDomain.Secret
+import tech.beshu.ror.acl.domain.Secret
 
 object AuthKeyRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeyRule(_))

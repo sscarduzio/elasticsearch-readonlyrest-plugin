@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.aDomain.{IndexName, KibanaAccess, KibanaApp}
+import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
 

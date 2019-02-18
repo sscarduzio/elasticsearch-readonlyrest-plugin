@@ -23,7 +23,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.SupportedHttpMethod.Get
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.{AuthTokenName, AuthTokenSendMethod, QueryParam, SupportedHttpMethod}
 import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthorizationService, ExternalAuthorizationService, HttpExternalAuthorizationService}
@@ -32,11 +32,12 @@ import tech.beshu.ror.acl.factory.HttpClientsFactory.Config
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.common.decoderTupleListDecoder
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
+import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 import scala.util.Try
+import tech.beshu.ror.acl.factory.decoders.common._
 
 class ExternalAuthorizationServicesDecoder(httpClientFactory: HttpClientsFactory)
   extends DefinitionsBaseDecoder[ExternalAuthorizationService]("user_groups_providers") (
@@ -80,10 +81,9 @@ object ExternalAuthorizationServicesDecoder extends Logging {
     decoderTupleListDecoder.map(_.map(Header.apply).toSet)
 
   private implicit val queryParamSetDecoder: Decoder[Set[QueryParam]] =
-    decoderTupleListDecoder.map(_.map(t => QueryParam(t._1, t._2)).toSet)
+    decoderTupleListDecoder.map(_.map { case (fst, snd) => QueryParam(fst, snd) }.toSet)
 
   private implicit def externalAuthorizationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthorizationService] = {
-    import tech.beshu.ror.acl.factory.decoders.common._
     Decoder
       .instance { c =>
         for {

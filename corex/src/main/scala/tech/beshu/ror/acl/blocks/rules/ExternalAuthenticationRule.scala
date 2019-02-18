@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.BasicAuth
+import tech.beshu.ror.acl.domain.BasicAuth
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
 
 class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings)

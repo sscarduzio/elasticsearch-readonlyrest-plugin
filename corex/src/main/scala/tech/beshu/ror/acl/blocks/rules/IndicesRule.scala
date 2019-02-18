@@ -18,11 +18,10 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.implicits._
 import cats.data.NonEmptySet
-import com.google.common.base.Joiner
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.Action.{mSearchAction, searchAction}
-import tech.beshu.ror.acl.aDomain.IndexName
+import tech.beshu.ror.acl.domain.Action.{mSearchAction, searchAction}
+import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.acl.blocks.rules.IndicesRule.{CanPass, Settings}
@@ -59,7 +58,7 @@ class IndicesRule(val settings: Settings)
     val matcher: Matcher = initialMatcher.getOrElse {
       val resolvedIndices = settings.allowedIndices.toList
         .flatMap { v =>
-          v.getValue(requestContext.variablesResolver, blockContext) match {
+          v.get(requestContext.variablesResolver, blockContext) match {
             case Right(index) => index :: Nil
             case Left(_) => Nil
           }
@@ -183,7 +182,7 @@ class IndicesRule(val settings: Settings)
       // Write requests
       // Handle <no-index> (#TODO LEGACY)
       logger.debug("Stage 7")
-      if (indices.isEmpty && matcher.containsMatcher("<no-index>")) {
+      if (indices.isEmpty && matcher.contains("<no-index>")) {
         return CanPass.Yes(Set.empty)
       } else {
         // Reject write if at least one requested index is not allowed by the rule conf

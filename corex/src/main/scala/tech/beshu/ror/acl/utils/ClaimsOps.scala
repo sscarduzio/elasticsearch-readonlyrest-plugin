@@ -20,7 +20,7 @@ import java.util
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
-import tech.beshu.ror.acl.aDomain.{ClaimName, Group, User}
+import tech.beshu.ror.acl.domain.{ClaimName, Group, Header, User}
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult._
 
@@ -28,6 +28,14 @@ import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 class ClaimsOps(val claims: Claims) extends AnyVal {
+
+  def headerNameClaim(name: Header.Name): ClaimSearchResult[Header] = {
+    Option(claims.get(name.value.value, classOf[String]))
+      .flatMap(NonEmptyString.unapply) match {
+      case Some(headerValue) => Found(Header.apply(name, headerValue))
+      case None => NotFound
+    }
+  }
 
   def userIdClaim(name: ClaimName): ClaimSearchResult[User.Id] = {
     Option(claims.get(name.value.value, classOf[String])) match {

@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.{Action, IndexName}
+import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.rules.BaseSpecializedIndicesRule.Settings
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
@@ -45,7 +45,7 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
       settings
         .allowedIndices
         .toSortedSet
-        .flatMap(_.getValue(requestContext.variablesResolver, blockContext).toOption),
+        .flatMap(_.get(requestContext.variablesResolver, blockContext).toOption),
       requestContext,
       blockContext
     )

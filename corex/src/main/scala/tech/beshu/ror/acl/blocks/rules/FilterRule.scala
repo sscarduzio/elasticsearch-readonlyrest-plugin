@@ -18,8 +18,8 @@ package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.Header.Name
-import tech.beshu.ror.acl.aDomain.{Filter, Header}
+import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.domain.{Filter, Header}
 import tech.beshu.ror.acl.headerValues.transientFilterHeaderValue
 import tech.beshu.ror.acl.blocks.Value.Unresolvable
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
@@ -40,7 +40,7 @@ class FilterRule(val settings: Settings)
                      blockContext: BlockContext): Task[RuleResult] = Task {
     if (!requestContext.isAllowedForDLS) Rejected
     else {
-      settings.filter.getValue(requestContext.variablesResolver, blockContext) match {
+      settings.filter.get(requestContext.variablesResolver, blockContext) match {
         case Left(_: Unresolvable) =>
           Rejected
         case Right(filter) =>

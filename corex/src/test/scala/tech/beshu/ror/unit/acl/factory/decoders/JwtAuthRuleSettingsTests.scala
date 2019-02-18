@@ -22,7 +22,7 @@ import java.util.Base64
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.TestsUtils._
-import tech.beshu.ror.acl.aDomain.{AuthorizationTokenDef, ClaimName, Header}
+import tech.beshu.ror.acl.domain.{AuthorizationTokenDef, ClaimName, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule

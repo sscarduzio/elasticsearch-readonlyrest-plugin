@@ -22,7 +22,7 @@ import org.apache.logging.log4j.scala.Logging
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.LoggedUser
+import tech.beshu.ror.acl.domain.LoggedUser
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}

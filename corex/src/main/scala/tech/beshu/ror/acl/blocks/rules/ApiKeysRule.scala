@@ -19,8 +19,8 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.ApiKey
-import tech.beshu.ror.acl.aDomain.Header.Name._
+import tech.beshu.ror.acl.domain.ApiKey
+import tech.beshu.ror.acl.domain.Header.Name._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ApiKeysRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}

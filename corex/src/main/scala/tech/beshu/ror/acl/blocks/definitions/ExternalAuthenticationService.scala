@@ -27,7 +27,7 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.{BasicAuth, Header, Secret, User}
+import tech.beshu.ror.acl.domain.{BasicAuth, Header, Secret, User}
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService.Name
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item

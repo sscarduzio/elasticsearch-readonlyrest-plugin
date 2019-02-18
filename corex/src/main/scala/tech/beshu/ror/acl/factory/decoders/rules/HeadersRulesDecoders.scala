@@ -21,8 +21,8 @@ import tech.beshu.ror.acl.blocks.rules.{HeadersAndRule, HeadersOrRule}
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.HeadersHelper.headerFromString
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.acl.aDomain.Header
-import tech.beshu.ror.acl.aDomain.Header.Name
+import tech.beshu.ror.acl.domain.Header
+import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.orders._
 
 object HeadersAndRuleDecoder extends RuleDecoderWithoutAssociatedFields(

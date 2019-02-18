@@ -20,7 +20,7 @@ import java.security.PublicKey
 
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.acl.aDomain.{ClaimName, AuthorizationTokenDef, Header}
+import tech.beshu.ror.acl.domain.{ClaimName, AuthorizationTokenDef, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 

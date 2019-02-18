@@ -22,8 +22,8 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.request.RequestContext
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.TestsUtils.basicAuthHeader
-import tech.beshu.ror.acl.aDomain.LoggedUser
-import tech.beshu.ror.acl.aDomain.User.Id
+import tech.beshu.ror.acl.domain.LoggedUser
+import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult

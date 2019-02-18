@@ -34,7 +34,7 @@ class UriRegexRule(val settings: Settings)
     RuleResult.fromCondition(blockContext) {
       settings
         .uriPattern
-        .getValue(requestContext.variablesResolver, blockContext)
+        .get(requestContext.variablesResolver, blockContext)
         .exists {
           _.matcher(requestContext.uriPath.value).find()
         }

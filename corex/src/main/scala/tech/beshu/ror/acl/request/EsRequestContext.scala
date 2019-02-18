@@ -21,9 +21,9 @@ import java.time.Instant
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.acl.aDomain
-import tech.beshu.ror.acl.aDomain.Header.Name
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain
+import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.shims.request.RequestInfoShim
 
 import scala.collection.JavaConverters._
@@ -86,10 +86,10 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
   override val content: String =
     Option(rInfo.extractContent()).getOrElse("")
 
-  override val indices: Set[aDomain.IndexName] =
+  override val indices: Set[domain.IndexName] =
     rInfo.extractIndices().asScala.map(IndexName.apply).toSet
 
-  override val allIndicesAndAliases: Set[aDomain.IndexName] =
+  override val allIndicesAndAliases: Set[domain.IndexName] =
     rInfo.extractAllIndicesAndAliases().asScala.map(IndexName.apply).toSet
 
   override val repositories: Set[IndexName] =

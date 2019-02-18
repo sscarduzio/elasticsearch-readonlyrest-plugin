@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.{HostsRule, LocalHostsRule}
 import tech.beshu.ror.acl.factory.decoders.common._

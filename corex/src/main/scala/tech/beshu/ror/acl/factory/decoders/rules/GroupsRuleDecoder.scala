@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import tech.beshu.ror.acl.aDomain.Group
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.definitions.UserDef

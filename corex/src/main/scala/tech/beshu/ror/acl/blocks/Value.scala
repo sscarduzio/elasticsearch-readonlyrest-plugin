@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.Value.Unresolvable.{CannotInstantiateResolvedVa
 import tech.beshu.ror.acl.blocks.Variable.{ResolvedValue, ValueWithVariable}
 
 sealed trait Value[T] {
-  def getValue(resolver: VariablesResolver, blockContext: BlockContext): Either[Unresolvable, T]
+  def get(resolver: VariablesResolver, blockContext: BlockContext): Either[Unresolvable, T]
 }
 
 object Value {
@@ -39,7 +39,7 @@ object Value {
 
   // todo: what about escaping
   def fromString[T](representation: String, convert: ResolvedValue => Either[ConvertError, T]): Either[ConvertError, Value[T]] = {
-    if (Variable.isStringVariable(representation)) {
+    if (Variable.checkIfStringContainsVariables(representation)) {
       Right(Variable(ValueWithVariable(representation), convert))
     } else {
       convert(ResolvedValue(representation)).map(Const.apply)
@@ -57,7 +57,7 @@ object Value {
 final case class Variable[T](representation: ValueWithVariable,
                              convert: ResolvedValue => Either[Value.ConvertError, T])
   extends Value[T] with Logging {
-  override def getValue(resolver: VariablesResolver, blockContext: BlockContext): Either[Unresolvable, T] = {
+  override def get(resolver: VariablesResolver, blockContext: BlockContext): Either[Unresolvable, T] = {
     resolver
       .resolve(representation, blockContext)
       .map(convert)
@@ -73,7 +73,7 @@ final case class Variable[T](representation: ValueWithVariable,
 
 object Variable {
 
-  def isStringVariable(value: String): Boolean = value.contains(VariablesManager.varDetector)
+  def checkIfStringContainsVariables(value: String): Boolean = value.contains(VariablesManager.varDetector)
 
   final case class ValueWithVariable(raw: String) extends AnyVal
   final case class ResolvedValue(value: String) extends AnyVal
@@ -84,7 +84,7 @@ object Variable {
 
 final case class Const[T](value: T)
   extends Value[T] {
-  override def getValue(resolver: VariablesResolver, blockContext: BlockContext): Either[Unresolvable, T] = Right(value)
+  override def get(resolver: VariablesResolver, blockContext: BlockContext): Either[Unresolvable, T] = Right(value)
 }
 
 trait VariablesResolver {

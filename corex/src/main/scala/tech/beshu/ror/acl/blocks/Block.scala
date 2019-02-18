@@ -22,7 +22,7 @@ import cats.{Eq, Show}
 import org.apache.logging.log4j.scala.Logging
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
-import tech.beshu.ror.acl.blocks.Block.{BlockResultWithHistory, ExecutionResult, History, HistoryItem, Name, Policy, Verbosity}
+import tech.beshu.ror.acl.blocks.Block._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult

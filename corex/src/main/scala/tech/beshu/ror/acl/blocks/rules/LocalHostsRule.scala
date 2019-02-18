@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}

@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks
 
 import cats.data.NonEmptySet
-import tech.beshu.ror.acl.aDomain.{Group, Header, IndexName, LoggedUser}
+import tech.beshu.ror.acl.domain.{Group, Header, IndexName, LoggedUser}
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps.RequestGroup._

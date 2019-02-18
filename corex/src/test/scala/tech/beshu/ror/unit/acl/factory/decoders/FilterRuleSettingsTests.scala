@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 
-import tech.beshu.ror.acl.aDomain.Filter
+import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.FilterRule
 import tech.beshu.ror.acl.blocks.{Const, Variable}

@@ -21,7 +21,7 @@ import cats.data.NonEmptySet
 import io.jsonwebtoken.{Claims, Jwts}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod._

@@ -21,8 +21,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.aDomain.User.Id
-import tech.beshu.ror.acl.aDomain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.domain.User.Id
+import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}

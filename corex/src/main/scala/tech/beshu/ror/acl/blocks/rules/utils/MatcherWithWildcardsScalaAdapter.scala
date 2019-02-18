@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.blocks.rules.utils
 
-import tech.beshu.ror.acl.aDomain.User
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
@@ -26,7 +26,7 @@ trait Matcher {
   def filter[T : StringTNaturalTransformation](items: Set[T]): Set[T]
   def filter[T : StringTNaturalTransformation](remoteClusterAware: Boolean, items: Set[T]): Set[T]
   def `match`[T : StringTNaturalTransformation](value: T): Boolean
-  def containsMatcher(str: String): Boolean
+  def contains(str: String): Boolean
 }
 
 class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildcards)
@@ -55,7 +55,7 @@ class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildc
     underlying.`match`(nt.toAString(value))
   }
 
-  override def containsMatcher(str: String): Boolean =
+  override def contains(str: String): Boolean =
     underlying.getMatchers.contains(str)
 }
 

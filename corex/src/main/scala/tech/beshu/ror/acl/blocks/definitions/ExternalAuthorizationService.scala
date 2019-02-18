@@ -21,9 +21,8 @@ import java.util.concurrent.TimeUnit
 import cats.implicits._
 import cats.{Eq, Show}
 import com.jayway.jsonpath.JsonPath
-import com.softwaremill.sttp.Uri
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService.Name
 import com.softwaremill.sttp._
@@ -36,10 +35,10 @@ import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.Au
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService._
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
-
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
+import eu.timepit.refined.auto._
 
 trait ExternalAuthorizationService extends Item {
   override type Id = Name
@@ -115,7 +114,6 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
   }
 
   private def queryParams(userId: User.Id): Map[String, String] = {
-    import eu.timepit.refined.auto._
     defaultQueryParams.map(p => (autoUnwrap(p.name), autoUnwrap(p.value))).toMap ++
       (authTokenSendMethod match {
         case UsingQueryParam => Map(tokenName.value.value -> userId.value)

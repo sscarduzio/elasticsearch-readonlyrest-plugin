@@ -57,6 +57,7 @@ public class SecureStringHasher implements Hasher {
       default:
         hf = Hashing.sha256();
         saltSize = 256;
+        break;
     }
 
     this.salt = saltCache.get(saltSize);

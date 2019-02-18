@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks.definitions
 
 import cats.{Eq, Show}
-import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.blocks.definitions.ProxyAuth.Name
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 

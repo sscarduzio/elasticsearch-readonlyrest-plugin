@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.HeadersAndRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.aDomain.Header
+import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.TestsUtils._
 

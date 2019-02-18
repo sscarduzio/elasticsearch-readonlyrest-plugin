@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.blocks.rules.utils
 
-import tech.beshu.ror.acl.aDomain.IndexName
+import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.ZeroKnowledgeMatchFilter
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
 

@@ -27,7 +27,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.TestsUtils.{BlockContextAssertion, groupFrom}
-import tech.beshu.ror.acl.aDomain._
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule

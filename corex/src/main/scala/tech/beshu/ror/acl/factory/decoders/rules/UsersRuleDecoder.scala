@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.acl.aDomain.User
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.UsersRule
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings

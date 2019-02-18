@@ -29,7 +29,6 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.Set;
-import java.util.function.Function;
 
 /**
  * Created by sscarduzio on 24/03/2017.
@@ -123,22 +122,6 @@ public class ReflecUtils {
     return null;
   }
 
-  private static Field exploreClassFields(Class<?> c, String fieldName) throws NoSuchFieldException {
-    // Explore fields without the performance cost of throwing field not found exceptions..
-    // The native implementation is O(n), so we do likewise, but without the exception object creation.
-    for (Field f : c.getDeclaredFields()) {
-      if (fieldName.equals(f.getName())) {
-        f.setAccessible(true);
-        return f;
-      }
-    }
-    return null;
-  }
-
-  public static Set<Field> getAllFields(Object o, Function<Field, Boolean> pred) {
-    return ReflectionUtils.getAllFields(o.getClass(), (Field field) -> pred.apply(field));
-  }
-
   public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, LoggerShim logger) {
 
     final boolean[] res = {false};
@@ -170,18 +153,4 @@ public class ReflecUtils {
     return res[0];
   }
 
-
-  @FunctionalInterface
-  public interface CheckedFunction<T, R> {
-    R apply(T t) throws IllegalAccessException;
-  }
-
-  static class SetFieldException extends Exception {
-    SetFieldException(Class<?> c, String id, String fieldName, Throwable e) {
-      super(" Could not set " + fieldName + " to class " + c.getSimpleName() +
-              "for req id: " + id + " because: "
-              + e.getClass().getSimpleName() + " : " + e.getMessage() +
-              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
-    }
-  }
 }

@@ -25,8 +25,8 @@ import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWith
 import tech.beshu.ror.acl.factory.decoders.rules.FieldsRuleDecoderHelper._
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.aDomain.DocumentField
-import tech.beshu.ror.acl.aDomain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.acl.domain.DocumentField
+import tech.beshu.ror.acl.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.orders._
 
 import scala.collection.JavaConverters._

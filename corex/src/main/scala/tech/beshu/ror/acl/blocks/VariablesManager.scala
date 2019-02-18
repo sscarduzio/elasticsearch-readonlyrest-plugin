@@ -37,12 +37,12 @@ class VariablesManager(requestContext: RequestContext)
     val potentiallyResolved = tryToReplaceVariableWithUser(value, blockContext) match {
       case None =>
         tryToReplaceVariableWithHeaders(value)
-      case Some(replaced) if Variable.isStringVariable(replaced) =>
+      case Some(replaced) if Variable.checkIfStringContainsVariables(replaced) =>
         tryToReplaceVariableWithHeaders(ValueWithVariable(replaced))
       case Some(replaced) =>
         replaced
     }
-    if(Variable.isStringVariable(potentiallyResolved)) None
+    if(Variable.checkIfStringContainsVariables(potentiallyResolved)) None
     else Some(ResolvedValue(potentiallyResolved))
   }
 

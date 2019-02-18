@@ -34,7 +34,7 @@ import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.utils.UuidProvider
-import tech.beshu.ror.acl.aDomain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
 

@@ -23,7 +23,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.rules.IndicesRule
-import tech.beshu.ror.acl.aDomain.{Action, IndexName}
+import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult

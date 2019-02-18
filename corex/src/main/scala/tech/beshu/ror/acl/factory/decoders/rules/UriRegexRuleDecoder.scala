@@ -25,7 +25,6 @@ import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.blocks.Variable.ResolvedValue._
 
 import scala.util.Try

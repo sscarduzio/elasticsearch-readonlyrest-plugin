@@ -21,7 +21,7 @@ import cats.implicits._
 import com.comcast.ip4s.interop.cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.request.RequestContext
@@ -44,7 +44,7 @@ abstract class BaseHostsRule extends RegularRule with Logging {
                 Task.now(true)
               case false =>
                 host
-                  .getValue(requestContext.variablesResolver, blockContext).toOption
+                  .get(requestContext.variablesResolver, blockContext).toOption
                   .existsM(ipMatchesAddress(_, addressToCheck))
             }
       }

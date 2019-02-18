@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.aDomain.Group
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -116,7 +116,7 @@ class GroupsRule(val settings: Settings)
                             blockContext: BlockContext) = {
     SortedSet.empty[Group] ++ settings
       .groups
-      .map(_.getValue(requestContext.variablesResolver, blockContext).toOption)
+      .map(_.get(requestContext.variablesResolver, blockContext).toOption)
       .toSortedSet
       .flatten
   }

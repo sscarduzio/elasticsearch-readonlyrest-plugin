@@ -19,8 +19,8 @@ package tech.beshu.ror.acl
 import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.acl.aDomain.Header.Name
-import tech.beshu.ror.acl.aDomain.{Header, IndexName}
+import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.domain.{Header, IndexName}
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}

@@ -21,7 +21,7 @@ import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.MatchingAlwaysRule
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.aDomain.IndexName
+import tech.beshu.ror.acl.domain.IndexName
 
 class KibanaIndexRule(val settings: Settings)
   extends MatchingAlwaysRule {
@@ -32,7 +32,7 @@ class KibanaIndexRule(val settings: Settings)
                        blockContext: BlockContext): Task[BlockContext] = Task {
     settings
       .kibanaIndex
-      .getValue(requestContext.variablesResolver, blockContext)
+      .get(requestContext.variablesResolver, blockContext)
       .map(blockContext.withKibanaIndex)
       .getOrElse(blockContext)
   }

@@ -29,8 +29,8 @@ import io.circe.parser._
 import io.circe.{Decoder, Encoder}
 import tech.beshu.ror.acl.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.acl.utils.UuidProvider
-import tech.beshu.ror.acl.aDomain.{Header, LoggedUser, User}
-import tech.beshu.ror.acl.aDomain.Header.Name.setCookie
+import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.domain.Header.Name.setCookie
 import tech.beshu.ror.acl.show.logs._
 
 import scala.collection.JavaConverters._
@@ -53,8 +53,9 @@ object RorSessionCookie extends Logging {
     for {
       httpCookie <- extractRorHttpCookie(context).toRight(Absent)
       cookieAndSignature <- parseRorSessionCookieAndSignature(httpCookie).left.map(_ => Invalid: ExtractingError)
-      _ <- checkCookie(cookieAndSignature._1, cookieAndSignature._2, user)
-    } yield cookieAndSignature._1
+      (cookie, signature) = cookieAndSignature
+      _ <- checkCookie(cookie, signature, user)
+    } yield cookie
   }
 
   def toSessionHeader(cookie: RorSessionCookie)

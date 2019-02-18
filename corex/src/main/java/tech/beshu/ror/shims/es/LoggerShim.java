@@ -36,41 +36,4 @@ public interface LoggerShim {
   void error(String message);
 
   boolean isDebugEnabled();
-
-  static LoggerShim dummy(){
-    return new LoggerShim() {
-      @Override
-      public void trace(String message) {
-      }
-
-      @Override
-      public void info(String message) {
-      }
-
-      @Override
-      public void debug(String message) {
-      }
-
-      @Override
-      public void warn(String message) {
-      }
-
-      @Override
-      public void warn(String message, Throwable t) {
-      }
-
-      @Override
-      public void error(String message, Throwable t) {
-      }
-
-      @Override
-      public void error(String message) {
-      }
-
-      @Override
-      public boolean isDebugEnabled() {
-        return false;
-      }
-    };
-  }
 }

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.factory.decoders.rules
 
-import tech.beshu.ror.acl.aDomain.Address
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule

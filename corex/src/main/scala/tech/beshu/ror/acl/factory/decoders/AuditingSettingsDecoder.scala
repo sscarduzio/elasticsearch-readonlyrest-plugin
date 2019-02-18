@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter
 
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.Constants
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.logging.AuditingTool
@@ -43,7 +44,7 @@ object AuditingSettingsDecoder extends Logging {
               indexNameFormatter <- c.downField("audit_index_template").as[Option[DateTimeFormatter]]
               customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
             } yield Some(AuditingTool.Settings(
-              indexNameFormatter.getOrElse(DateTimeFormatter.ofPattern("'readonlyrest_audit-'yyyy-MM-dd").withZone(ZoneId.of("UTC"))),
+              indexNameFormatter.getOrElse(DateTimeFormatter.ofPattern(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).withZone(ZoneId.of("UTC"))),
               customAuditSerializer.getOrElse(new DefaultAuditLogSerializer)
             ))
           } else {

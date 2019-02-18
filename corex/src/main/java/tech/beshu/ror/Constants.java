@@ -54,9 +54,6 @@ public class Constants {
   public static final String HEADER_USER_ROR = "x-ror-username";
   public static final String HEADER_KIBANA_HIDDEN_APPS = "x-ror-kibana-hidden-apps";
 
-  public static final boolean KIBANA_METADATA_ENABLED =
-      !"false".equalsIgnoreCase(System.getProperty("com.readonlyrest.kibana.metadata"));
-
   public static final String SETTINGS_YAML_FILE_PATH_PROPERTY = "com.readonlyrest.settings.file.path";
   public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
   public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
