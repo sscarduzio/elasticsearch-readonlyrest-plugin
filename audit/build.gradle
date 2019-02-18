@@ -21,10 +21,11 @@ version = pluginVersion
 buildscript {
     repositories {
         mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
     }
 
     dependencies {
-        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
+        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
     }
 }
 
@@ -32,10 +33,10 @@ repositories {
     mavenCentral()
 }
 
+apply plugin: "com.github.hierynomus.license"
 apply plugin: 'java'
-apply plugin: 'scala'
 apply plugin: 'maven'
-apply plugin: 'license'
+apply plugin: 'scala'
 
 compileJava {
     sourceCompatibility = 1.8
@@ -66,6 +67,7 @@ license {
     useDefaultMappings = false
     mapping {
         java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
     }
 }
 

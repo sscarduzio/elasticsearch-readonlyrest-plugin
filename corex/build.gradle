@@ -119,8 +119,6 @@ license {
         java = 'SLASHSTAR_STYLE'
         scala = 'SLASHSTAR_STYLE'
     }
-
-    include "**/*.scala"
 }
 
 compileScala {
