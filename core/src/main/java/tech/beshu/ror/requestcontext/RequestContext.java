@@ -19,6 +19,7 @@ package tech.beshu.ror.requestcontext;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -155,7 +156,7 @@ public abstract class RequestContext extends Delayed implements RequestContextSh
             theMap.put(Constants.HEADER_USER_ROR, loggedUser.getId());
 
             if (!loggedUser.getAvailableGroups().isEmpty()) {
-              String avGroups = Joiner.on(",").join(loggedUser.getAvailableGroups());
+              String avGroups = Joiner.on(",").join(ImmutableSortedSet.copyOf(loggedUser.getAvailableGroups()));
               theMap.put(Constants.HEADER_GROUPS_AVAILABLE, avGroups);
             }
 

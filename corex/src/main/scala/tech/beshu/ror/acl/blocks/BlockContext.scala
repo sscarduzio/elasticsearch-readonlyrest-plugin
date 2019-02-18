@@ -16,12 +16,16 @@
  */
 package tech.beshu.ror.acl.blocks
 
+import cats.implicits._
 import cats.data.NonEmptySet
 import tech.beshu.ror.acl.domain.{Group, Header, IndexName, LoggedUser}
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps.RequestGroup._
 import tech.beshu.ror.acl.request.RequestContextOps._
+import tech.beshu.ror.acl.orders._
+
+import scala.collection.SortedSet
 
 trait BlockContext {
 
@@ -31,7 +35,7 @@ trait BlockContext {
   def currentGroup: Option[Group]
   def withCurrentGroup(group: Group): BlockContext
 
-  def availableGroups: Set[Group]
+  def availableGroups: SortedSet[Group]
   def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext
 
   def responseHeaders: Set[Header]
@@ -66,7 +70,7 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withCurrentGroup(group: Group): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(currentGroup = Some(group)))
 
-  override def availableGroups: Set[Group] = data.availableGroups
+  override def availableGroups: SortedSet[Group] = SortedSet.empty[Group] ++ data.availableGroups
 
   override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(availableGroups = data.availableGroups ++ groups.toSortedSet))

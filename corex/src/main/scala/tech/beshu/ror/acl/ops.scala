@@ -31,6 +31,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.utils.FilterTransient
 
+import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
@@ -126,7 +127,7 @@ object refined {
 }
 
 object headerValues {
-  implicit def setHeaderValue[T : ToHeaderValue]: ToHeaderValue[Set[T]] = ToHeaderValue {
+  implicit def setHeaderValue[T : ToHeaderValue]: ToHeaderValue[SortedSet[T]] = ToHeaderValue {
     val tToHeaderValue = implicitly[ToHeaderValue[T]]
     _.map(tToHeaderValue.toRawValue).mkString(",")
   }
