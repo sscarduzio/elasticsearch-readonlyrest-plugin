@@ -59,8 +59,9 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       }
       .toSet
 
-  override val remoteAddress: Address =
-    forceCreateAddressFrom(rInfo.extractRemoteAddress())
+  override val remoteAddress: Option[Address] =
+    Try(rInfo.extractRemoteAddress()).toOption
+      .flatMap(Address.from)
 
   override val localAddress: Address =
     forceCreateAddressFrom(rInfo.extractLocalAddress())

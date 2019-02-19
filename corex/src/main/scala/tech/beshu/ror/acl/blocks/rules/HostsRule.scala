@@ -21,6 +21,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -38,19 +39,27 @@ class HostsRule(val settings: Settings)
           allowedAddresses = settings.allowedHosts,
           addressToCheck = xForwardedHeaderValue
         ).flatMap {
-            case true =>
-              Task.now(RuleResult.Fulfilled(blockContext))
-            case false =>
-              checkAllowedAddresses(requestContext, blockContext)(
-                allowedAddresses = settings.allowedHosts,
-                addressToCheck = requestContext.remoteAddress
-              ).map(condition => RuleResult.fromCondition(blockContext)(condition))
-          }
+          case true =>
+            Task.now(RuleResult.Fulfilled(blockContext))
+          case false =>
+            checkRemoteAddress(requestContext, blockContext)
+        }
       case _ =>
+        checkRemoteAddress(requestContext, blockContext)
+    }
+  }
+
+  private def checkRemoteAddress(requestContext: RequestContext,
+                                 blockContext: BlockContext) = {
+    requestContext.remoteAddress match {
+      case Some(remoteAddress) =>
         checkAllowedAddresses(requestContext, blockContext)(
           allowedAddresses = settings.allowedHosts,
-          addressToCheck = requestContext.remoteAddress
+          addressToCheck = remoteAddress
         ).map(condition => RuleResult.fromCondition(blockContext)(condition))
+      case None =>
+        logger.debug("Remote address is unavailable")
+        Task.now(Rejected)
     }
   }
 }

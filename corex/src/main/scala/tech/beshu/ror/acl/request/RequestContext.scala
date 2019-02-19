@@ -20,7 +20,6 @@ import java.time.Instant
 
 import cats.Show
 import cats.implicits._
-import com.comcast.ip4s.{Hostname, IpAddress}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
@@ -42,7 +41,7 @@ trait RequestContext {
   def `type`: Type
   def action: Action
   def headers: Set[Header]
-  def remoteAddress: Address
+  def remoteAddress: Option[Address]
   def localAddress: Address
   def method: Method
   def uriPath: UriPath
@@ -102,7 +101,7 @@ object RequestContext extends Logging {
          | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
          | KDX:${blockContext.flatMap(_.kibanaIndex).map(_.show).getOrElse("null")},
          | ACT:${r.action.show},
-         | OA:${r.remoteAddress.show},
+         | OA:${r.remoteAddress.map(_.show).getOrElse("null")},
          | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.show).getOrElse("null")},
          | DA:${r.localAddress.show},
          | IDX:$stringifyIndices,

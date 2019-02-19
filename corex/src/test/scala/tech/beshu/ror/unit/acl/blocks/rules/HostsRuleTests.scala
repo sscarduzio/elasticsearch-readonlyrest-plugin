@@ -55,31 +55,37 @@ class HostsRuleTests extends WordSpec with MockFactory {
       "configured host is unresolvable" in {
         assertNotMatchRule(
           configuredHosts = NonEmptySet.of(addressValueFrom("cannotresolve.lolol")),
-          remoteHost = Address.from("x").get
+          remoteHost = Address.from("x")
         )
       }
       "configured host net address is different then remote host net address in request" in {
         assertNotMatchRule(
           configuredHosts = NonEmptySet.of(addressValueFrom("1.1.1.1/24")),
-          remoteHost = Address.from("2.2.2.2").get
+          remoteHost = Address.from("2.2.2.2")
         )
       }
       "configured host domain address is different than the one from request" in {
         assertNotMatchRule(
           configuredHosts = NonEmptySet.of(addressValueFrom("google.com")),
-          remoteHost = Address.from("yahoo.com").get
+          remoteHost = Address.from("yahoo.com")
+        )
+      }
+      "remote address cannot be extracted from ES request" in {
+        assertNotMatchRule(
+          configuredHosts = NonEmptySet.of(addressValueFrom("google.com")),
+          remoteHost = None
         )
       }
     }
   }
 
   private def assertMatchRule(configuredHosts: NonEmptySet[Value[Address]], remoteHost: Address) =
-    assertRule(configuredHosts, remoteHost, isMatched = true)
+    assertRule(configuredHosts, Some(remoteHost), isMatched = true)
 
-  private def assertNotMatchRule(configuredHosts: NonEmptySet[Value[Address]], remoteHost: Address) =
+  private def assertNotMatchRule(configuredHosts: NonEmptySet[Value[Address]], remoteHost: Option[Address]) =
     assertRule(configuredHosts, remoteHost, isMatched = false)
 
-  private def assertRule(configuredValues: NonEmptySet[Value[Address]], address: Address, isMatched: Boolean) = {
+  private def assertRule(configuredValues: NonEmptySet[Value[Address]], address: Option[Address], isMatched: Boolean) = {
     val rule = new HostsRule(HostsRule.Settings(configuredValues, acceptXForwardedForHeader = false))
     val requestContext = MockRequestContext(
       remoteAddress = address,

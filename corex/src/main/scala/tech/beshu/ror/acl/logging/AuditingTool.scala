@@ -82,8 +82,9 @@ class AuditingTool(settings: Settings,
       override val content: String = requestContext.content
       override val contentLength: Integer = requestContext.contentLength.toBytes.toInt
       override val remoteAddress: String = requestContext.remoteAddress match {
-        case Address.Ip(value) => value.toString
-        case Address.Name(value) => value.toString
+        case Some(Address.Ip(value)) => value.toString
+        case Some(Address.Name(value)) => value.toString
+        case None => "N/A"
       }
       override val localAddress: String = requestContext.localAddress  match {
         case Address.Ip(value) => value.toString
