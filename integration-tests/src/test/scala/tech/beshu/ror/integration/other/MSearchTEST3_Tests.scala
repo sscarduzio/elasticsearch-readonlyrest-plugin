@@ -22,7 +22,7 @@ class MSearchTEST3_Tests {
   @Test
   def testMgetWildcard() = {
     restUtils.useCredentials("justOverrideAdminCredentials", "random09310+23")
-    assertEquals("[1]", restUtils.msearchRequest(TEST3.MSEARCH_BODY_TRY_MATCH_BOTH, Map("X-Forwarded-For" -> "es-timber-hammercloud")))
+    assertEquals("[1]", restUtils.msearchRequest(TEST3.MSEARCH_BODY_TRY_MATCH_BOTH, Map("X-Forwarded-For" -> "elastic.co")))
   }
 }
 
@@ -57,7 +57,7 @@ object MSearchTEST3_Tests {
         |
         |  - name: es-timber-hammercloud writer
         |    x_forwarded_for:
-        |    - es-timber-hammercloud
+        |    - elastic.co
         |    type: allow
         |    indices:
         |    - monit_private_hammercloud_*
