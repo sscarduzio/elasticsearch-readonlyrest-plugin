@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.ldap;
 
 import com.google.common.base.Joiner;
 import org.apache.http.Header;
@@ -53,7 +53,7 @@ public class LdapIntegrationWithLocalGroupsTests {
     ReadonlyRestedESAssertions assertions = assertions(container2);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
-          assertEquals("group3,group1", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
+          assertEquals("group1,group3", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
           assertEquals("cartman", getHeader(Constants.HEADER_USER_ROR, response));
           assertEquals("group1", getHeader(Constants.HEADER_GROUP_CURRENT, response));
           assertEquals(".kibana_group1", getHeader(Constants.HEADER_KIBANA_INDEX, response));
@@ -71,7 +71,7 @@ public class LdapIntegrationWithLocalGroupsTests {
     ReadonlyRestedESAssertions assertions = assertions(container2);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",\n").join(response.getAllHeaders()));
-          assertEquals("group3,group1", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
+          assertEquals("group1,group3", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
           assertEquals("cartman", getHeader(Constants.HEADER_USER_ROR, response));
           assertEquals("group3", getHeader(Constants.HEADER_GROUP_CURRENT, response));
           assertEquals(".kibana_group3", getHeader(Constants.HEADER_KIBANA_INDEX, response));

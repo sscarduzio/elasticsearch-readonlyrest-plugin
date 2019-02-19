@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -46,8 +46,7 @@ public class LocalGroupsTest {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/local_groups/elasticsearch.yml",
+          RorPluginGradleProject.fromSystemProperty(), "/local_groups/elasticsearch.yml",
           Optional.empty()
       );
 

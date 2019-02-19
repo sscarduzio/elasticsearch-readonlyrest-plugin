@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -39,7 +39,7 @@ import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create
 /**
  * We configured filters to return only docs with title field with a certain value a1, b2, c1 etc.
  */
-public class FieldLevelSecurityTests {
+public class FiltersAndFieldsSecurityTests {
 
   private static final String IDX_PREFIX = "testfilter";
 
@@ -47,8 +47,17 @@ public class FieldLevelSecurityTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = create(RorPluginGradleProject.fromSystemProperty(),
-      "/field_level_security/elasticsearch.yml", Optional.of(c -> {
-        insertDoc("a1", c, "a", "dummy");
+      "/fls_dls/elasticsearch.yml", Optional.of(c -> {
+        insertDoc("a1", c, "a", "title");
+        insertDoc("a2", c, "a", "title");
+        insertDoc("b1", c, "bandc", "title");
+        insertDoc("b2", c, "bandc", "title");
+        insertDoc("c1", c, "bandc", "title");
+        insertDoc("c2", c, "bandc", "title");
+        insertDoc("d1", c, "d", "title");
+        insertDoc("d2", c, "d", "title");
+        insertDoc("d1", c, "d", "nottitle");
+        insertDoc("d2", c, "d", "nottitle");
       })
   );
 
@@ -64,10 +73,7 @@ public class FieldLevelSecurityTests {
       request.setHeader("Content-Type", "application/json");
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
-
-      String body = "{\"" + field + "\": \"" + docName + "\", \"dummy2\": true}";
-      System.out.println("inserting: " + body);
-      request.setEntity(new StringEntity(body));
+      request.setEntity(new StringEntity("{\"" + field + "\": \"" + docName + "\", \"dummy\": true}"));
       System.out.println(body(restClient.execute(request)));
 
     } catch (Exception e) {
@@ -77,8 +83,6 @@ public class FieldLevelSecurityTests {
 
     // Polling phase.. #TODO is there a better way?
     try {
-      Thread.sleep(5000);
-
       HttpResponse response;
       do {
         HttpHead request = new HttpHead(restClient.from(path));
@@ -92,40 +96,80 @@ public class FieldLevelSecurityTests {
       e.printStackTrace();
       throw new IllegalStateException("Cannot configure test case", e);
     }
-
   }
 
   private static String body(HttpResponse r) throws Exception {
-    return EntityUtils.toString(r.getEntity()).replace(" ", "");
+    return EntityUtils.toString(r.getEntity()).replace(" ","");
   }
 
   @Test
-  public void testPositive() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search", "pos");
-    assertTrue(body.contains("dummy2"));
-    assertFalse(body.contains("dummy\""));
+  public void testDirectSingleIdxa() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search");
+    assertTrue(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+    assertFalse(body.contains("c1"));
+    assertFalse(body.contains("c2"));
+    assertFalse(body.contains("dummy"));
   }
 
   @Test
-  public void testPositiveWc() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search", "pos_wc");
-    assertTrue(body.contains("dummy2"));
-    assertFalse(body.contains("dummy\""));
+  public void testHeaderReplacement() throws Exception {
+    String body = search("/" + IDX_PREFIX + "a/_search", "put-the-header");
+    assertTrue(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+    assertFalse(body.contains("c1"));
+    assertFalse(body.contains("c2"));
+    assertFalse(body.contains("dummy"));
+
   }
 
   @Test
-  public void testNegative() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search", "neg");
-    assertFalse(body.contains("dummy2"));
-    assertTrue(body.contains("dummy\""));
+  public void testDirectMultipleIdxbandc() throws Exception {
+    String body = search("/" + IDX_PREFIX + "bandc/_search");
+    assertFalse(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertTrue(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+    assertFalse(body.contains("c1"));
+    assertTrue(body.contains("c2"));
+    assertFalse(body.contains("dummy"));
   }
 
   @Test
-  public void testNegativeWc() throws Exception {
-    String body = search("/" + IDX_PREFIX + "a/_search", "neg_wc");
-    assertTrue(body.contains("_source"));
-    assertFalse(body.contains("dummy2"));
-    assertTrue(body.contains("dummy\""));
+  public void testDirectSingleIdxd() throws Exception {
+    String body = search("/" + IDX_PREFIX + "d/_search");
+    assertFalse(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+    assertFalse(body.contains("c1"));
+    assertFalse(body.contains("c2"));
+    assertTrue(body.contains("\"title\":\"d1\""));
+    assertFalse(body.contains("\"title\":\"d2\""));
+    assertFalse(body.contains("\"nottitle\":\"d1\""));
+    assertFalse(body.contains("\"nottitle\":\"d2\""));
+    assertFalse(body.contains("dummy"));
+  }
+
+  @Test
+  public void tesANoCache() throws Exception {
+    search("/" + IDX_PREFIX + "a/_search","a_nofilter");
+    String body = search("/" + IDX_PREFIX + "a/_search");
+    assertTrue(body.contains("a1"));
+    assertFalse(body.contains("a2"));
+    assertFalse(body.contains("b1"));
+    assertFalse(body.contains("b2"));
+    assertFalse(body.contains("c1"));
+    assertFalse(body.contains("c2"));
+    assertFalse(body.contains("dummy"));
+  }
+
+  private String search(String endpoint) throws Exception {
+    return search(endpoint, "g");
   }
 
   private String search(String endpoint, String apiKey) throws Exception {
@@ -135,7 +179,7 @@ public class FieldLevelSecurityTests {
     String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
     request.setHeader("x-caller-" + caller, "true");
     request.setHeader("x-api-key", apiKey);
-    if ("put-the-header".equals(apiKey)) {
+    if("put-the-header".equals(apiKey)) {
       request.setHeader("x-randomheader", "value");
     }
     HttpResponse resp = adminClient.execute(request);

@@ -1,4 +1,4 @@
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.other
 
 import java.util.Optional
 
@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.{ClassRule, Test}
 import org.testcontainers.shaded.com.google.common.net.HostAndPort
+import tech.beshu.ror.integration.TempFile
 import tech.beshu.ror.utils.Tuple
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.ESInitalizer

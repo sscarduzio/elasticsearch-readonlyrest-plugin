@@ -14,56 +14,58 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.ldap;
 
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
+import tech.beshu.ror.utils.containers.LdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
-import tech.beshu.ror.utils.containers.WireMockContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
 import org.junit.ClassRule;
 import org.junit.Test;
 
 import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
 
-public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
+public class LdapIntegrationFirstOptionTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
     ESWithReadonlyRestContainerUtils.create(
       RorPluginGradleProject.fromSystemProperty(),
       new MultiContainer.Builder()
-        .add("GROUPS1", () -> WireMockContainer.create(
-          "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
-          "/rev_proxy_groups_provider/wiremock_service1_morgan.json"
-        ))
-        .add("GROUPS2", () -> WireMockContainer.create("/rev_proxy_groups_provider/wiremock_service2.json"))
+        .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+        .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
         .build(),
-      "/rev_proxy_groups_provider/elasticsearch.yml",
+      "/ldap_integration_1st/elasticsearch.yml",
       new ElasticsearchTweetsInitializer()
     );
 
-  // #TODO doesnt pass
   @Test
-  public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
-    assertions(container).assertReverseProxyUserHasAccessToIndex(
-      "X-Auth-Token", "cartman", "twitter"
-    );
+  public void usersFromGroup1CanSeeTweets() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container);
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
+    assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
-  public void testAuthenticationAndAuthorizationErrorWithService1() throws Exception {
-    assertions(container).assertReverseProxyAccessToIndexForbidden(
-      "X-Auth-Token", "morgan", "twitter"
-    );
+  public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
+    assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
   @Test
-  public void testAuthenticationAndAuthorizationSuccessWithService2() throws Exception {
-    assertions(container).assertReverseProxyUserHasAccessToIndex(
-      "X-Auth-Token", "29b3d166-1952-11e7-8b77-6c4008a76fc6", "facebook"
-    );
+  public void unauthenticatedUserCannotSeeTweets() throws Exception {
+    assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
+
+  @Test
+  public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container);
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
+    assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
+    assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");
+  }
+
 }

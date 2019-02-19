@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import com.google.common.collect.Maps;
 import io.jsonwebtoken.JwtBuilder;
@@ -49,8 +49,7 @@ public class RorKbnAuthTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/ror_kbn_auth/elasticsearch.yml",
+          RorPluginGradleProject.fromSystemProperty(), "/ror_kbn_auth/elasticsearch.yml",
           Optional.empty()
       );
 

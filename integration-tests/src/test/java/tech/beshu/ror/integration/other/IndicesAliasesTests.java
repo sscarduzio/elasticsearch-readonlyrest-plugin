@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -39,8 +39,7 @@ public class IndicesAliasesTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/indices_aliases_test/elasticsearch.yml",
+          RorPluginGradleProject.fromSystemProperty(), "/indices_aliases_test/elasticsearch.yml",
           Optional.of(client -> {
             insertDoc("/my_data/test/1", "{\"hello\":\"world\"}", client, true);
             insertDoc("/my_data/test/2", "{\"hello\":\"there\", \"public\":1}", client, true);

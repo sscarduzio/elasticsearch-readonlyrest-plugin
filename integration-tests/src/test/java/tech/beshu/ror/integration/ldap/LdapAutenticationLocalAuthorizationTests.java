@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.ldap;
 
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -28,43 +28,49 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
 
-public class LdapIntegrationSecondOptionTests {
+import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
+
+public class LdapAutenticationLocalAuthorizationTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> container2 =
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProject.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-              .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .add("LDAP1", () -> LdapContainer.create("/ldap_separate_authc_authz_mixed_local/ldap.ldif"))
               .build(),
-          "/ldap_integration_2nd/ldap_second_option_test_elasticsearch.yml",
+          "/ldap_authc_local_authz/elasticsearch.yml",
           new ElasticsearchTweetsInitializer()
       );
 
   @Test
-  public void usersFromGroup1CanSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
+  public void checkCartmanCanSeeTwitter() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container2);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
-    assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
-  public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+  public void checkUnicodedBibloCanSeeTwitter() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container2);
+    assertions.assertUserHasAccessToIndex("Bìlbö Bággįnš", "user2", "twitter");
   }
 
   @Test
-  public void unauthenticatedUserCannotSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
-  }
-
-  @Test
-  public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
-    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
-    assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
-    assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
+  public void checkMorganCanSeeFacebook() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container2);
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");
+  }
+
+  @Test
+  public void checkMorganCannotSeeTwitter() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container2);
+    assertions.assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+  }
+
+  @Test
+  public void checkCartmanCannotSeeFacebook() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(container2);
+    assertions.assertUserAccessToIndexForbidden("cartman", "user2", "facebook");
   }
 
 }

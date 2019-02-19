@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
@@ -42,8 +42,7 @@ public class IndexSettingsTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     create(
-      RorPluginGradleProject.fromSystemProperty(),
-      "/index_settings/elasticsearch.yml",
+      RorPluginGradleProject.fromSystemProperty(), "/index_settings/elasticsearch.yml",
       Optional.of(
         new ESWithReadonlyRestContainer.ESInitalizer() {
           @Override

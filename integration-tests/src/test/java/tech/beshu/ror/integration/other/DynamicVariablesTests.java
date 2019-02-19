@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import com.mashape.unirest.http.Unirest;
 import org.apache.http.HttpResponse;
@@ -41,8 +41,7 @@ public class DynamicVariablesTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/dynamic_vars/elasticsearch.yml",
+          RorPluginGradleProject.fromSystemProperty(), "/dynamic_vars/elasticsearch.yml",
           Optional.of(client -> {
             Unirest.setHttpClient(client.getUnderlyingClient());
             insertDoc(".kibana_simone", client);

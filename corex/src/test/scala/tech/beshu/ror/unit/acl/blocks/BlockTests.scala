@@ -94,10 +94,10 @@ class BlockTests extends WordSpec {
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(BlockTests.passingRule :: BlockTests.passingRule :: BlockTests.passingRule :: Nil)
       )
-      val result = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
+      val (result, history) = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
 
-      result._1 should matchPattern { case ExecutionResult.Matched(_, _) => }
-      result._2 shouldBe History(
+      result should matchPattern { case ExecutionResult.Matched(_, _) => }
+      history shouldBe History(
         blockName,
         Vector(
           HistoryItem(BlockTests.passingRule.name, matched = true),

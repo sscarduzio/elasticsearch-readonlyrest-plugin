@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -52,8 +52,7 @@ public class JwtAuthTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(),
-          "/jwt_auth/elasticsearch.yml",
+          RorPluginGradleProject.fromSystemProperty(), "/jwt_auth/elasticsearch.yml",
           Optional.empty()
       );
 

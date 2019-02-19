@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
@@ -36,13 +36,11 @@ public class ExternalAuthenticationTests {
     ESWithReadonlyRestContainerUtils.create(
       RorPluginGradleProject.fromSystemProperty(),
       new MultiContainer.Builder()
-        .add("EXT1", () -> WireMockContainer.create(
-          "/external_authentication/wiremock_service1_cartman.json",
+        .add("EXT1", () -> WireMockContainer.create("/external_authentication/wiremock_service1_cartman.json",
           "/external_authentication/wiremock_service1_morgan.json"
         ))
         .add("EXT2", () -> WireMockContainer.create("/external_authentication/wiremock_service2_cartman.json"))
-        .build(),
-      "/external_authentication/elasticsearch.yml",
+        .build(), "/external_authentication/elasticsearch.yml",
       new ElasticsearchTweetsInitializer()
     );
 

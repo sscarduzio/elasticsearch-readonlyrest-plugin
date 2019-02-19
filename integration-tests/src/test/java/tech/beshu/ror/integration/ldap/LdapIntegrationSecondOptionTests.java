@@ -14,8 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration;
 
+package tech.beshu.ror.integration.ldap;
+
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
 import tech.beshu.ror.utils.containers.LdapContainer;
@@ -24,45 +27,41 @@ import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
-import org.junit.ClassRule;
-import org.junit.Test;
 
-import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
-
-public class LdapIntegrationFirstOptionTests {
+public class LdapIntegrationSecondOptionTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
-    ESWithReadonlyRestContainerUtils.create(
-      RorPluginGradleProject.fromSystemProperty(),
-      new MultiContainer.Builder()
-        .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-        .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-        .build(),
-      "/ldap_integration_1st/elasticsearch.yml",
-      new ElasticsearchTweetsInitializer()
-    );
+      ESWithReadonlyRestContainerUtils.create(
+          RorPluginGradleProject.fromSystemProperty(),
+          new MultiContainer.Builder()
+              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .build(),
+          "/ldap_integration_2nd/ldap_second_option_test_elasticsearch.yml",
+          new ElasticsearchTweetsInitializer()
+      );
 
   @Test
   public void usersFromGroup1CanSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
     assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
   public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
   @Test
   public void unauthenticatedUserCannotSeeTweets() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
+    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
 
   @Test
   public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
     assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
     assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");

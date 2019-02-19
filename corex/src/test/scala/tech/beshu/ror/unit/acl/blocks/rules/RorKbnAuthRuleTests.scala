@@ -146,8 +146,8 @@ class RorKbnAuthRuleTests
         )
       }
       "token has invalid RS256 signature" in {
-        val pub = TestsUtils.generateRsaRandomKeys._1
-        val secret = TestsUtils.generateRsaRandomKeys._2
+        val (pub, _) = TestsUtils.generateRsaRandomKeys
+        val (_, secret) = TestsUtils.generateRsaRandomKeys
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),

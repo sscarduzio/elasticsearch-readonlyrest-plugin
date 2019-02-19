@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration;
+package tech.beshu.ror.integration.other;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -42,8 +42,7 @@ public class IndicesReverseWildcardTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(),
-      "/indices_reverse_wildcards/elasticsearch.yml",
+      RorPluginGradleProject.fromSystemProperty(), "/indices_reverse_wildcards/elasticsearch.yml",
       Optional.of(client -> {
         Lists.newArrayList("a1", "a2", "b1", "b2").forEach(doc -> insertDoc(doc, client));
       })
