@@ -95,6 +95,7 @@ dependencies {
     simpleCompile group: 'io.jsonwebtoken',                       name: 'jjwt-impl',                              version: '0.10.5'
     simpleCompile group: 'io.jsonwebtoken',                       name: 'jjwt-jackson',                           version: '0.10.5'
     simpleCompile group: 'io.monix',                              name: 'monix_2.12',                             version: '3.0.0-RC2'
+    // todo: add MDC to logs
     simpleCompile group: 'org.apache.logging.log4j',              name: 'log4j-api-scala_2.12',                   version: '11.0'
     simpleCompile('org.reflections:reflections:0.9.11') {
         exclude group: 'org.slf4j', module: 'slf4j-api'
