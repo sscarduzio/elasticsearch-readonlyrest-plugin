@@ -1,0 +1,76 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+group = 'org.elasticsearch.plugin'
+version = pluginVersion
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+
+    dependencies {
+        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+apply plugin: "com.github.hierynomus.license"
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'scala'
+
+compileJava {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+compileScala {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+dependencies {
+    compile group: 'org.scala-lang',            name: 'scala-library',              version: '2.12.4'
+    compile group: 'org.json',                  name: 'json',                       version: '20180813'
+}
+
+test {
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
+}
+
+license {
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders true
+    useDefaultMappings = false
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
+    }
+}
+
+compileScala {
+    options.compilerArgs << "-Ywarn-macros:after"
+}

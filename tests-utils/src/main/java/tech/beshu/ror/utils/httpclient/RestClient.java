@@ -82,8 +82,6 @@ public class RestClient {
     }
 
     // Common ops
-
-
     if (basicAuth.isPresent()) {
       System.out.println("SETTING CREDENTIALS " + (basicAuth.isPresent() ? (basicAuth.get().v1() + ":" + basicAuth.get().v2()) : ""));
       Header auth = BasicScheme.authenticate(
@@ -92,7 +90,6 @@ public class RestClient {
       Header[] tmp = Arrays.copyOf(headers, headers.length + 1);
       tmp[tmp.length - 1] = auth;
       headers = tmp;
-
     }
 
     builder

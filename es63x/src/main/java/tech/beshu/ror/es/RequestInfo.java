@@ -491,6 +491,7 @@ public class RequestInfo implements RequestInfoShim {
 
         // This contains global indices
         if (sr.indices().length == 0 || Sets.newHashSet(sr.indices()).contains("*")) {
+
           sr.indices(newIndices.toArray(new String[newIndices.size()]));
           continue;
         }

@@ -82,7 +82,8 @@ public class RorPluginGradleProject {
     try {
       connect = connector.connect();
       connect.newBuild().forTasks(task).run();
-    } finally {
+    }
+    finally {
       if (connect != null) connect.close();
     }
   }

@@ -13,7 +13,6 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then
     ./gradlew license
 fi
 
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
     echo ">>> Running unit tests.."
     ./gradlew --stacktrace test ror
@@ -24,10 +23,15 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es66x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
-    echo ">>> es63x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x-experimental" ]]; then
+    echo ">>> es63x-experimental => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es63x-experimental' --tests "tech.beshu.ror.integration.other.*" || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
+      echo ">>> es63x => Running testcontainers.."
+      ./gradlew integration-tests:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
+  fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
     echo ">>> es61x => Running testcontainers.."
@@ -68,6 +72,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.0'
 
     # es65
+    ./gradlew --stacktrace es63x-experimental:ror '-PesVersion=6.5.0'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.0'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.1'
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.2'

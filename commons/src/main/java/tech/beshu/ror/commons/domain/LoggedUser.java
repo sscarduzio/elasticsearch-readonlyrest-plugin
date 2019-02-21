@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.commons.domain;
 
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.commons.Constants;
 
@@ -58,7 +59,7 @@ public class LoggedUser {
   }
 
   public Set<String> getAvailableGroups() {
-    return Sets.newHashSet(availableGroups);
+    return ImmutableSortedSet.copyOf(availableGroups);
   }
 
   @Override

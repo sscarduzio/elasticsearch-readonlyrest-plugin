@@ -16,7 +16,9 @@
  */
 
 rootProject.name = 'readonlyrest'
+include 'audit'
 include 'core'
+include 'corex'
 include 'commons'
 include 'tests-utils'
 include 'integration-tests'
@@ -27,4 +29,5 @@ include 'es53x'
 include 'es60x'
 include 'es61x'
 include 'es63x'
+include 'es63x-experimental'
 include 'es66x'
