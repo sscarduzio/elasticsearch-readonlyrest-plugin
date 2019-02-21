@@ -16,8 +16,10 @@
  */
 package tech.beshu.ror.acl.utils
 
+import cats.data.EitherT
 import eu.timepit.refined.types.string.NonEmptyString
 
+import scala.language.higherKinds
 import scala.util.Try
 
 object ScalaOps {
@@ -48,4 +50,6 @@ object ScalaOps {
   }
 
   implicit val nonEmptyStringOrdering: Ordering[NonEmptyString] = Ordering.by(_.value)
+
+  def value[F[_], A, B](eitherT: EitherT[F, A, B]):  F[Either[A, B]] = eitherT.value
 }

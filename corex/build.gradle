@@ -84,6 +84,7 @@ dependencies {
     shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.2.0'
     simpleCompile group: 'com.softwaremill.sttp',                 name: 'async-http-client-backend-cats_2.12',    version: '1.5.8'
     simpleCompile group: 'com.softwaremill.sttp',                 name: 'core_2.12',                              version: '1.5.1'
+    simpleCompile group: 'com.unboundid',                         name: 'unboundid-ldapsdk',                      version: '4.0.9'
     simpleCompile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.10'
     simpleCompile group: 'cz.seznam.euphoria',                    name: 'shaded-guava',                           version: '21.0'
     simpleCompile group: 'eu.timepit',                            name: 'refined_2.12',                           version: '0.9.3'
