@@ -5,7 +5,7 @@ import cats.data.{NonEmptySet, OptionT}
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.blocks.definitions.LdapAuthService
+import tech.beshu.ror.acl.blocks.definitions.LdapAuthorizationService
 import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 import tech.beshu.ror.acl.blocks.rules.LdapAuthorizationRule.Settings
@@ -31,7 +31,9 @@ class LdapAuthorizationRule(val settings: Settings)
   }
 
   private def authorizeWithLdapGroups(blockContext: BlockContext, user: LoggedUser): Task[AuthorizationResult] = {
-    fetchLdapGroups(user)
+    settings
+      .ldap
+      .groupsOf(user.id)
       .map(_.intersect(settings.permittedGroups.toSortedSet))
       .map(groups => NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups))
       .map {
@@ -49,18 +51,11 @@ class LdapAuthorizationRule(val settings: Settings)
       }
   }
 
-  private def fetchLdapGroups(user: LoggedUser) = {
-    val result = for {
-      ldapUser <- OptionT(settings.ldap.ldapUser(user.id))
-      groups <- OptionT.liftF(settings.ldap.groupsOf(ldapUser))
-    } yield groups
-    result.value.map(_.getOrElse(Set.empty))
-  }
 }
 
 object LdapAuthorizationRule {
   val name = Rule.Name("ldap_authentication")
 
-  final case class Settings(ldap: LdapAuthService,
+  final case class Settings(ldap: LdapAuthorizationService,
                             permittedGroups: NonEmptySet[Group]) // todo: shouldn't group be variable?
 }

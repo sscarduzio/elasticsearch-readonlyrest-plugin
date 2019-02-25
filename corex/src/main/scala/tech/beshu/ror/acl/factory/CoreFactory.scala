@@ -215,8 +215,9 @@ class CoreFactory(implicit clock: Clock,
         jwtDefs <- new JwtDefinitionsDecoder(httpClientFactory, resolver)
         rorKbnDefs <- new RorKbnDefinitionsDecoder(resolver)
         userDefs <- new UsersDefinitionsDecoder(authenticationServices, authProxies, jwtDefs, rorKbnDefs)
+        ldapServices <- new LdapServicesDecoder()
         blocks <- {
-          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs))
+          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices))
           DecoderHelpers
             .decodeFieldList[Block](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {

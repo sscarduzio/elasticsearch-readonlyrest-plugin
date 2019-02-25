@@ -26,7 +26,8 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  authenticationServices: Definitions[ExternalAuthenticationService],
                                  authorizationServices: Definitions[ExternalAuthorizationService],
                                  jwts: Definitions[JwtDef],
-                                 rorKbns: Definitions[RorKbnDef])
+                                 rorKbns: Definitions[RorKbnDef],
+                                 ldaps: Definitions[LdapService])
 
 final case class Definitions[Item](items: Set[Item]) extends AnyVal
 object Definitions {

@@ -1,8 +1,8 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.definitions.LdapAuthService
-import tech.beshu.ror.acl.blocks.definitions.LdapAuthService.Credentials
+import tech.beshu.ror.acl.blocks.definitions.LdapAuthenticationService
+import tech.beshu.ror.acl.blocks.definitions.LdapAuthenticationService.Credentials
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule.Settings
 import tech.beshu.ror.acl.domain.BasicAuth
 
@@ -19,5 +19,5 @@ class LdapAuthenticationRule(val settings: Settings)
 object LdapAuthenticationRule {
   val name = Rule.Name("ldap_authentication")
 
-  final case class Settings(ldap: LdapAuthService)
+  final case class Settings(ldap: LdapAuthenticationService)
 }
