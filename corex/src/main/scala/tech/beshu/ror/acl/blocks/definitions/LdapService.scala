@@ -1,9 +1,8 @@
 package tech.beshu.ror.acl.blocks.definitions
 
+import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.implicits._
-import cats.data.NonEmptySet
-import cats.effect.IO
-import cats.{Eq, MonadError, Show}
+import cats.{Eq, Show}
 import com.comcast.ip4s.{IpAddress, SocketAddress}
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
@@ -12,14 +11,19 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import javax.net.ssl.SSLSocketFactory
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.definitions.ConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, SslSettings}
 import tech.beshu.ror.acl.blocks.definitions.LdapAuthenticationService.Credentials
+import tech.beshu.ror.acl.blocks.definitions.LdapConnectionPoolProvider.ConnectionError
 import tech.beshu.ror.acl.blocks.definitions.LdapService.Name
+import tech.beshu.ror.acl.blocks.definitions.LdapUnexpectedResult.{NoEntriesReturned, UnexpectedResultCode}
+import tech.beshu.ror.acl.blocks.definitions.UserGroupsSearchFilterConfig.UserGroupsSearchMode
+import tech.beshu.ror.acl.blocks.definitions.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.acl.domain.{Group, Secret, User}
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.acl.utils.LdapConnectionPoolOps._
 
 import scala.concurrent.duration.FiniteDuration
-import scala.util.Try
 
 sealed trait LdapService extends Item {
   override type Id = Name
@@ -43,6 +47,8 @@ class ComposedLdapAuthService(override val id: LdapService#Id,
                               ldapAuthorizationService: LdapAuthorizationService)
   extends LdapAuthService {
 
+  // todo: optimize (calling ldapUser twice)
+
   override def authenticate(credentials: Credentials): Task[Boolean] = ldapAuthenticationService.authenticate(credentials)
 
   override def groupsOf(id: User.Id): Task[Set[Group]] = ldapAuthorizationService.groupsOf(id)
@@ -57,11 +63,77 @@ object LdapAuthenticationService {
 }
 
 class UnboundidLdapAuthenticationService(override val id: LdapService#Id,
-                                         connectionConfig: ConnectionConfig,
-                                         userSearchFiler: UserSearchFilterConfig)
-  extends LdapAuthenticationService {
+                                         connectionPool: LDAPConnectionPool,
+                                         userSearchFiler: UserSearchFilterConfig,
+                                         requestTimeout: FiniteDuration Refined Positive)
+  extends LdapAuthenticationService
+  with Logging {
 
-  override def authenticate(credentials: Credentials): Task[Boolean] = ???
+  override def authenticate(credentials: Credentials): Task[Boolean] = {
+    ldapUserBy(credentials.userName)
+      .flatMap(ldapAuthenticate(_, credentials.secret))
+  }
+
+  private def ldapUserBy(userId: User.Id) = {
+    connectionPool
+      .process(searchUserLdapRequest(_, userId), requestTimeout)
+      .flatMap {
+        case Right(Nil) =>
+          logger.debug("LDAP getting user CN returned no entries")
+          Task.raiseError(NoEntriesReturned)
+        case Right(user :: Nil) =>
+          Task(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN))))
+        case Right(all@user :: _) =>
+          logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
+          Task(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN))))
+        case Left(errorResult) =>
+          Task.raiseError(UnexpectedResultCode(errorResult.getResultCode, errorResult.getResultString))
+      }
+      .onError { case ex =>
+        Task(logger.error("LDAP getting user operation failed.", ex))
+      }
+  }
+
+  private def ldapAuthenticate(user: LdapUser, password: Secret) = {
+    Task(connectionPool.getConnection)
+      .bracket(
+        use = connection => Task(connection.bind(new SimpleBindRequest(user.dn.value.value, password.value)))
+      )(
+        release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
+      )
+      .map(_.getResultCode == ResultCode.SUCCESS)
+      .onError { case ex =>
+        Task(logger.error("LDAP authenticate operation failed", ex))
+      }
+  }
+
+  private def searchUserLdapRequest(listener: AsyncSearchResultListener, userId: User.Id): LDAPRequest = {
+    new SearchRequest(
+      listener,
+      userSearchFiler.searchUserBaseDN.value.value,
+      SearchScope.SUB,
+      s"${userSearchFiler.uidAttribute}=${Filter.encodeValue(userId.value)}"
+    )
+  }
+}
+
+object UnboundidLdapAuthenticationService {
+  def create(id: LdapService#Id,
+             connectionConfig: ConnectionConfig,
+             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
+    (for {
+      _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
+    } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
+  }
+}
+
+final case class LdapUser(id: User.Id, dn: Dn)
+
+sealed trait LdapUnexpectedResult extends Throwable
+object LdapUnexpectedResult {
+  final case class UnexpectedResultCode(code: ResultCode, cause: String) extends LdapUnexpectedResult
+  case object NoEntriesReturned extends LdapUnexpectedResult
 }
 
 trait LdapAuthorizationService extends LdapService {
@@ -69,10 +141,61 @@ trait LdapAuthorizationService extends LdapService {
 }
 
 class UnboundidLdapAuthorizationService(override val id: LdapService#Id,
-                                        connectionConfig: ConnectionConfig)
-  extends LdapAuthorizationService {
+                                        connectionPool: LDAPConnectionPool,
+                                        groupsSearchFilter: UserGroupsSearchFilterConfig,
+                                        requestTimeout: FiniteDuration Refined Positive)
+  extends LdapAuthorizationService
+  with Logging {
 
-  override def groupsOf(id: User.Id): Task[Set[Group]] = ???
+  override def groupsOf(id: User.Id): Task[Set[Group]] = {
+    val ldapUser: LdapUser = ???
+    groupsSearchFilter.mode match {
+      case defaultSearchGroupMode: DefaultGroupSearch => groupsFrom(defaultSearchGroupMode, ldapUser)
+      case groupsFromUserAttribute: GroupsFromUserAttribute => groupsFrom(groupsFromUserAttribute, ldapUser)
+    }
+  }
+
+  private def groupsFrom(defaultSearchGroupMode: DefaultGroupSearch, user: LdapUser): Task[Set[Group]] = {
+    val searchFilter = searchFilterFrom(defaultSearchGroupMode, user)
+    logger.debug(s"LDAP search string: $searchFilter | groupNameAttr: ${defaultSearchGroupMode.groupNameAttribute}")
+    connectionPool
+      .process(searchGroupsLdapRequest(_, searchFilter, defaultSearchGroupMode), requestTimeout)
+      .flatMap {
+        case Right(results) =>
+          Task {
+            results
+              .flatMap { r =>
+                Option(r.getAttributeValue(defaultSearchGroupMode.groupNameAttribute))
+                  .flatMap(NonEmptyString.unapply)
+              }
+              .map(Group.apply)
+              .toSet
+          }
+        case Left(errorResult) =>
+          Task.raiseError(UnexpectedResultCode(errorResult.getResultCode, errorResult.getResultString))
+      }
+      .onError { case ex =>
+        Task(logger.debug(s"LDAP getting user groups returned error", ex))
+      }
+  }
+
+  private def groupsFrom(groupsFromUserAttribute: GroupsFromUserAttribute, user: LdapUser): Task[Set[Group]] = ???
+
+  private def searchFilterFrom(mode: DefaultGroupSearch, user: LdapUser) = {
+    s"(&${mode.groupSearchFilter}(${mode.uniqueMemberAttribute}=${Filter.encodeValue(user.dn.value.value)}))"
+  }
+
+  private def searchGroupsLdapRequest(listener: AsyncSearchResultListener,
+                                      searchFilter: String,
+                                      mode: DefaultGroupSearch): LDAPRequest = {
+    new SearchRequest(
+      listener,
+      mode.searchGroupBaseDN.value.value,
+      SearchScope.SUB,
+      searchFilter,
+      mode.groupNameAttribute
+    )
+  }
 }
 
 final case class ConnectionConfig(connectionMethod: ConnectionMethod,
@@ -109,9 +232,26 @@ final case class Dn(value: NonEmptyString)
 
 final case class UserSearchFilterConfig(searchUserBaseDN: Dn, uidAttribute: NonEmptyString)
 
-trait LdapConnectionPoolProvider {
+final case class UserGroupsSearchFilterConfig(mode: UserGroupsSearchMode)
+object UserGroupsSearchFilterConfig {
 
-  def testBindingForAllHosts(connectionConfig: ConnectionConfig): Task[List[(SocketAddress[IpAddress], Boolean)]] = {
+  sealed trait UserGroupsSearchMode
+  object UserGroupsSearchMode {
+    final case class DefaultGroupSearch(searchGroupBaseDN: Dn,
+                                        uniqueMemberAttribute: String,
+                                        groupSearchFilter: String,
+                                        groupNameAttribute: String)
+      extends UserGroupsSearchMode
+    final case class GroupsFromUserAttribute(attribute: NonEmptyString)
+      extends UserGroupsSearchMode
+  }
+}
+
+object LdapConnectionPoolProvider {
+
+  final case class ConnectionError(hosts: NonEmptyList[SocketAddress[IpAddress]])
+
+  def testBindingForAllHosts(connectionConfig: ConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val options = ldapOptions(connectionConfig)
     val serverSets = connectionConfig.connectionMethod match {
       case ConnectionMethod.SingleServer(host) =>
@@ -123,22 +263,26 @@ trait LdapConnectionPoolProvider {
           .toList
     }
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
-    Task.fromIO {
-      serverSets
-        .map { case (host, server) =>
-          IO(server.getConnection)
-            .bracket(connection =>
-              IO(connection.bind(bindReq))
-                .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
-            )(connection =>
-              IO(connection.close())
-            )
-        }
-        .sequence
-    }
+    serverSets
+      .map { case (host, server) =>
+        Task(server.getConnection)
+          .bracket(
+            use = connection => Task(connection.bind(bindReq))
+          )(
+            release = connection => Task(connection.close())
+          )
+          .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
+      }
+      .sequence
+      .map(_.collect { case (host, false) => host} )
+      .map(NonEmptyList.fromList)
+      .map {
+        case None => Right(())
+        case Some(hostsWithNoConnection) => Left(ConnectionError(hostsWithNoConnection))
+      }
   }
 
-  def connect(connectionConfig: ConnectionConfig): LDAPConnectionPool = {
+  def connect(connectionConfig: ConnectionConfig): Task[LDAPConnectionPool] = Task {
     val serverSet = connectionConfig.ssl match {
       case Some(sslSettings) => ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig), socketFactory(sslSettings))
       case None => ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig))
