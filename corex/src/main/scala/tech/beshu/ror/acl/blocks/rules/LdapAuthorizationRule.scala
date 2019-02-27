@@ -4,8 +4,8 @@ import cats.implicits._
 import cats.data.{NonEmptySet, OptionT}
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthorizationService
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.blocks.definitions.LdapAuthorizationService
 import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 import tech.beshu.ror.acl.blocks.rules.LdapAuthorizationRule.Settings

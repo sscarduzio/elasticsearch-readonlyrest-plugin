@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 
 import cats.Show
 import tech.beshu.ror.acl.blocks.definitions._
+import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
 
 import scala.language.higherKinds
 

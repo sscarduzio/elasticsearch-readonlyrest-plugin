@@ -1,8 +1,7 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.definitions.LdapAuthenticationService
-import tech.beshu.ror.acl.blocks.definitions.LdapAuthenticationService.Credentials
+import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule.Settings
 import tech.beshu.ror.acl.domain.BasicAuth
 
@@ -12,7 +11,8 @@ class LdapAuthenticationRule(val settings: Settings)
   override val name: Rule.Name = LdapAuthenticationRule.name
 
   override protected def authenticate(basicAuthCredentials: BasicAuth): Task[Boolean] =
-    settings.ldap.authenticate(Credentials(basicAuthCredentials.user, basicAuthCredentials.secret))
+    settings.ldap
+      .authenticate(basicAuthCredentials.user, basicAuthCredentials.secret)
 }
 
 

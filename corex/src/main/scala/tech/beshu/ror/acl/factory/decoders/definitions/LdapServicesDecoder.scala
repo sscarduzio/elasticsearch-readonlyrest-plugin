@@ -1,8 +1,8 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.LdapService
 import LdapServicesDecoder.ldapServiceDecoder
+import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
 
 class LdapServicesDecoder
   extends DefinitionsBaseDecoder[LdapService]("ldaps")(
