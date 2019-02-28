@@ -7,13 +7,13 @@ import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import javax.net.ssl.SSLSocketFactory
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.ConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, SslSettings}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, SslSettings}
 
 object LdapConnectionPoolProvider {
 
   final case class ConnectionError(hosts: NonEmptyList[SocketAddress[IpAddress]])
 
-  def testBindingForAllHosts(connectionConfig: ConnectionConfig): Task[Either[ConnectionError, Unit]] = {
+  def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val options = ldapOptions(connectionConfig)
     val serverSets = connectionConfig.connectionMethod match {
       case ConnectionMethod.SingleServer(host) =>
@@ -44,7 +44,7 @@ object LdapConnectionPoolProvider {
       }
   }
 
-  def connect(connectionConfig: ConnectionConfig): Task[LDAPConnectionPool] = Task {
+  def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = Task {
     val serverSet = connectionConfig.ssl match {
       case Some(sslSettings) => ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig), socketFactory(sslSettings))
       case None => ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig))
@@ -52,7 +52,7 @@ object LdapConnectionPoolProvider {
     new LDAPConnectionPool(serverSet, bindRequest(connectionConfig.bindRequestUser), connectionConfig.poolSize.value)
   }
 
-  private def ldapOptions(connectionConfig: ConnectionConfig) = {
+  private def ldapOptions(connectionConfig: LdapConnectionConfig) = {
     val options = new LDAPConnectionOptions()
     options.setConnectTimeoutMillis(connectionConfig.connectionTimeout.value.toMillis.toInt)
     options.setResponseTimeoutMillis(connectionConfig.requestTimeout.value.toMillis.toInt)

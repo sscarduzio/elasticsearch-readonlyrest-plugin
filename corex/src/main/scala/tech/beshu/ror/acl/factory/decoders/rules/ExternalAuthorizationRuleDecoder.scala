@@ -23,7 +23,7 @@ import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.acl.domain.{Group, User}
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthorizationService, ExternalAuthorizationService}
+import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
@@ -59,7 +59,7 @@ object ExternalAuthorizationRuleDecoder {
       .emapE {
         case (name, Some(ttl), groups, users) =>
           findAuthorizationService(authorizationServices.items, name)
-            .map(new CachingExternalAuthorizationService(_, ttl))
+            .map(new CacheableExternalAuthorizationServiceDecorator(_, ttl))
             .map(ExternalAuthorizationRule.Settings(_, groups, users))
         case (name, None, groups, users) =>
           findAuthorizationService(authorizationServices.items, name)

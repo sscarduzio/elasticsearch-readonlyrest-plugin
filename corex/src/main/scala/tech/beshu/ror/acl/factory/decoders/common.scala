@@ -19,11 +19,12 @@ package tech.beshu.ror.acl.factory.decoders
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
+import cats.Show
 import cats.implicits._
 import cats.data.NonEmptySet
-import com.comcast.ip4s.{Hostname, IpAddress}
+import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import com.softwaremill.sttp.Uri
-import eu.timepit.refined.api.Refined
+import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
@@ -66,13 +67,17 @@ object common {
         else Left(ValueLevelCreationError(Message(s"Cannot parse pairs: ${errors.mkString(", ")}")))
       }
 
-  implicit val positiveFiniteDurationDecoder: Decoder[FiniteDuration Refined Positive] =
-    finiteDurationStringDecoder
-      .or(finiteDurationInSecondsDecoder)
+  implicit val positiveFiniteDurationDecoder: Decoder[FiniteDuration Refined Positive] = {
+    implicit val finiteDurationDecoder: Decoder[FiniteDuration] = finiteDurationStringDecoder.or(finiteDurationInSecondsDecoder)
+    positiveValueDecoder[FiniteDuration]
+  }
+
+  implicit def positiveValueDecoder[V: Decoder: Show](implicit v: Validate[V, Positive]): Decoder[V Refined Positive] =
+    Decoder[V]
       .emapE { value =>
         refineV[Positive](value)
           .left
-          .map(_ => ValueLevelCreationError(Message(s"Only positive durations allowed. Found: ${value.toString()}")))
+          .map(_ => ValueLevelCreationError(Message(s"Only positive values allowed. Found: ${value.show}")))
       }
 
   implicit val uriDecoder: Decoder[Uri] =
@@ -138,6 +143,36 @@ object common {
       }
   }
 
+  implicit val ipAddressDecoder: Decoder[IpAddress] =
+    Decoder
+      .decodeString
+      .emapE { str =>
+        IpAddress(str) match {
+          case Some(ip) => Right(ip)
+          case None => Left(ValueLevelCreationError(Message(s"Cannot create IP address from $str")))
+        }
+      }
+
+  implicit val portDecoder: Decoder[Port] =
+    Decoder
+      .decodeInt
+      .emapE { int =>
+        Port(int) match {
+          case Some(ip) => Right(ip)
+          case None => Left(ValueLevelCreationError(Message(s"Cannot create port from $int")))
+        }
+      }
+
+  implicit val socketAddressDecoder: Decoder[SocketAddress[IpAddress]] =
+    Decoder
+      .decodeString
+      .emapE { str =>
+        SocketAddress.fromString(str) match {
+          case Some(socketAddress) => Right(socketAddress)
+          case None => Left(ValueLevelCreationError(Message(s"Cannot create socket address from $str")))
+        }
+      }
+
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers
       .decodeStringLike
@@ -155,6 +190,5 @@ object common {
       .withErrorFromCursor { case (element, _) =>
         ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration"))
       }
-
 
 }

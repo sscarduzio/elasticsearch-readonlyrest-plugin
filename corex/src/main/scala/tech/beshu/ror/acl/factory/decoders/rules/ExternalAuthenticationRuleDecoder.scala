@@ -20,7 +20,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, ExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
@@ -43,7 +43,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
       .emapE {
         case (name, Some(ttl)) =>
           findAuthenticationService(authenticationServices.items, name)
-            .map(new CachingExternalAuthenticationService(_, ttl))
+            .map(new CacheableExternalAuthenticationServiceDecorator(_, ttl))
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }

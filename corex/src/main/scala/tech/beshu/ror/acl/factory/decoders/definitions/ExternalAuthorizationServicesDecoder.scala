@@ -26,7 +26,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.SupportedHttpMethod.Get
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.{AuthTokenName, AuthTokenSendMethod, QueryParam, SupportedHttpMethod}
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthorizationService, ExternalAuthorizationService, HttpExternalAuthorizationService}
+import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService, HttpExternalAuthorizationService}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.Config
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
@@ -112,7 +112,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
               httpClient
             )
           cacheTtl.foldLeft(externalAuthService) {
-            case (cacheableAuthService, ttl) => new CachingExternalAuthorizationService(cacheableAuthService, ttl)
+            case (cacheableAuthService, ttl) => new CacheableExternalAuthorizationServiceDecorator(cacheableAuthService, ttl)
           }
         }
       }

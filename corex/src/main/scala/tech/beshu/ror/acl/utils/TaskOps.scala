@@ -17,6 +17,7 @@
 package tech.beshu.ror.acl.utils
 
 import monix.eval.Task
+
 import scala.util.{Failure, Success, Try}
 import scala.language.implicitConversions
 

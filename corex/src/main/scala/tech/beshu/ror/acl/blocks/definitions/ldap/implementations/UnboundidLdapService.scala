@@ -10,9 +10,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.definitions.ldap._
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.ConnectionConfig.{BindRequestUser, ConnectionMethod, SslSettings}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, SslSettings}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider.ConnectionError
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapUnexpectedResult.UnexpectedResultCode
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.acl.domain.{Group, Secret, User}
@@ -54,7 +53,7 @@ class UnboundidLdapAuthenticationService(override val id: LdapService#Id,
 
 object UnboundidLdapAuthenticationService {
   def create(id: LdapService#Id,
-             connectionConfig: ConnectionConfig,
+             connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
     (for {
       _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
@@ -102,7 +101,7 @@ class UnboundidLdapAuthorizationService(override val id: LdapService#Id,
           }
         case Left(errorResult) =>
           logger.debug(s"LDAP getting user groups returned error code: [${errorResult.getResultString}]")
-          Task.raiseError(UnexpectedResultCode(errorResult.getResultCode, errorResult.getResultString))
+          Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
         Task(logger.debug(s"LDAP getting user groups returned error", ex))
@@ -128,7 +127,7 @@ class UnboundidLdapAuthorizationService(override val id: LdapService#Id,
           }
         case Left(errorResult) =>
           logger.debug(s"LDAP getting user groups returned error code: [${errorResult.getResultString}]")
-          Task.raiseError(UnexpectedResultCode(errorResult.getResultCode, errorResult.getResultString))
+          Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
         Task(logger.debug(s"LDAP getting user groups returned error", ex))
@@ -180,6 +179,18 @@ class UnboundidLdapAuthorizationService(override val id: LdapService#Id,
 
 }
 
+object UnboundidLdapAuthorizationService {
+ def create(id: LdapService#Id,
+            connectionConfig: LdapConnectionConfig,
+            userSearchFiler: UserSearchFilterConfig,
+            userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
+   (for {
+     _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+     connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
+   } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
+ }
+}
+
 abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
                                         userSearchFiler: UserSearchFilterConfig,
                                         requestTimeout: FiniteDuration Refined Positive)
@@ -198,7 +209,7 @@ abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
           logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
         case Left(errorResult) =>
-          Task.raiseError(UnexpectedResultCode(errorResult.getResultCode, errorResult.getResultString))
+          Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
         Task(logger.error("LDAP getting user operation failed.", ex))
@@ -217,18 +228,15 @@ abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
   }
 }
 
-sealed trait LdapUnexpectedResult extends Throwable
-object LdapUnexpectedResult {
-  final case class UnexpectedResultCode(code: ResultCode, cause: String) extends LdapUnexpectedResult
-}
+final case class LdapUnexpectedResult(code: ResultCode, cause: String) extends Throwable
 
-final case class ConnectionConfig(connectionMethod: ConnectionMethod,
-                                  poolSize: Int Refined Positive,
-                                  connectionTimeout: FiniteDuration Refined Positive,
-                                  requestTimeout: FiniteDuration Refined Positive,
-                                  ssl: Option[SslSettings],
-                                  bindRequestUser: BindRequestUser)
-object ConnectionConfig {
+final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
+                                      poolSize: Int Refined Positive,
+                                      connectionTimeout: FiniteDuration Refined Positive,
+                                      requestTimeout: FiniteDuration Refined Positive,
+                                      ssl: Option[SslSettings],
+                                      bindRequestUser: BindRequestUser)
+object LdapConnectionConfig {
 
   sealed trait ConnectionMethod
   object ConnectionMethod {

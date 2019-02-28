@@ -141,7 +141,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = rule => {
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
-              service shouldBe a[CachingExternalAuthorizationService]
+              service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.one(User.Id("user1")))
             }
@@ -212,7 +212,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = rule => {
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
-              service shouldBe a[CachingExternalAuthorizationService]
+              service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.of(User.Id("*")))
             }

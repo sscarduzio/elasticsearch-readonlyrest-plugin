@@ -21,7 +21,7 @@ import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CachingExternalAuthenticationService, ExternalAuthenticationService, JwtExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, JwtExternalAuthenticationService}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.{Config, HttpClient}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
@@ -72,7 +72,7 @@ object ExternalAuthenticationServicesDecoder {
           val externalAuthService: ExternalAuthenticationService =
             creator(name, url, httpSuccessCode.getOrElse(defaults.successHttpCode), httpClient)
           cacheTtl.foldLeft(externalAuthService) {
-            case (cacheableAuthService, ttl) => new CachingExternalAuthenticationService(cacheableAuthService, ttl)
+            case (cacheableAuthService, ttl) => new CacheableExternalAuthenticationServiceDecorator(cacheableAuthService, ttl)
           }
         }
       }

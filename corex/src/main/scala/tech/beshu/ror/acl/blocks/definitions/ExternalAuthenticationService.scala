@@ -17,20 +17,21 @@
 package tech.beshu.ror.acl.blocks.definitions
 
 import java.nio.charset.Charset
-import java.util.concurrent.TimeUnit
 
 import cats.{Eq, Show}
 import cats.implicits._
 import com.softwaremill.sttp._
-import cz.seznam.euphoria.shaded.guava.com.google.common.cache.{Cache, CacheBuilder}
 import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
+import tech.beshu.ror.acl.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
 import tech.beshu.ror.acl.domain.{BasicAuth, Header, Secret, User}
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService.Name
+import tech.beshu.ror.acl.domain
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.acl.utils.CacheableActionWithKeyMapping
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -77,36 +78,31 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
   }
 }
 
-class CachingExternalAuthenticationService(underlying: ExternalAuthenticationService, ttl: FiniteDuration Refined Positive)
+class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthenticationService,
+                                                      ttl: FiniteDuration Refined Positive)
   extends ExternalAuthenticationService {
 
-  private val cache: Cache[String, String] =
-    CacheBuilder
-      .newBuilder
-      .expireAfterWrite(ttl.value.toMillis, TimeUnit.MILLISECONDS)
-      .build[String, String]
+  private val cacheableAuthentication =
+    new CacheableActionWithKeyMapping[(User.Id, domain.Secret), HashedUserCredentials, Boolean](ttl, authenticateAction, hashCredential)
 
   override val id: ExternalAuthenticationService#Id = underlying.id
 
   override def authenticate(user: User.Id, secret: Secret): Task[Boolean] = {
-    Option(cache.getIfPresent(user.value)) match {
-      case Some(cachedUserHashedPass) => Task {
-        cachedUserHashedPass === hashFrom(secret)
-      }
-      case None =>
-        underlying
-          .authenticate(user, secret)
-          .map { authenticated =>
-            if (authenticated) {
-              cache.put(user.value, hashFrom(secret))
-            }
-            authenticated
-          }
-    }
+    cacheableAuthentication.call((user, secret))
   }
 
-  private def hashFrom(password: Secret) = {
-    Hashing.sha256.hashString(password.value, Charset.defaultCharset).toString
+  private def hashCredential(value: (User.Id, domain.Secret)) = {
+    val (user, secret) = value
+    HashedUserCredentials(user, Hashing.sha256.hashString(secret.value, Charset.defaultCharset).toString)
   }
 
+  private def authenticateAction(value: (User.Id, domain.Secret)) = {
+    val (userId, secret) = value
+    underlying.authenticate(userId, secret)
+  }
+
+}
+
+object CacheableExternalAuthenticationServiceDecorator {
+  private[CacheableExternalAuthenticationServiceDecorator] final case class HashedUserCredentials(user: User.Id, hashedCredentials: String)
 }
