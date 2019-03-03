@@ -40,8 +40,10 @@ private object MethodsRuleDecoderHelper {
       .decodeString
       .map(_.toUpperCase)
       .map(Method.apply)
+      .toSyncDecoder
       .emapE {
         case m@(GET | POST | PUT | DELETE | OPTIONS | HEAD) => Right(m)
         case other => Left(RulesLevelCreationError(Message(s"Unknown/unsupported http method: ${other.m}")))
       }
+      .decoder
 }

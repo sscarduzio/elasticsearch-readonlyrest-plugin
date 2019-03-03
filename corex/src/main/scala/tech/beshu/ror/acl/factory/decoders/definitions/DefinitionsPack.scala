@@ -30,7 +30,7 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  rorKbns: Definitions[RorKbnDef],
                                  ldaps: Definitions[LdapService])
 
-final case class Definitions[Item](items: Set[Item]) extends AnyVal
+final case class Definitions[Item](items: List[Item]) extends AnyVal
 object Definitions {
   trait Item {
     type Id

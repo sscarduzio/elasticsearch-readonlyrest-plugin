@@ -38,29 +38,32 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
     new CoreFactory
   }
-  private val acl: Acl = factory.createCoreFrom(
-    """
-      |other_non_ror_settings:
-      |
-      |  sth: "sth"
-      |
-      |readonlyrest:
-      |
-      |  access_control_rules:
-      |
-      |  - name: "CONTAINER ADMIN"
-      |    type: allow
-      |    auth_key: admin:container
-      |
-      |  - name: "User 1"
-      |    type: allow
-      |    auth_key: user1:dev
-    """.stripMargin,
-    MockHttpClientsFactory
-  ) match {
-    case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-    case Right(CoreSettings(aclEngine, _, _)) => aclEngine
-  }
+  private val acl: Acl = factory
+    .createCoreFrom(
+      """
+        |other_non_ror_settings:
+        |
+        |  sth: "sth"
+        |
+        |readonlyrest:
+        |
+        |  access_control_rules:
+        |
+        |  - name: "CONTAINER ADMIN"
+        |    type: allow
+        |    auth_key: admin:container
+        |
+        |  - name: "User 1"
+        |    type: allow
+        |    auth_key: user1:dev
+      """.stripMargin,
+      MockHttpClientsFactory
+    )
+    .map {
+      case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
+      case Right(CoreSettings(aclEngine, _, _)) => aclEngine
+    }
+    .runSyncUnsafe()
 
   "An ACL" when {
     "two blocks with auth_keys are configured" should {

@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.acl.factory.decoders.definitions
 
+import cats.Id
 import cats.implicits._
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, JwtExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.{Config, HttpClient}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
@@ -30,13 +31,15 @@ import tech.beshu.ror.acl.utils.CirceOps._
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 import tech.beshu.ror.acl.factory.decoders.common._
-
-class ExternalAuthenticationServicesDecoder(httpClientFactory: HttpClientsFactory)
-  extends DefinitionsBaseDecoder[ExternalAuthenticationService]("external_authentication_service_configs")(
-    ExternalAuthenticationServicesDecoder.basicAuthExternalAuthenticationServiceDecoder(httpClientFactory)
-  )
+import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 
 object ExternalAuthenticationServicesDecoder {
+
+  def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[ExternalAuthenticationService]] = {
+    implicit val serviceDecoder: SyncDecoder[ExternalAuthenticationService] =
+      SyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.basicAuthExternalAuthenticationServiceDecoder(httpClientFactory))
+    DefinitionsBaseDecoder.instance[Id, ExternalAuthenticationService]("external_authentication_service_configs")
+  }
 
   implicit val serviceNameDecoder: Decoder[ExternalAuthenticationService.Name] =
     DecoderHelpers.decodeStringLike.map(ExternalAuthenticationService.Name.apply)
@@ -59,7 +62,7 @@ object ExternalAuthenticationServicesDecoder {
 
   private def cacheableAuthenticationServiceDecoder(creator: (ExternalAuthenticationService#Id, Uri, Int, HttpClient) => ExternalAuthenticationService,
                                                     httpClientFactory: HttpClientsFactory) = {
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthenticationService.Name]
@@ -77,6 +80,7 @@ object ExternalAuthenticationServicesDecoder {
         }
       }
       .mapError(DefinitionsLevelCreationError.apply)
+      .decoder
   }
 
   private object defaults {

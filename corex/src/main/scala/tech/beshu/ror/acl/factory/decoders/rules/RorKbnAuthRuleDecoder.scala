@@ -36,6 +36,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
   extends RuleDecoderWithoutAssociatedFields[RorKbnAuthRule](
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+      .toSyncDecoder
       .emapE { case (name, groups) =>
         rorKbnDefinitions.items.find(_.id === name) match {
           case Some(rorKbnDef) => Right((rorKbnDef, groups))
@@ -45,6 +46,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
       .map { case (rorKbnDef, groups) =>
         new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups))
       }
+      .decoder
   )
 
 private object RorKbnAuthRuleDecoder {

@@ -38,6 +38,7 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.ScalaOps._
+import tech.beshu.ror.acl.utils.SyncDecoderCreator
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success, Try}
@@ -45,8 +46,8 @@ import scala.util.{Failure, Success, Try}
 object common {
 
   implicit val decoderTupleListDecoder: Decoder[List[(NonEmptyString, NonEmptyString)]] =
-    Decoder
-      .decodeString
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
       .emapE { str =>
         val (errors, list) = str.split(",")
           .map(_.trim)
@@ -66,6 +67,7 @@ object common {
         if (errors.isEmpty) Right(list)
         else Left(ValueLevelCreationError(Message(s"Cannot parse pairs: ${errors.mkString(", ")}")))
       }
+      .decoder
 
   implicit val positiveFiniteDurationDecoder: Decoder[FiniteDuration Refined Positive] = {
     implicit val finiteDurationDecoder: Decoder[FiniteDuration] = finiteDurationStringDecoder.or(finiteDurationInSecondsDecoder)
@@ -73,22 +75,25 @@ object common {
   }
 
   implicit def positiveValueDecoder[V: Decoder: Show](implicit v: Validate[V, Positive]): Decoder[V Refined Positive] =
-    Decoder[V]
+    SyncDecoderCreator
+      .from(Decoder[V])
       .emapE { value =>
         refineV[Positive](value)
           .left
           .map(_ => ValueLevelCreationError(Message(s"Only positive values allowed. Found: ${value.show}")))
       }
+      .decoder
 
   implicit val uriDecoder: Decoder[Uri] =
-    Decoder
-      .decodeString
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
       .emapE { value =>
         Try(new URI(value)) match {
           case Success(javaUri) => Right(Uri(javaUri))
           case Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to url")))
         }
       }
+      .decoder
 
   implicit val groupDecoder: Decoder[Group] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(Group.apply)
@@ -97,24 +102,29 @@ object common {
     DecoderHelpers.decodeStringLike.map(User.Id.apply)
 
   implicit val groupsNesDecoder: Decoder[NonEmptySet[Group]] =
-    DecoderHelpers
-      .decodeStringLikeOrNonEmptySet[Group]
+    SyncDecoderCreator
+      .from(DecoderHelpers.decodeStringLikeOrNonEmptySet[Group])
       .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
+      .decoder
 
   implicit val usersNesDecoder: Decoder[NonEmptySet[User.Id]] =
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[User.Id]
+      .toSyncDecoder
       .withError(ValueLevelCreationError(Message("Non empty list of user IDs are required")))
+      .decoder
 
   implicit val headerName: Decoder[Header.Name] =
     Decoder
       .decodeString
+      .toSyncDecoder
       .emapE { str =>
         NonEmptyString.unapply(str) match {
           case Some(value) => Right(Header.Name(value))
           case None => Left(ValueLevelCreationError(Message(s"Header name cannot be empty string")))
         }
       }
+      .decoder
 
   implicit val groupValueDecoder: Decoder[Value[Group]] =
     DecoderHelpers
@@ -124,10 +134,12 @@ object common {
         case Left(_) => Left(ConvertError(rv, "Group cannot be empty"))
       }
     }
+      .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
         case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
       }
+      .decoder
 
   implicit val addressValueDecoder: Decoder[Value[Address]] = {
     DecoderHelpers
@@ -137,58 +149,70 @@ object common {
         case None => Left(ConvertError(rv, s"Cannot create address (IP or hostname) from ${rv.value}"))
       }
     }
+      .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
         case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
       }
+      .decoder
   }
 
   implicit val ipAddressDecoder: Decoder[IpAddress] =
     Decoder
       .decodeString
+      .toSyncDecoder
       .emapE { str =>
         IpAddress(str) match {
           case Some(ip) => Right(ip)
           case None => Left(ValueLevelCreationError(Message(s"Cannot create IP address from $str")))
         }
       }
+      .decoder
 
   implicit val portDecoder: Decoder[Port] =
     Decoder
       .decodeInt
+      .toSyncDecoder
       .emapE { int =>
         Port(int) match {
           case Some(ip) => Right(ip)
           case None => Left(ValueLevelCreationError(Message(s"Cannot create port from $int")))
         }
       }
+      .decoder
 
   implicit val socketAddressDecoder: Decoder[SocketAddress[IpAddress]] =
     Decoder
       .decodeString
+      .toSyncDecoder
       .emapE { str =>
         SocketAddress.fromString(str) match {
           case Some(socketAddress) => Right(socketAddress)
           case None => Left(ValueLevelCreationError(Message(s"Cannot create socket address from $str")))
         }
       }
+      .decoder
 
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers
       .decodeStringLike
+      .toSyncDecoder
       .emapE { value =>
         Try(Duration(value)) match {
           case Success(v: FiniteDuration) => Right(v)
           case Success(_) | Failure(_) => Left(ValueLevelCreationError(Message(s"Cannot convert value '$value' to duration")))
         }
       }
+      .decoder
 
   private lazy val finiteDurationInSecondsDecoder: Decoder[FiniteDuration] =
     Decoder
       .decodeLong
+      .toSyncDecoder
       .map(FiniteDuration(_, TimeUnit.SECONDS))
       .withErrorFromCursor { case (element, _) =>
         ValueLevelCreationError(Message(s"Cannot convert value '${element.noSpaces}' to duration"))
       }
+      .decoder
 
 }

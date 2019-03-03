@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
 import io.circe.{Decoder, HCursor, Json}
-import tech.beshu.ror.acl.domain.{ClaimName, AuthorizationTokenDef, Header}
+import tech.beshu.ror.acl.domain.{AuthorizationTokenDef, ClaimName, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
@@ -27,17 +27,18 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
-import tech.beshu.ror.acl.utils.StaticVariablesResolver
+import tech.beshu.ror.acl.utils.{ADecoder, StaticVariablesResolver, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.acl.factory.decoders.common._
 import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
-
-class JwtDefinitionsDecoder(httpClientFactory: HttpClientsFactory,
-                            resolver: StaticVariablesResolver)
-  extends DefinitionsBaseDecoder[JwtDef]("jwt")(
-    JwtDefinitionsDecoder.jwtDefDecoder(httpClientFactory, resolver)
-  )
+import cats.Id
 
 object JwtDefinitionsDecoder {
+
+  def instance(httpClientFactory: HttpClientsFactory,
+               resolver: StaticVariablesResolver): ADecoder[Id, Definitions[JwtDef]] = {
+    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, resolver))
+    DefinitionsBaseDecoder.instance[Id, JwtDef]("jwt")
+  }
 
   implicit val jwtDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
@@ -45,7 +46,7 @@ object JwtDefinitionsDecoder {
 
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
                             resolver: StaticVariablesResolver): Decoder[JwtDef] = {
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("name").as[Name]
@@ -66,6 +67,7 @@ object JwtDefinitionsDecoder {
         )
       }
       .mapError(DefinitionsLevelCreationError.apply)
+      .decoder
   }
 
   /*

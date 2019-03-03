@@ -20,10 +20,10 @@ import tech.beshu.ror.acl.utils.LdapConnectionPoolOps._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
-class UnboundidLdapAuthenticationService(override val id: LdapService#Id,
-                                         connectionPool: LDAPConnectionPool,
-                                         userSearchFiler: UserSearchFilterConfig,
-                                         requestTimeout: FiniteDuration Refined Positive)
+class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
+                                                 connectionPool: LDAPConnectionPool,
+                                                 userSearchFiler: UserSearchFilterConfig,
+                                                 requestTimeout: FiniteDuration Refined Positive)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
     with LdapAuthenticationService {
 
@@ -62,11 +62,11 @@ object UnboundidLdapAuthenticationService {
   }
 }
 
-class UnboundidLdapAuthorizationService(override val id: LdapService#Id,
-                                        connectionPool: LDAPConnectionPool,
-                                        groupsSearchFilter: UserGroupsSearchFilterConfig,
-                                        userSearchFiler: UserSearchFilterConfig,
-                                        requestTimeout: FiniteDuration Refined Positive)
+class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
+                                                connectionPool: LDAPConnectionPool,
+                                                groupsSearchFilter: UserGroupsSearchFilterConfig,
+                                                userSearchFiler: UserSearchFilterConfig,
+                                                requestTimeout: FiniteDuration Refined Positive)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
     with LdapAuthorizationService {
 
@@ -180,15 +180,15 @@ class UnboundidLdapAuthorizationService(override val id: LdapService#Id,
 }
 
 object UnboundidLdapAuthorizationService {
- def create(id: LdapService#Id,
-            connectionConfig: LdapConnectionConfig,
-            userSearchFiler: UserSearchFilterConfig,
-            userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
-   (for {
-     _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-     connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
-   } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
- }
+  def create(id: LdapService#Id,
+             connectionConfig: LdapConnectionConfig,
+             userSearchFiler: UserSearchFilterConfig,
+             userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
+    (for {
+      _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
+    } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
+  }
 }
 
 abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
@@ -236,6 +236,7 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
                                       requestTimeout: FiniteDuration Refined Positive,
                                       ssl: Option[SslSettings],
                                       bindRequestUser: BindRequestUser)
+
 object LdapConnectionConfig {
 
   sealed trait ConnectionMethod
@@ -258,6 +259,7 @@ object LdapConnectionConfig {
     case object NoUser extends BindRequestUser
     final case class CustomUser(dn: Dn, password: Secret) extends BindRequestUser
   }
+
 }
 
 final case class UserSearchFilterConfig(searchUserBaseDN: Dn, uidAttribute: NonEmptyString)
@@ -267,14 +269,17 @@ object UserGroupsSearchFilterConfig {
 
   sealed trait UserGroupsSearchMode
   object UserGroupsSearchMode {
+
     final case class DefaultGroupSearch(searchGroupBaseDN: Dn,
                                         groupNameAttribute: NonEmptyString,
                                         uniqueMemberAttribute: NonEmptyString,
                                         groupSearchFilter: NonEmptyString)
       extends UserGroupsSearchMode
+
     final case class GroupsFromUserAttribute(searchGroupBaseDN: Dn,
                                              groupNameAttribute: NonEmptyString,
                                              groupsFromUserAttribute: NonEmptyString)
       extends UserGroupsSearchMode
+
   }
 }

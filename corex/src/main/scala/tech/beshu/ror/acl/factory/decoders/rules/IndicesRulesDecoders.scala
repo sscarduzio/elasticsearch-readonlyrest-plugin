@@ -39,6 +39,7 @@ object IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRul
 object SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Value[IndexName]]
+    .toSyncDecoder
     .emapE { indices =>
       if(indices.contains(Const(IndexName.all)))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
@@ -48,11 +49,13 @@ object SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[Snapshots
         Right(indices)
     }
     .map(indices => new SnapshotsRule(BaseSpecializedIndicesRule.Settings(indices)))
+    .decoder
 )
 
 object RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[RepositoriesRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Value[IndexName]]
+    .toSyncDecoder
     .emapE { indices =>
       if(indices.contains(Const(IndexName.all)))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
@@ -62,14 +65,17 @@ object RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposi
         Right(indices)
     }
     .map(indices => new RepositoriesRule(BaseSpecializedIndicesRule.Settings(indices)))
+    .decoder
 )
 
 private object IndicesDecodersHelper {
   implicit val indexNameValueDecoder: Decoder[Value[IndexName]] =
     DecoderHelpers
       .decodeStringLike
+      .toSyncDecoder
       .emapE { e =>
         Value.fromString(e, rv => Right(IndexName(rv.value)))
           .left.map(error => RulesLevelCreationError(Message(error.msg)))
       }
+      .decoder
 }

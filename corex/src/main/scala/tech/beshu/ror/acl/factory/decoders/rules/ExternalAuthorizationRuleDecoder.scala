@@ -55,6 +55,7 @@ object ExternalAuthorizationRuleDecoder {
           ttl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups, users.getOrElse(NonEmptySet.one(User.Id("*"))))
       }
+      .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .emapE {
         case (name, Some(ttl), groups, users) =>
@@ -65,9 +66,10 @@ object ExternalAuthorizationRuleDecoder {
           findAuthorizationService(authorizationServices.items, name)
             .map(ExternalAuthorizationRule.Settings(_, groups, users))
       }
+      .decoder
   }
 
-  private def findAuthorizationService(authorizationServices: Set[ExternalAuthorizationService],
+  private def findAuthorizationService(authorizationServices: List[ExternalAuthorizationService],
                                        searchedServiceName: ExternalAuthorizationService.Name): Either[AclCreationError, ExternalAuthorizationService] = {
     authorizationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)

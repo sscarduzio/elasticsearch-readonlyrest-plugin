@@ -17,39 +17,37 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
 import cats.implicits._
-import io.circe.Decoder.Result
-import io.circe.{Decoder, HCursor}
+import cats.Applicative
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.acl.utils.ADecoder
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
 import tech.beshu.ror.acl.utils.ScalaOps._
 
-abstract class DefinitionsBaseDecoder[T <: Item : Decoder](definitionsSectionName: String)
-  extends Decoder[Definitions[T]] {
+object DefinitionsBaseDecoder {
 
-  override def apply(value: HCursor): Result[Definitions[T]] =
-    definitionsDecoder.tryDecode(value)
-
-  private val definitionsDecoder =
+  def instance[F[_] : Applicative, A <: Item](definitionsSectionName: String)
+                                             (implicit decoder: ADecoder[F, A]): ADecoder[F, Definitions[A]] = {
     DecoderHelpers
-      .decodeFieldList[T](definitionsSectionName, DefinitionsLevelCreationError.apply)
+      .decodeFieldList[A, F](definitionsSectionName, DefinitionsLevelCreationError.apply)
       .emapE {
         case NoField =>
-          Right(Definitions(Set.empty[T]))
+          Right(Definitions(List.empty[A]))
         case FieldListValue(Nil) =>
           Left(DefinitionsLevelCreationError(Message(s"$definitionsSectionName declared, but no definition found")))
         case FieldListValue(list) =>
           list.findDuplicates(_.id) match {
             case Nil =>
-              Right(Definitions(list.toSet))
+              Right(Definitions(list))
             case duplicates =>
               Left(DefinitionsLevelCreationError(Message(
                 s"$definitionsSectionName definitions must have unique identifiers. Duplicates: ${duplicates.map(showId).mkString(",")}"
               )))
           }
       }
+  }
 
   private def showId(item: Item): String = {
     implicit val _ = item.show

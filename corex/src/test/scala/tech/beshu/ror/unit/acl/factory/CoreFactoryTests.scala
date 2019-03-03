@@ -30,6 +30,7 @@ import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.{CoreSettings, CoreFactory}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
+import monix.execution.Scheduler.Implicits.global
 
 class CoreFactoryTests extends WordSpec with Inside with MockFactory {
 
@@ -53,7 +54,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |     - name1: "CONTAINER ADMIN"
             |    type: allow
           """.stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $yaml")))))
       }
     }
@@ -72,7 +73,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |  proxy_auth_configs:
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("proxy_auth_configs declared, but no definition found")))))
       }
       "the section contains proxies with the same names" in {
@@ -95,7 +96,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("proxy_auth_configs definitions must have unique identifiers. Duplicates: proxy1")))))
       }
       "proxy definition has no name" in {
@@ -115,7 +116,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token2"
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(MalformedValue(
           """desc: "proxy1"
             |user_id_header: "X-Auth-Token2"
@@ -138,7 +139,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |  - name: "proxy1"
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(MalformedValue("name: \"proxy1\"\n")))))
       }
     }
@@ -157,7 +158,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"No access_control_rules section found")))))
       }
       "there is `access_control_rules` section defined, but without any block" in {
@@ -176,7 +177,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    user_id_header: "X-Auth-Token1"
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"access_control_rules defined, but no block found")))))
       }
       "two blocks has the same names" in {
@@ -194,7 +195,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: test_block")))))
       }
       "block has no name" in {
@@ -208,7 +209,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(MalformedValue(
           """type: "allow"
             |auth_key: "admin:container"
@@ -227,7 +228,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown")))))
       }
       "block has unknown verbosity" in {
@@ -242,7 +243,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    auth_key: admin:container
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown verbosity value: unknown")))))
       }
       "block has authorization rule, but no authentication rule" in {
@@ -267,7 +268,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    response_groups_json_path: "$..groups[?(@.name)].name"
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        val acl = factory.createCoreFrom(yaml, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))))
       }
     }
@@ -283,7 +284,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    type: allow
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(RulesLevelCreationError(Message("No rules defined in block")))))
       }
       "block has unknown rules" in {
@@ -298,7 +299,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    unknown_rule2: value1
             |
             |""".stripMargin
-        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory)
+        val acl = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(RulesLevelCreationError(Message("Unknown rules: unknown_rule1,unknown_rule2")))))
       }
     }
@@ -321,18 +322,19 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
           |
           |""".stripMargin
 
-      inside(factory.createCoreFrom(yaml, MockHttpClientsFactory)) { case Right(CoreSettings(acl: SequentialAcl, _, _)) =>
-        val firstBlock = acl.blocks.head
-        firstBlock.name should be(Block.Name("test_block1"))
-        firstBlock.policy should be(Block.Policy.Forbid)
-        firstBlock.verbosity should be(Block.Verbosity.Info)
-        firstBlock.rules should have size 1
+      inside(factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()) {
+        case Right(CoreSettings(acl: SequentialAcl, _, _)) =>
+          val firstBlock = acl.blocks.head
+          firstBlock.name should be(Block.Name("test_block1"))
+          firstBlock.policy should be(Block.Policy.Forbid)
+          firstBlock.verbosity should be(Block.Verbosity.Info)
+          firstBlock.rules should have size 1
 
-        val secondBlock = acl.blocks.tail.head
-        secondBlock.name should be(Block.Name("test_block2"))
-        secondBlock.policy should be(Block.Policy.Allow)
-        secondBlock.verbosity should be(Block.Verbosity.Error)
-        secondBlock.rules should have size 1
+          val secondBlock = acl.blocks.tail.head
+          secondBlock.name should be(Block.Name("test_block2"))
+          secondBlock.policy should be(Block.Policy.Allow)
+          secondBlock.verbosity should be(Block.Verbosity.Error)
+          secondBlock.rules should have size 1
       }
     }
   }

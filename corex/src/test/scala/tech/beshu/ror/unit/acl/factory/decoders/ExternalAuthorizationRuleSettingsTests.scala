@@ -727,7 +727,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only positive durations allowed. Found: -120 seconds")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -120 seconds")))
           }
         )
       }

@@ -36,6 +36,7 @@ import scala.collection.SortedSet
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef]) extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Value[Group]]
+    .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>
       NonEmptySet.fromSet(SortedSet.empty[UserDef] ++ usersDefinitions.items) match {
@@ -43,4 +44,5 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef]) extends RuleDeco
         case None => Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.name.show}` requires them.")))
       }
     }
+    .decoder
 )

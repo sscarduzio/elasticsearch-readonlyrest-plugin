@@ -35,11 +35,13 @@ import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
 import tech.beshu.ror.acl.factory.decoders.common._
+import tech.beshu.ror.acl.utils.SyncDecoderCreator
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService])
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule](
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
+      .toSyncDecoder
       .emapE {
         case (name, Some(ttl)) =>
           findAuthenticationService(authenticationServices.items, name)
@@ -48,6 +50,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
           findAuthenticationService(authenticationServices.items, name)
       }
       .map(service => new ExternalAuthenticationRule(Settings(service)))
+      .decoder
   )
 
 object ExternalAuthenticationRuleDecoder {
@@ -58,7 +61,7 @@ object ExternalAuthenticationRuleDecoder {
       .map((_, None))
 
   private def complexExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[FiniteDuration Refined Positive])] = {
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("service").as[ExternalAuthenticationService.Name]
@@ -66,9 +69,10 @@ object ExternalAuthenticationRuleDecoder {
         } yield (name, Option(ttl))
       }
       .mapError(RulesLevelCreationError.apply)
+      .decoder
   }
 
-  private def findAuthenticationService(authenticationServices: Set[ExternalAuthenticationService],
+  private def findAuthenticationService(authenticationServices: List[ExternalAuthenticationService],
                                         searchedServiceName: ExternalAuthenticationService.Name): Either[AclCreationError, ExternalAuthenticationService] = {
     authenticationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)

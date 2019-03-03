@@ -27,8 +27,10 @@ import tech.beshu.ror.acl.utils.CirceOps._
 object FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers.decodeStringLike
     .map(e => Value.fromString(e, rv => Right(Filter(rv.value))))
+    .toSyncDecoder
     .emapE {
       case Right(filter) => Right(new FilterRule(FilterRule.Settings(filter)))
       case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
     }
+    .decoder
 )

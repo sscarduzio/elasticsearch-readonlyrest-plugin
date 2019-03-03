@@ -6,46 +6,105 @@ import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import io.circe.Decoder
+import io.circe.{Decoder, DecodingFailure}
+import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, SslSettings}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider.ConnectionError
 import tech.beshu.ror.acl.blocks.definitions.ldap.{Dn, LdapAuthenticationService, LdapAuthorizationService, LdapService}
 import tech.beshu.ror.acl.domain.Secret
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.ValueLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
+import tech.beshu.ror.acl.utils._
 
 import scala.collection.SortedSet
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.language.postfixOps
 
-class LdapServicesDecoder
-  extends DefinitionsBaseDecoder[LdapService]("ldaps")(
-    LdapServicesDecoder.ldapServiceDecoder
-  )
-
 object LdapServicesDecoder {
 
   implicit val ldapServiceNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private implicit val ldapServiceDecoder: Decoder[LdapService] = ???
+  val ldapServicesDefinitionsDecoder: AsyncDecoder[Definitions[LdapService]] = {
+    AsyncDecoderCreator.instance { c =>
+      DefinitionsBaseDecoder.instance[Task, LdapService]("ldaps").apply(c)
+    }
+  }
 
-  private val autenticationServiceDecoder: Decoder[LdapAuthenticationService] = ???
-//  {
-//    Decoder
-//      .instance { c =>
-//        ???
-//      }
-//      .mapError(DefinitionsLevelCreationError.apply)
-//  }
+  private implicit lazy val ldapServiceDecoder: AsyncDecoder[LdapService] =
+    AsyncDecoderCreator.instance { c =>
+      authorizationServiceDecoder(c).flatMap {
+        case Left(_) => authenticationServiceDecoder(c)
+        case r@Right(_) => Task.now(r)
+      }
+    }
 
-  private val authorizationServiceDecoder: Decoder[LdapAuthorizationService] = ???
+  private lazy val authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService] =
+    AsyncDecoderCreator
+      .instance[LdapAuthenticationService] { c =>
+      val ldapServiceDecodingResult = for {
+        name <- c.downField("name").as[LdapService.Name]
+        connectionConfig <- connectionConfigDecoder(c)
+        userSearchFiler <- userSearchFilerConfigDecoder(c)
+      } yield UnboundidLdapAuthenticationService.create(
+        name,
+        connectionConfig,
+        userSearchFiler
+      )
+      ldapServiceDecodingResult match {
+        case Left(error) => Task.now(Left(error))
+        case Right(task) => task.flatMap {
+          case Left(ConnectionError(hosts)) =>
+            val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
+            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Right(service) =>
+            Task.now(Right(service))
+        }
+      }
+    }.mapError(DefinitionsLevelCreationError.apply)
 
-  private val connectionCondigDecoder: Decoder[LdapConnectionConfig] = {
+  private lazy val authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService] =
+    AsyncDecoderCreator
+      .instance[LdapAuthorizationService] { c =>
+      val ldapServiceDecodingResult = for {
+        name <- c.downField("name").as[LdapService.Name]
+        connectionConfig <- connectionConfigDecoder(c)
+        userSearchFiler <- userSearchFilerConfigDecoder(c)
+        userGroupsSearchFilter <- userGroupsSearchFilterConfigDecoder(c)
+      } yield UnboundidLdapAuthorizationService.create(
+        name,
+        connectionConfig,
+        userSearchFiler,
+        userGroupsSearchFilter
+      )
+      ldapServiceDecodingResult match {
+        case Left(error) => Task.now(Left(error))
+        case Right(task) => task.flatMap {
+          case Left(ConnectionError(hosts)) =>
+            val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
+            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Right(service) =>
+            Task.now(Right(service))
+        }
+      }
+    }.mapError(DefinitionsLevelCreationError.apply)
+
+  private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] = Decoder.instance { c =>
+    for {
+      searchUserBaseDn <- c.downField("search_user_base_DN").as[Dn]
+      userIdAttribute <- c.downNonEmptyField("user_id_attribute")
+    } yield UserSearchFilterConfig(searchUserBaseDn, userIdAttribute)
+  }
+
+  // todo: implement
+  private val userGroupsSearchFilterConfigDecoder: Decoder[UserGroupsSearchFilterConfig] = Decoder.failed(DecodingFailure.apply("", Nil))
+
+  private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
     implicit val _ = positiveValueDecoder[Int]
     Decoder
       .instance { c =>
@@ -68,10 +127,10 @@ object LdapServicesDecoder {
   }
 
   private lazy val connectionMethodDecoder: Decoder[ConnectionMethod] =
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         for {
-          hostOpt <- hostSocketAddressDecoder.tryDecode(c).map(Some.apply).recover { case _ => None}
+          hostOpt <- hostSocketAddressDecoder.tryDecode(c).map(Some.apply).recover { case _ => None }
           hostsOpt <- c.downFields("hosts", "servers").as[Option[List[SocketAddress[IpAddress]]]]
           haMethod <- c.downField("ha").as[Option[HaMethod]]
         } yield (hostOpt, hostsOpt) match {
@@ -90,17 +149,19 @@ object LdapServicesDecoder {
             Left(ValueLevelCreationError(Message(s"Server information missing: use either 'host' and 'port' or 'servers'/'hosts' option.")))
         }
       }
-      .emapE(identity)
+      .emapE[ConnectionMethod](identity)
+      .decoder
 
   private implicit val haMethodDecoder: Decoder[HaMethod] =
-    Decoder
-      .decodeString
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
       .map(_.toUpperCase)
-      .emapE {
-        case "FAILOVER" => Right(HaMethod.Failover)
-        case "ROUND_ROBIN" => Right(HaMethod.RoundRobin)
-        case unknown => Left(ValueLevelCreationError(Message(s"Unknown HA method '$unknown'")))
-      }
+      .emapE[HaMethod] {
+      case "FAILOVER" => Right(HaMethod.Failover)
+      case "ROUND_ROBIN" => Right(HaMethod.RoundRobin)
+      case unknown => Left(ValueLevelCreationError(Message(s"Unknown HA method '$unknown'")))
+    }
+      .decoder
 
   private lazy val hostSocketAddressDecoder: Decoder[SocketAddress[IpAddress]] = {
     val hostSocketAddressFromTwoFieldsDecoder =
@@ -137,11 +198,13 @@ object LdapServicesDecoder {
           secretOpt <- c.downField("bind_password").as[Option[String]]
         } yield (dnOpt, secretOpt)
       }
-      .emapE {
-        case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, Secret(secret)))
-        case (None, None) => Right(BindRequestUser.NoUser)
-        case (_, _) => Left(ValueLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
-      }
+      .toSyncDecoder
+      .emapE[BindRequestUser] {
+      case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, Secret(secret)))
+      case (None, None) => Right(BindRequestUser.NoUser)
+      case (_, _) => Left(ValueLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
+    }
+      .decoder
   }
 
 }

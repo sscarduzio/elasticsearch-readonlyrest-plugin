@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.factory.decoders.definitions
 
+import cats.Id
 import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.{ACursor, Decoder, HCursor}
@@ -29,22 +30,24 @@ import tech.beshu.ror.acl.factory.decoders.ruleDecoders.authenticationRuleDecode
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.factory.decoders.common._
-
-class UsersDefinitionsDecoder(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                              authProxyDefinitions: Definitions[ProxyAuth],
-                              jwtDefinitions: Definitions[JwtDef],
-                              rorKbnDefinitions: Definitions[RorKbnDef])
-  extends DefinitionsBaseDecoder[UserDef]("users")(
-    UsersDefinitionsDecoder.userDefDecoder(authenticationServiceDefinitions, authProxyDefinitions, jwtDefinitions, rorKbnDefinitions)
-  )
+import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 
 object UsersDefinitionsDecoder {
+
+  def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+               authProxyDefinitions: Definitions[ProxyAuth],
+               jwtDefinitions: Definitions[JwtDef],
+               rorKbnDefinitions: Definitions[RorKbnDef]): ADecoder[Id, Definitions[UserDef]] = {
+    implicit val userDefDecoder: SyncDecoder[UserDef] = SyncDecoderCreator
+      .from(UsersDefinitionsDecoder.userDefDecoder(authenticationServiceDefinitions, authProxyDefinitions, jwtDefinitions, rorKbnDefinitions))
+    DefinitionsBaseDecoder.instance[Id, UserDef]("users")
+  }
 
   private implicit def userDefDecoder(implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                       authProxyDefinitions: Definitions[ProxyAuth],
                                       jwtDefinitions: Definitions[JwtDef],
                                       rorKbnDefinitions: Definitions[RorKbnDef]): Decoder[UserDef] = {
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         val usernameKey = "username"
         val groupsKey = "groups"
@@ -55,6 +58,7 @@ object UsersDefinitionsDecoder {
         } yield UserDef(username, groups, rule)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
+      .decoder
   }
 
   private def tryDecodeAuthRule(adjustedCursor: ACursor, username: User.Id)

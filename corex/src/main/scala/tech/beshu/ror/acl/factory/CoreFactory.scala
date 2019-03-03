@@ -18,11 +18,12 @@ package tech.beshu.ror.acl.factory
 
 import java.time.Clock
 
-import cats.data.{NonEmptyList, State, Validated}
+import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
 import io.circe.yaml.parser
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.yaml.snakeyaml.Yaml
 import tech.beshu.ror.acl.blocks.Block
@@ -38,10 +39,11 @@ import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.logging.AuditingTool
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecoderOps, DecodingFailureOps}
+import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaOps._
-import tech.beshu.ror.acl.utils.{StaticVariablesResolver, UuidProvider, YamlOps}
+import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
+import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
@@ -54,23 +56,24 @@ class CoreFactory(implicit clock: Clock,
   extends Logging {
 
   def createCoreFrom(settingsYamlString: String,
-                     httpClientFactory: HttpClientsFactory): Either[NonEmptyList[AclCreationError], CoreSettings] = {
-    trimToRorPartOnly(settingsYamlString)
-      .left.map(NonEmptyList.one)
-      .right
-      .flatMap { rorPartYamlString =>
+                     httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
+    trimToRorPartOnly(settingsYamlString) match {
+      case Right(rorPartYamlString) =>
         parser.parse(rorPartYamlString) match {
           case Right(json) =>
-            createFrom(json, httpClientFactory)
-              .toEither
-              .left.map { failures =>
-              failures.map(f => f.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString"))))
+            createFrom(json, httpClientFactory).map {
+              case Right(settings) =>
+                Right(settings)
+              case Left(failure) =>
+                Left(NonEmptyList.one(failure.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString")))))
             }
           case Left(ex) =>
             logger.debug("Unparsable yaml", ex)
-            Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString"))))
+            Task.now(Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString")))))
         }
-      }
+      case Left(error) =>
+        Task.now(Left(NonEmptyList.one(error)))
+    }
   }
 
   private def trimToRorPartOnly(settingsYamlString: String): Either[AclCreationError, String] = {
@@ -88,18 +91,13 @@ class CoreFactory(implicit clock: Clock,
   }
 
   private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
-    val decoder = AccumulatingDecoder.instance { c =>
-      Validated.fromEither(
-        aclDecoder(httpClientFactory).apply(c).toEither
-          .flatMap { case (acl, context) =>
-            AccumulatingDecoder
-              .fromDecoder(AuditingSettingsDecoder.instance)
-              .map(CoreSettings(acl, context, _))
-              .apply(c)
-              .toEither
+    val decoder = aclDecoder(httpClientFactory)
+      .flatMap { case (acl, context) =>
+        AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+          .map { auditingTools =>
+            CoreSettings(acl, context, auditingTools)
           }
-      )
-    }
+      }
     decoder(HCursor.fromJson(settingsJson))
   }
 
@@ -154,6 +152,7 @@ class CoreFactory(implicit clock: Clock,
 
   private def rulesDecoder(blockName: Block.Name, definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = {
     rulesNelDecoder(definitions)
+      .toSyncDecoder
       .emapE { rules =>
         RulesValidator.validate(rules) match {
           case Right(_) => Right(rules)
@@ -161,20 +160,31 @@ class CoreFactory(implicit clock: Clock,
             Left(BlocksLevelCreationError(Message(s"The '${blockName.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))
         }
       }
+      .decoder
   }
 
   private implicit def blockDecoder(definitions: DefinitionsPack): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
-    implicit val policyDecoder: Decoder[Block.Policy] = Decoder.decodeString.emapE {
-      case "allow" => Right(Block.Policy.Allow)
-      case "forbid" => Right(Block.Policy.Forbid)
-      case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
-    }
-    implicit val verbosityDecoder: Decoder[Verbosity] = Decoder.decodeString.emapE {
-      case "info" => Right(Verbosity.Info)
-      case "error" => Right(Verbosity.Error)
-      case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
-    }
+    implicit val policyDecoder: Decoder[Block.Policy] =
+      Decoder
+        .decodeString
+        .toSyncDecoder
+        .emapE[Block.Policy] {
+          case "allow" => Right(Block.Policy.Allow)
+          case "forbid" => Right(Block.Policy.Forbid)
+          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
+        }
+        .decoder
+    implicit val verbosityDecoder: Decoder[Verbosity] =
+      Decoder
+        .decodeString
+        .toSyncDecoder
+        .emapE[Verbosity] {
+          case "info" => Right(Verbosity.Info)
+          case "error" => Right(Verbosity.Error)
+          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
+        }
+        .decoder
     Decoder
       .instance { c =>
         val result = for {
@@ -206,25 +216,28 @@ class CoreFactory(implicit clock: Clock,
     }
   }
 
-  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AccumulatingDecoder[(Acl, AclStaticContext)] =
-    AccumulatingDecoder.instance { c =>
+  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(Acl, AclStaticContext)] =
+    AsyncDecoderCreator.instance[(Acl, AclStaticContext)] { c =>
       val decoder = for {
-        authProxies <- new ProxyAuthDefinitionsDecoder
-        authenticationServices <- new ExternalAuthenticationServicesDecoder(httpClientFactory)
-        authorizationServices <- new ExternalAuthorizationServicesDecoder(httpClientFactory)
-        jwtDefs <- new JwtDefinitionsDecoder(httpClientFactory, resolver)
-        rorKbnDefs <- new RorKbnDefinitionsDecoder(resolver)
-        userDefs <- new UsersDefinitionsDecoder(authenticationServices, authProxies, jwtDefs, rorKbnDefs)
-        ldapServices <- new LdapServicesDecoder()
+        authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
+        authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
+        authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
+        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, resolver))
+        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(resolver))
+        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, rorKbnDefs))
+        ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder
         blocks <- {
-          implicit val _ = blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices))
+          implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
+            blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices))
+          }
           DecoderHelpers
-            .decodeFieldList[Block](Attributes.acl, RulesLevelCreationError.apply)
+            .decodeFieldList[Block, Task](Attributes.acl, RulesLevelCreationError.apply)
             .emapE {
               case NoField => Left(BlocksLevelCreationError(Message(s"No ${Attributes.acl} section found")))
               case FieldListValue(blocks) =>
                 NonEmptyList.fromList(blocks) match {
-                  case None => Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
+                  case None =>
+                    Left(BlocksLevelCreationError(Message(s"${Attributes.acl} defined, but no block found")))
                   case Some(neBlocks) =>
                     neBlocks.map(_.name).toList.findDuplicates match {
                       case Nil => Right(neBlocks)
@@ -233,13 +246,13 @@ class CoreFactory(implicit clock: Clock,
                 }
             }
         }
-        staticContext <- aclStaticContextDecoder(blocks)
+        staticContext <- AsyncDecoderCreator.from(aclStaticContextDecoder(blocks))
         acl = {
           blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
           new SequentialAcl(blocks): Acl
         }
       } yield (acl, staticContext)
-      decoder.accumulating.apply(c)
+      decoder.apply(c)
     }
 }
 
