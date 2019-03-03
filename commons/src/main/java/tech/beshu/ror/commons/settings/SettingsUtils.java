@@ -51,6 +51,8 @@ public class SettingsUtils {
   }
 
   public static String map2yaml(Map<String, ?> map) {
+    // this is already a map, and we don't need to check for duplicate keys.
+    // no need for dump-load-dump for checking
     return yamlDumper.dump(map);
   }
 
@@ -86,11 +88,11 @@ public class SettingsUtils {
   }
 
   public static String toJsonStorage(String yaml) {
-
+    // Test for duplicate keys, throw if invalid
+    yamlLoader.load(yaml);
     Map<String, String> tmpMap = Maps.newHashMap();
     tmpMap.put("settings", yaml);
     return map2Json(tmpMap);
-
   }
 
 }
