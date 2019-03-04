@@ -161,6 +161,7 @@ object LdapServicesDecoder {
     }
 
   private val userGroupsSearchFilterConfigDecoder: Decoder[UserGroupsSearchFilterConfig] =
+    // todo: not or. Need new combinator xor
     defaultGroupsSearchModeDecoder
       .or(groupsFromUserAttributeModeDecoder)
       .map(UserGroupsSearchFilterConfig.apply)
