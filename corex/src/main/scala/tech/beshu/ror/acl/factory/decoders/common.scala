@@ -45,6 +45,18 @@ import scala.util.{Failure, Success, Try}
 
 object common {
 
+  implicit val nonEmptyStringDecoder: Decoder[NonEmptyString] =
+    Decoder
+      .decodeString
+      .toSyncDecoder
+      .emap { str =>
+        NonEmptyString.unapply(str) match {
+          case Some(res) => Right(res)
+          case None => Left("Cannot decode empty string")
+        }
+      }
+      .decoder
+
   implicit val decoderTupleListDecoder: Decoder[List[(NonEmptyString, NonEmptyString)]] =
     SyncDecoderCreator
       .from(Decoder.decodeString)

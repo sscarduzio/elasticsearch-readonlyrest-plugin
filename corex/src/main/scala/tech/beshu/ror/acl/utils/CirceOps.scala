@@ -226,19 +226,24 @@ object CirceOps {
     }
 
     def downNonEmptyField(name: String): Decoder.Result[NonEmptyString] = {
-      implicit val nonEmptyStringDecoder: Decoder[NonEmptyString] =
-        Decoder
-          .decodeString
-          .toSyncDecoder
-            .emapE { str =>
-              NonEmptyString.unapply(str) match {
-                case Some(res) => Right(res)
-                case None => Left(ValueLevelCreationError(Message(s"Field $name cannot be empty")))
-              }
-            }
-          .decoder
-      downFields(name).as[NonEmptyString]
+      import tech.beshu.ror.acl.factory.decoders.common.nonEmptyStringDecoder
+      downFields(name).asWithError[NonEmptyString](s"Field $name cannot be empty")
     }
+
+    def downNonEmptyOptionalField(name: String): Decoder.Result[Option[NonEmptyString]] = {
+      import tech.beshu.ror.acl.factory.decoders.common.nonEmptyStringDecoder
+      downFields(name).asWithError[Option[NonEmptyString]](s"Field $name cannot be empty")
+    }
+
+  }
+
+  implicit class ACursorOps(val value: ACursor) extends AnyVal {
+
+    def asWithError[T : Decoder](error: String): Decoder.Result[T] =
+      value
+        .as[T](implicitly[Decoder[T]])
+        .left
+        .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
   }
 
 }

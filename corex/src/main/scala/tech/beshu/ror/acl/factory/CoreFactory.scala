@@ -223,9 +223,9 @@ class CoreFactory(implicit clock: Clock,
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, resolver))
-        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(resolver))
-        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, rorKbnDefs))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder
+        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(resolver))
+        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
         blocks <- {
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
             blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices))

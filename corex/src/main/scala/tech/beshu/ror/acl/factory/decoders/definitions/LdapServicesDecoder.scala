@@ -1,25 +1,28 @@
 package tech.beshu.ror.acl.factory.decoders.definitions
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import io.circe.{Decoder, DecodingFailure}
+import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.{Decoder, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, SslSettings}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider.ConnectionError
-import tech.beshu.ror.acl.blocks.definitions.ldap.{Dn, LdapAuthenticationService, LdapAuthorizationService, LdapService}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.acl.blocks.definitions.ldap._
 import tech.beshu.ror.acl.domain.Secret
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.refined._
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}
+import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils._
 
 import scala.collection.SortedSet
@@ -28,7 +31,7 @@ import scala.language.postfixOps
 
 object LdapServicesDecoder {
 
-  implicit val ldapServiceNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
+  implicit val nameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
   val ldapServicesDefinitionsDecoder: AsyncDecoder[Definitions[LdapService]] = {
     AsyncDecoderCreator.instance { c =>
@@ -36,13 +39,41 @@ object LdapServicesDecoder {
     }
   }
 
-  private implicit lazy val ldapServiceDecoder: AsyncDecoder[LdapService] =
+  private implicit lazy val cachableLdapServiceDecoder: AsyncDecoder[LdapService] =
     AsyncDecoderCreator.instance { c =>
-      authorizationServiceDecoder(c).flatMap {
-        case Left(_) => authenticationServiceDecoder(c)
-        case r@Right(_) => Task.now(r)
-      }
+     c.downField("cache_ttl_in_sec")
+        .as[Option[FiniteDuration Refined Positive]]
+        .map {
+          case Some(ttl) =>
+          decodeLdapService(c).map(_.map {
+            case service: LdapAuthService => new CacheableLdapServiceDecorator(service, ttl)
+            case service: LdapAuthenticationService => new CacheableLdapAuthenticationServiceDecorator(service, ttl)
+            case service: LdapAuthorizationService => new CacheableLdapAuthorizationServiceDecorator(service, ttl)
+          })
+          case None =>
+            decodeLdapService(c)
+        }
+        .fold(error => Task.now(Left(error)), identity)
+        .map(_.map {
+          case service: LdapAuthService => new LoggableLdapServiceDecorator(service)
+          case service: LdapAuthenticationService => new LoggableLdapAuthenticationServiceDecorator(service)
+          case service: LdapAuthorizationService => new LoggableLdapAuthorizationServiceDecorator(service)
+        })
     }
+
+  private def decodeLdapService(cursor: HCursor) = {
+    for {
+      authenticationService <- authenticationServiceDecoder(cursor)
+      authortizationService <- authorizationServiceDecoder(cursor)
+    } yield (authenticationService, authortizationService) match {
+      case (Right(authn), Right(authz)) => Right {
+        new ComposedLdapAuthService(authn.id, authn, authz)
+      }
+      case (authn@Right(_), _) => authn
+      case (_, authz@Right(_)) => authz
+      case (error@Left(_), _) => error
+    }
+  }
 
   private lazy val authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService] =
     AsyncDecoderCreator
@@ -101,8 +132,38 @@ object LdapServicesDecoder {
     } yield UserSearchFilterConfig(searchUserBaseDn, userIdAttribute)
   }
 
-  // todo: implement
-  private val userGroupsSearchFilterConfigDecoder: Decoder[UserGroupsSearchFilterConfig] = Decoder.failed(DecodingFailure.apply("", Nil))
+  private val defaultGroupsSearchModeDecoder: Decoder[UserGroupsSearchMode] =
+    Decoder.instance { c =>
+      for {
+        searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
+        groupNameAttribute <- c.downNonEmptyOptionalField("group_name_attribute")
+        uniqueMemberAttribute <- c.downNonEmptyOptionalField("unique_member_attribute")
+        groupSearchFilter <- c.downNonEmptyOptionalField("group_search_filter")
+      } yield DefaultGroupSearch(
+        searchGroupBaseDn,
+        groupNameAttribute.getOrElse(NonEmptyString.unsafeFrom("cn")),
+        uniqueMemberAttribute.getOrElse(NonEmptyString.unsafeFrom("uniqueMember")),
+        groupSearchFilter.getOrElse(NonEmptyString.unsafeFrom("(cn=*)"))
+      )
+    }
+
+  private val groupsFromUserAttributeModeDecoder: Decoder[UserGroupsSearchMode] =
+    Decoder.instance { c =>
+      for {
+        searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
+        groupNameAttribute <- c.downNonEmptyOptionalField("group_name_attribute")
+        groupsFromUserAtrribute <- c.downNonEmptyOptionalField("groups_from_user_attribute")
+      } yield GroupsFromUserAttribute(
+        searchGroupBaseDn,
+        groupNameAttribute.getOrElse(NonEmptyString.unsafeFrom("cn")),
+        groupsFromUserAtrribute.getOrElse(NonEmptyString.unsafeFrom("memberOf"))
+      )
+    }
+
+  private val userGroupsSearchFilterConfigDecoder: Decoder[UserGroupsSearchFilterConfig] =
+    defaultGroupsSearchModeDecoder
+      .or(groupsFromUserAttributeModeDecoder)
+      .map(UserGroupsSearchFilterConfig.apply)
 
   private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
     implicit val _ = positiveValueDecoder[Int]
