@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
+import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -10,14 +10,15 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, HCursor}
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
+import tech.beshu.ror.acl.blocks.definitions.ldap._
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, SslSettings}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig._
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider.ConnectionError
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.acl.blocks.definitions.ldap._
 import tech.beshu.ror.acl.domain.Secret
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.acl.factory.decoders.common._
@@ -91,7 +92,7 @@ object LdapServicesDecoder {
         case Left(error) => Task.now(Left(error))
         case Right(task) => task.flatMap {
           case Left(ConnectionError(hosts)) =>
-            val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
+            val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}")
             Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
           case Right(service) =>
             Task.now(Right(service))
@@ -192,14 +193,14 @@ object LdapServicesDecoder {
     SyncDecoderCreator
       .instance { c =>
         for {
-          hostOpt <- hostSocketAddressDecoder.tryDecode(c).map(Some.apply).recover { case _ => None }
-          hostsOpt <- c.downFields("hosts", "servers").as[Option[List[SocketAddress[IpAddress]]]]
+          hostOpt <- ldapHostDecoder.tryDecode(c).map(Some.apply).recover { case _ => None }
+          hostsOpt <- c.downFields("hosts", "servers").as[Option[List[LdapHost]]]
           haMethod <- c.downField("ha").as[Option[HaMethod]]
         } yield (hostOpt, hostsOpt) match {
           case (Some(host), None) =>
             Right(SingleServer(host))
           case (None, Some(hostsList)) =>
-            NonEmptySet.fromSet(SortedSet.empty[SocketAddress[IpAddress]] ++ hostsList) match {
+            NonEmptySet.fromSet(SortedSet.empty[LdapHost] ++ hostsList) match {
               case Some(hosts) =>
                 Right(SeveralServers(hosts, haMethod.getOrElse(HaMethod.Failover)))
               case None =>
@@ -225,17 +226,32 @@ object LdapServicesDecoder {
     }
       .decoder
 
-  private lazy val hostSocketAddressDecoder: Decoder[SocketAddress[IpAddress]] = {
-    val hostSocketAddressFromTwoFieldsDecoder =
+  private implicit lazy val ldapHostDecoder: Decoder[LdapHost] = {
+    def withLdapHostCreationError(decoder: Decoder[Option[LdapHost]]): Decoder[LdapHost] = {
+      decoder
+        .toSyncDecoder
+        .emapE {
+          case Some(host) => Right(host)
+          case None => Left(AclCreationError.ValueLevelCreationError(Message("Cannot parse LDAP host")))
+        }
+        .decoder
+    }
+
+    val ldapHostFromTwoFieldsDecoder = withLdapHostCreationError {
       Decoder
         .instance { c =>
           for {
-            host <- c.downField("host").as[IpAddress]
+            host <- c.downField("host").as[String]
             port <- c.downField("port").as[Option[Port]]
-          } yield SocketAddress(host, port.getOrElse(Port(389).get))
+          } yield LdapHost.from(s"$host:${port.getOrElse(Port(389).get)}")
         }
-    val hostSocketAddressFromOneFieldDecoder = Decoder.instance(_.downField("host").as[SocketAddress[IpAddress]])
-    hostSocketAddressFromTwoFieldsDecoder or hostSocketAddressFromOneFieldDecoder
+    }
+    val hostSocketAddressFromOneFieldDecoder = withLdapHostCreationError {
+      Decoder
+        .decodeString
+        .map(LdapHost.from)
+    }
+    ldapHostFromTwoFieldsDecoder or hostSocketAddressFromOneFieldDecoder
   }
 
   private lazy val sslSettingsDecoder: Decoder[Option[SslSettings]] = {

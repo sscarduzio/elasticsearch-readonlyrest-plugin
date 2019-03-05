@@ -21,7 +21,7 @@ import java.util.Base64
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule

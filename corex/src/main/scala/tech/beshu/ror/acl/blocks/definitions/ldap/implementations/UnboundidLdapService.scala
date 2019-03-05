@@ -1,12 +1,13 @@
 package tech.beshu.ror.acl.blocks.definitions.ldap.implementations
 
+import cats.Order
 import cats.implicits._
 import cats.data.{EitherT, NonEmptySet}
-import com.comcast.ip4s.{IpAddress, SocketAddress}
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
+import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.definitions.ldap._
@@ -239,10 +240,34 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
 
 object LdapConnectionConfig {
 
+  final case class LdapHost private (url: UrlWithAuthority) {
+    def isSecure: Boolean = url.schemeOption.contains(LdapHost.ldapsSchema)
+    def host: String = url.host.value
+    def port: Int = url.port.getOrElse(LdapHost.defaultPort)
+  }
+  object LdapHost {
+    val ldapsSchema = "ldaps"
+    val ldapSchema = "ldap"
+    val defaultPort = 389
+
+    def from(value: String): Option[LdapHost] = {
+      Try(UrlWithAuthority.parse(value))
+        .orElse(Try(UrlWithAuthority.parse(s"""//$value""")))
+        .toOption
+        .flatMap { url =>
+          if(url.path.nonEmpty) None
+          else if(!url.schemeOption.forall(Set(ldapSchema, ldapsSchema).contains)) None
+          else Some(LdapHost(url))
+        }
+    }
+
+    implicit val order: Order[LdapHost] = Order.by(_.toString())
+  }
+
   sealed trait ConnectionMethod
   object ConnectionMethod {
-    final case class SingleServer(host: SocketAddress[IpAddress]) extends ConnectionMethod
-    final case class SeveralServers(hosts: NonEmptySet[SocketAddress[IpAddress]], haMethod: HaMethod) extends ConnectionMethod
+    final case class SingleServer(host: LdapHost) extends ConnectionMethod
+    final case class SeveralServers(hosts: NonEmptySet[LdapHost], haMethod: HaMethod) extends ConnectionMethod
   }
 
   sealed trait HaMethod

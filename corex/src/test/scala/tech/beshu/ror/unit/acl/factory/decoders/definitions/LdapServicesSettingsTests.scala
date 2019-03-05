@@ -1,16 +1,53 @@
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
+import org.scalatest.Matchers._
 import org.scalatest.WordSpecLike
 import tech.beshu.ror.acl.factory.decoders.definitions.LdapServicesDecoder
+import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.utils.TestsUtils.StringOps
+import tech.beshu.ror.acl.blocks.definitions.ldap.{LdapAuthenticationService, LdapService}
+import tech.beshu.ror.utils.containers.LdapContainer
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class LdapServicesSettingsTests
   extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder)
     with WordSpecLike {
 
+  private val ldapContainer = LdapContainer.create("/test_example.ldif")
+
+  while (!ldapContainer.isRunning) {
+    Thread.sleep(1000)
+  }
+
   "A LdapService" should {
     "be able to be loaded from config" when {
       "one LDAP service is declared" in {
-
+        val definitions = forceDecode {
+          s"""
+             |  ldaps:
+             |  - name: ldap1
+             |    host: ${ldapContainer.getLdapHost}
+             |    port: ${ldapContainer.getLdapPort}                        # default 389
+             |    ssl_enabled: false                                        # default true
+             |    ssl_trust_all_certs: true                                 # default false
+             |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+             |    bind_password: "password"                                 # skip for anonymous bind
+             |    search_user_base_DN: "ou=People,dc=example,dc=com"
+             |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+             |    user_id_attribute: "uid"                                  # default "uid"
+             |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+             |    connection_pool_size: 10                                  # default 30
+             |    connection_timeout_in_sec: 10                             # default 1
+             |    request_timeout_in_sec: 10                                # default 1
+             |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+           """.stripMargin
+        }
+        definitions.items should have size 1
+        val ldapService = definitions.items.head
+        ldapService shouldBe a [LdapAuthenticationService]
+        ldapService.id should be (LdapService.Name("ldap1".nonempty))
       }
       "two LDAP services are declared" in {
 
@@ -117,6 +154,10 @@ class LdapServicesSettingsTests
 
       }
     }
+  }
+
+  private def forceDecode(yaml: String) = {
+    decode(yaml).runSyncUnsafe(timeout = 1 second)
   }
 
 }

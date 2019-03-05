@@ -2,26 +2,27 @@ package tech.beshu.ror.acl.blocks.definitions.ldap.implementations
 
 import cats.implicits._
 import cats.data.NonEmptyList
-import com.comcast.ip4s.{IpAddress, SocketAddress}
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import javax.net.ssl.SSLSocketFactory
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, SslSettings}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig._
+
+import scala.util.control.NonFatal
 
 object LdapConnectionPoolProvider {
 
-  final case class ConnectionError(hosts: NonEmptyList[SocketAddress[IpAddress]])
+  final case class ConnectionError(hosts: NonEmptyList[LdapHost])
 
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val options = ldapOptions(connectionConfig)
     val serverSets = connectionConfig.connectionMethod match {
-      case ConnectionMethod.SingleServer(host) =>
-        (host, new SingleServerSet(host.ip.toUriString, host.port.value, options)) :: Nil
-      case ConnectionMethod.SeveralServers(hosts, _) =>
-        hosts
+      case ConnectionMethod.SingleServer(ldap) =>
+        (ldap, new SingleServerSet(ldap.host, ldap.port, options)) :: Nil
+      case ConnectionMethod.SeveralServers(ldaps, _) =>
+        ldaps
           .toSortedSet
-          .map { host => (host, new SingleServerSet(host.ip.toUriString, host.port.value, options)) }
+          .map { ldap => (ldap, new SingleServerSet(ldap.host, ldap.port, options)) }
           .toList
     }
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
@@ -34,6 +35,7 @@ object LdapConnectionPoolProvider {
             release = connection => Task(connection.close())
           )
           .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
+          .recover { case NonFatal(_) => (host, false) }
       }
       .sequence
       .map(_.collect { case (host, false) => host} )
@@ -61,19 +63,19 @@ object LdapConnectionPoolProvider {
 
   private def ldapServerSet(connectionMethod: ConnectionMethod, options: LDAPConnectionOptions, ssl: SSLSocketFactory) = {
     connectionMethod match {
-      case ConnectionMethod.SingleServer(host) =>
-        new SingleServerSet(host.ip.toUriString, host.port.value, ssl, options)
+      case ConnectionMethod.SingleServer(ldap) =>
+        new SingleServerSet(ldap.host, ldap.port, ssl, options)
       case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) =>
         new FailoverServerSet(
-          hosts.toSortedSet.map(_.ip).map(_.toUriString).toArray[String],
-          hosts.toSortedSet.map(_.port.value).toArray[Int],
+          hosts.toSortedSet.map(_.host).toArray[String],
+          hosts.toSortedSet.map(_.port).toArray[Int],
           ssl,
           options
         )
       case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) =>
         new RoundRobinServerSet(
-          hosts.toSortedSet.map(_.ip).map(_.toUriString).toArray[String],
-          hosts.toSortedSet.map(_.port.value).toArray[Int],
+          hosts.toSortedSet.map(_.host).toArray[String],
+          hosts.toSortedSet.map(_.port).toArray[Int],
           ssl,
           options
         )
@@ -82,18 +84,18 @@ object LdapConnectionPoolProvider {
 
   private def ldapServerSet(connectionMethod: ConnectionMethod, options: LDAPConnectionOptions) = {
     connectionMethod match {
-      case ConnectionMethod.SingleServer(host) =>
-        new SingleServerSet(host.ip.toUriString, host.port.value, options)
+      case ConnectionMethod.SingleServer(ldap) =>
+        new SingleServerSet(ldap.host, ldap.port, options)
       case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) =>
         new FailoverServerSet(
-          hosts.toSortedSet.map(_.ip).map(_.toUriString).toArray[String],
-          hosts.toSortedSet.map(_.port.value).toArray[Int],
+          hosts.toSortedSet.map(_.host).toArray[String],
+          hosts.toSortedSet.map(_.port).toArray[Int],
           options
         )
       case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) =>
         new RoundRobinServerSet(
-          hosts.toSortedSet.map(_.ip).map(_.toUriString).toArray[String],
-          hosts.toSortedSet.map(_.port.value).toArray[Int],
+          hosts.toSortedSet.map(_.host).toArray[String],
+          hosts.toSortedSet.map(_.port).toArray[Int],
           options
         )
     }

@@ -27,7 +27,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.TestsUtils.scalaFiniteDuration2JavaDuration
+import tech.beshu.ror.utils.TestsUtils.scalaFiniteDuration2JavaDuration
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
@@ -40,7 +40,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, 
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 
 class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
 

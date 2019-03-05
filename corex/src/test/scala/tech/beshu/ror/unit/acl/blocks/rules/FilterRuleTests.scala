@@ -20,7 +20,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.domain.{Filter, LoggedUser, User}
 import tech.beshu.ror.acl.blocks.rules.FilterRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult

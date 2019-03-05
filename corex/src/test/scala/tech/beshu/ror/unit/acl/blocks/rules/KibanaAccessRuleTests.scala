@@ -20,7 +20,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.TestsUtils.BlockContextAssertion
+import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.Constants
 import tech.beshu.ror.acl.domain.Header.Name

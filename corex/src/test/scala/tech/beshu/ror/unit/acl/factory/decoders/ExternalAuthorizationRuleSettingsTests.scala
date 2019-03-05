@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule

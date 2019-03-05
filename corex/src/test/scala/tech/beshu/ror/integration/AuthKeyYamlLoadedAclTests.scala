@@ -24,7 +24,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
 import tech.beshu.ror.acl.factory.{CoreSettings, CoreFactory}
-import tech.beshu.ror.TestsUtils.basicAuthHeader
+import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import monix.execution.Scheduler.Implicits.global
