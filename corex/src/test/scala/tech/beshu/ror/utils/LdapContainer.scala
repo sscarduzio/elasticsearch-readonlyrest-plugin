@@ -1,110 +1,117 @@
 package tech.beshu.ror.utils
 
-import java.io.File
-
 import com.dimafeng.testcontainers.GenericContainer
-import com.unboundid.ldap.sdk.{LDAPConnection, LDAPConnectionOptions}
+import com.typesafe.scalalogging.StrictLogging
+import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPConnectionOptions, ResultCode}
+import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
+import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import tech.beshu.ror.acl.utils.ScalaOps
-import tech.beshu.ror.utils.containers.ContainerUtils
+import tech.beshu.ror.utils.LdapContainer.{defaults, ldapWaitStrategy}
 
 import scala.concurrent.duration._
-import scala.concurrent.duration.FiniteDuration
 import scala.language.postfixOps
+import scala.tools.nsc.interpreter.InputStream
 
-object LdapContainer extends Logging {
-  def create(ldapInitScript: String): GenericContainer = {
-    val ldapInitScriptFile = ContainerUtils.getResourceFile(ldapInitScript)
-    logger.info("Creating LDAP container ...")
-    new GenericContainer(
-      dockerImage = "osixia/openldap:1.1.7",
-      env = Map("LDAP_ORGANISATION" -> "example", "LDAP_DOMAIN" -> "example.com", "LDAP_ADMIN_PASSWORD" -> "admin"),
-      exposedPorts = Seq(389),
-      waitStrategy = Some(ldapWaitStrategy(ldapInitScriptFile))
-    )
-  }
+class LdapContainer(name: String, ldapInitScript: String)
+  extends GenericContainer(
+    dockerImage = "osixia/openldap:1.1.7",
+    env = Map(
+      "LDAP_ORGANISATION" -> defaults.ldap.organisation,
+      "LDAP_DOMAIN" -> defaults.ldap.domain,
+      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword
+    ),
+    exposedPorts = Seq(defaults.ldap.port),
+    waitStrategy = Some(ldapWaitStrategy(name, ldapInitScript))
+  ) {
 
-  private def ldapWaitStrategy(initScript: File) = new AbstractWaitStrategy {
-    override def waitUntilReady(): Unit = ???
+  def ldapPort: Int = this.mappedPort(defaults.ldap.port)
+  def ldapHost: String = this.containerIpAddress
+}
 
-    private def tryConnect(address: String, port: Int): Task[Option[LDAPConnection]] = {
+object LdapContainer extends StrictLogging {
+
+  private def ldapWaitStrategy(name: String, ldapInitScript: String) = new AbstractWaitStrategy {
+    override def waitUntilReady(): Unit = {
+      logger.info(s"Waiting for LDAP container '$name' ...")
+      Task(getClass.getResourceAsStream(ldapInitScript))
+        .bracket(stream =>
+          ScalaOps
+            .retryBackoff(ldapInitiate(stream), 15, 1 second)
+        )(stream =>
+          Task(stream.close())
+        )
+        .runSyncUnsafe(defaults.containerStartupTimeout)
+      logger.info(s"LDAP container '$name' stated")
+    }
+
+
+    private def ldapInitiate(ldapInitScriptInputStream: InputStream) = {
+      runOnLdapConnection { connection =>
+        defaults.ldap.bindDn match {
+          case Some(bindDn) =>
+            Task(connection.bind(bindDn, defaults.ldap.adminPassword))
+              .flatMap {
+                case r if r.getResultCode == ResultCode.SUCCESS =>
+                  initLdapFromFile(connection, ldapInitScriptInputStream)
+                case r =>
+                  Task.raiseError(new IllegalArgumentException(s"LDAP '$name' bind problem - error ${r.getResultCode.intValue()}"))
+              }
+              .map(_ => ())
+          case None =>
+            Task.raiseError(new IllegalArgumentException("Cannot create bind DN from LDAP config data"))
+        }
+      }.onErrorHandle(ex => logger.info(s"LDAP $name initiation failed. ${ex.getMessage}"))
+    }
+
+    private def initLdapFromFile(connection: LDAPConnection, scriptInputStream: InputStream) = Task {
+      val reader = new LDIFReader(scriptInputStream)
+      Iterator
+        .continually(Option(reader.readEntry()))
+        .takeWhile(_.isDefined)
+        .flatten
+        .map(entry => connection.add(new AddRequest(entry.toLDIF: _*)))
+    }
+
+    private def runOnLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
       Task(createConnection)
         .bracket(connection =>
-          Task(connection.connect(address, port))
-        )( connection =>
+          action(connection)
+        )(connection =>
           Task(connection.close())
         )
     }
 
     private def createConnection: LDAPConnection = {
       val options = new LDAPConnectionOptions()
-      options.setConnectTimeoutMillis(Defaults.connectionTimeout.toMillis.toInt)
+      options.setConnectTimeoutMillis(defaults.connectionTimeout.toMillis.toInt)
       new LDAPConnection(options)
     }
+
   }
 
-  object Defaults {
+  object defaults {
     val connectionTimeout: FiniteDuration = 5 seconds
+    val containerStartupTimeout: FiniteDuration = 5 minutes
+
+    object ldap {
+      val port = 389
+      val domain = "example.com"
+      val organisation = "example"
+      val adminName = "admin"
+      val adminPassword = "password"
+      val bindDn: Option[String] = {
+        Option(
+          defaults.ldap.domain
+            .split("\\.").toList
+            .map(part => s"dc=$part")
+            .mkString(","))
+          .filter(_.trim.nonEmpty)
+          .map(dc => s"cn=${defaults.ldap.adminName},$dc")
+      }
+    }
+
   }
 
-//  return new org.testcontainers.containers.wait.strategy.AbstractWaitStrategy() {
-//
-//    @Override
-//    protected void waitUntilReady() {
-//      logger.info("Waiting for LDAP container ...");
-//      Optional<LDAPConnection> connection = tryConnect(getLdapHost(), getLdapPort());
-//      if (connection.isPresent()) {
-//        try {
-//          initLdap(connection.get(), initialDataLdif);
-//        } catch (Exception e) {
-//          throw new IllegalStateException(e);
-//        } finally {
-//          connection.get().close();
-//        }
-//      }
-//      else {
-//        throw new IllegalStateException("Cannot connect");
-//      }
-//      logger.info("LDAP container stated");
-//    }
-//
-//    private LDAPConnection createConnection() {
-//      LDAPConnectionOptions options = new LDAPConnectionOptions();
-//      options.setConnectTimeoutMillis((int) LDAP_CONNECT_TIMEOUT.toMillis());
-//      return new LDAPConnection(options);
-//    }
-//
-//    private Optional<LDAPConnection> tryConnect(String address, Integer port) {
-//      final Instant startTime = Instant.now();
-//      final LDAPConnection connection = createConnection();
-//      do {
-//        try {
-//          connection.connect(address, port);
-//          Thread.sleep(WAIT_BETWEEN_RETRIES.toMillis());
-//        } catch (Exception ignored) {
-//        }
-//      } while (!connection.isConnected() && !checkTimeout(startTime, startupTimeout));
-//      return Optional.of(connection);
-//    }
-//
-//    private void initLdap(LDAPConnection connection, File initialDataLdif) throws Exception {
-//      LDAPConnection bindedConnection = bind(connection);
-//      LDIFReader r = new LDIFReader(initialDataLdif.getAbsoluteFile());
-//      Entry readEntry;
-//      while ((readEntry = r.readEntry()) != null) {
-//        bindedConnection.add(new AddRequest(readEntry.toLDIF()));
-//      }
-//    }
-//
-//    private LDAPConnection bind(LDAPConnection connection) throws Exception {
-//      Tuple<String, String> bindDNAndPassword = getSearchingUserConfig();
-//      BindResult bindResult = connection.bind(bindDNAndPassword.v1(), bindDNAndPassword.v2());
-//      if (!ResultCode.SUCCESS.equals(bindResult.getResultCode())) {
-//        throw new ContainerCreationException("Cannot init LDAP due to bind problem");
-//      }
-//      return connection;
-//    }
-//  };
 }

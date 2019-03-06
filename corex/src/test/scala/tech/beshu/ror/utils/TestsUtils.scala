@@ -1,5 +1,6 @@
 package tech.beshu.ror.utils
 
+import java.nio.file.Paths
 import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
 import java.time.Duration
 import java.util.Base64
@@ -81,4 +82,5 @@ object TestsUtils {
     val pair = keyGen.generateKeyPair()
     (pair.getPublic, pair.getPrivate)
   }
+
 }

@@ -20,8 +20,8 @@ import cats.data.EitherT
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 
-import scala.concurrent.duration.FiniteDuration
-import scala.language.higherKinds
+import scala.concurrent.duration._
+import scala.language.{higherKinds, postfixOps}
 import scala.util.Try
 
 object ScalaOps {
@@ -66,5 +66,9 @@ object ScalaOps {
         else
           Task.raiseError(ex)
     }
+  }
+
+  def retry[T](task: Task[T]): Task[T] = {
+    ScalaOps.retryBackoff(task, 5, 500 millis)
   }
 }

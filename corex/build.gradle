@@ -111,8 +111,9 @@ dependencies {
     simpleCompile group: 'io.lemonlabs',                          name: 'scala-uri_2.12',                         version: '1.4.1'
     simpleCompile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
 
-    testCompile project(':tests-utils')
+    testRuntime group: 'ch.qos.logback',                          name: 'logback-classic',                        version: '1.2.3'
     testRuntime group: 'org.pegdown',                             name: 'pegdown',                                version: '1.4.2'
+    testCompile group: 'com.typesafe.scala-logging',              name: 'scala-logging_2.12',                     version: '3.9.2'
     testCompile group: 'org.scalamock',                           name: 'scalamock_2.12',                         version: '3.6.0'
     testCompile group: 'org.scalamock',                           name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
     testCompile group: 'org.scalatest',                           name: 'scalatest_2.12',                         version: '3.0.5'

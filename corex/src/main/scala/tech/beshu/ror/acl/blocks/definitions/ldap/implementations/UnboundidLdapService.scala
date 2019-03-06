@@ -17,8 +17,10 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSear
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.acl.domain.{Group, Secret, User}
 import tech.beshu.ror.acl.utils.LdapConnectionPoolOps._
+import tech.beshu.ror.acl.utils.ScalaOps.retry
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
@@ -55,11 +57,13 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
 object UnboundidLdapAuthenticationService {
   def create(id: LdapService#Id,
              connectionConfig: LdapConnectionConfig,
-             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
-    (for {
-      _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
-    } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
+             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = retry {
+    Task.fromTry(Try {
+      (for {
+        _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+        connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
+      } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
+    }).flatten
   }
 }
 
@@ -184,7 +188,7 @@ object UnboundidLdapAuthorizationService {
   def create(id: LdapService#Id,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig,
-             userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
+             userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = retry {
     (for {
       _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))

@@ -129,8 +129,11 @@ object LdapServicesDecoder {
   private val userSearchFilerConfigDecoder: Decoder[UserSearchFilterConfig] = Decoder.instance { c =>
     for {
       searchUserBaseDn <- c.downField("search_user_base_DN").as[Dn]
-      userIdAttribute <- c.downNonEmptyField("user_id_attribute")
-    } yield UserSearchFilterConfig(searchUserBaseDn, userIdAttribute)
+      userIdAttribute <- c.downNonEmptyOptionalField("user_id_attribute")
+    } yield UserSearchFilterConfig(
+      searchUserBaseDn,
+      userIdAttribute.getOrElse(NonEmptyString.unsafeFrom("uid"))
+    )
   }
 
   private val defaultGroupsSearchModeDecoder: Decoder[UserGroupsSearchMode] =
@@ -153,11 +156,11 @@ object LdapServicesDecoder {
       for {
         searchGroupBaseDn <- c.downField("search_groups_base_DN").as[Dn]
         groupNameAttribute <- c.downNonEmptyOptionalField("group_name_attribute")
-        groupsFromUserAtrribute <- c.downNonEmptyOptionalField("groups_from_user_attribute")
+        groupsFromUserAttribute <- c.downNonEmptyOptionalField("groups_from_user_attribute")
       } yield GroupsFromUserAttribute(
         searchGroupBaseDn,
         groupNameAttribute.getOrElse(NonEmptyString.unsafeFrom("cn")),
-        groupsFromUserAtrribute.getOrElse(NonEmptyString.unsafeFrom("memberOf"))
+        groupsFromUserAttribute.getOrElse(NonEmptyString.unsafeFrom("memberOf"))
       )
     }
 

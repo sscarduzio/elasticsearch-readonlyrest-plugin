@@ -7,6 +7,7 @@ import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import javax.net.ssl.SSLSocketFactory
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig._
+import tech.beshu.ror.acl.utils.ScalaOps.retry
 
 import scala.util.control.NonFatal
 
@@ -26,19 +27,26 @@ object LdapConnectionPoolProvider {
           .toList
     }
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
-    serverSets
-      .map { case (host, server) =>
-        Task(server.getConnection)
-          .bracket(
-            use = connection => Task(connection.bind(bindReq))
-          )(
-            release = connection => Task(connection.close())
-          )
-          .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
-          .recover { case NonFatal(_) => (host, false) }
+    Task
+      .sequence {
+        serverSets
+          .map { case (host, server) =>
+            retry {
+              Task {
+                val connection = server.getConnection
+                try {
+                  //connection.connect(host.host, host.port) // todo: 
+                  connection.bind(bindReq)
+                } finally {
+                  connection.close()
+                }
+              }
+            }
+              .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
+              .recover { case NonFatal(_) => (host, false) }
+          }
       }
-      .sequence
-      .map(_.collect { case (host, false) => host} )
+      .map(_.collect { case (host, false) => host })
       .map(NonEmptyList.fromList)
       .map {
         case None => Right(())
