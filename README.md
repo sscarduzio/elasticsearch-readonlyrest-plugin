@@ -2,6 +2,7 @@
 [![Build Status](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin.svg?branch=master)](https://travis-ci.org/sscarduzio/elasticsearch-readonlyrest-plugin)
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
 [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest)
+[![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate)
 
 ## ReadonlyREST needs your help ⚠️
 ReadonlyREST is an GPLv3 open source project. Its ongoing development can only made possible thanks to the support of its backers:
@@ -12,7 +13,7 @@ ReadonlyREST is an GPLv3 open source project. Its ongoing development can only m
 4. Jeff Saxe
 3. Joseph Bull
 
-If you care this project **keeps on existing**, read up the [ReadonlyREST Patreon campaign](https://www.patreon.com/readonlyrest).
+If you care this project **keeps on existing**, read up the [Patreon campaign](https://www.patreon.com/readonlyrest), or [Liberapay campaign](https://liberapay.com/sscarduzio/donate).
 
 # Readonly REST Elasticsearch Plugin
 Expose the high performance HTTP server embedded in Elasticsearch directly to the public, safely blocking any attempt to delete or modify your data.
