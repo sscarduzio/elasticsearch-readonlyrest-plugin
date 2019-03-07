@@ -4,22 +4,29 @@ import cats.implicits._
 import cats.data.NonEmptyList
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
-import javax.net.ssl.SSLSocketFactory
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig._
 import tech.beshu.ror.acl.utils.ScalaOps.retry
 
 import scala.util.control.NonFatal
 
-object LdapConnectionPoolProvider {
+object LdapConnectionPoolProvider extends Logging {
 
   final case class ConnectionError(hosts: NonEmptyList[LdapHost])
 
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val options = ldapOptions(connectionConfig)
     val serverSets = connectionConfig.connectionMethod match {
+      case ConnectionMethod.SingleServer(ldap) if ldap.isSecure =>
+        (ldap, new SingleServerSet(ldap.host, ldap.port, socketFactory(connectionConfig.trustAllCerts), options)) :: Nil
       case ConnectionMethod.SingleServer(ldap) =>
         (ldap, new SingleServerSet(ldap.host, ldap.port, options)) :: Nil
+      case ConnectionMethod.SeveralServers(ldaps, _) if ldaps.head.isSecure =>
+        ldaps
+          .toSortedSet
+          .map { ldap => (ldap, new SingleServerSet(ldap.host, ldap.port, socketFactory(connectionConfig.trustAllCerts), options)) }
+          .toList
       case ConnectionMethod.SeveralServers(ldaps, _) =>
         ldaps
           .toSortedSet
@@ -31,19 +38,19 @@ object LdapConnectionPoolProvider {
       .sequence {
         serverSets
           .map { case (host, server) =>
-            retry {
-              Task {
-                val connection = server.getConnection
-                try {
-                  //connection.connect(host.host, host.port) // todo: 
-                  connection.bind(bindReq)
-                } finally {
-                  connection.close()
-                }
-              }
-            }
+            retry(
+              Task(server.getConnection)
+                .bracket(
+                  use = connection => Task(connection.bind(bindReq))
+                )(
+                  release = connection => Task(connection.close())
+                )
+            )
               .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
-              .recover { case NonFatal(_) => (host, false) }
+              .recover { case NonFatal(ex) =>
+                logger.debug("LDAP binding exception", ex)
+                (host, false)
+              }
           }
       }
       .map(_.collect { case (host, false) => host })
@@ -55,10 +62,7 @@ object LdapConnectionPoolProvider {
   }
 
   def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = Task {
-    val serverSet = connectionConfig.ssl match {
-      case Some(sslSettings) => ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig), socketFactory(sslSettings))
-      case None => ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig))
-    }
+    val serverSet = ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig), connectionConfig.trustAllCerts)
     new LDAPConnectionPool(serverSet, bindRequest(connectionConfig.bindRequestUser), connectionConfig.poolSize.value)
   }
 
@@ -69,48 +73,43 @@ object LdapConnectionPoolProvider {
     options
   }
 
-  private def ldapServerSet(connectionMethod: ConnectionMethod, options: LDAPConnectionOptions, ssl: SSLSocketFactory) = {
+  private def ldapServerSet(connectionMethod: ConnectionMethod, options: LDAPConnectionOptions, trustAllCerts: Boolean) = {
     connectionMethod match {
-      case ConnectionMethod.SingleServer(ldap) =>
-        new SingleServerSet(ldap.host, ldap.port, ssl, options)
-      case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) =>
-        new FailoverServerSet(
-          hosts.toSortedSet.map(_.host).toArray[String],
-          hosts.toSortedSet.map(_.port).toArray[Int],
-          ssl,
-          options
-        )
-      case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) =>
-        new RoundRobinServerSet(
-          hosts.toSortedSet.map(_.host).toArray[String],
-          hosts.toSortedSet.map(_.port).toArray[Int],
-          ssl,
-          options
-        )
-    }
-  }
-
-  private def ldapServerSet(connectionMethod: ConnectionMethod, options: LDAPConnectionOptions) = {
-    connectionMethod match {
+      case ConnectionMethod.SingleServer(ldap) if ldap.isSecure =>
+        new SingleServerSet(ldap.host, ldap.port, socketFactory(trustAllCerts), options)
       case ConnectionMethod.SingleServer(ldap) =>
         new SingleServerSet(ldap.host, ldap.port, options)
+      case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) if hosts.head.isSecure =>
+        new FailoverServerSet(
+          hosts.toList.map(_.host).toArray[String],
+          hosts.toList.map(_.port).toArray[Int],
+          socketFactory(trustAllCerts),
+          options
+        )
       case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) =>
         new FailoverServerSet(
-          hosts.toSortedSet.map(_.host).toArray[String],
-          hosts.toSortedSet.map(_.port).toArray[Int],
+          hosts.toList.map(_.host).toArray[String],
+          hosts.toList.map(_.port).toArray[Int],
+          options
+        )
+      case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) if hosts.head.isSecure =>
+        new RoundRobinServerSet(
+          hosts.toList.map(_.host).toArray[String],
+          hosts.toList.map(_.port).toArray[Int],
+          socketFactory(trustAllCerts),
           options
         )
       case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) =>
         new RoundRobinServerSet(
-          hosts.toSortedSet.map(_.host).toArray[String],
-          hosts.toSortedSet.map(_.port).toArray[Int],
+          hosts.toList.map(_.host).toArray[String],
+          hosts.toList.map(_.port).toArray[Int],
           options
         )
     }
   }
 
-  private def socketFactory(sslSettings: SslSettings) = {
-    val sslUtil = if (sslSettings.trustAllCerts) new SSLUtil(new TrustAllTrustManager) else new SSLUtil()
+  private def socketFactory(trustAllCerts:Boolean) = {
+    val sslUtil = if (trustAllCerts) new SSLUtil(new TrustAllTrustManager) else new SSLUtil()
     sslUtil.createSSLSocketFactory
   }
 

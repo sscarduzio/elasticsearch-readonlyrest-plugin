@@ -15,6 +15,9 @@ class LdapAuthenticationRuleSettingsTests extends BaseRuleSettingsDecoderTest[Ld
       }
     }
     "not be able to be loaded from config" when {
+      "no LDAP service with given name is defined" in {
+
+      }
       "extended version of rule definition doesn't declare cache TTL" in {
 
       }

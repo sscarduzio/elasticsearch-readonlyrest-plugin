@@ -11,13 +11,12 @@ import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.definitions.ldap._
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, SslSettings}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider.ConnectionError
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.acl.domain.{Group, Secret, User}
 import tech.beshu.ror.acl.utils.LdapConnectionPoolOps._
-import tech.beshu.ror.acl.utils.ScalaOps.retry
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -57,13 +56,11 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
 object UnboundidLdapAuthenticationService {
   def create(id: LdapService#Id,
              connectionConfig: LdapConnectionConfig,
-             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = retry {
-    Task.fromTry(Try {
-      (for {
-        _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-        connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
-      } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
-    }).flatten
+             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
+    (for {
+      _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
+    } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
   }
 }
 
@@ -188,7 +185,7 @@ object UnboundidLdapAuthorizationService {
   def create(id: LdapService#Id,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig,
-             userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = retry {
+             userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
     (for {
       _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
@@ -239,7 +236,7 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
                                       poolSize: Int Refined Positive,
                                       connectionTimeout: FiniteDuration Refined Positive,
                                       requestTimeout: FiniteDuration Refined Positive,
-                                      ssl: Option[SslSettings],
+                                      trustAllCerts: Boolean,
                                       bindRequestUser: BindRequestUser)
 
 object LdapConnectionConfig {
@@ -279,9 +276,6 @@ object LdapConnectionConfig {
     case object RoundRobin extends HaMethod
     case object Failover extends HaMethod
   }
-
-  // todo: if ssl is enabled, all severs should be have ldaps schema
-  final case class SslSettings(trustAllCerts: Boolean)
 
   sealed trait BindRequestUser
   object BindRequestUser {

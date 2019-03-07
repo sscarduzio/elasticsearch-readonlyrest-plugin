@@ -53,22 +53,24 @@ object ScalaOps {
 
   implicit val nonEmptyStringOrdering: Ordering[NonEmptyString] = Ordering.by(_.value)
 
-  def value[F[_], A, B](eitherT: EitherT[F, A, B]):  F[Either[A, B]] = eitherT.value
+  def value[F[_], A, B](eitherT: EitherT[F, A, B]): F[Either[A, B]] = eitherT.value
+
+  def retry[T](task: Task[T]): Task[T] = {
+    ScalaOps.retryBackoff(task, 5, 500 millis, 1)
+  }
 
   def retryBackoff[A](source: Task[A],
-                      maxRetries: Int, firstDelay: FiniteDuration): Task[A] = {
+                      maxRetries: Int,
+                      firstDelay: FiniteDuration,
+                      backOffScaler: Int): Task[A] = {
 
     source.onErrorHandleWith {
       case ex: Exception =>
         if (maxRetries > 0)
-          retryBackoff(source, maxRetries-1, firstDelay*2)
+          retryBackoff(source, maxRetries - 1, firstDelay * backOffScaler, backOffScaler)
             .delayExecution(firstDelay)
         else
           Task.raiseError(ex)
     }
-  }
-
-  def retry[T](task: Task[T]): Task[T] = {
-    ScalaOps.retryBackoff(task, 5, 500 millis)
   }
 }

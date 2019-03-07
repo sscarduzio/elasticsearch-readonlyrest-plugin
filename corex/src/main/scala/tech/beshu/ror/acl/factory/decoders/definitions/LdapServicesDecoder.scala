@@ -19,8 +19,8 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSear
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.acl.domain.Secret
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
@@ -165,10 +165,14 @@ object LdapServicesDecoder {
     }
 
   private val userGroupsSearchFilterConfigDecoder: Decoder[UserGroupsSearchFilterConfig] =
-    // todo: not or. Need new combinator xor
-    defaultGroupsSearchModeDecoder
-      .or(groupsFromUserAttributeModeDecoder)
-      .map(UserGroupsSearchFilterConfig.apply)
+    Decoder.instance { c =>
+      for {
+        useGroupsFromUser <- c.downField("groups_from_user").as[Option[Boolean]]
+        config <-
+          if (useGroupsFromUser.getOrElse(false)) groupsFromUserAttributeModeDecoder.tryDecode(c)
+          else defaultGroupsSearchModeDecoder.tryDecode(c)
+      } yield UserGroupsSearchFilterConfig(config)
+    }
 
   private val connectionConfigDecoder: Decoder[LdapConnectionConfig] = {
     implicit val _ = positiveValueDecoder[Int]
@@ -179,14 +183,14 @@ object LdapServicesDecoder {
           poolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
           connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
           requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[FiniteDuration Refined Positive]]
-          sslOpt <- sslSettingsDecoder.tryDecode(c)
+          trustAllCertsOps <- c.downField("ssl_trust_all_certs").as[Option[Boolean]]
           bindRequestUser <- bindRequestUserDecoder.tryDecode(c)
         } yield LdapConnectionConfig(
           connectionMethod,
           poolSize.getOrElse(refineV[Positive].unsafeFrom(30)),
           connectionTimeout.getOrElse(refineV[Positive].unsafeFrom(1 second)),
           requestTimeout.getOrElse(refineV[Positive].unsafeFrom(1 second)),
-          sslOpt,
+          trustAllCertsOps.getOrElse(false),
           bindRequestUser
         )
       }
@@ -201,22 +205,31 @@ object LdapServicesDecoder {
           haMethod <- c.downField("ha").as[Option[HaMethod]]
         } yield (hostOpt, hostsOpt) match {
           case (Some(host), None) =>
-            Right(SingleServer(host))
+            haMethod match {
+              case None =>
+                Right(SingleServer(host))
+              case Some(_) =>
+                Left(DefinitionsLevelCreationError(Message(s"Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
+            }
           case (None, Some(hostsList)) =>
             NonEmptySet.fromSet(SortedSet.empty[LdapHost] ++ hostsList) match {
-              case Some(hosts) =>
+              case Some(hosts) if allHostsWithTheSameSchema(hosts) =>
                 Right(SeveralServers(hosts, haMethod.getOrElse(HaMethod.Failover)))
+              case Some(_) =>
+                Left(DefinitionsLevelCreationError(Message(s"The list of LDAP servers should be either all 'ldaps://' or all 'ldap://")))
               case None =>
-                Left(ValueLevelCreationError(Message(s"Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
+                Left(DefinitionsLevelCreationError(Message(s"Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
             }
           case (Some(_), Some(_)) =>
-            Left(ValueLevelCreationError(Message(s"Cannot accept single server settings (host,port) AND multi server configuration (servers/hosts) at the same time.")))
+            Left(DefinitionsLevelCreationError(Message(s"Cannot accept single server settings (host,port) AND multi server configuration (servers/hosts) at the same time.")))
           case (None, None) =>
-            Left(ValueLevelCreationError(Message(s"Server information missing: use either 'host' and 'port' or 'servers'/'hosts' option.")))
+            Left(DefinitionsLevelCreationError(Message(s"Server information missing: use either 'host' and 'port' or 'servers'/'hosts' option.")))
         }
       }
       .emapE[ConnectionMethod](identity)
       .decoder
+
+  private def allHostsWithTheSameSchema(hosts: NonEmptySet[LdapHost]) = hosts.toList.map(_.isSecure).distinct.length == 1
 
   private implicit val haMethodDecoder: Decoder[HaMethod] =
     SyncDecoderCreator
@@ -225,7 +238,7 @@ object LdapServicesDecoder {
       .emapE[HaMethod] {
       case "FAILOVER" => Right(HaMethod.Failover)
       case "ROUND_ROBIN" => Right(HaMethod.RoundRobin)
-      case unknown => Left(ValueLevelCreationError(Message(s"Unknown HA method '$unknown'")))
+      case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown HA method '$unknown'")))
     }
       .decoder
 
@@ -235,7 +248,7 @@ object LdapServicesDecoder {
         .toSyncDecoder
         .emapE {
           case Some(host) => Right(host)
-          case None => Left(AclCreationError.ValueLevelCreationError(Message("Cannot parse LDAP host")))
+          case None => Left(AclCreationError.DefinitionsLevelCreationError(Message("Cannot parse LDAP host")))
         }
         .decoder
     }
@@ -245,8 +258,13 @@ object LdapServicesDecoder {
         .instance { c =>
           for {
             host <- c.downField("host").as[String]
-            port <- c.downField("port").as[Option[Port]]
-          } yield LdapHost.from(s"$host:${port.getOrElse(Port(389).get)}")
+            portOpt <- c.downField("port").as[Option[Port]]
+            sslEnabledOpt <- c.downField("ssl_enabled").as[Option[Boolean]]
+          } yield {
+            val sslEnabled = sslEnabledOpt.getOrElse(true)
+            val port = portOpt.getOrElse(Port(389).get)
+            LdapHost.from(s"${if(sslEnabled) "ldaps" else "ldap"}://$host:$port")
+          }
         }
     }
     val hostSocketAddressFromOneFieldDecoder = withLdapHostCreationError {
@@ -255,18 +273,6 @@ object LdapServicesDecoder {
         .map(LdapHost.from)
     }
     ldapHostFromTwoFieldsDecoder or hostSocketAddressFromOneFieldDecoder
-  }
-
-  private lazy val sslSettingsDecoder: Decoder[Option[SslSettings]] = {
-    Decoder.instance { c =>
-      for {
-        ssl <- c.downField("ssl_enabled").as[Option[Boolean]]
-        trustAllCerts <- c.downField("ssl_trust_all_certs").as[Option[Boolean]]
-      } yield ssl match {
-        case Some(true) => Some(SslSettings(trustAllCerts.getOrElse(false)))
-        case Some(false) | None => None
-      }
-    }
   }
 
   private implicit lazy val dnDecoder: Decoder[Dn] = DecoderHelpers.decodeStringLikeNonEmpty.map(Dn.apply)
@@ -283,7 +289,7 @@ object LdapServicesDecoder {
       .emapE[BindRequestUser] {
       case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, Secret(secret)))
       case (None, None) => Right(BindRequestUser.NoUser)
-      case (_, _) => Left(ValueLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
+      case (_, _) => Left(DefinitionsLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
     }
       .decoder
   }

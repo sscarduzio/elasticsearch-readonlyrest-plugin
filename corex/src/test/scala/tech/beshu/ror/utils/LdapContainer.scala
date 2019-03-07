@@ -7,7 +7,7 @@ import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
-import tech.beshu.ror.acl.utils.ScalaOps
+import tech.beshu.ror.acl.utils.ScalaOps.retryBackoff
 import tech.beshu.ror.utils.LdapContainer.{defaults, ldapWaitStrategy}
 
 import scala.concurrent.duration._
@@ -20,13 +20,15 @@ class LdapContainer(name: String, ldapInitScript: String)
     env = Map(
       "LDAP_ORGANISATION" -> defaults.ldap.organisation,
       "LDAP_DOMAIN" -> defaults.ldap.domain,
-      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword
+      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
+      "LDAP_TLS_CIPHER_SUITE" -> "NORMAL"
     ),
     exposedPorts = Seq(defaults.ldap.port),
     waitStrategy = Some(ldapWaitStrategy(name, ldapInitScript))
   ) {
 
   def ldapPort: Int = this.mappedPort(defaults.ldap.port)
+  def ldapSSLPort: Int = this.mappedPort(defaults.ldap.sslPort)
   def ldapHost: String = this.containerIpAddress
 }
 
@@ -37,8 +39,7 @@ object LdapContainer extends StrictLogging {
       logger.info(s"Waiting for LDAP container '$name' ...")
       Task(getClass.getResourceAsStream(ldapInitScript))
         .bracket(stream =>
-          ScalaOps
-            .retryBackoff(ldapInitiate(stream), 15, 1 second)
+          retryBackoff(ldapInitiate(stream), 15, 1 second, 1)
         )(stream =>
           Task(stream.close())
         )
@@ -97,6 +98,7 @@ object LdapContainer extends StrictLogging {
 
     object ldap {
       val port = 389
+      val sslPort = 636
       val domain = "example.com"
       val organisation = "example"
       val adminName = "admin"

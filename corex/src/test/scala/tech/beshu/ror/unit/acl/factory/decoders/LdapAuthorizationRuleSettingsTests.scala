@@ -15,6 +15,9 @@ class LdapAuthorizationRuleSettingsTests extends BaseRuleSettingsDecoderTest[Lda
       }
     }
     "not be able to be loaded from config" when {
+      "no LDAP service with given name is defined" in {
+
+      }
       "groups are not defined" in {
 
       }
