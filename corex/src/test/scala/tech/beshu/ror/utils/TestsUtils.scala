@@ -47,6 +47,13 @@ object TestsUtils {
     }
   }
 
+  sealed trait AssertionType
+  object AssertionType {
+    final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
+    object RuleRejected extends AssertionType
+    final case class RuleThrownException(exception: Throwable) extends AssertionType
+  }
+
   def headerFrom(nameAndValue: (String, String)): Header = {
     (NonEmptyString.unapply(nameAndValue._1), NonEmptyString.unapply(nameAndValue._2)) match {
       case (Some(nameNes), Some(valueNes)) => Header(Name(nameNes), valueNes)

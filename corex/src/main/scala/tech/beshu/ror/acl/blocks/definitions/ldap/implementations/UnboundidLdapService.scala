@@ -279,7 +279,7 @@ object LdapConnectionConfig {
 
   sealed trait BindRequestUser
   object BindRequestUser {
-    case object NoUser extends BindRequestUser
+    case object Anonymous extends BindRequestUser
     final case class CustomUser(dn: Dn, password: Secret) extends BindRequestUser
   }
 

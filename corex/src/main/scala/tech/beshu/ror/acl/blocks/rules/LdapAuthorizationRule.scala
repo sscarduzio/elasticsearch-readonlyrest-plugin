@@ -1,15 +1,15 @@
 package tech.beshu.ror.acl.blocks.rules
 
+import cats.data.NonEmptySet
 import cats.implicits._
-import cats.data.{NonEmptySet, OptionT}
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthorizationService
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 import tech.beshu.ror.acl.blocks.rules.LdapAuthorizationRule.Settings
 import tech.beshu.ror.acl.domain.{Group, LoggedUser}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 
 import scala.collection.SortedSet
@@ -54,7 +54,7 @@ class LdapAuthorizationRule(val settings: Settings)
 }
 
 object LdapAuthorizationRule {
-  val name = Rule.Name("ldap_authentication")
+  val name = Rule.Name("ldap_authorization")
 
   final case class Settings(ldap: LdapAuthorizationService,
                             permittedGroups: NonEmptySet[Group]) // todo: shouldn't group be variable?

@@ -1,7 +1,7 @@
 package tech.beshu.ror.acl.blocks.definitions.ldap.implementations
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import monix.eval.Task
@@ -41,7 +41,9 @@ object LdapConnectionPoolProvider extends Logging {
             retry(
               Task(server.getConnection)
                 .bracket(
-                  use = connection => Task(connection.bind(bindReq))
+                  use = connection => Task {
+                    connection.bind(bindReq)
+                  }
                 )(
                   release = connection => Task(connection.close())
                 )
@@ -49,6 +51,7 @@ object LdapConnectionPoolProvider extends Logging {
               .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
               .recover { case NonFatal(ex) =>
                 logger.debug("LDAP binding exception", ex)
+                println(s"EXXX $ex")
                 (host, false)
               }
           }
@@ -61,9 +64,11 @@ object LdapConnectionPoolProvider extends Logging {
       }
   }
 
-  def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = Task {
-    val serverSet = ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig), connectionConfig.trustAllCerts)
-    new LDAPConnectionPool(serverSet, bindRequest(connectionConfig.bindRequestUser), connectionConfig.poolSize.value)
+  def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = retry {
+    Task {
+      val serverSet = ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig), connectionConfig.trustAllCerts)
+      new LDAPConnectionPool(serverSet, bindRequest(connectionConfig.bindRequestUser), connectionConfig.poolSize.value)
+    }
   }
 
   private def ldapOptions(connectionConfig: LdapConnectionConfig) = {
@@ -109,12 +114,13 @@ object LdapConnectionPoolProvider extends Logging {
   }
 
   private def socketFactory(trustAllCerts:Boolean) = {
+    SSLUtil.setDefaultSSLProtocol("TLSv1.2")
     val sslUtil = if (trustAllCerts) new SSLUtil(new TrustAllTrustManager) else new SSLUtil()
     sslUtil.createSSLSocketFactory
   }
 
   private def bindRequest(bindRequestUser: BindRequestUser) = bindRequestUser match {
-    case BindRequestUser.NoUser => new SimpleBindRequest()
+    case BindRequestUser.Anonymous => new SimpleBindRequest()
     case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value)
   }
 }

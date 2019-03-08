@@ -42,14 +42,16 @@ object LdapAuthenticationRuleDecoder {
 
   private def simpleLdapAuthenticationNameAndLocalConfig: Decoder[(LdapService.Name, Option[FiniteDuration Refined Positive])] =
     LdapServicesDecoder.nameDecoder
-      .map((_, None))
+      .map { case e =>
+        (e, None)
+      }
 
   private def complexLdapAuthenticationServiceNameAndLocalConfig: Decoder[(LdapService.Name, Option[FiniteDuration Refined Positive])] = {
     Decoder
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          ttl <- c.downField("cache_ttl_in_sec").as[FiniteDuration Refined Positive]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[FiniteDuration Refined Positive]
         } yield (name, Option(ttl))
       }
       .toSyncDecoder
@@ -73,7 +75,7 @@ object LdapAuthorizationRuleDecoder {
         for {
           name <- c.downField("name").as[LdapService.Name]
           groups <- c.downField("groups").as[NonEmptySet[Group]]
-          ttl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups)
       }
       .toSyncDecoder
@@ -105,7 +107,7 @@ object LdapAuthRuleDecoder {
         for {
           name <- c.downField("name").as[LdapService.Name]
           groups <- c.downField("groups").as[NonEmptySet[Group]]
-          ttl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups)
       }
       .toSyncDecoder

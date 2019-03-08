@@ -42,7 +42,7 @@ object LdapServicesDecoder {
 
   private implicit lazy val cachableLdapServiceDecoder: AsyncDecoder[LdapService] =
     AsyncDecoderCreator.instance { c =>
-     c.downField("cache_ttl_in_sec")
+     c.downFields("cache_ttl_in_sec", "cache_ttl")
         .as[Option[FiniteDuration Refined Positive]]
         .map {
           case Some(ttl) =>
@@ -188,8 +188,8 @@ object LdapServicesDecoder {
         } yield LdapConnectionConfig(
           connectionMethod,
           poolSize.getOrElse(refineV[Positive].unsafeFrom(30)),
-          connectionTimeout.getOrElse(refineV[Positive].unsafeFrom(1 second)),
-          requestTimeout.getOrElse(refineV[Positive].unsafeFrom(1 second)),
+          connectionTimeout.getOrElse(refineV[Positive].unsafeFrom(10 second)),
+          requestTimeout.getOrElse(refineV[Positive].unsafeFrom(10 second)),
           trustAllCertsOps.getOrElse(false),
           bindRequestUser
         )
@@ -288,7 +288,7 @@ object LdapServicesDecoder {
       .toSyncDecoder
       .emapE[BindRequestUser] {
       case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, Secret(secret)))
-      case (None, None) => Right(BindRequestUser.NoUser)
+      case (None, None) => Right(BindRequestUser.Anonymous)
       case (_, _) => Left(DefinitionsLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
     }
       .decoder

@@ -107,7 +107,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
           groupsJsonPath <- c.downField("response_groups_json_path").as[JsonPath]
           defaultQueryParams <- c.downField("default_query_parameters").as[Option[Set[QueryParam]]]
           defaultHeaders <- c.downField("default_headers").as[Option[Set[Header]]]
-          cacheTtl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
+          cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
         } yield {
           val httpClient = httpClientFactory.create(Config(validate.getOrElse(defaults.validate)))
