@@ -20,7 +20,7 @@ package tech.beshu.ror.commons.settings;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.LoaderOptions;
+//import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
@@ -36,8 +36,11 @@ public class SettingsUtils {
   private static Yaml yamlLoader;
 
   static {
+    // #TODO Elasticsearch ships with an old version of snakeyaml, so it's not yet possible to avoid duplicate keys in Yaml
+
     DumperOptions dumperOptions = new DumperOptions();
-    LoaderOptions loaderOptions = new LoaderOptions();
+    //LoaderOptions loaderOptions = new LoaderOptions();
+    //loaderOptions.setAllowDuplicateKeys(false);
     dumperOptions.setExplicitEnd(false);
     dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.AUTO);
     dumperOptions.setIndent(2);
@@ -45,9 +48,8 @@ public class SettingsUtils {
     dumperOptions.setCanonical(false);
     dumperOptions.setPrettyFlow(false);
     dumperOptions.setExplicitStart(false);
-    loaderOptions.setAllowDuplicateKeys(false);
     yamlDumper = new Yaml(dumperOptions);
-    yamlLoader = new Yaml(loaderOptions);
+    yamlLoader = yamlDumper; //new Yaml(loaderOptions);
   }
 
   public static String map2yaml(Map<String, ?> map) {
