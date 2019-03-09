@@ -8,6 +8,7 @@ import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
 import TaskOps._
+import scala.concurrent.ExecutionContext._
 
 class CacheableAction[K, V](ttl: FiniteDuration Refined Positive,
                                     action: K => Task[V])
@@ -18,6 +19,7 @@ class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positi
                                                       keyMap: K => K1) {
 
   private val cache = Scaffeine()
+    .executor(global)
     .expireAfterWrite(ttl.value)
     .build[K, V]
 

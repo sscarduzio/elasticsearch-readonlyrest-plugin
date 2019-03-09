@@ -248,8 +248,9 @@ class CoreFactory(implicit clock: Clock,
         }
         staticContext <- AsyncDecoderCreator.from(aclStaticContextDecoder(blocks))
         acl = {
-          blocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-          new SequentialAcl(blocks): Acl
+          val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
+          upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
+          new SequentialAcl(upgradedBlocks): Acl
         }
       } yield (acl, staticContext)
       decoder.apply(c)

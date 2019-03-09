@@ -30,12 +30,15 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
           Refined.unsafeApply(5 seconds),
           Refined.unsafeApply(5 seconds),
           trustAllCerts = false,
-          BindRequestUser.Anonymous
+          BindRequestUser.CustomUser(
+            Dn("cn=admin,dc=example,dc=com".nonempty),
+            Secret("password")
+          )
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty)
       )
       inside(ldapServiceTask.runSyncUnsafe()) { case Right(service) =>
-        service.authenticate(User.Id("Eric Cartman"), Secret("user2")).runSyncUnsafe() should be (true)
+        service.authenticate(User.Id("morgan"), Secret("user1")).runSyncUnsafe() should be (true)
       }
     }
   }

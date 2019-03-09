@@ -36,6 +36,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mockLdapAuthorizationService(User.Id("user1"), Task.now(Set(Group("g1".nonempty)))),
+            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = basicAuthHeader("user1:pass")
@@ -54,6 +55,7 @@ class LdapAuthRuleTests
           authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
+            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = None
@@ -66,6 +68,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
+            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
@@ -78,6 +81,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mockLdapAuthorizationService(User.Id("user1"), Task.now(Set.empty)),
+            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
@@ -90,6 +94,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
+            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
@@ -103,6 +108,7 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mockLdapAuthorizationService(User.Id("user1"), Task.raiseError(TestException("authorization failure"))),
+            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = basicAuthHeader("user1:pass"),

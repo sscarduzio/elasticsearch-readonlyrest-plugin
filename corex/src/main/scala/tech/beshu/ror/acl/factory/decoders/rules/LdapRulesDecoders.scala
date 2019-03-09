@@ -42,17 +42,15 @@ object LdapAuthenticationRuleDecoder {
 
   private def simpleLdapAuthenticationNameAndLocalConfig: Decoder[(LdapService.Name, Option[FiniteDuration Refined Positive])] =
     LdapServicesDecoder.nameDecoder
-      .map { case e =>
-        (e, None)
-      }
+      .map((_, None))
 
   private def complexLdapAuthenticationServiceNameAndLocalConfig: Decoder[(LdapService.Name, Option[FiniteDuration Refined Positive])] = {
     Decoder
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[FiniteDuration Refined Positive]
-        } yield (name, Option(ttl))
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
+        } yield (name, ttl)
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
@@ -85,11 +83,11 @@ object LdapAuthorizationRuleDecoder {
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService](ldapDefinitions.items, name, LdapAuthorizationRule.name)
             .map(new CacheableLdapAuthorizationServiceDecorator(_, ttl))
-            .map(LdapAuthorizationRule.Settings(_, groups))
+            .map(LdapAuthorizationRule.Settings(_, groups, groups))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService](ldapDefinitions.items, name, LdapAuthorizationRule.name)
-            .map(LdapAuthorizationRule.Settings(_, groups))
+            .map(LdapAuthorizationRule.Settings(_, groups, groups))
       }
       .decoder
 }
@@ -128,7 +126,7 @@ object LdapAuthRuleDecoder {
   private def createLdapAuthRule(ldapService: LdapAuthService, groups: NonEmptySet[Group]) = {
     new LdapAuthRule(
       new LdapAuthenticationRule(LdapAuthenticationRule.Settings(ldapService)),
-      new LdapAuthorizationRule(LdapAuthorizationRule.Settings(ldapService, groups))
+      new LdapAuthorizationRule(LdapAuthorizationRule.Settings(ldapService, groups, groups))
     )
   }
 }

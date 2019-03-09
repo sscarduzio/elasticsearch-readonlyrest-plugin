@@ -71,8 +71,10 @@ object LdapContainer extends StrictLogging {
           entries.map { entry =>
             Task(connection.add(new AddRequest(entry.toLDIF: _*)))
               .flatMap {
-                case result if result.getResultCode == ResultCode.SUCCESS => Task.now(())
-                case result => Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
+                case result if result.getResultCode == ResultCode.SUCCESS =>
+                  Task.now(())
+                case result =>
+                  Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
               }
           }
         }

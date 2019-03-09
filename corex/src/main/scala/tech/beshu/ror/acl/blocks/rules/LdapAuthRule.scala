@@ -6,8 +6,8 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 
-class LdapAuthRule(authentication: LdapAuthenticationRule,
-                   authorization: LdapAuthorizationRule)
+class LdapAuthRule(val authentication: LdapAuthenticationRule,
+                   val authorization: LdapAuthorizationRule)
   extends AuthenticationRule with AuthorizationRule {
 
   override val name: Rule.Name = LdapAuthRule.name

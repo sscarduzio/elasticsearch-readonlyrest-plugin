@@ -34,28 +34,36 @@ class LdapAuthorizationRule(val settings: Settings)
     settings
       .ldap
       .groupsOf(user.id)
-      .map(_.intersect(settings.permittedGroups.toSortedSet))
       .map(groups => NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups))
       .map {
         case None =>
           Unauthorized
-        case Some(availableGroups) =>
-          blockContext.currentGroup match {
-            case Some(currentGroup) if !availableGroups.contains(currentGroup) =>
-              Unauthorized
-            case Some(currentGroup) =>
-              Authorized(currentGroup, availableGroups)
+        case Some(ldapGroups) =>
+          NonEmptySet.fromSet(SortedSet.empty[Group] ++ ldapGroups.intersect(settings.permittedGroups)) match {
             case None =>
-              Authorized(pickCurrentGroupFrom(availableGroups), availableGroups)
+              Unauthorized
+            case Some(availableGroups) =>
+              blockContext.currentGroup match {
+                case Some(currentGroup) if !availableGroups.contains(currentGroup) =>
+                  Unauthorized
+                case Some(currentGroup) =>
+                  Authorized(currentGroup, allLdapGroupsIntersection(ldapGroups))
+                case None =>
+                  Authorized(pickCurrentGroupFrom(availableGroups), allLdapGroupsIntersection(ldapGroups))
+              }
           }
       }
   }
 
+  private def allLdapGroupsIntersection(availableGroups: NonEmptySet[Group]) = {
+    NonEmptySet.fromSetUnsafe(settings.allLdapGroups.intersect(availableGroups))
+  }
 }
 
 object LdapAuthorizationRule {
   val name = Rule.Name("ldap_authorization")
 
   final case class Settings(ldap: LdapAuthorizationService,
-                            permittedGroups: NonEmptySet[Group]) // todo: shouldn't group be variable?
+                            permittedGroups: NonEmptySet[Group],
+                            allLdapGroups: NonEmptySet[Group])
 }

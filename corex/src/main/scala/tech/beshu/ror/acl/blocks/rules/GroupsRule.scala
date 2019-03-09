@@ -98,12 +98,17 @@ class GroupsRule(val settings: Settings)
         .authenticationRule
         .check(requestContext, blockContext)
         .map {
-          case RuleResult.Rejected => None
-          case RuleResult.Fulfilled(newBlockContext) => Some {
-            newBlockContext
-              .withAddedAvailableGroups(userDef.groups)
-              .withCurrentGroup(pickCurrentGroupFrom(resolvedGroups))
-          }
+          case RuleResult.Rejected =>
+            None
+          case RuleResult.Fulfilled(newBlockContext) =>
+            newBlockContext.loggedUser match {
+              case Some(loggedUser) if loggedUser.id === userDef.id => Some {
+                newBlockContext
+                  .withAddedAvailableGroups(userDef.groups)
+                  .withCurrentGroup(pickCurrentGroupFrom(resolvedGroups))
+              }
+              case None => None
+            }
         }
         .onErrorRecover { case ex =>
           logger.debug(s"Authentication error; req=${requestContext.id.show}", ex)
