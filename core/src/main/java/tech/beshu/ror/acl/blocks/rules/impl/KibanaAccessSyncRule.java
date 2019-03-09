@@ -56,7 +56,8 @@ public class KibanaAccessSyncRule extends SyncRule {
       "indices:data/write/index",
       "indices:data/write/update*",
       "indices:data/write/bulk*",
-      "indices:admin/template/*"
+      "indices:admin/template/*",
+      "cluster:admin/settings/*"
   ));
 
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
@@ -132,6 +133,17 @@ public class KibanaAccessSyncRule extends SyncRule {
       return MATCH;
     }
 
+    if (
+        (!rc.involvesIndices() || rc.getIndices().isEmpty()) &&
+            (
+                (canModifyKibana && RW.match(rc.getAction()) ||
+                    (isAdmin && ADMIN.match(rc.getAction()))
+                )
+            )
+    ) {
+      return MATCH;
+    }
+
     if (canModifyKibana && rc.involvesIndices() && rc.getIndices().size() == 1 && rc.getIndices().iterator().next().startsWith("kibana_sample_data_")) {
       return MATCH;
     }
@@ -150,7 +162,7 @@ public class KibanaAccessSyncRule extends SyncRule {
         targetsKibana && !roStrict && !canModifyKibana &&
             nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
             (rc.getAction().startsWith("indices:data/write/") || rc.getAction().startsWith("indices:admin/template/put"))
-        ) {
+    ) {
       return MATCH;
     }
 

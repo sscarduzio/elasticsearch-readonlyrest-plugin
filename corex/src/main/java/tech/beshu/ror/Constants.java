@@ -105,7 +105,8 @@ public class Constants {
       "indices:data/write/index",
       "indices:data/write/update*",
       "indices:data/write/bulk*",
-      "indices:admin/template/*"
+      "indices:admin/template/*",
+      "cluster:admin/settings/*"
   );
 
   public static final Set<String> ADMIN_ACTIONS = Sets.newHashSet(
