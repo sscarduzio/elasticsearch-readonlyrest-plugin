@@ -20,6 +20,7 @@ package tech.beshu.ror.commons.settings;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import org.yaml.snakeyaml.DumperOptions;
+//import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 
@@ -30,22 +31,31 @@ import java.util.Map;
 public class SettingsUtils {
 
   private final static Gson gson = new Gson();
-  private static DumperOptions options = new DumperOptions();
-  private static Yaml yaml = new Yaml(options);
+
+  private static Yaml yamlDumper;
+  private static Yaml yamlLoader;
 
   static {
-    options.setExplicitEnd(false);
-    options.setDefaultFlowStyle(DumperOptions.FlowStyle.AUTO);
-    options.setIndent(2);
-    options.setWidth(360);
-    options.setCanonical(false);
-    options.setPrettyFlow(false);
-    options.setExplicitStart(false);
+    // #TODO Elasticsearch ships with an old version of snakeyaml, so it's not yet possible to avoid duplicate keys in Yaml
+
+    DumperOptions dumperOptions = new DumperOptions();
+    //LoaderOptions loaderOptions = new LoaderOptions();
+    //loaderOptions.setAllowDuplicateKeys(false);
+    dumperOptions.setExplicitEnd(false);
+    dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.AUTO);
+    dumperOptions.setIndent(2);
+    dumperOptions.setWidth(360);
+    dumperOptions.setCanonical(false);
+    dumperOptions.setPrettyFlow(false);
+    dumperOptions.setExplicitStart(false);
+    yamlDumper = new Yaml(dumperOptions);
+    yamlLoader = yamlDumper; //new Yaml(loaderOptions);
   }
 
-
   public static String map2yaml(Map<String, ?> map) {
-    return yaml.dump(map);
+    // this is already a map, and we don't need to check for duplicate keys.
+    // no need for dump-load-dump for checking
+    return yamlDumper.dump(map);
   }
 
   public static String extractYAMLfromJSONStorage(String jsonWrappedYAML) {
@@ -61,7 +71,7 @@ public class SettingsUtils {
     final Map[] m = new Map[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
-        m[0] = yaml.load(s);
+        m[0] = yamlLoader.load(s);
       } catch (Exception e) {
         logger.error("Cannot parse YAML: " + e.getClass().getSimpleName() + ":" + e.getMessage() + "\n " + s, e);
       }
@@ -79,13 +89,12 @@ public class SettingsUtils {
     return jsonToCommit[0];
   }
 
-
   public static String toJsonStorage(String yaml) {
-
+    // Test for duplicate keys, throw if invalid
+    yamlLoader.load(yaml);
     Map<String, String> tmpMap = Maps.newHashMap();
     tmpMap.put("settings", yaml);
     return map2Json(tmpMap);
-
   }
 
 }

@@ -69,20 +69,20 @@ public class KibanaAccessRuleTests {
 
       System.out.println("trying " + a + " as RO_STRICT");
       TestCase.assertFalse(
-        matchRule(KibanaAccess.RO_STRICT, a, Sets.newHashSet(".kibana"), ".kibana", true)
-          .isMatch()
+          matchRule(KibanaAccess.RO_STRICT, a, Sets.newHashSet(".kibana"), ".kibana", true)
+              .isMatch()
       );
 
       System.out.println("trying " + a + " as RO");
       TestCase.assertFalse(
-        matchRule(KibanaAccess.RO, a, Sets.newHashSet(".kibana"), ".kibana", true)
-          .isMatch()
+          matchRule(KibanaAccess.RO, a, Sets.newHashSet(".kibana"), ".kibana", true)
+              .isMatch()
       );
 
       System.out.println("trying " + a + " as RW");
       assertTrue(
-        matchRule(KibanaAccess.RW, a, Sets.newHashSet(".kibana"), ".kibana", true)
-          .isMatch()
+          matchRule(KibanaAccess.RW, a, Sets.newHashSet(".kibana"), ".kibana", true)
+              .isMatch()
       );
     }
   }
@@ -99,6 +99,7 @@ public class KibanaAccessRuleTests {
   @Test
   public void testRWotherIndices() {
     for (String action : KibanaAccessSyncRule.RW.getMatchers()) {
+      System.out.println("testing action " + action);
       TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, Sets.newHashSet("xxx")).isMatch());
       TestCase.assertFalse(matchRule(KibanaAccess.RO, action, Sets.newHashSet("xxx")).isMatch());
       TestCase.assertFalse(matchRule(KibanaAccess.RW, action, Sets.newHashSet("xxx")).isMatch());
@@ -190,6 +191,25 @@ public class KibanaAccessRuleTests {
     assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
   }
 
+  @Test
+  public void testClusterSettingsUpdate() {
+    Set<String> indices = Sets.newHashSet();
+    String action = "cluster:admin/settings/update";
+    String uri = "/_cluster/settings";
+    System.out.println("trying " + action + " as RW");
+    TestCase.assertTrue(matchRule(KibanaAccess.RW, action, indices, ".kibana", false, uri).isMatch());
+    TestCase.assertFalse(matchRule(KibanaAccess.RO, action, indices, ".kibana", false, uri).isMatch());
+  }
+
+  @Test
+  public void testXpackClusterSettingsUpdate() {
+    Set<String> indices = Sets.newHashSet();
+    String action = "cluster:admin/xpack/ccr/auto_follow_pattern/get";
+    String uri = "/_ccr/auto_follow";
+    System.out.println("trying " + action + " as RW");
+    TestCase.assertTrue(matchRule(KibanaAccess.RW, action, indices, ".kibana", false, uri).isMatch());
+    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, ".kibana", false, uri).isMatch());
+  }
 
   private RuleExitResult match(Conf configured, Found found, RequestContext rc, boolean involvesIndices) {
     when(rc.involvesIndices()).thenReturn(involvesIndices);
@@ -199,8 +219,8 @@ public class KibanaAccessRuleTests {
     when(rc.resolveVariable(anyString())).then(invocation -> Optional.of((String) invocation.getArguments()[0]));
 
     SyncRule r = new KibanaAccessSyncRule(
-      new KibanaAccessRuleSettings(configured.accessLevel, configured.kibanaIndex),
-      MockedESContext.INSTANCE
+        new KibanaAccessRuleSettings(configured.accessLevel, configured.kibanaIndex),
+        MockedESContext.INSTANCE
     );
     return r.match(rc);
   }
@@ -214,12 +234,12 @@ public class KibanaAccessRuleTests {
   }
 
   private RuleExitResult matchRule(KibanaAccess accessLevel, String action, Set<String> indices,
-                                   String kibanaIndex, boolean involvesIndices) {
+      String kibanaIndex, boolean involvesIndices) {
     return matchRule(accessLevel, action, indices, kibanaIndex, involvesIndices, "");
   }
 
   private RuleExitResult matchRule(KibanaAccess accessLevel, String action,
-                                   Set<String> indices, String kibanaIndex, boolean involvesIndices, String uri) {
+      Set<String> indices, String kibanaIndex, boolean involvesIndices, String uri) {
     Conf conf = new Conf();
     conf.accessLevel = accessLevel;
     conf.kibanaIndex = kibanaIndex;
@@ -228,7 +248,9 @@ public class KibanaAccessRuleTests {
     found.uri = uri;
     found.action = action;
     found.indices = indices;
-
+    if (indices != null && !indices.isEmpty()) {
+      involvesIndices = true;
+    }
     return match(conf, found, Mockito.mock(RequestContext.class), involvesIndices);
   }
 

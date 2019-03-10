@@ -20,6 +20,7 @@ package tech.beshu.ror.acl.blocks.rules.impl;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.acl.blocks.rules.RuleExitResult;
 import tech.beshu.ror.acl.blocks.rules.SyncRule;
+import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.shims.es.ESContext;
 import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
@@ -55,10 +56,8 @@ public class IndicesSyncRule extends SyncRule {
     this.zKindexFilter = new ZeroKnowledgeIndexFilter(true);
   }
 
-
   @Override
   public RuleExitResult match(RequestContext src) {
-
     logger.debug("Stage -1");
     if (!src.involvesIndices() || settings.getIndicesUnwrapped().contains("*")) {
       return MATCH;
@@ -73,13 +72,24 @@ public class IndicesSyncRule extends SyncRule {
     );
 
     // Cross cluster search awareness
-    if (src.isReadRequest() && ( "indices:data/read/search".equals(src.getAction()) ||
-        "indices:data/read/msearch".equals(src.getAction()))){
+    if (src.isReadRequest() && ("indices:data/read/search".equals(src.getAction()) ||
+        "indices:data/read/msearch".equals(src.getAction()))) {
 
       // Fork the indices list in remote and local
       Map<Boolean, List<String>> map = src.getIndices().stream().collect(Collectors.partitioningBy(s -> s.contains(":")));
       Set<String> crossClusterIndices = Sets.newHashSet(map.get(true));
       Set<String> localIndices = Sets.newHashSet(map.get(false));
+
+      Set<String> indices = src.getIndices();
+
+      if (System.getProperty(Constants.PROP_HAS_REMOTE_CLUSTERS) == null) {
+        // Only requested X-cluster when we don't have remote, will return empty.
+        if (indices.size() == crossClusterIndices.size()) {
+          return MATCH;
+        }
+        // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.
+        crossClusterIndices.clear();
+      }
 
       // Scatter gather for local and remote indices barring algorithms
       if (!crossClusterIndices.isEmpty()) {
@@ -120,11 +130,9 @@ public class IndicesSyncRule extends SyncRule {
   // Is a request or sub-request free from references to any forbidden indices?
   private <T extends RequestContext> boolean canPass(T src, MatcherWithWildcards matcher) {
 
-
     // if ("indices:data/read/search".equals(src.getAction()) && src.shouldConsiderRemoteClustersSearch()) {
 
     Set<String> indices = Sets.newHashSet(src.getTransientIndices());
-
 
     // 1. Requesting none or all the indices means requesting allowed indices that exist.
     logger.debug("Stage 0");

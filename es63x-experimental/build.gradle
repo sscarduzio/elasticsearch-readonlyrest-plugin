@@ -28,7 +28,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath group: 'nl.javadude.gradle.plugins',  name: 'license-gradle-plugin',      version: '0.10.0'
+        classpath group: 'nl.javadude.gradle.plugins',  name: 'license-gradle-plugin', version: '0.10.0'
     }
 }
 

@@ -56,7 +56,8 @@ public class KibanaAccessSyncRule extends SyncRule {
       "indices:data/write/index",
       "indices:data/write/update*",
       "indices:data/write/bulk*",
-      "indices:admin/template/*"
+      "indices:admin/template/*",
+      "cluster:admin/settings/*"
   ));
 
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
@@ -69,7 +70,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       "cluster:monitor/main",
       "cluster:monitor/health",
       "cluster:monitor/state",
-      "cluster:monitor/xpack/*",
+      "cluster:*/xpack/*",
       "indices:admin/template/get*"
   ));
 
@@ -116,7 +117,9 @@ public class KibanaAccessSyncRule extends SyncRule {
   }
 
   private RuleExitResult doMatch(RequestContext rc) {
+
     Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
+    String action = rc.getAction();
 
     if (Constants.REST_METADATA_PATH.equals(rc.getUri())) {
       return MATCH;
@@ -128,11 +131,22 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
 
     // Any index, read op
-    if (RO.match(rc.getAction()) || CLUSTER.match(rc.getAction())) {
+    if (RO.match(action) || CLUSTER.match(action)) {
       return MATCH;
     }
 
-    if (canModifyKibana && rc.involvesIndices() && rc.getIndices().size() == 1 && rc.getIndices().iterator().next().startsWith("kibana_sample_data_")) {
+    if (
+        (indices.isEmpty()) &&
+            (
+                (canModifyKibana && RW.match(action) ||
+                    (isAdmin && ADMIN.match(action))
+                )
+            )
+    ) {
+      return MATCH;
+    }
+
+    if (canModifyKibana && indices.size() == 1 && indices.iterator().next().startsWith("kibana_sample_data_")) {
       return MATCH;
     }
 
@@ -150,7 +164,7 @@ public class KibanaAccessSyncRule extends SyncRule {
         targetsKibana && !roStrict && !canModifyKibana &&
             nonStrictAllowedPaths.matcher(rc.getUri()).find() &&
             (rc.getAction().startsWith("indices:data/write/") || rc.getAction().startsWith("indices:admin/template/put"))
-        ) {
+    ) {
       return MATCH;
     }
 

@@ -27,25 +27,35 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Map;
 
+// import org.yaml.snakeyaml.LoaderOptions;
+
 public class SettingsUtils {
 
   private final static Gson gson = new Gson();
-  private static DumperOptions options = new DumperOptions();
-  private static Yaml yaml = new Yaml(options);
+
+  private static Yaml yamlDumper;
+  private static Yaml yamlLoader;
 
   static {
-    options.setExplicitEnd(false);
-    options.setDefaultFlowStyle(DumperOptions.FlowStyle.AUTO);
-    options.setIndent(2);
-    options.setWidth(360);
-    options.setCanonical(false);
-    options.setPrettyFlow(false);
-    options.setExplicitStart(false);
+    DumperOptions dumperOptions = new DumperOptions();
+    // #TODO Elasticsearch ships with an old version of snakeyaml, so it's not yet possible to avoid duplicate keys in Yaml
+    //  LoaderOptions loaderOptions = new LoaderOptions();
+    //  loaderOptions.setAllowDuplicateKeys(false);
+    dumperOptions.setExplicitEnd(false);
+    dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.AUTO);
+    dumperOptions.setIndent(2);
+    dumperOptions.setWidth(360);
+    dumperOptions.setCanonical(false);
+    dumperOptions.setPrettyFlow(false);
+    dumperOptions.setExplicitStart(false);
+    yamlDumper = new Yaml(dumperOptions);
+    yamlLoader = yamlDumper; // new Yaml(loaderOptions);
   }
 
-
   public static String map2yaml(Map<String, ?> map) {
-    return yaml.dump(map);
+    // this is already a map, and we don't need to check for duplicate keys.
+    // no need for dump-load-dump for checking
+    return yamlDumper.dump(map);
   }
 
   public static String extractYAMLfromJSONStorage(String jsonWrappedYAML) {
@@ -61,7 +71,7 @@ public class SettingsUtils {
     final Map[] m = new Map[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
-        m[0] = yaml.load(s);
+        m[0] = yamlDumper.load(s);
       } catch (Exception e) {
         logger.error("Cannot parse YAML: " + e.getClass().getSimpleName() + ":" + e.getMessage() + "\n " + s, e);
       }
@@ -79,13 +89,12 @@ public class SettingsUtils {
     return jsonToCommit[0];
   }
 
-
   public static String toJsonStorage(String yaml) {
-
+    // Test for duplicate keys, throw if invalid
+    yamlLoader.load(yaml);
     Map<String, String> tmpMap = Maps.newHashMap();
     tmpMap.put("settings", yaml);
     return map2Json(tmpMap);
-
   }
 
 }
