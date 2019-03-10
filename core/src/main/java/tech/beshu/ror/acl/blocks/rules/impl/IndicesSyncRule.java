@@ -84,7 +84,7 @@ public class IndicesSyncRule extends SyncRule {
 
       if (System.getProperty(Constants.PROP_HAS_REMOTE_CLUSTERS) == null) {
         // Only requested X-cluster when we don't have remote, will return empty.
-        if (indices.size() == crossClusterIndices.size()) {
+        if (indices.size() > 0 && indices.size() == crossClusterIndices.size()) {
           return MATCH;
         }
         // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.
