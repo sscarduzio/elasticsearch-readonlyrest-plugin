@@ -70,7 +70,7 @@ public class KibanaAccessSyncRule extends SyncRule {
       "cluster:monitor/main",
       "cluster:monitor/health",
       "cluster:monitor/state",
-      "cluster:monitor/xpack/*",
+      "cluster:*/xpack/*",
       "indices:admin/template/get*"
   ));
 
@@ -117,7 +117,9 @@ public class KibanaAccessSyncRule extends SyncRule {
   }
 
   private RuleExitResult doMatch(RequestContext rc) {
+
     Set<String> indices = rc.involvesIndices() ? rc.getIndices() : Sets.newHashSet();
+    String action = rc.getAction();
 
     if (Constants.REST_METADATA_PATH.equals(rc.getUri())) {
       return MATCH;
@@ -129,22 +131,22 @@ public class KibanaAccessSyncRule extends SyncRule {
     }
 
     // Any index, read op
-    if (RO.match(rc.getAction()) || CLUSTER.match(rc.getAction())) {
+    if (RO.match(action) || CLUSTER.match(action)) {
       return MATCH;
     }
 
     if (
-        (!rc.involvesIndices() || rc.getIndices().isEmpty()) &&
+        (indices.isEmpty()) &&
             (
-                (canModifyKibana && RW.match(rc.getAction()) ||
-                    (isAdmin && ADMIN.match(rc.getAction()))
+                (canModifyKibana && RW.match(action) ||
+                    (isAdmin && ADMIN.match(action))
                 )
             )
     ) {
       return MATCH;
     }
 
-    if (canModifyKibana && rc.involvesIndices() && rc.getIndices().size() == 1 && rc.getIndices().iterator().next().startsWith("kibana_sample_data_")) {
+    if (canModifyKibana && indices.size() == 1 && indices.iterator().next().startsWith("kibana_sample_data_")) {
       return MATCH;
     }
 
