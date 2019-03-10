@@ -8,38 +8,39 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
+import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.acl.domain.{Secret, User}
+import tech.beshu.ror.acl.domain.{Group, Secret, User}
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestContainer with Inside {
+class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestContainer with Inside {
 
   override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
 
-  "An LdapAuthenticationService" should {
-    "has method to authenticate" which {
-      "returns true" when {
-        "user exists in LDAP and its credentials are correct" in {
-          authenticationService.authenticate(User.Id("morgan"), Secret("user1")).runSyncUnsafe() should be(true)
+  "An LdapAuthorizationService" should {
+    "has method to provide user groups" which {
+      "returns non empty set of groups" when {
+        "user has groups" in {
+          authorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be (Set(Group("group2".nonempty), Group("group3".nonempty), Group("groupAll".nonempty)))
         }
       }
-      "returns false" when {
-        "user doesn't exist in LDAP" in {
-          authenticationService.authenticate(User.Id("unknown"), Secret("user1")).runSyncUnsafe() should be(false)
+      "returns empty set of groups" when {
+        "user has no groups" in {
+          authorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be (Set.empty[Group])
         }
-        "user has invalid credentials" in {
-          authenticationService.authenticate(User.Id("morgan"), Secret("invalid_secret")).runSyncUnsafe() should be(false)
+        "there is no user with given name" in {
+          authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be (Set.empty[Group])
         }
       }
     }
   }
 
-  private def authenticationService = {
-    UnboundidLdapAuthenticationService
+  private def authorizationService = {
+    UnboundidLdapAuthorizationService
       .create(
         Name("ldap1".nonempty),
         LdapConnectionConfig(
@@ -53,10 +54,15 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
             Secret("password")
           )
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty)
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
+        UserGroupsSearchFilterConfig(DefaultGroupSearch(
+          Dn("ou=Groups,dc=example,dc=com".nonempty),
+          "cn".nonempty,
+          "uniqueMember".nonempty,
+          "(cn=*)".nonempty
+        ))
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
-
 }

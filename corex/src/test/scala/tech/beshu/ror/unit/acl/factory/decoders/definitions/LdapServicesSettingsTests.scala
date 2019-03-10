@@ -21,7 +21,7 @@ class LdapServicesSettingsTests
 
   override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2)
 
-  "A LdapService" should {
+  "An LdapService" should {
     "be able to be loaded from config" when {
       "one LDAP service is declared" in {
         assertDecodingSuccess(
@@ -108,8 +108,9 @@ class LdapServicesSettingsTests
                |  ldaps:
                |  - name: ldap1
                |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}                          # default 389
+               |    port: ${containerLdap1.ldapSSLPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    ssl_trust_all_certs: true  #xthis is actually not required (but we use openLDAP default cert to test)
            """.stripMargin,
           assertion = { definitions =>
             definitions.items should have size 1
@@ -126,9 +127,10 @@ class LdapServicesSettingsTests
                |  ldaps:
                |  - name: ldap1
                |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}                          # default 389
+               |    port: ${containerLdap1.ldapSSLPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
            """.stripMargin,
           assertion = { definitions =>
             definitions.items should have size 1

@@ -17,7 +17,7 @@ import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 
 class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
 
-  "A LdapAuthenticationRule" should {
+  "An LdapAuthenticationRule" should {
     "match" when {
       "LDAP service authenticates user" in {
         val requestContext = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:pass")))

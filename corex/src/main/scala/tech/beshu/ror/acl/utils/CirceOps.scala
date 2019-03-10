@@ -200,8 +200,6 @@ object CirceOps {
       DecodingFailure(Encoder[AclCreationError].apply(error).noSpaces, Nil)
   }
 
-
-  // todo: move?
   object AclCreationErrorCoders {
     private implicit val config: Configuration = Configuration.default.withDiscriminator("type")
     implicit val aclCreationErrorEncoder: Encoder[AclCreationError] = {

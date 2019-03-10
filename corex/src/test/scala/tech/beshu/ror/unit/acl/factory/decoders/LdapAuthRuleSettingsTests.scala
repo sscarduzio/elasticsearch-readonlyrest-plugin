@@ -16,7 +16,7 @@ class LdapAuthRuleSettingsTests
 
   override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2)
 
-  "A LdapAuthRule" should {
+  "An LdapAuthRule" should {
     "be able to be loaded from config" when {
       "there is LDAP service with given name and groups are defined" in {
         assertDecodingSuccess(

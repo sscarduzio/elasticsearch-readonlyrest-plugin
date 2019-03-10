@@ -25,7 +25,7 @@ fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x-experimental" ]]; then
     echo ">>> es63x-experimental => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es63x-experimental' --tests "tech.beshu.ror.integration.other.*" || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es63x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then

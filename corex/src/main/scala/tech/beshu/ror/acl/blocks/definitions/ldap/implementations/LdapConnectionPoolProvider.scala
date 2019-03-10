@@ -50,8 +50,7 @@ object LdapConnectionPoolProvider extends Logging {
             )
               .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
               .recover { case NonFatal(ex) =>
-                logger.debug("LDAP binding exception", ex)
-                println(s"EXXX $ex")
+                logger.error("LDAP binding exception", ex)
                 (host, false)
               }
           }
@@ -114,7 +113,6 @@ object LdapConnectionPoolProvider extends Logging {
   }
 
   private def socketFactory(trustAllCerts:Boolean) = {
-    SSLUtil.setDefaultSSLProtocol("TLSv1.2")
     val sslUtil = if (trustAllCerts) new SSLUtil(new TrustAllTrustManager) else new SSLUtil()
     sslUtil.createSSLSocketFactory
   }

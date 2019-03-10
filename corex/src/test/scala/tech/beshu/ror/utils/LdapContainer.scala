@@ -20,7 +20,8 @@ class LdapContainer(name: String, ldapInitScript: String)
     env = Map(
       "LDAP_ORGANISATION" -> defaults.ldap.organisation,
       "LDAP_DOMAIN" -> defaults.ldap.domain,
-      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword
+      "LDAP_ADMIN_PASSWORD" -> defaults.ldap.adminPassword,
+      "LDAP_TLS_VERIFY_CLIENT" -> "try"
     ),
     exposedPorts = Seq(defaults.ldap.port),
     waitStrategy = Some(ldapWaitStrategy(name, ldapInitScript))

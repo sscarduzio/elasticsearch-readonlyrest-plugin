@@ -27,7 +27,7 @@ class LdapAuthRuleTests
     with MockFactory
     with BlockContextAssertion[LdapAuthorizationRule.Settings] {
 
-  "A LdapAuthRule" should {
+  "An LdapAuthRule" should {
     "match" when {
       "user can be authenticated and has at least one LDAP group which is permitted" in {
         assertMatchRule(

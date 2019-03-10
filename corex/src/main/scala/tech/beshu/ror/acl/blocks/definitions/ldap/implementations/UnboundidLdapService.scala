@@ -47,10 +47,11 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
         release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
       )
       .map(_.getResultCode == ResultCode.SUCCESS)
-      .onError { case ex => Task {
-        if(logger.delegate.isDebugEnabled) logger.error("LDAP authenticate operation failed", ex)
+      .recover { case ex =>
+        if (logger.delegate.isDebugEnabled) logger.error("LDAP authenticate operation failed", ex)
         else logger.error("LDAP authenticate operation failed")
-      }}
+        false
+      }
   }
 }
 
