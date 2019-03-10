@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration.other;
+package tech.beshu.ror.integration;
 
 import com.mashape.unirest.http.Unirest;
 import org.apache.http.HttpResponse;

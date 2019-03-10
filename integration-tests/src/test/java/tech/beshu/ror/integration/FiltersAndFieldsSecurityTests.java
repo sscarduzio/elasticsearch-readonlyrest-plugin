@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration.other;
+package tech.beshu.ror.integration;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -39,7 +39,7 @@ import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create
 /**
  * We configured filters to return only docs with title field with a certain value a1, b2, c1 etc.
  */
-public class FiltersDocLevelSecurityTests {
+public class FiltersAndFieldsSecurityTests {
 
   private static final String IDX_PREFIX = "testfilter";
 
@@ -47,7 +47,7 @@ public class FiltersDocLevelSecurityTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = create(RorPluginGradleProject.fromSystemProperty(),
-      "/filters/elasticsearch.yml", Optional.of(c -> {
+      "/fls_dls/elasticsearch.yml", Optional.of(c -> {
         insertDoc("a1", c, "a", "title");
         insertDoc("a2", c, "a", "title");
         insertDoc("b1", c, "bandc", "title");
@@ -111,6 +111,7 @@ public class FiltersDocLevelSecurityTests {
     assertFalse(body.contains("b2"));
     assertFalse(body.contains("c1"));
     assertFalse(body.contains("c2"));
+    assertFalse(body.contains("dummy"));
   }
 
   @Test
@@ -122,17 +123,8 @@ public class FiltersDocLevelSecurityTests {
     assertFalse(body.contains("b2"));
     assertFalse(body.contains("c1"));
     assertFalse(body.contains("c2"));
-  }
+    assertFalse(body.contains("dummy"));
 
-  @Test
-  public void testStar() throws Exception {
-    String body = search("/" + IDX_PREFIX + "*/_search", "star");
-    assertTrue(body.contains("a1"));
-    assertFalse(body.contains("a2"));
-    assertFalse(body.contains("b1"));
-    assertFalse(body.contains("b2"));
-    assertFalse(body.contains("c1"));
-    assertFalse(body.contains("c2"));
   }
 
   @Test
@@ -144,6 +136,7 @@ public class FiltersDocLevelSecurityTests {
     assertFalse(body.contains("b2"));
     assertFalse(body.contains("c1"));
     assertTrue(body.contains("c2"));
+    assertFalse(body.contains("dummy"));
   }
 
   @Test
@@ -159,6 +152,7 @@ public class FiltersDocLevelSecurityTests {
     assertFalse(body.contains("\"title\":\"d2\""));
     assertFalse(body.contains("\"nottitle\":\"d1\""));
     assertFalse(body.contains("\"nottitle\":\"d2\""));
+    assertFalse(body.contains("dummy"));
   }
 
   @Test
@@ -171,6 +165,7 @@ public class FiltersDocLevelSecurityTests {
     assertFalse(body.contains("b2"));
     assertFalse(body.contains("c1"));
     assertFalse(body.contains("c2"));
+    assertFalse(body.contains("dummy"));
   }
 
   private String search(String endpoint) throws Exception {

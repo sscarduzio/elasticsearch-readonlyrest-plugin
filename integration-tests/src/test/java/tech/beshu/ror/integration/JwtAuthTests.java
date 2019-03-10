@@ -15,8 +15,9 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration.other;
+package tech.beshu.ror.integration;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
@@ -29,13 +30,15 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 
-public class RorKbnAuthTests {
+public class JwtAuthTests {
 
   private static final String ALGO = "HS256";
   private static final String KEY = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456";
@@ -43,13 +46,13 @@ public class RorKbnAuthTests {
   private static final String WRONG_KEY = "abcdef";
   private static final String SUBJECT = "test";
   private static final String USER_CLAIM = "user";
-  private static final String GROUPS_CLAIM = "groups";
+  private static final String ROLES_CLAIM = "roles";
   private static final String EXP = "exp";
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(), "/ror_kbn_auth/elasticsearch.yml",
+          RorPluginGradleProject.fromSystemProperty(), "/jwt_auth/elasticsearch.yml",
           Optional.empty()
       );
 
@@ -73,9 +76,26 @@ public class RorKbnAuthTests {
 
   @Test
   public void acceptValidTokentWithUserClaim() throws Exception {
-    // Groups claim is mandatory, even if empty
-    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user", GROUPS_CLAIM, "")));
+    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user")));
     assertEquals(200, sc);
+  }
+
+  @Test
+  public void acceptValidTokentWithUserClaimAndCustomHeader() throws Exception {
+    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user")), Optional.of("x-custom-header"), false);
+    assertEquals(200, sc);
+  }
+
+  @Test
+  public void acceptValidTokentWithUserClaimAndCustomHeaderAndCustomHeaderPrefix() throws Exception {
+    int sc = test(makeToken(KEY, makeClaimMap(USER_CLAIM, "user")), Optional.of("x-custom-header2"), Optional.of("x-custom-prefix"));
+    assertEquals(200, sc);
+  }
+
+  @Test
+  public void rejectTokentWithUserClaimAndCustomHeader() throws Exception {
+    int sc = test(makeToken(KEY, makeClaimMap("inexistent_claim", "user")), Optional.of("x-custom-header"), false);
+    assertEquals(401, sc);
   }
 
   @Test
@@ -92,13 +112,17 @@ public class RorKbnAuthTests {
 
   @Test
   public void rejectTokenWithWrongRolesClaim() throws Exception {
-    int sc = test(makeToken(KEY_ROLE, makeClaimMap(GROUPS_CLAIM, "wrong_group")));
+    int sc = test(makeToken(KEY_ROLE, makeClaimMap(ROLES_CLAIM, "role_wrong")));
     assertEquals(401, sc);
   }
 
   @Test
   public void acceptValidTokentWithRolesClaim() throws Exception {
-    int sc = test(makeToken(KEY_ROLE, makeClaimMap(GROUPS_CLAIM, "viewer_group")));
+    List<String> roles = Lists.newArrayList();
+    roles.add("role_viewer");
+    roles.add("something_lol");
+    Optional<String> tok = makeToken(KEY_ROLE, makeClaimMap(USER_CLAIM, "user1", ROLES_CLAIM, roles));
+    int sc = test(tok);
     assertEquals(200, sc);
   }
 
@@ -107,11 +131,13 @@ public class RorKbnAuthTests {
   }
 
   private int test(Optional<String> token, Optional<String> headerName, boolean withBearer) throws Exception {
+    return test(token, headerName, Optional.of(withBearer ? "Bearer " : ""));
+  }
+
+  private int test(Optional<String> token, Optional<String> headerName, Optional<String> headerPrefix) throws Exception {
     RestClient rc = container.getClient();
     HttpGet req = new HttpGet(rc.from("/_cat/indices"));
-    token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), (withBearer ? "Bearer " : "") + t));
-    System.out.println("sending request with auth header: " + req.getFirstHeader("Authorization"));
-
+    token.ifPresent(t -> req.addHeader(headerName.orElse("Authorization"), headerPrefix.orElse("") + t));
     HttpResponse resp = rc.execute(req);
     return resp.getStatusLine().getStatusCode();
   }
@@ -123,7 +149,9 @@ public class RorKbnAuthTests {
   private Optional<String> makeToken(String key, Map<String, Object> claims) {
     JwtBuilder builder = Jwts.builder()
                              .setSubject(SUBJECT)
+                             .setExpiration(new Date(System.currentTimeMillis() * 2))
                              .signWith(SignatureAlgorithm.valueOf(ALGO), key.getBytes());
+
     claims.forEach(builder::claim);
     return Optional.of(builder.compact());
   }
@@ -131,12 +159,8 @@ public class RorKbnAuthTests {
   private Map<String, Object> makeClaimMap(Object... kvs) {
     assert kvs.length % 2 == 0;
     HashMap<String, Object> claims = Maps.newHashMap();
-    for (int i = 0; i < kvs.length; i += 2) {
+    for (int i = 0; i < kvs.length; i += 2)
       claims.put((String) kvs[i], kvs[i + 1]);
-    }
-    if(!claims.containsKey(USER_CLAIM)){
-      claims.put(USER_CLAIM, "user");
-    }
     return claims;
   }
 }

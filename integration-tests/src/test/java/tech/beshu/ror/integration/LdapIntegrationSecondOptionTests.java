@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration.ldap;
+package tech.beshu.ror.integration;
 
 import org.junit.ClassRule;
 import org.junit.Test;
