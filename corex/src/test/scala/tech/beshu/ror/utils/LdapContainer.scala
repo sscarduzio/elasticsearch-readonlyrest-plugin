@@ -32,6 +32,10 @@ class LdapContainer(name: String, ldapInitScript: String)
   def ldapSSLPort: Int = this.mappedPort(defaults.ldap.sslPort)
 
   def ldapHost: String = this.containerIpAddress
+
+  def stop() = {
+    this.container.stop()
+  }
 }
 
 object LdapContainer extends StrictLogging {

@@ -73,4 +73,13 @@ object ScalaOps {
           Task.raiseError(ex)
     }
   }
+
+  def repeat[A](maxRetries: Int, delay: FiniteDuration)(source: Task[A]): Task[Unit] = {
+    source
+      .delayExecution(delay)
+      .flatMap { _ =>
+        if (maxRetries > 0) repeat(maxRetries - 1, delay)(source)
+        else Task.unit
+      }
+  }
 }

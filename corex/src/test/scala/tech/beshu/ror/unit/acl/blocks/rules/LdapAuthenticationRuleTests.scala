@@ -5,7 +5,6 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers.convertToAnyShouldWrapper
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule

@@ -11,19 +11,19 @@ import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
 import scala.language.higherKinds
 
 abstract class BaseDecoderTest[F[_] : Functor, A, B](decoder: ADecoder[F, A])
-                                                    (implicit CM: Comonad[F])
+                                                    (implicit C: Comonad[F])
   extends WordSpec with Inside {
 
   def assertDecodingSuccess(yaml: String,
                             assertion: A => Unit): Unit = {
     assertion {
-      CM.extract(forceDecode(yaml))
+      C.extract(forceDecode(yaml))
     }
   }
 
   def assertDecodingFailure(yaml: String,
                             assertion: AclCreationError => Unit): Unit = {
-    inside(CM.extract(decode(yaml))) { case Left(decodingFailure) =>
+    inside(C.extract(decode(yaml))) { case Left(decodingFailure) =>
       decodingFailure.aclCreationError match {
         case Some(error) => assertion(error)
         case None => throw new IllegalStateException("Cannot find AclCreationError in decoding failure")

@@ -38,7 +38,7 @@ object LdapConnectionPoolProvider extends Logging {
         (ldap, new SingleServerSet(ldap.host, ldap.port, socketFactory(connectionConfig.trustAllCerts), options)) :: Nil
       case ConnectionMethod.SingleServer(ldap) =>
         (ldap, new SingleServerSet(ldap.host, ldap.port, options)) :: Nil
-      case ConnectionMethod.SeveralServers(ldaps, _) if ldaps.head.isSecure =>
+      case ConnectionMethod.SeveralServers(ldaps, _) if ldaps.toNonEmptyList.head.isSecure =>
         ldaps
           .toSortedSet
           .map { ldap => (ldap, new SingleServerSet(ldap.host, ldap.port, socketFactory(connectionConfig.trustAllCerts), options)) }
@@ -99,7 +99,7 @@ object LdapConnectionPoolProvider extends Logging {
         new SingleServerSet(ldap.host, ldap.port, socketFactory(trustAllCerts), options)
       case ConnectionMethod.SingleServer(ldap) =>
         new SingleServerSet(ldap.host, ldap.port, options)
-      case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) if hosts.head.isSecure =>
+      case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) if hosts.toNonEmptyList.head.isSecure =>
         new FailoverServerSet(
           hosts.toList.map(_.host).toArray[String],
           hosts.toList.map(_.port).toArray[Int],
@@ -112,7 +112,7 @@ object LdapConnectionPoolProvider extends Logging {
           hosts.toList.map(_.port).toArray[Int],
           options
         )
-      case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) if hosts.head.isSecure =>
+      case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) if hosts.toNonEmptyList.head.isSecure =>
         new RoundRobinServerSet(
           hosts.toList.map(_.host).toArray[String],
           hosts.toList.map(_.port).toArray[Int],

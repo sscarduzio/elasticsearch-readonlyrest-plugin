@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.acl.utils
 
+import java.util.concurrent.atomic.AtomicReference
+
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -41,20 +43,22 @@ object LdapConnectionPoolOps {
   implicit def toOps(connectionPool: LDAPConnectionPool): LdapConnectionPoolOps = new LdapConnectionPoolOps(connectionPool)
 
   private class UnboundidSearchResultListener extends com.unboundid.ldap.sdk.AsyncSearchResultListener {
-    private var searchResultEntries = List.empty[SearchResultEntry]
+    private val searchResultEntries = new AtomicReference(List.empty[SearchResultEntry])
 
     private val promise = Promise[Either[SearchResult, List[SearchResultEntry]]]
 
     override def searchResultReceived(requestID: AsyncRequestID, searchResult: SearchResult): Unit = {
       if (ResultCode.SUCCESS == searchResult.getResultCode) {
-        promise.success(Right(searchResultEntries))
+        promise.success(Right(searchResultEntries.get()))
       } else {
         promise.success(Left(searchResult))
       }
     }
 
     override def searchEntryReturned(searchEntry: SearchResultEntry): Unit = {
-      searchResultEntries = searchEntry :: searchResultEntries
+      searchResultEntries.getAndUpdate { searchResultEntries: List[SearchResultEntry] =>
+        searchEntry :: searchResultEntries
+      }
     }
 
     override def searchReferenceReturned(searchReference: SearchResultReference): Unit = {
