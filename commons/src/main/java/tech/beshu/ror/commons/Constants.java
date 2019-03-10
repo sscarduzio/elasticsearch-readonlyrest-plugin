@@ -41,6 +41,7 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_KB = 100;
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
+  public static final String PROP_HAS_REMOTE_CLUSTERS = "tech.beshu.ror.hasRemoteClusters";
   public static final String SETTINGS_YAML_FILE = "readonlyrest.yml";
   public final static String REST_REFRESH_PATH = "/_readonlyrest/admin/refreshconfig";
   public final static String REST_CONFIGURATION_PATH = "/_readonlyrest/admin/config";
