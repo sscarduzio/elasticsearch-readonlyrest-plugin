@@ -109,13 +109,16 @@ public class ReadonlyRestPlugin extends Plugin
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
+        System.clearProperty(Constants.PROP_HAS_REMOTE_CLUSTERS);
         if (!clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty()) {
           System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, "yes");
         }
       } catch (Exception e) {
-        System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, null);
+        logger.warn("could not check if had remote ES clusters: " + e.getMessage());
+        if(logger.isDebugEnabled()){
+          e.printStackTrace();
+        }
       }
-
       this.environment = environment;
       settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
       this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
