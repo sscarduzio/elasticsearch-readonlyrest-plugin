@@ -101,18 +101,19 @@ public class ReadonlyRestPlugin extends Plugin
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService,
       ScriptService scriptService, NamedXContentRegistry xContentRegistry, Environment environment, NodeEnvironment nodeEnvironment,
       NamedWriteableRegistry namedWriteableRegistry) {
-    try {
-      if (!clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty()) {
-        System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, "yes");
-      }
-    } catch (Exception e) {
-      System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, null);
-    }
 
     final List<Object> components = new ArrayList<>(3);
 
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      try {
+        if (!clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty()) {
+          System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, "yes");
+        }
+      } catch (Exception e) {
+        System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, null);
+      }
+
       try {
         this.environment = environment;
         settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
