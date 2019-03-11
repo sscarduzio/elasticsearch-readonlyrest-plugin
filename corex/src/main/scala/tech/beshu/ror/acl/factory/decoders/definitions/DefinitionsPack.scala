@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 
 import cats.Show
 import tech.beshu.ror.acl.blocks.definitions._
+import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
 
 import scala.language.higherKinds
 
@@ -26,9 +27,10 @@ final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  authenticationServices: Definitions[ExternalAuthenticationService],
                                  authorizationServices: Definitions[ExternalAuthorizationService],
                                  jwts: Definitions[JwtDef],
-                                 rorKbns: Definitions[RorKbnDef])
+                                 rorKbns: Definitions[RorKbnDef],
+                                 ldaps: Definitions[LdapService])
 
-final case class Definitions[Item](items: Set[Item]) extends AnyVal
+final case class Definitions[Item](items: List[Item]) extends AnyVal
 object Definitions {
   trait Item {
     type Id

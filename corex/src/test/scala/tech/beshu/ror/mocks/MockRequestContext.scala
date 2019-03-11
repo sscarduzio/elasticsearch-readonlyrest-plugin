@@ -42,7 +42,8 @@ final case class MockRequestContext(override val timestamp: Instant = Instant.no
                                     override val involvesIndices: Boolean = false,
                                     override val isCompositeRequest: Boolean = false,
                                     override val isReadOnlyRequest: Boolean = true,
-                                    override val isAllowedForDLS: Boolean = true)
+                                    override val isAllowedForDLS: Boolean = true,
+                                    override val hasRemoteClusters: Boolean = false)
   extends RequestContext
 
 object MockRequestContext {

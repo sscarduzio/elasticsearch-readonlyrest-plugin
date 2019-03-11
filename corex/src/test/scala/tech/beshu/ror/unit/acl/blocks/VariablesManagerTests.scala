@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.blocks
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.blocks.Variable.{ResolvedValue, ValueWithVariable}
 import tech.beshu.ror.acl.blocks.{BlockContext, VariablesManager}

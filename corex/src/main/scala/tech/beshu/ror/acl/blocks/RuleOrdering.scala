@@ -21,7 +21,6 @@ import cats.Order
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.show.logs._
 
 class RuleOrdering extends Ordering[Rule] with Logging {
 
@@ -56,6 +55,8 @@ object RuleOrdering {
     classOf[JwtAuthRule],
     classOf[RorKbnAuthRule],
     // then we could check potentially slow async rules
+    classOf[LdapAuthRule],
+    classOf[LdapAuthenticationRule],
     classOf[ExternalAuthenticationRule],
     classOf[GroupsRule],
     // Inspection rules next; these act based on properties of the request.
@@ -75,6 +76,7 @@ object RuleOrdering {
     classOf[ActionsRule],
     classOf[UsersRule],
     // all authorization rules should be placed before any authentication rule
+    classOf[LdapAuthorizationRule],
     classOf[ExternalAuthorizationRule],
     // At the end the sync rule chain are those that can mutate the client request.
     classOf[KibanaHideAppsRule],

@@ -94,7 +94,7 @@ public class Constants {
       "cluster:monitor/main",
       "cluster:monitor/health",
       "cluster:monitor/state",
-      "cluster:monitor/xpack/*",
+      "cluster:*/xpack/*",
       "indices:admin/template/get*"
   );
 

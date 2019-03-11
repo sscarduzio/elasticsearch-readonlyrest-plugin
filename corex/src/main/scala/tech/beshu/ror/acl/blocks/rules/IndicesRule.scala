@@ -67,7 +67,20 @@ class IndicesRule(val settings: Settings)
     }
     // Cross cluster search awareness
     if (isSearchAction(requestContext)) {
-      val (crossClusterIndices, localIndices) = requestContext.indices.partition(_.isClusterIndex)
+
+      val (crossClusterIndices, localIndices) =
+        if (!requestContext.hasRemoteClusters) {
+          // Only requested X-cluster when we don't have remote, will return empty.
+          val crossClusterIndices = requestContext.indices.filter(_.isClusterIndex)
+          if (requestContext.indices.nonEmpty && requestContext.indices.size == crossClusterIndices.size) {
+            return Fulfilled(blockContext)
+          }
+          // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.
+          (Set.empty[IndexName], requestContext.indices.filter(index => !index.isClusterIndex))
+        } else {
+          requestContext.indices.partition(_.isClusterIndex)
+        }
+
       // Scatter gather for local and remote indices barring algorithms
       if (crossClusterIndices.nonEmpty) {
         // Run the local algorithm

@@ -16,29 +16,28 @@
  */
 package tech.beshu.ror.acl.blocks.definitions
 
-import java.util.concurrent.TimeUnit
-
 import cats.implicits._
 import cats.{Eq, Show}
 import com.jayway.jsonpath.JsonPath
-import monix.eval.Task
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService.Name
 import com.softwaremill.sttp._
-import cz.seznam.euphoria.shaded.guava.com.google.common.cache.{Cache, CacheBuilder}
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService.Name
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService._
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.utils.CacheableAction
+
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
-import eu.timepit.refined.auto._
 
 trait ExternalAuthorizationService extends Item {
   override type Id = Name
@@ -149,29 +148,14 @@ object HttpExternalAuthorizationService {
   final case class InvalidResponse(message: String) extends Exception(message)
 }
 
-class CachingExternalAuthorizationService(underlying: ExternalAuthorizationService, ttl: FiniteDuration Refined Positive)
+class CacheableExternalAuthorizationServiceDecorator(underlying: ExternalAuthorizationService,
+                                                     ttl: FiniteDuration Refined Positive)
   extends ExternalAuthorizationService {
 
-  private val cache: Cache[User.Id, Set[Group]] =
-    CacheBuilder
-      .newBuilder
-      .expireAfterWrite(ttl.value.toMillis, TimeUnit.MILLISECONDS)
-      .build[User.Id, Set[Group]]
-
+  private val cacheableGrantsFor = new CacheableAction[LoggedUser, Set[Group]](ttl, underlying.grantsFor)
 
   override val id: ExternalAuthorizationService#Id = underlying.id
 
-  override def grantsFor(loggedUser: LoggedUser): Task[Set[Group]] = {
-    Option(cache.getIfPresent(loggedUser.id)) match {
-      case Some(groups) =>
-        Task.now(groups)
-      case None =>
-        underlying
-          .grantsFor(loggedUser)
-          .map { groups =>
-            cache.put(loggedUser.id, groups)
-            groups
-          }
-    }
-  }
+  override def grantsFor(loggedUser: LoggedUser): Task[Set[Group]] =
+    cacheableGrantsFor.call(loggedUser)
 }

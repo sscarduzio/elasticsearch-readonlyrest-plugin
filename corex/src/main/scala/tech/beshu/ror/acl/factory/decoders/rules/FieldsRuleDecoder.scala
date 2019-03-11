@@ -35,6 +35,7 @@ import scala.collection.SortedSet
 object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet(toDocumentField)
+    .toSyncDecoder
     .emapE { fields =>
       val (negatedFields, nonNegatedFields) = fields.toList.partitionEither {
         case d: ADocumentField => Right(d)
@@ -59,6 +60,7 @@ object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
       }
     }
     .map(new FieldsRule(_))
+    .decoder
 )
 
 private object FieldsRuleDecoderHelper {

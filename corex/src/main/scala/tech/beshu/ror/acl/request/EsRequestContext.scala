@@ -111,6 +111,9 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
   override val isAllowedForDLS: Boolean =
     rInfo.extractIsAllowedForDLS()
 
+  override val hasRemoteClusters: Boolean =
+    rInfo.extractHasRemoteClusters()
+
   private def forceCreateAddressFrom(value: String) = {
     Address.from(value).getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname from $value"))
   }

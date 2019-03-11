@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.factory
 
 import java.time.Clock
 
+import monix.eval.Task
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditSink, AuditingTool}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
@@ -32,9 +33,9 @@ object RorEngineFactory {
   private val aclFactory = new CoreFactory
 
   def reload(auditSink: AuditSink,
-             settingsYaml: String): Engine = synchronized {
+             settingsYaml: String): Task[Engine] = synchronized {
     val httpClientsFactory = new AsyncHttpClientsFactory
-    aclFactory.createCoreFrom(settingsYaml, httpClientsFactory) match {
+    aclFactory.createCoreFrom(settingsYaml, httpClientsFactory).map {
       case Right(coreSettings) =>
         new Engine(
           new AclLoggingDecorator(

@@ -21,7 +21,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.request.RequestContext
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.TestsUtils.basicAuthHeader
+import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.domain.LoggedUser
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.factory.decoders.definitions
 
+import cats.Id
 import cats.implicits._
 import com.jayway.jsonpath.JsonPath
 import com.softwaremill.sttp.Uri
@@ -26,7 +27,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.SupportedHttpMethod.Get
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.{AuthTokenName, AuthTokenSendMethod, QueryParam, SupportedHttpMethod}
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthorizationService, ExternalAuthorizationService, HttpExternalAuthorizationService}
+import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService, HttpExternalAuthorizationService}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.Config
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
@@ -38,13 +39,15 @@ import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 import scala.util.Try
 import tech.beshu.ror.acl.factory.decoders.common._
-
-class ExternalAuthorizationServicesDecoder(httpClientFactory: HttpClientsFactory)
-  extends DefinitionsBaseDecoder[ExternalAuthorizationService]("user_groups_providers") (
-    ExternalAuthorizationServicesDecoder.externalAuthorizationServiceDecoder(httpClientFactory)
-  )
+import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 
 object ExternalAuthorizationServicesDecoder extends Logging {
+
+  def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[ExternalAuthorizationService]] = {
+    implicit val serviceDecoder: SyncDecoder[ExternalAuthorizationService] = SyncDecoderCreator
+      .from(ExternalAuthorizationServicesDecoder.externalAuthorizationServiceDecoder(httpClientFactory))
+    DefinitionsBaseDecoder.instance[Id, ExternalAuthorizationService]("user_groups_providers")
+  }
 
   implicit val serviceNameDecoder: Decoder[ExternalAuthorizationService.Name] =
     DecoderHelpers.decodeStringLike.map(ExternalAuthorizationService.Name.apply)
@@ -53,21 +56,29 @@ object ExternalAuthorizationServicesDecoder extends Logging {
     DecoderHelpers.decodeStringLikeNonEmpty.map(AuthTokenName.apply)
 
   private implicit val sendMethodDecoder: Decoder[AuthTokenSendMethod] =
-    Decoder.decodeString.emapE {
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .emapE[AuthTokenSendMethod] {
       case "HEADER" => Right(AuthTokenSendMethod.UsingHeader)
       case "QUERY_PARAM" => Right(AuthTokenSendMethod.UsingQueryParam)
       case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'auth_token_passed_as' attribute")))
     }
+      .decoder
 
   private implicit val supportedHttpMethodDecoder: Decoder[SupportedHttpMethod] =
-    Decoder.decodeString.emapE {
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .emapE[SupportedHttpMethod] {
       case "POST" | "post" => Right(SupportedHttpMethod.Post)
       case "GET" | "get" => Right(Get)
       case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'http_method' attribute")))
     }
+      .decoder
 
   private implicit val jsonPathDecoder: Decoder[JsonPath] =
-    Decoder.decodeString.emapE { jsonPathStr =>
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .emapE[JsonPath] { jsonPathStr =>
       Try(JsonPath.compile(jsonPathStr))
         .toEither
         .left
@@ -76,6 +87,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
           DefinitionsLevelCreationError(Message(s"Cannot compile '$jsonPathStr' to JSON path"))
         }
     }
+      .decoder
 
   private implicit val headerSetDecoder: Decoder[Set[Header]] =
     decoderTupleListDecoder.map(_.map(Header.apply).toSet)
@@ -84,7 +96,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
     decoderTupleListDecoder.map(_.map { case (fst, snd) => QueryParam(fst, snd) }.toSet)
 
   private implicit def externalAuthorizationServiceDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[ExternalAuthorizationService] = {
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("name").as[ExternalAuthorizationService.Name]
@@ -95,7 +107,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
           groupsJsonPath <- c.downField("response_groups_json_path").as[JsonPath]
           defaultQueryParams <- c.downField("default_query_parameters").as[Option[Set[QueryParam]]]
           defaultHeaders <- c.downField("default_headers").as[Option[Set[Header]]]
-          cacheTtl <- c.downField("cache_ttl_in_sec").as[Option[FiniteDuration Refined Positive]]
+          cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
         } yield {
           val httpClient = httpClientFactory.create(Config(validate.getOrElse(defaults.validate)))
@@ -112,11 +124,12 @@ object ExternalAuthorizationServicesDecoder extends Logging {
               httpClient
             )
           cacheTtl.foldLeft(externalAuthService) {
-            case (cacheableAuthService, ttl) => new CachingExternalAuthorizationService(cacheableAuthService, ttl)
+            case (cacheableAuthService, ttl) => new CacheableExternalAuthorizationServiceDecorator(cacheableAuthService, ttl)
           }
         }
       }
       .mapError(DefinitionsLevelCreationError.apply)
+      .decoder
   }
 
   private object defaults {

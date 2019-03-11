@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.domain.{Header, KibanaApp, LoggedUser}
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
 

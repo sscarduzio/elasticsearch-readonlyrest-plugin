@@ -88,4 +88,5 @@ public interface RequestInfoShim {
 
   String consumeThreadContextHeader(String key);
 
+  boolean extractHasRemoteClusters();
 }

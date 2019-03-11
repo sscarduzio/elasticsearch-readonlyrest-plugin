@@ -21,7 +21,7 @@ import org.scalatest.Inside
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.domain.{Secret, Group, User}
 import tech.beshu.ror.acl.blocks.Value._
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}

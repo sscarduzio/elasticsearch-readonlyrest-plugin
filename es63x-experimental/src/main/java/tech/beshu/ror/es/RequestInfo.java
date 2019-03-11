@@ -84,6 +84,7 @@ public class RequestInfo implements RequestInfoShim {
   private final String id;
   private final ClusterService clusterService;
   private final Long taskId;
+  private final Boolean hasRemoteClusters;
   private final ThreadPool threadPool;
   private final LoggerShim logger;
   private final RestChannel channel;
@@ -93,7 +94,7 @@ public class RequestInfo implements RequestInfoShim {
 
   RequestInfo(
       RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool, ESContext context) {
+      ClusterService clusterService, ThreadPool threadPool, ESContext context, Boolean hasRemoteClusters) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -103,6 +104,7 @@ public class RequestInfo implements RequestInfoShim {
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.taskId = taskId;
+    this.hasRemoteClusters = hasRemoteClusters;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     if (taskId != null) {
       this.id = tmpID + "#" + taskId;
@@ -623,4 +625,8 @@ public class RequestInfo implements RequestInfoShim {
     return value;
   }
 
+  @Override
+  public boolean extractHasRemoteClusters() {
+    return hasRemoteClusters;
+  }
 }

@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.logging.AuditingTool
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
-import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.acl.utils.SyncDecoderCreator
 
 import scala.util.{Failure, Success, Try}
 
@@ -55,8 +55,8 @@ object AuditingSettingsDecoder extends Logging {
 
 
   private implicit val indexNameFormatterDecoder: Decoder[DateTimeFormatter] =
-    Decoder
-      .decodeString
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
       .emapE { patternStr =>
         Try(DateTimeFormatter.ofPattern(patternStr).withZone(ZoneId.of("UTC"))) match {
           case Success(formatter) => Right(formatter)
@@ -65,10 +65,11 @@ object AuditingSettingsDecoder extends Logging {
           )))
         }
       }
+      .decoder
 
   private implicit val customAuditLogSerializer: Decoder[AuditLogSerializer] =
-    Decoder
-      .decodeString
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
       .emapE { fullClassName =>
         Try {
           Class.forName(fullClassName).getDeclaredConstructor().newInstance() match {
@@ -86,5 +87,6 @@ object AuditingSettingsDecoder extends Logging {
           case Failure(ex) => Left(AuditingSettingsCreationError(Message(s"Cannot create instance of class '$fullClassName', error: ${ex.getMessage}")))
         }
       }
+      .decoder
 
 }

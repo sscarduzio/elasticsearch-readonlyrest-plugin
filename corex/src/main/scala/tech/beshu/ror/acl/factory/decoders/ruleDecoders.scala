@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.factory.decoders
 
 import java.time.Clock
 
+import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef, ProxyAuth, RorKbnDef}
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
@@ -45,6 +46,7 @@ object ruleDecoders {
       case KibanaAccessRule.name => Some(KibanaAccessRuleDecoder)
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
       case KibanaIndexRule.name => Some(KibanaIndexRuleDecoder)
+      case LdapAuthorizationRule.name => Some(new LdapAuthorizationRuleDecoder(definitions.ldaps))
       case LocalHostsRule.name => Some(LocalHostsRuleDecoder)
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.name => Some(MethodsRuleDecoder)
@@ -54,13 +56,14 @@ object ruleDecoders {
       case UriRegexRule.name => Some(UriRegexRuleDecoder)
       case UsersRule.name => Some(UsersRuleDecoder)
       case XForwardedForRule.name => Some(XForwardedForRuleDecoder)
-      case _ => authenticationRuleDecoderBy(name, definitions.authenticationServices, definitions.proxies, definitions.jwts, definitions.rorKbns)
+      case _ => authenticationRuleDecoderBy(name, definitions.authenticationServices, definitions.proxies, definitions.jwts, definitions.ldaps, definitions.rorKbns)
     }
 
   def authenticationRuleDecoderBy(name: Rule.Name,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
+                                  ldapServiceDefinitions: Definitions[LdapService],
                                   rorKbnDefinitions: Definitions[RorKbnDef]): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
     name match {
       case AuthKeyRule.name => Some(AuthKeyRuleDecoder)
@@ -70,6 +73,8 @@ object ruleDecoders {
       case AuthKeyUnixRule.name => Some(AuthKeyUnixRuleDecoder)
       case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions))
       case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions))
+      case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions))
+      case LdapAuthenticationRule.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions))
       case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions))
       case RorKbnAuthRule.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions))
       case _ => None

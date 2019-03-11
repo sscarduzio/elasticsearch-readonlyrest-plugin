@@ -28,9 +28,11 @@ import tech.beshu.ror.acl.utils.CirceOps._
 object MaxBodyLengthRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   Decoder
     .decodeLong
+    .toSyncDecoder
     .emapE { value =>
       if (value >= 0) Right(Bytes(value))
       else Left(RulesLevelCreationError(Message(s"Invalid max body length: $value")))
     }
     .map(maxBodyLength => new MaxBodyLengthRule(Settings(maxBodyLength)))
+    .decoder
 )

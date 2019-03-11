@@ -16,8 +16,12 @@
  */
 package tech.beshu.ror.acl.utils
 
+import cats.data.EitherT
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
 
+import scala.concurrent.duration._
+import scala.language.{higherKinds, postfixOps}
 import scala.util.Try
 
 object ScalaOps {
@@ -48,4 +52,34 @@ object ScalaOps {
   }
 
   implicit val nonEmptyStringOrdering: Ordering[NonEmptyString] = Ordering.by(_.value)
+
+  def value[F[_], A, B](eitherT: EitherT[F, A, B]): F[Either[A, B]] = eitherT.value
+
+  def retry[T](task: Task[T]): Task[T] = {
+    ScalaOps.retryBackoff(task, 5, 500 millis, 1)
+  }
+
+  def retryBackoff[A](source: Task[A],
+                      maxRetries: Int,
+                      firstDelay: FiniteDuration,
+                      backOffScaler: Int): Task[A] = {
+
+    source.onErrorHandleWith {
+      case ex: Exception =>
+        if (maxRetries > 0)
+          retryBackoff(source, maxRetries - 1, firstDelay * backOffScaler, backOffScaler)
+            .delayExecution(firstDelay)
+        else
+          Task.raiseError(ex)
+    }
+  }
+
+  def repeat[A](maxRetries: Int, delay: FiniteDuration)(source: Task[A]): Task[Unit] = {
+    source
+      .delayExecution(delay)
+      .flatMap { _ =>
+        if (maxRetries > 0) repeat(maxRetries - 1, delay)(source)
+        else Task.unit
+      }
+  }
 }

@@ -18,6 +18,7 @@
 package tech.beshu.ror.es;
 
 import monix.execution.Scheduler$;
+import monix.execution.schedulers.CanBlock$;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
@@ -43,6 +44,7 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import scala.collection.immutable.Map;
+import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.SecurityPermissionException;
 import tech.beshu.ror.acl.AclHandler;
 import tech.beshu.ror.acl.ResponseWriter;
@@ -82,9 +84,11 @@ import java.util.function.Consumer;
   private final Logger logger;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+  private final Boolean hasRemoteClusters;
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
-      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) {
+      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env, Boolean hasRemoteClusterss) {
+    this.hasRemoteClusters = hasRemoteClusterss;
     System.setProperty("es.set.netty.runtime.available.processors", "false");
 
     logger = LogManager.getLogger(this.getClass());
@@ -107,8 +111,9 @@ import java.util.function.Consumer;
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
+        FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.SECONDS);
         Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
-            newContext.getSettings().getRaw().yaml());
+            newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
         Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
@@ -161,7 +166,7 @@ import java.util.function.Consumer;
       return;
     }
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-        context.get());
+        context.get(), hasRemoteClusters);
     RequestContext requestContext = requestContextFrom(requestInfo);
 
     engine.acl().handle(requestContext, new AclHandler() {

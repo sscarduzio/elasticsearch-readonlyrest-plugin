@@ -34,6 +34,7 @@ import tech.beshu.ror.acl.factory.decoders.common._
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef]) extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
   JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
     .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+    .toSyncDecoder
     .emapE { case (name, groups) =>
       jwtDefinitions.items.find(_.id === name) match {
         case Some(jwtDef) => Right((jwtDef, groups))
@@ -43,6 +44,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef]) extends RuleDecode
     .map { case (jwtDef, groups) =>
       new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups))
     }
+    .decoder
 )
 
 private object JwtAuthRuleDecoder {

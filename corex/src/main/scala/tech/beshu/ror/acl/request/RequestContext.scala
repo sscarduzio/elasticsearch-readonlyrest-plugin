@@ -57,6 +57,7 @@ trait RequestContext {
   def involvesIndices: Boolean
   def isCompositeRequest: Boolean
   def isAllowedForDLS: Boolean
+  def hasRemoteClusters: Boolean
 
   def variablesResolver: VariablesResolver = new VariablesManager(this)
 }

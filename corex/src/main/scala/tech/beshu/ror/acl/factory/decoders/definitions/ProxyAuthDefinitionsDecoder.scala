@@ -16,25 +16,28 @@
  */
 package tech.beshu.ror.acl.factory.decoders.definitions
 
+import cats.Id
 import io.circe.Decoder
-import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.blocks.definitions.ProxyAuth
+import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.utils.CirceOps._
-
-class ProxyAuthDefinitionsDecoder extends DefinitionsBaseDecoder[ProxyAuth]("proxy_auth_configs")(
-  ProxyAuthDefinitionsDecoder.proxyAuthDecoder
-)
+import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder}
 
 object ProxyAuthDefinitionsDecoder {
 
+  lazy val instance: ADecoder[Id, Definitions[ProxyAuth]] = {
+    DefinitionsBaseDecoder.instance[Id, ProxyAuth]("proxy_auth_configs")
+  }
+
   implicit val proxyAuthNameDecoder: Decoder[ProxyAuth.Name] = Decoder.decodeString.map(ProxyAuth.Name.apply)
 
-  private implicit val proxyAuthDecoder: Decoder[ProxyAuth] = {
+  private implicit val proxyAuthDecoder: SyncDecoder[ProxyAuth] = {
     implicit val headerNameDecoder: Decoder[Header.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Header.Name.apply)
     Decoder
-      .forProduct2("name", "user_id_header")(ProxyAuth.apply)
+      .forProduct2[ProxyAuth, ProxyAuth.Name, Header.Name]("name", "user_id_header")(ProxyAuth.apply)
+      .toSyncDecoder
       .withErrorFromJson(value => DefinitionsLevelCreationError(MalformedValue(value)))
   }
 }

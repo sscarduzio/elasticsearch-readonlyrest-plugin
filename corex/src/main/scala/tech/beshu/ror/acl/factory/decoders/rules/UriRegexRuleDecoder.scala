@@ -38,8 +38,10 @@ object UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
         .left
         .map(_ => Value.ConvertError(rv, "Cannot compile pattern"))
     }
+    .toSyncDecoder
     .emapE {
       case Right(pattern) => Right(new UriRegexRule(Settings(pattern)))
       case Left(error) => Left(RulesLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
     }
+    .decoder
 )

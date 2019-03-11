@@ -53,6 +53,7 @@ class KibanaAccessRule(val settings: Settings)
     // Any index, read op
     else if (Matchers.roMatcher.`match`(requestContext.action)) Fulfilled(modifyMatched(blockContext))
     else if (Matchers.clusterMatcher.`match`(requestContext.action)) Fulfilled(modifyMatched(blockContext))
+    else if (emptyIndicesMatch(requestContext)) Fulfilled(modifyMatched(blockContext))
     else if (isKibanaSimplaData(requestContext)) Fulfilled(modifyMatched(blockContext))
     else processCheck(requestContext, blockContext)
   }
@@ -96,7 +97,7 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def isReadonlyrestAdmin(requestContext: RequestContext) = {
-    requestContext.indices.isEmpty || requestContext.indices.contains(IndexName.readonlyrest) &&
+    (requestContext.indices.isEmpty || requestContext.indices.contains(IndexName.readonlyrest)) &&
       settings.access === KibanaAccess.Admin &&
       Matchers.adminMatcher.`match`(requestContext.action)
   }
@@ -111,6 +112,13 @@ class KibanaAccessRule(val settings: Settings)
 
   private def isKibanaSimplaData(requestContext: RequestContext) = {
     kibanaCanBeModified && requestContext.indices.size == 1 && requestContext.indices.head.hasPrefix("kibana_sample_data_")
+  }
+
+  private def emptyIndicesMatch(requestContext: RequestContext) = {
+    requestContext.indices.isEmpty && {
+      (kibanaCanBeModified && Matchers.rwMatcher.`match`(requestContext.action)) ||
+        (settings.access === KibanaAccess.Admin && Matchers.adminMatcher.`match`(requestContext.action))
+    }
   }
 
   private def isTargetingKibana(requestContext: RequestContext, kibanaIndex: IndexName) = {

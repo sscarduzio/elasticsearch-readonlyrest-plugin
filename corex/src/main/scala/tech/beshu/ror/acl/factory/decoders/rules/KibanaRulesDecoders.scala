@@ -51,6 +51,7 @@ object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAcc
     DecoderHelpers
       .decodeStringLike
       .map(_.toLowerCase)
+      .toSyncDecoder
       .emapE[KibanaAccess] {
       case "ro" => Right(KibanaAccess.RO)
       case "rw" => Right(KibanaAccess.RW)
@@ -59,7 +60,8 @@ object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAcc
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
       .map(KibanaAccessRule.Settings(_, kibanaIndexName, KibanaRulesDecoderHelper.readRorMetadataFlag))
-      .map(s => new KibanaAccessRule(s)),
+      .map(s => new KibanaAccessRule(s))
+      .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
   associatedFieldsDecoder =
     Decoder.instance(_.downField("kibana_index").as[Value[IndexName]]) or Decoder.const(Const(IndexName.kibana))
@@ -75,9 +77,11 @@ private object KibanaRulesDecoderHelper {
     DecoderHelpers
       .decodeStringLike
       .map(e => Value.fromString(e, rv => Right(IndexName(rv.value.replace(" ", "_")))))
+      .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)
         case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
       }
+      .decoder
 }
 

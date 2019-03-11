@@ -20,7 +20,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, ExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
@@ -35,19 +35,22 @@ import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
 import tech.beshu.ror.acl.factory.decoders.common._
+import tech.beshu.ror.acl.utils.SyncDecoderCreator
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService])
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule](
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
+      .toSyncDecoder
       .emapE {
         case (name, Some(ttl)) =>
           findAuthenticationService(authenticationServices.items, name)
-            .map(new CachingExternalAuthenticationService(_, ttl))
+            .map(new CacheableExternalAuthenticationServiceDecorator(_, ttl))
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
       .map(service => new ExternalAuthenticationRule(Settings(service)))
+      .decoder
   )
 
 object ExternalAuthenticationRuleDecoder {
@@ -58,17 +61,18 @@ object ExternalAuthenticationRuleDecoder {
       .map((_, None))
 
   private def complexExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[FiniteDuration Refined Positive])] = {
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("service").as[ExternalAuthenticationService.Name]
-          ttl <- c.downField("cache_ttl_in_sec").as[FiniteDuration Refined Positive]
+          ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[FiniteDuration Refined Positive]
         } yield (name, Option(ttl))
       }
       .mapError(RulesLevelCreationError.apply)
+      .decoder
   }
 
-  private def findAuthenticationService(authenticationServices: Set[ExternalAuthenticationService],
+  private def findAuthenticationService(authenticationServices: List[ExternalAuthenticationService],
                                         searchedServiceName: ExternalAuthenticationService.Name): Either[AclCreationError, ExternalAuthenticationService] = {
     authenticationServices.find(_.id === searchedServiceName) match {
       case Some(service) => Right(service)

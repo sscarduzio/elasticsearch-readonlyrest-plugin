@@ -21,10 +21,10 @@ import java.util.Base64
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.domain.{AuthorizationTokenDef, ClaimName, Header}
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod
-import tech.beshu.ror.acl.blocks.definitions.{CachingExternalAuthenticationService, JwtDef}
+import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, JwtDef}
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
@@ -439,7 +439,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
             rule.settings.jwt.id should be(JwtDef.Name("jwt1".nonempty))
             rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
             rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
-            rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CachingExternalAuthenticationService]
+            rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
             rule.settings.jwt.userClaim should be(None)
             rule.settings.jwt.groupsClaim should be(Some(ClaimName("groups".nonempty)))
             rule.settings.groups should be(Set.empty)

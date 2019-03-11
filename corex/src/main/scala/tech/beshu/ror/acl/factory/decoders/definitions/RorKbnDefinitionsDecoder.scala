@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.factory.decoders.definitions
 
+import cats.Id
 import io.circe.{Decoder, HCursor}
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.{Name, SignatureCheckMethod}
@@ -25,20 +26,19 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
-import tech.beshu.ror.acl.utils.StaticVariablesResolver
-import tech.beshu.ror.acl.utils.CirceOps._
-
-class RorKbnDefinitionsDecoder(resolver: StaticVariablesResolver)
-  extends DefinitionsBaseDecoder[RorKbnDef]("ror_kbn")(
-    RorKbnDefinitionsDecoder.rorKbnDefDecoder(resolver)
-  )
+import tech.beshu.ror.acl.utils.{ADecoder, StaticVariablesResolver, SyncDecoder, SyncDecoderCreator}
 
 object RorKbnDefinitionsDecoder {
+
+  def instance(resolver: StaticVariablesResolver): ADecoder[Id, Definitions[RorKbnDef]] = {
+    implicit val decoder: SyncDecoder[RorKbnDef] = SyncDecoderCreator.from(RorKbnDefinitionsDecoder.rorKbnDefDecoder(resolver))
+    DefinitionsBaseDecoder.instance[Id, RorKbnDef]("ror_kbn")
+  }
 
   implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
   private def rorKbnDefDecoder(implicit resolver: StaticVariablesResolver): Decoder[RorKbnDef] =  {
-    Decoder
+    SyncDecoderCreator
       .instance { c =>
         for {
           name <- c.downField("name").as[Name]
@@ -46,6 +46,7 @@ object RorKbnDefinitionsDecoder {
         } yield RorKbnDef(name, checkMethod)
       }
       .mapError(DefinitionsLevelCreationError.apply)
+      .decoder
   }
 
   /*

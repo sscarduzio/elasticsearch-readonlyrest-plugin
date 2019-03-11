@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule
@@ -141,7 +141,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = rule => {
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
-              service shouldBe a[CachingExternalAuthorizationService]
+              service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.one(User.Id("user1")))
             }
@@ -212,7 +212,7 @@ class ExternalAuthorizationRuleSettingsTests
           assertion = rule => {
             inside(rule.settings) { case Settings(service, permittedGroups, users) =>
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
-              service shouldBe a[CachingExternalAuthorizationService]
+              service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroups should be(NonEmptySet.one(groupFrom("group3")))
               users should be(NonEmptySet.of(User.Id("*")))
             }
@@ -727,7 +727,7 @@ class ExternalAuthorizationRuleSettingsTests
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only positive durations allowed. Found: -120 seconds")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -120 seconds")))
           }
         )
       }

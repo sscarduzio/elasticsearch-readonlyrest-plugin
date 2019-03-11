@@ -26,6 +26,7 @@ import shapeless.Nat
 import tech.beshu.ror.acl.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.RuleOrdering
+import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.header.ToHeaderValue
@@ -115,6 +116,7 @@ object show {
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
+    implicit val dnShow: Show[Dn] = Show.show(_.value.value)
   }
 }
 

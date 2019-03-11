@@ -22,18 +22,16 @@ import monix.eval.Task
 import tech.beshu.ror.acl.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthorizationService
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthorizationRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
-import tech.beshu.ror.acl.utils.ScalaOps._
-
 import scala.collection.JavaConverters._
 import StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult
+import tech.beshu.ror.acl.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings)
-  extends AuthorizationRule {
+  extends BaseAuthorizationRule {
 
   private val userMatcher: Matcher = new MatcherWithWildcardsScalaAdapter(
     new MatcherWithWildcards(settings.users.map(_.value).toSortedSet.asJava)
@@ -41,44 +39,34 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override val name: Rule.Name = ExternalAuthorizationRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = {
-    blockContext.loggedUser match {
-      case Some(user) if userMatcher.`match`(user.id) => checkUserGroups(user, blockContext)
-      case Some(_) | None => Task.now(Rejected)
-    }
+  override protected def authorize(requestContext: RequestContext,
+                                   blockContext: BlockContext,
+                                   user: LoggedUser): Task[AuthorizationResult] = {
+    if(userMatcher.`match`(user.id)) checkUserGroups(user, blockContext)
+    else Task.now(Unauthorized)
   }
 
-  private def checkUserGroups(user: LoggedUser, blockContext: BlockContext): Task[RuleResult] = {
+  private def checkUserGroups(user: LoggedUser, blockContext: BlockContext): Task[AuthorizationResult] = {
     settings
       .service
       .grantsFor(user)
       .map { userGroups =>
         NonEmptySet.fromSet(settings.permittedGroups.toSortedSet.intersect(userGroups)) match {
-          case None => Rejected
+          case None =>
+            Unauthorized
           case Some(determinedAvailableGroups) =>
             blockContext.currentGroup match {
               case Some(currentGroup) if !determinedAvailableGroups.contains(currentGroup) =>
-                Rejected
-              case Some(_) =>
-                Fulfilled {
-                  blockContext
-                    .withAddedAvailableGroups(determinedAvailableGroups)
-                }
+                Unauthorized
+              case Some(currentGroup) =>
+                Authorized(currentGroup, determinedAvailableGroups)
               case None =>
-                Fulfilled {
-                  blockContext
-                    .withCurrentGroup(pickCurrentGroupFrom(determinedAvailableGroups))
-                    .withAddedAvailableGroups(determinedAvailableGroups)
-                }
+                Authorized(pickCurrentGroupFrom(determinedAvailableGroups), determinedAvailableGroups)
             }
         }
       }
   }
 
-  private def pickCurrentGroupFrom(resolvedGroups: NonEmptySet[Group]): Group = {
-    resolvedGroups.toSortedSet.toList.minBy(_.value)
-  }
 }
 
 object ExternalAuthorizationRule {
