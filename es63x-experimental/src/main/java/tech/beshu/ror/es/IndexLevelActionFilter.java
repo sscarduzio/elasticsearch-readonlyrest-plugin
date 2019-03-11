@@ -84,9 +84,11 @@ import java.util.function.Consumer;
   private final Logger logger;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+  private final Boolean hasRemoteClusters;
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
-      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env) {
+      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env, Boolean hasRemoteClusterss) {
+    this.hasRemoteClusters = hasRemoteClusterss;
     System.setProperty("es.set.netty.runtime.available.processors", "false");
 
     logger = LogManager.getLogger(this.getClass());
@@ -164,7 +166,7 @@ import java.util.function.Consumer;
       return;
     }
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-        context.get());
+        context.get(), hasRemoteClusters);
     RequestContext requestContext = requestContextFrom(requestInfo);
 
     engine.acl().handle(requestContext, new AclHandler() {

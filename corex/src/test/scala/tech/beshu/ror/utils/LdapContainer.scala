@@ -33,7 +33,7 @@ class LdapContainer(name: String, ldapInitScript: String)
 
   def ldapHost: String = this.containerIpAddress
 
-  def stop() = {
+  def stop(): Unit = {
     this.container.stop()
   }
 }

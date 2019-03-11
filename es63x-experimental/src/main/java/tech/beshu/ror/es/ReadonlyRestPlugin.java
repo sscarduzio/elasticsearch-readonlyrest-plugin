@@ -99,7 +99,8 @@ public class ReadonlyRestPlugin extends Plugin
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
       settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
+      Boolean hasRemoteClusters = !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
+      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, hasRemoteClusters);
       components.add(settingsObservable);
       return null;
     });
