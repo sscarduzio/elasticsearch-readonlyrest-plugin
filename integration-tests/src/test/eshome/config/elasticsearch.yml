@@ -1,5 +1,6 @@
 #discovery.type: single-node
 #transport.type: local
 http.type: ssl_netty4
-transport.type: ror_ssl_internode
+#transport.type: ror_ssl_internode
 path.repo: "/tmp/lolrepo1"
+#cluster.remote.cluster_one.seeds: 127.0.0.1:9300
