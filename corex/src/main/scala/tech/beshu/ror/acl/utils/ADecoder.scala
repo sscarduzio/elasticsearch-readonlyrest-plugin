@@ -16,21 +16,22 @@
  */
 package tech.beshu.ror.acl.utils
 
+
+import cats.implicits._
 import cats.{Functor, Id}
 import io.circe._
 import monix.eval.Task
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason
+import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.annotation.tailrec
-import scala.language.implicitConversions
+import scala.language.{higherKinds, implicitConversions}
 
 sealed abstract class ADecoder[F[_] : Functor, A] {
 
   type DECODER[T] <: ADecoder[F, T]
   type CREATOR <: ADecoderCreator[F, DECODER]
-
-  import cats.implicits._
 
   val creator: CREATOR
 
@@ -47,7 +48,6 @@ sealed abstract class ADecoder[F[_] : Functor, A] {
   type Element = Json
   type Context = String
 
-  import tech.beshu.ror.acl.utils.CirceOps._
 
   def withError(error: AclCreationError): DECODER[A] = {
     creator.instance { c =>
@@ -168,8 +168,6 @@ object AsyncDecoderCreator extends ADecoderCreator[Task, AsyncDecoder] {
   }
 
   override def list[A](implicit decoder: ADecoder[Task, A]): AsyncDecoder[List[A]] = new AsyncDecoder[List[A]] {
-
-    import cats.implicits._
 
     override def apply(c: HCursor): Task[Either[DecodingFailure, List[A]]] = {
       if (c.downArray.succeeded) {

@@ -136,12 +136,25 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
       )
     }
     "RW can change cluster settings" in {
+      assertNotMatchRule(settingsOf(RO, IndexName(".kibana")), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings")))
       assertMatchRule(settingsOf(RW, IndexName(".kibana")), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings"))) {
         assertBlockContext(
-          responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
-          kibanaIndex = Some(IndexName(".kibana"))
+            responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
+            kibanaIndex = None
         )
       }
+    }
+    "X-Pack cluster settings update" in {
+      def assertMatchClusterRule(access: KibanaAccess) = {
+        assertMatchRule(settingsOf(access, IndexName(".kibana")), Action("cluster:admin/xpack/ccr/auto_follow_pattern/get"), Set.empty, Some(UriPath("/_ccr/auto_follow"))) {
+          assertBlockContext(
+            responseHeaders = Set(Header(Name.kibanaAccess, access)),
+            kibanaIndex = None
+          )
+        }
+      }
+      assertMatchClusterRule(RW)
+      assertMatchClusterRule(RO)
     }
   }
 

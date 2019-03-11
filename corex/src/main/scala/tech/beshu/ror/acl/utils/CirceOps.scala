@@ -35,6 +35,7 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{Reason, ValueLev
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult._
 
 import scala.collection.SortedSet
+import scala.language.higherKinds
 
 object CirceOps {
 
@@ -131,14 +132,14 @@ object CirceOps {
       decoder
         .creator
         .instance[FieldListResult[T]] { c =>
-        val A = implicitly[Applicative[F]]
+        val fApplicative = implicitly[Applicative[F]]
         c.downField(name) match {
           case _: FailedCursor =>
-            A.pure(Right(NoField))
+            fApplicative.pure(Right(NoField))
           case hc =>
             hc.values match {
               case None =>
-                A.pure(Right(FieldListValue(Nil)))
+                fApplicative.pure(Right(FieldListValue(Nil)))
               case Some(_) =>
                 decoder.creator
                   .list[T](decoder)

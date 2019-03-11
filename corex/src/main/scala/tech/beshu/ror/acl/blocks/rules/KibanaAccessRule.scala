@@ -97,7 +97,7 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def isReadonlyrestAdmin(requestContext: RequestContext) = {
-    requestContext.indices.isEmpty || requestContext.indices.contains(IndexName.readonlyrest) &&
+    (requestContext.indices.isEmpty || requestContext.indices.contains(IndexName.readonlyrest)) &&
       settings.access === KibanaAccess.Admin &&
       Matchers.adminMatcher.`match`(requestContext.action)
   }

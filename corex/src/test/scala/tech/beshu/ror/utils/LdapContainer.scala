@@ -1,3 +1,19 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.utils
 
 import com.dimafeng.testcontainers.GenericContainer
@@ -6,9 +22,10 @@ import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, ResultCode}
 import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.apache.logging.log4j.scala.Logging
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import tech.beshu.ror.acl.utils.ScalaOps.retryBackoff
-import tech.beshu.ror.utils.LdapContainer.{defaults, ldapWaitStrategy}
+import tech.beshu.ror.utils.LdapContainer.defaults
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -24,7 +41,7 @@ class LdapContainer(name: String, ldapInitScript: String)
       "LDAP_TLS_VERIFY_CLIENT" -> "try"
     ),
     exposedPorts = Seq(defaults.ldap.port),
-    waitStrategy = Some(ldapWaitStrategy(name, ldapInitScript))
+    waitStrategy = Some(new LdapWaitStrategy(name, ldapInitScript))
   ) {
 
   def ldapPort: Int = this.mappedPort(defaults.ldap.port)
@@ -39,71 +56,6 @@ class LdapContainer(name: String, ldapInitScript: String)
 }
 
 object LdapContainer extends StrictLogging {
-
-  private def ldapWaitStrategy(name: String,
-                               ldapInitScript: String) = new AbstractWaitStrategy {
-    override def waitUntilReady(): Unit = {
-      logger.info(s"Waiting for LDAP container '$name' ...")
-      Task(getClass.getResourceAsStream(ldapInitScript))
-        .bracket(stream =>
-          retryBackoff(ldapInitiate(stream), 15, 1 second, 1)
-        )(stream =>
-          Task(stream.close())
-        )
-        .onErrorHandle { ex =>
-          logger.error("LDAP container startup failed", ex)
-          throw ex
-        }
-        .runSyncUnsafe(defaults.containerStartupTimeout)
-      logger.info(s"LDAP container '$name' stated")
-    }
-
-    private def ldapInitiate(ldapInitScriptInputStream: InputStream) = {
-      runOnBindedLdapConnection { connection =>
-        initLdapFromFile(connection, ldapInitScriptInputStream)
-      }
-    }
-
-    private def initLdapFromFile(connection: LDAPConnection, scriptInputStream: InputStream) = {
-      val reader = new LDIFReader(scriptInputStream)
-      val entries = Iterator
-        .continually(Option(reader.readEntry()))
-        .takeWhile(_.isDefined)
-        .flatten
-        .toList
-      Task
-        .sequence {
-          entries.map { entry =>
-            Task(connection.add(new AddRequest(entry.toLDIF: _*)))
-              .flatMap {
-                case result if result.getResultCode == ResultCode.SUCCESS =>
-                  Task.now(())
-                case result =>
-                  Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
-              }
-          }
-        }
-        .map(_ => ())
-    }
-
-    private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
-      defaults.ldap.bindDn match {
-        case Some(bindDn) =>
-          Task(new LDAPConnection(waitStrategyTarget.getContainerIpAddress, waitStrategyTarget.getMappedPort(defaults.ldap.port)))
-            .bracket(connection =>
-              Task(connection.bind(bindDn, defaults.ldap.adminPassword))
-                .flatMap {
-                  case result if result.getResultCode == ResultCode.SUCCESS => action(connection)
-                  case result => Task.raiseError(new IllegalStateException(s"LDAP '$name' bind problem - error ${result.getResultCode.intValue()}"))
-                }
-            )(connection =>
-              Task(connection.close())
-            )
-        case None =>
-          Task.raiseError(new IllegalStateException(s"Cannot create bind DN from LDAP config data"))
-      }
-    }
-  }
 
   object defaults {
     val connectionTimeout: FiniteDuration = 5 seconds
@@ -129,4 +81,72 @@ object LdapContainer extends StrictLogging {
 
   }
 
+}
+
+private class LdapWaitStrategy(name: String,
+                               ldapInitScript: String)
+  extends AbstractWaitStrategy
+    with Logging {
+
+  override def waitUntilReady(): Unit = {
+    logger.info(s"Waiting for LDAP container '$name' ...")
+    Task(getClass.getResourceAsStream(ldapInitScript))
+      .bracket(stream =>
+        retryBackoff(ldapInitiate(stream), 15, 1 second, 1)
+      )(stream =>
+        Task(stream.close())
+      )
+      .onErrorHandle { ex =>
+        logger.error("LDAP container startup failed", ex)
+        throw ex
+      }
+      .runSyncUnsafe(defaults.containerStartupTimeout)
+    logger.info(s"LDAP container '$name' stated")
+  }
+
+  private def ldapInitiate(ldapInitScriptInputStream: InputStream) = {
+    runOnBindedLdapConnection { connection =>
+      initLdapFromFile(connection, ldapInitScriptInputStream)
+    }
+  }
+
+  private def initLdapFromFile(connection: LDAPConnection, scriptInputStream: InputStream) = {
+    val reader = new LDIFReader(scriptInputStream)
+    val entries = Iterator
+      .continually(Option(reader.readEntry()))
+      .takeWhile(_.isDefined)
+      .flatten
+      .toList
+    Task
+      .sequence {
+        entries.map { entry =>
+          Task(connection.add(new AddRequest(entry.toLDIF: _*)))
+            .flatMap {
+              case result if result.getResultCode == ResultCode.SUCCESS =>
+                Task.now(())
+              case result =>
+                Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
+            }
+        }
+      }
+      .map(_ => ())
+  }
+
+  private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
+    defaults.ldap.bindDn match {
+      case Some(bindDn) =>
+        Task(new LDAPConnection(waitStrategyTarget.getContainerIpAddress, waitStrategyTarget.getMappedPort(defaults.ldap.port)))
+          .bracket(connection =>
+            Task(connection.bind(bindDn, defaults.ldap.adminPassword))
+              .flatMap {
+                case result if result.getResultCode == ResultCode.SUCCESS => action(connection)
+                case result => Task.raiseError(new IllegalStateException(s"LDAP '$name' bind problem - error ${result.getResultCode.intValue()}"))
+              }
+          )(connection =>
+            Task(connection.close())
+          )
+      case None =>
+        Task.raiseError(new IllegalStateException(s"Cannot create bind DN from LDAP config data"))
+    }
+  }
 }

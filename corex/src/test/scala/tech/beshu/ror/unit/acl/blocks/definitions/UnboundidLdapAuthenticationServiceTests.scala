@@ -1,3 +1,19 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.unit.acl.blocks.definitions
 
 import cats.data._
@@ -12,7 +28,6 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.acl.domain.{Secret, User}
-import tech.beshu.ror.acl.utils.ScalaOps
 import tech.beshu.ror.acl.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
@@ -30,31 +45,32 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
     "has method to authenticate" which {
       "returns true" when {
         "user exists in LDAP and its credentials are correct" in {
-          simpleAuthenticationService.authenticate(User.Id("morgan"), Secret("user1")).runSyncUnsafe() should be(true)
+          createSimpleAuthenticationService().authenticate(User.Id("morgan"), Secret("user1")).runSyncUnsafe() should be(true)
         }
       }
       "returns false" when {
         "user doesn't exist in LDAP" in {
-          simpleAuthenticationService.authenticate(User.Id("unknown"), Secret("user1")).runSyncUnsafe() should be(false)
+          createSimpleAuthenticationService().authenticate(User.Id("unknown"), Secret("user1")).runSyncUnsafe() should be(false)
         }
         "user has invalid credentials" in {
-          simpleAuthenticationService.authenticate(User.Id("morgan"), Secret("invalid_secret")).runSyncUnsafe() should be(false)
+          createSimpleAuthenticationService().authenticate(User.Id("morgan"), Secret("invalid_secret")).runSyncUnsafe() should be(false)
         }
       }
     }
     "be able to work" when {
       "Round robin HA method is configured" when {
         "one of servers goes down" in {
-          def assertMorganCanAuthenticate() = {
-            simpleAuthenticationService.authenticate(User.Id("morgan"), Secret("user1")).runSyncUnsafe() should be(true)
+          def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
+            service.authenticate(User.Id("morgan"), Secret("user1")).runSyncUnsafe() should be(true)
           }
+          val service = createHaAuthenticationService()
           (for {
             _ <- repeat(maxRetries = 5, delay = 500 millis) {
-                Task(assertMorganCanAuthenticate())
+                Task(assertMorganCanAuthenticate(service))
               }
             _ <- Task(ldap2Container.stop())
             _ <- repeat(10, 500 millis) {
-              Task(assertMorganCanAuthenticate())
+              Task(assertMorganCanAuthenticate(service))
             }
           } yield ()) runSyncUnsafe()
         }
@@ -62,7 +78,7 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
     }
   }
 
-  private def simpleAuthenticationService = {
+  private def createSimpleAuthenticationService() = {
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap".nonempty),
@@ -83,7 +99,7 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
   }
 
-  private def haAuthenticationService = {
+  private def createHaAuthenticationService() = {
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap".nonempty),
