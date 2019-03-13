@@ -86,7 +86,8 @@ public class Constants {
       "indices:admin/validate/query",
       "indices:admin/get",
       "indices:admin/refresh*",
-      "indices:data/read/*"
+      "indices:data/read/*",
+      "indices:admin/aliases/get"
   );
 
   public static final Set<String> CLUSTER_ACTIONS = Sets.newHashSet(
@@ -106,7 +107,8 @@ public class Constants {
       "indices:data/write/update*",
       "indices:data/write/bulk*",
       "indices:admin/template/*",
-      "cluster:admin/settings/*"
+      "cluster:admin/settings/*",
+      "indices:admin/aliases/*"
   );
 
   public static final Set<String> ADMIN_ACTIONS = Sets.newHashSet(
