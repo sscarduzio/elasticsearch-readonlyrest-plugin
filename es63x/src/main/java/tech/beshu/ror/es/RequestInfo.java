@@ -438,18 +438,31 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public String extractLocalAddress() {
-    String remoteHost = ((InetSocketAddress) request.getLocalAddress()).getAddress().getHostAddress();
-    return remoteHost;
+    try{
+      String remoteHost = ((InetSocketAddress) request.getLocalAddress()).getAddress().getHostAddress();
+      return remoteHost;
+    }
+    catch(Exception e){
+      logger.error("Could not extract local address", e);
+      return null;
+    }
+
   }
 
   @Override
   public String extractRemoteAddress() {
-    String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
-    // Make sure we recognize localhost even when IPV6 is involved
-    if (RCUtils.isLocalHost(remoteHost)) {
-      remoteHost = RCUtils.LOCALHOST;
+    try {
+      String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
+      // Make sure we recognize localhost even when IPV6 is involved
+      if (RCUtils.isLocalHost(remoteHost)) {
+        remoteHost = RCUtils.LOCALHOST;
+      }
+      return remoteHost;
     }
-    return remoteHost;
+    catch (Exception e){
+      logger.error("Could not extract remote address", e);
+      return null;
+    }
   }
 
   @Override
