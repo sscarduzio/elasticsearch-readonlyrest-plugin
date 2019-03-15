@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.function.Function;
 
-
 /**
  * Created by sscarduzio on 24/03/2017.
  */
@@ -40,15 +39,13 @@ public class ReflecUtils {
   private static final HashMap<String, Method> methodsCache = new HashMap<>(128);
 
   public static Object invokeMethodCached(Object o, Class c, String method) {
-    final Object[] result = new Object[1];
     String cacheKey = c.getName() + "#" + method;
 
     return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
       try {
         Method m = methodsCache.get(cacheKey);
         if (m != null) {
-          result[0] = m.invoke(o);
-          return null;
+          return m.invoke(o);
         }
         try {
           m = c.getDeclaredMethod(method);
@@ -66,7 +63,7 @@ public class ReflecUtils {
   }
 
   public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, ESContext context) {
-    final String[][] result = {new String[]{}};
+    final String[][] result = { new String[] {} };
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       if (o == null) {
         throw context.rorException("cannot extract field from null!");
@@ -83,17 +80,17 @@ public class ReflecUtils {
 
           m = exploreClassMethods(clazz, methodName, String.class);
           if (m != null) {
-            result[0] = new String[]{(String) m.invoke(o)};
+            result[0] = new String[] { (String) m.invoke(o) };
             return null;
           }
         } catch (SecurityException e) {
           context.logger(ReflecUtils.class)
-            .error("Can't get indices for request because of wrong security configuration " + o.getClass());
+                 .error("Can't get indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
-            "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
+              "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
           context.logger(ReflecUtils.class)
-            .debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
+                 .debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
         }
         clazz = clazz.getSuperclass();
       }
@@ -114,7 +111,7 @@ public class ReflecUtils {
       if (methodName.equals(m.getName()) && m.getReturnType().equals(returnClass)) {
         if (methodsCache.size() > Constants.CACHE_WATERMARK) {
           new Exception("Method cache has exceeded the watermark of " + Constants.CACHE_WATERMARK +
-                          " keys, currently at " + methodsCache.size()).printStackTrace();
+              " keys, currently at " + methodsCache.size()).printStackTrace();
         }
         m.setAccessible(true);
         methodsCache.put(cacheKey, m);
@@ -142,20 +139,20 @@ public class ReflecUtils {
 
   public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, LoggerShim logger) {
 
-    final boolean[] res = {false};
+    final boolean[] res = { false };
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")
       Set<Field> indexFields = ReflectionUtils.getAllFields(
-        o.getClass(),
-        (Field field) -> field != null && fieldNames.contains(field.getName()) &&
-          (field.getType().equals(String.class) || field.getType().equals(String[].class))
+          o.getClass(),
+          (Field field) -> field != null && fieldNames.contains(field.getName()) &&
+              (field.getType().equals(String.class) || field.getType().equals(String[].class))
       );
       String firstIndex = newIndices.iterator().next();
       for (Field f : indexFields) {
         f.setAccessible(true);
         try {
           if (f.getType().equals(String[].class)) {
-            f.set(o, newIndices.toArray(new String[]{}));
+            f.set(o, newIndices.toArray(new String[] {}));
           }
           else {
             f.set(o, firstIndex);
@@ -163,14 +160,13 @@ public class ReflecUtils {
           res[0] = true;
         } catch (IllegalAccessException | IllegalArgumentException e) {
           logger.error("could not find index or indices field to replace: " +
-                         e.getMessage() + " and then " + e.getMessage());
+              e.getMessage() + " and then " + e.getMessage());
         }
       }
       return null;
     });
     return res[0];
   }
-
 
   @FunctionalInterface
   public interface CheckedFunction<T, R> {
@@ -180,9 +176,9 @@ public class ReflecUtils {
   static class SetFieldException extends Exception {
     SetFieldException(Class<?> c, String id, String fieldName, Throwable e) {
       super(" Could not set " + fieldName + " to class " + c.getSimpleName() +
-              "for req id: " + id + " because: "
-              + e.getClass().getSimpleName() + " : " + e.getMessage() +
-              (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
+          "for req id: " + id + " because: "
+          + e.getClass().getSimpleName() + " : " + e.getMessage() +
+          (e.getCause() != null ? " caused by: " + e.getCause().getClass().getSimpleName() + " : " + e.getCause().getMessage() : ""));
     }
   }
 }
