@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.mocks;
 
 import org.apache.http.client.methods.HttpGet;
@@ -21,8 +22,12 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.mockito.Mockito;
 import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.commons.settings.BasicSettings;
@@ -58,6 +63,12 @@ public class MockedESContext extends AbstractESContext {
   @Override
   public LoggerShim mkLogger(Class<?> clazz) {
     Logger l = LogManager.getLogger(clazz.getSimpleName());
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+    Configuration config = ctx.getConfiguration();
+    LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
+    loggerConfig.setLevel(Level.TRACE);
+    ctx.updateLoggers();
+
     return new LoggerShim() {
 
       @Override
@@ -139,14 +150,14 @@ public class MockedESContext extends AbstractESContext {
     public CompletableFuture<RRHttpResponse> send(RRHttpRequest request) {
       RestClient client = new RestClient(true, request.getUrl().getHost(), request.getUrl().getPort());
       return CompletableFuture
-        .supplyAsync(() -> {
-          try {
-            return client.execute(toUriRequest(request));
-          } catch (Exception e) {
-            throw new RuntimeException("execution exception", e);
-          }
-        })
-        .thenApply(this::toResponse);
+          .supplyAsync(() -> {
+            try {
+              return client.execute(toUriRequest(request));
+            } catch (Exception e) {
+              throw new RuntimeException("execution exception", e);
+            }
+          })
+          .thenApply(this::toResponse);
     }
 
     private HttpUriRequest toUriRequest(RRHttpRequest request) throws URISyntaxException {

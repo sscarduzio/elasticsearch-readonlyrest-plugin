@@ -23,6 +23,7 @@ import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClien
 import tech.beshu.ror.acl.definitions.groupsproviders.GroupsProviderServiceClientFactory;
 import tech.beshu.ror.commons.domain.LoggedUser;
 import tech.beshu.ror.commons.shims.es.ESContext;
+import tech.beshu.ror.commons.shims.es.LoggerShim;
 import tech.beshu.ror.commons.utils.MatcherWithWildcards;
 import tech.beshu.ror.settings.rules.GroupsProviderAuthorizationRuleSettings;
 
@@ -34,6 +35,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
   private final GroupsProviderAuthorizationRuleSettings settings;
   private final GroupsProviderServiceClient client;
   private final MatcherWithWildcards usersMatcher;
+  private final LoggerShim logger;
 
   public GroupsProviderAuthorizationAsyncRule(GroupsProviderAuthorizationRuleSettings settings,
       GroupsProviderServiceClientFactory factory,
@@ -42,6 +44,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
     this.settings = settings;
     this.client = factory.getClient(settings.getUserGroupsProviderSettings());
     this.usersMatcher = new MatcherWithWildcards(settings.getUsers());
+    this.logger = context.logger(this.getClass());
   }
 
   @Override
@@ -60,14 +63,14 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
             return false;
           }
 
-          System.out.println("user: " + user.getId() + " has groups: " + fetchedGroupsForUser + ", intersected: " + intersection);
+          logger.debug("user: " + user.getId() + " has groups: " + fetchedGroupsForUser + ", intersected: " + intersection);
 
           // Exit early if the request has a current group that does not belong to this rule, or is not resolved for user
           if (user.getCurrentGroup().isPresent()) {
             String currGroup = user.getCurrentGroup().get();
-            System.out.println("found current group: " + currGroup);
+            logger.debug("found current group: " + currGroup);
             if (!intersection.contains(currGroup)) {
-              System.out.println("current group in header does not match any available groups in rule " + currGroup);
+              logger.debug("current group in header does not match any available groups in rule " + currGroup);
               return false;
             }
           }
@@ -75,7 +78,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
           // Set current group as the first of the list, if was absent (this will surface on the response header)
           else {
             String curGroup = intersection.immutableCopy().iterator().next();
-            System.out.println("setting current group: " + curGroup);
+            logger.debug("setting current group: " + curGroup);
             user.setCurrentGroup(curGroup);
           }
 
@@ -89,7 +92,7 @@ public class GroupsProviderAuthorizationAsyncRule extends AsyncAuthorization {
             availGroupsForUser.addAll(settings.getUserGroupsProviderSettings().getUser2availGroups().get(up));
           }
           availGroupsForUser = Sets.intersection(availGroupsForUser, fetchedGroupsForUser);
-          System.out.println("adding available groups for user " + user.getId() + ": " + availGroupsForUser);
+          logger.debug("adding available groups for user " + user.getId() + ": " + availGroupsForUser);
 
           user.addAvailableGroups(availGroupsForUser);
 

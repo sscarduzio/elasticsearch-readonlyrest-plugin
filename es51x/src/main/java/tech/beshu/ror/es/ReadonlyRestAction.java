@@ -46,13 +46,11 @@ public class ReadonlyRestAction extends BaseRestHandler {
         filterChain.continueProcessing(request, channel, client);
       }
     };
-    System.out.println("setting up restfilter: " + rf);
     controller.registerFilter(rf);
   }
 
   @Override
   protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
-    System.out.println("PREPARING REQUEST");
     return null;
   }
 }

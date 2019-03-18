@@ -251,6 +251,7 @@ public class RequestInfo implements RequestInfoShim {
         IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
         indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
       } catch (Exception e) {
+        logger.error("cannot extract indices from: "+ extractMethod() + " " + extractURI() + "\n"+ extractContent(), e);
         e.printStackTrace();
       }
     }
