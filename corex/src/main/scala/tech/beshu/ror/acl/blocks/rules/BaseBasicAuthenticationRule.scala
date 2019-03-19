@@ -35,21 +35,23 @@ abstract class BaseBasicAuthenticationRule
   protected def authenticate(basicAuth: BasicAuth): Task[Boolean]
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.unit
-    .flatMap { _ =>
-      requestContext.basicAuth match {
-        case Some(credentials) =>
-          logger.debug(s"Attempting Login as: ${credentials.user.show} rc: ${requestContext.id.show}")
-          authenticate(credentials)
-            .map {
-              case true => Fulfilled(blockContext.withLoggedUser(LoggedUser(credentials.user)))
-              case false => Rejected
-            }
-        case None =>
-          logger.debug(s"No basic auth, rc: ${requestContext.id.show}")
-          Task.now(Rejected)
+                     blockContext: BlockContext): Task[RuleResult] =
+    Task
+      .unit
+      .flatMap { _ =>
+        requestContext.basicAuth match {
+          case Some(credentials) =>
+            logger.debug(s"Attempting Login as: ${credentials.user.show} rc: ${requestContext.id.show}")
+            authenticate(credentials)
+              .map {
+                case true => Fulfilled(blockContext.withLoggedUser(LoggedUser(credentials.user)))
+                case false => Rejected
+              }
+          case None =>
+            logger.debug(s"No basic auth, rc: ${requestContext.id.show}")
+            Task.now(Rejected)
+        }
       }
-    }
 }
 
 abstract class BasicAuthenticationRule(val settings: Settings)

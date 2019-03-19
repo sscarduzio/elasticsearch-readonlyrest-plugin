@@ -90,7 +90,7 @@ object domain {
   object BasicAuth extends Logging {
     def fromHeader(header: Header): Option[BasicAuth] = {
       header.name match {
-        case Header.Name.authorization => parse(header.value)
+        case name if name === Header.Name.authorization => parse(header.value)
         case _ => None
       }
     }

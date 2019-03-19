@@ -17,17 +17,21 @@
 package tech.beshu.ror.integration
 
 import java.time.Clock
+import java.util.Base64
 
+import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Inside, WordSpec}
 import org.scalatest.Matchers._
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
-import tech.beshu.ror.acl.factory.{CoreSettings, CoreFactory}
+import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.acl.domain.Header
+import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 
 class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
@@ -75,6 +79,25 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
           val handler = mock[AclHandler]
           (handler.onAllow _).expects(*).returning(responseWriter)
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:container")))
+
+          val (history, result) = acl.handle(request, handler).runSyncUnsafe()
+          history should have size 1
+          inside(result) { case Matched(block, _) =>
+            block.name should be(Block.Name("CONTAINER ADMIN"))
+          }
+        }
+        "request is sent in behalf of admin user, but the authorization token header is lower case string" in {
+          val responseWriter = mock[ResponseWriter]
+          (responseWriter.writeResponseHeaders _).expects(*).returning({})
+          (responseWriter.commit _).expects().returning({})
+          val handler = mock[AclHandler]
+          (handler.onAllow _).expects(*).returning(responseWriter)
+          val request = MockRequestContext.default.copy(headers = Set(
+            Header(
+              Name(NonEmptyString.unsafeFrom("authorization")),
+              NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString("admin:container".getBytes))
+            )
+          ))
 
           val (history, result) = acl.handle(request, handler).runSyncUnsafe()
           history should have size 1
