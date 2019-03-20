@@ -30,7 +30,7 @@ import java.util.Set;
 public class LoggedUser {
 
   private final String id;
-  private final LinkedHashSet<String> availableGroups = Sets.newLinkedHashSet();
+  private final Set<String> availableGroups = Sets.newConcurrentHashSet();
   private Optional<String> currentGroup = Optional.empty();
 
   public LoggedUser(String id) {
