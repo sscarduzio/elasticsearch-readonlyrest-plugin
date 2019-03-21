@@ -582,7 +582,12 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeResponseHeaders(Map<String, String> hMap) {
-    hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
+    threadPool.getThreadContext().getResponseHeaders().keySet().stream()
+              .forEach(k -> threadPool.getThreadContext().addResponseHeader(k, null, v -> null));
+    hMap.keySet().forEach(k -> {
+      String val = hMap.get(k);
+      threadPool.getThreadContext().addResponseHeader(k, val, v -> val);
+    });
   }
 
   @Override
