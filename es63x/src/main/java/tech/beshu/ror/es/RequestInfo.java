@@ -633,14 +633,14 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeToThreadContextHeader(String key, String value) {
-    threadPool.getThreadContext().putHeader(key, value);
+    threadPool.getThreadContext().putTransient(key, value);
   }
 
   @Override
   public String consumeThreadContextHeader(String key) {
-    String value = threadPool.getThreadContext().getHeader(key);
+    String value = threadPool.getThreadContext().getTransient(key);
     if (!Strings.isNullOrEmpty(value)) {
-      threadPool.getThreadContext().getHeaders().remove(key);
+      threadPool.getThreadContext().putTransient(key, null);
     }
     return value;
   }
