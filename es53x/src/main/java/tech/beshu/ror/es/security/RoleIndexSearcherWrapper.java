@@ -85,7 +85,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
 
     // Field level security (FLS)
     try {
-      String fieldsHeader = threadContext.getHeader(Constants.FIELDS_TRANSIENT);
+      String fieldsHeader = threadContext.getTransient(Constants.FIELDS_TRANSIENT);
       Set<String> fields = Strings.isNullOrEmpty(fieldsHeader) ? null : Sets.newHashSet(fieldsHeader.split(",")).stream().map(String::trim).collect(Collectors.toSet());
       if(fields != null) {
         reader = DocumentFieldReader.wrap(reader, fields);
@@ -95,7 +95,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     }
 
     // Document level security (DLS)
-    FilterTransient userTransient = FilterTransient.deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
+    FilterTransient userTransient = FilterTransient.deserialize(threadContext.getTransient(Constants.FILTER_TRANSIENT));
     if (userTransient == null) {
       logger.debug("Couldn't extract userTransient from threadContext.");
       return reader;
