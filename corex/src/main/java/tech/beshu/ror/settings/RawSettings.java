@@ -94,7 +94,7 @@ public class RawSettings {
 
   @SuppressWarnings("unchecked")
   public <T> T req(String attr) {
-    //Object val = raw.get(attr);
+    //Object val = raw.resolve(attr);
     Object val;
     try {
       val = (T) jpathContext.read("$." + attr);

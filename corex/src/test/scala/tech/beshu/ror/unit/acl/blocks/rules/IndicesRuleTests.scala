@@ -26,9 +26,9 @@ import tech.beshu.ror.acl.blocks.rules.IndicesRule
 import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.values.RuntimeValue
 
 import scala.collection.SortedSet
 
@@ -79,19 +79,19 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configured: NonEmptySet[Value[IndexName]],
+  private def assertMatchRule(configured: NonEmptySet[RuntimeValue[IndexName]],
                               indices: Set[IndexName],
                               modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                               found: Set[IndexName] = Set.empty) =
     assertRule(configured, indices, isMatched = true, modifyRequestContext, found)
 
-  private def assertNotMatchRule(configured: NonEmptySet[Value[IndexName]],
+  private def assertNotMatchRule(configured: NonEmptySet[RuntimeValue[IndexName]],
                                  indices: Set[IndexName],
                                  modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                                  found: Set[IndexName] = Set.empty) =
     assertRule(configured, indices, isMatched = false, modifyRequestContext, found)
 
-  private def assertRule(configuredValues: NonEmptySet[Value[IndexName]],
+  private def assertRule(configuredValues: NonEmptySet[RuntimeValue[IndexName]],
                          requestIndices: Set[IndexName],
                          isMatched: Boolean,
                          modifyRequestContext: MockRequestContext => MockRequestContext,
@@ -118,8 +118,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def indexNameValueFrom(value: String): Value[IndexName] = {
-    Value
+  private def indexNameValueFrom(value: String): RuntimeValue[IndexName] = {
+    RuntimeValue
       .fromString(value, rv => Right(IndexName(rv.value)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))

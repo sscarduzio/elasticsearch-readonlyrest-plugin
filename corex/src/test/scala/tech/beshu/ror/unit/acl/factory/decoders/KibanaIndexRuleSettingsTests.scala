@@ -17,10 +17,9 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
-import tech.beshu.ror.acl.blocks.{Const, Variable}
+import tech.beshu.ror.acl.blocks.values.{Const, Variable}
+import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.domain.IndexName

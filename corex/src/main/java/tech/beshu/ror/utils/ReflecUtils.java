@@ -86,7 +86,7 @@ public class ReflecUtils {
           }
         } catch (SecurityException e) {
           context.logger(ReflecUtils.class)
-            .error("Can't get indices for request because of wrong security configuration " + o.getClass());
+            .error("Can't resolve indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
             "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {

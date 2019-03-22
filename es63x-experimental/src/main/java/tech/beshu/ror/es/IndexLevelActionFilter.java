@@ -174,7 +174,7 @@ import java.util.function.Consumer;
       public ResponseWriter onAllow(BlockContext blockContext) {
         try {
           // Cache disabling for those 2 kind of request is crucial for
-          // document level security to work. Otherwise we'd get an answer from
+          // document level security to work. Otherwise we'd resolve an answer from
           // the cache some times and would not be filtered
           if (engine.context().involvesFilter()) {
             if (request instanceof SearchRequest) {

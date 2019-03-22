@@ -24,7 +24,8 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.values.RuntimeValue
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 
@@ -62,13 +63,13 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredAddresses: NonEmptySet[Value[Address]], localAddress: Address) =
+  private def assertMatchRule(configuredAddresses: NonEmptySet[RuntimeValue[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = true)
 
-  private def assertNotMatchRule(configuredAddresses: NonEmptySet[Value[Address]], localAddress: Address) =
+  private def assertNotMatchRule(configuredAddresses: NonEmptySet[RuntimeValue[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = false)
 
-  private def assertRule(configuredAddresses: NonEmptySet[Value[Address]], localAddress: Address, isMatched: Boolean) = {
+  private def assertRule(configuredAddresses: NonEmptySet[RuntimeValue[Address]], localAddress: Address, isMatched: Boolean) = {
     val rule = new LocalHostsRule(LocalHostsRule.Settings(configuredAddresses))
     val blockContext = mock[BlockContext]
     val requestContext = MockRequestContext(localAddress = localAddress)
@@ -78,8 +79,8 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): Value[Address] = {
-    Value
+  private def addressValueFrom(value: String): RuntimeValue[Address] = {
+    RuntimeValue
       .fromString(value, rv => Right(Address.from(rv.value).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))

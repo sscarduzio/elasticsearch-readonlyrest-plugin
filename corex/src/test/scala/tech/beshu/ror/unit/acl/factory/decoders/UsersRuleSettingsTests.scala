@@ -18,11 +18,10 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.domain.User
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.UsersRule
-import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue, Variable}
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
@@ -44,7 +43,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: NonEmptySet[Value[User.Id]] = NonEmptySet.one(Const(User.Id("user1")))
+            val userIds: NonEmptySet[RuntimeValue[User.Id]] = NonEmptySet.one(Const(User.Id("user1")))
             rule.settings.userIds should be(userIds)
           }
         )
@@ -62,7 +61,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: NonEmptySet[Value[User.Id]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}"), rv => Right(User.Id(rv.value))))
+            val userIds: NonEmptySet[RuntimeValue[User.Id]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}"), rv => Right(User.Id(rv.value))))
             rule.settings.userIds should be(userIds)
           }
         )
@@ -80,7 +79,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: NonEmptySet[Value[User.Id]] = NonEmptySet.of(Const(User.Id("user1")), Const(User.Id("user2")))
+            val userIds: NonEmptySet[RuntimeValue[User.Id]] = NonEmptySet.of(Const(User.Id("user1")), Const(User.Id("user2")))
             rule.settings.userIds should be(userIds)
           }
         )

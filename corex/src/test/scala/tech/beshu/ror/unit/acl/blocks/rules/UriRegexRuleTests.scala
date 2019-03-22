@@ -26,7 +26,8 @@ import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, UriPath}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue, Variable}
 import tech.beshu.ror.mocks.MockRequestContext
 
 import scala.util.Try
@@ -76,13 +77,13 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(uriRegex: Value[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
+  private def assertMatchRule(uriRegex: RuntimeValue[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
     assertRule(uriRegex, uriPath, isMatched = true, isUserLogged, userName)
 
-  private def assertNotMatchRule(uriRegex: Value[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
+  private def assertNotMatchRule(uriRegex: RuntimeValue[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
     assertRule(uriRegex, uriPath, isMatched = false, isUserLogged, userName)
 
-  private def assertRule(uriRegex: Value[Pattern], uriPath: UriPath, isMatched: Boolean, isUserLogged: Boolean, userName: String) = {
+  private def assertRule(uriRegex: RuntimeValue[Pattern], uriPath: UriPath, isMatched: Boolean, isUserLogged: Boolean, userName: String) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val blockContext = mock[BlockContext]
     val requestContext = uriRegex match {
@@ -101,9 +102,9 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def patternValueFrom(value: String): Value[Pattern] = {
-    Value
-      .fromString(value, rv => Try(Pattern.compile(rv.value)).toEither.left.map(_ => Value.ConvertError(rv, "msg")))
+  private def patternValueFrom(value: String): RuntimeValue[Pattern] = {
+    RuntimeValue
+      .fromString(value, rv => Try(Pattern.compile(rv.value)).toEither.left.map(_ => RuntimeValue.ConvertError(rv, "msg")))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
   }

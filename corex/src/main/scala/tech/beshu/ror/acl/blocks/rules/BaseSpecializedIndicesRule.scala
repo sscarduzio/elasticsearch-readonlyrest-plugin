@@ -22,11 +22,12 @@ import monix.eval.Task
 import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.rules.BaseSpecializedIndicesRule.Settings
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
+import tech.beshu.ror.acl.blocks.values.RuntimeValue
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
 
@@ -45,7 +46,7 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
       settings
         .allowedIndices
         .toSortedSet
-        .flatMap(_.get(requestContext.variablesResolver, blockContext).toOption),
+        .flatMap(_.extract(requestContext.variablesResolver, blockContext).toOption),
       requestContext,
       blockContext
     )
@@ -81,5 +82,5 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
 }
 
 object BaseSpecializedIndicesRule {
-  final case class Settings(allowedIndices: NonEmptySet[Value[IndexName]]) // todo: check don't allow to use _all || *
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeValue[IndexName]]) // todo: check don't allow to use _all || *
 }

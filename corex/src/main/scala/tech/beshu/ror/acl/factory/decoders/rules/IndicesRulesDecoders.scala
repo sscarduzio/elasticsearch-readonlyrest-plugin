@@ -18,9 +18,8 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.{Const, Value}
-import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, IndicesRule, RepositoriesRule, SnapshotsRule}
+import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
@@ -32,13 +31,13 @@ import tech.beshu.ror.acl.orders._
 
 object IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Value[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeValue[IndexName]]
     .map(indices => new IndicesRule(IndicesRule.Settings(indices)))
 )
 
 object SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Value[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeValue[IndexName]]
     .toSyncDecoder
     .emapE { indices =>
       if(indices.contains(Const(IndexName.all)))
@@ -54,7 +53,7 @@ object SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[Snapshots
 
 object RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[RepositoriesRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Value[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeValue[IndexName]]
     .toSyncDecoder
     .emapE { indices =>
       if(indices.contains(Const(IndexName.all)))
@@ -69,12 +68,12 @@ object RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposi
 )
 
 private object IndicesDecodersHelper {
-  implicit val indexNameValueDecoder: Decoder[Value[IndexName]] =
+  implicit val indexNameValueDecoder: Decoder[RuntimeValue[IndexName]] =
     DecoderHelpers
       .decodeStringLike
       .toSyncDecoder
       .emapE { e =>
-        Value.fromString(e, rv => Right(IndexName(rv.value)))
+        RuntimeValue.fromString(e, rv => Right(IndexName(rv.value)))
           .left.map(error => RulesLevelCreationError(Message(error.msg)))
       }
       .decoder

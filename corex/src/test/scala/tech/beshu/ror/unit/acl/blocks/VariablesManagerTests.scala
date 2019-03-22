@@ -21,8 +21,9 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
-import tech.beshu.ror.acl.blocks.Variable.{ResolvedValue, ValueWithVariable}
-import tech.beshu.ror.acl.blocks.{BlockContext, VariablesManager}
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.values.Variable.{ResolvedValue, ValueWithVariable}
+import tech.beshu.ror.acl.blocks.values.VariablesManager
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext
 

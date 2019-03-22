@@ -35,19 +35,19 @@ public class RCUtils {
 
   private static MatcherWithWildcards readRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/*",
-      "cluster:*get*",
+      "cluster:*resolve*",
       "cluster:*search*",
       "indices:admin/aliases/exists",
-      "indices:admin/aliases/get",
+      "indices:admin/aliases/resolve",
       "indices:admin/exists*",
-      "indices:admin/get*",
-      "indices:admin/mappings/fields/get*",
-      "indices:admin/mappings/get*",
+      "indices:admin/resolve*",
+      "indices:admin/mappings/fields/resolve*",
+      "indices:admin/mappings/resolve*",
       "indices:admin/refresh*",
       "indices:admin/types/exists",
       "indices:admin/validate/*",
       "indices:data/read/*",
-      "cluster:admin/*/get",
+      "cluster:admin/*/resolve",
       "cluster:admin/*/status"
 
   ));

@@ -21,19 +21,19 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.acl.blocks.Value._
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.{GroupsRule, Rule}
-import tech.beshu.ror.acl.blocks.{BlockContext, Const, RequestContextInitiatedBlockContext, Variable}
+import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.values.{Const, Variable}
+import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
+import tech.beshu.ror.utils.TestsUtils._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

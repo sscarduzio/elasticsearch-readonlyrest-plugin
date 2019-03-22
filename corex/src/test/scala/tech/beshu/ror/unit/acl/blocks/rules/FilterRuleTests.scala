@@ -20,13 +20,14 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.acl.domain.{Filter, LoggedUser, User}
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.FilterRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.domain.{Filter, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils._
 
 class FilterRuleTests extends WordSpec with MockFactory {
 
@@ -75,8 +76,8 @@ class FilterRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def filterValueFrom(value: String): Value[Filter] = {
-    Value
+  private def filterValueFrom(value: String): RuntimeValue[Filter] = {
+    RuntimeValue
       .fromString(value, rv => Right(Filter(rv.value)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Filter Value from $value"))

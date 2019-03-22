@@ -25,10 +25,9 @@ import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
-import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.blocks.Value.ConvertError
-import tech.beshu.ror.acl.blocks.Variable.ResolvedValue
+import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.RuntimeValue.ConvertError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
@@ -102,12 +101,12 @@ object CirceOps {
         .decoder
     }
 
-    def valueDecoder[T](convert: ResolvedValue => Either[Value.ConvertError, T]): Decoder[Either[ConvertError, Value[T]]] =
+    def valueDecoder[T](convert: ResolvedValue => Either[RuntimeValue.ConvertError, T]): Decoder[Either[ConvertError, RuntimeValue[T]]] =
       DecoderHelpers
         .decodeStringLike
-        .map { str => Value.fromString(str, convert) }
+        .map { str => RuntimeValue.fromString(str, convert) }
 
-    def alwaysRightValueDecoder[T](convert: ResolvedValue => T): Decoder[Value[T]] =
+    def alwaysRightValueDecoder[T](convert: ResolvedValue => T): Decoder[RuntimeValue[T]] =
       SyncDecoderCreator
         .from(valueDecoder[T](rv => Right(convert(rv))))
         .emapE {

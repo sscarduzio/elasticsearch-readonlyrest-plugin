@@ -20,10 +20,10 @@ import java.util.regex.Pattern
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.{BlockContext, Variable, VariablesResolver}
+import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.values.{Variable, VariablesResolver}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 
@@ -44,7 +44,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.uriPattern.get(mock[VariablesResolver], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
+            rule.settings.uriPattern.extract(mock[VariablesResolver], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
           }
         )
       }

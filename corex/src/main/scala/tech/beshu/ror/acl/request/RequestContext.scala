@@ -25,8 +25,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.acl.blocks.values.VariablesManager
 import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.blocks.{Block, BlockContext, VariablesManager, VariablesResolver}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
@@ -58,8 +59,6 @@ trait RequestContext {
   def isCompositeRequest: Boolean
   def isAllowedForDLS: Boolean
   def hasRemoteClusters: Boolean
-
-  def variablesResolver: VariablesResolver = new VariablesManager(this)
 }
 
 object RequestContext extends Logging {

@@ -21,7 +21,7 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
-import tech.beshu.ror.acl.blocks.{Const, Value}
+import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
@@ -46,7 +46,7 @@ object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 )
 
 // todo: at the moment kibana_index must be defined after kibana_access. We should allow to place it anywhere
-object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAccessRule, Value[IndexName]](
+object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeValue[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
       .decodeStringLike
@@ -64,7 +64,7 @@ object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAcc
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
   associatedFieldsDecoder =
-    Decoder.instance(_.downField("kibana_index").as[Value[IndexName]]) or Decoder.const(Const(IndexName.kibana))
+    Decoder.instance(_.downField("kibana_index").as[RuntimeValue[IndexName]]) or Decoder.const(Const(IndexName.kibana))
 )
 
 private object KibanaRulesDecoderHelper {
@@ -73,10 +73,10 @@ private object KibanaRulesDecoderHelper {
       .map(!"false".equalsIgnoreCase(_))
       .getOrElse(true)
 
-  implicit val kibanaIndexDecoder: Decoder[Value[IndexName]] =
+  implicit val kibanaIndexDecoder: Decoder[RuntimeValue[IndexName]] =
     DecoderHelpers
       .decodeStringLike
-      .map(e => Value.fromString(e, rv => Right(IndexName(rv.value.replace(" ", "_")))))
+      .map(e => RuntimeValue.fromString(e, rv => Right(IndexName(rv.value.replace(" ", "_")))))
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)

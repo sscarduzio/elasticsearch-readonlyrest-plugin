@@ -29,9 +29,9 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
+import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.RuntimeValue.ConvertError
 import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
-import tech.beshu.ror.acl.blocks.Value
-import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.ValueLevelCreationError
 import tech.beshu.ror.acl.orders._
@@ -138,7 +138,7 @@ object common {
       }
       .decoder
 
-  implicit val groupValueDecoder: Decoder[Value[Group]] =
+  implicit val groupValueDecoder: Decoder[RuntimeValue[Group]] =
     DecoderHelpers
       .valueDecoder[Group] { rv =>
       NonEmptyString.from(rv.value) match {
@@ -153,7 +153,7 @@ object common {
       }
       .decoder
 
-  implicit val addressValueDecoder: Decoder[Value[Address]] = {
+  implicit val addressValueDecoder: Decoder[RuntimeValue[Address]] = {
     DecoderHelpers
       .valueDecoder[Address] { rv =>
       Address.from(rv.value) match {

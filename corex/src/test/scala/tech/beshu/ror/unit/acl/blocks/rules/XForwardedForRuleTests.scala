@@ -22,13 +22,14 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.acl.domain.Address
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils._
 
 class XForwardedForRuleTests extends WordSpec with MockFactory {
 
@@ -106,8 +107,8 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): Value[Address] = {
-    Value
+  private def addressValueFrom(value: String): RuntimeValue[Address] = {
+    RuntimeValue
       .fromString(value, rv => Right(Address.from(rv.value).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))

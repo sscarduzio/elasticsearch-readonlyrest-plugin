@@ -17,11 +17,10 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.domain.Filter
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.FilterRule
-import tech.beshu.ror.acl.blocks.{Const, Variable}
+import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.values.{Const, Variable}
+import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 

@@ -19,13 +19,12 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.domain.{Secret, Group, User}
-import tech.beshu.ror.acl.blocks.Value._
+import tech.beshu.ror.acl.domain.{Group, Secret, User}
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
-import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
+import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue, Variable}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.acl.orders._
@@ -52,7 +51,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: NonEmptySet[Value[Group]] = NonEmptySet.one(Const(groupFrom("group1")))
+            val groups: NonEmptySet[RuntimeValue[Group]] = NonEmptySet.one(Const(groupFrom("group1")))
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
@@ -86,7 +85,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: NonEmptySet[Value[Group]] = NonEmptySet.of(Const(groupFrom("group1")), Const(groupFrom("group2")))
+            val groups: NonEmptySet[RuntimeValue[Group]] = NonEmptySet.of(Const(groupFrom("group1")), Const(groupFrom("group2")))
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet
@@ -123,7 +122,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: NonEmptySet[Value[Group]] = NonEmptySet.of(
+            val groups: NonEmptySet[RuntimeValue[Group]] = NonEmptySet.of(
               Const(groupFrom("group1")),
               Variable(ValueWithVariable("group_@{user}"), rv => Right(groupFrom(rv.value)))
             )

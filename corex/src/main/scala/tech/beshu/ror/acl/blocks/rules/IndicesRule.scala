@@ -30,7 +30,8 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue}
 import tech.beshu.ror.acl.request.RequestContext
 
 import scala.collection.JavaConverters._
@@ -58,7 +59,7 @@ class IndicesRule(val settings: Settings)
     val matcher: Matcher = initialMatcher.getOrElse {
       val resolvedIndices = settings.allowedIndices.toList
         .flatMap { v =>
-          v.get(requestContext.variablesResolver, blockContext) match {
+          v.extract(requestContext, blockContext) match {
             case Right(index) => index :: Nil
             case Left(_) => Nil
           }
@@ -86,7 +87,7 @@ class IndicesRule(val settings: Settings)
         // Run the local algorithm
         val processedLocalIndices =
           if (localIndices.isEmpty && crossClusterIndices.nonEmpty) {
-            // Don't run locally if only have crossCluster, otherwise you'll get the equivalent of "*"
+            // Don't run locally if only have crossCluster, otherwise you'll resolve the equivalent of "*"
             localIndices
           } else {
             canPass(requestContext, matcher) match {
@@ -219,7 +220,7 @@ class IndicesRule(val settings: Settings)
   private val initialMatcher = {
     val hasVariables = settings.allowedIndices.exists {
       case Const(_) => false
-      case Variable(_, _) => true
+      case _ => true
     }
     if (hasVariables) None
     else Some {
@@ -239,7 +240,7 @@ class IndicesRule(val settings: Settings)
 object IndicesRule {
   val name = Rule.Name("indices")
 
-  final case class Settings(allowedIndices: NonEmptySet[Value[IndexName]])
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeValue[IndexName]])
 
   private sealed trait CanPass
   private object CanPass {
