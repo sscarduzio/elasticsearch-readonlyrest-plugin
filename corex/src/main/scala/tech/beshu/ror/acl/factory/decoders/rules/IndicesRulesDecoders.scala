@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, IndicesRule, RepositoriesRule, SnapshotsRule}
-import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue}
+import tech.beshu.ror.acl.blocks.values._
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
@@ -31,18 +31,18 @@ import tech.beshu.ror.acl.orders._
 
 object IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeValue[IndexName]]
+    .decodeStringLikeOrNonEmptySet[Variable[IndexName]]
     .map(indices => new IndicesRule(IndicesRule.Settings(indices)))
 )
 
 object SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeValue[IndexName]]
+    .decodeStringLikeOrNonEmptySet[Variable[IndexName]]
     .toSyncDecoder
     .emapE { indices =>
-      if(indices.contains(Const(IndexName.all)))
+      if(indices.contains(AlreadyResolved(IndexName.all)))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
-      else if(indices.contains(Const(IndexName.wildcard)))
+      else if(indices.contains(AlreadyResolved(IndexName.wildcard)))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - index ${IndexName.wildcard.show}")))
       else
         Right(indices)
@@ -53,12 +53,12 @@ object SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[Snapshots
 
 object RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[RepositoriesRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeValue[IndexName]]
+    .decodeStringLikeOrNonEmptySet[Variable[IndexName]]
     .toSyncDecoder
     .emapE { indices =>
-      if(indices.contains(Const(IndexName.all)))
+      if(indices.contains(AlreadyResolved(IndexName.all)))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
-      else if(indices.contains(Const(IndexName.wildcard)))
+      else if(indices.contains(AlreadyResolved(IndexName.wildcard)))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - index ${IndexName.wildcard.show}")))
       else
         Right(indices)
@@ -68,12 +68,13 @@ object RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposi
 )
 
 private object IndicesDecodersHelper {
-  implicit val indexNameValueDecoder: Decoder[RuntimeValue[IndexName]] =
+  implicit val indexNameValueDecoder: Decoder[Variable[IndexName]] =
     DecoderHelpers
       .decodeStringLike
       .toSyncDecoder
-      .emapE { e =>
-        RuntimeValue.fromString(e, rv => Right(IndexName(rv.value)))
+      .emapE { str =>
+        VariableParser
+          .parse(str, extracted => Right(IndexName(extracted)))
           .left.map(error => RulesLevelCreationError(Message(error.msg)))
       }
       .decoder

@@ -22,7 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.Variable
 import tech.beshu.ror.acl.request.RequestContext
 
 class UriRegexRule(val settings: Settings)
@@ -35,7 +35,7 @@ class UriRegexRule(val settings: Settings)
     RuleResult.fromCondition(blockContext) {
       settings
         .uriPattern
-        .extract(requestContext.variablesResolver, blockContext)
+        .resolve(requestContext, blockContext)
         .exists {
           _.matcher(requestContext.uriPath.value).find()
         }
@@ -46,6 +46,6 @@ class UriRegexRule(val settings: Settings)
 object UriRegexRule {
   val name = Rule.Name("uri_re")
 
-  final case class Settings(uriPattern: RuntimeValue[Pattern])
+  final case class Settings(uriPattern: Variable[Pattern])
 
 }

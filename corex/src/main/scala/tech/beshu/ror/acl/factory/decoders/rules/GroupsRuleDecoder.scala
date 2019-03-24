@@ -21,7 +21,7 @@ import cats.implicits._
 import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.Variable
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.common._
@@ -34,7 +34,7 @@ import scala.collection.SortedSet
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef]) extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeValue[Group]]
+    .decodeStringLikeOrNonEmptySet[Variable[Group]]
     .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>

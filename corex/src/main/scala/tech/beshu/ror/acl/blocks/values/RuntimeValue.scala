@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.blocks.values
 
+import cats.Order
 import cats.implicits._
 import com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -34,23 +35,6 @@ sealed trait RuntimeValue {
 object RuntimeValue {
 
   final case class ExtractError(msg: String) extends AnyVal
-//
-
-  //  // todo: what about escaping
-  //  def fromString[T](representation: String, convert: ResolvedValue => Either[ConvertError, T]): Either[ConvertError, RuntimeValue[T]] = {
-  //    if (Variable.checkIfStringContainsVariables(representation)) {
-  //      Right(Variable(ValueWithVariable(representation), convert))
-  //    } else {
-  //      convert(ResolvedValue(representation)).map(Const.apply)
-  //    }
-  //  }
-
-  //  implicit def valueOrder[T: Order]: Order[RuntimeValue[T]] = Order.from {
-  //    case (a: Const[T], b: Const[T]) => implicitly[Order[T]].compare(a.value, b.value)
-  //    case (_: Const[T], _: Variable[T]) => -1
-  //    case (_: Variable[T], _: Const[T]) => 1
-  //    case (a: Variable[T], b: Variable[T]) => a.representation.raw.compareTo(b.representation.raw)
-  //  }
 }
 
 final case class Const(value: String) extends RuntimeValue {
@@ -88,11 +72,39 @@ final case class JwtPayloadVar(jsonPath: JsonPath) extends RuntimeValue {
                        blockContext: BlockContext): Either[ExtractError, String] = ???
 }
 
-final case class Variable[T](values: List[RuntimeValue],
-                             convert: String => Either[ConvertError, T]) {
+sealed trait Variable[T] {
 
   def resolve(requestContext: RequestContext,
-              blockContext: BlockContext): Either[Unresolvable, T] = {
+              blockContext: BlockContext): Either[Unresolvable, T]
+}
+
+object Variable {
+
+  final case class ConvertError(value: String, msg: String)
+
+  sealed trait Unresolvable
+  object Unresolvable {
+    final case class CannotExtractValue(msg: String) extends Unresolvable
+    final case class CannotInstantiateResolvedValue(msg: String) extends Unresolvable
+  }
+
+  implicit def variableOrder[T : Order]: Order[Variable[T]] = Order.by(_.hashCode())
+}
+
+final case class AlreadyResolved[T](value: T)
+  extends Variable[T] {
+
+  override def resolve(requestContext: RequestContext,
+                       blockContext: BlockContext): Either[Unresolvable, T] =
+    Right(value)
+}
+
+final case class ToBeResolved[T](values: List[RuntimeValue],
+                                 convert: String => Either[ConvertError, T])
+  extends Variable[T] {
+
+  override def resolve(requestContext: RequestContext,
+                       blockContext: BlockContext): Either[Unresolvable, T] = {
     values
       .foldLeft(Either.right[Unresolvable, String]("")) {
         case (Right(accumulator), value) =>
@@ -108,46 +120,3 @@ final case class Variable[T](values: List[RuntimeValue],
       }
   }
 }
-
-object Variable {
-
-  final case class ConvertError(msg: String) extends AnyVal
-
-  sealed trait Unresolvable
-  object Unresolvable {
-    final case class CannotExtractValue(msg: String) extends Unresolvable
-    final case class CannotInstantiateResolvedValue(msg: String) extends Unresolvable
-  }
-}
-
-//final case class Variable[T](representation: ValueWithVariable,
-//                             convert: ResolvedValue => Either[RuntimeValue.ConvertError, T])
-//  extends RuntimeValue[T] with Logging {
-//  override def resolve(resolver: VariablesResolver, blockContext: BlockContext): Either[Unresolvable, T] = {
-//    resolver
-//      .resolve(representation, blockContext)
-//      .map(convert)
-//      .map {
-//        _.left.map { error =>
-//          logger.debug(s"Cannot instantiate '${error.resolvedValue.show}'. Reason: ${error.msg}")
-//          CannotInstantiateResolvedValue
-//        }
-//      }
-//      .getOrElse(Left(CannotResolveValue))
-//  }
-//}
-
-//object Variable {
-//
-//  def checkIfStringContainsVariables(value: String): Boolean = value.contains(VariablesManager.varDetector)
-//
-//  final case class ValueWithVariable(raw: String) extends AnyVal
-//  final case class ResolvedValue(value: String) extends AnyVal
-//  object ResolvedValue {
-//    implicit val show: Show[ResolvedValue] = Show.show(_.value)
-//  }
-//}
-
-//trait VariablesResolver {
-////  def resolve(value: ValueWithVariable, blockContext: BlockContext): Option[ResolvedValue]
-//}

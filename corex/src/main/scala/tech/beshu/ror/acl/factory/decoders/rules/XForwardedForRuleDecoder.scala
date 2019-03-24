@@ -16,16 +16,16 @@
  */
 package tech.beshu.ror.acl.factory.decoders.rules
 
-import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.domain.Address
+import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.acl.factory.decoders.common._
 
 object XForwardedForRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeValue[Address]]
+    .decodeStringLikeOrNonEmptySet[Variable[Address]]
     .map(addresses => new XForwardedForRule(XForwardedForRule.Settings(addresses)))
 )

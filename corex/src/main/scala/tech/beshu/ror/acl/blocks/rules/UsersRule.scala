@@ -18,12 +18,12 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
 
@@ -47,7 +47,7 @@ class UsersRule(val settings: Settings)
       .userIds
       .toNonEmptyList
       .toList
-      .flatMap(_.extract(requestContext.variablesResolver, blockContext).toOption)
+      .flatMap(_.resolve(requestContext, blockContext).toOption)
       .toSet
     RuleResult.fromCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value).asJava).`match`(user.id.value)
@@ -58,6 +58,6 @@ class UsersRule(val settings: Settings)
 object UsersRule {
   val name = Rule.Name("users")
 
-  final case class Settings(userIds: NonEmptySet[RuntimeValue[User.Id]]) // todo: do we need Value here?
+  final case class Settings(userIds: NonEmptySet[Variable[User.Id]]) // todo: do we need Value here?
 }
 

@@ -33,7 +33,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.{RuntimeValue, Variable}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.acl.show.logs._
@@ -63,7 +63,7 @@ class KibanaAccessRule(val settings: Settings)
   private def processCheck(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
     val kibanaIndex = settings
       .kibanaIndex
-      .extract(requestContext.variablesResolver, blockContext)
+      .resolve(requestContext, blockContext)
       .getOrElse(IndexName.kibana)
 
     // Save UI state in discover & Short urls
@@ -162,7 +162,7 @@ class KibanaAccessRule(val settings: Settings)
 object KibanaAccessRule {
   val name = Rule.Name("kibana_access")
 
-  final case class Settings(access: KibanaAccess, kibanaIndex: RuntimeValue[IndexName], kibanaMetadataEnabled: Boolean)
+  final case class Settings(access: KibanaAccess, kibanaIndex: Variable[IndexName], kibanaMetadataEnabled: Boolean)
 
   private object Matchers {
     val roMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))

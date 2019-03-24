@@ -17,30 +17,28 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import java.util.regex.Pattern
-
-import cats.implicits._
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.Variable.ConvertError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.util.Try
-import tech.beshu.ror.acl.utils.CirceOps._
 
 object UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .valueDecoder { rv =>
-      Try(Pattern.compile(rv.value))
+    .variableDecoder { str =>
+      Try(Pattern.compile(str))
         .toEither
         .left
-        .map(_ => RuntimeValue.ConvertError(rv, "Cannot compile pattern"))
+        .map(_ => ConvertError(str, "Cannot compile pattern"))
     }
     .toSyncDecoder
     .emapE {
       case Right(pattern) => Right(new UriRegexRule(Settings(pattern)))
-      case Left(error) => Left(RulesLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
+      case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
     }
     .decoder
 )

@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.{RuntimeValue, Variable}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
@@ -49,7 +49,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef]) extends RuleDecode
 
 private object JwtAuthRuleDecoder {
 
-  private implicit val groupsSetDecoder: Decoder[Set[RuntimeValue[Group]]] = DecoderHelpers.decodeStringLikeOrSet[RuntimeValue[Group]]
+  private implicit val groupsSetDecoder: Decoder[Set[Variable[Group]]] = DecoderHelpers.decodeStringLikeOrSet[Variable[Group]]
 
   private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Group])] =
     DecoderHelpers

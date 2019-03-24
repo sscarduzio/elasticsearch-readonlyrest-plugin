@@ -31,7 +31,7 @@ import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue}
+import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, Variable}
 import tech.beshu.ror.acl.request.RequestContext
 
 import scala.collection.JavaConverters._
@@ -59,7 +59,7 @@ class IndicesRule(val settings: Settings)
     val matcher: Matcher = initialMatcher.getOrElse {
       val resolvedIndices = settings.allowedIndices.toList
         .flatMap { v =>
-          v.extract(requestContext, blockContext) match {
+          v.resolve(requestContext, blockContext) match {
             case Right(index) => index :: Nil
             case Left(_) => Nil
           }
@@ -219,19 +219,19 @@ class IndicesRule(val settings: Settings)
 
   private val initialMatcher = {
     val hasVariables = settings.allowedIndices.exists {
-      case Const(_) => false
+      case AlreadyResolved(_) => false
       case _ => true
     }
     if (hasVariables) None
     else Some {
       new MatcherWithWildcardsScalaAdapter(
-        new MatcherWithWildcards(settings.allowedIndices.collect { case Const(IndexName(rawValue)) => rawValue } asJava)
+        new MatcherWithWildcards(settings.allowedIndices.collect { case AlreadyResolved(IndexName(rawValue)) => rawValue } asJava)
       )
     }
   }
 
   private val matchAll = settings.allowedIndices.exists {
-    case Const(IndexName.`wildcard`) => true
+    case AlreadyResolved(IndexName.`wildcard`) => true
     case _ => false
   }
 
@@ -240,7 +240,7 @@ class IndicesRule(val settings: Settings)
 object IndicesRule {
   val name = Rule.Name("indices")
 
-  final case class Settings(allowedIndices: NonEmptySet[RuntimeValue[IndexName]])
+  final case class Settings(allowedIndices: NonEmptySet[Variable[IndexName]])
 
   private sealed trait CanPass
   private object CanPass {

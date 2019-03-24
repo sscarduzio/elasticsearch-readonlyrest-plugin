@@ -25,7 +25,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.acl.blocks.values.VariablesManager
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext.Id

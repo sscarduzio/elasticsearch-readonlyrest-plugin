@@ -18,18 +18,18 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.acl.domain.Group
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
+import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.decoders.common._
+import tech.beshu.ror.acl.factory.decoders.definitions.RorKbnDefinitionsDecoder._
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, RorKbnDefinitionsDecoder}
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.factory.decoders.common._
-import RorKbnDefinitionsDecoder._
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
   extends RuleDecoderWithoutAssociatedFields[RorKbnAuthRule](
@@ -50,7 +50,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
 
 private object RorKbnAuthRuleDecoder {
 
-  private implicit val groupsSetDecoder: Decoder[Set[RuntimeValue[Group]]] = DecoderHelpers.decodeStringLikeOrSet[RuntimeValue[Group]]
+  private implicit val groupsSetDecoder: Decoder[Set[Variable[Group]]] = DecoderHelpers.decodeStringLikeOrSet[Variable[Group]]
 
   private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, Set[Group])] =
     DecoderHelpers

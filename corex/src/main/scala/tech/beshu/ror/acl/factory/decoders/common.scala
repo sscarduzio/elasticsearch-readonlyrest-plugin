@@ -29,8 +29,8 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
-import tech.beshu.ror.acl.blocks.values.RuntimeValue.ConvertError
+import tech.beshu.ror.acl.blocks.values.Variable.ConvertError
+import tech.beshu.ror.acl.blocks.values.Variable
 import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.ValueLevelCreationError
@@ -138,33 +138,33 @@ object common {
       }
       .decoder
 
-  implicit val groupValueDecoder: Decoder[RuntimeValue[Group]] =
+  implicit val groupVariableDecoder: Decoder[Variable[Group]] =
     DecoderHelpers
-      .valueDecoder[Group] { rv =>
-      NonEmptyString.from(rv.value) match {
+      .variableDecoder[Group] { str =>
+      NonEmptyString.from(str) match {
         case Right(nonEmptyResolvedValue) => Right(Group(nonEmptyResolvedValue))
-        case Left(_) => Left(ConvertError(rv, "Group cannot be empty"))
+        case Left(_) => Left(ConvertError(str, "Group cannot be empty"))
       }
     }
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
-        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
+        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.msg}")))
       }
       .decoder
 
-  implicit val addressValueDecoder: Decoder[RuntimeValue[Address]] = {
+  implicit val addressVariableDecoder: Decoder[Variable[Address]] = {
     DecoderHelpers
-      .valueDecoder[Address] { rv =>
-      Address.from(rv.value) match {
+      .variableDecoder[Address] { str =>
+      Address.from(str) match {
         case Some(address) => Right(address)
-        case None => Left(ConvertError(rv, s"Cannot create address (IP or hostname) from ${rv.value}"))
+        case None => Left(ConvertError(str, s"Cannot create address (IP or hostname) from '$str'"))
       }
     }
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
-        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.resolvedValue.show}")))
+        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.msg}")))
       }
       .decoder
   }

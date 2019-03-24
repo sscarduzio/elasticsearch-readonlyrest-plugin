@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.{RuntimeValue, Variable}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
 
@@ -46,7 +46,7 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
       settings
         .allowedIndices
         .toSortedSet
-        .flatMap(_.extract(requestContext.variablesResolver, blockContext).toOption),
+        .flatMap(_.resolve(requestContext, blockContext).toOption),
       requestContext,
       blockContext
     )
@@ -82,5 +82,5 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
 }
 
 object BaseSpecializedIndicesRule {
-  final case class Settings(allowedIndices: NonEmptySet[RuntimeValue[IndexName]]) // todo: check don't allow to use _all || *
+  final case class Settings(allowedIndices: NonEmptySet[Variable[IndexName]]) // todo: check don't allow to use _all || *
 }

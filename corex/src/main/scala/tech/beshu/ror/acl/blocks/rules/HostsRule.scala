@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.Variable
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -69,7 +69,7 @@ object HostsRule {
 
   val name: Rule.Name = Rule.Name("hosts")
 
-  final case class Settings(allowedHosts: NonEmptySet[RuntimeValue[Address]],
+  final case class Settings(allowedHosts: NonEmptySet[Variable[Address]],
                             acceptXForwardedForHeader: Boolean)
 
 }
