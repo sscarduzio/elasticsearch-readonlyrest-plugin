@@ -16,16 +16,14 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import java.util.regex.Pattern
-
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
-import tech.beshu.ror.acl.blocks.values.{Variable, VariablesResolver}
+import tech.beshu.ror.acl.blocks.values.ToBeResolved
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.request.RequestContext
 
 class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 
@@ -44,7 +42,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.uriPattern.extract(mock[VariablesResolver], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
+            rule.settings.uriPattern.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
           }
         )
       }
@@ -61,9 +59,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = Variable(ValueWithVariable("^/user/@{user}/.*"), rv => Right(Pattern.compile(rv.value)))
-            rule.settings.uriPattern shouldBe a [Variable[_]]
-            rule.settings.uriPattern.asInstanceOf[Variable[Pattern]].representation should be(variable.representation)
+            rule.settings.uriPattern shouldBe a [ToBeResolved[_]]
           }
         )
       }

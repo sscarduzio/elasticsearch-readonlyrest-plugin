@@ -21,8 +21,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.blocks.rules.IndicesRule
-import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
-import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue, Variable}
+import tech.beshu.ror.acl.blocks.values._
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
@@ -44,7 +43,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeValue[IndexName]] = NonEmptySet.one(Const(IndexName("index1")))
+            val indices: NonEmptySet[Variable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1")))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -62,10 +61,8 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = Variable(ValueWithVariable("index_@{user}"), rv => Right(IndexName(rv.value)))
             rule.settings.allowedIndices.length should be (1)
-            rule.settings.allowedIndices.head shouldBe a [Variable[_]]
-            rule.settings.allowedIndices.head.asInstanceOf[Variable[IndexName]].representation should be(variable.representation)
+            rule.settings.allowedIndices.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
@@ -82,7 +79,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeValue[IndexName]] = NonEmptySet.of(Const(IndexName("index1")), Const(IndexName("index2")))
+            val indices: NonEmptySet[Variable[IndexName]] = NonEmptySet.of(AlreadyResolved(IndexName("index1")), AlreadyResolved(IndexName("index2")))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -102,11 +99,8 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           assertion = rule => {
             rule.settings.allowedIndices.length == 2
 
-            rule.settings.allowedIndices.head should be(Const(IndexName("index1")))
-
-            val variable = Variable(ValueWithVariable("index_@{user}"), rv => Right(IndexName(rv.value)))
-            rule.settings.allowedIndices.tail.head shouldBe a [Variable[_]]
-            rule.settings.allowedIndices.tail.head.asInstanceOf[Variable[IndexName]].representation should be(variable.representation)
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1")))
+            rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
           }
         )
       }

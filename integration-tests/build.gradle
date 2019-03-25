@@ -49,7 +49,7 @@ test {
 }
 
 dependencies {
-    compile "org.scala-lang:scala-library:2.12.4"
+    compile "org.scala-lang:scala-library:2.12.6"
     testCompile project(':tests-utils')
     testCompile project(':commons')
     testCompile 'io.jsonwebtoken:jjwt:0.9.1'

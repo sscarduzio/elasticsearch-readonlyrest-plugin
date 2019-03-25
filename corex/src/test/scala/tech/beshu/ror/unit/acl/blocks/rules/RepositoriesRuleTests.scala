@@ -20,14 +20,14 @@ import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
-import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, RepositoriesRule}
-import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue}
+import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, Variable}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -39,7 +39,7 @@ class RepositoriesRuleTests
     "match" when {
       "request action doesn't contain 'repository'" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("repository1"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("repository1"))),
           requestAction = Action("cluster:admin/rradmin/refreshsettings"),
           requestRepositories = Set(IndexName("repository1"))
         ) {
@@ -48,7 +48,7 @@ class RepositoriesRuleTests
       }
       "allowed indexes set contains *" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("*"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("*"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("repository1"))
         ) {
@@ -57,7 +57,7 @@ class RepositoriesRuleTests
       }
       "allowed indexes set contains _all" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("_all"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("_all"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("repository1"))
         ) {
@@ -66,7 +66,7 @@ class RepositoriesRuleTests
       }
       "readonly request with configured simple repository" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("public-asd"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-asd"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd")),
           readonlyRequest = true
@@ -76,7 +76,7 @@ class RepositoriesRuleTests
       }
       "readonly request with configured repository with wildcard" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("public-*"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-*"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd")),
           readonlyRequest = true
@@ -86,7 +86,7 @@ class RepositoriesRuleTests
       }
       "write request with configured simple repository" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("public-asd"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-asd"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd"))
         ) {
@@ -95,7 +95,7 @@ class RepositoriesRuleTests
       }
       "write request with configured repository with wildcard" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("public-*"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-*"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd"))
         ) {
@@ -104,7 +104,7 @@ class RepositoriesRuleTests
       }
       "readonly request with configured several repositorys and several repositorys in request" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.of(Const(IndexName("public-*")), Const(IndexName("n"))),
+          configuredRepositories = NonEmptySet.of(AlreadyResolved(IndexName("public-*")), AlreadyResolved(IndexName("n"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd"), IndexName("q")),
           readonlyRequest = true
@@ -119,7 +119,7 @@ class RepositoriesRuleTests
     "not match" when {
       "request is read only" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("x-*"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("x-*"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd")),
           readonlyRequest = true
@@ -127,28 +127,28 @@ class RepositoriesRuleTests
       }
       "write request with no match" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("public-*"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-*"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("x_public-asd"))
         )
       }
       "write request with configured several repositorys and several repositorys in request" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.of(Const(IndexName("public-*")), Const(IndexName("n"))),
+          configuredRepositories = NonEmptySet.of(AlreadyResolved(IndexName("public-*")), AlreadyResolved(IndexName("n"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd"), IndexName("q"))
         )
       }
       "write request forbid" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("x-*"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("x-*"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd"), IndexName("q"))
         )
       }
       "read request forbid" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(Const(IndexName("x-*"))),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("x-*"))),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(IndexName("public-asd"), IndexName("q")),
           readonlyRequest = true
@@ -157,20 +157,20 @@ class RepositoriesRuleTests
     }
   }
 
-  private def assertMatchRule(configuredRepositories: NonEmptySet[RuntimeValue[IndexName]],
+  private def assertMatchRule(configuredRepositories: NonEmptySet[Variable[IndexName]],
                               requestAction: Action,
                               requestRepositories: Set[IndexName],
                               readonlyRequest: Boolean = false)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, readonlyRequest, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredRepositories: NonEmptySet[RuntimeValue[IndexName]],
+  private def assertNotMatchRule(configuredRepositories: NonEmptySet[Variable[IndexName]],
                                  requestAction: Action,
                                  requestRepositories: Set[IndexName],
                                  readonlyRequest: Boolean = false): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, readonlyRequest, blockContextAssertion = None)
 
-  private def assertRule(configuredRepositories: NonEmptySet[RuntimeValue[IndexName]],
+  private def assertRule(configuredRepositories: NonEmptySet[Variable[IndexName]],
                          requestAction: Action,
                          requestRepositories: Set[IndexName],
                          readonlyRequest: Boolean,

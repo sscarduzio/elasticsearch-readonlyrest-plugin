@@ -88,7 +88,13 @@ object Variable {
     final case class CannotInstantiateResolvedValue(msg: String) extends Unresolvable
   }
 
-  implicit def variableOrder[T : Order]: Order[Variable[T]] = Order.by(_.hashCode())
+  implicit def variableOrder[T : Order]: Order[Variable[T]] =
+    Order.from {
+      case (AlreadyResolved(c1), AlreadyResolved(c2)) => c1 compare c2
+      case (AlreadyResolved(_), _) => -1
+      case (_, AlreadyResolved(_)) => 1
+      case (v1, v2) => v1.hashCode() compareTo v2.hashCode()
+    }
 }
 
 final case class AlreadyResolved[T](value: T)

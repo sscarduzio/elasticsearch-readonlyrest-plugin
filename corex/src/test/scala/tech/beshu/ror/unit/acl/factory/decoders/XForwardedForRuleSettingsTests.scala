@@ -19,8 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
-import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue, Variable}
+import tech.beshu.ror.acl.blocks.values._
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
@@ -43,7 +42,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.one(Const(Address.from("proxy1").get))
+            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("proxy1").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -61,7 +60,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.of(Const(Address.from("proxy1").get), Const(Address.from("proxy2").get))
+            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("proxy1").get), AlreadyResolved(Address.from("proxy2").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -79,8 +78,9 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.of(Const(Address.from("proxy1").get), Variable(ValueWithVariable("@{user}_proxy"), rv => Right(Address.from(rv.value).get)))
-            rule.settings.allowedAddresses should be(addresses)
+            rule.settings.allowedAddresses.length shouldBe 2
+            rule.settings.allowedAddresses.head should be(AlreadyResolved(Address.from("proxy1").get))
+            rule.settings.allowedAddresses.tail.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
@@ -97,7 +97,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val ips: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get))
+            val ips: NonEmptySet[Variable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get))
             rule.settings.allowedAddresses should be(ips)
           }
         )
@@ -115,7 +115,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val ips: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("192.168.0.2").get))
+            val ips: NonEmptySet[Variable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
             rule.settings.allowedAddresses should be(ips)
           }
         )
@@ -133,7 +133,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("proxy1").get))
+            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("proxy1").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )

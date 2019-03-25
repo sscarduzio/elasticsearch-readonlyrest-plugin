@@ -19,11 +19,10 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
-import tech.beshu.ror.acl.blocks.values.Variable.ValueWithVariable
-import tech.beshu.ror.acl.blocks.values.{Const, RuntimeValue, Variable}
+import tech.beshu.ror.acl.blocks.values._
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 
 class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHostsRule] {
@@ -43,7 +42,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.one(Const(Address.from("192.168.0.1").get))
+            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -61,8 +60,8 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Right(Address.from(rv.value).get)))
-            rule.settings.allowedAddresses should be(addresses)
+            rule.settings.allowedAddresses.length should be (1)
+            rule.settings.allowedAddresses.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
@@ -79,7 +78,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeValue[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("192.168.0.2").get))
+            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )

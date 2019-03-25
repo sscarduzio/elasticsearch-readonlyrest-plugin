@@ -29,7 +29,7 @@ import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.values.Const
+import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, Const}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 
 import scala.collection.JavaConverters._
@@ -206,7 +206,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
   }
 
   private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana")) = {
-    KibanaAccessRule.Settings(access, Const(kibanaIndex), kibanaMetadataEnabled = true)
+    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), kibanaMetadataEnabled = true)
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings): BlockContext => Unit =

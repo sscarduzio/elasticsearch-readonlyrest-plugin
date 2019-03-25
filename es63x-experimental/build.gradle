@@ -54,7 +54,7 @@ dependencies {
     compile project(path: ':corex', configuration: 'shadow')
     compile project(path: ':corex', configuration: 'simpleCompile')
 
-    compile group: 'org.scala-lang', name: 'scala-library', version: '2.12.4'
+    compile group: 'org.scala-lang', name: 'scala-library', version: '2.12.6'
     compile group: 'io.monix', name: 'monix_2.12', version: '3.0.0-RC2'
 
     compile 'cz.seznam.euphoria:shaded-guava:21.0'

@@ -24,7 +24,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UsersRule
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.{Variable, VariableParser}
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.orders._
@@ -69,13 +69,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredIds: NonEmptySet[RuntimeValue[User.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertMatchRule(configuredIds: NonEmptySet[Variable[User.Id]], loggedUser: Option[LoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = true)
 
-  private def assertNotMatchRule(configuredIds: NonEmptySet[RuntimeValue[User.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertNotMatchRule(configuredIds: NonEmptySet[Variable[User.Id]], loggedUser: Option[LoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = false)
 
-  private def assertRule(configuredIds: NonEmptySet[RuntimeValue[User.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
+  private def assertRule(configuredIds: NonEmptySet[Variable[User.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds))
     val requestContext = MockRequestContext.default
     val blockContext = mock[BlockContext]
@@ -86,9 +86,9 @@ class UsersRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def userIdValueFrom(value: String): RuntimeValue[User.Id] = {
-    RuntimeValue
-      .fromString(value, rv => Right(User.Id(rv.value)))
+  private def userIdValueFrom(value: String): Variable[User.Id] = {
+    VariableParser
+      .parse(value, extracted => Right(User.Id(extracted)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }

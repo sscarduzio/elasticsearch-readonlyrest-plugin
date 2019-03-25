@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.RuntimeValue
+import tech.beshu.ror.acl.blocks.values.{Variable, VariableParser}
 
 import scala.collection.SortedSet
 
@@ -79,19 +79,19 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configured: NonEmptySet[RuntimeValue[IndexName]],
+  private def assertMatchRule(configured: NonEmptySet[Variable[IndexName]],
                               indices: Set[IndexName],
                               modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                               found: Set[IndexName] = Set.empty) =
     assertRule(configured, indices, isMatched = true, modifyRequestContext, found)
 
-  private def assertNotMatchRule(configured: NonEmptySet[RuntimeValue[IndexName]],
+  private def assertNotMatchRule(configured: NonEmptySet[Variable[IndexName]],
                                  indices: Set[IndexName],
                                  modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                                  found: Set[IndexName] = Set.empty) =
     assertRule(configured, indices, isMatched = false, modifyRequestContext, found)
 
-  private def assertRule(configuredValues: NonEmptySet[RuntimeValue[IndexName]],
+  private def assertRule(configuredValues: NonEmptySet[Variable[IndexName]],
                          requestIndices: Set[IndexName],
                          isMatched: Boolean,
                          modifyRequestContext: MockRequestContext => MockRequestContext,
@@ -118,9 +118,9 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def indexNameValueFrom(value: String): RuntimeValue[IndexName] = {
-    RuntimeValue
-      .fromString(value, rv => Right(IndexName(rv.value)))
+  private def indexNameValueFrom(value: String): Variable[IndexName] = {
+    VariableParser
+        .parse(value, extracted => Right(IndexName(extracted)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }

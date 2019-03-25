@@ -49,7 +49,7 @@ object VariableParser {
         case nonEmpty =>
           val alreadyResolved = nonEmpty.collect { case c: Const => c }
           if(alreadyResolved.length == nonEmpty.length) {
-            convert(alreadyResolved.foldLeft("")(_ + _))
+            convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
               .map(AlreadyResolved.apply)
               .left.map(e => ParseError(e.msg))
           } else {
@@ -72,7 +72,9 @@ object VariableParser {
         char match {
           case '{' =>
             val newParts = if (accumulator.nonEmpty) parts :+ Parts.Text(accumulator) else parts
-            (newParts :+ Parts.Text(accumulator), ParserState.ReadingVar(""))
+            (newParts, ParserState.ReadingVar(""))
+          case  '@' =>
+            (parts, ParserState.PossiblyReadingVar(accumulator + "@"))
           case other =>
             (parts, ParserState.ReadingConst(s"$accumulator@$other"))
         }
@@ -84,10 +86,11 @@ object VariableParser {
             (parts, ParserState.ReadingVar(accumulator + other))
         }
     }
-    lastParts :+ (lastState match {
-      case ParserState.ReadingConst(accumulator) => Parts.Text(accumulator)
-      case ParserState.PossiblyReadingVar(constAccumulator) => Parts.Text(constAccumulator + '@')
-      case ParserState.ReadingVar(accumulator) => Parts.Text(accumulator)
+    lastParts ++ (lastState match {
+      case ParserState.ReadingConst("") => Nil
+      case ParserState.ReadingConst(accumulator) => Parts.Text(accumulator) :: Nil
+      case ParserState.PossiblyReadingVar(constAccumulator) => Parts.Text(constAccumulator + "@") :: Nil
+      case ParserState.ReadingVar(accumulator) => Parts.Text("@{" + accumulator) :: Nil
     })
   }
 

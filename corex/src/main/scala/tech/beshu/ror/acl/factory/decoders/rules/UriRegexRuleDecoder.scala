@@ -33,7 +33,7 @@ object UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
       Try(Pattern.compile(str))
         .toEither
         .left
-        .map(_ => ConvertError(str, "Cannot compile pattern"))
+        .map(_ => ConvertError(str, s"Cannot compile pattern: $str"))
     }
     .toSyncDecoder
     .emapE {
