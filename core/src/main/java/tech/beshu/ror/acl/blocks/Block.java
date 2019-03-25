@@ -136,7 +136,7 @@ public class Block {
   private CompletableFuture<Boolean> checkAsyncRulesInSequence(RequestContext rc,
       Iterator<AsyncRule> rules,
       Set<RuleExitResult> thisBlockHistory) {
-    return FuturesSequencer.runInSeqUntilConditionIsUndone(
+    CompletableFuture<Boolean> ret =  FuturesSequencer.runInSeqUntilConditionIsUndone(
         rules,
         rule -> rule.match(rc).exceptionally(e -> {
           logger.error(getName() + ": " + rule.getKey() + " rule matching got an error " + e.getMessage(), e);
@@ -149,6 +149,7 @@ public class Block {
         RuleExitResult::isMatch,
         nothing -> true
     );
+    return CompletableFuture.completedFuture(ret.join());
   }
 
   private BlockExitResult finishWithMatchResult() {
