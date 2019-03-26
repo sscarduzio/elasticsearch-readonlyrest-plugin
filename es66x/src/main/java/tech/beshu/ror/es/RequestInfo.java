@@ -251,7 +251,7 @@ public class RequestInfo implements RequestInfoShim {
         IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
         indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
       } catch (Exception e) {
-        logger.error("cannot extract indices from: "+ extractMethod() + " " + extractURI() + "\n"+ extractContent(), e);
+        logger.error("cannot extract indices from: " + extractMethod() + " " + extractURI() + "\n" + extractContent(), e);
         e.printStackTrace();
       }
     }
@@ -439,11 +439,10 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public String extractLocalAddress() {
-    try{
+    try {
       String remoteHost = ((InetSocketAddress) request.getLocalAddress()).getAddress().getHostAddress();
       return remoteHost;
-    }
-    catch(Exception e){
+    } catch (Exception e) {
       logger.error("Could not extract local address", e);
       return null;
     }
@@ -459,8 +458,7 @@ public class RequestInfo implements RequestInfoShim {
         remoteHost = RCUtils.LOCALHOST;
       }
       return remoteHost;
-    }
-    catch (Exception e){
+    } catch (Exception e) {
       logger.error("Could not extract remote address", e);
       return null;
     }
@@ -582,7 +580,12 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeResponseHeaders(Map<String, String> hMap) {
-    hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
+    threadPool.getThreadContext().getResponseHeaders().keySet().stream()
+              .forEach(k -> threadPool.getThreadContext().addResponseHeader(k, null, v -> null));
+    hMap.keySet().forEach(k -> {
+      String val = hMap.get(k);
+      threadPool.getThreadContext().addResponseHeader(k, val, v -> val);
+    });
   }
 
   @Override
@@ -628,14 +631,14 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeToThreadContextHeader(String key, String value) {
-    threadPool.getThreadContext().putHeader(key, value);
+    threadPool.getThreadContext().putTransient(key, value);
   }
 
   @Override
   public String consumeThreadContextHeader(String key) {
-    String value = threadPool.getThreadContext().getHeader(key);
+    String value = threadPool.getThreadContext().getTransient(key);
     if (!Strings.isNullOrEmpty(value)) {
-      threadPool.getThreadContext().getHeaders().remove(key);
+      threadPool.getThreadContext().putTransient(key, null);
     }
     return value;
   }
