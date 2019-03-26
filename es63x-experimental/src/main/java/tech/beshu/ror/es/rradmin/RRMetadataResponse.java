@@ -32,7 +32,6 @@ import tech.beshu.ror.acl.blocks.BlockContext;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class RRMetadataResponse extends ActionResponse implements ToXContentObject {
 
@@ -75,9 +74,9 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
     });
 
     if (!blockContext.availableGroups().isEmpty()) {
-      String availableGroupsString = JavaConverters$.MODULE$.<domain.Group>setAsJavaSet(
-          blockContext.availableGroups()).stream().map(g -> g.value().toString()).collect(Collectors.joining(","));
-      sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, availableGroupsString);
+      String[] availableGroups = JavaConverters$.MODULE$.<domain.Group>setAsJavaSet(
+          blockContext.availableGroups()).stream().map(g -> g.value().toString()).toArray(String[]::new);
+      sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, availableGroups);
     }
 
     String hiddenAppsStr = headers.stream().filter(
