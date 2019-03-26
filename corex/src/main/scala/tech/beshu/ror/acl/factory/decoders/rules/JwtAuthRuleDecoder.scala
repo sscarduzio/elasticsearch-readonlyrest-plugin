@@ -18,20 +18,22 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.implicits._
 import io.circe.Decoder
-import tech.beshu.ror.acl.domain.Group
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
-import tech.beshu.ror.acl.blocks.values.{RuntimeValue, Variable}
+import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.definitions.JwtDefinitionsDecoder._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.factory.decoders.common._
+import tech.beshu.ror.acl.utils.EnvVarsProvider
 
-class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef]) extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
+class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
+                        (implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
   JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
     .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
     .toSyncDecoder
@@ -49,7 +51,8 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef]) extends RuleDecode
 
 private object JwtAuthRuleDecoder {
 
-  private implicit val groupsSetDecoder: Decoder[Set[Variable[Group]]] = DecoderHelpers.decodeStringLikeOrSet[Variable[Group]]
+  private implicit def groupsSetDecoder(implicit provider: EnvVarsProvider): Decoder[Set[Variable[Group]]] =
+    DecoderHelpers.decodeStringLikeOrSet[Variable[Group]]
 
   private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Group])] =
     DecoderHelpers

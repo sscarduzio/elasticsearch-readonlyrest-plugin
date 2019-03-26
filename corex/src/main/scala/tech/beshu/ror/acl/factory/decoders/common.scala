@@ -38,7 +38,7 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.ScalaOps._
-import tech.beshu.ror.acl.utils.SyncDecoderCreator
+import tech.beshu.ror.acl.utils.{EnvVarsProvider, SyncDecoderCreator}
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success, Try}
@@ -138,7 +138,7 @@ object common {
       }
       .decoder
 
-  implicit val groupVariableDecoder: Decoder[Variable[Group]] =
+  implicit def groupVariableDecoder(implicit provider: EnvVarsProvider): Decoder[Variable[Group]] =
     DecoderHelpers
       .variableDecoder[Group] { str =>
       NonEmptyString.from(str) match {
@@ -153,7 +153,7 @@ object common {
       }
       .decoder
 
-  implicit val addressVariableDecoder: Decoder[Variable[Address]] = {
+  implicit def addressVariableDecoder(implicit provider: EnvVarsProvider): Decoder[Variable[Address]] = {
     DecoderHelpers
       .variableDecoder[Address] { str =>
       Address.from(str) match {

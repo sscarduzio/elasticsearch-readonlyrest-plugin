@@ -17,16 +17,18 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import tech.beshu.ror.acl.blocks.rules.FilterRule
-import tech.beshu.ror.acl.blocks.values.VariableParser
+import tech.beshu.ror.acl.blocks.values.VariableCreator
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.acl.utils.EnvVarsProvider
 
-object FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+class FilterRuleDecoder(implicit provider: EnvVarsProvider)
+  extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers.decodeStringLike
-    .map(str => VariableParser.parse(str, extracted => Right(Filter(extracted))))
+    .map(str => VariableCreator.createFrom(str, extracted => Right(Filter(extracted))))
     .toSyncDecoder
     .emapE {
       case Right(filter) => Right(new FilterRule(FilterRule.Settings(filter)))

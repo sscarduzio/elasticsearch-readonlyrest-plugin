@@ -24,7 +24,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UsersRule
-import tech.beshu.ror.acl.blocks.values.{Variable, VariableParser}
+import tech.beshu.ror.acl.blocks.values.{Variable, VariableCreator}
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.orders._
@@ -87,8 +87,8 @@ class UsersRuleTests extends WordSpec with MockFactory {
   }
 
   private def userIdValueFrom(value: String): Variable[User.Id] = {
-    VariableParser
-      .parse(value, extracted => Right(User.Id(extracted)))
+    VariableCreator
+      .createFrom(value, extracted => Right(User.Id(extracted)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }

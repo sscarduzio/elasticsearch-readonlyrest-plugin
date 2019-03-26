@@ -4,7 +4,7 @@ import java.time.Clock
 
 import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
-import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
+import tech.beshu.ror.acl.utils.{EnvVarsProvider, JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import monix.execution.Scheduler.Implicits.global
 
@@ -13,7 +13,7 @@ trait BaseYamlLoadedAclTest {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
+    implicit val provider: EnvVarsProvider = JavaEnvVarsProvider
     new CoreFactory
   }
   val acl: Acl = factory

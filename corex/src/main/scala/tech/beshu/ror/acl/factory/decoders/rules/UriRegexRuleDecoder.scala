@@ -17,6 +17,7 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import java.util.regex.Pattern
+
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.acl.blocks.values.Variable.ConvertError
@@ -24,10 +25,11 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.acl.utils.EnvVarsProvider
 
 import scala.util.Try
 
-object UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+class UriRegexRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .variableDecoder { str =>
       Try(Pattern.compile(str))

@@ -52,7 +52,7 @@ final case class CoreSettings(aclEngine: Acl, aclStaticContext: AclStaticContext
 
 class CoreFactory(implicit clock: Clock,
                   uuidProvider: UuidProvider,
-                  resolver: StaticVariablesResolver)
+                  provider: EnvVarsProvider)
   extends Logging {
 
   def createCoreFrom(settingsYamlString: String,
@@ -90,7 +90,7 @@ class CoreFactory(implicit clock: Clock,
     }
   }
 
-  private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
+  private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory)= {
     val decoder = aclDecoder(httpClientFactory)
       .flatMap { case (acl, context) =>
         AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
@@ -222,9 +222,9 @@ class CoreFactory(implicit clock: Clock,
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
-        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, resolver))
+        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder
-        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(resolver))
+        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
         blocks <- {
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {

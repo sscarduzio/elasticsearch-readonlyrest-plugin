@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.domain.{Group, Secret, User}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, ToBeResolved, Variable, VariableParser}
+import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, ToBeResolved, Variable, VariableCreator}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.acl.orders._

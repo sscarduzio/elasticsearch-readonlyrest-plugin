@@ -104,8 +104,8 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
   }
 
   private def patternValueFrom(value: String): Variable[Pattern] = {
-    VariableParser
-      .parse(value, extracted => Try(Pattern.compile(extracted)).toEither.left.map(_ => ConvertError(extracted, "msg")))
+    VariableCreator
+      .createFrom(value, extracted => Try(Pattern.compile(extracted)).toEither.left.map(_ => ConvertError(extracted, "msg")))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
   }

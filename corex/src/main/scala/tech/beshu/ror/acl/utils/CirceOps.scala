@@ -26,9 +26,9 @@ import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
 import tech.beshu.ror.acl.blocks.values.Variable.ConvertError
-import tech.beshu.ror.acl.blocks.values.VariableParser.ParseError
+import tech.beshu.ror.acl.blocks.values.VariableCreator.CreationError
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.blocks.values.{RuntimeValue, Variable, VariableParser}
+import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, ToBeResolved, Variable, VariableCreator}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
@@ -90,24 +90,24 @@ object CirceOps {
       }
     }
 
-    def decodeStringLikeWithVarResolvedInPlace(implicit resolver: StaticVariablesResolver): Decoder[String] = {
-      SyncDecoderCreator
-        .from(decodeStringLike)
-        .emapE { variable =>
-          resolver.resolve(variable) match {
-            case Some(resolved) => Right(resolved)
-            case None => Left(ValueLevelCreationError(Message(s"Cannot resolve variable: $variable")))
+    def decodeStringLikeWithVarResolvedInPlace(implicit provider: EnvVarsProvider): Decoder[String] = {
+      alwaysRightVariableDecoder(identity)
+          .toSyncDecoder
+          .emapE {
+            case AlreadyResolved(resolved) => Right(resolved)
+            case _: ToBeResolved[String] => Left(ValueLevelCreationError(Message(s"Only statically resolved variables can be used")))
           }
-        }
-        .decoder
+          .decoder
     }
 
-    def variableDecoder[T](convert: String => Either[ConvertError, T]): Decoder[Either[ParseError, Variable[T]]] =
+    def variableDecoder[T](convert: String => Either[ConvertError, T])
+                          (implicit provider: EnvVarsProvider): Decoder[Either[CreationError, Variable[T]]] =
       DecoderHelpers
         .decodeStringLike
-        .map { str => VariableParser.parse(str, convert) }
+        .map { str => VariableCreator.createFrom(str, convert) }
 
-    def alwaysRightVariableDecoder[T](convert: String => T): Decoder[Variable[T]] =
+    def alwaysRightVariableDecoder[T](convert: String => T)
+                                     (implicit provider: EnvVarsProvider): Decoder[Variable[T]] =
       SyncDecoderCreator
         .from(variableDecoder[T](rv => Right(convert(rv))))
         .emapE {

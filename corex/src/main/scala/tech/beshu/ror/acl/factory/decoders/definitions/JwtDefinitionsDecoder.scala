@@ -27,16 +27,16 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
-import tech.beshu.ror.acl.utils.{ADecoder, StaticVariablesResolver, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.acl.utils.{ADecoder, EnvVarsProvider, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.acl.factory.decoders.common._
 import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
 import cats.Id
 
 object JwtDefinitionsDecoder {
 
-  def instance(httpClientFactory: HttpClientsFactory,
-               resolver: StaticVariablesResolver): ADecoder[Id, Definitions[JwtDef]] = {
-    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, resolver))
+  def instance(httpClientFactory: HttpClientsFactory)
+              (implicit provider: EnvVarsProvider): ADecoder[Id, Definitions[JwtDef]] = {
+    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, provider))
     DefinitionsBaseDecoder.instance[Id, JwtDef]("jwt")
   }
 
@@ -45,7 +45,7 @@ object JwtDefinitionsDecoder {
   private implicit val claimDecoder: Decoder[ClaimName] = DecoderHelpers.decodeStringLikeNonEmpty.map(ClaimName.apply)
 
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
-                            resolver: StaticVariablesResolver): Decoder[JwtDef] = {
+                            provider: EnvVarsProvider): Decoder[JwtDef] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -92,7 +92,7 @@ object JwtDefinitionsDecoder {
     */
   private def signatureCheckMethod(c: HCursor)
                                   (implicit httpClientFactory: HttpClientsFactory,
-                                   resolver: StaticVariablesResolver): Decoder.Result[SignatureCheckMethod] = {
+                                   provider: EnvVarsProvider): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithVarResolvedInPlace

@@ -57,7 +57,7 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = VariableParser.parse("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}", extracted => Right(Filter(extracted)))
+            val variable = VariableCreator.createFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}", extracted => Right(Filter(extracted)))
             rule.settings.filter shouldBe a [ToBeResolved[_]]
           }
         )

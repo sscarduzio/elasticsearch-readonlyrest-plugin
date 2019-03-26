@@ -20,22 +20,34 @@ import cats.Order
 import cats.implicits._
 import com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.RuntimeValue.ExtractError
 import tech.beshu.ror.acl.blocks.values.Variable.Unresolvable.{CannotExtractValue, CannotInstantiateResolvedValue}
 import tech.beshu.ror.acl.blocks.values.Variable.{ConvertError, Unresolvable}
-import tech.beshu.ror.acl.domain.Header
+import tech.beshu.ror.acl.domain.{EnvVarName, Header}
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.utils.EnvVarsProvider
 
-sealed trait RuntimeValue {
+sealed trait Value
+sealed trait StartupValue extends Value {
+  def extract(provider: EnvVarsProvider): Either[ExtractError, String]
+}
+
+final case class EnvVar(name: EnvVarName) extends StartupValue {
+  override def extract(provider: EnvVarsProvider): Either[ExtractError, String] =
+    Either.fromOption(provider.getEnv(name), ExtractError(s"Cannot resolve ENV variable '${name.show}'"))
+}
+
+final case class Text(value: String) extends StartupValue {
+  override def extract(provider: EnvVarsProvider): Either[ExtractError, String] =
+    Right(value)
+}
+
+sealed trait RuntimeValue extends Value {
   def extract(requestContext: RequestContext,
               blockContext: BlockContext): Either[ExtractError, String]
 }
 
-object RuntimeValue {
-
-  final case class ExtractError(msg: String) extends AnyVal
-}
+final case class ExtractError(msg: String) extends AnyVal
 
 final case class Const(value: String) extends RuntimeValue {
   override def extract(requestContext: RequestContext,

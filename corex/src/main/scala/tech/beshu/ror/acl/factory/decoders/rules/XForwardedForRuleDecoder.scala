@@ -23,8 +23,9 @@ import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.acl.utils.EnvVarsProvider
 
-object XForwardedForRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+class XForwardedForRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Variable[Address]]
     .map(addresses => new XForwardedForRule(XForwardedForRule.Settings(addresses)))

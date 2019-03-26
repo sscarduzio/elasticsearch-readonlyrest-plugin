@@ -30,6 +30,7 @@ import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.utils.EnvVarsProvider
 
 import scala.util.Try
 
@@ -37,7 +38,7 @@ object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers.decodeStringLikeOrNonEmptySet(KibanaApp.apply).map(apps => new KibanaHideAppsRule(Settings(apps)))
 )
 
-object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+class KibanaIndexRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   KibanaRulesDecoderHelper
     .kibanaIndexDecoder
     .map { index =>
@@ -46,7 +47,8 @@ object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 )
 
 // todo: at the moment kibana_index must be defined after kibana_access. We should allow to place it anywhere
-object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAccessRule, Variable[IndexName]](
+class KibanaAccessRuleDecoder(implicit provider: EnvVarsProvider)
+  extends RuleDecoderWithAssociatedFields[KibanaAccessRule, Variable[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
       .decodeStringLike
@@ -73,10 +75,10 @@ private object KibanaRulesDecoderHelper {
       .map(!"false".equalsIgnoreCase(_))
       .getOrElse(true)
 
-  implicit val kibanaIndexDecoder: Decoder[Variable[IndexName]] =
+  implicit def kibanaIndexDecoder(implicit provider: EnvVarsProvider): Decoder[Variable[IndexName]] =
     DecoderHelpers
       .decodeStringLike
-      .map(str => VariableParser.parse(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
+      .map(str => VariableCreator.createFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)

@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.{Variable, VariableParser}
+import tech.beshu.ror.acl.blocks.values.{Variable, VariableCreator}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 
@@ -80,8 +80,8 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
   }
 
   private def addressValueFrom(value: String): Variable[Address] = {
-    VariableParser
-      .parse(value, extracted => Right(Address.from(extracted).get))
+    VariableCreator
+      .createFrom(value, extracted => Right(Address.from(extracted).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

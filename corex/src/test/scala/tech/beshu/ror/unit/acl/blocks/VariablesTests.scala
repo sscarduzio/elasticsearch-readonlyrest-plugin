@@ -22,13 +22,16 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.fromRequestContext
 import tech.beshu.ror.acl.blocks.values.Variable.Unresolvable.CannotExtractValue
-import tech.beshu.ror.acl.blocks.values.VariableParser
-import tech.beshu.ror.acl.blocks.values.VariableParser.ParseError
+import tech.beshu.ror.acl.blocks.values.VariableCreator
+import tech.beshu.ror.acl.blocks.values.VariableCreator.CreationError
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
+import tech.beshu.ror.acl.utils.{EnvVarsProvider, JavaEnvVarsProvider}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
 class VariablesTests extends WordSpec with MockFactory {
+
+  implicit val provider: EnvVarsProvider = JavaEnvVarsProvider
 
   "A header variable" should {
     "have been resolved" when {
@@ -69,7 +72,7 @@ class VariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "header name is empty string" in {
-        VariableParser.parse("h:@{header:}", Right.apply) shouldBe Left(ParseError("No header name passed"))
+        VariableCreator.createFrom("h:@{header:}", Right.apply) shouldBe Left(CreationError("No header name passed"))
       }
     }
   }
@@ -149,13 +152,13 @@ class VariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "variable is empty string" in {
-        VariableParser.parse("h:@{}", Right.apply) shouldBe Left(ParseError("No header name passed"))
+        VariableCreator.createFrom("h:@{}", Right.apply) shouldBe Left(CreationError("No header name passed"))
       }
     }
   }
 
   private def createVariable(text: String) = {
-    VariableParser.parse(text, Right.apply).right.get
+    VariableCreator.createFrom(text, Right.apply).right.get
   }
 
 }

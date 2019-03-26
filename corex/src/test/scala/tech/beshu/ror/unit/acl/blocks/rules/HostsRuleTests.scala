@@ -24,7 +24,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.HostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.values.{Variable, VariableParser}
+import tech.beshu.ror.acl.blocks.values.{Variable, VariableCreator}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.orders._
@@ -100,8 +100,8 @@ class HostsRuleTests extends WordSpec with MockFactory {
   }
 
   private def addressValueFrom(value: String): Variable[Address] = {
-    VariableParser
-      .parse(value, extracted => Right(Address.from(extracted).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
+    VariableCreator
+      .createFrom(value, extracted => Right(Address.from(extracted).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

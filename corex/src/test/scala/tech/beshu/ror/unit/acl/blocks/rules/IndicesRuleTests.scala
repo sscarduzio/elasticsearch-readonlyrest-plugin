@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.{Variable, VariableParser}
+import tech.beshu.ror.acl.blocks.values.{Variable, VariableCreator}
 
 import scala.collection.SortedSet
 
@@ -119,8 +119,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
   }
 
   private def indexNameValueFrom(value: String): Variable[IndexName] = {
-    VariableParser
-        .parse(value, extracted => Right(IndexName(extracted)))
+    VariableCreator
+        .createFrom(value, extracted => Right(IndexName(extracted)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }

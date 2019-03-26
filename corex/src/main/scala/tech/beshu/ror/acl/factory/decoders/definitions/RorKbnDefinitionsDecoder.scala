@@ -26,18 +26,18 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
-import tech.beshu.ror.acl.utils.{ADecoder, StaticVariablesResolver, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.acl.utils.{ADecoder, EnvVarsProvider, SyncDecoder, SyncDecoderCreator}
 
 object RorKbnDefinitionsDecoder {
 
-  def instance(resolver: StaticVariablesResolver): ADecoder[Id, Definitions[RorKbnDef]] = {
-    implicit val decoder: SyncDecoder[RorKbnDef] = SyncDecoderCreator.from(RorKbnDefinitionsDecoder.rorKbnDefDecoder(resolver))
+  def instance(implicit provider: EnvVarsProvider): ADecoder[Id, Definitions[RorKbnDef]] = {
+    implicit val decoder: SyncDecoder[RorKbnDef] = SyncDecoderCreator.from(RorKbnDefinitionsDecoder.rorKbnDefDecoder)
     DefinitionsBaseDecoder.instance[Id, RorKbnDef]("ror_kbn")
   }
 
   implicit val rorKbnDefNameDecoder: Decoder[RorKbnDef.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private def rorKbnDefDecoder(implicit resolver: StaticVariablesResolver): Decoder[RorKbnDef] =  {
+  private def rorKbnDefDecoder(implicit provider: EnvVarsProvider): Decoder[RorKbnDef] =  {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -70,7 +70,7 @@ object RorKbnDefinitionsDecoder {
       ES512       EC
     */
   private def signatureCheckMethod(c: HCursor)
-                                  (implicit resolver: StaticVariablesResolver): Decoder.Result[SignatureCheckMethod] = {
+                                  (implicit provider: EnvVarsProvider): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithVarResolvedInPlace
