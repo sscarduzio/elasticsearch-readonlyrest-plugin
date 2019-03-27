@@ -103,7 +103,7 @@ class CoreFactory(implicit clock: Clock,
 
   private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
-    val (cursor, result) = c.keys.toList.flatten
+    val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
@@ -140,9 +140,17 @@ class CoreFactory(implicit clock: Clock,
               cursor.downField(name),
               cursor.withFocus(_.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key))))
             )
-            val newCursor = cursor.withFocus(_.mapObject(json => decoder.associatedFields.foldLeft(json.remove(name)) {
-              _.remove(_)
-            }))
+            val newCursor = cursor.withFocus(_.mapObject(json =>
+              decoder
+                .associatedFields
+                .foldLeft(json.remove(name)) {
+                  case (currentJson, field) =>
+                    ruleDecoderBy(Rule.Name(field), definitions) match {
+                      case Some(_) => currentJson
+                      case None => currentJson.remove(field)
+                    }
+                }
+            ))
             (newCursor, Some(decodingResult))
           case None =>
             (cursor, None)

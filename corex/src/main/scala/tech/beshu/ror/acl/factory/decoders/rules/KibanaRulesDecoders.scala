@@ -45,7 +45,6 @@ object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     }
 )
 
-// todo: at the moment kibana_index must be defined after kibana_access. We should allow to place it anywhere
 object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAccessRule, Value[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
