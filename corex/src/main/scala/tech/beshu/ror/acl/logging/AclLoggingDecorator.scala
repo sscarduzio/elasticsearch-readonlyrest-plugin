@@ -32,6 +32,7 @@ import tech.beshu.ror.acl.{Acl, AclHandler}
 import monix.execution.Scheduler.Implicits.global
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
@@ -73,11 +74,10 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
         }
     }
   }
-
-
+  
   private def isLoggableEntry(context: ResponseContext): Boolean = {
     context match {
-      case Allowed(_, block, _, _) if block.verbosity === Verbosity.Info => false
+      case Allowed(_, block, _, _) if block.verbosity =!= Verbosity.Info => false
       case _: Allowed | _: ForbiddenBy | _: Forbidden | _: Errored | _: NotFound => true
     }
   }

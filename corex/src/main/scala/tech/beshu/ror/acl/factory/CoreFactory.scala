@@ -103,7 +103,7 @@ class CoreFactory(implicit clock: Clock,
 
   private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
-    val (cursor, result) = c.keys.toList.flatten
+    val (cursor, result) = c.keys.toList.flatten.sorted(Ordering[String].reverse) // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
