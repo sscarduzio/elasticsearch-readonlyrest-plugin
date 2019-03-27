@@ -74,7 +74,7 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
         }
     }
   }
-  
+
   private def isLoggableEntry(context: ResponseContext): Boolean = {
     context match {
       case Allowed(_, block, _, _) if block.verbosity =!= Verbosity.Info => false
