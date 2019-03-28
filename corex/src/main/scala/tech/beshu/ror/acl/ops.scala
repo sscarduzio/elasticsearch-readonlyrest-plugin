@@ -139,10 +139,10 @@ object headerValues {
     FilterTransient.createFromFilter(filter.value).serialize()
   }
   implicit val kibanaAccessHeaderValue: ToHeaderValue[KibanaAccess] = ToHeaderValue {
-    case KibanaAccess.RO => "RO"
-    case KibanaAccess.ROStrict => "RO_STRICT"
-    case KibanaAccess.RW => "RW"
-    case KibanaAccess.Admin => "ADMIN"
+    case KibanaAccess.RO => "ro"
+    case KibanaAccess.ROStrict => "ro_strict"
+    case KibanaAccess.RW => "rw"
+    case KibanaAccess.Admin => "admin"
   }
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value.value)
 }

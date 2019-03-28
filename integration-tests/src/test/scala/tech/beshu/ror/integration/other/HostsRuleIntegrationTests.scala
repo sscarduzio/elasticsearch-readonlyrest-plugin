@@ -49,7 +49,7 @@ object HostsRuleIntegrationTests {
       |
       |  - name: "CONTAINER ADMIN"
       |    type: allow
-      |    auth_key: admin:container
+      |    auth_key: admin:multiContainerDependent
       |
       |  - name: "::BAD HOST::"
       |    accept_x-forwarded-for_header: true

@@ -33,7 +33,7 @@ import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assert
 public class LdapAutenticationLocalAuthorizationTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container2 =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProject.fromSystemProperty(),
           new MultiContainer.Builder()
@@ -45,31 +45,31 @@ public class LdapAutenticationLocalAuthorizationTests {
 
   @Test
   public void checkCartmanCanSeeTwitter() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
   }
 
   @Test
   public void checkUnicodedBibloCanSeeTwitter() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("Bìlbö Bággįnš", "user2", "twitter");
   }
 
   @Test
   public void checkMorganCanSeeFacebook() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");
   }
 
   @Test
   public void checkMorganCannotSeeTwitter() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
   @Test
   public void checkCartmanCannotSeeFacebook() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserAccessToIndexForbidden("cartman", "user2", "facebook");
   }
 

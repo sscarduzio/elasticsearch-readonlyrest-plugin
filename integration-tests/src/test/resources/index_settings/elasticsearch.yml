@@ -14,7 +14,7 @@ readonlyrest:
 
   - name: "CONTAINER ADMIN"
     type: allow
-    auth_key: admin:container
+    auth_key: admin:multiContainerDependent
 
   - name: "User 1"
     type: allow

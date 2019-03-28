@@ -59,7 +59,7 @@ public class LocalGroupsTest {
         r.getStatusLine().getStatusCode()
     );
 
-    // Piggy back response headers testing (too long to spin up another container)
+    // Piggy back response headers testing (too long to spin up another multiContainerDependent)
     assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
     assertEquals(".kibana_user", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
     assertEquals("timelion", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());
@@ -77,7 +77,7 @@ public class LocalGroupsTest {
         r.getStatusLine().getStatusCode()
     );
 
-    // Piggy back response headers testing (too long to spin up another container)
+    // Piggy back response headers testing (too long to spin up another multiContainerDependent)
     assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
     assertEquals(".kibana_foogroup", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
     assertEquals("foo:app", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());

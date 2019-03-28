@@ -20,10 +20,10 @@ readonlyrest:
   # Default policy is to forbid everything, so let's define a whitelist
   access_control_rules:
 
-  # ES container initializer need this rule to configure ES instance after startup
+  # ES multiContainerDependent initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
     type: allow
-    auth_key: admin:container
+    auth_key: admin:multiContainerDependent
 
   - name: "::Tweets::"
     methods: GET

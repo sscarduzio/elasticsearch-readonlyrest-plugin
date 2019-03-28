@@ -13,9 +13,9 @@ readonlyrest:
 
   access_control_rules:
 
-  # ES container initializer need this rule to configure ES instance after startup
+  # ES multiContainerDependent initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
-    auth_key: admin:container
+    auth_key: admin:multiContainerDependent
     verbosity: error
 
   - name: passthrough

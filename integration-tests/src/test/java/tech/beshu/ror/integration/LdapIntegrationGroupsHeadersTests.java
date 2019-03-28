@@ -38,7 +38,7 @@ import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assert
 public class LdapIntegrationGroupsHeadersTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProject.fromSystemProperty(),
           new MultiContainer.Builder()
@@ -51,7 +51,7 @@ public class LdapIntegrationGroupsHeadersTests {
 
   @Test
   public void checkCartmanRespHeadersWithoutCurrGroupHeader() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
           assertEquals("group1,group3,groupAll", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
@@ -67,7 +67,7 @@ public class LdapIntegrationGroupsHeadersTests {
 
   @Test
   public void checkCartmanRespHeaders() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
           assertEquals("group1,group3,groupAll", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
@@ -84,7 +84,7 @@ public class LdapIntegrationGroupsHeadersTests {
 
   @Test
   public void checkCartmanRespHeadersWithCurrentGroupReqHeader() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",\n").join(response.getAllHeaders()));
           assertEquals("group1,group3,groupAll", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));

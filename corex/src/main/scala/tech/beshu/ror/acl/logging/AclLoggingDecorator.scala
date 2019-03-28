@@ -62,16 +62,16 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
     if (isLoggableEntry(responseContext)) {
       import tech.beshu.ror.acl.logging.AclLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
-    }
-    auditingTool.foreach {
-      _
-        .audit(responseContext)
-        .timeout(500 millis)
-        .runAsync {
-          case Right(_) =>
-          case Left(ex) =>
-            logger.warn("Auditing issue", ex)
-        }
+      auditingTool.foreach {
+        _
+          .audit(responseContext)
+          .timeout(5 seconds)
+          .runAsync {
+            case Right(_) =>
+            case Left(ex) =>
+              logger.warn("Auditing issue", ex)
+          }
+      }
     }
   }
 

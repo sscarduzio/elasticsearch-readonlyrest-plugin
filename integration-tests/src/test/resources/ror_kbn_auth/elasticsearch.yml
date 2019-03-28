@@ -14,7 +14,7 @@ readonlyrest:
   access_control_rules:
     - name: Container housekeeping is allowed
       type: allow
-      auth_key: admin:container
+      auth_key: admin:multiContainerDependent
 
     - name: Valid JWT token is present
       type: allow

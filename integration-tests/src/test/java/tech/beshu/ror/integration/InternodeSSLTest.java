@@ -39,7 +39,7 @@ import static junit.framework.TestCase.assertTrue;
 public class InternodeSSLTest {
 
 //  @ClassRule
-//  public static ESWithReadonlyRestContainer container =
+//  public static ESWithReadonlyRestContainer multiContainerDependent =
 //      ESWithReadonlyRestContainer.create(
 //          RorPluginGradleProject.fromSystemProperty(),
 //          "/ssl_internode/elasticsearch.yml",
@@ -48,15 +48,15 @@ public class InternodeSSLTest {
 
   private HostAndPort getHostAndPort() {
     return HostAndPort.fromParts("localhost", 9300);
-    //return HostAndPort.fromParts(container.getESHost(), container.getTransportPort());
+    //return HostAndPort.fromParts(multiContainerDependent.getESHost(), multiContainerDependent.getTransportPort());
   }
 
 @Test
   public void testSSLnoVerification() throws Exception {
-//    if (Integer.parseInt(container.getEsVersion().replace(".", "")) < 660) {
+//    if (Integer.parseInt(multiContainerDependent.getEsVersion().replace(".", "")) < 660) {
 //      return;
 //    }
-//    System.out.println("transport port:   " + container.getTransportPort());
+//    System.out.println("transport port:   " + multiContainerDependent.getTransportPort());
 
     TransportClient client = new PreBuiltXPackTransportClient(
         Settings.builder()
@@ -78,10 +78,10 @@ public class InternodeSSLTest {
 
   @Test(expected = NoNodeAvailableException.class)
   public void testSSLwithServerVerification() throws Exception {
-    //    if (Integer.parseInt(container.getEsVersion().replace(".", "")) < 660) {
+    //    if (Integer.parseInt(multiContainerDependent.getEsVersion().replace(".", "")) < 660) {
     //      return;
     //    }
-    //    System.out.println("transport port:   " + container.getTransportPort());
+    //    System.out.println("transport port:   " + multiContainerDependent.getTransportPort());
 
     TransportClient client = new PreBuiltXPackTransportClient(
         Settings.builder()
