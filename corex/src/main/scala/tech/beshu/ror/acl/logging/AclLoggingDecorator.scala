@@ -23,7 +23,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.acl.blocks.Block.Verbosity._
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, Verbosity}
 import tech.beshu.ror.acl.logging.ResponseContext._
 import tech.beshu.ror.acl.request.RequestContext
@@ -66,19 +65,23 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
     auditingTool.foreach {
       _
         .audit(responseContext)
-        .timeout(500 millis)
+        .timeout(5 seconds)
         .runAsync {
           case Right(_) =>
           case Left(ex) =>
             logger.warn("Auditing issue", ex)
         }
-    }
+      }
   }
 
   private def isLoggableEntry(context: ResponseContext): Boolean = {
     context match {
-      case Allowed(_, block, _, _) if block.verbosity =!= Verbosity.Info => false
-      case _: Allowed | _: ForbiddenBy | _: Forbidden | _: Errored | _: NotFound => true
+      case Allowed(_, block, _, _) =>
+        block.verbosity match {
+          case Verbosity.Info => true
+          case Verbosity.Error => false
+        }
+      case _: ForbiddenBy | _: Forbidden | _: Errored | _: NotFound => true
     }
   }
 

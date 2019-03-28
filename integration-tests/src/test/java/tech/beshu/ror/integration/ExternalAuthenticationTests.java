@@ -32,7 +32,7 @@ import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assert
 public class ExternalAuthenticationTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
     ESWithReadonlyRestContainerUtils.create(
       RorPluginGradleProject.fromSystemProperty(),
       new MultiContainer.Builder()
@@ -47,18 +47,18 @@ public class ExternalAuthenticationTests {
 
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("cartman", "user1", "twitter");
+    assertions(multiContainerDependent.getContainer()).assertUserHasAccessToIndex("cartman", "user1", "twitter");
   }
 
   @Test
   public void testAuthenticationErrorWithService1() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserAccessToIndexForbidden("cartman", "user2", "twitter");
     assertions.assertUserAccessToIndexForbidden("morgan", "user2", "twitter");
   }
 
   @Test
   public void testAuthenticationSuccessWithService2() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("cartman", "user1", "facebook");
+    assertions(multiContainerDependent.getContainer()).assertUserHasAccessToIndex("cartman", "user1", "facebook");
   }
 }

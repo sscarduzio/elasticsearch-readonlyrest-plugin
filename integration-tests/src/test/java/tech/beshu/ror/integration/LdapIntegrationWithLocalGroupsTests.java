@@ -38,7 +38,7 @@ import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assert
 public class LdapIntegrationWithLocalGroupsTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container2 =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProject.fromSystemProperty(),
           new MultiContainer.Builder()
@@ -50,7 +50,7 @@ public class LdapIntegrationWithLocalGroupsTests {
 
   @Test
   public void checkCartmanRespHeaders() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
           assertEquals("group1,group3", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
@@ -68,7 +68,7 @@ public class LdapIntegrationWithLocalGroupsTests {
 
   @Test
   public void checkCartmanRespHeadersWithCurrentGroupReqHeader() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container2);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",\n").join(response.getAllHeaders()));
           assertEquals("group1,group3", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));

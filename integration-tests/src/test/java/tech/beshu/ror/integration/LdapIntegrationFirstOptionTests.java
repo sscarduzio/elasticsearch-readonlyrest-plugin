@@ -32,7 +32,7 @@ import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assert
 public class LdapIntegrationFirstOptionTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
     ESWithReadonlyRestContainerUtils.create(
       RorPluginGradleProject.fromSystemProperty(),
       new MultiContainer.Builder()
@@ -45,24 +45,24 @@ public class LdapIntegrationFirstOptionTests {
 
   @Test
   public void usersFromGroup1CanSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
     assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
   public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    assertions(multiContainerDependent.getContainer()).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
   @Test
   public void unauthenticatedUserCannotSeeTweets() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
+    assertions(multiContainerDependent.getContainer()).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
 
   @Test
   public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
     assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");

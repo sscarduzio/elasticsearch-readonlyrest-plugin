@@ -31,7 +31,7 @@ import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assert
 public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
     ESWithReadonlyRestContainerUtils.create(
       RorPluginGradleProject.fromSystemProperty(),
       new MultiContainer.Builder()
@@ -46,21 +46,21 @@ public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
   // #TODO doesnt pass
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService1() throws Exception {
-    assertions(container).assertReverseProxyUserHasAccessToIndex(
+    assertions(multiContainerDependent.getContainer()).assertReverseProxyUserHasAccessToIndex(
       "X-Auth-Token", "cartman", "twitter"
     );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationErrorWithService1() throws Exception {
-    assertions(container).assertReverseProxyAccessToIndexForbidden(
+    assertions(multiContainerDependent.getContainer()).assertReverseProxyAccessToIndexForbidden(
       "X-Auth-Token", "morgan", "twitter"
     );
   }
 
   @Test
   public void testAuthenticationAndAuthorizationSuccessWithService2() throws Exception {
-    assertions(container).assertReverseProxyUserHasAccessToIndex(
+    assertions(multiContainerDependent.getContainer()).assertReverseProxyUserHasAccessToIndex(
       "X-Auth-Token", "29b3d166-1952-11e7-8b77-6c4008a76fc6", "facebook"
     );
   }

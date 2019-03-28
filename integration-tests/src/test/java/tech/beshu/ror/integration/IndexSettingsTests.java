@@ -37,7 +37,7 @@ import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create
 
 public class IndexSettingsTests {
 
-  private final static String NEW_CONFIGURATION = "readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: \\\"CONTAINER ADMIN\\\"\\r\\n      type: allow\\r\\n      auth_key: admin:container\\r\\n\\r\\n    - name: \\\"User 2\\\"\\r\\n      type: allow\\r\\n      auth_key: user2:dev";
+  private final static String NEW_CONFIGURATION = "readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: \\\"CONTAINER ADMIN\\\"\\r\\n      type: allow\\r\\n      auth_key: admin:multiContainerDependent\\r\\n\\r\\n    - name: \\\"User 2\\\"\\r\\n      type: allow\\r\\n      auth_key: user2:dev";
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =

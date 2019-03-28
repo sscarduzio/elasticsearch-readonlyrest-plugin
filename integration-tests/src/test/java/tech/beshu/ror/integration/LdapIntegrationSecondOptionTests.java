@@ -31,7 +31,7 @@ import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
 public class LdapIntegrationSecondOptionTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProject.fromSystemProperty(),
           new MultiContainer.Builder()
@@ -44,24 +44,26 @@ public class LdapIntegrationSecondOptionTests {
 
   @Test
   public void usersFromGroup1CanSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
+    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
     assertions.assertUserHasAccessToIndex("bong", "user1", "twitter");
   }
 
   @Test
   public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    ReadonlyRestedESAssertions.assertions(multiContainerDependent.getContainer())
+        .assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
   }
 
   @Test
   public void unauthenticatedUserCannotSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions.assertions(container).assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
+    ReadonlyRestedESAssertions.assertions(multiContainerDependent.getContainer())
+        .assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
 
   @Test
   public void usersFromGroup3CanSeeFacebookPosts() throws Exception {
-    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(container);
+    ReadonlyRestedESAssertions assertions = ReadonlyRestedESAssertions.assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "facebook");
     assertions.assertUserHasAccessToIndex("bong", "user1", "facebook");
     assertions.assertUserHasAccessToIndex("morgan", "user1", "facebook");
