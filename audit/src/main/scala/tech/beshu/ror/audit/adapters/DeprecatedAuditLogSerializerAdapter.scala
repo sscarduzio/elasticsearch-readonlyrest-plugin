@@ -32,8 +32,15 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = {
     val deprecatedResponseContext = responseContext match {
-      case Allowed(_, verbosity, _) if verbosity == Verbosity.Info => None
-      case _ => Some(toDeprecatedResponseContext(responseContext))
+      case Allowed(_, verbosity, _) =>
+        verbosity match {
+          case Verbosity.Info =>
+            Some(toDeprecatedResponseContext(responseContext))
+          case Verbosity.Error =>
+            None
+        }
+      case _ =>
+        Some(toDeprecatedResponseContext(responseContext))
     }
     deprecatedResponseContext
       .map(underlying.createLoggableEntry)

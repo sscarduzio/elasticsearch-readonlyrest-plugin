@@ -20,9 +20,10 @@ public class AuditingToolTests {
           Optional.of(new ElasticsearchTweetsInitializer())
       );
 
-  @Test
-  public void checkCartmanCanSeeTwitter() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
-    assertions.assertUserHasAccessToIndex("user1", "dev", "twitter");
-  }
+  // todo: implement
+//  @Test
+//  public void checkCartmanCanSeeTwitter() throws Exception {
+//    ReadonlyRestedESAssertions assertions = assertions(container);
+//    assertions.assertUserHasAccessToIndex("user1", "dev", "twitter");
+//  }
 }

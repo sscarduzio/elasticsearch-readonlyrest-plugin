@@ -23,7 +23,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.acl.blocks.Block.Verbosity._
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, Verbosity}
 import tech.beshu.ror.acl.logging.ResponseContext._
 import tech.beshu.ror.acl.request.RequestContext
@@ -62,23 +61,27 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
     if (isLoggableEntry(responseContext)) {
       import tech.beshu.ror.acl.logging.AclLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
-      auditingTool.foreach {
-        _
-          .audit(responseContext)
-          .timeout(5 seconds)
-          .runAsync {
-            case Right(_) =>
-            case Left(ex) =>
-              logger.warn("Auditing issue", ex)
-          }
-      }
     }
+    auditingTool.foreach {
+      _
+        .audit(responseContext)
+        .timeout(5 seconds)
+        .runAsync {
+          case Right(_) =>
+          case Left(ex) =>
+            logger.warn("Auditing issue", ex)
+        }
+      }
   }
 
   private def isLoggableEntry(context: ResponseContext): Boolean = {
     context match {
-      case Allowed(_, block, _, _) if block.verbosity =!= Verbosity.Info => false
-      case _: Allowed | _: ForbiddenBy | _: Forbidden | _: Errored | _: NotFound => true
+      case Allowed(_, block, _, _) =>
+        block.verbosity match {
+          case Verbosity.Info => true
+          case Verbosity.Error => false
+        }
+      case _: ForbiddenBy | _: Forbidden | _: Errored | _: NotFound => true
     }
   }
 

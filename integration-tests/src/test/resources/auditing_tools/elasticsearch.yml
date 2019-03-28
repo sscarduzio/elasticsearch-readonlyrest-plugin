@@ -10,15 +10,18 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-#  audit_collector: true
+  audit_collector: true
+  audit_index_template: "'audit_index'"
 
   access_control_rules:
 
     - name: "CONTAINER ADMIN"
+      verbosity: error
       type: allow
-      auth_key: admin:multiContainerDependent
+      auth_key: admin:container
 
     - name: "::Tweets::"
+      verbosity: error
       methods: GET
       auth_key: user1:dev
       indices: ["twitter"]
