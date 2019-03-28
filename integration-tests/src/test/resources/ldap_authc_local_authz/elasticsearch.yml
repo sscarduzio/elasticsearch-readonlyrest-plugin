@@ -19,7 +19,7 @@ readonlyrest:
   # ES multiContainerDependent initializer need this rule to configure ES instance after startup
   - name: "CONTAINER ADMIN"
     type: allow
-    auth_key: admin:multiContainerDependent
+    auth_key: admin:container
 
   - name: "::Tweets::"
     methods: GET

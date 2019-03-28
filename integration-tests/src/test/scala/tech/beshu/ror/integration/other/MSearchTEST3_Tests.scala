@@ -53,7 +53,7 @@ object MSearchTEST3_Tests {
         |
         |  - name: "CONTAINER ADMIN"
         |    type: allow
-        |    auth_key: admin:multiContainerDependent
+        |    auth_key: admin:container
         |
         |  - name: es-timber-hammercloud writer
         |    x_forwarded_for:

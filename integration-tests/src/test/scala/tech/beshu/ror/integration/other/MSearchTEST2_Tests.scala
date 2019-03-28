@@ -81,7 +81,7 @@ object MSearchTEST2_Tests {
         |
         |  - name: "CONTAINER ADMIN"
         |    type: allow
-        |    auth_key: admin:multiContainerDependent
+        |    auth_key: admin:container
         |
         |  - name: "::KIBANA-SRV::"
         |    auth_key: kibana:kibana

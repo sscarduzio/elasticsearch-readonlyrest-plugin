@@ -27,5 +27,5 @@ readonlyrest:
 
   - name: "CONTAINER ADMIN"
     actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
-    #auth_key: admin:multiContainerDependent
+    #auth_key: admin:container
 
