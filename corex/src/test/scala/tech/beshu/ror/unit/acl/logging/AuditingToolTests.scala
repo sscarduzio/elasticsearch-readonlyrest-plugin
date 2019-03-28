@@ -41,7 +41,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
 
   "Auditing tool used with DefaultAuditLogSerializer" should {
     "not submit any audit entry" when {
-      "request was allowed and verbosity level was INFO" in {
+      "request was allowed and verbosity level was ERROR" in {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
             DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
@@ -49,7 +49,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
           ),
           mock[AuditSink]
         )
-        auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
+        auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
       }
       "custom serializer throws exception" in {
         val auditingTool = new AuditingTool(
@@ -65,7 +65,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
       }
     }
     "submit audit entry" when {
-      "request was allowed and verbosity level was different than INFO" in {
+      "request was allowed and verbosity level was INFO" in {
         val auditSink = mock[AuditSink]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
@@ -77,7 +77,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
           auditSink
         )
 
-        auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
+        auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
       }
       "request was matched by forbidden rule" in {
         val auditSink = mock[AuditSink]
