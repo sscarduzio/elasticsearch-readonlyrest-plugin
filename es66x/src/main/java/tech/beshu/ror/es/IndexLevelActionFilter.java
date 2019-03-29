@@ -33,6 +33,7 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.RestChannel;
@@ -132,7 +133,9 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       Optional<ACL> acl = this.acl.get();
       if (acl.isPresent()) {
-        handleRequest(acl.get(), task, action, request, listener, chain);
+        try(ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
+          handleRequest(acl.get(), task, action, request, listener, chain);
+        }
       }
       else {
         chain.proceed(task, action, request, listener);

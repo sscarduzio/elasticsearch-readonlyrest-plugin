@@ -45,16 +45,13 @@ public class ResponseActionListener implements ActionListener<ActionResponse> {
 
   @Override
   public void onResponse(ActionResponse actionResponse) {
-    try {
-      String uri = requestContext.getUri();
-      if (!Strings.isNullOrEmpty(uri) && uri.startsWith(Constants.REST_METADATA_PATH)) {
-        baseListener.onResponse(new RRMetadataResponse(requestContext));
-        return;
-      }
-      baseListener.onResponse(actionResponse);
-    } catch (Exception e) {
-      baseListener.onFailure(e);
+    String uri = requestContext.getUri();
+    if (!Strings.isNullOrEmpty(uri) && uri.startsWith(Constants.REST_METADATA_PATH)) {
+      baseListener.onResponse(new RRMetadataResponse(requestContext));
+      return;
     }
+
+    baseListener.onResponse(actionResponse);
   }
 
   @Override
