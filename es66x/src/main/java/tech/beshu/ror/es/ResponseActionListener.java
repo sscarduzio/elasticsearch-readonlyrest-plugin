@@ -14,6 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.es;
 
 import com.google.common.base.Strings;
@@ -45,10 +46,11 @@ public class ResponseActionListener implements ActionListener<ActionResponse> {
   @Override
   public void onResponse(ActionResponse actionResponse) {
     String uri = requestContext.getUri();
-    if(!Strings.isNullOrEmpty(uri) && uri.startsWith(Constants.REST_METADATA_PATH)) {
+    if (!Strings.isNullOrEmpty(uri) && uri.startsWith(Constants.REST_METADATA_PATH)) {
       baseListener.onResponse(new RRMetadataResponse(requestContext));
       return;
     }
+
     baseListener.onResponse(actionResponse);
   }
 
