@@ -23,7 +23,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.message.BasicHeader;
 import org.junit.Assert;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.IOException;
@@ -32,18 +31,18 @@ import java.util.function.Function;
 
 public class ReadonlyRestedESAssertions {
 
-  private final MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent;
+  private final ESWithReadonlyRestContainer rorContainer;
 
-  public ReadonlyRestedESAssertions(MultiContainerDependent<ESWithReadonlyRestContainer> container) {
-    this.multiContainerDependent = container;
+  public ReadonlyRestedESAssertions(ESWithReadonlyRestContainer container) {
+    this.rorContainer = container;
   }
 
-  public static ReadonlyRestedESAssertions assertions(MultiContainerDependent<ESWithReadonlyRestContainer> container) {
+  public static ReadonlyRestedESAssertions assertions(ESWithReadonlyRestContainer container) {
     return new ReadonlyRestedESAssertions(container);
   }
 
   public void assertUserHasAccessToIndex(String name, String password, String index) throws IOException, URISyntaxException {
-    assertGetIndexResponseCode(multiContainerDependent.getContainer().getBasicAuthClient(name, password), index, 200, null, null);
+    assertGetIndexResponseCode(rorContainer.getBasicAuthClient(name, password), index, 200, null, null);
   }
 
   public void assertUserHasAccessToIndex(String name, String password, String index, Function<HttpResponse, Void> responseHandler,
@@ -51,28 +50,28 @@ public class ReadonlyRestedESAssertions {
 
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
-        multiContainerDependent.getContainer().getBasicAuthClient(name, password), index, 200, responseHandler, requestHandler
+        rorContainer.getBasicAuthClient(name, password), index, 200, responseHandler, requestHandler
     );
   }
 
   public void assertReverseProxyUserHasAccessToIndex(String headerName, String userId, String index)
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
-        multiContainerDependent.getContainer().getClient(new BasicHeader(headerName, userId)), index, 200
+        rorContainer.getClient(new BasicHeader(headerName, userId)), index, 200
     );
   }
 
   public void assertUserAccessToIndexForbidden(String name, String password, String index)
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
-        multiContainerDependent.getContainer().getBasicAuthClient(name, password), index, 401
+        rorContainer.getBasicAuthClient(name, password), index, 401
     );
   }
 
   public void assertReverseProxyAccessToIndexForbidden(String headerName, String userId, String index)
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
-        multiContainerDependent.getContainer().getClient(new BasicHeader(headerName, userId)), index, 401
+        rorContainer.getClient(new BasicHeader(headerName, userId)), index, 401
     );
   }
 

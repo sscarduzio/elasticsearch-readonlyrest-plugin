@@ -65,7 +65,7 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory w
         val responseWriter = mock[ResponseWriter]
         (responseWriter.writeResponseHeaders _)
           .expects(Map(
-            "x-ror-kibana_access" -> "ADMIN",
+            "x-ror-kibana_access" -> "admin",
             "x-ror-kibana_index" -> ".kibana_template"
           ))
           .returning({})
