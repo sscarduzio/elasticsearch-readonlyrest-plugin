@@ -19,15 +19,17 @@ package tech.beshu.ror.utils.httpclient;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.http.Header;
-import org.apache.http.HttpResponse;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.auth.BasicScheme;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
@@ -45,7 +47,7 @@ import java.util.stream.Collectors;
 
 public class RestClient {
 
-  private final HttpClient underlying;
+  private final CloseableHttpClient underlying;
   private final String host;
   private final int port;
   private final boolean ssl;
@@ -64,7 +66,7 @@ public class RestClient {
     this.underlying = createUnderlyingClient(basicAuth, headers);
   }
 
-  private HttpClient createUnderlyingClient(Optional<Tuple<String, String>> basicAuth, Header... headers) {
+  private CloseableHttpClient createUnderlyingClient(Optional<Tuple<String, String>> basicAuth, Header... headers) {
     HttpClientBuilder builder = null;
 
     if (ssl) {
@@ -92,10 +94,17 @@ public class RestClient {
       headers = tmp;
     }
 
+    int timeout = 2;
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
       .setDefaultHeaders(Lists.newArrayList(headers))
-      .setDefaultSocketConfig(SocketConfig.custom().build());
+      .setDefaultSocketConfig(SocketConfig.custom().build())
+      .setDefaultRequestConfig(
+          RequestConfig.custom()
+              .setConnectTimeout(timeout * 1000)
+              .setConnectionRequestTimeout(timeout * 1000)
+              .setSocketTimeout(timeout * 1000).build()
+      );
 
     return builder.build();
   }
@@ -140,7 +149,7 @@ public class RestClient {
 
   }
 
-  public HttpResponse execute(HttpUriRequest req) throws IOException {
+  public CloseableHttpResponse execute(HttpUriRequest req) throws IOException {
     return underlying.execute(req);
   }
 

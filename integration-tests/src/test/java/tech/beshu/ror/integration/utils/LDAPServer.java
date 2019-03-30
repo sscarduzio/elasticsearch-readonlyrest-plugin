@@ -1,3 +1,5 @@
+package tech.beshu.ror.integration.utils;
+
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -15,29 +17,20 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.integration;
+import tech.beshu.ror.utils.containers.LdapContainer;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-
-
-public class TempFile {
-
-  public static File newFile(String prefix, String suffix, String content) throws IOException {
-    File tempFile = File.createTempFile(prefix, suffix);
-    tempFile.deleteOnExit();
-    BufferedWriter out = null;
-
-    try {
-      out = new BufferedWriter(new FileWriter(tempFile));
-      out.write(content);
-      out.flush();
-    } finally {
-      out.close();
+/**
+ * This is really useful when you want to stand up a LDAP server for manual tests
+ */
+public class LDAPServer {
+  public static void main(String[] args) throws InterruptedException {
+    String ldifFile = System.getProperty("config", "/ldap_integration_group_headers/ldap.ldif");
+    System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
+    LdapContainer lc = LdapContainer.create(ldifFile);
+    lc.start();
+    System.out.println(lc.getLdapHost() + " " + lc.getLdapPort());
+    while(true){
+      Thread.sleep(Long.MAX_VALUE);
     }
-
-    return tempFile;
   }
 }

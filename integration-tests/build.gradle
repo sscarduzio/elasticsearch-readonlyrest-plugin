@@ -60,6 +60,7 @@ dependencies {
     testCompile 'ch.qos.logback:logback-classic:1.2.3'
     testCompile 'ch.qos.logback:logback-core:1.2.3'
     testCompile "org.elasticsearch.client:x-pack-transport:6.6.0"
+    testCompile 'net.jodah:failsafe:2.0.1'
 }
 
 license {
