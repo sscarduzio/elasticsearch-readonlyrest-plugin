@@ -54,7 +54,7 @@ public class AuditIndexManager {
 
   public List<Map<String, Object>> getAuditIndexEntries() {
     RetryPolicy<List<Map<String, Object>>> retryPolicy = new RetryPolicy<List<Map<String, Object>>>()
-        .handleIf(emptyEntriesResult)
+        .handleIf(emptyEntriesResultPredicate())
         .withMaxRetries(20)
         .withDelay(Duration.ofMillis(500))
         .withMaxDuration(Duration.ofSeconds(10));
@@ -76,8 +76,9 @@ public class AuditIndexManager {
     }
   }
 
-  private BiPredicate<List<Map<String, Object>>, Throwable> emptyEntriesResult =
-      (maps, throwable) -> (Boolean) (throwable != null || maps == null || maps.size() == 0);
+  private BiPredicate<List<Map<String, Object>>, Throwable> emptyEntriesResultPredicate() {
+    return (maps, throwable) -> throwable != null || maps == null || maps.size() == 0;
+  }
 
   private Map<String, Object> deserializeJsonBody(Result response) {
     Gson gson = new Gson();
@@ -91,8 +92,8 @@ public class AuditIndexManager {
   }
 
   private static class Result {
-    final Integer code;
-    final String body;
+    public final Integer code;
+    public final String body;
 
     public Result(Integer code, String body) {
       this.code = code;
