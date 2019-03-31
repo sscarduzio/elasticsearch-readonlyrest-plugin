@@ -189,24 +189,6 @@ public class ReadonlyRestPlugin extends Plugin
     ESContextImpl.shutDownObservable.shutDown();
   }
 
-  //  @Override
-  //  public List<TransportInterceptor> getTransportInterceptors(NamedWriteableRegistry namedWriteableRegistry, ThreadContext threadContext) {
-  //    TransportInterceptor ti = new TransportInterceptor() {
-  //      @Override
-  //      public AsyncSender interceptSender(AsyncSender sender) {
-  //        return null;
-  //      }
-  //
-  //      @Override
-  //      public <T extends TransportRequest> TransportRequestHandler<T> interceptHandler(String action, String executor, boolean forceExecution,
-  //          TransportRequestHandler<T> actualHandler) {
-  //        return null;
-  //      }
-  //    };
-  //
-  //    return Collections.singletonList(ti);
-  //  }
-
   @Override
   public List<Setting<?>> getSettings() {
     // No need, we have settings in config/readonlyrest.yml

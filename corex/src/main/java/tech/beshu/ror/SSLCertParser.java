@@ -39,31 +39,31 @@ public class SSLCertParser {
   private final SSLContextCreator creator;
   private final LoggerShim logger;
 
-  public SSLCertParser(BasicSettings settings, LoggerShim logger, SSLContextCreator creator) {
+  public SSLCertParser(BasicSettings.SSLSettings settings, LoggerShim logger, SSLContextCreator creator) {
     this.creator = creator;
     this.logger = logger;
     createContext(settings);
   }
 
-  public static boolean validateProtocolAndCiphers(SSLEngine eng, LoggerShim logger, BasicSettings basicSettings) {
+  public static boolean validateProtocolAndCiphers(SSLEngine eng, LoggerShim logger, BasicSettings.SSLSettings basicSettings) {
     try {
       String[] defaultProtocols = eng.getEnabledProtocols();
 
       logger.info("ROR SSL: Available ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
       basicSettings.getAllowedSSLCiphers()
-        .map(x -> x.toArray(new String[x.size()]))
-        .ifPresent(p -> {
-          eng.setEnabledCipherSuites(p);
-          logger.info("ROR SSL: Restricting to ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
-        });
+          .map(x -> x.toArray(new String[x.size()]))
+          .ifPresent(p -> {
+            eng.setEnabledCipherSuites(p);
+            logger.info("ROR SSL: Restricting to ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
+          });
 
       logger.info("ROR SSL: Available SSL protocols: " + Joiner.on(",").join(defaultProtocols));
       basicSettings.getAllowedSSLProtocols()
-        .map(x -> x.toArray(new String[x.size()]))
-        .ifPresent(p -> {
-          eng.setEnabledProtocols(p);
-          logger.info("ROR SSL: Restricting to SSL protocols: " + Joiner.on(",").join(eng.getEnabledProtocols()));
-        });
+          .map(x -> x.toArray(new String[x.size()]))
+          .ifPresent(p -> {
+            eng.setEnabledProtocols(p);
+            logger.info("ROR SSL: Restricting to SSL protocols: " + Joiner.on(",").join(eng.getEnabledProtocols()));
+          });
       return true;
     } catch (Exception e) {
       logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
@@ -71,7 +71,7 @@ public class SSLCertParser {
     }
   }
 
-  private void createContext(BasicSettings settings) {
+  private void createContext(BasicSettings.SSLSettings settings) {
     if (!settings.isSSLEnabled()) {
       logger.info("ROR SSL: SSL is disabled");
       return;
@@ -149,10 +149,10 @@ public class SSLCertParser {
 
 
       AccessController.doPrivileged(
-        (PrivilegedAction<Void>) () -> {
-          creator.mkSSLContext(certChain, privateKey);
-          return null;
-        });
+          (PrivilegedAction<Void>) () -> {
+            creator.mkSSLContext(certChain, privateKey);
+            return null;
+          });
 
     } catch (Throwable t) {
       logger.error("ROR SSL: Failed to load SSL certs and keys from JKS Keystore! " + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
@@ -167,4 +167,3 @@ public class SSLCertParser {
     void mkSSLContext(String certChain, String privateKey);
   }
 }
-
