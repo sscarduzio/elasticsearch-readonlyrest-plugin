@@ -7,7 +7,8 @@ import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.{ClassRule, Test}
 import org.testcontainers.shaded.com.google.common.net.HostAndPort
-import tech.beshu.ror.integration.{RestTestUtils, TempFile}
+import tech.beshu.ror.integration.RestTestUtils
+import tech.beshu.ror.integration.utils.TempFile
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.ESInitalizer
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject

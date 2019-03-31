@@ -130,7 +130,6 @@ public class IndicesAliasesTests {
     assertTrue(body.contains("\"hits\":{\"total\":1"));
   }
 
-
   private RestResult search(String endpoint, String user, String pass) throws Exception {
     RestClient client = container.getBasicAuthClient(user, pass);
     return search(endpoint, client);
