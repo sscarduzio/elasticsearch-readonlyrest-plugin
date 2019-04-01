@@ -19,12 +19,10 @@ package tech.beshu.ror.integration;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
+import tech.beshu.ror.integration.utils.DocumentManager;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
@@ -33,6 +31,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static tech.beshu.ror.integration.utils.EnhancedAssertion.assertNAttepts;
 
 public class IndicesAliasesTests {
 
@@ -41,93 +40,76 @@ public class IndicesAliasesTests {
       ESWithReadonlyRestContainer.create(
           RorPluginGradleProject.fromSystemProperty(), "/indices_aliases_test/elasticsearch.yml",
           Optional.of(client -> {
-            insertDoc("/my_data/test/1", "{\"hello\":\"world\"}", client, true);
-            insertDoc("/my_data/test/2", "{\"hello\":\"there\", \"public\":1}", client, true);
-            insertDoc("/my_data/_alias/public_data", "{\"filter\":{\"term\":{\"public\":1}}}", client, false);
+            DocumentManager documentManager = new DocumentManager(client);
+            documentManager.insertDoc("/my_data/test/1", "{\"hello\":\"world\"}");
+            documentManager.insertDoc("/my_data/test/2", "{\"hello\":\"there\", \"public\":1}");
+            documentManager.insertDoc("/my_data/_alias/public_data", "{\"filter\":{\"term\":{\"public\":1}}}");
           })
       );
 
-  private static void insertDoc(String docPath, String content, RestClient restClient, boolean poll) {
-    try {
-      HttpPut request = new HttpPut(restClient.from(docPath));
-      request.setHeader("refresh", "true");
-      request.setHeader("timeout", "50s");
-      request.setHeader("Content-Type", "application/json");
-      request.setEntity(new StringEntity(content));
-      System.out.println(body(restClient.execute(request)));
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new IllegalStateException("Test problem", e);
-    }
-
-    // Polling phase.. #TODO is there a better way?
-    try {
-
-      if (!poll) {
-        Thread.sleep(1000);
-      }
-
-      else {
-        HttpResponse response;
-        do {
-          Thread.sleep(200);
-          HttpHead request = new HttpHead(restClient.from(docPath));
-          response = restClient.execute(request);
-          System.out.println("polling for " + docPath + ".. result: " + response.getStatusLine().getReasonPhrase());
-        } while (response.getStatusLine().getStatusCode() != 200);
-      }
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new IllegalStateException("Cannot configure test case", e);
-    }
-  }
-
-  private static String body(HttpResponse r) throws Exception {
-    return EntityUtils.toString(r.getEntity());
-  }
-
   @Test
   public void testDirectIndexQuery() throws Exception {
-    String body = search("/my_data/_search").body;
-    assertTrue(body.contains("\"hits\":{\"total\":2"));
+    assertNAttepts(3, () -> {
+      String body = search("/my_data/_search").body;
+      assertTrue(body.contains("\"hits\":{\"total\":2"));
+      return null;
+    });
   }
 
   @Test
   public void testAliasQuery() throws Exception {
-    String body = search("/public_data/_search").body;
-    assertTrue(body.contains("\"hits\":{\"total\":1"));
+    assertNAttepts(3, () -> {
+      String body = search("/public_data/_search").body;
+      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      return null;
+    });
   }
 
   @Test
   public void testAliasAsWildcard() throws Exception {
-    String body = search("/pub*/_search").body;
-    assertTrue(body.contains("\"hits\":{\"total\":1"));
+    assertNAttepts(3, () -> {
+      String body = search("/pub*/_search").body;
+      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      return null;
+    });
   }
 
   // Tests with indices rule restricting to "pub*"
 
   @Test
   public void testRestrictedPureIndex() throws Exception {
-    RestResult res = search("/my_data/_search", "restricted", "dev");
-    assertEquals(401, res.status);
+    assertNAttepts(3, () -> {
+      RestResult res = search("/my_data/_search", "restricted", "dev");
+      assertEquals(401, res.status);
+      return null;
+    });
   }
+
   @Test
   public void testRestrictedAlias() throws Exception {
-    String body = search("/public_data/_search", "restricted", "dev").body;
-    assertTrue(body.contains("\"hits\":{\"total\":1"));
+    assertNAttepts(3, () -> {
+      String body = search("/public_data/_search", "restricted", "dev").body;
+      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      return null;
+    });
   }
 
   @Test
   public void testRestrictedAliasAsWildcard() throws Exception {
-    String body = search("/public*/_search", "restricted", "dev").body;
-    assertTrue(body.contains("\"hits\":{\"total\":1"));
+    assertNAttepts(3, () -> {
+      String body = search("/public*/_search", "restricted", "dev").body;
+      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      return null;
+    });
   }
+
   @Test
   public void testRestrictedAliasAsHalfWildcard() throws Exception {
-    String body = search("/pu*/_search", "restricted", "dev").body;
-    assertTrue(body.contains("\"hits\":{\"total\":1"));
+    assertNAttepts(3, () -> {
+      String body = search("/pu*/_search", "restricted", "dev").body;
+      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      return null;
+    });
   }
 
   private RestResult search(String endpoint, String user, String pass) throws Exception {
@@ -158,5 +140,9 @@ public class IndicesAliasesTests {
       this.body = body;
       this.status = status;
     }
+  }
+
+  private static String body(HttpResponse r) throws Exception {
+    return EntityUtils.toString(r.getEntity());
   }
 }

@@ -36,6 +36,7 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.RestChannel;
@@ -154,7 +155,9 @@ public class IndexLevelActionFilter implements ActionFilter {
       logger.debug("THREAD_CTX: " + threadPool.getThreadContext().hashCode());
       Optional<RorEngineFactory.Engine> engine = this.rorEngine.get();
       if (engine.isPresent()) {
-        handleRequest(engine.get(), task, action, request, listener, chain);
+        try(ThreadContext.StoredContext ignore = threadPool.getThreadContext().stashContext()) {
+          handleRequest(engine.get(), task, action, request, listener, chain);
+        }
       }
       else {
         chain.proceed(task, action, request, listener);

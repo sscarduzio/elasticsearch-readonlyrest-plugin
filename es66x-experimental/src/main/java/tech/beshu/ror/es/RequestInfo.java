@@ -235,9 +235,10 @@ public class RequestInfo implements RequestInfoShim {
 
     else if (ar instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
-      Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices())).flatMap(
-          Collection::stream).collect(Collectors.toSet());
-      indices = (String[]) indicesSet.toArray();
+      Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
+          .flatMap(Collection::stream)
+          .collect(Collectors.toSet());
+      indices = indicesSet.toArray(new String[indicesSet.size()]);
     }
 
     // Buggy cases here onwards
