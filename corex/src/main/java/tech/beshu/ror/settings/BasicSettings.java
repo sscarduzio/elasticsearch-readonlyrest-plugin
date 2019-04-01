@@ -17,8 +17,10 @@
 
 package tech.beshu.ror.settings;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
+import com.google.common.base.Strings;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableList;
 import tech.beshu.ror.Constants;
+import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.shims.es.LoggerShim;
 import tech.beshu.ror.utils.ReflecUtils;
 
@@ -39,63 +41,71 @@ public class BasicSettings {
   public static final String ATTRIBUTE_NAME = "readonlyrest";
   public static final String ATTRIBUTE_ENABLE = "enable";
   public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
+  public static final String ATTRIBUTE_SEARCHLOG = "searchlog";
+  public static final String PROMPT_FOR_BASIC_AUTH = "prompt_for_basic_auth";
+  public static final String VERBOSITY = "verbosity";
   public static final String AUDIT_COLLECTOR = "audit_collector";
   public static final String CUSTOM_AUDIT_SERIALIZER = "audit_serializer";
+  public static final String AUDIT_INDEX_TEMPLATE = "audit_index_template";
   public static final String CACHE_HASHING_ALGO = "cache_hashing_algo";
 
   // SSL
-  public static final String PREFIX_SSL = "ssl.";
+  public static final String PREFIX_SSL_HTTP = "ssl.";
+  public static final String PREFIX_SSL_INTERNODE = "ssl_internode.";
   public static final String ATTRIBUTE_SSL_KEYSTORE_FILE = "keystore_file";
   public static final String ATTRIBUTE_SSL_KEYSTORE_PASS = "keystore_pass";
   public static final String ATTRIBUTE_SSL_KEY_PASS = "key_pass";
   public static final String ATTRIBUTE_SSL_KEY_ALIAS = "key_alias";
   public static final String ATTRIBUTE_SSL_ALLOWED_CIPHERS = "allowed_ciphers";
   public static final String ATTRIBUTE_SSL_ALLOWED_PROTOCOLS = "allowed_protocols";
+  public static final String ATTRIBUTE_SSL_CLIENT_VERIFICATION = "verification";
 
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "forbidden";
+  private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
   private final boolean enable;
   private final String forbiddenMessage;
+  private final Verbosity verbosity;
   private final Boolean auditCollector;
-  private final boolean sslEnabled;
+  private final String auditIndexTemplate;
+  private final Boolean promptForBasicAuth;
+
   private final List<?> blocksSettings;
   private final RawSettings raw;
+  private final Path configPath;
   private final RawSettings raw_global;
-  private Optional<String> keystorePass;
-  private Optional<String> keyPass;
-  private Optional<List<String>> allowedSSLCiphers = Optional.empty();
-  private Optional<List<String>> allowedSSLProtocols = Optional.empty();
-
-  private Optional<String> keyAlias;
-  private String keystoreFile;
+  private final Optional<String> customAuditSerializer;
+  private final Optional<String> cacheHashingAlgo;
+  private Optional<SSLSettings> sslHttpSettings;
+  private Optional<SSLSettings> sslTxpSettings;
 
   @SuppressWarnings("unchecked")
   public BasicSettings(RawSettings raw_global, Path configPath) {
+    this.configPath = configPath;
     this.raw_global = raw_global;
     this.raw = raw_global.inner(ATTRIBUTE_NAME);
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
     this.blocksSettings = raw.notEmptyListOpt("access_control_rules").orElse(new ArrayList<>(0));
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
+    this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);
+    this.verbosity = raw.stringOpt(VERBOSITY)
+        .map(value -> Verbosity.fromString(value)
+            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
+        .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
+    this.customAuditSerializer = raw.opt(CUSTOM_AUDIT_SERIALIZER);
+    this.auditIndexTemplate = raw.stringOpt(AUDIT_INDEX_TEMPLATE).orElse(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE);
+    this.cacheHashingAlgo = raw.stringOpt(CACHE_HASHING_ALGO);
 
-    // SSL
-    Optional<RawSettings> sslSettingsOpt = raw.innerOpt(PREFIX_SSL.replaceFirst(".$", ""));
-    Optional sslEnableOpt = raw.booleanOpt(PREFIX_SSL + "enable");
-    Optional<String> ksOpt = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE);
-
-    if (!sslSettingsOpt.isPresent() || (sslEnableOpt.isPresent() && sslEnableOpt.get().equals(false)) || !ksOpt.isPresent()) {
-      this.sslEnabled = false;
-    }
-    else {
-      this.sslEnabled = true;
+    try {
+      this.sslHttpSettings = Optional.of(new SSLSettings(raw, PREFIX_SSL_HTTP));
+    } catch (Exception e) {
+      this.sslHttpSettings = Optional.empty();
     }
 
-    if (sslEnabled) {
-      this.keystoreFile = Constants.makeAbsolutePath(raw.stringReq(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_FILE), configPath.toAbsolutePath().toString());
-      this.keyAlias = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_ALIAS);
-      this.keyPass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEY_PASS);
-      this.keystorePass = raw.stringOpt(PREFIX_SSL + ATTRIBUTE_SSL_KEYSTORE_PASS);
-      this.allowedSSLCiphers = raw.opt(PREFIX_SSL + ATTRIBUTE_SSL_ALLOWED_CIPHERS);
-      this.allowedSSLProtocols = raw.opt(PREFIX_SSL + ATTRIBUTE_SSL_ALLOWED_PROTOCOLS);
+    try {
+      this.sslTxpSettings = Optional.of(new SSLSettings(raw, PREFIX_SSL_INTERNODE));
+    } catch (Exception e) {
+      this.sslTxpSettings = Optional.empty();
     }
   }
 
@@ -106,11 +116,10 @@ public class BasicSettings {
       try {
         slurped[0] = new String(Files.readAllBytes(Paths.get(filePath)));
         logger.debug("Read data from " + filePath);
-      }
-      catch (Throwable t) {
+      } catch (Throwable t) {
         logger.info(
-          "Could not find settings in "
-            + filePath + " (" + t.getMessage() + ")");
+            "Could not find settings in "
+                + filePath + " (" + t.getMessage() + ")");
 
       }
       return null;
@@ -144,14 +153,12 @@ public class BasicSettings {
           return new BasicSettings(new RawSettings(s4s, logger), configPath);
         }
         return new BasicSettings(new RawSettings(fallback, logger), configPath);
-      }
-      catch (Throwable t) {
+      } catch (Throwable t) {
         logger.error("cannot parse settings file ", t);
         return new BasicSettings(new RawSettings(fallback, logger), configPath);
       }
 
-    }
-    catch (Throwable t) {
+    } catch (Throwable t) {
       t.printStackTrace();
       throw t;
     }
@@ -165,28 +172,28 @@ public class BasicSettings {
     return forbiddenMessage;
   }
 
+  public ImmutableList<?> getBlocksSettings() {
+    return ImmutableList.copyOf(blocksSettings);
+  }
+
   public Boolean isAuditorCollectorEnabled() {
     return auditCollector;
   }
 
-  public Boolean isSSLEnabled() {
-    return sslEnabled;
+  public String getAuditIndexTemplate() {
+    return auditIndexTemplate;
   }
 
-  public Optional<String> getKeystorePass() {
-    return keystorePass;
+  public Optional<String> getCustomAuditSerializer() {
+    return customAuditSerializer;
   }
 
-  public String getKeystoreFile() {
-    return keystoreFile;
+  public String getCacheHashingAlgo() {
+    return cacheHashingAlgo.orElse("none");
   }
 
-  public Optional<String> getKeyPass() {
-    return keyPass;
-  }
-
-  public Optional<String> getKeyAlias() {
-    return keyAlias;
+  public Boolean isPromptForBasicAuth() {
+    return promptForBasicAuth;
   }
 
   public RawSettings getRaw() {
@@ -197,11 +204,78 @@ public class BasicSettings {
     return raw.asMap();
   }
 
-  public Optional<List<String>> getAllowedSSLCiphers() {
-    return allowedSSLCiphers;
+  public Optional<SSLSettings> getSslHttpSettings() {
+    return this.sslHttpSettings;
   }
 
-  public Optional<List<String>> getAllowedSSLProtocols() {
-    return allowedSSLProtocols;
+  public Optional<SSLSettings> getSslInternodeSettings() {
+    return this.sslTxpSettings;
+  }
+
+  public class SSLSettings {
+    private final boolean sslEnabled;
+    private Optional<String> keystorePass;
+    private Optional<String> keyPass;
+    private Optional<List<String>> allowedSSLCiphers = Optional.empty();
+    private Optional<List<String>> allowedSSLProtocols = Optional.empty();
+    private Optional<String> keyAlias;
+    private String keystoreFile;
+    private Optional<Boolean> verifyClient;
+
+    public SSLSettings(RawSettings raw, String prefix) {
+      // SSL
+      Optional<RawSettings> sslSettingsOpt = raw.innerOpt(prefix.replaceFirst(".$", ""));
+      Optional sslEnableOpt = raw.booleanOpt(prefix + "enable");
+      Optional<String> ksOpt = raw.stringOpt(prefix + ATTRIBUTE_SSL_KEYSTORE_FILE);
+
+      if (!sslSettingsOpt.isPresent() || (sslEnableOpt.isPresent() && sslEnableOpt.get().equals(false)) || !ksOpt.isPresent()) {
+        this.sslEnabled = false;
+      }
+      else {
+        this.sslEnabled = true;
+      }
+
+      if (sslEnabled) {
+        this.keystoreFile = Constants.makeAbsolutePath(raw.stringReq(prefix + ATTRIBUTE_SSL_KEYSTORE_FILE), configPath.toAbsolutePath().toString());
+        this.keyAlias = raw.stringOpt(prefix + ATTRIBUTE_SSL_KEY_ALIAS);
+        this.keyPass = raw.stringOpt(prefix + ATTRIBUTE_SSL_KEY_PASS);
+        this.keystorePass = raw.stringOpt(prefix + ATTRIBUTE_SSL_KEYSTORE_PASS);
+        this.allowedSSLCiphers = raw.opt(prefix + ATTRIBUTE_SSL_ALLOWED_CIPHERS);
+        this.allowedSSLProtocols = raw.opt(prefix + ATTRIBUTE_SSL_ALLOWED_PROTOCOLS);
+        this.verifyClient = raw.booleanOpt(prefix + ATTRIBUTE_SSL_CLIENT_VERIFICATION);
+      }
+    }
+
+    public Optional<List<String>> getAllowedSSLCiphers() {
+      return allowedSSLCiphers;
+    }
+
+    public Optional<List<String>> getAllowedSSLProtocols() {
+      return allowedSSLProtocols;
+    }
+
+    public Boolean isSSLEnabled() {
+      return sslEnabled;
+    }
+
+    public Optional<String> getKeystorePass() {
+      return keystorePass;
+    }
+
+    public String getKeystoreFile() {
+      return keystoreFile;
+    }
+
+    public Optional<String> getKeyPass() {
+      return keyPass;
+    }
+
+    public Optional<String> getKeyAlias() {
+      return keyAlias;
+    }
+
+    public Optional<Boolean> isClientAuthVerify() {
+      return verifyClient;
+    }
   }
 }

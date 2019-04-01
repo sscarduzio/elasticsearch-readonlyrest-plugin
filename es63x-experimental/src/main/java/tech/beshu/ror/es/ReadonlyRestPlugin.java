@@ -29,6 +29,7 @@ import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
@@ -36,6 +37,7 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
@@ -53,6 +55,7 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.Transport;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.AllowedSettings;
@@ -60,8 +63,9 @@ import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.LoggerShim;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -78,15 +82,19 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final Settings settings;
-
+  private final LoggerShim logger;
   private IndexLevelActionFilter ilaf;
   private SettingsObservableImpl settingsObservable;
   private Environment environment;
+  private final BasicSettings basicSettings;
 
   @Inject
   public ReadonlyRestPlugin(Settings s, Path p) {
     this.settings = s;
+    this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override
@@ -107,6 +115,7 @@ public class ReadonlyRestPlugin extends Plugin
 
     return components;
   }
+
 
   @Override
   public List<ActionFilter> getActionFilters() {
@@ -135,15 +144,36 @@ public class ReadonlyRestPlugin extends Plugin
       NamedXContentRegistry xContentRegistry,
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
+
+    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      return Collections.EMPTY_MAP;
+    }
+
     return Collections.singletonMap(
         "ssl_netty4", () ->
-            new SSLTransportNetty4(
+            new SSLNetty4HttpServerTransport(
                 settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, environment
             ));
   }
 
   @Override
-  public void close() throws IOException {
+  public Map<String, Supplier<Transport>> getTransports(
+      Settings settings, ThreadPool threadPool, BigArrays bigArrays, PageCacheRecycler pageCacheRecycler,
+      CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService) {
+
+    if (!basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+      return Collections.EMPTY_MAP;
+    }
+
+    return Collections.singletonMap("ror_ssl_internode", () ->
+        new SSLNetty4InternodeServerTransport(
+            settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService,
+            basicSettings.getSslInternodeSettings().get())
+    );
+  }
+
+  @Override
+  public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
 
@@ -194,5 +224,6 @@ public class ReadonlyRestPlugin extends Plugin
       restHandler.handleRequest(request, channel, client);
     };
   }
+
 
 }

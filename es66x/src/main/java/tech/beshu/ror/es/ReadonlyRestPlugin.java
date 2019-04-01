@@ -103,7 +103,6 @@ public class ReadonlyRestPlugin extends Plugin
       ScriptService scriptService, NamedXContentRegistry xContentRegistry, Environment environment, NodeEnvironment nodeEnvironment,
       NamedWriteableRegistry namedWriteableRegistry) {
 
-
     final List<Object> components = new ArrayList<>(3);
 
     // Wrap all ROR logic into privileged action
@@ -187,24 +186,6 @@ public class ReadonlyRestPlugin extends Plugin
   public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
-
-  //  @Override
-  //  public List<TransportInterceptor> getTransportInterceptors(NamedWriteableRegistry namedWriteableRegistry, ThreadContext threadContext) {
-  //    TransportInterceptor ti = new TransportInterceptor() {
-  //      @Override
-  //      public AsyncSender interceptSender(AsyncSender sender) {
-  //        return null;
-  //      }
-  //
-  //      @Override
-  //      public <T extends TransportRequest> TransportRequestHandler<T> interceptHandler(String action, String executor, boolean forceExecution,
-  //          TransportRequestHandler<T> actualHandler) {
-  //        return null;
-  //      }
-  //    };
-  //
-  //    return Collections.singletonList(ti);
-  //  }
 
   @Override
   public List<Setting<?>> getSettings() {

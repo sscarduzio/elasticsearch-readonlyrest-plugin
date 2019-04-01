@@ -87,8 +87,8 @@ import java.util.function.Consumer;
   private final Boolean hasRemoteClusters;
 
   public IndexLevelActionFilter(Settings settings, ClusterService clusterService, NodeClient client,
-      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env, Boolean hasRemoteClusterss) {
-    this.hasRemoteClusters = hasRemoteClusterss;
+      ThreadPool threadPool, SettingsObservableImpl settingsObservable, Environment env, Boolean hasRemoteClusters) {
+    this.hasRemoteClusters = hasRemoteClusters;
     System.setProperty("es.set.netty.runtime.available.processors", "false");
 
     logger = LogManager.getLogger(this.getClass());
@@ -183,7 +183,7 @@ import java.util.function.Consumer;
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
-              logger.debug("ACL involves filters,requestContextFrom(requestInfo) will disable request cache for MultiSearchRequest");
+              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
               for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
                 sr.requestCache(Boolean.FALSE);
               }
