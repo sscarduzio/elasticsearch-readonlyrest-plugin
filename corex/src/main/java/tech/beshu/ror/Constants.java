@@ -114,6 +114,7 @@ public class Constants {
   public static final Set<String> ADMIN_ACTIONS = Sets.newHashSet(
       "cluster:admin/rradmin/*",
       "indices:data/write/*", // <-- DEPRECATED!
-      "indices:admin/create"
+      "indices:admin/create",
+      "cluster:monitor/ccr/*"
   );
 }

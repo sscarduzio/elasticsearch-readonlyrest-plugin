@@ -65,7 +65,8 @@ public class KibanaAccessSyncRule extends SyncRule {
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:admin/rradmin/*",
       "indices:data/write/*", // <-- DEPRECATED!
-      "indices:admin/create"
+      "indices:admin/create",
+      "cluster:monitor/ccr/*"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/nodes/info",
