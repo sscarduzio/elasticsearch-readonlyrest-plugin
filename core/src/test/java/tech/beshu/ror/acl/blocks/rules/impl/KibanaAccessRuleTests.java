@@ -192,6 +192,18 @@ public class KibanaAccessRuleTests {
   }
 
   @Test
+  public void testRONonStrictOperations5() {
+    String customKibanaIndex = ".kibana-custom";
+    Set<String> indices = Sets.newHashSet(customKibanaIndex);
+    String action = "indices:data/write/index";
+    String uri = "/" + customKibanaIndex + "/doc/telemetry%3Atelemetry?refresh=wait_for";
+    System.out.println("trying " + action + " as RO");
+    TestCase.assertFalse(matchRule(KibanaAccess.RO_STRICT, action, indices, customKibanaIndex, true, uri).isMatch());
+    TestCase.assertTrue(matchRule(KibanaAccess.RO, action, indices, customKibanaIndex, true, uri).isMatch());
+    assertTrue(matchRule(KibanaAccess.RW, action, indices, customKibanaIndex, true, uri).isMatch());
+  }
+
+  @Test
   public void testClusterSettingsUpdate() {
     Set<String> indices = Sets.newHashSet();
     String action = "cluster:admin/settings/update";

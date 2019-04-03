@@ -96,7 +96,9 @@ public class Constants {
       "cluster:monitor/health",
       "cluster:monitor/state",
       "cluster:*/xpack/*",
-      "indices:admin/template/get*"
+      "indices:admin/template/get*",
+      "cluster:*/info",
+      "cluster:*/get"
   );
 
   public static final Set<String> RW_ACTIONS = Sets.newHashSet(
