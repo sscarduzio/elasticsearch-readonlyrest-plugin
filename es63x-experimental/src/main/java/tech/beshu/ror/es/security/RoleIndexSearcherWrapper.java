@@ -79,7 +79,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   @Override
   protected DirectoryReader wrap(DirectoryReader reader) {
     if (!this.enabled) {
-      logger.debug("Document filtering not available. Return defaut reader");
+      logger.debug("Document filtering not available. Return default reader");
       return reader;
     }
 

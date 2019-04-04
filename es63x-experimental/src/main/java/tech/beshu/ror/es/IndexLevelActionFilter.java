@@ -46,7 +46,7 @@ import scala.collection.JavaConverters$;
 import scala.collection.immutable.Map;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.acl.AclHandler;
+import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.ResponseWriter;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.factory.RorEngineFactory;
@@ -169,7 +169,7 @@ import java.util.function.Consumer;
         context.get(), hasRemoteClusters);
     RequestContext requestContext = requestContextFrom(requestInfo);
 
-    engine.acl().handle(requestContext, new AclHandler() {
+    engine.acl().handle(requestContext, new AclActionHandler() {
       @Override
       public ResponseWriter onAllow(BlockContext blockContext) {
         try {
@@ -265,6 +265,7 @@ import java.util.function.Consumer;
       @Override
       public void commit() {
         chain.proceed(task, action, request, searchListener);
+
       }
     };
   }

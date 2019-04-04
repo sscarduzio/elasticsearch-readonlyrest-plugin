@@ -127,17 +127,11 @@ public class RestClient {
 
   public URI from(String path, Map<String, String> queryParams) throws URISyntaxException {
     URIBuilder uriBuilder = new URIBuilder();
-
-    if (ssl) {
-      uriBuilder.setScheme("https");
-    }
-
-    else {
-      uriBuilder.setScheme("http");
-    }
-    uriBuilder.setHost(host)
-      .setPort(port)
-      .setPath(("/" + path + "/").replaceAll("//", "/"));
+    uriBuilder
+        .setScheme(ssl ? "https" : "http")
+        .setHost(host)
+        .setPort(port)
+        .setPath(("/" + path + "/").replaceAll("//", "/"));
     if (!queryParams.isEmpty()) {
       uriBuilder.setParameters(
         queryParams.entrySet().stream()

@@ -19,6 +19,7 @@ package tech.beshu.ror.es;
 
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
+import monix.execution.schedulers.SchedulerService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
@@ -43,12 +44,20 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
+import scala.Function1;
+import scala.Tuple2;
 import scala.collection.JavaConverters$;
 import scala.collection.immutable.Map;
+import scala.collection.immutable.Vector;
 import scala.concurrent.duration.FiniteDuration;
+import scala.runtime.BoxedUnit;
+import scala.util.Either;
+import scala.util.Try;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.acl.AclHandler;
+import tech.beshu.ror.acl.AclActionHandler;
+import tech.beshu.ror.acl.AclHandlingResult;
 import tech.beshu.ror.acl.ResponseWriter;
+import tech.beshu.ror.acl.blocks.Block;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.factory.RorEngineFactory;
 import tech.beshu.ror.acl.factory.RorEngineFactory$;
@@ -86,6 +95,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
   private final Boolean hasRemoteClusters;
+  private final SchedulerService pool;
 
   public IndexLevelActionFilter(Settings settings,
       ClusterService clusterService,
@@ -108,6 +118,7 @@ public class IndexLevelActionFilter implements ActionFilter {
     this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
     this.rorEngine = new AtomicReference<>(Optional.empty());
+    this.pool = RorEngineFactory$.MODULE$.forkJoin();
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
@@ -152,12 +163,11 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionListener<Response> listener,
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      logger.debug("THREAD_CTX: " + threadPool.getThreadContext().hashCode());
       Optional<RorEngineFactory.Engine> engine = this.rorEngine.get();
       if (engine.isPresent()) {
-        try(ThreadContext.StoredContext ignore = threadPool.getThreadContext().stashContext()) {
-          handleRequest(engine.get(), task, action, request, listener, chain);
-        }
+        handleRequest(engine.get(), task, action, request, listener, chain);
+//        try(ThreadContext.StoredContext ignore = threadPool.getThreadContext().stashContext()) {
+//        }
       }
       else {
         chain.proceed(task, action, request, listener);
@@ -184,68 +194,99 @@ public class IndexLevelActionFilter implements ActionFilter {
         context.get(), hasRemoteClusters);
     RequestContext requestContext = requestContextFrom(requestInfo);
 
-    engine.acl().handle(requestContext, new AclHandler() {
-      @Override
-      public ResponseWriter onAllow(BlockContext blockContext) {
-        try {
-          // Cache disabling for those 2 kind of request is crucial for
-          // document level security to work. Otherwise we'd get an answer from
-          // the cache some times and would not be filtered
-          if (engine.context().involvesFilter()) {
-            if (request instanceof SearchRequest) {
-              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
+    FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(1, TimeUnit.SECONDS);
 
-              ((SearchRequest) request).requestCache(Boolean.FALSE);
-            }
-            else if (request instanceof MultiSearchRequest) {
-              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
-              for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
-                sr.requestCache(Boolean.FALSE);
+      engine.acl().handle(requestContext, new AclActionHandler() {
+        @Override
+        public ResponseWriter onAllow(BlockContext blockContext) {
+          try {
+            // Cache disabling for those 2 kind of request is crucial for
+            // document level security to work. Otherwise we'd get an answer from
+            // the cache some times and would not be filtered
+            if (engine.context().involvesFilter()) {
+              if (request instanceof SearchRequest) {
+                logger.debug("ACL involves filters, will disable request cache for SearchRequest");
+
+                ((SearchRequest) request).requestCache(Boolean.FALSE);
+              }
+              else if (request instanceof MultiSearchRequest) {
+                logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
+                for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
+                  sr.requestCache(Boolean.FALSE);
+                }
               }
             }
+
+            ResponseActionListener searchListener = new ResponseActionListener((ActionListener<ActionResponse>) listener,
+                requestContext, blockContext);
+            return createWriter(task, action, request, chain, requestInfo, (ActionListener<Response>) searchListener);
+          } catch (Throwable e) {
+            logger.error("on allow exception", e);
+            return createWriter(task, action, request, chain, requestInfo, listener);
           }
-
-          ResponseActionListener searchListener = new ResponseActionListener((ActionListener<ActionResponse>) listener,
-              requestContext, blockContext);
-          return createWriter(task, action, request, chain, requestInfo, (ActionListener<Response>) searchListener);
-        } catch (Throwable e) {
-          logger.error("on allow exception", e);
-          return createWriter(task, action, request, chain, requestInfo, listener);
         }
-      }
 
-      @Override
-      public void onForbidden() {
-        ElasticsearchStatusException exc = new ElasticsearchStatusException(
-            context.get().getSettings().getForbiddenMessage(),
-            engine.context().doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN) {
-          @Override
-          public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            builder.field("reason", context.get().getSettings().getForbiddenMessage());
-            return builder;
+        @Override
+        public void onForbidden() {
+          ElasticsearchStatusException exc = new ElasticsearchStatusException(
+              context.get().getSettings().getForbiddenMessage(),
+              engine.context().doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN) {
+            @Override
+            public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+              builder.field("reason", context.get().getSettings().getForbiddenMessage());
+              return builder;
+            }
+          };
+          if (engine.context().doesRequirePassword()) {
+            exc.addHeader("WWW-Authenticate", "Basic");
           }
-        };
-        if (engine.context().doesRequirePassword()) {
-          exc.addHeader("WWW-Authenticate", "Basic");
+          listener.onFailure(exc);
         }
-        listener.onFailure(exc);
-      }
 
-      @Override
-      public boolean isNotFound(Throwable throwable) {
-        return throwable.getCause() instanceof ResourceNotFoundException;
-      }
+        @Override
+        public boolean isNotFound(Throwable throwable) {
+          return throwable.getCause() instanceof ResourceNotFoundException;
+        }
 
-      @Override
-      public void onNotFound(Throwable throwable) {
-        listener.onFailure((ResourceNotFoundException) throwable.getCause());
-      }
+        @Override
+        public void onNotFound(Throwable throwable) {
+          listener.onFailure((ResourceNotFoundException) throwable.getCause());
+        }
 
-      @Override
-      public void onError(Throwable t) {
-        listener.onFailure((Exception) t);
-      }
-    }).runAsyncAndForget(Scheduler$.MODULE$.global());
+        @Override
+        public void onError(Throwable t) {
+          listener.onFailure((Exception) t);
+        }
+      })
+          .runAsync(new Function1<Either<Throwable, AclHandlingResult>, BoxedUnit>() {
+                      @Override
+                      public BoxedUnit apply(Either<Throwable, AclHandlingResult> v1) {
+                        try (ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
+                          try {
+                            if (v1.isRight()) {
+                              Try<BoxedUnit> result = v1.right().get().commit();
+                              if (result.isFailure()) {
+                                ActionListener<ActionResponse> l = new FailedResponseActionListener(
+                                    (ActionListener<ActionResponse>) listener, new Exception(result.failed().get()));
+                                chain.proceed(task, action, request, (ActionListener<Response>) l);
+                              }
+                            }
+                            else {
+                              // todo: log error
+                              logger.error("SHT WRONG HAPPENED", v1.left().get());
+                              ActionListener<ActionResponse> l = new FailedResponseActionListener(
+                                  (ActionListener<ActionResponse>) listener, new Exception(v1.left().get()));
+                              chain.proceed(task, action, request, (ActionListener<Response>) l);
+                            }
+                          } catch (Throwable ex) {
+                            logger.error("SHT WRONG HAPPENED", v1.left().get());
+                          }
+                          return null;
+                        }
+                      }
+                    },
+              Scheduler$.MODULE$.global()
+          );
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> ResponseWriter createWriter(Task task,

@@ -18,7 +18,10 @@ package tech.beshu.ror.acl
 
 import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits._
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
+import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.acl.AclHandlingResult.Result
+import tech.beshu.ror.acl.AclHandlingResult.Result.Success
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain.{Header, IndexName}
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
@@ -30,12 +33,13 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 
 import scala.collection.SortedSet
+import scala.util.Try
 
 class SequentialAcl(val blocks: NonEmptyList[Block])
-  extends Acl {
+  extends Acl with Logging {
 
   override def handle(context: RequestContext,
-                      handler: AclHandler): Task[(Vector[History], ExecutionResult)] = {
+                      handler: AclActionHandler): Task[AclHandlingResult] = {
     blocks
       .tail
       .foldLeft(checkBlock(blocks.head, context)) { case (currentResult, block) =>
@@ -49,21 +53,25 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
           }
         } yield newCurrentResult
       }
-      .flatMap {
+      .map {
         case res@Matched(block, blockContext) =>
-          val handled = block.policy match {
-            case Allow => commitChanges(blockContext, handler.onAllow(blockContext))
-            case Forbid => Task(handler.onForbidden())
+          def commitMatchChanges = block.policy match {
+            case Allow => Coeval(commitChanges(blockContext, handler.onAllow(blockContext)))
+            case Forbid => Coeval(handler.onForbidden())
           }
-          lift(handled.map(_ => res))
+          (Success(res), commitMatchChanges)
         case res@Unmatched =>
-          lift(Task(handler.onForbidden()).map(_ => res))
+          (Success(res), Coeval(handler.onForbidden()))
       }
       .run
-      .onErrorHandleWith { ex =>
-        if (handler.isNotFound(ex)) handler.onNotFound(ex)
-        else handler.onError(ex)
-        Task.raiseError(ex)
+      .map { case (history, (res, action)) =>
+        aclResult(history, res, action)
+      }
+      .onErrorHandle { ex =>
+        if(handler.isNotFound(ex))
+          aclResult(Vector.empty, Result.NotFound(ex), Coeval(handler.onNotFound(ex)))
+        else
+          aclResult(Vector.empty, Result.AclError(ex), Coeval(handler.onError(ex)))
       }
   }
 
@@ -79,11 +87,7 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
     WriterT.value[Task, Vector[History], ExecutionResult](executionResult)
   }
 
-  private def lift(task: Task[ExecutionResult]): WriterT[Task, Vector[History], ExecutionResult] = {
-    WriterT.liftF(task)
-  }
-
-  private def commitChanges(blockContext: BlockContext, writer: ResponseWriter): Task[Unit] = Task {
+  private def commitChanges(blockContext: BlockContext, writer: ResponseWriter): Unit = {
     commitResponseHeaders(blockContext, writer)
     commitContextHeaders(blockContext, writer)
     commitIndices(blockContext, writer)
@@ -143,4 +147,13 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
     if (blockContext.availableGroups.isEmpty) None
     else Some(Header(Name.availableGroups, blockContext.availableGroups))
   }
+
+  private def aclResult(aHistory: Vector[History], aResult: Result, commitAction: Coeval[Unit]): AclHandlingResult =
+    new AclHandlingResult {
+      override def commit(): Try[Unit] = {
+        commitAction.runAttempt().toTry
+      }
+      override val history: Vector[History] = aHistory
+      override val handlingResult: Result = aResult
+    }
 }

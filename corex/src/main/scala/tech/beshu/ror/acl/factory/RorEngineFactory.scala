@@ -19,6 +19,7 @@ package tech.beshu.ror.acl.factory
 import java.time.Clock
 
 import monix.eval.Task
+import monix.execution.Scheduler
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditSink, AuditingTool}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
@@ -63,5 +64,7 @@ object RorEngineFactory {
       httpClientsFactory.shutdown()
     }
   }
+
+  def forkJoin = Scheduler.forkJoin(10, 100)
 
 }

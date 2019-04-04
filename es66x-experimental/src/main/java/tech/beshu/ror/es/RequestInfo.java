@@ -632,6 +632,7 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeToThreadContextHeader(String key, String value) {
+    logger.debug("PUTTING " + key + ":" + value + " THRED: " + threadPool.getThreadContext().hashCode());
     threadPool.getThreadContext().putTransient(key, value);
   }
 

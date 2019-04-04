@@ -24,12 +24,13 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Inside, WordSpec}
 import org.scalatest.Matchers._
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
-import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
+import tech.beshu.ror.acl.{Acl, AclActionHandler, ResponseWriter}
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.acl.AclHandlingResult.Result.Success
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
@@ -76,13 +77,13 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
           val responseWriter = mock[ResponseWriter]
           (responseWriter.writeResponseHeaders _).expects(*).returning({})
           (responseWriter.commit _).expects().returning({})
-          val handler = mock[AclHandler]
+          val handler = mock[AclActionHandler]
           (handler.onAllow _).expects(*).returning(responseWriter)
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:container")))
 
-          val (history, result) = acl.handle(request, handler).runSyncUnsafe()
-          history should have size 1
-          inside(result) { case Matched(block, _) =>
+          val result = acl.handle(request, handler).runSyncUnsafe()
+          result.history should have size 1
+          inside(result.handlingResult) { case Success(Matched(block, _)) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
           }
         }
@@ -90,7 +91,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
           val responseWriter = mock[ResponseWriter]
           (responseWriter.writeResponseHeaders _).expects(*).returning({})
           (responseWriter.commit _).expects().returning({})
-          val handler = mock[AclHandler]
+          val handler = mock[AclActionHandler]
           (handler.onAllow _).expects(*).returning(responseWriter)
           val request = MockRequestContext.default.copy(headers = Set(
             Header(
@@ -99,9 +100,9 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
             )
           ))
 
-          val (history, result) = acl.handle(request, handler).runSyncUnsafe()
-          history should have size 1
-          inside(result) { case Matched(block, _) =>
+          val result = acl.handle(request, handler).runSyncUnsafe()
+          result.history should have size 1
+          inside(result.handlingResult) { case Success(Matched(block, _)) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
           }
         }
