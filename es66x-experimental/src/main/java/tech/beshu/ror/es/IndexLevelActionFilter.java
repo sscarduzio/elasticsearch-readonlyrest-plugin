@@ -19,11 +19,9 @@ package tech.beshu.ror.es;
 
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
-import monix.execution.schedulers.SchedulerService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
-import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -45,22 +43,19 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.Function1;
-import scala.Tuple2;
 import scala.collection.JavaConverters$;
-import scala.collection.immutable.Map;
-import scala.collection.immutable.Vector;
 import scala.concurrent.duration.FiniteDuration;
 import scala.runtime.BoxedUnit;
 import scala.util.Either;
-import scala.util.Try;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.AclHandlingResult;
-import tech.beshu.ror.acl.ResponseWriter;
-import tech.beshu.ror.acl.blocks.Block;
+import tech.beshu.ror.acl.AclStaticContext;
 import tech.beshu.ror.acl.blocks.BlockContext;
-import tech.beshu.ror.acl.factory.RorEngineFactory;
-import tech.beshu.ror.acl.factory.RorEngineFactory$;
+import tech.beshu.ror.acl.helpers.AclActionHandler;
+import tech.beshu.ror.acl.helpers.AclResultCommitter;
+import tech.beshu.ror.acl.helpers.BlockContextJavaHelper$;
+import tech.beshu.ror.acl.helpers.RorEngineFactory;
+import tech.beshu.ror.acl.helpers.RorEngineFactory$;
 import tech.beshu.ror.acl.logging.AuditSink;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
@@ -95,7 +90,6 @@ public class IndexLevelActionFilter implements ActionFilter {
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
   private final Boolean hasRemoteClusters;
-  private final SchedulerService pool;
 
   public IndexLevelActionFilter(Settings settings,
       ClusterService clusterService,
@@ -118,7 +112,6 @@ public class IndexLevelActionFilter implements ActionFilter {
     this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
     this.rorEngine = new AtomicReference<>(Optional.empty());
-    this.pool = RorEngineFactory$.MODULE$.forkJoin();
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
@@ -130,7 +123,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       if (newContext.getSettings().isEnabled()) {
         FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.SECONDS);
-        RorEngineFactory.Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
+        tech.beshu.ror.acl.helpers.RorEngineFactory.Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
             newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
         Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
@@ -166,8 +159,6 @@ public class IndexLevelActionFilter implements ActionFilter {
       Optional<RorEngineFactory.Engine> engine = this.rorEngine.get();
       if (engine.isPresent()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
-//        try(ThreadContext.StoredContext ignore = threadPool.getThreadContext().stashContext()) {
-//        }
       }
       else {
         chain.proceed(task, action, request, listener);
@@ -175,10 +166,14 @@ public class IndexLevelActionFilter implements ActionFilter {
       return null;
     });
   }
-
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(
-      RorEngineFactory.Engine engine, Task task,
-      String action, Request request, ActionListener<Response> listener, ActionFilterChain<Request, Response> chain) {
+      RorEngineFactory.Engine engine,
+      Task task,
+      String action,
+      Request request,
+      ActionListener<Response> listener,
+      ActionFilterChain<Request, Response> chain
+  ) {
     RestChannel channel = ThreadRepo.channel.get();
     if (channel != null) {
       ThreadRepo.channel.remove();
@@ -190,137 +185,113 @@ public class IndexLevelActionFilter implements ActionFilter {
       chain.proceed(task, action, request, listener);
       return;
     }
+
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
         context.get(), hasRemoteClusters);
     RequestContext requestContext = requestContextFrom(requestInfo);
 
-    FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(1, TimeUnit.SECONDS);
+    Consumer<ActionListener<Response>> proceed = new Consumer<ActionListener<Response>>() {
+      @Override
+      public void accept(ActionListener<Response> responseActionListener) {
+        chain.proceed(task, action, request, responseActionListener);
+      }
+    };
 
-      engine.acl().handle(requestContext, new AclActionHandler() {
-        @Override
-        public ResponseWriter onAllow(BlockContext blockContext) {
-          try {
-            // Cache disabling for those 2 kind of request is crucial for
-            // document level security to work. Otherwise we'd get an answer from
-            // the cache some times and would not be filtered
-            if (engine.context().involvesFilter()) {
-              if (request instanceof SearchRequest) {
-                logger.debug("ACL involves filters, will disable request cache for SearchRequest");
-
-                ((SearchRequest) request).requestCache(Boolean.FALSE);
-              }
-              else if (request instanceof MultiSearchRequest) {
-                logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
-                for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
-                  sr.requestCache(Boolean.FALSE);
-                }
-              }
-            }
-
-            ResponseActionListener searchListener = new ResponseActionListener((ActionListener<ActionResponse>) listener,
-                requestContext, blockContext);
-            return createWriter(task, action, request, chain, requestInfo, (ActionListener<Response>) searchListener);
-          } catch (Throwable e) {
-            logger.error("on allow exception", e);
-            return createWriter(task, action, request, chain, requestInfo, listener);
-          }
-        }
-
-        @Override
-        public void onForbidden() {
-          ElasticsearchStatusException exc = new ElasticsearchStatusException(
-              context.get().getSettings().getForbiddenMessage(),
-              engine.context().doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN) {
-            @Override
-            public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-              builder.field("reason", context.get().getSettings().getForbiddenMessage());
-              return builder;
-            }
-          };
-          if (engine.context().doesRequirePassword()) {
-            exc.addHeader("WWW-Authenticate", "Basic");
-          }
-          listener.onFailure(exc);
-        }
-
-        @Override
-        public boolean isNotFound(Throwable throwable) {
-          return throwable.getCause() instanceof ResourceNotFoundException;
-        }
-
-        @Override
-        public void onNotFound(Throwable throwable) {
-          listener.onFailure((ResourceNotFoundException) throwable.getCause());
-        }
-
-        @Override
-        public void onError(Throwable t) {
-          listener.onFailure((Exception) t);
-        }
-      })
-          .runAsync(new Function1<Either<Throwable, AclHandlingResult>, BoxedUnit>() {
-                      @Override
-                      public BoxedUnit apply(Either<Throwable, AclHandlingResult> v1) {
-                        try (ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
-                          try {
-                            if (v1.isRight()) {
-                              Try<BoxedUnit> result = v1.right().get().commit();
-                              if (result.isFailure()) {
-                                ActionListener<ActionResponse> l = new FailedResponseActionListener(
-                                    (ActionListener<ActionResponse>) listener, new Exception(result.failed().get()));
-                                chain.proceed(task, action, request, (ActionListener<Response>) l);
-                              }
-                            }
-                            else {
-                              // todo: log error
-                              logger.error("SHT WRONG HAPPENED", v1.left().get());
-                              ActionListener<ActionResponse> l = new FailedResponseActionListener(
-                                  (ActionListener<ActionResponse>) listener, new Exception(v1.left().get()));
-                              chain.proceed(task, action, request, (ActionListener<Response>) l);
-                            }
-                          } catch (Throwable ex) {
-                            logger.error("SHT WRONG HAPPENED", v1.left().get());
-                          }
-                          return null;
-                        }
-                      }
-                    },
-              Scheduler$.MODULE$.global()
-          );
+    engine.acl()
+        .handle(requestContext)
+        .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed), Scheduler$.MODULE$.global());
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> ResponseWriter createWriter(Task task,
-      String action, Request request, ActionFilterChain<Request, Response> chain, RequestInfo requestInfo,
-      ActionListener<Response> searchListener) {
-    return new ResponseWriter() {
+  private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AclHandlingResult>, BoxedUnit> handleAclResult(
+      RorEngineFactory.Engine engine,
+      ActionListener<Response> listener,
+      Request request,
+      RequestContext requestContext,
+      RequestInfo requestInfo,
+      Consumer<ActionListener<Response>> chainProceed
+  ) {
+      return result -> {
+        try (ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
+          if(result.isRight()) {
+            AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext, listener, chainProceed);
+            AclResultCommitter.commit(result.right().get(), handler);
+          } else {
+            listener.onFailure(new Exception(result.left().get()));
+          }
+        }
+        return null;
+      };
+  }
+
+  private <Request extends ActionRequest, Response extends ActionResponse> AclActionHandler createAclActionHandler(
+      AclStaticContext aclStaticContext,
+      RequestInfo requestInfo,
+      Request request,
+      RequestContext requestContext,
+      ActionListener<Response> baseListener,
+      Consumer<ActionListener<Response>> chainProceed
+  ) {
+    return new AclActionHandler() {
       @Override
-      public void writeResponseHeaders(Map<String, String> headers) {
-        requestInfo.writeResponseHeaders(JavaConverters$.MODULE$.mapAsJavaMap(headers));
+      public void onAllow(BlockContext blockContext) {
+        ActionListener<Response> searchListener = createSearchListener(baseListener, request, requestContext, blockContext);
+        requestInfo.writeResponseHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.responseHeadersFrom(blockContext)));
+        requestInfo.writeToThreadContextHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.contextHeadersFrom(blockContext)));
+        requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.indicesFrom(blockContext)));
+        requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.snapshotsFrom(blockContext)));
+        requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.repositoriesFrom(blockContext)));
+
+        chainProceed.accept(searchListener);
+      }
+
+      private ActionListener<Response> createSearchListener(ActionListener<Response> listener,
+          Request request, RequestContext requestContext, BlockContext blockContext) {
+        try {
+          // Cache disabling for those 2 kind of request is crucial for
+          // document level security to work. Otherwise we'd get an answer from
+          // the cache some times and would not be filtered
+          if (aclStaticContext.involvesFilter()) {
+            if (request instanceof SearchRequest) {
+              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
+
+              ((SearchRequest) request).requestCache(Boolean.FALSE);
+            }
+            else if (request instanceof MultiSearchRequest) {
+              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
+              for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
+                sr.requestCache(Boolean.FALSE);
+              }
+            }
+          }
+
+          return (ActionListener<Response>) new ResponseActionListener((ActionListener<ActionResponse>) listener,
+              requestContext, blockContext);
+        } catch (Throwable e) {
+          logger.error("on allow exception", e);
+          return listener;
+        }
       }
 
       @Override
-      public void writeToThreadContextHeader(String key, String value) {
-        requestInfo.writeToThreadContextHeader(key, value);
+      public void onForbidden() {
+        ElasticsearchStatusException exc = new ElasticsearchStatusException(
+            context.get().getSettings().getForbiddenMessage(),
+            aclStaticContext.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN) {
+          @Override
+          public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+            builder.field("reason", context.get().getSettings().getForbiddenMessage());
+            return builder;
+          }
+        };
+        if (aclStaticContext.doesRequirePassword()) {
+          exc.addHeader("WWW-Authenticate", "Basic");
+        }
+        baseListener.onFailure(exc);
       }
 
       @Override
-      public void writeIndices(scala.collection.immutable.Set<String> indices) {
-        requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(indices));
-      }
-
-      @Override
-      public void writeSnapshots(scala.collection.immutable.Set<String> indices) {
-        requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(indices));
-      }
-
-      @Override
-      public void writeRepositories(scala.collection.immutable.Set<String> indices) {
-        requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(indices));
-      }
-
-      @Override
-      public void commit() {
-        chain.proceed(task, action, request, searchListener);
+      public void onError(Throwable t) {
+        baseListener.onFailure((Exception) t);
       }
     };
   }

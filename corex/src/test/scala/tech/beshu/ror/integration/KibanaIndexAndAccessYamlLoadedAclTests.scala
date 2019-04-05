@@ -26,8 +26,9 @@ import tech.beshu.ror.acl.AclHandlingResult.Result.Success
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
+import tech.beshu.ror.acl.helpers.AclActionHandler
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
-import tech.beshu.ror.acl.{Acl, AclActionHandler, ResponseWriter}
+import tech.beshu.ror.acl.{Acl, ResponseWriter}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 
 class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory with Inside {

@@ -18,44 +18,25 @@ package tech.beshu.ror.acl
 
 import monix.eval.Task
 import tech.beshu.ror.acl.AclHandlingResult.Result
-import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
-import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.Block.History
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext
 
-import scala.util.Try
-
 trait Acl {
-  def handle(requestContext: RequestContext, handler: AclActionHandler): Task[AclHandlingResult]
+  def handle(requestContext: RequestContext): Task[AclHandlingResult]
 }
 
 trait AclHandlingResult {
   def history: Vector[History]
   def handlingResult: Result
-  def commit(): Try[Unit]
 }
 
 object AclHandlingResult {
   sealed trait Result
   object Result {
-    final case class Success(executionResult: ExecutionResult) extends Result
-    final case class NotFound(ex: Throwable) extends Result
-    final case class AclError(ex: Throwable) extends Result
+    final case class Allow(blockContext: BlockContext, block: Block) extends Result
+    final case class ForbiddenBy(blockContext: BlockContext, block: Block) extends Result
+    case object ForbiddenByUnmatched extends Result
+    final case class Failed(ex: Throwable) extends Result
   }
-}
-
-trait AclActionHandler {
-  def onForbidden(): Unit
-  def onAllow(blockContext: BlockContext): ResponseWriter
-  def isNotFound(t: Throwable): Boolean
-  def onNotFound(t: Throwable): Unit
-  def onError(t: Throwable): Unit
-}
-
-trait ResponseWriter {
-  def writeResponseHeaders(headers: Map[String, String]): Unit
-  def writeToThreadContextHeader(key: String, value: String): Unit
-  def writeIndices(indices: Set[String]): Unit
-  def writeSnapshots(indices: Set[String]): Unit
-  def writeRepositories(indices: Set[String]): Unit
-  def commit(): Unit
 }

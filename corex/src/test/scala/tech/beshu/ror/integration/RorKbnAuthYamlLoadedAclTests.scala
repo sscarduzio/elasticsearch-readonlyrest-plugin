@@ -29,8 +29,9 @@ import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, CoreSettings}
+import tech.beshu.ror.acl.helpers.AclActionHandler
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
-import tech.beshu.ror.acl.{Acl, AclActionHandler, ResponseWriter}
+import tech.beshu.ror.acl.{Acl, ResponseWriter}
 import tech.beshu.ror.mocks.MockRequestContext
 
 class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside {

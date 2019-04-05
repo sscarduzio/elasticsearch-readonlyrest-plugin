@@ -84,9 +84,7 @@ public interface RequestInfoShim {
 
   boolean extractIsCompositeRequest();
 
-  void writeToThreadContextHeader(String key, String value);
-
-  String consumeThreadContextHeader(String key);
+  void writeToThreadContextHeaders(Map<String, String> hMap);
 
   boolean extractHasRemoteClusters();
 }

@@ -46,12 +46,11 @@ import scala.collection.JavaConverters$;
 import scala.collection.immutable.Map;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.acl.AclActionHandler;
+import tech.beshu.ror.acl.helpers.AclActionHandler;
 import tech.beshu.ror.acl.ResponseWriter;
 import tech.beshu.ror.acl.blocks.BlockContext;
-import tech.beshu.ror.acl.factory.RorEngineFactory;
-import tech.beshu.ror.acl.factory.RorEngineFactory$;
-import tech.beshu.ror.acl.factory.RorEngineFactory.Engine;
+import tech.beshu.ror.acl.helpers.RorEngineFactory;
+import tech.beshu.ror.acl.helpers.RorEngineFactory$;
 import tech.beshu.ror.acl.logging.AuditSink;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
@@ -112,14 +111,14 @@ import java.util.function.Consumer;
 
       if (newContext.getSettings().isEnabled()) {
         FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.SECONDS);
-        Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
+        RorEngineFactory.Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
             newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
-        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
+        Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }
       else {
-        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
+        Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST disabled");
       }
@@ -289,10 +288,10 @@ import java.util.function.Consumer;
     }
   }
 
-  private Consumer<Engine> scheduleDelayedEngineShutdown(Duration delay) {
-    return new Consumer<Engine>() {
+  private Consumer<RorEngineFactory.Engine> scheduleDelayedEngineShutdown(Duration delay) {
+    return new Consumer<RorEngineFactory.Engine>() {
       @Override
-      public void accept(Engine engine) {
+      public void accept(RorEngineFactory.Engine engine) {
         scheduler.schedule(new Runnable() {
           @Override
           public void run() {

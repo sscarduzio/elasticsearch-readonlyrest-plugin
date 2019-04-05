@@ -45,6 +45,7 @@ object ResponseContext {
                            cause: Throwable)
     extends ResponseContext
 
+  // todo: to remove?
   final case class NotFound(requestContext: RequestContext,
                             cause: Throwable)
     extends ResponseContext

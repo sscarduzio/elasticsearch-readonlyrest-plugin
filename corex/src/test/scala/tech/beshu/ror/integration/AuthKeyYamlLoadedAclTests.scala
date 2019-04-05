@@ -24,7 +24,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.{Inside, WordSpec}
 import org.scalatest.Matchers._
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
-import tech.beshu.ror.acl.{Acl, AclActionHandler, ResponseWriter}
+import tech.beshu.ror.acl.{Acl, ResponseWriter}
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.acl.blocks.Block
@@ -33,6 +33,7 @@ import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.acl.AclHandlingResult.Result.Success
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.helpers.AclActionHandler
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
 
 class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
