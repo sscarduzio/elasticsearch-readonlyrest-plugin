@@ -65,7 +65,8 @@ public class KibanaAccessSyncRule extends SyncRule {
   public static MatcherWithWildcards ADMIN = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:admin/rradmin/*",
       "indices:data/write/*", // <-- DEPRECATED!
-      "indices:admin/create"
+      "indices:admin/create",
+      "cluster:monitor/ccr/*"
   ));
   public static MatcherWithWildcards CLUSTER = new MatcherWithWildcards(Sets.newHashSet(
       "cluster:monitor/nodes/info",
@@ -156,7 +157,8 @@ public class KibanaAccessSyncRule extends SyncRule {
     rc.setKibanaIndex(resolvedKibanaIndex);
 
     // Save UI state in discover & Short urls
-    Pattern nonStrictAllowedPaths = Pattern.compile("^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*"
+    Pattern nonStrictAllowedPaths = Pattern.compile(
+        "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*"
         .replace("@kibana_index", resolvedKibanaIndex));
 
     boolean targetsKibana = indices.size() == 1 && indices.contains(resolvedKibanaIndex);

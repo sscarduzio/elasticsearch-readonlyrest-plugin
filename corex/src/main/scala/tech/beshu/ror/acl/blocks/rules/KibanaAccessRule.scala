@@ -130,7 +130,7 @@ class KibanaAccessRule(val settings: Settings)
 
   private def kibanaIndexPattern(kibanaIndex: IndexName) = {
     Try(Pattern.compile(
-      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*"
+      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*"
         .replace("@kibana_index", kibanaIndex.value)
     )).toOption
   }
