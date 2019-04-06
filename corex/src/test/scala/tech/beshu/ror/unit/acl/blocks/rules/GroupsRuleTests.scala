@@ -38,7 +38,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion[GroupsRule.Settings] {
+class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
 
   "A GroupsRule" should {
     "match" when {

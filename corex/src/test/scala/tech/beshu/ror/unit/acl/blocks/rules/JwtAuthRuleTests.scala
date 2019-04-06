@@ -41,7 +41,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class JwtAuthRuleTests
-  extends WordSpec with MockFactory with Inside with BlockContextAssertion[JwtAuthRule.Settings] {
+  extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
   "A JwtAuthRule" should {
     "match" when {

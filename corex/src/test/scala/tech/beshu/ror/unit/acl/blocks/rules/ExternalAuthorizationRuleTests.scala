@@ -36,7 +36,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class ExternalAuthorizationRuleTests
-  extends WordSpec with MockFactory with Inside with BlockContextAssertion[ExternalAuthorizationRule.Settings]{
+  extends WordSpec with MockFactory with Inside with BlockContextAssertion{
 
   "An ExternalAuthorizationRule" should {
     "match" when {

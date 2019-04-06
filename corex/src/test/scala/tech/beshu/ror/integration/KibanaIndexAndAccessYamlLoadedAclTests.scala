@@ -22,16 +22,16 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.AclHandlingResult.Result.Success
+import tech.beshu.ror.acl.Acl
+import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
+import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
-import tech.beshu.ror.acl.helpers.AclActionHandler
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
-import tech.beshu.ror.acl.{Acl, ResponseWriter}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, headerFrom}
 
-class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
+class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
@@ -64,22 +64,19 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory w
   "An ACL" when {
     "kibana index and kibana access rules are used" should {
       "allow to proceed" in {
-        val responseWriter = mock[ResponseWriter]
-        (responseWriter.writeResponseHeaders _)
-          .expects(Map(
-            "x-ror-kibana_access" -> "admin",
-            "x-ror-kibana_index" -> ".kibana_template"
-          ))
-          .returning({})
-        (responseWriter.commit _).expects().returning({})
-        val handler = mock[AclActionHandler]
-        (handler.onAllow _).expects(*).returning(responseWriter)
         val request = MockRequestContext.default
 
-        val result = acl.handle(request, handler).runSyncUnsafe()
+        val result = acl.handle(request).runSyncUnsafe()
+
         result.history should have size 1
-        inside(result.handlingResult) { case Success(Matched(block, _)) =>
+        inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
           block.name should be(Block.Name("Template Tenancy"))
+          assertBlockContext(
+            responseHeaders = Set(headerFrom("x-ror-kibana_access" -> "admin")),
+            kibanaIndex = Some(IndexName(".kibana_template"))
+          ) {
+            blockContext
+          }
         }
       }
     }

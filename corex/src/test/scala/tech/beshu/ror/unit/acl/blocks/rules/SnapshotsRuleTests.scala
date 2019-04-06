@@ -32,7 +32,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class SnapshotsRuleTests
-  extends WordSpec with Inside with BlockContextAssertion[BaseSpecializedIndicesRule.Settings] {
+  extends WordSpec with Inside with BlockContextAssertion {
 
   "A SnapshotsRule" should {
     "match" when {

@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
@@ -630,12 +629,9 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
-  public void writeToThreadContextHeaders(String key, String value) {
-    ThreadContext threadContext = threadPool.getThreadContext();//.putTransient(key, value);
-    hMap.keySet().forEach(k -> {
-      String val = hMap.get(k);
-      threadPool.getThreadContext().addResponseHeader(k, val, v -> val);
-    });
+  public void writeToThreadContextHeaders(Map<String, String> hMap) {
+    ThreadContext threadContext = threadPool.getThreadContext();
+    hMap.keySet().forEach(k -> threadContext.putTransient(k, hMap.get(k)));
   }
 
   @Override

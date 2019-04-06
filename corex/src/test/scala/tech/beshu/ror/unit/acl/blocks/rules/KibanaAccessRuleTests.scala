@@ -35,7 +35,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssertion[KibanaAccessRule.Settings] {
+class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssertion {
 
   "A KibanaAccessRule" when {
     "RO action is passed" in {

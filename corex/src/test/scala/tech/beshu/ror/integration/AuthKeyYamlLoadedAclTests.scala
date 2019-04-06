@@ -20,23 +20,21 @@ import java.time.Clock
 import java.util.Base64
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Inside, WordSpec}
-import org.scalatest.Matchers._
-import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
-import tech.beshu.ror.acl.{Acl, ResponseWriter}
-import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.acl.AclHandlingResult.Result.Success
-import tech.beshu.ror.acl.domain.Header
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.Matchers._
+import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.acl.Acl
+import tech.beshu.ror.acl.AclHandlingResult.Result
+import tech.beshu.ror.acl.blocks.Block
+import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.domain.Header.Name
-import tech.beshu.ror.acl.helpers.AclActionHandler
+import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, basicAuthHeader}
 
-class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
+class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
@@ -75,25 +73,17 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
     "two blocks with auth_keys are configured" should {
       "allow to proceed" when {
         "request is sent in behalf on admin user" in {
-          val responseWriter = mock[ResponseWriter]
-          (responseWriter.writeResponseHeaders _).expects(*).returning({})
-          (responseWriter.commit _).expects().returning({})
-          val handler = mock[AclActionHandler]
-          (handler.onAllow _).expects(*).returning(responseWriter)
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:container")))
-
-          val result = acl.handle(request, handler).runSyncUnsafe()
+          val result = acl.handle(request).runSyncUnsafe()
           result.history should have size 1
-          inside(result.handlingResult) { case Success(Matched(block, _)) =>
+          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("admin")))) {
+              blockContext
+            }
           }
         }
         "request is sent in behalf of admin user, but the authorization token header is lower case string" in {
-          val responseWriter = mock[ResponseWriter]
-          (responseWriter.writeResponseHeaders _).expects(*).returning({})
-          (responseWriter.commit _).expects().returning({})
-          val handler = mock[AclActionHandler]
-          (handler.onAllow _).expects(*).returning(responseWriter)
           val request = MockRequestContext.default.copy(headers = Set(
             Header(
               Name(NonEmptyString.unsafeFrom("authorization")),
@@ -101,10 +91,13 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
             )
           ))
 
-          val result = acl.handle(request, handler).runSyncUnsafe()
+          val result = acl.handle(request).runSyncUnsafe()
           result.history should have size 1
-          inside(result.handlingResult) { case Success(Matched(block, _)) =>
+          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("admin")))) {
+              blockContext
+            }
           }
         }
       }
