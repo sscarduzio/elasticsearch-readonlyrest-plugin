@@ -44,8 +44,6 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       Some(createEntry(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None))
     case Errored(requestContext, cause) =>
       Some(createEntry(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
-    case NotFound(requestContext, cause) =>
-      Some(createEntry(matched = false, "NOT_FOUND", "not found", responseContext.duration, requestContext, Some(cause)))
   }
 
   private def createEntry(matched: Boolean,

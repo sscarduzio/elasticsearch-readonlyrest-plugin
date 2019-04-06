@@ -79,7 +79,7 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
           case Verbosity.Info => true
           case Verbosity.Error => false
         }
-      case _: ForbiddenBy | _: Forbidden | _: Errored | _: NotFound => true
+      case _: ForbiddenBy | _: Forbidden | _: Errored => true
     }
   }
 
@@ -98,9 +98,6 @@ object AclLoggingDecorator {
       case Forbidden(requestContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case NotFound(requestContext, _) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, Vector.empty)
-        s"""${Constants.ANSI_RED}NOT_FOUND by not found req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Errored(requestContext, _) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, Vector.empty)
         s"""${Constants.ANSI_YELLOW}ERRORED by error req=${requestContext.show}${Constants.ANSI_RESET}"""

@@ -19,7 +19,6 @@ package tech.beshu.ror.acl.logging
 import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext
 
-
 sealed trait ResponseContext {
   def requestContext: RequestContext
 }
@@ -43,11 +42,6 @@ object ResponseContext {
 
   final case class Errored(requestContext: RequestContext,
                            cause: Throwable)
-    extends ResponseContext
-
-  // todo: to remove?
-  final case class NotFound(requestContext: RequestContext,
-                            cause: Throwable)
     extends ResponseContext
 
 }

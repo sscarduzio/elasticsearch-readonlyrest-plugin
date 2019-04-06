@@ -85,15 +85,6 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
           "error",
           false
         )
-      case AuditResponseContext.NotFound(requestContext, cause) =>
-        new tech.beshu.ror.commons.ResponseContext(
-          FinalState.NOT_FOUND,
-          toDeprecatedRequestContext(requestContext),
-          cause,
-          null,
-          "not found",
-          false
-        )
     }
   }
 
