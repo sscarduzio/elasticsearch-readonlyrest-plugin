@@ -44,6 +44,7 @@ import java.security.PrivilegedAction;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -159,6 +160,14 @@ public class RorKbnAuthSyncRule extends SyncRule implements Authentication {
         return value;
       }
     });
+    
+    if(!rolesObj.isPresent()){
+      return Optional.of(Collections.emptySet());
+    }
+
+    if (rolesObj.get() instanceof Collection<?> && ((Collection<?> )rolesObj.get()).isEmpty()){
+      return Optional.of(Collections.emptySet());
+    }
 
     // Casting
     return rolesObj.flatMap(value -> {
