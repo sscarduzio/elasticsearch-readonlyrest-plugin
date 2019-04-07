@@ -136,12 +136,10 @@ public class IndexLevelActionFilter implements ActionFilter {
       }
     });
 
-
     settingsObservable.forceRefresh();
     logger.info("Readonly REST plugin was loaded...");
 
     settingsObservable.pollForIndex(context.get());
-
   }
 
   @Override

@@ -51,8 +51,8 @@ object AclResultCommitter extends Logging {
 }
 
 trait AclActionHandler {
-  def onForbidden(): Unit
   def onAllow(blockContext: BlockContext): Unit
+  def onForbidden(): Unit
   def onError(t: Throwable): Unit
 }
 

@@ -133,9 +133,9 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       Optional<ACL> acl = this.acl.get();
       if (acl.isPresent()) {
-//        try(ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
+        try(ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
           handleRequest(acl.get(), task, action, request, listener, chain);
-//        }
+        }
       }
       else {
         chain.proceed(task, action, request, listener);

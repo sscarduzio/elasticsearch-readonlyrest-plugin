@@ -185,21 +185,16 @@ public class IndexLevelActionFilter implements ActionFilter {
       chain.proceed(task, action, request, listener);
       return;
     }
+      RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
+          context.get(), hasRemoteClusters);
+      RequestContext requestContext = requestContextFrom(requestInfo);
 
-    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-        context.get(), hasRemoteClusters);
-    RequestContext requestContext = requestContextFrom(requestInfo);
-
-    Consumer<ActionListener<Response>> proceed = new Consumer<ActionListener<Response>>() {
-      @Override
-      public void accept(ActionListener<Response> responseActionListener) {
+      Consumer<ActionListener<Response>> proceed = responseActionListener -> {
         chain.proceed(task, action, request, responseActionListener);
-      }
-    };
+      };
 
-    engine.acl()
-        .handle(requestContext)
-        .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed), Scheduler$.MODULE$.global());
+      engine.acl().handle(requestContext).runAsync(
+          handleAclResult(engine, listener, request, requestContext, requestInfo, proceed), Scheduler$.MODULE$.global());
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AclHandlingResult>, BoxedUnit> handleAclResult(
@@ -211,7 +206,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       Consumer<ActionListener<Response>> chainProceed
   ) {
       return result -> {
-        try (ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
+        try (ThreadContext.StoredContext ignored = threadPool.getThreadContext().stashContext()) {
           if(result.isRight()) {
             AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext, listener, chainProceed);
             AclResultCommitter.commit(result.right().get(), handler);
@@ -234,14 +229,20 @@ public class IndexLevelActionFilter implements ActionFilter {
     return new AclActionHandler() {
       @Override
       public void onAllow(BlockContext blockContext) {
-        ActionListener<Response> searchListener = createSearchListener(baseListener, request, requestContext, blockContext);
-        requestInfo.writeResponseHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.responseHeadersFrom(blockContext)));
-        requestInfo.writeToThreadContextHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.contextHeadersFrom(blockContext)));
-        requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.indicesFrom(blockContext)));
-        requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.snapshotsFrom(blockContext)));
-        requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.repositoriesFrom(blockContext)));
+        try {
+          ActionListener<Response> searchListener = createSearchListener(baseListener, request, requestContext,
+              blockContext);
+          requestInfo.writeResponseHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.responseHeadersFrom(blockContext)));
+          requestInfo.writeToThreadContextHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.contextHeadersFrom(blockContext)));
+          requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.indicesFrom(blockContext)));
+          requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.snapshotsFrom(blockContext)));
+          requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.repositoriesFrom(blockContext)));
 
-        chainProceed.accept(searchListener);
+          chainProceed.accept(searchListener);
+        } catch (Throwable e) {
+          e.printStackTrace();
+          chainProceed.accept(baseListener);
+        }
       }
 
       private ActionListener<Response> createSearchListener(ActionListener<Response> listener,
@@ -316,17 +317,7 @@ public class IndexLevelActionFilter implements ActionFilter {
   }
 
   private Consumer<RorEngineFactory.Engine> scheduleDelayedEngineShutdown(Duration delay) {
-    return new Consumer<RorEngineFactory.Engine>() {
-      @Override
-      public void accept(RorEngineFactory.Engine engine) {
-        scheduler.schedule(new Runnable() {
-          @Override
-          public void run() {
-            engine.shutdown();
-          }
-        }, delay.toMillis(), TimeUnit.MILLISECONDS);
-      }
-    };
+    return engine -> scheduler.schedule(engine::shutdown, delay.toMillis(), TimeUnit.MILLISECONDS);
   }
 
   private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {

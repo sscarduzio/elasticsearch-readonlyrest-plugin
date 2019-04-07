@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
@@ -362,12 +363,6 @@ public class RequestInfo implements RequestInfoShim {
     }
 
   }
-  //  public Set<String> extractAllRepositories() {
-  //    RepositoriesMetaData out = clusterService.state().metaData().custom(RepositoriesMetaData.TYPE);
-  //    List<RepositoryMetaData> x = out.repositories();
-  //    return x.stream().map(RepositoryMetaData::name).collect(Collectors.toSet());
-  //    //    clusterService.state().getMetaData().
-  //  }
 
   @Override
   public Set<String> extractRepositories() {
@@ -465,6 +460,8 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeIndices(Set<String> newIndices) {
+    if(newIndices.isEmpty()) return;
+
     // Setting indices by reflection..
     newIndices.remove("<no-index>");
     newIndices.remove("");

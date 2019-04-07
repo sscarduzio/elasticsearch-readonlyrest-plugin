@@ -158,7 +158,6 @@ class IndicesRule(val settings: Settings)
         case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
         case (acc, _) => acc
       }
-
       if (nonExistent.nonEmpty) {
         if (!requestContext.isCompositeRequest) {
           // This goes to 404 naturally, so let it through

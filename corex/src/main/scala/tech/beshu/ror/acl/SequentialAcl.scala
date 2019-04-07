@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History, Policy}
 import tech.beshu.ror.acl.request.RequestContext
 
 class SequentialAcl(val blocks: NonEmptyList[Block])
-  extends Acl with Logging {
+  extends Acl {
 
   override def handle(context: RequestContext): Task[AclHandlingResult] = {
     blocks

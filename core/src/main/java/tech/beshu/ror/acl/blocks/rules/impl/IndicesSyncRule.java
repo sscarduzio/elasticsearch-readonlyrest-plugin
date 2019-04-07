@@ -169,6 +169,7 @@ public class IndicesSyncRule extends SyncRule {
       // 2.1 Detect at least 1 non-wildcard requested indices that do not exist, ES will naturally return 404, our job is done.
       Set<String> nonExistent = Sets.newHashSet();
       Set<String> real = src.getAllIndicesAndAliases();
+
       for (final String idx : indices) {
         if (!idx.contains("*") && !real.contains(idx)) {
           nonExistent.add(idx);

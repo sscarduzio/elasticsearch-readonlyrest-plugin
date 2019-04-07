@@ -17,6 +17,8 @@
 
 package tech.beshu.ror.es;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionResponse;
 import tech.beshu.ror.acl.blocks.BlockContext;

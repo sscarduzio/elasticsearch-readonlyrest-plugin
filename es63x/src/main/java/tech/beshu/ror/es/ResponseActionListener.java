@@ -30,13 +30,11 @@ public class ResponseActionListener implements ActionListener<ActionResponse> {
   private final ActionListener<ActionResponse> baseListener;
   private final ActionRequest request;
   private final RequestContext requestContext;
-  private final Logger logger;
 
   ResponseActionListener(String action, ActionRequest request,
       ActionListener<ActionResponse> baseListener,
       RequestContext requestContext, Logger logger) {
     this.action = action;
-    this.logger = logger;
     this.request = request;
     this.baseListener = baseListener;
     this.requestContext = requestContext;
