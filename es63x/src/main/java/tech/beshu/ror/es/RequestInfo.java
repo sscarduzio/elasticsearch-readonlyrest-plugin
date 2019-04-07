@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;

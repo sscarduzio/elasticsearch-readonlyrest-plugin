@@ -103,7 +103,7 @@ public class RestClient {
           RequestConfig.custom()
               .setConnectTimeout(timeout * 1000)
               .setConnectionRequestTimeout(timeout * 1000)
-              .setSocketTimeout(timeout * 1000).build()
+              .setSocketTimeout(timeout * 1000).build()EsRequestContext
       );
 
     return builder.build();
