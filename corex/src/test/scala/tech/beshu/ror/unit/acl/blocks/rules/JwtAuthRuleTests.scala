@@ -360,6 +360,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName("userId".nonempty)),
             groupsClaim = Some(ClaimName("tech.beshu.groups.subgroups".nonempty))
           ),
+          configuredGroups = Set(Group("group1".nonempty)),
           tokenHeader = Header(
             Header.Name.authorization,
             {
