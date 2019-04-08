@@ -47,7 +47,8 @@ class ClaimsOps(val claims: Claims) extends AnyVal {
   // todo: use json path (with jackson? or maybe we can convert java map to json?)
   def groupsClaim(name: ClaimName): ClaimSearchResult[Set[Group]] = {
     val result = name.value.value.split("[.]").toList match {
-      case Nil | _ :: Nil => Option(claims.get(name.value.value, classOf[Object]))
+      case Nil | _ :: Nil =>
+        Option(claims.get(name.value.value, classOf[Object]))
       case path :: restPaths =>
         restPaths.foldLeft(Option(claims.get(path, classOf[Object]))) {
           case (None, _) => None

@@ -110,7 +110,8 @@ class RorKbnAuthRule(val settings: Settings)
 
   private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[Set[Group]]) = {
     result match {
-      case NotFound => Left(())
+      case NotFound if settings.groups.nonEmpty => Left(())
+      case NotFound => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case Found(groups) if settings.groups.nonEmpty =>
         NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups.intersect(settings.groups)) match {
           case Some(matchedGroups) => Right {

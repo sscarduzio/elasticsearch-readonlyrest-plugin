@@ -146,6 +146,33 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
+      "groups claim name is defined and no groups field is passed in JWT token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test".nonempty),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(ClaimName("userId".nonempty)),
+            groupsClaim = Some(ClaimName("groups".nonempty))
+          ),
+          configuredGroups = Set.empty,
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("userId", "user1")
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
+          )
+        ) {
+          blockContext => assertBlockContext(
+            loggedUser = Some(LoggedUser(User.Id("user1")))
+          )(blockContext)
+        }
+      }
       "groups claim path is defined and groups are passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(

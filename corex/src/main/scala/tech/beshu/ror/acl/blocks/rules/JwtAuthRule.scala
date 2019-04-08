@@ -143,7 +143,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
   private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[Set[Group]]]) = {
     result match {
       case None if settings.groups.nonEmpty => Left(())
-      case Some(NotFound) => Left(())
+      case Some(NotFound) if settings.groups.nonEmpty => Left(())
+      case Some(NotFound) => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case Some(Found(groups)) if settings.groups.nonEmpty =>
         NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups.intersect(settings.groups)) match {
           case Some(matchedGroups) => Right {
