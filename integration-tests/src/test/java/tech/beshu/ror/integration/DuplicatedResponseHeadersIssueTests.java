@@ -94,8 +94,8 @@ public class DuplicatedResponseHeadersIssueTests {
 
   private static class SearchResult {
 
-    final Integer responseCode;
-    final List<SimpleHeader> headers;
+    private final Integer responseCode;
+    private final List<SimpleHeader> headers;
 
     SearchResult(Integer responseCode, List<Header> headers) {
       this.responseCode = responseCode;
@@ -118,8 +118,8 @@ public class DuplicatedResponseHeadersIssueTests {
   }
 
   private static class SimpleHeader {
-    final String name;
-    final String value;
+    private final String name;
+    private final String value;
 
     SimpleHeader(String name, String value) {
       this.name = name;

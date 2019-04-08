@@ -74,6 +74,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static tech.beshu.ror.acl.helpers.RorEngineFactory.*;
+
 /**
  * Created by sscarduzio on 19/12/2015.
  */
@@ -83,7 +85,7 @@ public class IndexLevelActionFilter implements ActionFilter {
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
+  private final AtomicReference<Optional<Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final IndexNameExpressionResolver indexResolver;
   private final Logger logger;
@@ -123,14 +125,14 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       if (newContext.getSettings().isEnabled()) {
         FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.SECONDS);
-        tech.beshu.ror.acl.helpers.RorEngineFactory.Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
+        Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
             newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
-        Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
+        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }
       else {
-        Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
+        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST disabled");
       }
@@ -154,7 +156,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionListener<Response> listener,
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      Optional<RorEngineFactory.Engine> engine = this.rorEngine.get();
+      Optional<Engine> engine = this.rorEngine.get();
       if (engine.isPresent()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
       }
@@ -165,7 +167,7 @@ public class IndexLevelActionFilter implements ActionFilter {
     });
   }
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(
-      RorEngineFactory.Engine engine,
+      Engine engine,
       Task task,
       String action,
       Request request,
@@ -201,7 +203,7 @@ public class IndexLevelActionFilter implements ActionFilter {
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AclHandlingResult>, BoxedUnit> handleAclResult(
-      RorEngineFactory.Engine engine,
+      Engine engine,
       ActionListener<Response> listener,
       Request request,
       RequestContext requestContext,
@@ -313,18 +315,8 @@ public class IndexLevelActionFilter implements ActionFilter {
     }
   }
 
-  private Consumer<RorEngineFactory.Engine> scheduleDelayedEngineShutdown(Duration delay) {
-    return new Consumer<RorEngineFactory.Engine>() {
-      @Override
-      public void accept(RorEngineFactory.Engine engine) {
-        scheduler.schedule(new Runnable() {
-          @Override
-          public void run() {
-            engine.shutdown();
-          }
-        }, delay.toMillis(), TimeUnit.MILLISECONDS);
-      }
-    };
+  private Consumer<Engine> scheduleDelayedEngineShutdown(Duration delay) {
+    return engine -> scheduler.schedule(() -> engine.shutdown(), delay.toMillis(), TimeUnit.MILLISECONDS);
   }
 
   private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {

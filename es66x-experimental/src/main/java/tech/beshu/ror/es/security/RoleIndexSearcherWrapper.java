@@ -42,7 +42,6 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexSearcherWrapper;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
-import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.ESContextImpl;
 import tech.beshu.ror.settings.BasicSettings;
@@ -62,7 +61,6 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   private final Function<ShardId, QueryShardContext> queryShardContextProvider;
   private final ThreadContext threadContext;
   private final Boolean enabled;
-  private final ThreadPool threadPool;
 
   public RoleIndexSearcherWrapper(IndexService indexService, Settings s, Environment env) throws Exception {
     if (indexService == null) {
@@ -72,7 +70,6 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
     this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null, null);
     this.threadContext = indexService.getThreadPool().getThreadContext();
-    this.threadPool = indexService.getThreadPool();
 
     this.logger = ESContextImpl.mkLoggerShim(logger);
     BasicSettings baseSettings = BasicSettings.fromFileObj(this.logger, env.configFile().toAbsolutePath(), s);
