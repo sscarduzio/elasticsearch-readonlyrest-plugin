@@ -50,7 +50,6 @@ public class RCUtils {
       "cluster:admin/*/get",
       "cluster:admin/*/status",
       "cluster:monitor/ccr/follow_info"
-
   ));
 
   public static boolean isReadRequest(String action) {
