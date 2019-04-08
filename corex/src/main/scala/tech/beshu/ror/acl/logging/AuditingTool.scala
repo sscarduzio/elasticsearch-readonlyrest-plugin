@@ -63,8 +63,6 @@ class AuditingTool(settings: Settings,
         AuditResponseContext.Forbidden(toAuditRequestContext(requestContext, None, history))
       case ResponseContext.Errored(requestContext, cause) =>
         AuditResponseContext.Errored(toAuditRequestContext(requestContext, None, Vector.empty), cause)
-      case ResponseContext.NotFound(requestContext, cause) =>
-        AuditResponseContext.NotFound(toAuditRequestContext(requestContext, None, Vector.empty), cause)
     }
   }
 

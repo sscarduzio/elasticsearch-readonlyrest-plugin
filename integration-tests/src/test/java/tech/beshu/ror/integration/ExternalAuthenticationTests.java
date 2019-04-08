@@ -44,7 +44,6 @@ public class ExternalAuthenticationTests {
       new ElasticsearchTweetsInitializer()
     );
 
-
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {
     assertions(multiContainerDependent.getContainer()).assertUserHasAccessToIndex("cartman", "user1", "twitter");

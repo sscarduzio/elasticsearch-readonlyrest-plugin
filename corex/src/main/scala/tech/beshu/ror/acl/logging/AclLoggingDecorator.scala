@@ -19,41 +19,39 @@ package tech.beshu.ror.acl.logging
 import cats.Show
 import cats.implicits._
 import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, Verbosity}
+import tech.beshu.ror.acl.AclHandlingResult.Result
+import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.logging.ResponseContext._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.utils.TaskOps._
-import tech.beshu.ror.acl.{Acl, AclHandler}
-import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.acl.{Acl, AclHandlingResult}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
+import scala.util.Success
 
 class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
   extends Acl with Logging {
 
-  override def handle(requestContext: RequestContext,
-                      handler: AclHandler): Task[(Vector[Block.History], Block.ExecutionResult)] = {
+  override def handle(requestContext: RequestContext): Task[AclHandlingResult] = {
     logger.debug(s"checking request: ${requestContext.id.show}")
     underlying
-      .handle(requestContext, handler)
+      .handle(requestContext)
       .andThen {
-        case Success((history, ExecutionResult.Matched(block, blockContext))) =>
-          block.policy match {
-            case Allow => log(Allowed(requestContext, block, blockContext, history))
-            case Forbid => log(ForbiddenBy(requestContext, block, blockContext, history))
+        case Success(result) =>
+          result.handlingResult match {
+            case Result.Allow(blockContext, block) =>
+              log(Allowed(requestContext, block, blockContext, result.history))
+            case Result.ForbiddenBy(blockContext, block) =>
+              log(ForbiddenBy(requestContext, block, blockContext, result.history))
+            case Result.ForbiddenByUnmatched =>
+              log(Forbidden(requestContext, result.history))
+            case Result.Failed(ex) =>
+              log(Errored(requestContext, ex))
           }
-        case Success((history, ExecutionResult.Unmatched)) =>
-          log(Forbidden(requestContext, history))
-        case Failure(ex) if handler.isNotFound(ex) =>
-          log(NotFound(requestContext, ex))
-        case Failure(ex) =>
-          log(Errored(requestContext, ex))
       }
   }
 
@@ -81,7 +79,7 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
           case Verbosity.Info => true
           case Verbosity.Error => false
         }
-      case _: ForbiddenBy | _: Forbidden | _: Errored | _: NotFound => true
+      case _: ForbiddenBy | _: Forbidden | _: Errored => true
     }
   }
 
@@ -100,9 +98,6 @@ object AclLoggingDecorator {
       case Forbidden(requestContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case NotFound(requestContext, _) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, Vector.empty)
-        s"""${Constants.ANSI_RED}NOT_FOUND by not found req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Errored(requestContext, _) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, Vector.empty)
         s"""${Constants.ANSI_YELLOW}ERRORED by error req=${requestContext.show}${Constants.ANSI_RESET}"""

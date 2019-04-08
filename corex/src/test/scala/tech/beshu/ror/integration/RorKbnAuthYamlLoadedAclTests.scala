@@ -24,15 +24,16 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.acl.Acl
+import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
-import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreSettings, CoreFactory}
+import tech.beshu.ror.acl.domain.{LoggedUser, User}
+import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
-import tech.beshu.ror.acl.{Acl, AclHandler, ResponseWriter}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils._
 
-class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside {
+class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
@@ -104,18 +105,16 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside
             .setSubject("test")
             .claim("groups", "")
             .claim("user", "user")
-
-          val responseWriter = mock[ResponseWriter]
-          (responseWriter.writeResponseHeaders _).expects(*).returning({})
-          (responseWriter.commit _).expects().returning({})
-          val handler = mock[AclHandler]
-          (handler.onAllow _).expects(*).returning(responseWriter)
           val request = MockRequestContext.default.copy(headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}")))
 
-          val (history, result) = acl.handle(request, handler).runSyncUnsafe()
-          history should have size 2
-          inside(result) { case Matched(block, _) =>
+          val result = acl.handle(request).runSyncUnsafe()
+
+          result.history should have size 2
+          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user")))) {
+              blockContext
+            }
           }
         }
       }

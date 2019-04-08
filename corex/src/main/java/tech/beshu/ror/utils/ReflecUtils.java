@@ -123,7 +123,7 @@ public class ReflecUtils {
   }
 
   public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, LoggerShim logger) {
-
+    if(newIndices.isEmpty()) return false;
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")

@@ -140,23 +140,6 @@ class AuditingToolTests extends WordSpec with MockFactory {
 
         auditingTool.audit(responseContext).runSyncUnsafe()
       }
-      "request was not found" in {
-        val auditSink = mock[AuditSink]
-        (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
-
-        val auditingTool = new AuditingTool(
-          AuditingTool.Settings(
-            DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
-            new DefaultAuditLogSerializer
-          ),
-          auditSink
-        )
-
-        val requestContext = MockRequestContext.default.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
-        val responseContext = NotFound(requestContext, new Exception("not found"))
-
-        auditingTool.audit(responseContext).runSyncUnsafe()
-      }
     }
   }
 

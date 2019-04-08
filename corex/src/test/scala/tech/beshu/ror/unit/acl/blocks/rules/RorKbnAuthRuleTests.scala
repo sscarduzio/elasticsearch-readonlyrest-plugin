@@ -40,7 +40,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class RorKbnAuthRuleTests
-  extends WordSpec with MockFactory with Inside with BlockContextAssertion[RorKbnAuthRule.Settings] {
+  extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
   "A RorKbnAuthRule" should {
     "match" when {

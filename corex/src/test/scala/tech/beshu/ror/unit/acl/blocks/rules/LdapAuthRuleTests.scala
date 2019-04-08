@@ -41,7 +41,7 @@ class LdapAuthRuleTests
   extends WordSpec
     with Inside
     with MockFactory
-    with BlockContextAssertion[LdapAuthorizationRule.Settings] {
+    with BlockContextAssertion {
 
   "An LdapAuthRule" should {
     "match" when {

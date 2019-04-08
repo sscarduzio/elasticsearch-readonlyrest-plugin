@@ -94,7 +94,7 @@ public class RestClient {
       headers = tmp;
     }
 
-    int timeout = 2;
+    int timeout = 5;
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
       .setDefaultHeaders(Lists.newArrayList(headers))
@@ -127,17 +127,11 @@ public class RestClient {
 
   public URI from(String path, Map<String, String> queryParams) throws URISyntaxException {
     URIBuilder uriBuilder = new URIBuilder();
-
-    if (ssl) {
-      uriBuilder.setScheme("https");
-    }
-
-    else {
-      uriBuilder.setScheme("http");
-    }
-    uriBuilder.setHost(host)
-      .setPort(port)
-      .setPath(("/" + path + "/").replaceAll("//", "/"));
+    uriBuilder
+        .setScheme(ssl ? "https" : "http")
+        .setHost(host)
+        .setPort(port)
+        .setPath(("/" + path + "/").replaceAll("//", "/"));
     if (!queryParams.isEmpty()) {
       uriBuilder.setParameters(
         queryParams.entrySet().stream()

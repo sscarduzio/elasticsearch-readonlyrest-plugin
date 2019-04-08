@@ -129,7 +129,6 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionListener<Response> listener,
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
       Optional<ACL> acl = this.acl.get();
       if (acl.isPresent()) {
         handleRequest(acl.get(), task, action, request, listener, chain);
@@ -155,6 +154,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       chain.proceed(task, action, request, listener);
       return;
     }
+
     RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
     acl.check(requestInfo, new ACLHandler() {
       @Override

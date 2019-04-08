@@ -41,7 +41,6 @@ version = pluginVersion + '_es' + esVersion
 def pluginFullName = pluginName + '-' + version
 
 apply plugin: 'java'
-apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'license'
 
@@ -53,10 +52,7 @@ compileJava {
 dependencies {
     compile project(path: ':corex', configuration: 'shadow')
     compile project(path: ':corex', configuration: 'simpleCompile')
-
-    compile group: 'org.scala-lang', name: 'scala-library', version: '2.12.4'
-    compile group: 'io.monix', name: 'monix_2.12', version: '3.0.0-RC2'
-
+    
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile('org.reflections:reflections:0.9.11') {
         exclude group: 'org.slf4j', module: 'slf4j-api'

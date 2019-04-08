@@ -42,16 +42,6 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
   }
 
   @Override
-  public void writeTo(StreamOutput out) throws IOException {
-    super.writeTo(out);
-  }
-
-  @Override
-  public void readFrom(StreamInput in) throws IOException {
-    super.readFrom(in);
-  }
-
-  @Override
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
     Map<String, Object> sourceMap = Maps.newHashMap();
 

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils
 
-import java.nio.file.Paths
 import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
 import java.time.Duration
 import java.util.Base64
@@ -28,6 +27,7 @@ import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain._
 
 import scala.concurrent.duration.FiniteDuration
+import scala.language.implicitConversions
 
 object TestsUtils {
 
@@ -39,7 +39,7 @@ object TestsUtils {
 
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
-  trait BlockContextAssertion[SETTINGS] {
+  trait BlockContextAssertion {
 
     def assertBlockContext(responseHeaders: Set[Header] = Set.empty,
                            contextHeaders: Set[Header] = Set.empty,
