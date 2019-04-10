@@ -94,7 +94,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   protected void writeToIndex(RawSettings rawSettings, FutureCallback f) {
     client.prepareBulk().add(
         client.prepareIndex(".readonlyrest", "settings", "1")
-              .setSource(SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
+            .setSource(SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
     ).execute(new ActionListener<BulkResponse>() {
       @Override
       public void onResponse(BulkResponse bulkItemResponses) {

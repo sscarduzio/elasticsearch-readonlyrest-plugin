@@ -38,6 +38,11 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
       ./gradlew integration-tests:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
   fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x-experimental" ]]; then
+    echo ">>> es61x-experimental => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es61x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
     echo ">>> es61x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es61x' || ( find . |grep hs_err |xargs cat && exit 1 )

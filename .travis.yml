@@ -38,6 +38,7 @@ env:
   - ROR_TASK="integration_es66x"
   - ROR_TASK="integration_es63x-experimental"
   - ROR_TASK="integration_es63x"
+  - ROR_TASK="integration_es61x-experimental"
   - ROR_TASK="integration_es61x"
   - ROR_TASK="integration_es60x"
   - ROR_TASK="integration_es53x"
