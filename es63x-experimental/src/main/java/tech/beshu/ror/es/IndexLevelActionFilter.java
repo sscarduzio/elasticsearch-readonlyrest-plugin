@@ -123,8 +123,12 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       if (newContext.getSettings().isEnabled()) {
         FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
-        RorEngineFactory.Engine engine = RorEngineFactory$.MODULE$.reload(createAuditSink(client, newBasicSettings),
-            newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
+        RorEngineFactory.Engine engine = AccessController.doPrivileged((PrivilegedAction<RorEngineFactory.Engine>) () ->
+            RorEngineFactory$.MODULE$.reload(
+                createAuditSink(client, newBasicSettings),
+                newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit()
+            )
+        );
         Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
