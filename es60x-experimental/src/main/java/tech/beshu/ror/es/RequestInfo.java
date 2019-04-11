@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
@@ -279,10 +280,8 @@ public class RequestInfo implements RequestInfoShim {
 
     else if (ar instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
-      Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
-                                 .flatMap(Collection::stream)
-                                 .collect(Collectors.toSet());
-      indices = (String[]) indicesSet.toArray();
+      indices = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices())).flatMap(
+          Collection::stream).distinct().toArray(String[]::new);
     }
 
     else if ("ReindexRequest".equals(ar.getClass().getSimpleName())) {
