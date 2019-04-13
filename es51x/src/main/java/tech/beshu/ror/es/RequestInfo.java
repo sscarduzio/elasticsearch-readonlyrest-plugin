@@ -276,10 +276,8 @@ public class RequestInfo implements RequestInfoShim {
 
     else if (ar instanceof IndicesAliasesRequest) {
       IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
-      Set<String> indicesSet = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices()))
-                                 .flatMap(Collection::stream)
-                                 .collect(Collectors.toSet());
-      indices = (String[]) indicesSet.toArray();
+      indices = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices())).flatMap(
+          Collection::stream).distinct().toArray(String[]::new);
     }
 
     else if (ar instanceof CompositeIndicesRequest) {
@@ -450,6 +448,8 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeIndices(Set<String> newIndices) {
+    if(newIndices.isEmpty()) return;
+
     // Setting indices by reflection..
     newIndices.remove("<no-index>");
     newIndices.remove("");

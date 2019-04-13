@@ -25,7 +25,7 @@ import java.util.function.Predicate;
 
 public class EnhancedAssertion {
 
-  public static void assertNAttepts(Integer n, Callable<Void> action) {
+  public static void assertNAttempts(Integer n, Callable<Void> action) {
     RetryPolicy<Void> retryPolicy = new RetryPolicy<Void>()
         .handleIf(assertionFails())
         .withMaxRetries(n)

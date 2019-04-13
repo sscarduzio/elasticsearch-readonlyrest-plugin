@@ -108,13 +108,11 @@ public class FieldsSyncRule extends SyncRule {
 
     public boolean canKeep(String field) {
       int indexOfDot = field.lastIndexOf('.');
-      if(indexOfDot > 0){
-        field = field.substring(0, indexOfDot);
-      }
-      if (Constants.FIELDS_ALWAYS_ALLOW.contains(field)) {
+      String aField = indexOfDot > 0 ? field.substring(0, indexOfDot) : field;
+      if (Constants.FIELDS_ALWAYS_ALLOW.contains(aField)) {
         return true;
       }
-      return fieldsMatcher.match(field);
+      return fieldsMatcher.match(aField);
     }
 
   }

@@ -26,8 +26,6 @@ public interface ESContext {
 
   RuntimeException rorException(String message);
 
-  void submit(String indexName, String documentId, String jsonRecord);
-
   BasicSettings getSettings();
 
   ESVersion getVersion();

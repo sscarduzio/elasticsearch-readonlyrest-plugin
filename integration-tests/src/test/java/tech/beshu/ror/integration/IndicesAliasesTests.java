@@ -31,7 +31,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static tech.beshu.ror.integration.utils.EnhancedAssertion.assertNAttepts;
+import static tech.beshu.ror.integration.utils.EnhancedAssertion.assertNAttempts;
 
 public class IndicesAliasesTests {
 
@@ -49,7 +49,7 @@ public class IndicesAliasesTests {
 
   @Test
   public void testDirectIndexQuery() throws Exception {
-    assertNAttepts(3, () -> {
+    assertNAttempts(3, () -> {
       String body = search("/my_data/_search").body;
       assertTrue(body.contains("\"hits\":{\"total\":2"));
       return null;
@@ -58,7 +58,7 @@ public class IndicesAliasesTests {
 
   @Test
   public void testAliasQuery() throws Exception {
-    assertNAttepts(3, () -> {
+    assertNAttempts(3, () -> {
       String body = search("/public_data/_search").body;
       assertTrue(body.contains("\"hits\":{\"total\":1"));
       return null;
@@ -67,7 +67,7 @@ public class IndicesAliasesTests {
 
   @Test
   public void testAliasAsWildcard() throws Exception {
-    assertNAttepts(3, () -> {
+    assertNAttempts(3, () -> {
       String body = search("/pub*/_search").body;
       assertTrue(body.contains("\"hits\":{\"total\":1"));
       return null;
@@ -78,7 +78,7 @@ public class IndicesAliasesTests {
 
   @Test
   public void testRestrictedPureIndex() throws Exception {
-    assertNAttepts(3, () -> {
+    assertNAttempts(3, () -> {
       RestResult res = search("/my_data/_search", "restricted", "dev");
       assertEquals(401, res.status);
       return null;
@@ -87,7 +87,7 @@ public class IndicesAliasesTests {
 
   @Test
   public void testRestrictedAlias() throws Exception {
-    assertNAttepts(3, () -> {
+    assertNAttempts(3, () -> {
       String body = search("/public_data/_search", "restricted", "dev").body;
       assertTrue(body.contains("\"hits\":{\"total\":1"));
       return null;
@@ -96,7 +96,7 @@ public class IndicesAliasesTests {
 
   @Test
   public void testRestrictedAliasAsWildcard() throws Exception {
-    assertNAttepts(3, () -> {
+    assertNAttempts(3, () -> {
       String body = search("/public*/_search", "restricted", "dev").body;
       assertTrue(body.contains("\"hits\":{\"total\":1"));
       return null;
@@ -105,7 +105,7 @@ public class IndicesAliasesTests {
 
   @Test
   public void testRestrictedAliasAsHalfWildcard() throws Exception {
-    assertNAttepts(3, () -> {
+    assertNAttempts(3, () -> {
       String body = search("/pu*/_search", "restricted", "dev").body;
       assertTrue(body.contains("\"hits\":{\"total\":1"));
       return null;

@@ -55,8 +55,6 @@ public abstract class AbstractESContext implements ESContext {
 
   public abstract RuntimeException rorException(String message);
 
-  public abstract void submit(String indexName, String documentId, String jsonRecord);
-
   public abstract ESVersion getVersion();
 
   public abstract BasicSettings getSettings();
