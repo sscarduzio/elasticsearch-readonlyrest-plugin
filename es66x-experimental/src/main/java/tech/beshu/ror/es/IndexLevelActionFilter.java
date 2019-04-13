@@ -54,7 +54,6 @@ import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.helpers.AclActionHandler;
 import tech.beshu.ror.acl.helpers.AclResultCommitter;
 import tech.beshu.ror.acl.helpers.BlockContextJavaHelper$;
-import tech.beshu.ror.acl.helpers.RorEngineFactory;
 import tech.beshu.ror.acl.helpers.RorEngineFactory$;
 import tech.beshu.ror.acl.logging.AuditSink;
 import tech.beshu.ror.acl.request.EsRequestContext;
@@ -125,7 +124,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       if (newContext.getSettings().isEnabled()) {
         FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.SECONDS);
-        RorEngineFactory.Engine engine = AccessController.doPrivileged((PrivilegedAction<RorEngineFactory.Engine>) () ->
+        Engine engine = AccessController.doPrivileged((PrivilegedAction<Engine>) () ->
             RorEngineFactory$.MODULE$.reload(
                 createAuditSink(client, newBasicSettings),
                 newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit()

@@ -80,7 +80,6 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final Settings settings;
-  private final LoggerShim logger;
   private final BasicSettings basicSettings;
 
   private IndexLevelActionFilter ilaf;
@@ -92,7 +91,7 @@ public class ReadonlyRestPlugin extends Plugin
     this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
     this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
