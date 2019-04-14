@@ -48,8 +48,8 @@ public class RCUtils {
       "indices:admin/validate/*",
       "indices:data/read/*",
       "cluster:admin/*/get",
-      "cluster:admin/*/status"
-
+      "cluster:admin/*/status",
+      "cluster:monitor/ccr/follow_info"
   ));
 
   public static boolean isReadRequest(String action) {
