@@ -94,6 +94,31 @@ class RorKbnAuthRuleTests
             )(blockContext)
         }
       }
+      "groups claim name is defined and no groups field is passed in token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredRorKbnDef = RorKbnDef(
+            RorKbnDef.Name("test".nonempty),
+            SignatureCheckMethod.Hmac(key.getEncoded)
+          ),
+          configuredGroups = Set.empty,
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("user", "user1")
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
+          )
+        ) {
+          blockContext =>
+            assertBlockContext(
+              loggedUser = Some(LoggedUser(User.Id("user1")))
+            )(blockContext)
+        }
+      }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(
@@ -186,13 +211,14 @@ class RorKbnAuthRuleTests
           )
         )
       }
-      "groups aren't passed in JWT token claim" in {
+      "groups aren't passed in JWT token claim while some groups are defined in settings" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
+          configuredGroups = Set(Group("g1".nonempty)),
           tokenHeader = Header(
             Header.Name.authorization,
             {
