@@ -155,7 +155,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     return 0;
   }
 
-
   @Override
   public <Request extends ActionRequest, Response extends ActionResponse> void apply(Task task,
       String action,
@@ -225,7 +224,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       return null;
     };
   }
-
 
   private <Request extends ActionRequest, Response extends ActionResponse> AclActionHandler createAclActionHandler(
       AclStaticContext aclStaticContext,
