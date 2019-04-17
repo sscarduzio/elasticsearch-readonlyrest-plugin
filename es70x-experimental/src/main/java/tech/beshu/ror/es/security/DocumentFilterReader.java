@@ -24,6 +24,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSetIterator;
@@ -49,8 +50,8 @@ public final class DocumentFilterReader extends FilterLeafReader {
     super(reader);
     final IndexSearcher searcher = new IndexSearcher(this);
     searcher.setQueryCache(null);
-    final boolean needsScores = false;
-    final Weight preserveWeight = searcher.createWeight(query, needsScores, 0);
+
+    final Weight preserveWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 0);
 
     final int maxDoc = this.in.maxDoc();
     final FixedBitSet bits = new FixedBitSet(maxDoc);

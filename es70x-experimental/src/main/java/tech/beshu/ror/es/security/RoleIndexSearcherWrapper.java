@@ -119,7 +119,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       QueryShardContext queryShardContext = this.queryShardContextProvider.apply(shardId);
       XContentParser parser = JsonXContent.jsonXContent.createParser(queryShardContext.getXContentRegistry(), LoggingDeprecationHandler.INSTANCE, filter);
       QueryBuilder queryBuilder = queryShardContext.parseInnerQueryBuilder(parser);
-      ParsedQuery parsedQuery = queryShardContext.toFilter(queryBuilder);
+      ParsedQuery parsedQuery = queryShardContext.toQuery(queryBuilder);
       boolQuery.add(parsedQuery.query(), BooleanClause.Occur.SHOULD);
       DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
       return wrappedReader;
