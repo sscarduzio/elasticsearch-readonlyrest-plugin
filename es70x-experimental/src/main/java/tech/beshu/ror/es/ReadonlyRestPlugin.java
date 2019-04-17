@@ -140,8 +140,8 @@ public class ReadonlyRestPlugin extends Plugin
       Settings settings,
       ThreadPool threadPool,
       BigArrays bigArrays,
+      PageCacheRecycler pageCacheRecycler,
       CircuitBreakerService circuitBreakerService,
-      NamedWriteableRegistry namedWriteableRegistry,
       NamedXContentRegistry xContentRegistry,
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
@@ -175,7 +175,6 @@ public class ReadonlyRestPlugin extends Plugin
   public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
-
 
   @Override
   public List<Setting<?>> getSettings() {
