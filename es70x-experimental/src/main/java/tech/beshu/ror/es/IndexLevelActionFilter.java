@@ -110,7 +110,7 @@ public class IndexLevelActionFilter implements ActionFilter {
     this.context.set(new ESContextImpl(client, baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = new IndexNameExpressionResolver(settings);
+    this.indexResolver = new IndexNameExpressionResolver();
     this.threadPool = threadPool;
     this.rorEngine = new AtomicReference<>(Optional.empty());
 
