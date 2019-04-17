@@ -79,7 +79,8 @@ configurations {
         extendsFrom runtime
         exclude group: 'org.elasticsearch'
         exclude group: 'lucene-core'
-        exclude group: 'org.apache.logging.log4j'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
         exclude group: 'lucene-analyzers-common'
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'
@@ -124,7 +125,7 @@ task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDe
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('elasticsearch') {
-        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
+        from configurations.distJars
         from 'build/libs/' + pluginFullName + '.jar'
         from 'build/tmp/' + pluginFullName
     }

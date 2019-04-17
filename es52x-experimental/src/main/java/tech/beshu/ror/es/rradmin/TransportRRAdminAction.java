@@ -47,6 +47,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
           RRAdminRequest::new
     );
     this.settingsObservable = settingsObservable;
+
   }
 
   private String normalisePath(String s) {
@@ -60,7 +61,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
       String body = request.getContent();
       String path = request.getPath();
 
-
+      // POST
       if ("POST".equals(method)) {
         if (REST_REFRESH_PATH.equals(normalisePath(path))) {
           settingsObservable.refreshFromIndex();
@@ -86,8 +87,8 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
           });
           return;
         }
-      }
 
+      }
       if ("GET".equals(method)) {
         if (REST_CONFIGURATION_FILE_PATH.equals(normalisePath(path))) {
           try {
@@ -114,6 +115,5 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
     } catch (Exception e) {
       listener.onResponse(new RRAdminResponse(e));
     }
-
   }
 }
