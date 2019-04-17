@@ -15,23 +15,27 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-rootProject.name = 'readonlyrest'
-include 'audit'
-include 'core'
-include 'corex'
-include 'commons'
-include 'tests-utils'
-include 'integration-tests'
-include 'es23x'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es60x'
-include 'es60x-experimental'
-include 'es61x'
-include 'es61x-experimental'
-include 'es63x'
-include 'es63x-experimental'
-include 'es66x'
-include 'es66x-experimental'
-include 'es70x-experimental'
+package tech.beshu.ror.es.rradmin;
+
+import org.elasticsearch.action.Action;
+import org.elasticsearch.client.ElasticsearchClient;
+
+public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
+
+  public static final String NAME = "cluster:admin/rradmin/refreshsettings";
+  public static final RRAdminAction INSTANCE = new RRAdminAction();
+
+  public RRAdminAction() {
+    super(NAME);
+  }
+
+  @Override
+  public RRAdminRequestBuilder newRequestBuilder(ElasticsearchClient client) {
+    return new RRAdminRequestBuilder(client, INSTANCE);
+  }
+
+  @Override
+  public RRAdminResponse newResponse() {
+    return new RRAdminResponse("static instance");
+  }
+}
