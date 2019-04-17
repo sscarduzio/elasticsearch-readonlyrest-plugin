@@ -54,6 +54,12 @@ public abstract class UnboundidBaseLdapClient implements BaseLdapClient {
   public CompletableFuture<Optional<LdapUser>> userById(String userId) {
     try {
       CompletableFuture<List<SearchResultEntry>> searchUser = new CompletableFuture<>();
+      String filterString = String.format("(%s=%s)", userSearchFilterConfig.getUidAttribute(), Filter.encodeValue(userId));
+
+      logger.debug("Sending LDAP request by ID: {baseDN: " +
+          userSearchFilterConfig.getSearchUserBaseDN() +
+          ", scope: "+SearchScope.SUB + " filter: '" + filterString + "'}");
+
       connection.getConnectionPool().processRequestsAsync(
         Lists.newArrayList(
           new SearchRequest(
