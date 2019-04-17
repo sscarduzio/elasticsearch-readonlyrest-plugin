@@ -431,7 +431,7 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public String extractLocalAddress() {
     try {
-      String remoteHost = ((InetSocketAddress) request.getLocalAddress()).getAddress().getHostAddress();
+      String remoteHost = request.getHttpChannel().getLocalAddress().getAddress().getHostAddress();
       return remoteHost;
     } catch (Exception e) {
       logger.error("Could not extract local address", e);
@@ -443,7 +443,7 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public String extractRemoteAddress() {
     try {
-      String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
+      String remoteHost = request.getHttpChannel().getRemoteAddress().getAddress().getHostAddress();
       // Make sure we recognize localhost even when IPV6 is involved
       if (RCUtils.isLocalHost(remoteHost)) {
         remoteHost = RCUtils.LOCALHOST;
