@@ -24,7 +24,6 @@ package tech.beshu.ror.es;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
@@ -35,6 +34,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
+import org.elasticsearch.http.HttpChannel;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.SSLCertParser;
@@ -50,7 +50,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
   private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
   private final Environment environment;
-  private  Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
+  private Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
@@ -75,18 +75,18 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     }
   }
 
-  protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
+  @Override
+  protected void onException(HttpChannel channel, Exception cause) {
     if (!this.lifecycle.started()) {
       return;
     }
     if (cause.getCause() instanceof NotSslRecordException) {
-      logger.warn(cause.getMessage() + " connecting from: " + ctx.channel().remoteAddress());
+      logger.warn(cause.getMessage() + " connecting from: " + channel.getRemoteAddress());
     }
     else {
-      cause.printStackTrace();
-      super.exceptionCaught(ctx, cause);
+      super.onException(channel, cause);
     }
-    ctx.channel().flush().close();
+    channel.close();
   }
 
   public ChannelHandler configureServerChannelHandler() {
@@ -97,7 +97,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     private Optional<SslContext> context = Optional.empty();
 
     SSLHandler(final Netty4HttpServerTransport transport) {
-      super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
+      super(transport, handlingSettings);
 
       new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
         try {
@@ -113,7 +113,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
-          if(sslVerification) {
+          if (sslVerification) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           }
 
