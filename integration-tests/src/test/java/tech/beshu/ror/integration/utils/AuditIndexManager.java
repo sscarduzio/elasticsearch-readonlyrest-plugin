@@ -64,9 +64,20 @@ public class AuditIndexManager {
   private List<Map<String, Object>> call(String endpoint, RestClient client) throws Exception {
     Result response = get(endpoint, client);
     if(response.code / 100 == 2)
-      return getEntries(deserializeJsonBody(response));
+      return getEntries(deserializeJsonBody(response.body));
     else
       return Lists.newArrayList();
+  }
+
+  public Map<String, Object> deserializeJsonBody(String response) {
+    Gson gson = new Gson();
+    Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
+    return gson.fromJson(response, mapType);
+  }
+
+  public List<Map<String, Object>> getEntries(Map<String, Object> result) {
+    List<Map<String, Object>> entries = (List<Map<String, Object>>) ((Map<String, Object>)result.get("hits")).get("hits");
+    return entries.stream().map(entry -> (Map<String, Object>)entry.get("_source")).collect(Collectors.toList());
   }
 
   private Result get(String endpoint, RestClient client) throws Exception {
@@ -78,17 +89,6 @@ public class AuditIndexManager {
 
   private BiPredicate<List<Map<String, Object>>, Throwable> emptyEntriesResultPredicate() {
     return (maps, throwable) -> throwable != null || maps == null || maps.size() == 0;
-  }
-
-  private Map<String, Object> deserializeJsonBody(Result response) {
-    Gson gson = new Gson();
-    Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
-    return gson.fromJson(response.body, mapType);
-  }
-
-  private List<Map<String, Object>> getEntries(Map<String, Object> result) {
-    List<Map<String, Object>> entries = (List<Map<String, Object>>) ((Map<String, Object>)result.get("hits")).get("hits");
-    return entries.stream().map(entry -> (Map<String, Object>)entry.get("_source")).collect(Collectors.toList());
   }
 
   private static class Result {
