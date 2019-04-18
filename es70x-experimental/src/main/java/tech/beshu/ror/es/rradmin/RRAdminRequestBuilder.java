@@ -20,7 +20,7 @@ package tech.beshu.ror.es.rradmin;
 import org.elasticsearch.action.ActionRequestBuilder;
 import org.elasticsearch.client.ElasticsearchClient;
 
-public class RRAdminRequestBuilder extends ActionRequestBuilder<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
+public class RRAdminRequestBuilder extends ActionRequestBuilder<RRAdminRequest, RRAdminResponse> {
 
   public RRAdminRequestBuilder(ElasticsearchClient client, RRAdminAction action) {
     super(client, action, new RRAdminRequest());

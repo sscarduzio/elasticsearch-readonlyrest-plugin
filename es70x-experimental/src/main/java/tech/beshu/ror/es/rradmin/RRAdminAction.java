@@ -20,7 +20,7 @@ package tech.beshu.ror.es.rradmin;
 import org.elasticsearch.action.Action;
 import org.elasticsearch.client.ElasticsearchClient;
 
-public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
+public class RRAdminAction extends Action<RRAdminResponse> {
 
   public static final String NAME = "cluster:admin/rradmin/refreshsettings";
   public static final RRAdminAction INSTANCE = new RRAdminAction();
@@ -29,10 +29,6 @@ public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdm
     super(NAME);
   }
 
-  @Override
-  public RRAdminRequestBuilder newRequestBuilder(ElasticsearchClient client) {
-    return new RRAdminRequestBuilder(client, INSTANCE);
-  }
 
   @Override
   public RRAdminResponse newResponse() {

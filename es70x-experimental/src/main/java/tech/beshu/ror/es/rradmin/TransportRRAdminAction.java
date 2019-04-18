@@ -25,6 +25,7 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.es.ResponseActionListener;
@@ -46,9 +47,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
       ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
       NodeClient client, SettingsObservableImpl settingsObservable) {
-    super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
-        RRAdminRequest::new
-    );
+    super(RRAdminAction.NAME, transportService,actionFilters, RRAdminRequest::new);
     this.client = client;
     this.settingsObservable = settingsObservable;
 
@@ -58,8 +57,9 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
     return s.substring(0, s.length() - (s.endsWith("/") ? 1 : 0));
   }
 
+
   @Override
-  protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
+  protected void doExecute(Task task, RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     try {
       String method = request.getMethod().toUpperCase();
       String body = request.getContent();
