@@ -123,9 +123,8 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
                   .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-                  .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-                  .run("echo 'cluster.initial_master_nodes: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-
+//                  .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+//                  .run("echo 'cluster.initial_master_nodes: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml") // todo: uncomment
 //                  .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties") // todo: uncomment
 
                   .user("root")

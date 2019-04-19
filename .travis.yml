@@ -47,6 +47,7 @@ env:
   - ROR_TASK="integration_es53x"
   - ROR_TASK="integration_es52x-experimental"
   - ROR_TASK="integration_es52x"
+  - ROR_TASK="integration_es51x-experimental"
   - ROR_TASK="integration_es51x"
   - ROR_TASK="package"
 
