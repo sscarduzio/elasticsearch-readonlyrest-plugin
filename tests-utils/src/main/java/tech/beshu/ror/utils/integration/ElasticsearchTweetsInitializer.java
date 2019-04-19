@@ -23,6 +23,7 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
 public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContainer.ESInitalizer {
@@ -56,6 +57,7 @@ public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContain
       httpPut.setHeader("Content-Type", "application/json");
       httpPut.setEntity(new StringEntity(
           "{\n" +
+              "\"@timestamp\" :" + LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) + ",\n" +
               "\"user\" : \"" + user + "\",\n" +
               "\"post_date\" : \"" + LocalDateTime.now().format(DateTimeFormatter.BASIC_ISO_DATE) + "\",\n" +
               "\"message\" : \"" + message + "\"\n" +
