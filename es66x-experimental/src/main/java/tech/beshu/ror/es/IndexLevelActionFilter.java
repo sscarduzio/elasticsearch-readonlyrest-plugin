@@ -215,13 +215,15 @@ public class IndexLevelActionFilter implements ActionFilter {
   ) {
       return result -> {
         try (ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
-      if(result.isRight()) {
-        AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext, listener, chainProceed);
-        AclResultCommitter.commit(result.right().get(), handler);
-      } else {
-        listener.onFailure(new Exception(result.left().get()));
-      }
-      }
+          if (result.isRight()) {
+            AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext,
+                listener, chainProceed);
+            AclResultCommitter.commit(result.right().get(), handler);
+          }
+          else {
+            listener.onFailure(new Exception(result.left().get()));
+          }
+        }
         return null;
       };
   }

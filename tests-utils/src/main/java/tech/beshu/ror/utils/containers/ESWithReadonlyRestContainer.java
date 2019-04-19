@@ -119,10 +119,15 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                   .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
                   .copy(javaOptionsFileName, "/usr/share/elasticsearch/config/")
                   .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/readonlyrest.yml")
+                  .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
+
                   .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-                  .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
-                  .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
+                  .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+                  .run("echo 'cluster.initial_master_nodes: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+
+//                  .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties") // todo: uncomment
+
                   .user("root")
                   .run("chown elasticsearch:elasticsearch config/*");
 
@@ -131,10 +136,14 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               //                    .env("JAVA_HOME", "/usr/lib/jvm/jre-1.8.0-openjdk")
               //                    .run("yum update -y && yum install -y nc java-1.8.0-openjdk-headless && yum clean all");
               //              }
-
+              if(greaterOrEqualThan(project.getESVersion(), 7, 0, 0)){
+                builder
+                    .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+                    .run("echo 'cluster.initial_master_nodes: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml");
+              }
 
               builder.user("elasticsearch")
-                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms")
+                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms -Dcom.unboundid.ldap.sdk.debug.enabled=true")
                      .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + pluginFile.getName());
               logger.info("Dockerfile\n" + builder.build());
             })

@@ -4,3 +4,5 @@ http.type: ssl_netty4
 #transport.type: ror_ssl_internode
 path.repo: "/tmp/lolrepo1"
 #cluster.remote.cluster_one.seeds: 127.0.0.1:9300
+node.name: ror_local_node
+discovery.type: single-node

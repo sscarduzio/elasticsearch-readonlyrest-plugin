@@ -109,7 +109,8 @@ public class ReadonlyRestPlugin extends Plugin
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
       settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, hasRemoteClusters(clusterService));
+      Boolean hasRemoteClusters = !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
+      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, hasRemoteClusters);
       components.add(settingsObservable);
       return null;
     });
@@ -139,8 +140,8 @@ public class ReadonlyRestPlugin extends Plugin
       Settings settings,
       ThreadPool threadPool,
       BigArrays bigArrays,
+      PageCacheRecycler pageCacheRecycler,
       CircuitBreakerService circuitBreakerService,
-      NamedWriteableRegistry namedWriteableRegistry,
       NamedXContentRegistry xContentRegistry,
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
@@ -174,7 +175,6 @@ public class ReadonlyRestPlugin extends Plugin
   public void close() {
     ESContextImpl.shutDownObservable.shutDown();
   }
-
 
   @Override
   public List<Setting<?>> getSettings() {
@@ -222,19 +222,6 @@ public class ReadonlyRestPlugin extends Plugin
       ThreadRepo.channel.set(channel);
       restHandler.handleRequest(request, channel, client);
     };
-  }
-
-  private boolean hasRemoteClusters(ClusterService clusterService) {
-    try {
-      return !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
-    } catch (Exception ex) {
-      if(logger.isDebugEnabled()) {
-        logger.warn("could not check if had remote ES clusters", ex);
-      } else {
-        logger.warn("could not check if had remote ES clusters: " + ex.getMessage());
-      }
-      return false;
-    }
   }
 
 }
