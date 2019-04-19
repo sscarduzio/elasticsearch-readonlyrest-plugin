@@ -74,7 +74,9 @@ public class RRMetadataResponse extends ActionResponse implements ToXContent {
     String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");
     sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
 
-    builder.map(sourceMap);
+    for (Map.Entry<String, Object> kv : sourceMap.entrySet()) {
+      builder.field(kv.getKey(), kv.getValue());
+    }
     return builder;
   }
 }
