@@ -107,15 +107,13 @@ public class ReadonlyRestPlugin extends Plugin
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
       settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      Boolean hasRemoteClusters = !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, hasRemoteClusters);
+      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, hasRemoteClusters(clusterService));
       components.add(settingsObservable);
       return null;
     });
 
     return components;
   }
-
 
   @Override
   public List<ActionFilter> getActionFilters() {
@@ -225,5 +223,17 @@ public class ReadonlyRestPlugin extends Plugin
     };
   }
 
+  private boolean hasRemoteClusters(ClusterService clusterService) {
+    try {
+      return !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
+    } catch (Exception ex) {
+      if(logger.isDebugEnabled()) {
+        logger.warn("could not check if had remote ES clusters", ex);
+      } else {
+        logger.warn("could not check if had remote ES clusters: " + ex.getMessage());
+      }
+      return false;
+    }
+  }
 
 }
