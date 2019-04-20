@@ -123,21 +123,14 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
                   .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-                  .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-                  .run("echo 'cluster.initial_master_nodes: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-
                   .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
 
                   .user("root")
                   .run("chown elasticsearch:elasticsearch config/*");
 
-              //              if (greaterOrEqualThan630) {
-              //                builder
-              //                    .env("JAVA_HOME", "/usr/lib/jvm/jre-1.8.0-openjdk")
-              //                    .run("yum update -y && yum install -y nc java-1.8.0-openjdk-headless && yum clean all");
-              //              }
               if(greaterOrEqualThan(project.getESVersion(), 7, 0, 0)){
                 builder
+                    .run("egrep -v 'node\\.name|initial_master_nodes' /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                     .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
                     .run("echo 'cluster.initial_master_nodes: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml");
               }
