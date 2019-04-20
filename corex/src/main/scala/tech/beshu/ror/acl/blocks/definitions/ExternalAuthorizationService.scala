@@ -18,7 +18,6 @@ package tech.beshu.ror.acl.blocks.definitions
 
 import cats.implicits._
 import cats.{Eq, Show}
-import com.jayway.jsonpath.JsonPath
 import com.softwaremill.sttp._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -34,6 +33,7 @@ import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CacheableAction
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration

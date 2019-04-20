@@ -18,7 +18,6 @@ package tech.beshu.ror.acl.factory.decoders.definitions
 
 import cats.Id
 import cats.implicits._
-import com.jayway.jsonpath.JsonPath
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -40,6 +39,7 @@ import scala.language.implicitConversions
 import scala.util.Try
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 object ExternalAuthorizationServicesDecoder extends Logging {
 

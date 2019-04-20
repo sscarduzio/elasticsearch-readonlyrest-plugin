@@ -50,8 +50,7 @@ compileJava {
 }
 
 dependencies {
-    compile project(path: ':corex', configuration: 'shadow')
-    compile project(path: ':corex', configuration: 'simpleCompile')
+    compile project(path: ':corex')
     
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile('org.reflections:reflections:0.9.11') {
