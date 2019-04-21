@@ -100,10 +100,14 @@ public class IndexLevelActionFilter implements ActionFilter {
       Environment env,
       Boolean hasRemoteClusters
   ) {
+    this.logger = LogManager.getLogger(this.getClass());
     this.hasRemoteClusters = hasRemoteClusters;
-    System.setProperty("es.set.netty.runtime.available.processors", "false");
+    try {
+      System.setProperty("es.set.netty.runtime.available.processors", "false");
+    } catch (Exception ex) {
+      logger.error("Cannot set property 'es.set.netty.runtime.available.processors'", ex);
+    }
 
-    logger = LogManager.getLogger(this.getClass());
     BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
         env.configFile().toAbsolutePath(), settings);
 

@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.settings;
 
-import com.jayway.jsonpath.DocumentContext;
-import com.jayway.jsonpath.JsonPath;
 import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
+import tech.beshu.ror.com.jayway.jsonpath.DocumentContext;
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.net.URI;

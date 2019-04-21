@@ -17,8 +17,8 @@
 package tech.beshu.ror.acl.utils
 
 import io.circe.Json
-import com.fasterxml.jackson.dataformat.yaml.YAMLMapper
-import com.fasterxml.jackson.databind.ObjectMapper
+import tech.beshu.ror.com.fasterxml.jackson.databind.ObjectMapper
+import tech.beshu.ror.com.fasterxml.jackson.dataformat.yaml.YAMLMapper
 
 object YamlOps {
 
