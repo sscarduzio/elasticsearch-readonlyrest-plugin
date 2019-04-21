@@ -14,28 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.rradmin;
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'corex'
-include 'commons'
-include 'tests-utils'
-include 'integration-tests'
-include 'es23x'
-include 'es51x'
-include 'es51x-experimental'
-include 'es52x'
-include 'es52x-experimental'
-include 'es53x'
-include 'es53x-experimental'
-include 'es60x'
-include 'es60x-experimental'
-include 'es61x'
-include 'es61x-experimental'
-include 'es63x'
-include 'es63x-experimental'
-include 'es66x'
-include 'es66x-experimental'
-include 'es70x-experimental'
+import org.elasticsearch.action.ActionRequestBuilder;
+import org.elasticsearch.client.ElasticsearchClient;
+
+public class RRAdminRequestBuilder extends ActionRequestBuilder<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
+
+  public RRAdminRequestBuilder(ElasticsearchClient client, RRAdminAction action) {
+    super(client, action, new RRAdminRequest());
+  }
+}

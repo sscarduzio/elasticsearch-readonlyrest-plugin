@@ -19,8 +19,6 @@ package tech.beshu.ror.es;
 
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
@@ -64,6 +62,7 @@ import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.acl.utils.ScalaJavaHelper$;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -88,25 +87,21 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final IndexNameExpressionResolver indexResolver;
-  private final Logger logger;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-  private final Boolean hasRemoteClusters;
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
       ClusterService clusterService,
       NodeClient client,
       ThreadPool threadPool,
-      SettingsObservableImpl settingsObservable,
-      Environment env
+      SettingsObservableImpl settingsObservable
   ) {
     super(settings);
-    this.hasRemoteClusters = !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
+    LoggerShim loggerShim = ESContextImpl.mkLoggerShim(logger);
 
-    logger = LogManager.getLogger(this.getClass());
-    BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
-        env.configFile().toAbsolutePath(), settings);
+    Environment env = new Environment(settings);
+    BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
 
     this.context.set(new ESContextImpl(baseSettings));
 
@@ -117,7 +112,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
-      Environment newEnv = new Environment(settings, env.configFile().toAbsolutePath());
+      Environment newEnv = new Environment(settings);
       BasicSettings newBasicSettings = new BasicSettings(settingsObservable.getCurrent(),
           newEnv.configFile().toAbsolutePath());
       ESContext newContext = new ESContextImpl(newBasicSettings);
@@ -192,8 +187,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-        context.get(), hasRemoteClusters);
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get());
     RequestContext requestContext = requestContextFrom(requestInfo);
 
     Consumer<ActionListener<Response>> proceed = responseActionListener -> {

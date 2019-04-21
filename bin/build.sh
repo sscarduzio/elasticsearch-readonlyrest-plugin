@@ -63,14 +63,29 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es60x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x-experimental" ]]; then
+    echo ">>> es53x-experimental => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es53x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x" ]]; then
     echo ">>> es53x => Running testcontainers.."
     ./gradlew  integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x-experimental" ]]; then
+    echo ">>> es52x-experimental => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es52x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x" ]]; then
     echo ">>> es52x => Running testcontainers.."
     ./gradlew  integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x-experimental" ]]; then
+    echo ">>> es51x-experimental => Running testcontainers.."1
+    ./gradlew integration-tests:test '-PesModule=es51x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x" ]]; then
