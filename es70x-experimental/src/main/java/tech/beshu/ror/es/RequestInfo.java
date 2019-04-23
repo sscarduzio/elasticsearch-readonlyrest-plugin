@@ -459,7 +459,6 @@ public class RequestInfo implements RequestInfoShim {
   public void writeIndices(Set<String> newIndices) {
     if(newIndices.isEmpty()) return;
 
-    // Setting indices by reflection..
     newIndices.remove("<no-index>");
     newIndices.remove("");
 
