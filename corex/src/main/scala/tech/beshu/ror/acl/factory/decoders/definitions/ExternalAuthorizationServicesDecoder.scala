@@ -26,9 +26,9 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.SupportedHttpMethod.Get
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.{AuthTokenName, AuthTokenSendMethod, QueryParam, SupportedHttpMethod}
-import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService, HttpExternalAuthorizationService}
+import tech.beshu.ror.acl.blocks.definitions._
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.HttpClientsFactory
-import tech.beshu.ror.acl.factory.HttpClientsFactory.Config
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.common.decoderTupleListDecoder
@@ -109,8 +109,22 @@ object ExternalAuthorizationServicesDecoder extends Logging {
           defaultHeaders <- c.downField("default_headers").as[Option[Set[Header]]]
           cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
-        } yield {
-          val httpClient = httpClientFactory.create(Config(validate.getOrElse(defaults.validate)))
+          httpClientConfig <- c.downField("http_connection_settings").as[Option[HttpClientsFactory.Config]]
+        } yield (name, url, authTokenName, sendUsing, httpMethod, groupsJsonPath, defaultQueryParams, defaultHeaders, cacheTtl, validate, httpClientConfig)
+      }
+      .emapE { case (name, url, authTokenName, sendUsing, httpMethod, groupsJsonPath, defaultQueryParams, defaultHeaders, cacheTtl, validateOpt, httpClientConfigOpt) =>
+        val httpClientConfig = (validateOpt, httpClientConfigOpt) match {
+          case (Some(_), Some(_)) =>
+            Left(AclCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+          case (Some(validate), None) =>
+            Right(HttpClientsFactory.Config.default.copy(validate = validate))
+          case (None, Some(config)) =>
+            Right(config)
+          case (None, None) =>
+            Right(HttpClientsFactory.Config.default)
+        }
+        httpClientConfig.map { config =>
+          val httpClient = httpClientFactory.create(config)
           val externalAuthService: ExternalAuthorizationService =
             new HttpExternalAuthorizationService(
               name,

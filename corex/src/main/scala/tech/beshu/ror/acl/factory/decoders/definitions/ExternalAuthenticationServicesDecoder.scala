@@ -23,8 +23,10 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions._
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.HttpClientsFactory
-import tech.beshu.ror.acl.factory.HttpClientsFactory.{Config, HttpClient}
+import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps._
 
@@ -70,8 +72,22 @@ object ExternalAuthenticationServicesDecoder {
           httpSuccessCode <- c.downField("success_status_code").as[Option[Int]]
           cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
-        } yield {
-          val httpClient = httpClientFactory.create(Config(validate.getOrElse(defaults.validate)))
+          httpClientConfig <- c.downField("http_connection_settings").as[Option[HttpClientsFactory.Config]]
+        } yield (name, url, httpSuccessCode, cacheTtl, validate, httpClientConfig)
+      }
+      .emapE { case (name, url, httpSuccessCode, cacheTtl, validateOpt, httpClientConfigOpt) =>
+        val httpClientConfig = (validateOpt, httpClientConfigOpt) match {
+          case (Some(_), Some(_)) =>
+            Left(AclCreationError.RulesLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+          case (Some(validate), None) =>
+            Right(HttpClientsFactory.Config.default.copy(validate = validate))
+          case (None, Some(config)) =>
+            Right(config)
+          case (None, None) =>
+            Right(HttpClientsFactory.Config.default)
+        }
+        httpClientConfig.map { config =>
+          val httpClient = httpClientFactory.create(config)
           val externalAuthService: ExternalAuthenticationService =
             creator(name, url, httpSuccessCode.getOrElse(defaults.successHttpCode), httpClient)
           cacheTtl.foldLeft(externalAuthService) {

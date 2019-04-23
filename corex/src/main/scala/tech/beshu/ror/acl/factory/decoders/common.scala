@@ -34,13 +34,15 @@ import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.ValueLevelCreationError
+import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.SyncDecoderCreator
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 object common {
@@ -204,6 +206,21 @@ object common {
         }
       }
       .decoder
+
+  implicit val httpClientConfigDecoder: Decoder[HttpClientsFactory.Config] =
+    Decoder.instance { c =>
+      for {
+        connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
+        requestTimeout <- c.downFields("connection_request_timeout_in_sec", "connection_request_timeout", "request_timeout").as[Option[FiniteDuration Refined Positive]]
+        connectionPoolSize <- c.downField("connection_pool_size").as[Option[Int Refined Positive]]
+        validate <- c.downField("validate").as[Option[Boolean]]
+      } yield HttpClientsFactory.Config(
+        connectionTimeout.getOrElse(HttpClientsFactory.Config.default.connectionTimeout),
+        requestTimeout.getOrElse(HttpClientsFactory.Config.default.requestTimeout),
+        connectionPoolSize.getOrElse(HttpClientsFactory.Config.default.connectionPoolSize),
+        validate.getOrElse(HttpClientsFactory.Config.default.validate)
+      )
+    }
 
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers

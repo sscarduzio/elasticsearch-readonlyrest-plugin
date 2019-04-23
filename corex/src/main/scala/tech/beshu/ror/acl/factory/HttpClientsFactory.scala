@@ -17,18 +17,25 @@
 package tech.beshu.ror.acl.factory
 
 import java.util.concurrent.CopyOnWriteArrayList
+
 import com.softwaremill.sttp.asynchttpclient.cats.AsyncHttpClientCatsBackend
 import com.softwaremill.sttp.{MonadError, Request, Response, SttpBackend}
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.refineV
 import io.netty.util.HashedWheelTimer
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.acl.refined._
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
 import tech.beshu.ror.acl.factory.HttpClientsFactory.{Config, HttpClient}
 
 import scala.collection.JavaConverters._
+import scala.concurrent.duration._
+import scala.language.{higherKinds, postfixOps}
 
 trait HttpClientsFactory {
 
@@ -40,11 +47,21 @@ trait HttpClientsFactory {
 object HttpClientsFactory {
   type HttpClient = SttpBackend[Task, Nothing]
 
-  final case class Config(validate: Boolean)
+  final case class Config(connectionTimeout: FiniteDuration Refined Positive,
+                          requestTimeout: FiniteDuration Refined Positive,
+                          connectionPoolSize: Int Refined Positive,
+                          validate: Boolean)
+  object Config {
+    val default: Config = Config(
+      connectionTimeout = refineV[Positive](2 seconds).right.get,
+      requestTimeout = refineV[Positive](5 seconds).right.get,
+      connectionPoolSize = refineV[Positive](30).right.get,
+      validate = true
+    )
+  }
 
 }
 
-// todo: check changes: https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/pull/410/files
 // todo: remove synchronized, use more sophisticated lock mechanism
 class AsyncHttpClientsFactory extends HttpClientsFactory {
 
