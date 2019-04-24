@@ -108,7 +108,7 @@ class ExternalAuthenticationRuleSettingsTests
           }
         )
       }
-      "authentication service definition is declared only all available fields" in {
+      "authentication service definition is declared only all available fields and default http client settings" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -126,6 +126,36 @@ class ExternalAuthenticationRuleSettingsTests
               |    success_status_code: 204
               |    cache_ttl_in_sec: 200
               |    validate: true
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = rule => {
+            rule.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
+            rule.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+          }
+        )
+      }
+      "authentication service definition is declared only all available fields and custom http client settings" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    external_authentication: "ext1"
+              |
+              |  external_authentication_service_configs:
+              |
+              |  - name: "ext1"
+              |    authentication_endpoint: "http://localhost:8080/auth1"
+              |    success_status_code: 204
+              |    cache_ttl_in_sec: 200
+              |    http_connection_settings:
+              |      connection_timeout_in_sec: 1
+              |      connection_request_timeout_in_sec: 10
+              |      connection_pool_size: 30
+              |      validate: true
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
@@ -461,6 +491,107 @@ class ExternalAuthenticationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -100 seconds")))
+          }
+        )
+      }
+      "custom http client settings is defined together with validate at rule level" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    external_authentication: "ext1"
+              |
+              |  external_authentication_service_configs:
+              |
+              |  - name: "ext1"
+              |    authentication_endpoint: "http://localhost:8080/auth1"
+              |    validate: true
+              |    http_connection_settings:
+              |      validate: false
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+          }
+        )
+      }
+      "custom http client connection timeout is negative" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    external_authentication: "ext1"
+              |
+              |  external_authentication_service_configs:
+              |
+              |  - name: "ext1"
+              |    authentication_endpoint: "http://localhost:8080/auth1"
+              |    http_connection_settings:
+              |      connection_timeout_in_sec: -10
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "custom http client request timeout is negative" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    external_authentication: "ext1"
+              |
+              |  external_authentication_service_configs:
+              |
+              |  - name: "ext1"
+              |    authentication_endpoint: "http://localhost:8080/auth1"
+              |    http_connection_settings:
+              |      connection_request_timeout_in_sec: -10
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "custom http client connection pool size is negative" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    external_authentication: "ext1"
+              |
+              |  external_authentication_service_configs:
+              |
+              |  - name: "ext1"
+              |    authentication_endpoint: "http://localhost:8080/auth1"
+              |    http_connection_settings:
+              |      connection_pool_size: -10
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10")))
           }
         )
       }

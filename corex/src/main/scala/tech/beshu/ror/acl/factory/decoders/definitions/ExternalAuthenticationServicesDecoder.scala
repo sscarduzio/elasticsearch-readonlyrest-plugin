@@ -72,7 +72,7 @@ object ExternalAuthenticationServicesDecoder {
           httpSuccessCode <- c.downField("success_status_code").as[Option[Int]]
           cacheTtl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
           validate <- c.downField("validate").as[Option[Boolean]]
-          httpClientConfig <- c.downField("http_connection_settings").as[Option[HttpClientsFactory.Config]]
+          httpClientConfig <- c.downFields("http_connection_settings").as[Option[HttpClientsFactory.Config]]
         } yield (name, url, httpSuccessCode, cacheTtl, validate, httpClientConfig)
       }
       .emapE { case (name, url, httpSuccessCode, cacheTtl, validateOpt, httpClientConfigOpt) =>

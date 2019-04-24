@@ -446,6 +446,44 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
           }
         )
       }
+      "None signature check can be used in JWT definition with custom http client settings for external validator" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |readonlyrest:
+               |
+               |  access_control_rules:
+               |
+               |  - name: test_block1
+               |    jwt_auth: jwt1
+               |
+               |  jwt:
+               |
+               |  - name: jwt1
+               |    roles_claim: groups
+               |    signature_algo: "NONE"
+               |    external_validator:
+               |      url: "http://192.168.0.1:8080/jwt"
+               |      success_status_code: 204
+               |      cache_ttl_in_sec: 60
+               |      http_connection_settings:
+               |        connection_timeout_in_sec: 1
+               |        connection_request_timeout_in_sec: 10
+               |        connection_pool_size: 30
+               |        validate: true
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = rule => {
+            rule.settings.jwt.id should be(JwtDef.Name("jwt1".nonempty))
+            rule.settings.jwt.authorizationTokenDef should be(AuthorizationTokenDef(Header.Name.authorization, "Bearer "))
+            rule.settings.jwt.checkMethod shouldBe a [SignatureCheckMethod.NoCheck]
+            rule.settings.jwt.checkMethod.asInstanceOf[SignatureCheckMethod.NoCheck].service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+            rule.settings.jwt.userClaim should be(None)
+            rule.settings.jwt.groupsClaim should be(Some(ClaimName("groups".nonempty)))
+            rule.settings.groups should be(Set.empty)
+          }
+        )
+      }
     }
     "not be able to be loaded from config" when {
       "no JWT definition name is defined in rule setting" in {
@@ -812,6 +850,118 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("External validator has to be defined when signature algorithm is None")))
+          }
+        )
+      }
+      "external validator custom http client settings is defined together with validate at rule level" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_auth: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "NONE"
+              |    external_validator:
+              |      url: "http://192.168.0.1:8080/jwt"
+              |      validate: false
+              |      http_connection_settings:
+              |        connection_timeout_in_sec: 1
+              |        connection_request_timeout_in_sec: 10
+              |        connection_pool_size: 30
+              |        validate: true
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("If 'http_connection_settings' are used, 'validate' should be placed in that section")))
+          }
+        )
+      }
+      "external validator custom http client connection timeout is negative" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_auth: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "NONE"
+              |    external_validator:
+              |      url: "http://192.168.0.1:8080/jwt"
+              |      http_connection_settings:
+              |        connection_timeout_in_sec: -10
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "external validator custom http client request timeout is negative" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_auth: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "NONE"
+              |    external_validator:
+              |      url: "http://192.168.0.1:8080/jwt"
+              |      http_connection_settings:
+              |        connection_request_timeout_in_sec: -10
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "external validator custom http client connection pool size is negative" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    jwt_auth: jwt1
+              |
+              |  jwt:
+              |
+              |  - name: jwt1
+              |    signature_algo: "NONE"
+              |    external_validator:
+              |      url: "http://192.168.0.1:8080/jwt"
+              |      http_connection_settings:
+              |        connection_pool_size: -10
+              |""".stripMargin,
+          httpClientsFactory = mockedHttpClientsFactory,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10")))
           }
         )
       }
