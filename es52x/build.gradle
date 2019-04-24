@@ -50,8 +50,8 @@ compileJava {
 }
 
 dependencies {
-    compile project(path: ':corex')
-    
+    compile project(path: ':core')
+
     compile 'cz.seznam.euphoria:shaded-guava:21.0'
     compile('org.reflections:reflections:0.9.11') {
         exclude group: 'org.slf4j', module: 'slf4j-api'
@@ -61,8 +61,6 @@ dependencies {
 
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
-    compile 'org.apache.logging.log4j:log4j-core:2.11.0'
-
 }
 
 license {
@@ -131,10 +129,9 @@ task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) 
 task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDescriptorTemplate]) {
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
-    into('.')
-            {
-                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
-                from 'build/libs/' + pluginFullName + '.jar'
-                from 'build/tmp/' + pluginFullName
-            }
+    into('elasticsearch') {
+        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
+        from 'build/libs/' + pluginFullName + '.jar'
+        from 'build/tmp/' + pluginFullName
+    }
 }
