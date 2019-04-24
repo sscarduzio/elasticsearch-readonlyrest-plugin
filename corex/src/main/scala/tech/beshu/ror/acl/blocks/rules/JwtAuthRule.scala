@@ -43,7 +43,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     with AuthorizationRule
     with Logging {
 
-  override val name: Rule.Name = ExternalAuthenticationRule.name
+  override val name: Rule.Name = JwtAuthRule.name
 
   private val parser = settings.jwt.checkMethod match {
     case NoCheck(_) => Jwts.parser

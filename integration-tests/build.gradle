@@ -1,10 +1,4 @@
-group = 'org.elasticsearch.plugin'
-version = pluginVersion
-
 buildscript {
-    ext {
-        pluginVersion = rootProject.properties['pluginVersion']
-    }
     repositories {
         mavenLocal()
         mavenCentral()
@@ -49,17 +43,16 @@ test {
 }
 
 dependencies {
-    compile "org.scala-lang:scala-library:2.12.4"
+    compile group: 'org.scala-lang',                    name: 'scala-library',              version: '2.12.4'
+
     testCompile project(':tests-utils')
-    testCompile 'io.jsonwebtoken:jjwt:0.9.1'
-    testCompile 'com.jayway.jsonpath:json-path:2.2.0'
-    testCompile 'org.gradle:gradle-tooling-api:4.10.2'
-    testCompile 'com.mashape.unirest:unirest-java:1.4.9'
-    testCompile 'org.slf4j:slf4j-api:1.7.25'
-    testCompile 'ch.qos.logback:logback-classic:1.2.3'
-    testCompile 'ch.qos.logback:logback-core:1.2.3'
-    testCompile "org.elasticsearch.client:x-pack-transport:6.6.0"
-    
+    testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
+    testCompile group: 'ch.qos.logback',                name: 'logback-core',               version: '1.2.3'
+    testCompile group: 'com.jayway.jsonpath',           name: 'json-path',                  version: '2.2.0'
+    testCompile group: 'com.mashape.unirest',           name: 'unirest-java',               version: '1.4.9'
+    testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
+    testCompile group: 'org.gradle',                    name: 'gradle-tooling-api:',        version: '4.10.2'
+
 }
 
 license {
