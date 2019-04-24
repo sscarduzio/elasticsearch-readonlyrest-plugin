@@ -22,7 +22,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.integration.utils.DocumentManager;
+import tech.beshu.ror.utils.elasticsearch.DocumentManager;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
@@ -31,7 +31,7 @@ import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static tech.beshu.ror.integration.utils.EnhancedAssertion.assertNAttempts;
+import static tech.beshu.ror.utils.assertions.EnhancedAssertion.assertNAttempts;
 
 public class IndicesAliasesTests {
 

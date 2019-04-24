@@ -30,7 +30,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.core.Version;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.util.VersionUtil;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import tech.beshu.ror.utils.Tuple;
+import tech.beshu.ror.utils.misc.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;

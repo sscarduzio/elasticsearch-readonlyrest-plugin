@@ -19,17 +19,17 @@ package tech.beshu.ror.integration;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.integration.utils.AuditIndexManager;
+import tech.beshu.ror.utils.elasticsearch.AuditIndexManager;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
-import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
-import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
+import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 
 public class DisabledAuditingToolsTests {
 

@@ -49,13 +49,14 @@ public class Constants {
   public final static String FILTER_TRANSIENT = "_filter";
   public final static String FIELDS_TRANSIENT = "_fields";
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");
+
+  public static final String SETTINGS_YAML_FILE_PATH_PROPERTY = "com.readonlyrest.settings.file.path";
+  public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
+
   public static final String HEADER_GROUPS_AVAILABLE = "x-ror-available-groups";
   public static final String HEADER_GROUP_CURRENT = "x-ror-current-group";
   public static final String HEADER_USER_ROR = "x-ror-username";
   public static final String HEADER_KIBANA_HIDDEN_APPS = "x-ror-kibana-hidden-apps";
-
-  public static final String SETTINGS_YAML_FILE_PATH_PROPERTY = "com.readonlyrest.settings.file.path";
-  public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
   public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
   public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
   public static final String HEADER_USER_ORIGIN = "x-ror-origin";

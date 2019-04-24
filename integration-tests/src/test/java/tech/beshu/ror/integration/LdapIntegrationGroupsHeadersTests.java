@@ -22,18 +22,17 @@ import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
 import tech.beshu.ror.utils.containers.LdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
-import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
-import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
 
 import static org.junit.Assert.assertEquals;
-import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
+import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 
 public class LdapIntegrationGroupsHeadersTests {
 
@@ -54,10 +53,10 @@ public class LdapIntegrationGroupsHeadersTests {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
-          assertEquals("group1,group3,groupAll", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
-          assertEquals("cartman", getHeader(Constants.HEADER_USER_ROR,response));
-          assertEquals("group1", getHeader(Constants.HEADER_GROUP_CURRENT,response));
-          assertEquals(".kibana_group1", getHeader(Constants.HEADER_KIBANA_INDEX, response));
+          assertEquals("group1,group3,groupAll", getHeader("x-ror-available-groups", response));
+          assertEquals("cartman", getHeader("x-ror-username",response));
+          assertEquals("group1", getHeader("x-ror-current-group",response));
+          assertEquals(".kibana_group1", getHeader("x-ror-kibana_index", response));
           return null;
         },
         httpRequest -> {
@@ -70,14 +69,14 @@ public class LdapIntegrationGroupsHeadersTests {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",").join(response.getAllHeaders()));
-          assertEquals("group1,group3,groupAll", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
-          assertEquals("cartman", getHeader(Constants.HEADER_USER_ROR,response));
-          assertEquals("group1", getHeader(Constants.HEADER_GROUP_CURRENT,response));
-          assertEquals(".kibana_group1", getHeader(Constants.HEADER_KIBANA_INDEX, response));
+          assertEquals("group1,group3,groupAll", getHeader("x-ror-available-groups", response));
+          assertEquals("cartman", getHeader("x-ror-username",response));
+          assertEquals("group1", getHeader("x-ror-current-group",response));
+          assertEquals(".kibana_group1", getHeader("x-ror-kibana_index", response));
           return null;
         },
         httpRequest -> {
-          httpRequest.addHeader(Constants.HEADER_GROUP_CURRENT, "group1");
+          httpRequest.addHeader("x-ror-current-group", "group1");
           return null;
         });
   }
@@ -87,14 +86,14 @@ public class LdapIntegrationGroupsHeadersTests {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> {
           System.out.println("resp headers" + Joiner.on(",\n").join(response.getAllHeaders()));
-          assertEquals("group1,group3,groupAll", getHeader(Constants.HEADER_GROUPS_AVAILABLE, response));
-          assertEquals("cartman", getHeader(Constants.HEADER_USER_ROR,response));
-          assertEquals("group3", getHeader(Constants.HEADER_GROUP_CURRENT,response));
-          assertEquals(".kibana_group3", getHeader(Constants.HEADER_KIBANA_INDEX, response));
+          assertEquals("group1,group3,groupAll", getHeader("x-ror-available-groups", response));
+          assertEquals("cartman", getHeader("x-ror-username",response));
+          assertEquals("group3", getHeader("x-ror-current-group",response));
+          assertEquals(".kibana_group3", getHeader("x-ror-kibana_index", response));
           return null;
         },
         httpRequest -> {
-          httpRequest.addHeader(Constants.HEADER_GROUP_CURRENT, "group3");
+          httpRequest.addHeader("x-ror-current-group", "group3");
           return null;
         });
   }

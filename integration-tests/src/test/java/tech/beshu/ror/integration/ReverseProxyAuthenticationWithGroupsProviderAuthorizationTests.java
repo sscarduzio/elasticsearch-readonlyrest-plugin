@@ -22,11 +22,11 @@ import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.containers.WireMockContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
-import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
+import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 
 public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
 

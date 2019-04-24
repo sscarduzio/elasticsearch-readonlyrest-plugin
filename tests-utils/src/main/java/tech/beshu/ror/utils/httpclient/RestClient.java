@@ -35,7 +35,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContextBuilder;
-import tech.beshu.ror.utils.Tuple;
+import tech.beshu.ror.utils.misc.Tuple;
 
 import java.io.IOException;
 import java.net.URI;

@@ -30,7 +30,7 @@ import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
 import java.lang.reflect.Type;
 import java.time.Duration;

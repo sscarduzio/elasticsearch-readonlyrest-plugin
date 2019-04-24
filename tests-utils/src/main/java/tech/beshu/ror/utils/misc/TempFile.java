@@ -15,17 +15,29 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'corex'
-include 'tests-utils'
-include 'integration-tests'
-include 'es51x-experimental'
-include 'es52x-experimental'
-include 'es53x-experimental'
-include 'es60x-experimental'
-include 'es61x-experimental'
-include 'es63x-experimental'
-include 'es66x-experimental'
-include 'es70x-experimental'
+package tech.beshu.ror.utils.misc;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+
+public class TempFile {
+
+  public static File newFile(String prefix, String suffix, String content) throws IOException {
+    File tempFile = File.createTempFile(prefix, suffix);
+    tempFile.deleteOnExit();
+    BufferedWriter out = null;
+
+    try {
+      out = new BufferedWriter(new FileWriter(tempFile));
+      out.write(content);
+      out.flush();
+    } finally {
+      out.close();
+    }
+
+    return tempFile;
+  }
+}

@@ -26,7 +26,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.commons.Constants;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
@@ -60,12 +59,12 @@ public class LocalGroupsTest {
     );
 
     // Piggy back response headers testing (too long to spin up another multiContainerDependent)
-    assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
-    assertEquals(".kibana_user", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
-    assertEquals("timelion", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());
-    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue().toLowerCase());
-    assertEquals("testgroup", r.getHeaders(Constants.HEADER_GROUP_CURRENT)[0].getValue());
-    assertEquals("extra_group,foogroup,testgroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
+    assertEquals("user", r.getHeaders("x-ror-username")[0].getValue());
+    assertEquals(".kibana_user", r.getHeaders("x-ror-kibana_index")[0].getValue());
+    assertEquals("timelion", r.getHeaders("x-ror-kibana-hidden-apps")[0].getValue());
+    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue().toLowerCase());
+    assertEquals("testgroup", r.getHeaders("x-ror-current-group")[0].getValue());
+    assertEquals("extra_group,foogroup,testgroup", r.getHeaders("x-ror-available-groups")[0].getValue());
   }
 
   @Test
@@ -78,12 +77,12 @@ public class LocalGroupsTest {
     );
 
     // Piggy back response headers testing (too long to spin up another multiContainerDependent)
-    assertEquals("user", r.getHeaders(Constants.HEADER_USER_ROR)[0].getValue());
-    assertEquals(".kibana_foogroup", r.getHeaders(Constants.HEADER_KIBANA_INDEX)[0].getValue());
-    assertEquals("foo:app", r.getHeaders(Constants.HEADER_KIBANA_HIDDEN_APPS)[0].getValue());
-    assertEquals("admin", r.getHeaders(Constants.HEADER_KIBANA_ACCESS)[0].getValue().toLowerCase());
-    assertEquals("foogroup", r.getHeaders(Constants.HEADER_GROUP_CURRENT)[0].getValue());
-    assertEquals("extra_group,foogroup,testgroup", r.getHeaders(Constants.HEADER_GROUPS_AVAILABLE)[0].getValue());
+    assertEquals("user", r.getHeaders("x-ror-username")[0].getValue());
+    assertEquals(".kibana_foogroup", r.getHeaders("x-ror-kibana_index")[0].getValue());
+    assertEquals("foo:app", r.getHeaders("x-ror-kibana-hidden-apps")[0].getValue());
+    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue().toLowerCase());
+    assertEquals("foogroup", r.getHeaders("x-ror-current-group")[0].getValue());
+    assertEquals("extra_group,foogroup,testgroup", r.getHeaders("x-ror-available-groups")[0].getValue());
   }
 
   @Test
@@ -123,7 +122,7 @@ public class LocalGroupsTest {
   @Test
   public void testIdentityRetrieval() throws Exception {
 
-    HttpResponse response = mkRequest("user", "passwd", Constants.REST_METADATA_PATH);
+    HttpResponse response = mkRequest("user", "passwd", "/_readonlyrest/metadata/current_user");
     assertEquals(response.getStatusLine().getStatusCode(), 200);
     Type type = new TypeToken<Map<String, Object>>() {
     }.getType();
@@ -131,14 +130,14 @@ public class LocalGroupsTest {
     String body = EntityUtils.toString(response.getEntity());
     System.out.println("identity object: " + body);
     Map<String, Object> bodyMap = new Gson().fromJson(body, type);
-    assertEquals(".kibana_user", bodyMap.get(Constants.HEADER_KIBANA_INDEX));
-    assertEquals("user", bodyMap.get(Constants.HEADER_USER_ROR));
-    assertEquals("[timelion]", bodyMap.get(Constants.HEADER_KIBANA_HIDDEN_APPS).toString());
-    assertEquals("admin", bodyMap.get(Constants.HEADER_KIBANA_ACCESS).toString().toLowerCase());
-    assertEquals("testgroup", bodyMap.get(Constants.HEADER_GROUP_CURRENT));
-    assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("testgroup"));
-    assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("extra_group"));
-    assertTrue(bodyMap.get(Constants.HEADER_GROUPS_AVAILABLE).toString().contains("foogroup"));
+    assertEquals(".kibana_user", bodyMap.get("x-ror-kibana_index"));
+    assertEquals("user", bodyMap.get("x-ror-username"));
+    assertEquals("[timelion]", bodyMap.get("x-ror-kibana-hidden-apps").toString());
+    assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
+    assertEquals("testgroup", bodyMap.get("x-ror-current-group"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("testgroup"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("extra_group"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
 
   }
 
@@ -155,7 +154,7 @@ public class LocalGroupsTest {
     ));
 
     if (!Strings.isNullOrEmpty(preferredGroup)) {
-      req.setHeader(Constants.HEADER_GROUP_CURRENT, preferredGroup);
+      req.setHeader("x-ror-current-group", preferredGroup);
     }
     return rcl.execute(req);
   }

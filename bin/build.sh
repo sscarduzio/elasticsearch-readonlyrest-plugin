@@ -18,11 +18,6 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
     ./gradlew --stacktrace test ror
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
-    echo ">>> es66x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es66x' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es70x-experimental" ]]; then
     echo ">>> es70x-experimental => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es70x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -38,19 +33,9 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x-experimental" 
     ./gradlew integration-tests:test '-PesModule=es66x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
-      echo ">>> es63x => Running testcontainers.."
-      ./gradlew integration-tests:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
-  fi
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x-experimental" ]]; then
     echo ">>> es61x-experimental => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es61x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
-    echo ">>> es61x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es61x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x-experimental" ]]; then
@@ -58,19 +43,9 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x-experimental" 
     ./gradlew integration-tests:test '-PesModule=es60x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
-    echo ">>> es60x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es60x' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x-experimental" ]]; then
     echo ">>> es53x-experimental => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es53x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x" ]]; then
-    echo ">>> es53x => Running testcontainers.."
-    ./gradlew  integration-tests:test '-PesModule=es53x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x-experimental" ]]; then
@@ -78,21 +53,10 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x-experimental" 
     ./gradlew integration-tests:test '-PesModule=es52x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x" ]]; then
-    echo ">>> es52x => Running testcontainers.."
-    ./gradlew  integration-tests:test '-PesModule=es52x' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x-experimental" ]]; then
     echo ">>> es51x-experimental => Running testcontainers.."1
     ./gradlew integration-tests:test '-PesModule=es51x-experimental' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x" ]]; then
-    echo ">>> es51x => Running testcontainers.."
-    ./gradlew  integration-tests:test '-PesModule=es51x' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
 
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
     echo ">>> won't try to create builds because this is a PR"
@@ -190,13 +154,5 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
     ./gradlew --stacktrace es51x:ror '-PesVersion=5.1.1'
     #./gradlew --stacktrace es51x:ror '-PesVersion=5.1.2'
 
-    # es23x
-    ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.0'
-    ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.1'
-    #./gradlew --stacktrace es23x:ror '-PesVersion=2.4.2'
-    #./gradlew --stacktrace es23x:ror '-PesVersion=2.4.3'
-    ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.4'
-    ./gradlew --stacktrace es23x:ror '-PesVersion=2.4.5'
-    #./gradlew --stacktrace es23x:ror '-PesVersion=2.4.6'
 
 fi

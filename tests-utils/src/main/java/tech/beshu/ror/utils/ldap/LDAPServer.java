@@ -1,3 +1,5 @@
+package tech.beshu.ror.utils.ldap;
+
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -15,17 +17,20 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'corex'
-include 'tests-utils'
-include 'integration-tests'
-include 'es51x-experimental'
-include 'es52x-experimental'
-include 'es53x-experimental'
-include 'es60x-experimental'
-include 'es61x-experimental'
-include 'es63x-experimental'
-include 'es66x-experimental'
-include 'es70x-experimental'
+import tech.beshu.ror.utils.containers.LdapContainer;
+
+/**
+ * This is really useful when you want to stand up a LDAP server for manual tests
+ */
+public class LDAPServer {
+  public static void main(String[] args) throws InterruptedException {
+    String ldifFile = System.getProperty("config", "/ldap_integration_group_headers/ldap.ldif");
+    System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
+    LdapContainer lc = LdapContainer.create(ldifFile);
+    lc.start();
+    System.out.println(lc.getLdapHost() + " " + lc.getLdapPort());
+    while(true){
+      Thread.sleep(Long.MAX_VALUE);
+    }
+  }
+}

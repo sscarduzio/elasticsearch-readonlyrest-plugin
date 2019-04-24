@@ -14,18 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.utils.assertions;
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'corex'
-include 'tests-utils'
-include 'integration-tests'
-include 'es51x-experimental'
-include 'es52x-experimental'
-include 'es53x-experimental'
-include 'es60x-experimental'
-include 'es61x-experimental'
-include 'es63x-experimental'
-include 'es66x-experimental'
-include 'es70x-experimental'
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
+
+import java.time.Duration;
+import java.util.concurrent.Callable;
+import java.util.function.Predicate;
+
+public class EnhancedAssertion {
+
+  public static void assertNAttempts(Integer n, Callable<Void> action) {
+    RetryPolicy<Void> retryPolicy = new RetryPolicy<Void>()
+        .handleIf(assertionFails())
+        .withMaxRetries(n)
+        .withDelay(Duration.ofMillis(200));
+    Failsafe.with(retryPolicy).get(action::call);
+  }
+
+  private static Predicate<Throwable> assertionFails() {
+    return throwable -> throwable instanceof AssertionError;
+  }
+}
