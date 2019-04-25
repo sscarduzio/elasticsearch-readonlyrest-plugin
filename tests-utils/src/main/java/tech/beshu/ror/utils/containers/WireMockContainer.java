@@ -28,8 +28,6 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -88,7 +86,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
           RestClient client = getClient();
           return client.execute(new HttpGet(client.from("/__admin/")))
                        .getStatusLine().getStatusCode() == 200;
-        } catch (IOException | URISyntaxException e) {
+        } catch (Exception e) {
           return false;
         }
       }

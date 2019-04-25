@@ -59,9 +59,7 @@ public class LdapIntegrationGroupsHeadersTests {
           assertEquals(".kibana_group1", getHeader("x-ror-kibana_index", response));
           return null;
         },
-        httpRequest -> {
-          return null;
-        });
+        httpRequest -> null);
   }
 
   @Test

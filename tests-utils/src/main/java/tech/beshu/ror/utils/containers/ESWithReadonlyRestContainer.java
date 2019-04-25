@@ -36,8 +36,6 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -215,7 +213,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               }
           );
           return "green".equals(healthJson.get("status"));
-        } catch (IOException | URISyntaxException e) {
+        } catch (Exception e) {
           return false;
         }
       }
