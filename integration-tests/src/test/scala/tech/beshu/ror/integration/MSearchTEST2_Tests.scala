@@ -15,8 +15,6 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{TempFile, Tuple}
 
-import scala.util.Try
-
 @RunWith(classOf[BlockJUnit4ClassRunner])
 class MSearchTEST2_Tests {
   import MSearchTEST2_Tests._

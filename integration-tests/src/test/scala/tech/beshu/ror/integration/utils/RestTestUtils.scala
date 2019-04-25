@@ -9,8 +9,6 @@ import org.testcontainers.shaded.com.google.common.net.HostAndPort
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
 
-import scala.util.Try
-
 class RestTestUtils(restClient: RestClient, endpoint: HostAndPort) {
   val url = restClient.from("").toASCIIString
 
