@@ -9,7 +9,7 @@
     <logger name="org.testcontainers" level="DEBUG"/>
     <logger name="com.github.dockerjava" level="WARN"/>
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
 

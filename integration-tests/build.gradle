@@ -51,7 +51,6 @@ dependencies {
     testCompile group: 'com.jayway.jsonpath',           name: 'json-path',                  version: '2.2.0'
     testCompile group: 'com.mashape.unirest',           name: 'unirest-java',               version: '1.4.9'
     testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
-    testCompile group: 'org.gradle',                    name: 'gradle-tooling-api:',        version: '4.10.2'
 
 }
 
