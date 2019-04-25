@@ -9,6 +9,8 @@ import org.testcontainers.shaded.com.google.common.net.HostAndPort
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
 
+import scala.util.Try
+
 class RestTestUtils(restClient: RestClient, endpoint: HostAndPort) {
   val url = restClient.from("").toASCIIString
 
@@ -54,7 +56,11 @@ class RestTestUtils(restClient: RestClient, endpoint: HostAndPort) {
     val resp = req.body(body).asString()
     println("MSEARCH RESPONSE: " + resp.getBody)
     assertEquals(200, resp.getStatus)
-    JsonPath.parse(resp.getBody).read("$.responses[*].hits.total").toString
+
+    val jsonPath = JsonPath.parse(resp.getBody)
+    val result = jsonPath.read("$.responses[*].hits.total.value").toString
+    if(result == "[]") jsonPath.read("$.responses[*].hits.total").toString
+    else result
   }
 
 }
