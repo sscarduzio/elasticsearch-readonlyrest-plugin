@@ -107,7 +107,10 @@ object MSearchTEST2_Tests {
       .asString()
     System.out.println("MSEARCH RESPONSE: " + resp.getBody)
     assertEquals(200, resp.getStatus)
-    JsonPath.parse(resp.getBody).read("$.responses[*].hits.total").toString
+    val jsonPath = JsonPath.parse(resp.getBody)
+    val result = jsonPath.read("$.responses[*].hits.total.value").toString
+    if(result == "[]") jsonPath.read("$.responses[*].hits.total").toString
+    else result
   }
 
   var url: String = null
