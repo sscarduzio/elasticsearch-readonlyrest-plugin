@@ -16,30 +16,23 @@
  */
 package tech.beshu.ror.configuration;
 
-import com.google.common.collect.ImmutableMap;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.settings.BlockSettings;
-import tech.beshu.ror.settings.RorSettings;
-import tech.beshu.ror.settings.definitions.ExternalAuthenticationServiceSettingsCollection;
-import tech.beshu.ror.settings.definitions.LdapSettingsCollection;
-import tech.beshu.ror.settings.definitions.ProxyAuthDefinitionSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserGroupsProviderSettingsCollection;
-import tech.beshu.ror.settings.definitions.UserSettingsCollection;
+import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableMap;
+import tech.beshu.ror.settings.BasicSettings;
 
 import java.util.Map;
 
-public abstract class AllowedSettings {
+// todo: refactor
+public class AllowedSettings {
 
   public static Map<String, SettingType> list() {
     String prefix = RorSettings.ATTRIBUTE_NAME + ".";
     String sslPrefix = prefix + "ssl" + ".";
-    String rule_prefix = prefix + BlockSettings.ATTRIBUTE_NAME + ".";
-    String users_prefix = prefix + UserSettingsCollection.ATTRIBUTE_NAME + ".";
-    String ldaps_prefix = prefix + LdapSettingsCollection.ATTRIBUTE_NAME + ".";
-    String proxy_auth_configs_prefix = prefix + ProxyAuthDefinitionSettingsCollection.ATTRIBUTE_NAME + ".";
-    String user_groups_providers_prefix = prefix + UserGroupsProviderSettingsCollection.ATTRIBUTE_NAME + ".";
-    String external_authentication_service_configs_prefix =
-      prefix + ExternalAuthenticationServiceSettingsCollection.ATTRIBUTE_NAME + ".";
+    String rule_prefix = prefix + "access_control_rules.";
+    String users_prefix = prefix + "users.";
+    String ldaps_prefix = prefix + "ldaps.";
+    String proxy_auth_configs_prefix = prefix + "proxy_auth_configs.";
+    String user_groups_providers_prefix = prefix + "user_groups_providers.";
+    String external_authentication_service_configs_prefix = "external_authentication_service_configs.";
 
     return ImmutableMap.<String, SettingType>builder()
 

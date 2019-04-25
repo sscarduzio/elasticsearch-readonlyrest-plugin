@@ -44,8 +44,8 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.acl.blocks.rules.impl.FieldsSyncRule;
-import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.Constants;
+import tech.beshu.ror.utils.MatcherWithWildcardsAndNegations;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -58,11 +58,11 @@ import java.util.stream.StreamSupport;
 public class DocumentFieldReader extends FilterLeafReader {
   static protected final Logger logger = Loggers.getLogger(DocumentFieldReader.class, new String[0]);
   private final FieldInfos remainingFieldsInfo;
-  private FieldsSyncRule.FieldPolicy policy;
+  private FieldPolicy policy;
 
   private DocumentFieldReader(LeafReader reader, Set<String> fields) {
     super(reader);
-    this.policy = new FieldsSyncRule.FieldPolicy(fields);
+    this.policy = new FieldPolicy(fields);
     FieldInfos fInfos = in.getFieldInfos();
     Set<String> baseFields = new HashSet<>(fInfos.size());
     for (FieldInfo f : fInfos) {
@@ -285,6 +285,30 @@ public class DocumentFieldReader extends FilterLeafReader {
     @Override
     public CacheHelper getReaderCacheHelper() {
       return this.in.getReaderCacheHelper();
+    }
+
+  }
+
+  /**
+   * The decisions about what field to keep are taken in a ES branch independent place
+   */
+  public static class FieldPolicy {
+    private final MatcherWithWildcardsAndNegations fieldsMatcher;
+
+    public FieldPolicy(Set<String> fields) {
+
+      this.fieldsMatcher = new MatcherWithWildcardsAndNegations(fields);
+    }
+
+    public boolean canKeep(String field) {
+      int indexOfDot = field.lastIndexOf('.');
+      if(indexOfDot > 0){
+        field = field.substring(0, indexOfDot);
+      }
+      if (Constants.FIELDS_ALWAYS_ALLOW.contains(field)) {
+        return true;
+      }
+      return fieldsMatcher.match(field);
     }
 
   }

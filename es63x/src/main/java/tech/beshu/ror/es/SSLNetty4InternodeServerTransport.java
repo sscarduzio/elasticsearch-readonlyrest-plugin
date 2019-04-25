@@ -38,9 +38,9 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
-import tech.beshu.ror.commons.SSLCertParser;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.SSLCertParser;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 import javax.net.ssl.SSLEngine;
 import java.io.ByteArrayInputStream;
@@ -68,7 +68,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
 
-    return new Netty4Transport.ClientChannelInitializer() {
+    return new ClientChannelInitializer() {
 
       @Override
       protected void initChannel(Channel ch) throws Exception {

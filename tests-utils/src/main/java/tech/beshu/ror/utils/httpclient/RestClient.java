@@ -35,7 +35,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContextBuilder;
-import tech.beshu.ror.utils.Tuple;
+import tech.beshu.ror.utils.misc.Tuple;
 
 import java.io.IOException;
 import java.net.URI;
@@ -121,8 +121,12 @@ public class RestClient {
     return port;
   }
 
-  public URI from(String path) throws URISyntaxException {
-    return from(path, Maps.newHashMap());
+  public URI from(String path) {
+    try {
+      return from(path, Maps.newHashMap());
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public URI from(String path, Map<String, String> queryParams) throws URISyntaxException {
@@ -143,8 +147,12 @@ public class RestClient {
 
   }
 
-  public CloseableHttpResponse execute(HttpUriRequest req) throws IOException {
-    return underlying.execute(req);
+  public CloseableHttpResponse execute(HttpUriRequest req) {
+    try {
+      return underlying.execute(req);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }

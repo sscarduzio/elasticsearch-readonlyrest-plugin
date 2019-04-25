@@ -57,14 +57,14 @@ import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.Transport;
 import org.elasticsearch.watcher.ResourceWatcherService;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -83,18 +83,17 @@ public class ReadonlyRestPlugin extends Plugin
 
   private final Settings settings;
   private final LoggerShim logger;
-  private final BasicSettings basicSettings;
-
   private IndexLevelActionFilter ilaf;
   private SettingsObservableImpl settingsObservable;
   private Environment environment;
+  private final BasicSettings basicSettings;
 
   @Inject
   public ReadonlyRestPlugin(Settings s, Path p) {
     this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
     basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
@@ -102,26 +101,13 @@ public class ReadonlyRestPlugin extends Plugin
   public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService,
       ScriptService scriptService, NamedXContentRegistry xContentRegistry, Environment environment, NodeEnvironment nodeEnvironment,
       NamedWriteableRegistry namedWriteableRegistry) {
-
-
     final List<Object> components = new ArrayList<>(3);
 
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      try {
-        System.clearProperty(Constants.PROP_HAS_REMOTE_CLUSTERS);
-        if (!clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty()) {
-          System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, "yes");
-        }
-      } catch (Exception e) {
-        logger.warn("could not check if had remote ES clusters: " + e.getMessage());
-        if(logger.isDebugEnabled()){
-          e.printStackTrace();
-        }
-      }
       this.environment = environment;
       settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
+      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, hasRemoteClusters(clusterService));
       components.add(settingsObservable);
       return null;
     });
@@ -235,6 +221,19 @@ public class ReadonlyRestPlugin extends Plugin
       ThreadRepo.channel.set(channel);
       restHandler.handleRequest(request, channel, client);
     };
+  }
+
+  private boolean hasRemoteClusters(ClusterService clusterService) {
+    try {
+      return !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
+    } catch (Exception ex) {
+      if(logger.isDebugEnabled()) {
+        logger.warn("could not check if had remote ES clusters", ex);
+      } else {
+        logger.warn("could not check if had remote ES clusters: " + ex.getMessage());
+      }
+      return false;
+    }
   }
 
 }

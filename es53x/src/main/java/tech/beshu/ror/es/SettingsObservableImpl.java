@@ -35,11 +35,11 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.env.Environment;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.commons.settings.SettingsObservable;
-import tech.beshu.ror.commons.settings.SettingsUtils;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.RawSettings;
+import tech.beshu.ror.settings.SettingsObservable;
+import tech.beshu.ror.settings.SettingsUtils;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 /**
  * Created by sscarduzio on 25/06/2017.

@@ -1,10 +1,4 @@
-group = 'org.elasticsearch.plugin'
-version = pluginVersion
-
 buildscript {
-    ext {
-        pluginVersion = rootProject.properties['pluginVersion']
-    }
     repositories {
         mavenLocal()
         mavenCentral()
@@ -26,19 +20,16 @@ repositories {
 }
 
 dependencies {
-    compile 'com.google.guava:guava:21.0'
-    compile 'org.apache.httpcomponents:httpclient:4.5.2'
-    compile 'org.gradle:gradle-tooling-api:4.10.2'
-    compile 'com.unboundid:unboundid-ldapsdk:3.2.0'
-    //compile 'com.github.testcontainers.testcontainers-java:testcontainers:master-SNAPSHOT'
-    compile 'org.testcontainers:testcontainers:1.10.1'
-    compile 'org.apache.logging.log4j:log4j-core:2.11.1'
-    // compile 'org.apache.logging.log4j:log4j-core:4.10.3'
-    // compile 'log4j:log4j:1.2.17'
-    compile 'org.slf4j:slf4j-nop:1.7.25'
-    compile 'commons-lang:commons-lang:2.6'
-    compile 'commons-io:commons-io:2.6'
-
+    compile group: 'com.google.code.gson',           name: 'gson',                version: '2.8.2'
+    compile group: 'com.google.guava',               name: 'guava',               version: '21.0'
+    compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',   version: '3.2.0'
+    compile group: 'commons-io',                     name: 'commons-io',          version: '2.6'
+    compile group: 'commons-lang',                   name: 'commons-lang',        version: '2.6'
+    compile group: 'net.jodah',                      name: 'failsafe',            version: '2.0.1'
+    compile group: 'org.apache.httpcomponents',      name: 'httpclient',          version: '4.5.2'
+    compile group: 'org.gradle',                     name: 'gradle-tooling-api',  version: '4.10.2'
+    compile group: 'org.testcontainers',             name: 'testcontainers',      version: '1.10.1'
+    compile group: 'org.apache.logging.log4j',       name: 'log4j-core',          version: '2.11.1'
 }
 
 license {

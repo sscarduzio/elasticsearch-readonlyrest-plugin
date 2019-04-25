@@ -31,23 +31,24 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.settings.BasicSettings;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_ITEMS;
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_KB;
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_RETRIES;
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_SECONDS;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_ITEMS;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_KB;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_RETRIES;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
 
 /**
  * Created by sscarduzio on 14/06/2017.
  */
 
-@Singleton public class AuditSinkImpl {
+@Singleton
+public class AuditSinkImpl {
 
   private static final Logger logger = LogManager.getLogger(AuditSinkImpl.class);
   private final BulkProcessor bulkProcessor;
@@ -62,31 +63,45 @@ import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_SECONDS;
       return;
     }
 
-    this.bulkProcessor = BulkProcessor.builder(client, new BulkProcessor.Listener() {
-      @Override
-      public void beforeBulk(long executionId, BulkRequest request) {
-        logger.debug("Flushing " + request.numberOfActions() + " bulk actions..");
-      }
+    this.bulkProcessor = BulkProcessor.builder(
+        client,
+        new BulkProcessor.Listener() {
+          @Override
+          public void beforeBulk(long executionId,
+              BulkRequest request) {
+            logger.debug("Flushing " + request.numberOfActions() + " bulk actions..");
+          }
 
-      @Override
-      public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
-        if (response.hasFailures()) {
-          logger.error("Some failures flushing the BulkProcessor: ");
-          Arrays.stream(response.getItems()).filter(r -> r.isFailed()).map(r -> r.getFailureMessage()).collect(
-              Collectors.groupingBy(Function.identity(), Collectors.counting())).forEach(
-              (message, times) -> logger.error(times + "x: " + message));
+          @Override
+          public void afterBulk(long executionId,
+              BulkRequest request,
+              BulkResponse response) {
+            if (response.hasFailures()) {
+              logger.error("Some failures flushing the BulkProcessor: ");
+              Arrays.stream(response.getItems())
+                    .filter(r -> r.isFailed())
+                    .map(r -> r.getFailureMessage())
+                    .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                    .forEach((message, times) -> logger.error(times + "x: " + message));
+            }
+          }
+
+          @Override
+          public void afterBulk(long executionId,
+              BulkRequest request,
+              Throwable failure) {
+            logger.error("Failed flushing the BulkProcessor: " + failure.getMessage());
+            failure.printStackTrace();
+          }
         }
-      }
-
-      @Override
-      public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
-        logger.error("Failed flushing the BulkProcessor: " + failure.getMessage());
-        failure.printStackTrace();
-      }
-    }).setBulkActions(AUDIT_SINK_MAX_ITEMS).setBulkSize(
-        new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB)).setFlushInterval(
-        TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS)).setConcurrentRequests(1).setBackoffPolicy(
-        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES)).build();
+    )
+                                      .setBulkActions(AUDIT_SINK_MAX_ITEMS)
+                                      .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
+                                      .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
+                                      .setConcurrentRequests(1)
+                                      .setBackoffPolicy(
+                                          BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
+                                      .build();
   }
 
   public void submit(String indexName, String documentId, String jsonRecord) {
@@ -94,7 +109,14 @@ import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_SECONDS;
       return;
     }
 
-    IndexRequest ir = new IndexRequest(indexName, "ror_audit_evt", documentId).source(jsonRecord, XContentType.JSON);
+    IndexRequest ir = new IndexRequest(
+        indexName,
+        "ror_audit_evt",
+        documentId
+    ).source(
+        jsonRecord,
+        XContentType.JSON
+    );
     bulkProcessor.add(ir);
   }
 

@@ -42,11 +42,11 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexSearcherWrapper;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.utils.FilterTransient;
+import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.ESContextImpl;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.utils.FilterTransient;
 
 import java.io.IOException;
 import java.util.Set;
@@ -79,13 +79,12 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   @Override
   protected DirectoryReader wrap(DirectoryReader reader) {
     if (!this.enabled) {
-      logger.debug("Document filtering not available. Return defaut reader");
+      logger.debug("Document filtering not available. Return default reader");
       return reader;
     }
-
     // Field level security (FLS)
     try {
-      String fieldsHeader = threadContext.getHeader(Constants.FIELDS_TRANSIENT);
+      String fieldsHeader = threadContext.getTransient(Constants.FIELDS_TRANSIENT);
       Set<String> fields = Strings.isNullOrEmpty(fieldsHeader) ?
           null :
           Sets.newHashSet(fieldsHeader.split(",")).stream().map(String::trim).collect(Collectors.toSet());
@@ -97,7 +96,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     }
 
     // Document level security (DLS)
-    FilterTransient filterTransient = FilterTransient.deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
+    FilterTransient filterTransient = FilterTransient.deserialize(threadContext.getTransient(Constants.FILTER_TRANSIENT));
     if (filterTransient == null) {
       logger.trace("filterTransient not found from threadContext.");
       return reader;

@@ -20,24 +20,17 @@ package tech.beshu.ror.es;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
-import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.AbstractESContext;
-import tech.beshu.ror.commons.shims.es.ESVersion;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.AbstractESContext;
+import tech.beshu.ror.shims.es.ESVersion;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 public class ESContextImpl extends AbstractESContext {
-  private static AuditSinkImpl auditSink;
+
   private final BasicSettings settings;
 
-  public ESContextImpl(Client client, BasicSettings settings) {
-    if (auditSink != null) {
-      auditSink.stop();
-    }
-    if (settings.isAuditorCollectorEnabled()) {
-      auditSink = new AuditSinkImpl(client, settings);
-    }
+  public ESContextImpl(BasicSettings settings) {
     this.settings = settings;
   }
 
@@ -101,10 +94,6 @@ public class ESContextImpl extends AbstractESContext {
   @Override
   public ESVersion getVersion() {
     return new ESVersion(Version.CURRENT.id);
-  }
-
-  public void submit(String indexName, String documentId, String jsonRecord) {
-    auditSink.submit(indexName, documentId, jsonRecord);
   }
 
   @Override

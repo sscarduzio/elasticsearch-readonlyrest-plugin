@@ -31,22 +31,21 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.commons.settings.BasicSettings;
+import tech.beshu.ror.settings.BasicSettings;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_ITEMS;
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_KB;
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_RETRIES;
-import static tech.beshu.ror.commons.Constants.AUDIT_SINK_MAX_SECONDS;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_ITEMS;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_KB;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_RETRIES;
+import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
 
 /**
  * Created by sscarduzio on 14/06/2017.
  */
-
 @Singleton
 public class AuditSinkImpl {
 

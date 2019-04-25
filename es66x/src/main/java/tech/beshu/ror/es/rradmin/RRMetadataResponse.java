@@ -24,48 +24,55 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.requestcontext.RequestContext;
+import scala.collection.JavaConverters$;
+import tech.beshu.ror.Constants;
+import tech.beshu.ror.acl.blocks.BlockContext;
+import tech.beshu.ror.acl.domain;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 
 public class RRMetadataResponse extends ActionResponse implements ToXContentObject {
 
-  private RequestContext requestContext;
-  private Throwable throwable;
+  private BlockContext blockContext;
 
-  public RRMetadataResponse(RequestContext requestContext) {
-    this.requestContext = requestContext;
-  }
-
-  public RRMetadataResponse(Throwable t) {
-    this.throwable = t;
-  }
-
-  @Override
-  public void writeTo(StreamOutput out) throws IOException {
-    super.writeTo(out);
-  }
-
-  @Override
-  public void readFrom(StreamInput in) throws IOException {
-    super.readFrom(in);
+  public RRMetadataResponse(BlockContext blockContext) {
+    this.blockContext = blockContext;
   }
 
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
     Map<String, Object> sourceMap = Maps.newHashMap();
 
-    requestContext.getResponseHeaders().forEach((k,v) -> sourceMap.put(k,v));
+    Set<domain.Header> headers = JavaConverters$.MODULE$.<domain.Header>setAsJavaSet(blockContext.responseHeaders());
+    headers.forEach(h -> sourceMap.put(h.name().value().toString(), h.value().toString()));
 
-    requestContext.getLoggedInUser().ifPresent(u -> {
-      sourceMap.put(Constants.HEADER_USER_ROR, u.getId());
-      sourceMap.put(Constants.HEADER_GROUP_CURRENT, u.getCurrentGroup().orElse(null));
-      sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, u.getAvailableGroups());
+    blockContext.loggedUser().foreach(u -> {
+      sourceMap.put(Constants.HEADER_USER_ROR, u.id().value());
+      return null;
     });
 
-    String hiddenAppsStr = requestContext.getResponseHeaders().get(Constants.HEADER_KIBANA_HIDDEN_APPS);
+    blockContext.currentGroup().foreach(g -> {
+      sourceMap.put(Constants.HEADER_GROUP_CURRENT, g.value().toString());
+      return null;
+    });
+
+    blockContext.kibanaIndex().foreach(i -> {
+      sourceMap.put(Constants.HEADER_KIBANA_INDEX, i.value());
+      return null;
+    });
+
+    if (!blockContext.availableGroups().isEmpty()) {
+      String[] availableGroups = JavaConverters$.MODULE$.<domain.Group>setAsJavaSet(
+          blockContext.availableGroups()).stream().map(g -> g.value().toString()).toArray(String[]::new);
+      sourceMap.put(Constants.HEADER_GROUPS_AVAILABLE, availableGroups);
+    }
+
+    String hiddenAppsStr = headers.stream().filter(
+        h -> Constants.HEADER_KIBANA_HIDDEN_APPS.equals(h.name().value().toString())).findFirst().map(
+        h -> h.value().toString()).orElse(null);
+
     String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");
     sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
 

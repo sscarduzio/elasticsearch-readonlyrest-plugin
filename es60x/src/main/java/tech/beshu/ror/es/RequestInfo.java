@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
@@ -44,21 +43,21 @@ import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
 import org.elasticsearch.cluster.metadata.AliasOrIndex;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.util.ArrayUtils;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.reflections.ReflectionUtils;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.shims.request.RequestInfoShim;
-import tech.beshu.ror.commons.utils.RCUtils;
-import tech.beshu.ror.commons.utils.ReflecUtils;
+import tech.beshu.ror.shims.es.ESContext;
+import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.request.RequestInfoShim;
+import tech.beshu.ror.utils.RCUtils;
+import tech.beshu.ror.utils.ReflecUtils;
 
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
@@ -73,8 +72,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.commons.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
-import static tech.beshu.ror.commons.utils.ReflecUtils.invokeMethodCached;
+import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+import static tech.beshu.ror.utils.ReflecUtils.invokeMethodCached;
 
 public class RequestInfo implements RequestInfoShim {
 
@@ -84,7 +83,7 @@ public class RequestInfo implements RequestInfoShim {
   private final String id;
   private final ClusterService clusterService;
   private final Long taskId;
-  private final IndexNameExpressionResolver indexResolver;
+  private final Boolean hasRemoteClusters;
   private final ThreadPool threadPool;
   private final LoggerShim logger;
   private final RestChannel channel;
@@ -94,7 +93,7 @@ public class RequestInfo implements RequestInfoShim {
 
   RequestInfo(
       RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool, ESContext context, IndexNameExpressionResolver indexResolver) {
+      ClusterService clusterService, ThreadPool threadPool, ESContext context, Boolean hasRemoteClusters) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -103,8 +102,8 @@ public class RequestInfo implements RequestInfoShim {
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
-    this.indexResolver = indexResolver;
     this.taskId = taskId;
+    this.hasRemoteClusters = hasRemoteClusters;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     if (taskId != null) {
       this.id = tmpID + "#" + taskId;
@@ -600,17 +599,14 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
-  public void writeToThreadContextHeader(String key, String value) {
-    threadPool.getThreadContext().putTransient(key, value);
+  public void writeToThreadContextHeaders(Map<String, String> hMap) {
+    ThreadContext threadContext = threadPool.getThreadContext();
+    hMap.keySet().forEach(k -> threadContext.putTransient(k, hMap.get(k)));
   }
 
   @Override
-  public String consumeThreadContextHeader(String key) {
-    String value = threadPool.getThreadContext().getTransient(key);
-    if (!Strings.isNullOrEmpty(value)) {
-      threadPool.getThreadContext().putTransient(key, null);
-    }
-    return value;
+  public boolean extractHasRemoteClusters() {
+    return hasRemoteClusters;
   }
 
 }

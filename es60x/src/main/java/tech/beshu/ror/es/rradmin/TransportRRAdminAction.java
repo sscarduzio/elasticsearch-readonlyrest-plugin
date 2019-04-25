@@ -21,38 +21,33 @@ import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureC
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.HandledTransportAction;
-import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
-import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.commons.settings.SettingsUtils;
 import tech.beshu.ror.es.ResponseActionListener;
 import tech.beshu.ror.es.SettingsObservableImpl;
+import tech.beshu.ror.settings.RawSettings;
+import tech.beshu.ror.settings.SettingsUtils;
 
-import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_FILE_PATH;
-import static tech.beshu.ror.commons.Constants.REST_CONFIGURATION_PATH;
-import static tech.beshu.ror.commons.Constants.REST_METADATA_PATH;
-import static tech.beshu.ror.commons.Constants.REST_REFRESH_PATH;
+import static tech.beshu.ror.Constants.REST_CONFIGURATION_FILE_PATH;
+import static tech.beshu.ror.Constants.REST_CONFIGURATION_PATH;
+import static tech.beshu.ror.Constants.REST_METADATA_PATH;
+import static tech.beshu.ror.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-  private final NodeClient client;
   private final SettingsObservableImpl settingsObservable;
-
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
-                                ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-                                NodeClient client, SettingsObservableImpl settingsObservable) {
+      ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
+      SettingsObservableImpl settingsObservable) {
     super(settings, RRAdminAction.NAME, threadPool, transportService, actionFilters, indexNameExpressionResolver,
           RRAdminRequest::new
     );
-    this.client = client;
     this.settingsObservable = settingsObservable;
-
   }
 
   private String normalisePath(String s) {

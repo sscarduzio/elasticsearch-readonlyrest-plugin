@@ -41,11 +41,11 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexSearcherWrapper;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.commons.utils.FilterTransient;
+import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.ESContextImpl;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.utils.FilterTransient;
 
 import java.io.IOException;
 import java.util.Set;
@@ -77,9 +77,10 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
 
   @Override
   protected DirectoryReader wrap(DirectoryReader reader) {
+    DirectoryReader aReader = reader;
     if (!this.enabled) {
       logger.warn("Document filtering not available. Return defaut reader");
-      return reader;
+      return aReader;
     }
 
     // Field level security (FLS)
@@ -89,7 +90,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
           null :
           Sets.newHashSet(fieldsHeader.split(",")).stream().map(String::trim).collect(Collectors.toSet());
       if (fields != null) {
-        reader = DocumentFieldReader.wrap(reader, fields);
+        aReader = DocumentFieldReader.wrap(aReader, fields);
       }
     } catch (IOException e) {
       throw new IllegalStateException("Couldn't extract FLS fields from threadContext.", e);
@@ -99,18 +100,18 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     FilterTransient filterTransient = FilterTransient.deserialize(threadContext.getTransient(Constants.FILTER_TRANSIENT));
     if (filterTransient == null) {
       logger.debug("Couldn't extract filterTransient from threadContext.");
-      return reader;
+      return aReader;
     }
 
-    ShardId shardId = ShardUtils.extractShardId(reader);
+    ShardId shardId = ShardUtils.extractShardId(aReader);
     if (shardId == null) {
       throw new IllegalStateException(
-          LoggerMessageFormat.format("Couldn't extract shardId from reader [{}]", new Object[] { reader }));
+          LoggerMessageFormat.format("Couldn't extract shardId from reader [{}]", new Object[] { aReader }));
     }
     String filter = filterTransient.getFilter();
 
     if (filter == null || filter.equals("")) {
-      return reader;
+      return aReader;
     }
 
     try {
@@ -121,7 +122,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       QueryBuilder queryBuilder = queryShardContext.parseInnerQueryBuilder(parser);
       ParsedQuery parsedQuery = queryShardContext.toFilter(queryBuilder);
       boolQuery.add(parsedQuery.query(), BooleanClause.Occur.SHOULD);
-      DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
+      DirectoryReader wrappedReader = DocumentFilterReader.wrap(aReader, new ConstantScoreQuery(boolQuery.build()));
       return wrappedReader;
     } catch (IOException e) {
       this.logger.error("Unable to setup document security");

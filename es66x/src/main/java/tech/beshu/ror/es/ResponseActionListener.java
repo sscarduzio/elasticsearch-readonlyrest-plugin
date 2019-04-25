@@ -17,41 +17,31 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.base.Strings;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import tech.beshu.ror.commons.Constants;
+import tech.beshu.ror.acl.blocks.BlockContext;
+import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.es.rradmin.RRMetadataResponse;
-import tech.beshu.ror.requestcontext.RequestContext;
 
 public class ResponseActionListener implements ActionListener<ActionResponse> {
-  private final String action;
   private final ActionListener<ActionResponse> baseListener;
-  private final ActionRequest request;
   private final RequestContext requestContext;
-  private final Logger logger;
+  private final BlockContext blockContext;
 
-  ResponseActionListener(String action, ActionRequest request,
-      ActionListener<ActionResponse> baseListener,
-      RequestContext requestContext, Logger logger) {
-    this.action = action;
-    this.logger = logger;
-    this.request = request;
+  ResponseActionListener(ActionListener<ActionResponse> baseListener, RequestContext requestContext,
+      BlockContext blockContext) {
     this.baseListener = baseListener;
     this.requestContext = requestContext;
+    this.blockContext = blockContext;
   }
 
   @Override
   public void onResponse(ActionResponse actionResponse) {
-    String uri = requestContext.getUri();
-    if (!Strings.isNullOrEmpty(uri) && uri.startsWith(Constants.REST_METADATA_PATH)) {
-      baseListener.onResponse(new RRMetadataResponse(requestContext));
-      return;
+    if (requestContext.uriPath().isRestMetadataPath()) {
+      baseListener.onResponse(new RRMetadataResponse(blockContext));
+    } else {
+      baseListener.onResponse(actionResponse);
     }
-
-    baseListener.onResponse(actionResponse);
   }
 
   @Override

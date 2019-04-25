@@ -17,21 +17,18 @@
 
 package tech.beshu.ror.integration;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.integration.utils.DocumentManager;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
+import tech.beshu.ror.utils.elasticsearch.DocumentManager;
+import tech.beshu.ror.utils.elasticsearch.SearchManager;
+import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
-import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static tech.beshu.ror.integration.utils.EnhancedAssertion.assertNAttempts;
+import static tech.beshu.ror.utils.assertions.EnhancedAssertion.assertNAttempts;
 
 public class IndicesAliasesTests {
 
@@ -47,29 +44,35 @@ public class IndicesAliasesTests {
           })
       );
 
+  private SearchManager restrictedDevSearchManager = new SearchManager(container.getBasicAuthClient("restricted", "dev"));
+  private SearchManager unrestrictedDevSearchManager = new SearchManager(container.getBasicAuthClient("unrestricted", "dev"));
+
   @Test
-  public void testDirectIndexQuery() throws Exception {
+  public void testDirectIndexQuery() {
     assertNAttempts(3, () -> {
-      String body = search("/my_data/_search").body;
-      assertTrue(body.contains("\"hits\":{\"total\":2"));
+      SearchResult result = unrestrictedDevSearchManager.search("/my_data/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(2, result.getResults().size());
       return null;
     });
   }
 
   @Test
-  public void testAliasQuery() throws Exception {
+  public void testAliasQuery() {
     assertNAttempts(3, () -> {
-      String body = search("/public_data/_search").body;
-      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      SearchResult result = unrestrictedDevSearchManager.search("/public_data/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getResults().size());
       return null;
     });
   }
 
   @Test
-  public void testAliasAsWildcard() throws Exception {
+  public void testAliasAsWildcard() {
     assertNAttempts(3, () -> {
-      String body = search("/pub*/_search").body;
-      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      SearchResult result = unrestrictedDevSearchManager.search("/pub*/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getResults().size());
       return null;
     });
   }
@@ -77,72 +80,42 @@ public class IndicesAliasesTests {
   // Tests with indices rule restricting to "pub*"
 
   @Test
-  public void testRestrictedPureIndex() throws Exception {
+  public void testRestrictedPureIndex() {
     assertNAttempts(3, () -> {
-      RestResult res = search("/my_data/_search", "restricted", "dev");
-      assertEquals(401, res.status);
+      SearchResult result = restrictedDevSearchManager.search("/my_data/_search");
+      assertEquals(401, result.getResponseCode());
       return null;
     });
   }
 
   @Test
-  public void testRestrictedAlias() throws Exception {
+  public void testRestrictedAlias() {
     assertNAttempts(3, () -> {
-      String body = search("/public_data/_search", "restricted", "dev").body;
-      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      SearchResult result = restrictedDevSearchManager.search("/public_data/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getResults().size());
       return null;
     });
   }
 
   @Test
-  public void testRestrictedAliasAsWildcard() throws Exception {
+  public void testRestrictedAliasAsWildcard() {
     assertNAttempts(3, () -> {
-      String body = search("/public*/_search", "restricted", "dev").body;
-      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      SearchResult result = restrictedDevSearchManager.search("/public*/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getResults().size());
       return null;
     });
   }
 
   @Test
-  public void testRestrictedAliasAsHalfWildcard() throws Exception {
+  public void testRestrictedAliasAsHalfWildcard() {
     assertNAttempts(3, () -> {
-      String body = search("/pu*/_search", "restricted", "dev").body;
-      assertTrue(body.contains("\"hits\":{\"total\":1"));
+      SearchResult result = restrictedDevSearchManager.search("/pu*/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getResults().size());
       return null;
     });
   }
 
-  private RestResult search(String endpoint, String user, String pass) throws Exception {
-    RestClient client = container.getBasicAuthClient(user, pass);
-    return search(endpoint, client);
-  }
-
-  private RestResult search(String endpoint) throws Exception {
-    return search(endpoint, container.getBasicAuthClient("unrestricted", "dev"));
-  }
-
-  private RestResult search(String endpoint, RestClient client) throws Exception {
-    String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
-    HttpGet request = new HttpGet(client.from(endpoint));
-    request.setHeader("timeout", "50s");
-    request.setHeader("x-caller-" + caller, "true");
-    HttpResponse resp = client.execute(request);
-    String body = body(resp);
-    System.out.println("SEARCH RESPONSE for " + caller + ": " + body);
-    return new RestResult(body, resp.getStatusLine().getStatusCode());
-  }
-
-  static class RestResult {
-    public final String body;
-    public final int status;
-
-    public RestResult(String body, int status) {
-      this.body = body;
-      this.status = status;
-    }
-  }
-
-  private static String body(HttpResponse r) throws Exception {
-    return EntityUtils.toString(r.getEntity());
-  }
 }

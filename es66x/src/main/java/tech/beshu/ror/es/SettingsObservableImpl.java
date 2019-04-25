@@ -31,11 +31,11 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.env.Environment;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.commons.settings.SettingsObservable;
-import tech.beshu.ror.commons.settings.SettingsUtils;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.RawSettings;
+import tech.beshu.ror.settings.SettingsObservable;
+import tech.beshu.ror.settings.SettingsUtils;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
 import java.util.Map;

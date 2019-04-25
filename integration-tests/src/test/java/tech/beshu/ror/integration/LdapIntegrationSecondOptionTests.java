@@ -25,8 +25,8 @@ import tech.beshu.ror.utils.containers.LdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
-import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
-import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
 
 public class LdapIntegrationSecondOptionTests {
 

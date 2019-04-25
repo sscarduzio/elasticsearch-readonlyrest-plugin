@@ -57,14 +57,14 @@ import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.Transport;
 import org.elasticsearch.watcher.ResourceWatcherService;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -107,21 +107,9 @@ public class ReadonlyRestPlugin extends Plugin
 
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      try {
-        System.clearProperty(Constants.PROP_HAS_REMOTE_CLUSTERS);
-        if (!clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty()) {
-          System.setProperty(Constants.PROP_HAS_REMOTE_CLUSTERS, "yes");
-        }
-      } catch (Exception e) {
-        logger.warn("could not check if had remote ES clusters: " + e.getMessage());
-        if(logger.isDebugEnabled()){
-          e.printStackTrace();
-        }
-      }
-
       this.environment = environment;
       settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
+      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, hasRemoteClusters(clusterService));
       components.add(settingsObservable);
       return null;
     });
@@ -187,6 +175,7 @@ public class ReadonlyRestPlugin extends Plugin
     ESContextImpl.shutDownObservable.shutDown();
   }
 
+
   @Override
   public List<Setting<?>> getSettings() {
     // No need, we have settings in config/readonlyrest.yml
@@ -233,6 +222,19 @@ public class ReadonlyRestPlugin extends Plugin
       ThreadRepo.channel.set(channel);
       restHandler.handleRequest(request, channel, client);
     };
+  }
+
+  private boolean hasRemoteClusters(ClusterService clusterService) {
+    try {
+      return !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
+    } catch (Exception ex) {
+      if(logger.isDebugEnabled()) {
+        logger.warn("could not check if had remote ES clusters", ex);
+      } else {
+        logger.warn("could not check if had remote ES clusters: " + ex.getMessage());
+      }
+      return false;
+    }
   }
 
 }

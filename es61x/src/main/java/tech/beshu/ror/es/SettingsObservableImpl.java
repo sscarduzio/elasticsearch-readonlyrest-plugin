@@ -18,6 +18,7 @@
 package tech.beshu.ror.es;
 
 import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import org.apache.logging.log4j.LogManager;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -27,15 +28,14 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.env.Environment;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.commons.settings.SettingsObservable;
-import tech.beshu.ror.commons.settings.SettingsUtils;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.RawSettings;
+import tech.beshu.ror.settings.SettingsObservable;
+import tech.beshu.ror.settings.SettingsUtils;
+import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
 import java.util.Map;
@@ -46,7 +46,7 @@ import java.util.Map;
 
 @Singleton
 public class SettingsObservableImpl extends SettingsObservable {
-  private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
+  private static final LoggerShim logger = ESContextImpl.mkLoggerShim(LogManager.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
   private final Settings initialSettings;
@@ -56,11 +56,10 @@ public class SettingsObservableImpl extends SettingsObservable {
   public SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
     this.environment = env;
     this.client = client;
-    //current = BasicSettings.fromFile(logger, environment.configFile(), s.getAsStructuredMap()).getRaw();
     current = BasicSettings.fromFileObj(
-      logger,
-      env.configFile().toAbsolutePath(),
-      s
+        logger,
+        env.configFile().toAbsolutePath(),
+        s
     ).getRaw();
     this.initialSettings = s;
   }
@@ -80,12 +79,12 @@ public class SettingsObservableImpl extends SettingsObservable {
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
     } catch (ResourceNotFoundException rnfe) {
-      throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
+      throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE, rnfe);
     } catch (Throwable t) {
-      throw new ElasticsearchException(t.getMessage());
+      throw new ElasticsearchException(t.getMessage(), t);
     }
     if (resp == null || !resp.isExists()) {
-      throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
+      throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE, new ElasticsearchException("null response from index query"));
     }
     String yamlString = (String) resp.getSource().get("settings");
     return new RawSettings(yamlString, logger);
@@ -94,8 +93,8 @@ public class SettingsObservableImpl extends SettingsObservable {
   @Override
   protected void writeToIndex(RawSettings rawSettings, FutureCallback f) {
     client.prepareBulk().add(
-      client.prepareIndex(".readonlyrest", "settings", "1")
-        .setSource(SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
+        client.prepareIndex(".readonlyrest", "settings", "1")
+            .setSource(SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
     ).execute(new ActionListener<BulkResponse>() {
       @Override
       public void onResponse(BulkResponse bulkItemResponses) {

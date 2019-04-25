@@ -30,14 +30,12 @@ import org.testcontainers.shaded.com.fasterxml.jackson.core.Version;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.util.VersionUtil;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import tech.beshu.ror.utils.Tuple;
+import tech.beshu.ror.utils.misc.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -215,7 +213,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               }
           );
           return "green".equals(healthJson.get("status"));
-        } catch (IOException | URISyntaxException e) {
+        } catch (Exception e) {
           return false;
         }
       }
