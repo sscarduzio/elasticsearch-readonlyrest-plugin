@@ -59,9 +59,9 @@ public class DuplicatedResponseHeadersIssueTests {
     RestClient freddieHttpClient = multiContainerDependent.getContainer().getBasicAuthClient("freddie", "freddie");
     RestClient brianHttpClient = multiContainerDependent.getContainer().getBasicAuthClient("brian", "brian");
 
+    SearchResult b1 = searchCall(brianHttpClient);
     SearchResult f1 = searchCall(freddieHttpClient);
     SearchResult f2 = searchCall(freddieHttpClient);
-    SearchResult b1 = searchCall(brianHttpClient);
     SearchResult b2 = searchCall(brianHttpClient);
     SearchResult b3 = searchCall(brianHttpClient);
     SearchResult f3 = searchCall(freddieHttpClient);
