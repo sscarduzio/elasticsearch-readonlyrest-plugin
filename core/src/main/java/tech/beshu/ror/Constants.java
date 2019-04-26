@@ -88,7 +88,10 @@ public class Constants {
       "indices:admin/get",
       "indices:admin/refresh*",
       "indices:data/read/*",
-      "indices:admin/aliases/get"
+      "indices:admin/aliases/get",
+      "indices:admin/ilm/explain",
+      "indices:monitor/settings/get",
+      "indices:monitor/stats"
   );
 
   public static final Set<String> CLUSTER_ACTIONS = Sets.newHashSet(
