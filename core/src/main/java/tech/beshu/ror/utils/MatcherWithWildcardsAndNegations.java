@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.utils;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
+import com.google.common.collect.Sets;
 
 import java.util.Collections;
 import java.util.List;

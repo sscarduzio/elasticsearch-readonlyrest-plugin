@@ -77,8 +77,9 @@ dependencies {
     compile group: 'com.softwaremill.sttp',                 name: 'core_2.12',                              version: '1.5.1'
     compile group: 'com.unboundid',                         name: 'unboundid-ldapsdk',                      version: '4.0.9'
     compile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.10'
-    compile group: 'cz.seznam.euphoria',                    name: 'shaded-guava',                           version: '21.0'
-    compile group: 'eu.timepit',                            name: 'refined_2.12',                           version: '0.9.3'
+    compile('eu.timepit:refined_2.12:0.9.5') {
+        exclude group: 'org.scala-lang', module: 'scala-compiler'
+    }
     compile group: 'io.circe',                              name: 'circe-core_2.12',                        version: '0.10.1'
     compile group: 'io.circe',                              name: 'circe-generic-extras_2.12',              version: '0.10.1'
     compile group: 'io.circe',                              name: 'circe-parser_2.12',                      version: '0.10.1'
@@ -100,14 +101,14 @@ dependencies {
     compile group: 'io.lemonlabs',                          name: 'scala-uri_2.12',                         version: '1.4.1'
     compile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
 
-    testCompile group: 'org.apache.logging.log4j',                name: 'log4j-core',                             version: '2.11.2'
-    testRuntime group: 'ch.qos.logback',                          name: 'logback-classic',                        version: '1.2.3'
-    testRuntime group: 'org.pegdown',                             name: 'pegdown',                                version: '1.4.2'
-    testCompile group: 'com.typesafe.scala-logging',              name: 'scala-logging_2.12',                     version: '3.9.2'
-    testCompile group: 'org.scalamock',                           name: 'scalamock_2.12',                         version: '3.6.0'
-    testCompile group: 'org.scalamock',                           name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
-    testCompile group: 'org.scalatest',                           name: 'scalatest_2.12',                         version: '3.0.5'
-    testCompile group: 'com.dimafeng',                            name: 'testcontainers-scala_2.12',              version: '0.23.0'
+    testCompile group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.2'
+    testRuntime group: 'ch.qos.logback',                    name: 'logback-classic',                        version: '1.2.3'
+    testRuntime group: 'org.pegdown',                       name: 'pegdown',                                version: '1.4.2'
+    testCompile group: 'com.typesafe.scala-logging',        name: 'scala-logging_2.12',                     version: '3.9.2'
+    testCompile group: 'org.scalamock',                     name: 'scalamock_2.12',                         version: '3.6.0'
+    testCompile group: 'org.scalamock',                     name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
+    testCompile group: 'org.scalatest',                     name: 'scalatest_2.12',                         version: '3.0.5'
+    testCompile group: 'com.dimafeng',                      name: 'testcontainers-scala_2.12',              version: '0.23.0'
 
 }
 

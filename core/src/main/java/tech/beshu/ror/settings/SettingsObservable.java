@@ -17,13 +17,12 @@
 
 package tech.beshu.ror.settings;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.FutureCallback;
 import tech.beshu.ror.shims.es.ESContext;
 import tech.beshu.ror.shims.es.ESVersion;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Observable;
 
 abstract public class SettingsObservable extends Observable {
@@ -46,8 +45,6 @@ abstract public class SettingsObservable extends Observable {
   }
 
   protected abstract boolean isClusterReady();
-
-  protected abstract Map<String, ?> getNodeSettings();
 
   protected abstract LoggerShim getLogger();
 

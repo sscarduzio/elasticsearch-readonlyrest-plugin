@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.es;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.FutureCallback;
 import org.apache.logging.log4j.LogManager;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
@@ -38,7 +38,6 @@ import tech.beshu.ror.settings.SettingsUtils;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
-import java.util.Map;
 
 /**
  * Created by sscarduzio on 25/06/2017.
@@ -49,20 +48,13 @@ public class SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(LogManager.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
-  private final Settings initialSettings;
   private final Environment environment;
 
   @Inject
   public SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
     this.environment = env;
     this.client = client;
-    //current = BasicSettings.fromFile(logger, environment.configFile(), s.getAsStructuredMap()).getRaw();
-    current = BasicSettings.fromFileObj(
-        logger,
-        env.configFile().toAbsolutePath(),
-        s
-    ).getRaw();
-    this.initialSettings = s;
+    current = BasicSettings.fromFileObj(logger, env.configFile().toAbsolutePath(), s).getRaw();
   }
 
   @Override
@@ -76,7 +68,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   }
 
   protected RawSettings getFromIndex() {
-    GetResponse resp = null;
+    GetResponse resp;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
     } catch (ResourceNotFoundException rnfe) {
@@ -116,16 +108,9 @@ public class SettingsObservableImpl extends SettingsObservable {
   public boolean isClusterReady() {
     try {
       ClusterHealthStatus status = client.admin().cluster().prepareHealth().get().getStatus();
-      Boolean ready = !status.equals(ClusterHealthStatus.RED);
-      return ready;
+      return !status.equals(ClusterHealthStatus.RED);
     } catch (Throwable e) {
       return false;
     }
   }
-
-  @Override
-  protected Map<String, ?> getNodeSettings() {
-    return BasicSettings.fromFileObj(logger, getConfigPath(), initialSettings).asMap();
-  }
-
 }

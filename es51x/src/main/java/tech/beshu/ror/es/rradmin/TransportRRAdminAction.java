@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.es.rradmin;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.FutureCallback;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.HandledTransportAction;

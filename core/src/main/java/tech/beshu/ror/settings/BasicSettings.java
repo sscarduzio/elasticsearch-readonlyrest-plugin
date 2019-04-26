@@ -18,9 +18,7 @@
 package tech.beshu.ror.settings;
 
 import com.google.common.base.Strings;
-import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableList;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.commons.Verbosity;
 import tech.beshu.ror.shims.es.LoggerShim;
 import tech.beshu.ror.utils.ReflecUtils;
 
@@ -41,12 +39,8 @@ public class BasicSettings {
   public static final String ATTRIBUTE_NAME = "readonlyrest";
   public static final String ATTRIBUTE_ENABLE = "enable";
   public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
-  public static final String ATTRIBUTE_SEARCHLOG = "searchlog";
-  public static final String PROMPT_FOR_BASIC_AUTH = "prompt_for_basic_auth";
-  public static final String VERBOSITY = "verbosity";
   public static final String AUDIT_COLLECTOR = "audit_collector";
   public static final String CUSTOM_AUDIT_SERIALIZER = "audit_serializer";
-  public static final String AUDIT_INDEX_TEMPLATE = "audit_index_template";
   public static final String CACHE_HASHING_ALGO = "cache_hashing_algo";
 
   // SSL
@@ -61,20 +55,13 @@ public class BasicSettings {
   public static final String ATTRIBUTE_SSL_CLIENT_VERIFICATION = "verification";
 
   private static final String DEFAULT_FORBIDDEN_MESSAGE = "forbidden";
-  private static final Verbosity DEFAULT_VERBOSITY = Verbosity.INFO;
   private final boolean enable;
   private final String forbiddenMessage;
-  private final Verbosity verbosity;
   private final Boolean auditCollector;
-  private final String auditIndexTemplate;
-  private final Boolean promptForBasicAuth;
 
-  private final List<?> blocksSettings;
   private final RawSettings raw;
   private final Path configPath;
   private final RawSettings raw_global;
-  private final Optional<String> customAuditSerializer;
-  private final Optional<String> cacheHashingAlgo;
   private Optional<SSLSettings> sslHttpSettings;
   private Optional<SSLSettings> sslTxpSettings;
 
@@ -84,17 +71,9 @@ public class BasicSettings {
     this.raw_global = raw_global;
     this.raw = raw_global.inner(ATTRIBUTE_NAME);
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
-    this.blocksSettings = raw.notEmptyListOpt("access_control_rules").orElse(new ArrayList<>(0));
+    List<?> blocksSettings = raw.notEmptyListOpt("access_control_rules").orElse(new ArrayList<>(0));
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
-    this.promptForBasicAuth = raw.booleanOpt(PROMPT_FOR_BASIC_AUTH).orElse(true);
-    this.verbosity = raw.stringOpt(VERBOSITY)
-        .map(value -> Verbosity.fromString(value)
-            .<SettingsMalformedException>orElseThrow(() -> new SettingsMalformedException("Unknown verbosity value: " + value)))
-        .orElse(DEFAULT_VERBOSITY);
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
-    this.customAuditSerializer = raw.opt(CUSTOM_AUDIT_SERIALIZER);
-    this.auditIndexTemplate = raw.stringOpt(AUDIT_INDEX_TEMPLATE).orElse(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE);
-    this.cacheHashingAlgo = raw.stringOpt(CACHE_HASHING_ALGO);
 
     try {
       this.sslHttpSettings = Optional.of(new SSLSettings(raw, PREFIX_SSL_HTTP));
@@ -172,28 +151,8 @@ public class BasicSettings {
     return forbiddenMessage;
   }
 
-  public ImmutableList<?> getBlocksSettings() {
-    return ImmutableList.copyOf(blocksSettings);
-  }
-
   public Boolean isAuditorCollectorEnabled() {
     return auditCollector;
-  }
-
-  public String getAuditIndexTemplate() {
-    return auditIndexTemplate;
-  }
-
-  public Optional<String> getCustomAuditSerializer() {
-    return customAuditSerializer;
-  }
-
-  public String getCacheHashingAlgo() {
-    return cacheHashingAlgo.orElse("none");
-  }
-
-  public Boolean isPromptForBasicAuth() {
-    return promptForBasicAuth;
   }
 
   public RawSettings getRaw() {

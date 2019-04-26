@@ -17,10 +17,10 @@
 
 package tech.beshu.ror.utils;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.hash.HashCode;
-import cz.seznam.euphoria.shaded.guava.com.google.common.hash.HashFunction;
-import cz.seznam.euphoria.shaded.guava.com.google.common.hash.Hashing;
-import cz.seznam.euphoria.shaded.guava.com.google.common.primitives.Bytes;
+import com.google.common.hash.HashCode;
+import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
+import com.google.common.primitives.Bytes;
 
 import java.security.SecureRandom;
 import java.util.HashMap;

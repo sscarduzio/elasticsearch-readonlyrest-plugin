@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules
 import java.nio.charset.Charset
 
 import cats.implicits._
-import cz.seznam.euphoria.shaded.guava.com.google.common.hash.{HashFunction, Hashing}
+import com.google.common.hash.{HashFunction, Hashing}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.Secret._
