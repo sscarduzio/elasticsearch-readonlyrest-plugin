@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.es;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.elasticsearch.action.ActionRequest;
@@ -64,10 +63,8 @@ import tech.beshu.ror.utils.RCUtils;
 import tech.beshu.ror.utils.ReflecUtils;
 
 import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -76,7 +73,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;

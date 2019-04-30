@@ -49,7 +49,7 @@ public class SearchManager {
           ? new SearchResult(statusCode, Lists.newArrayList())
           : new SearchResult(statusCode, getSearchHits(deserializeJsonBody(bodyFrom(response))));
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(e);
     }
   }
 
@@ -62,7 +62,7 @@ public class SearchManager {
             : new SearchResult(statusCode, getMSearchHits(deserializeJsonBody(EntityUtils.toString(response.getEntity()))));
       }
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(e);
     }
   }
 
@@ -81,7 +81,7 @@ public class SearchManager {
       request.setEntity(new StringEntity(query));
       return request;
     } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(e);
     }
   }
 
@@ -89,7 +89,7 @@ public class SearchManager {
     try {
       return EntityUtils.toString(r.getEntity());
     } catch (IOException e) {
-      throw new RuntimeException("Cannot get string body", e);
+      throw new IllegalStateException("Cannot get string body", e);
     }
   }
 
