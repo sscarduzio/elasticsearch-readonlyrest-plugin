@@ -137,6 +137,7 @@ class IndicesRule(val settings: Settings)
       _ <- allIndicesMatchedByWildcard(requestContext, matcher)
       _ <- atLeastOneNonWildcardIndexNotExist(requestContext, matcher)
       _ <- expandedIndices(requestContext, matcher)
+      _ <- indicesAliases(requestContext, matcher)
     } yield ()
     result.left.getOrElse(CanPass.No)
   }
@@ -145,7 +146,7 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking - none or all indices ...")
     val indices = requestContext.indices
     if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
-      val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases)
+      val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases.flatMap(_.all))
       stop(if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs) else CanPass.No)
     } else {
       continue
@@ -156,8 +157,9 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking if all indices are matched ...")
     val indices = requestContext.indices
     indices.toList match {
-      case index :: Nil if matcher.`match`(index) =>
-        stop(CanPass.Yes(Set.empty))
+      case index :: Nil =>
+        if(matcher.`match`(index)) stop(CanPass.Yes(Set.empty))
+        else continue
       case _ if matcher.filter(indices) === indices =>
         stop(CanPass.Yes(Set.empty))
       case _ =>
@@ -168,15 +170,15 @@ class IndicesRule(val settings: Settings)
   private def atLeastOneNonWildcardIndexNotExist(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
     logger.debug("Checking if at least one non-wildcard index doesn't exist ...")
     val indices = requestContext.indices
-    val real = requestContext.allIndicesAndAliases
+    val real = requestContext.allIndicesAndAliases.flatMap(_.all)
     val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
       case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
       case (acc, _) => acc
     }
     if(nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
-      stop(CanPass.Yes(Set.empty))
+      stop(CanPass.No)
     } else if(nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
-      stop(CanPass.Yes(Set.empty))
+      stop(CanPass.No)
     } else {
       continue
     }
@@ -186,7 +188,7 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking - expanding wildcard indices ...")
     val expansion = expandedIndices(requestContext)
     if (expansion.isEmpty) {
-      stop(CanPass.Yes(Set.empty))
+      stop(CanPass.No)
     } else {
       val allowedExpansion = matcher.filter(expansion)
       if(allowedExpansion.nonEmpty) {
@@ -194,6 +196,25 @@ class IndicesRule(val settings: Settings)
       } else {
         continue
       }
+    }
+  }
+
+  private def indicesAliases(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
+    logger.debug("Checking - indices aliases ...")
+    val indices = requestContext.indices
+    val indicesAndAliases = requestContext.allIndicesAndAliases
+    val aliases = indicesAndAliases.flatMap(_.aliases)
+    val requestAliases = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(indices.map(_.value).asJava))
+      .filter(aliases)
+    val realIndicesRelatedToRequestAliases =
+      indicesAndAliases
+        .filter(ia => requestAliases.intersect(ia.aliases).nonEmpty)
+        .map(_.index)
+    val allowedRealIndices = matcher.filter(realIndicesRelatedToRequestAliases)
+    if(allowedRealIndices.nonEmpty) {
+      stop(CanPass.Yes(allowedRealIndices))
+    } else {
+      continue
     }
   }
 
@@ -220,7 +241,7 @@ class IndicesRule(val settings: Settings)
 
   private def expandedIndices(requestContext: RequestContext): Set[IndexName] = {
     new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(requestContext.indices.map(_.value).asJava))
-      .filter(requestContext.allIndicesAndAliases)
+      .filter(requestContext.allIndicesAndAliases.flatMap(_.all))
   }
 
   private val initialMatcher = {

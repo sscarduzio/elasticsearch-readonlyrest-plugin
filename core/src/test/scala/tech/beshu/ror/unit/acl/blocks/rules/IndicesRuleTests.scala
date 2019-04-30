@@ -23,10 +23,9 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.rules.IndicesRule
-import tech.beshu.ror.acl.domain.{Action, IndexName}
+import tech.beshu.ror.acl.domain.{Action, IndexName, IndexWithAliases}
 import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 
@@ -35,61 +34,237 @@ import scala.collection.SortedSet
 class IndicesRuleTests extends WordSpec with MockFactory {
 
   "An IndicesRule" should {
-    "pass with single simple index" in {
-      assertMatchRule(
-        configured = NonEmptySet.of(indexNameValueFrom("public-asd")),
-        indices = Set(IndexName("public-asd"))
-      )
-    }
-    // fixme: this seems to not work properly (Java test also fails here)
-    "pass with single wildcard" in {
-      assertMatchRule(
-        configured = NonEmptySet.of(indexNameValueFrom("public-*")),
-        indices = Set(IndexName("public-asd"))
-      )
-    }
-    // fixme: same this
-    "pass with reverse wildcard" in {
-      assertMatchRule(
-        configured = NonEmptySet.of(indexNameValueFrom("public-asd")),
-        indices = Set(IndexName("publi-*")),
-        _.copy(
-          allIndicesAndAliases = Set(IndexName("public-asd"))
+    "match" when {
+      "no index passed, one is configured, there is one real index" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set.empty,
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("test"), Set.empty))
+          ),
+          found = Set(IndexName("test"))
         )
-      )
-    }
-    "return allowed subset" in {
-      assertMatchRule(
-        configured = NonEmptySet.of(indexNameValueFrom("a")),
-        indices = Set(IndexName("a"), IndexName("b"), IndexName("c")),
-        _.copy(
-          allIndicesAndAliases = Set(IndexName("a"), IndexName("b"), IndexName("c")),
-        ),
-        found = Set(IndexName("a"))
-      )
-    }
-    "152 ?!" in {
-      assertNotMatchRule(
-        configured = NonEmptySet.of(indexNameValueFrom("perfmon*")),
-        indices = Set(IndexName("another_index")),
-        _.copy(
-          allIndicesAndAliases = Set(IndexName("perfmon-bfarm"), IndexName("another_index"))
+      }
+      "'_all' passed, one is configured, there is one real index" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set(IndexName("_all")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("test"), Set.empty))
+          ),
+          found = Set(IndexName("test"))
         )
-      )
+      }
+      "'*' passed, one is configured, there is one real index" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set(IndexName("*")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("test"), Set.empty))
+          ),
+          found = Set(IndexName("test"))
+        )
+      }
+      "one full name index passed, one full name index configured, no real indices" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set(IndexName("test"))
+        )
+      }
+      "one wildcard index passed, one full name index configured, no real indices" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set(IndexName("te*")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("test"), Set.empty)),
+          ),
+          found = Set(IndexName("test"))
+        )
+      }
+      "one full name index passed, one wildcard index configured, no real indices" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("t*")),
+          requestIndices = Set(IndexName("test"))
+        )
+      }
+      "two full name indexes passed, the same two full name indexes configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("test2")),
+          requestIndices = Set(IndexName("test2"), IndexName("test1"))
+        )
+      }
+      "two full name indexes passed, one the same, one different index configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("test2")),
+          requestIndices = Set(IndexName("test1"), IndexName("test3")),
+          found = Set(IndexName("test1"))
+        )
+      }
+      "two matching wildcard indexes passed, two full name indexes configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("test2")),
+          requestIndices = Set(IndexName("*2"), IndexName("*1")),
+          found = Set(IndexName("test1"), IndexName("test2"))
+        )
+      }
+      "two full name indexes passed, two matching wildcard indexes configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("*1"), indexNameValueFrom("*2")),
+          requestIndices = Set(IndexName("test2"), IndexName("test1"))
+        )
+      }
+      "two full name indexes passed, one matching full name and one non-matching wildcard index configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("*2")),
+          requestIndices = Set(IndexName("test1"), IndexName("test3")),
+          found = Set(IndexName("test1"))
+        )
+      }
+      "one matching wildcard index passed and one non-matching full name index, two full name indexes configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("*2")),
+          requestIndices = Set(IndexName("*1"), IndexName("test3")),
+          found = Set(IndexName("test1"))
+        )
+      }
+      "one full name alias passed, full name index related to that alias configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test-index")),
+          requestIndices = Set(IndexName("test-alias")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("test-index"), Set(IndexName("test-alias"))))
+          ),
+          found = Set(IndexName("test-index"))
+        )
+      }
+      "wildcard alias passed, full name index related to alias matching passed one configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test-index")),
+          requestIndices = Set(IndexName("*-alias")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("test-index"), Set(IndexName("test-alias"))))
+          ),
+          found = Set(IndexName("test-index"))
+        )
+      }
+      "one full name alias passed, wildcard index configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("*-index")),
+          requestIndices = Set(IndexName("test-alias")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("test-index"), Set(IndexName("test-alias"))))
+          ),
+          found = Set(IndexName("test-index"))
+        )
+      }
+      "one alias passed, only subset of alias indices configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test-index1"), indexNameValueFrom("test-index2")),
+          requestIndices = Set(IndexName("test-alias")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("test-index1"), Set(IndexName("test-alias"))),
+              IndexWithAliases(IndexName("test-index2"), Set(IndexName("test-alias"))),
+              IndexWithAliases(IndexName("test-index3"), Set(IndexName("test-alias"))),
+              IndexWithAliases(IndexName("test-index4"), Set(IndexName("test-alias")))
+            )
+          ),
+          found = Set(IndexName("test-index1"), IndexName("test-index2"))
+        )
+      }
+    }
+    "not match" when {
+      "no index passed, one is configured, no real indices" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set.empty
+        )
+      }
+      "'_all' passed, one is configured, no real indices" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set(IndexName("_all"))
+        )
+      }
+      "'*' passed, one is configured, no real indices" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test")),
+          requestIndices = Set(IndexName("*"))
+        )
+      }
+      "one full name index passed, different one full name index configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1")),
+          requestIndices = Set(IndexName("test2"))
+        )
+      }
+      "one wildcard index passed, non-matching index with full name configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1")),
+          requestIndices = Set(IndexName("*2"))
+        )
+      }
+      "one full name index passed, non-matching index with wildcard configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("*1")),
+          requestIndices = Set(IndexName("test2"))
+        )
+      }
+      "two full name indexes passed, different two full name indexes configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("test2")),
+          requestIndices = Set(IndexName("test4"), IndexName("test3"))
+        )
+      }
+      "two wildcard indexes passed, non-matching two full name indexes configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("test2")),
+          requestIndices = Set(IndexName("*4"), IndexName("*3"))
+        )
+      }
+      "two full name indexes passed, non-matching two wildcard indexes configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("*1"), indexNameValueFrom("*2")),
+          requestIndices = Set(IndexName("test4"), IndexName("test3"))
+        )
+      }
+      "one full name alias passed, full name index with no alias configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test-index")),
+          requestIndices = Set(IndexName("test-alias")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("test-index"), Set.empty),
+              IndexWithAliases(IndexName("test-index2"), Set(IndexName("test-alias")))
+            )
+          )
+        )
+      }
+      "wildcard alias passed, full name index with no alias configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test-index")),
+          requestIndices = Set(IndexName("*-alias")),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("test-index"), Set.empty),
+              IndexWithAliases(IndexName("test-index2"), Set(IndexName("test-alias")))
+            )
+          )
+        )
+      }
     }
   }
 
   private def assertMatchRule(configured: NonEmptySet[Value[IndexName]],
-                              indices: Set[IndexName],
+                              requestIndices: Set[IndexName],
                               modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                               found: Set[IndexName] = Set.empty) =
-    assertRule(configured, indices, isMatched = true, modifyRequestContext, found)
+    assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, found)
 
   private def assertNotMatchRule(configured: NonEmptySet[Value[IndexName]],
-                                 indices: Set[IndexName],
-                                 modifyRequestContext: MockRequestContext => MockRequestContext = identity,
-                                 found: Set[IndexName] = Set.empty) =
-    assertRule(configured, indices, isMatched = false, modifyRequestContext, found)
+                                 requestIndices: Set[IndexName],
+                                 modifyRequestContext: MockRequestContext => MockRequestContext = identity) =
+    assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Set.empty)
 
   private def assertRule(configuredValues: NonEmptySet[Value[IndexName]],
                          requestIndices: Set[IndexName],
@@ -102,7 +277,14 @@ class IndicesRuleTests extends WordSpec with MockFactory {
         indices = requestIndices,
         action = Action("indices:data/read/search"),
         isReadOnlyRequest = true,
-        involvesIndices = true
+        involvesIndices = true,
+        allIndicesAndAliases = Set(
+          IndexWithAliases(IndexName("test1"), Set.empty),
+          IndexWithAliases(IndexName("test2"), Set.empty),
+          IndexWithAliases(IndexName("test3"), Set.empty),
+          IndexWithAliases(IndexName("test4"), Set.empty),
+          IndexWithAliases(IndexName("test5"), Set.empty)
+        )
       )
     val blockContext = mock[BlockContext]
     val returnedBlock = if(found.nonEmpty) {
@@ -124,4 +306,5 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }
+
 }
