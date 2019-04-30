@@ -25,6 +25,21 @@ readonlyrest:
     indices: ["public*"]
     auth_key: "restricted:dev"
 
+  - name: "::PERFMON - RESTRICTED TO ALIAS::"
+    methods: [GET]
+    indices: ["perfmon*"]
+    auth_key: "perfmon:dev"
+
+  - name: "::PERFMON - RESTRICTED TO INDEX::"
+    methods: [GET]
+    indices: ["bla*"]
+    auth_key: "perfmon:dev"
+
+  - name: myanmar_vietnam
+    kibana_access: ro
+    auth_key: "VIET_MYAN:dev"
+    indices: ["*myanmar*", "*vietnam*"]
+
   - name: "CONTAINER ADMIN"
     actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
     #auth_key: admin:container

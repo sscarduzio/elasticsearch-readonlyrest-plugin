@@ -125,7 +125,7 @@ public class RestClient {
     try {
       return from(path, Maps.newHashMap());
     } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(e);
     }
   }
 
@@ -151,7 +151,7 @@ public class RestClient {
     try {
       return underlying.execute(req);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(e);
     }
   }
 
