@@ -48,9 +48,9 @@ public class DeleteByQueryTests {
   }
 
   @Test
-  public void redTeamShouldBeAbleToDeleteByQuery() {
+  public void redTeamShouldNotBeAbleToDeleteByQuery() {
     DeleteByQueryResult result = redTeamDeleteByQueryManager.delete("facebook", matchAllQuery);
-    assertEquals(200, result.getResponseCode());
+    assertEquals(401, result.getResponseCode());
   }
 
 }

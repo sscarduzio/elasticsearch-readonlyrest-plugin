@@ -36,7 +36,7 @@ class KibanaHideAppsRule(val settings: Settings)
 
   private val kibanaAppsHeader = new Header(
     kibanaHiddenApps,
-    NonEmptyString.unsafeFrom(settings.kibanaAppsToHide.toSortedSet.map(_.value).mkString(","))
+    NonEmptyString.unsafeFrom(settings.kibanaAppsToHide.toSortedSet.map(_.value.value).mkString(","))
   )
 
   override def process(requestContext: RequestContext,

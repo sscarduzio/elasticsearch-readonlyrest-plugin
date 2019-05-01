@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.containers.LdapContainer;
  */
 public class LDAPServer {
   public static void main(String[] args) throws InterruptedException {
-    String ldifFile = System.getProperty("config", "/ldap_integration_group_headers/ldap.ldif");
+    String ldifFile = System.getProperty("config", "/ldap.ldif");
     System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
     LdapContainer lc = LdapContainer.create(ldifFile);
     lc.start();
