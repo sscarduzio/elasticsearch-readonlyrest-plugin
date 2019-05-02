@@ -141,14 +141,14 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
     );
     return container
-//        .withLogConsumer((l) -> {
-//          String logLine = new StringBuilder(3)
-//              .append(sdf.format(System.currentTimeMillis()))
-//              .append(" ")
-//              .append(l.getUtf8String())
-//              .toString();
-//          System.out.print(logLine);
-//        })
+        .withLogConsumer((l) -> {
+          String logLine = new StringBuilder(3)
+              .append(sdf.format(System.currentTimeMillis()))
+              .append(" ")
+              .append(l.getUtf8String())
+              .toString();
+          System.out.print(logLine);
+        })
         .withExposedPorts(ES_PORT, ES_TRANSPORT_PORT)
         .waitingFor(container.waitStrategy(initalizer).withStartupTimeout(CONTAINER_STARTUP_TIMEOUT));
 
