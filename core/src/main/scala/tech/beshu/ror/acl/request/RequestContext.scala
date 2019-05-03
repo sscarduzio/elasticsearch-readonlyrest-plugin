@@ -49,7 +49,7 @@ trait RequestContext {
   def content: String
 
   def indices: Set[IndexName]
-  def allIndicesAndAliases: Set[IndexName]
+  def allIndicesAndAliases: Set[IndexWithAliases]
   def repositories: Set[IndexName]
   def snapshots: Set[IndexName]
 

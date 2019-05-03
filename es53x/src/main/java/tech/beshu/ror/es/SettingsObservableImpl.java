@@ -109,8 +109,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   public boolean isClusterReady() {
     try {
       ClusterHealthStatus status = client.admin().cluster().prepareHealth().get().getStatus();
-      Boolean ready = !status.equals(ClusterHealthStatus.RED);
-      return ready;
+      return !status.equals(ClusterHealthStatus.RED);
     } catch (Throwable e) {
       return false;
     }

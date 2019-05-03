@@ -175,6 +175,10 @@ object domain {
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
   }
 
+  final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
+    def all: Set[IndexName] = aliases + index
+  }
+
   final case class ApiKey(value: NonEmptyString)
   object ApiKey {
     implicit val eqApiKey: Eq[ApiKey] = Eq.fromUniversalEquals
@@ -186,7 +190,7 @@ object domain {
     val empty: Secret = Secret("")
   }
 
-  final case class KibanaApp(value: String) extends AnyVal
+  final case class KibanaApp(value: NonEmptyString) 
   object KibanaApp {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }

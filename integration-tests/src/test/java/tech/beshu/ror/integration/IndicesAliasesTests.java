@@ -17,10 +17,13 @@
 
 package tech.beshu.ror.integration;
 
+import com.google.common.collect.Sets;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.elasticsearch.DocumentManager;
+import tech.beshu.ror.utils.elasticsearch.IndexManager;
+import tech.beshu.ror.utils.elasticsearch.IndexManager.GetIndexResult;
 import tech.beshu.ror.utils.elasticsearch.SearchManager;
 import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
@@ -41,11 +44,22 @@ public class IndicesAliasesTests {
             documentManager.insertDoc("/my_data/test/1", "{\"hello\":\"world\"}");
             documentManager.insertDoc("/my_data/test/2", "{\"hello\":\"there\", \"public\":1}");
             documentManager.insertDoc("/my_data/_alias/public_data", "{\"filter\":{\"term\":{\"public\":1}}}");
+            documentManager.insertDoc("/blabla", "{\"aliases\" : {\"perfmon_my_test_alias\":{}}}");
+            documentManager.insertDoc("/vuln-ass-all-angola/test/1", "{\"country\":\"angola\"}");
+            documentManager.insertDoc("/vuln-ass-all-china/test/1", "{\"country\":\"china\"}");
+            documentManager.insertDoc("/vuln-ass-all-congo/test/1", "{\"country\":\"congo\"}");
+            documentManager.insertDoc("/vuln-ass-all-myanmar/test/1", "{\"country\":\"myanmar\"}");
+            documentManager.insertDoc("/vuln-ass-all-norge/test/1", "{\"country\":\"norge\"}");
+            documentManager.insertDoc("/vuln-ass-all-vietnam/test/1", "{\"country\":\"vietnam\"}");
+            documentManager.createAlias("all-subs-data", Sets.newHashSet("vuln-ass-all-angola", "vuln-ass-all-china", "vuln-ass-all-congo", "vuln-ass-all-myanmar", "vuln-ass-all-norge", "vuln-ass-all-vietnam"));
           })
       );
 
   private SearchManager restrictedDevSearchManager = new SearchManager(container.getBasicAuthClient("restricted", "dev"));
   private SearchManager unrestrictedDevSearchManager = new SearchManager(container.getBasicAuthClient("unrestricted", "dev"));
+  private IndexManager adminIndexManager = new IndexManager(container.getAdminClient());
+  private IndexManager perfmonIndexManager = new IndexManager(container.getBasicAuthClient("perfmon", "dev"));
+  private SearchManager vietMyanSearchManager = new SearchManager(container.getBasicAuthClient("VIET_MYAN", "dev"));
 
   @Test
   public void testDirectIndexQuery() {
@@ -118,4 +132,97 @@ public class IndicesAliasesTests {
     });
   }
 
+  // real test cases from github
+  @Test
+  public void testIndexCanBeAccessedByAdminUsingNameOrAlias() {
+    assertNAttempts(3, () -> {
+      GetIndexResult result = adminIndexManager.get("blabla");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+    assertNAttempts(3, () -> {
+      GetIndexResult result = adminIndexManager.get("perfmon_my_test_alias");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+  }
+
+  @Test
+  public void testIndexCanBeAccessedByAdminUsingNameOrAliasWithWildcard() {
+    assertNAttempts(3, () -> {
+      GetIndexResult result = adminIndexManager.get("bla*");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+    assertNAttempts(3, () -> {
+      GetIndexResult result = adminIndexManager.get("perf*mon_my_test*");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+  }
+
+  @Test
+  public void testIndexCanBeAccessedByUserPerfmonUsingNameOrAlias() {
+    assertNAttempts(3, () -> {
+      GetIndexResult result = perfmonIndexManager.get("blabla");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+    assertNAttempts(3, () -> {
+      GetIndexResult result = perfmonIndexManager.get("perfmon_my_test_alias");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+  }
+
+  @Test
+  public void testIndexCanBeAccessedByUserPerfmonUsingNameOrAliasWithWildcard() {
+    assertNAttempts(3, () -> {
+      GetIndexResult result = perfmonIndexManager.get("bla*");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+    assertNAttempts(3, () -> {
+      GetIndexResult result = perfmonIndexManager.get("perf*mon_my_test*");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getAliases().size());
+      return null;
+    });
+  }
+
+  @Test
+  public void testVietMianUserShouldBeAbleToAccessVietnamIndex() {
+    assertNAttempts(3, () -> {
+      SearchResult result = vietMyanSearchManager.search("/vuln-ass-all-vietnam/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(1, result.getResults().size());
+      return null;
+    });
+  }
+
+  @Test
+  public void testVietMianUserShouldNotBeAbleToAccessCongoIndex() {
+    assertNAttempts(3, () -> {
+      SearchResult result = vietMyanSearchManager.search("/vuln-ass-all-congo/_search");
+      assertEquals(401, result.getResponseCode());
+      return null;
+    });
+  }
+
+  @Test
+  public void testVietMianUserShouldBeAbleToSeeAllowedIndicesUsingAlias() {
+    assertNAttempts(3, () -> {
+      SearchResult result = vietMyanSearchManager.search("/all-subs-data/_search");
+      assertEquals(200, result.getResponseCode());
+      assertEquals(2, result.getResults().size());
+      return null;
+    });
+  }
 }

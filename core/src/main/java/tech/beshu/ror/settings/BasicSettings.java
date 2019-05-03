@@ -89,7 +89,6 @@ public class BasicSettings {
   }
 
   private static String slurpFile(LoggerShim logger, String filePath) {
-
     final String[] slurped = new String[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {

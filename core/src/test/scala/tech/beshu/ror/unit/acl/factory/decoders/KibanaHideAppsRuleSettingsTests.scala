@@ -24,6 +24,7 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedV
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.domain.KibanaApp
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {
 
@@ -42,7 +43,7 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaAppsToHide should be(NonEmptySet.one(KibanaApp("app1")))
+            rule.settings.kibanaAppsToHide should be(NonEmptySet.one(KibanaApp("app1".nonempty)))
           }
         )
       }
@@ -59,13 +60,34 @@ class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[Kibana
               |
               |""".stripMargin,
           assertion = rule => {
-            val apps = NonEmptySet.of(KibanaApp("app1"), KibanaApp("app2"))
+            val apps = NonEmptySet.of(KibanaApp("app1".nonempty), KibanaApp("app2".nonempty))
             rule.settings.kibanaAppsToHide should be(apps)
           }
         )
       }
     }
     "not be able to be loaded from config" when {
+      "empty string kibana app is defined" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana_hide_apps: [""]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """kibana_hide_apps:
+                |- ""
+                |""".stripMargin)))
+          }
+        )
+      }
       "no kibana app is defined" in {
         assertDecodingFailure(
           yaml =

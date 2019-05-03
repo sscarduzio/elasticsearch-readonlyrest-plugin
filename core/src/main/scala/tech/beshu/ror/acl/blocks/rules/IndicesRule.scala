@@ -41,6 +41,7 @@ import scala.language.postfixOps
 class IndicesRule(val settings: Settings)
   extends RegularRule with Logging {
 
+  import IndicesCheckContinuation._
   import IndicesRule.stringIndexNameNT
 
   override val name: Rule.Name = IndicesRule.name
@@ -126,93 +127,121 @@ class IndicesRule(val settings: Settings)
     requestContext.isReadOnlyRequest && List(searchAction, mSearchAction).contains(requestContext.action)
 
   private def canPass(requestContext: RequestContext, matcher: Matcher): CanPass = {
+    if (requestContext.isReadOnlyRequest) canReadOnlyRequestPass(requestContext, matcher)
+    else canWriteRequestPass(requestContext, matcher)
+  }
+
+  private def canReadOnlyRequestPass(requestContext: RequestContext, matcher: Matcher): CanPass = {
+    val result = for {
+      _ <- noneOrAllIndices(requestContext, matcher)
+      _ <- allIndicesMatchedByWildcard(requestContext, matcher)
+      _ <- atLeastOneNonWildcardIndexNotExist(requestContext, matcher)
+      _ <- expandedIndices(requestContext, matcher)
+      _ <- indicesAliases(requestContext, matcher)
+    } yield ()
+    result.left.getOrElse(CanPass.No)
+  }
+
+  private def noneOrAllIndices(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
+    logger.debug("Checking - none or all indices ...")
     val indices = requestContext.indices
-    // 1. Requesting none or all the indices means requesting allowed indices that exist.
-    logger.debug("Stage 0")
     if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
-      val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases)
-      val result =
-        if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
-        else CanPass.No
-      return result
+      val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases.flatMap(_.all))
+      stop(if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs) else CanPass.No)
+    } else {
+      continue
     }
+  }
 
-    if (requestContext.isReadOnlyRequest) {
-      // Handle simple case of single index
-      logger.debug("Stage 1")
-      indices.toList match {
-        case index :: Nil if matcher.`match`(index) =>
-          return CanPass.Yes(Set.empty)
-        case _ =>
-      }
-      // ----- Now you requested SOME indices, let's see if and what we can allow in.
-      // 2. All indices match by wildcard?
-      logger.debug("Stage 2")
-      if (matcher.filter(indices) === indices) {
-        return CanPass.Yes(Set.empty)
-      }
-      logger.debug("Stage 2.1")
-      // 2.1 Detect at least 1 non-wildcard requested indices that do not exist, ES will naturally return 404, our job is done.
-      val real = requestContext.allIndicesAndAliases
-      val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
-        case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
-        case (acc, _) => acc
-      }
-      if (nonExistent.nonEmpty) {
-        if (!requestContext.isCompositeRequest) {
-          // This goes to 404 naturally, so let it through
-          return CanPass.Yes(Set.empty)
-        } else {
-          val updatedIndices = indices -- nonExistent
-          if (updatedIndices.isEmpty) {
-            return CanPass.Yes(Set.empty)
-          }
-        }
-      }
-      // 3. indices match by reverse-wildcard?
-      // Expand requested indices to a subset of indices available in ES
-      logger.debug("Stage 3")
-      val expansion = expandedIndices(requestContext)
-      // --- 4. Your request expands to no actual index, fine with me, it will return 404 on its own!
-      logger.debug("Stage 4")
+  private def allIndicesMatchedByWildcard(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
+    logger.debug("Checking if all indices are matched ...")
+    val indices = requestContext.indices
+    indices.toList match {
+      case index :: Nil =>
+        if(matcher.`match`(index)) stop(CanPass.Yes(Set.empty))
+        else continue
+      case _ if matcher.filter(indices) === indices =>
+        stop(CanPass.Yes(Set.empty))
+      case _ =>
+        continue
+    }
+  }
 
-      if (expansion.isEmpty) {
-        return CanPass.Yes(Set.empty)
-      }
-      // ------ Your request expands to one or many available indices, let's see which ones you are allowed to request..
+  private def atLeastOneNonWildcardIndexNotExist(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
+    logger.debug("Checking if at least one non-wildcard index doesn't exist ...")
+    val indices = requestContext.indices
+    val real = requestContext.allIndicesAndAliases.flatMap(_.all)
+    val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
+      case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
+      case (acc, _) => acc
+    }
+    if(nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
+      stop(CanPass.No)
+    } else if(nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
+      stop(CanPass.No)
+    } else {
+      continue
+    }
+  }
+
+  private def expandedIndices(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
+    logger.debug("Checking - expanding wildcard indices ...")
+    val expansion = expandedIndices(requestContext)
+    if (expansion.isEmpty) {
+      stop(CanPass.No)
+    } else {
       val allowedExpansion = matcher.filter(expansion)
-      // 5. You requested some indices, but NONE were allowed
-      logger.debug("Stage 5")
-      if (allowedExpansion.isEmpty) {
-        // #TODO should I set indices to rule wildcards?
-        return CanPass.No
-      }
-      logger.debug("Stage 6")
-      return CanPass.Yes(allowedExpansion)
-    }
-    else {
-      // Write requests
-      // Handle <no-index> (#TODO LEGACY)
-      logger.debug("Stage 7")
-      if (indices.isEmpty && matcher.contains("<no-index>")) {
-        return CanPass.Yes(Set.empty)
+      if(allowedExpansion.nonEmpty) {
+        stop(CanPass.Yes(allowedExpansion))
       } else {
-        // Reject write if at least one requested index is not allowed by the rule conf
-        logger.debug("Stage 8")
-        for (idx <- indices) {
-          if (!matcher.`match`(idx)) {
-            return CanPass.No
-          }
-        }
-        // Conditions are satisfied
-        return CanPass.Yes(Set.empty)
+        continue
+      }
+    }
+  }
+
+  private def indicesAliases(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
+    logger.debug("Checking - indices aliases ...")
+    val indices = requestContext.indices
+    val indicesAndAliases = requestContext.allIndicesAndAliases
+    val aliases = indicesAndAliases.flatMap(_.aliases)
+    val requestAliases = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(indices.map(_.value).asJava))
+      .filter(aliases)
+    val realIndicesRelatedToRequestAliases =
+      indicesAndAliases
+        .filter(ia => requestAliases.intersect(ia.aliases).nonEmpty)
+        .map(_.index)
+    val allowedRealIndices = matcher.filter(realIndicesRelatedToRequestAliases)
+    if(allowedRealIndices.nonEmpty) {
+      stop(CanPass.Yes(allowedRealIndices))
+    } else {
+      continue
+    }
+  }
+
+  private def canWriteRequestPass(requestContext: RequestContext, matcher: Matcher): CanPass = {
+    logger.debug("Checking - write request ...")
+    val indices = requestContext.indices
+    // Write requests
+    // Handle <no-index> (#TODO LEGACY)
+    logger.debug("Stage 7")
+    if (indices.isEmpty && matcher.contains("<no-index>")) {
+      CanPass.Yes(Set.empty)
+    } else {
+      // Reject write if at least one requested index is not allowed by the rule conf
+      logger.debug("Stage 8")
+      indices.foldLeft(CanPass.Yes(Set.empty): CanPass) {
+        case (CanPass.Yes(_), index) =>
+          if (matcher.`match`(index)) CanPass.Yes(Set.empty)
+          else CanPass.No
+        case (CanPass.No, _) => CanPass.No
+
       }
     }
   }
 
   private def expandedIndices(requestContext: RequestContext): Set[IndexName] = {
     new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(requestContext.indices.map(_.value).asJava))
-      .filter(requestContext.allIndicesAndAliases)
+      .filter(requestContext.allIndicesAndAliases.flatMap(_.all))
   }
 
   private val initialMatcher = {
@@ -233,6 +262,11 @@ class IndicesRule(val settings: Settings)
     case _ => false
   }
 
+  private type IndicesCheckContinuation = Either[CanPass, Unit]
+  private object IndicesCheckContinuation {
+    def stop(result: CanPass): IndicesCheckContinuation = Left(result)
+    val continue: IndicesCheckContinuation = Right(())
+  }
 }
 
 object IndicesRule {
