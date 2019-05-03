@@ -23,37 +23,28 @@ import tech.beshu.ror.shims.es.ESVersion;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Observable;
 
 abstract public class SettingsObservable extends Observable {
 
   public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
+
   protected RawSettings current;
   private boolean printedInfo = false;
 
-
-  public void updateSettings(RawSettings newSettings) {
-    this.current = newSettings;
-    setChanged();
-    notifyObservers();
-  }
-
   abstract protected Path getConfigPath();
 
-  public RawSettings getCurrent() {
-    return current;
-  }
-
   protected abstract boolean isClusterReady();
-
-  protected abstract Map<String, ?> getNodeSettings();
 
   protected abstract LoggerShim getLogger();
 
   protected abstract RawSettings getFromIndex();
 
   protected abstract void writeToIndex(RawSettings rawSettings, FutureCallback f);
+
+  public RawSettings getCurrent() {
+    return current;
+  }
 
   public RawSettings getFromFile() {
     getLogger().info("reading settings from file " + getConfigPath().toAbsolutePath());
@@ -105,6 +96,12 @@ abstract public class SettingsObservable extends Observable {
       return;
     }
     new SettingsPoller(this, context, 1, 5, true).poll();
+  }
+
+  private void updateSettings(RawSettings newSettings) {
+    this.current = newSettings;
+    setChanged();
+    notifyObservers();
   }
 
 }

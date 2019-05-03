@@ -111,7 +111,7 @@ public class IndexLevelActionFilter implements ActionFilter {
     BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
         env.configFile().toAbsolutePath(), settings);
 
-    this.context.set(new ESContextImpl(client, baseSettings));
+    this.context.set(new ESContextImpl(baseSettings));
 
     this.clusterService = clusterService;
     this.indexResolver = new IndexNameExpressionResolver();
@@ -123,7 +123,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       Environment newEnv = new Environment(settings, env.configFile().toAbsolutePath());
       BasicSettings newBasicSettings = new BasicSettings(settingsObservable.getCurrent(),
           newEnv.configFile().toAbsolutePath());
-      ESContext newContext = new ESContextImpl(client, newBasicSettings);
+      ESContext newContext = new ESContextImpl(newBasicSettings);
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
