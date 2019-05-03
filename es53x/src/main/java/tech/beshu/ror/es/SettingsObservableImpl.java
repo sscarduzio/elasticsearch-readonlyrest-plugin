@@ -18,7 +18,6 @@
 package tech.beshu.ror.es;
 
 import java.nio.file.Path;
-import java.util.Map;
 
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
@@ -50,7 +49,6 @@ public class SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
-  private final Settings initialSettings;
   private final Environment environment;
 
   @Inject
@@ -58,7 +56,6 @@ public class SettingsObservableImpl extends SettingsObservable {
     this.environment = env;
     this.client = client;
     current = BasicSettings.fromFile(logger, environment.configFile().toAbsolutePath(), s.getAsStructuredMap()).getRaw();
-    this.initialSettings = s;
   }
 
   @Override
@@ -72,7 +69,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   }
 
   protected RawSettings getFromIndex() {
-    GetResponse resp = null;
+    GetResponse resp;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
     } catch (ResourceNotFoundException rnfe) {
@@ -112,16 +109,10 @@ public class SettingsObservableImpl extends SettingsObservable {
   public boolean isClusterReady() {
     try {
       ClusterHealthStatus status = client.admin().cluster().prepareHealth().get().getStatus();
-      Boolean ready = !status.equals(ClusterHealthStatus.RED);
-      return ready;
+      return !status.equals(ClusterHealthStatus.RED);
     } catch (Throwable e) {
       return false;
     }
-  }
-
-  @Override
-  protected Map<String, ?> getNodeSettings() {
-    return initialSettings.getAsStructuredMap();
   }
 
 }

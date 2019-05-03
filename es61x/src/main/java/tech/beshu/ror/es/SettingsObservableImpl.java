@@ -38,7 +38,6 @@ import tech.beshu.ror.settings.SettingsUtils;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.nio.file.Path;
-import java.util.Map;
 
 /**
  * Created by sscarduzio on 25/06/2017.
@@ -49,7 +48,6 @@ public class SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(LogManager.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
-  private final Settings initialSettings;
   private final Environment environment;
 
   @Inject
@@ -61,7 +59,6 @@ public class SettingsObservableImpl extends SettingsObservable {
         env.configFile().toAbsolutePath(),
         s
     ).getRaw();
-    this.initialSettings = s;
   }
 
   @Override
@@ -115,16 +112,10 @@ public class SettingsObservableImpl extends SettingsObservable {
   public boolean isClusterReady() {
     try {
       ClusterHealthStatus status = client.admin().cluster().prepareHealth().get().getStatus();
-      Boolean ready = !status.equals(ClusterHealthStatus.RED);
-      return ready;
+      return !status.equals(ClusterHealthStatus.RED);
     } catch (Throwable e) {
       return false;
     }
-  }
-
-  @Override
-  protected Map<String, ?> getNodeSettings() {
-    return BasicSettings.fromFileObj(logger, getConfigPath(), initialSettings).asMap();
   }
 
 }

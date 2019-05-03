@@ -190,7 +190,7 @@ object domain {
     val empty: Secret = Secret("")
   }
 
-  final case class KibanaApp(value: String) extends AnyVal
+  final case class KibanaApp(value: NonEmptyString) 
   object KibanaApp {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }

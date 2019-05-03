@@ -34,7 +34,9 @@ import tech.beshu.ror.acl.orders._
 import scala.util.Try
 
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers.decodeStringLikeOrNonEmptySet(KibanaApp.apply).map(apps => new KibanaHideAppsRule(Settings(apps)))
+  DecoderHelpers
+    .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
+    .map(apps => new KibanaHideAppsRule(Settings(apps)))
 )
 
 object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
