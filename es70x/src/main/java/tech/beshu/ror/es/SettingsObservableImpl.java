@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.es;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.FutureCallback;
 import org.apache.logging.log4j.LogManager;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
@@ -113,5 +113,4 @@ public class SettingsObservableImpl extends SettingsObservable {
       return false;
     }
   }
-
 }

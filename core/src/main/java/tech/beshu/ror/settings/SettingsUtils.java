@@ -18,7 +18,7 @@
 package tech.beshu.ror.settings;
 
 import com.google.gson.Gson;
-import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Maps;
+import com.google.common.collect.Maps;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import tech.beshu.ror.shims.es.LoggerShim;
@@ -26,8 +26,6 @@ import tech.beshu.ror.shims.es.LoggerShim;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Map;
-
-// import org.yaml.snakeyaml.LoaderOptions;
 
 public class SettingsUtils {
 

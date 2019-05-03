@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.es;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.FutureCallback;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -53,7 +53,6 @@ public class SettingsObservableImpl extends SettingsObservable {
   @Inject
   public SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
     this.environment = env;
-
     this.client = client;
     current = BasicSettings.fromFile(logger, environment.configFile().toAbsolutePath(), s.getAsStructuredMap()).getRaw();
   }

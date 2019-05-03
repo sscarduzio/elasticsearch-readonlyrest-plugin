@@ -17,7 +17,7 @@
 
 package tech.beshu.ror.settings;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.FutureCallback;
 import tech.beshu.ror.shims.es.ESContext;
 import tech.beshu.ror.shims.es.ESVersion;
 import tech.beshu.ror.shims.es.LoggerShim;

@@ -33,7 +33,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.env.Environment;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.FutureCallback;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.settings.RawSettings;
 import tech.beshu.ror.settings.SettingsObservable;

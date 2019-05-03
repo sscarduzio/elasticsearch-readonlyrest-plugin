@@ -58,7 +58,7 @@ public class BasicSettings {
   private final boolean enable;
   private final String forbiddenMessage;
   private final Boolean auditCollector;
-  private final List<?> blocksSettings;
+
   private final RawSettings raw;
   private final Path configPath;
   private final RawSettings raw_global;
@@ -71,7 +71,7 @@ public class BasicSettings {
     this.raw_global = raw_global;
     this.raw = raw_global.inner(ATTRIBUTE_NAME);
     this.forbiddenMessage = raw.stringOpt(ATTRIBUTE_FORBIDDEN_RESPONSE).orElse(DEFAULT_FORBIDDEN_MESSAGE);
-    this.blocksSettings = raw.notEmptyListOpt("access_control_rules").orElse(new ArrayList<>(0));
+    List<?> blocksSettings = raw.notEmptyListOpt("access_control_rules").orElse(new ArrayList<>(0));
     this.enable = raw.booleanOpt(ATTRIBUTE_ENABLE).orElse(!blocksSettings.isEmpty());
     this.auditCollector = raw.booleanOpt(AUDIT_COLLECTOR).orElse(false);
 

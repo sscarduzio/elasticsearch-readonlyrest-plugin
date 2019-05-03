@@ -16,18 +16,14 @@
  */
 package tech.beshu.ror.settings;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
+import com.google.common.base.Joiner;
 import tech.beshu.ror.com.jayway.jsonpath.DocumentContext;
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath;
 import tech.beshu.ror.shims.es.LoggerShim;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 public class RawSettings {
@@ -74,10 +70,6 @@ public class RawSettings {
     return logger;
   }
 
-  public Set<String> getKeys() {
-    return raw.keySet();
-  }
-
   @SuppressWarnings("unchecked")
   public <T> Optional<T> opt(String attr) {
 
@@ -117,10 +109,6 @@ public class RawSettings {
     });
   }
 
-  public Boolean booleanReq(String attr) {
-    return req(attr);
-  }
-
   public Optional<String> stringOpt(String attr) {
     return opt(attr);
   }
@@ -130,85 +118,8 @@ public class RawSettings {
     return s;
   }
 
-  public Optional<Integer> intOpt(String attr) {
-    return opt(attr).map(s -> {
-      if (s instanceof String) {
-        return Integer.parseInt((String) s);
-      }
-      if (s instanceof Double) {
-        return ((Double) s).intValue();
-      }
-      return (Integer) s;
-    });
-  }
-
-  public Integer intReq(String attr) {
-    return Integer.parseInt(req(attr));
-  }
-
   public Optional<List<?>> notEmptyListOpt(String attr) {
     return opt(attr).flatMap(obj -> ((List<?>) obj).isEmpty() ? Optional.empty() : Optional.of((List<?>) obj));
-  }
-
-  public List<?> notEmptyListReq(String attr) {
-    List<?> nel = req(attr);
-    if (nel.isEmpty()) throw new SettingsMalformedException("List value of'" + attr + "' attribute cannot be empty");
-    return nel;
-  }
-
-  public Optional<Set<?>> notEmptySetOpt(String attr) {
-    return opt(attr).flatMap(value -> {
-      HashSet<Object> set = new HashSet<>();
-      if (value instanceof List<?>) {
-        List<?> l = (List<?>) value;
-        set.addAll(l);
-        if (set.size() < l.size()) {
-          throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot contain duplicates");
-        }
-      }
-      else if (value instanceof String) {
-        set.add(value);
-      }
-      if (set.isEmpty()) return Optional.empty();
-      return Optional.of(set);
-    });
-  }
-
-  public Set<?> notEmptySetReq(String attr) {
-    Object value = req(attr);
-    HashSet<Object> set = new HashSet<>();
-    if (value instanceof List<?>) {
-      List<?> l = (List<?>) value;
-      set.addAll(l);
-      if (set.size() < l.size()) {
-        throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot contain duplicates");
-      }
-    }
-    else if (value instanceof String) {
-      set.add(value);
-    }
-    if (set.isEmpty()) throw new SettingsMalformedException("Set value of '" + attr + "' attribute cannot be empty");
-    return set;
-  }
-
-  public Optional<URI> uriOpt(String attr) {
-    return stringOpt(attr).flatMap(s -> {
-      try {
-        return Optional.of(new URI(s));
-      }
-      catch (URISyntaxException e) {
-        return Optional.empty();
-      }
-    });
-  }
-
-  public URI uriReq(String attr) {
-    try {
-      return new URI(stringReq(attr));
-    }
-    catch (URISyntaxException e) {
-      throw new SettingsMalformedException("Cannot convert '" + attr + "' to URI");
-    }
   }
 
   public RawSettings inner(String attr) {
