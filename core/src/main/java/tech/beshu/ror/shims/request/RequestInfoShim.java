@@ -17,10 +17,14 @@
 
 package tech.beshu.ror.shims.request;
 
+import com.google.common.collect.Sets;
 import tech.beshu.ror.utils.MatcherWithWildcards;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by sscarduzio on 14/04/2017.
@@ -33,7 +37,12 @@ public interface RequestInfoShim {
 
   default Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (involvesIndices()) {
-      return new MatcherWithWildcards(ixsSet).filter(extractAllIndicesAndAliases());
+      Set<String> all = extractAllIndicesAndAliases().stream().flatMap(e -> {
+        HashSet<String> aliases = Sets.newHashSet(e.getValue());
+        aliases.add(e.getKey());
+        return aliases.stream();
+      }).collect(Collectors.toSet());
+      return new MatcherWithWildcards(ixsSet).filter(all);
     }
     throw new RequestHandlingException("can'g expand indices of a request that does not involve indices: " + extractAction());
   }
@@ -74,7 +83,7 @@ public interface RequestInfoShim {
 
   void writeResponseHeaders(Map<String, String> hMap);
 
-  Set<String> extractAllIndicesAndAliases();
+  Set<Entry<String, Set<String>>> extractAllIndicesAndAliases();
 
   boolean involvesIndices();
 

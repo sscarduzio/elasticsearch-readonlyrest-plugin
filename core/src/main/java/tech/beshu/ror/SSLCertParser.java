@@ -17,7 +17,7 @@
 
 package tech.beshu.ror;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.base.Joiner;
+import com.google.common.base.Joiner;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.settings.SettingsMalformedException;
 import tech.beshu.ror.shims.es.LoggerShim;

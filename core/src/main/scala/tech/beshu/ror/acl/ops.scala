@@ -102,7 +102,7 @@ object show {
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val headerShow: Show[Header] = Show.show {
-      case Header(name@Header.Name.authorization, _) => s"${name.show}=<OMITTED>"
+      case Header(name, _) if name === Header.Name.authorization => s"${name.show}=<OMITTED>"
       case Header(name, value) => s"${name.show}=${value.value.show}"
     }
     implicit val documentFieldShow: Show[DocumentField] = Show.show {

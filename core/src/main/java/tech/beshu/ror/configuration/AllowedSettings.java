@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.configuration;
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap;
 import tech.beshu.ror.settings.BasicSettings;
 
 import java.util.Map;

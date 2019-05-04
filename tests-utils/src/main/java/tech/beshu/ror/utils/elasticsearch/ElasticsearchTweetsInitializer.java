@@ -65,7 +65,7 @@ public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContain
       EntityUtils.consume(client.execute(httpPut).getEntity());
     } catch (Exception e) {
       e.printStackTrace();
-      throw new RuntimeException("Creating message failed", e);
+      throw new IllegalStateException("Creating message failed", e);
     }
   }
 }

@@ -18,8 +18,8 @@
 package tech.beshu.ror.utils;
 
 
-import cz.seznam.euphoria.shaded.guava.com.google.common.base.Strings;
-import cz.seznam.euphoria.shaded.guava.com.google.common.collect.Sets;
+import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
 
 import java.util.Arrays;
 import java.util.HashSet;

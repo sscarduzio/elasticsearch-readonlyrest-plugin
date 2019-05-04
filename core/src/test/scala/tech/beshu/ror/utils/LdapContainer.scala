@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.utils
 
+import java.io.InputStream
+
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.StrictLogging
 import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, ResultCode}
@@ -29,7 +31,6 @@ import tech.beshu.ror.utils.LdapContainer.defaults
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.tools.nsc.interpreter.InputStream
 
 class LdapContainer(name: String, ldapInitScript: String)
   extends GenericContainer(

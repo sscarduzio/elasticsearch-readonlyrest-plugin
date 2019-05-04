@@ -23,25 +23,25 @@ class MSearchTEST1_Tests {
   @Test
   def test274_1_notexist() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0]", msearchRequest(TEST1.MSEAERCH_BODY_NOT_EXISTS))
+    msearchFailedRequest(TEST1.MSEAERCH_BODY_NOT_EXISTS)
   }
 
   @Test
   def test274_1_queryworks() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[1]", msearchRequest(TEST1.MSEAERCH_BODY_QUERY_WORKS))
+    assertEquals("[1]", msearchSuccessRequest(TEST1.MSEAERCH_BODY_QUERY_WORKS))
   }
 
   @Test
   def test274_1_empty_index() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0]", msearchRequest(TEST1.MSEAERCH_BODY_EMPTY_INDEX))
+    assertEquals("[0]", msearchSuccessRequest(TEST1.MSEAERCH_BODY_EMPTY_INDEX))
   }
 
   @Test
   def test274_1_all() = {
     useCredentials("kibana", "kibana")
-    assertEquals("[0,1,0]", msearchRequest(TEST1.MSEAERCH_BODY_COMBO))
+    assertEquals("[0,1,0]", msearchSuccessRequest(TEST1.MSEAERCH_BODY_COMBO))
   }
 }
 
@@ -102,7 +102,7 @@ object MSearchTEST1_Tests {
     ).getUnderlyingClient
   )
 
-  def msearchRequest(body: String) = {
+  def msearchSuccessRequest(body: String) = {
     val resp = Unirest.post(url + "_msearch")
       .header("Content-Type", "application/x-ndjson")
       .body(body)
@@ -113,6 +113,15 @@ object MSearchTEST1_Tests {
     val result = jsonPath.read("$.responses[*].hits.total.value").toString
     if(result == "[]") jsonPath.read("$.responses[*].hits.total").toString
     else result
+  }
+
+  def msearchFailedRequest(body: String) = {
+    val resp = Unirest.post(url + "_msearch")
+      .header("Content-Type", "application/x-ndjson")
+      .body(body)
+      .asString()
+    System.out.println("MSEARCH RESPONSE: " + resp.getBody)
+    assertEquals(401, resp.getStatus)
   }
 
   var url: String = null
