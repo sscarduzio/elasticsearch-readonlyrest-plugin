@@ -69,6 +69,12 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     return create(project, ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
   }
 
+  public static ESWithReadonlyRestContainer create(String elasticsearchConfig,
+      Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
+    return create(RorPluginGradleProject.fromSystemProperty(), ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
+  }
+
+
   private static boolean greaterOrEqualThan(String esVersion, int maj, int min, int patchLevel) {
     if (Strings.isNullOrEmpty(esVersion)) {
       throw new IllegalArgumentException("invalid esVersion: " + esVersion);
