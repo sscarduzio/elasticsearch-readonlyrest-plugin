@@ -26,6 +26,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
+import tech.beshu.ror.utils.misc.GsonHelper;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -33,6 +34,8 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
 
 public class SearchManager {
 
@@ -91,12 +94,6 @@ public class SearchManager {
     } catch (IOException e) {
       throw new IllegalStateException("Cannot get string body", e);
     }
-  }
-
-  private static Map<String, Object> deserializeJsonBody(String response) {
-    Gson gson = new Gson();
-    Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
-    return gson.fromJson(response, mapType);
   }
 
   private static List<Map<String, Object>> getSearchHits(Map<String, Object> result) {

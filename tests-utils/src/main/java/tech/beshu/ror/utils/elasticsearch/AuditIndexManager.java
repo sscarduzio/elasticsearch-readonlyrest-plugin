@@ -17,8 +17,6 @@
 package tech.beshu.ror.utils.elasticsearch;
 
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -27,13 +25,13 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
-import java.lang.reflect.Type;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
+
+import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
 
 public class AuditIndexManager {
 
@@ -67,12 +65,6 @@ public class AuditIndexManager {
       return getEntries(deserializeJsonBody(response.body));
     else
       return Lists.newArrayList();
-  }
-
-  public Map<String, Object> deserializeJsonBody(String response) {
-    Gson gson = new Gson();
-    Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
-    return gson.fromJson(response, mapType);
   }
 
   public List<Map<String, Object>> getEntries(Map<String, Object> result) {
