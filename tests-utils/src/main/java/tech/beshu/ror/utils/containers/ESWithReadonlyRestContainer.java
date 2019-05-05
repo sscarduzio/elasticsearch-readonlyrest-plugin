@@ -17,7 +17,6 @@
 
 package tech.beshu.ror.utils.containers;
 
-import com.google.common.base.Strings;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -26,14 +25,13 @@ import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.Version;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.util.VersionUtil;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import tech.beshu.ror.utils.misc.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
+import tech.beshu.ror.utils.misc.Version;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -74,17 +72,6 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     return create(RorPluginGradleProject.fromSystemProperty(), ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
   }
 
-
-  private static boolean greaterOrEqualThan(String esVersion, int maj, int min, int patchLevel) {
-    if (Strings.isNullOrEmpty(esVersion)) {
-      throw new IllegalArgumentException("invalid esVersion: " + esVersion);
-    }
-    return VersionUtil
-        .parseVersion(esVersion, "x", "y")
-        .compareTo(
-            new Version(maj, min, patchLevel, "", "x", "y")) >= 0;
-  }
-
   public static void main(String[] args) {
 
   }
@@ -96,7 +83,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
         new ContainerCreationException("Plugin file assembly failed")
     );
 
-    String dockerImage = greaterOrEqualThan(project.getESVersion(), 6, 3, 0) ?
+    String dockerImage = Version.greaterOrEqualThan(project.getESVersion(), 6, 3, 0) ?
         "docker.elastic.co/elasticsearch/elasticsearch-oss" :
         "docker.elastic.co/elasticsearch/elasticsearch";
     String elasticsearchConfigName = "elasticsearch.yml";
@@ -132,7 +119,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                   .user("root")
                   .run("chown elasticsearch:elasticsearch config/*");
 
-              if(greaterOrEqualThan(project.getESVersion(), 7, 0, 0)){
+              if(Version.greaterOrEqualThan(project.getESVersion(), 7, 0, 0)){
                 builder
                     .run("egrep -v 'node\\.name|initial_master_nodes' /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                     .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")

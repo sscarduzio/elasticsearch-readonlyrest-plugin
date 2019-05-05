@@ -28,7 +28,7 @@ dependencies {
     compile group: 'net.jodah',                      name: 'failsafe',            version: '2.0.1'
     compile group: 'org.apache.httpcomponents',      name: 'httpclient',          version: '4.5.2'
     compile group: 'org.gradle',                     name: 'gradle-tooling-api',  version: '4.10.2'
-    compile group: 'org.testcontainers',             name: 'testcontainers',      version: '1.10.1'
+    compile group: 'org.testcontainers',             name: 'testcontainers',      version: '1.11.2'
     compile group: 'org.apache.logging.log4j',       name: 'log4j-core',          version: '2.11.1'
 }
 

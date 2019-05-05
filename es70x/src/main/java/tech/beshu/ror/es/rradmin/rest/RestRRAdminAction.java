@@ -28,9 +28,6 @@ import org.elasticsearch.rest.action.RestToXContentListener;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.RRAdminRequest;
-import tech.beshu.ror.es.rradmin.RRAdminResponse;
-
-import java.io.IOException;
 
 /**
  * Created by sscarduzio on 21/03/2017.
@@ -49,12 +46,12 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
   }
 
   @Override
-  protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+  protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) {
     return (channel) -> {
       client.execute(
           new RRAdminAction(),
           new RRAdminRequest(request.method().name(), request.path(), request.content().utf8ToString()),
-          new RestToXContentListener<RRAdminResponse>(channel)
+          new RestToXContentListener<>(channel)
       );
     };
   }
