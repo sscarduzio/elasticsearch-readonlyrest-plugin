@@ -25,15 +25,19 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
+import tech.beshu.ror.utils.elasticsearch.SearchManager;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import java.util.Map;
 import java.util.Optional;
 
+import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create;
+import static org.apache.commons.lang3.StringEscapeUtils.unescapeJava;
 
 public class IndexSettingsTests {
 
@@ -99,6 +103,14 @@ public class IndexSettingsTests {
     checkKO(user1client.execute(new HttpGet(user1client.from("/_cluster/health"))));
   }
 
+  @Test
+  public void testConfigStoredInIndexIsTheSameAsPassedToRestRealodEndpoint() {
+    SearchManager searchManager = new SearchManager(container.getAdminClient());
+    SearchManager.SearchResult searchResult = searchManager.search("/.readonlyrest/_search");
+    assertEquals(200, searchResult.getResponseCode());
+    Map<String, String> source = (Map<String, String>) searchResult.getResults().get(0).get("_source");
+    assertEquals(unescapeJava(NEW_CONFIGURATION), source.get("settings"));
+  }
 
   private String checkOK(HttpResponse resp) throws Exception {
     assertTrue(resp.getStatusLine().getStatusCode() <= 201);

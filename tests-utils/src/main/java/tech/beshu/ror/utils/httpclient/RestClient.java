@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.httpclient;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.http.Header;
+import org.apache.http.HttpResponse;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
@@ -35,6 +36,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.misc.Tuple;
 
 import java.io.IOException;
@@ -152,6 +154,14 @@ public class RestClient {
       return underlying.execute(req);
     } catch (IOException e) {
       throw new IllegalStateException(e);
+    }
+  }
+
+  public static String bodyFrom(HttpResponse r) {
+    try {
+      return EntityUtils.toString(r.getEntity());
+    } catch (IOException e) {
+      throw new IllegalStateException("Cannot get string body", e);
     }
   }
 

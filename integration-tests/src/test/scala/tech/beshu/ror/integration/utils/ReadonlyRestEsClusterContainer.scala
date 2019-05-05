@@ -1,6 +1,6 @@
 package tech.beshu.ror.integration.utils
 
-import java.io.File
+import java.io.{File, IOException}
 import java.time.Duration
 import java.util
 import java.util.function.BiPredicate
@@ -22,7 +22,9 @@ import ReadonlyRestEsClusterContainer.adminCredentials
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpGet
+import org.apache.http.util.EntityUtils
 import tech.beshu.ror.integration.utils.JavaScalaUtils._
+import tech.beshu.ror.utils.misc.GsonHelper._
 
 import scala.language.existentials
 
@@ -58,7 +60,7 @@ private class ReadonlyRestEsContainer(esVersion: String,
   container
     .withLogConsumer(new Slf4jLogConsumer(logger.underlying))
     .withExposedPorts(9200)
-    .waitingFor(helthyClusterWaitStrategy)
+    .waitingFor(healthyClusterWaitStrategy)
 
   def host: String = container.getContainerIpAddress
 
@@ -113,32 +115,35 @@ private class ReadonlyRestEsContainer(esVersion: String,
       })
   }
 
-  private def helthyClusterWaitStrategy: WaitStrategy = new AbstractWaitStrategy {
+  private def healthyClusterWaitStrategy: WaitStrategy = new AbstractWaitStrategy {
+
     override def waitUntilReady(): Unit = {
-      val retryPolicy = new RetryPolicy[util.List[util.Map[String, AnyRef]]]()
-        .handleIf(emptyEntriesResultPredicate)
-        .withMaxRetries(20)
-        .withDelay(Duration.ofMillis(500))
-        .withMaxDuration(Duration.ofSeconds(10))
-      Failsafe.`with`(retryPolicy).get(() => call("/" + indexName + "/_search", restClient))
+      // try: https://github.com/hipjim/scala-retry
+      val retryPolicy = new RetryPolicy[Boolean]()
+        .handleIf(clusterIsNotHealthy)
+        .withDelay(Duration.ofSeconds(1))
+      Failsafe
+        .`with`(retryPolicy)
+        .get(() => checkClusterHealth())
+      ()
     }
 
-    private def emptyEntriesResultPredicate = new BiPredicate[Boolean, Throwable] {
-
+    private def clusterIsNotHealthy = new BiPredicate[Boolean, Throwable] {
+      override def test(isHealthy: Boolean, throwable: Throwable): Boolean = throwable != null || !isHealthy
     }
 
     private def checkClusterHealth() = {
-      val clusterHealthRequest = new HttpGet(adminClient.from("_cluster/health")))
+      val clusterHealthRequest = new HttpGet(adminClient.from("_cluster/health"))
       bracket(adminClient.execute(clusterHealthRequest)) { response =>
-        result.getStatusLine.getStatusCode match {
+        response.getStatusLine.getStatusCode match {
           case 200 =>
-            GsonHelper
+            val healthJson = deserializeJsonBody(RestClient.bodyFrom(response))
+            "green" == healthJson.get("status")
           case _ =>
             false
         }
       }
     }
-
   }
 }
 

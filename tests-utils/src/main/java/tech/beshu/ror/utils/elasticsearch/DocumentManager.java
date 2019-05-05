@@ -17,8 +17,6 @@
 package tech.beshu.ror.utils.elasticsearch;
 
 import com.google.common.base.Joiner;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.http.HttpResponse;
@@ -30,14 +28,14 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
-import java.lang.reflect.Type;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
+
+import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
 
 public class DocumentManager {
 
@@ -115,10 +113,4 @@ public class DocumentManager {
     return EntityUtils.toString(r.getEntity());
   }
 
-  private Map<String, Object> deserializeJsonBody(String body) {
-    Gson gson = new Gson();
-    Type mapType = new TypeToken<HashMap<String, Object>>() {
-    }.getType();
-    return gson.fromJson(body, mapType);
-  }
 }
