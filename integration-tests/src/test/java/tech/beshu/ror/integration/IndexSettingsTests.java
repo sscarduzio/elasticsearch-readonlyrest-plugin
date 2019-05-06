@@ -24,6 +24,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
+import org.junit.Assert;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.elasticsearch.SearchManager;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
@@ -36,6 +37,7 @@ import java.util.Optional;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
+import static tech.beshu.ror.utils.assertions.EnhancedAssertion.assertNAttempts;
 import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create;
 import static org.apache.commons.lang3.StringEscapeUtils.unescapeJava;
 
@@ -106,10 +108,14 @@ public class IndexSettingsTests {
   @Test
   public void testConfigStoredInIndexIsTheSameAsPassedToRestRealodEndpoint() {
     SearchManager searchManager = new SearchManager(container.getAdminClient());
-    SearchManager.SearchResult searchResult = searchManager.search("/.readonlyrest/_search");
-    assertEquals(200, searchResult.getResponseCode());
-    Map<String, String> source = (Map<String, String>) searchResult.getResults().get(0).get("_source");
-    assertEquals(unescapeJava(NEW_CONFIGURATION), source.get("settings"));
+    assertNAttempts(3, () -> {
+      SearchManager.SearchResult searchResult = searchManager.search("/.readonlyrest/_search");
+      assertEquals(200, searchResult.getResponseCode());
+      assertEquals(1, searchResult.getResults().size());
+      Map<String, String> source = (Map<String, String>) searchResult.getResults().get(0).get("_source");
+      assertEquals(unescapeJava(NEW_CONFIGURATION), source.get("settings"));
+      return null;
+    });
   }
 
   private String checkOK(HttpResponse resp) throws Exception {
