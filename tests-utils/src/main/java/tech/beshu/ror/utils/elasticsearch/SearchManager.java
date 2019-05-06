@@ -17,8 +17,6 @@
 package tech.beshu.ror.utils.elasticsearch;
 
 import com.google.common.collect.Lists;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -29,10 +27,10 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
 
 public class SearchManager {
 
@@ -91,12 +89,6 @@ public class SearchManager {
     } catch (IOException e) {
       throw new IllegalStateException("Cannot get string body", e);
     }
-  }
-
-  private static Map<String, Object> deserializeJsonBody(String response) {
-    Gson gson = new Gson();
-    Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
-    return gson.fromJson(response, mapType);
   }
 
   private static List<Map<String, Object>> getSearchHits(Map<String, Object> result) {

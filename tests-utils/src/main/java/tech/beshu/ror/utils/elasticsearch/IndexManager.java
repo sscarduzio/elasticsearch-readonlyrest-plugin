@@ -18,8 +18,6 @@ package tech.beshu.ror.utils.elasticsearch;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -28,12 +26,12 @@ import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
 
 public class IndexManager {
 
@@ -57,12 +55,6 @@ public class IndexManager {
 
   private HttpUriRequest createGetIndexRequest(String indexName) {
     return new HttpGet(restClient.from("/" + indexName));
-  }
-
-  private static Map<String, Object> deserializeJsonBody(String response) {
-    Gson gson = new Gson();
-    Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
-    return gson.fromJson(response, mapType);
   }
 
   private static Set<String> getAliases(Map<String, Object> result) {
