@@ -122,6 +122,7 @@ public class Constants {
       "cluster:admin/rradmin/*",
       "indices:data/write/*", // <-- DEPRECATED!
       "indices:admin/create",
-      "cluster:monitor/ccr/*"
+      "indices:admin/ilm/*",
+      "indices:monitor/*"
   );
 }
