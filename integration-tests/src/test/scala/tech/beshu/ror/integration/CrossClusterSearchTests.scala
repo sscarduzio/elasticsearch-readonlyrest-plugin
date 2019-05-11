@@ -4,11 +4,12 @@ import cats.implicits._
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
+import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.JavaScalaUtils.bracket
 import tech.beshu.ror.integration.utils.ScalaUtils._
 import tech.beshu.ror.integration.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsClusterContainer, ReadonlyRestEsClusterInitializer}
-import tech.beshu.ror.utils.elasticsearch.DocumentManager
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.util.Try
@@ -21,8 +22,24 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer {
     clusterInitializer = CrossClusterSearchTests.remoteClustersInitializer()
   )
 
-  "A test" in {
-    container.hashCode()
+  private lazy val user1SearchManager = new SearchManager(container.nodesContainers.head.client("dev1", "test"))
+  private lazy val user2SearchManager = new SearchManager(container.nodesContainers.head.client("dev2", "test"))
+
+  "A cluster search for given index" should {
+    "return 200 and allow user to its content" when {
+      "user has permission to do so" in {
+        val result = user1SearchManager.search("/odd:test1_index/_search")
+        assertEquals(200, result.getResponseCode)
+        assertEquals(2, result.getResults.size)
+
+      }
+    }
+    "return 401" when {
+      "user has no permission to do so" in {
+        val result = user2SearchManager.search("/odd:test1_index/_search")
+        assertEquals(401, result.getResponseCode)
+      }
+    }
   }
 }
 

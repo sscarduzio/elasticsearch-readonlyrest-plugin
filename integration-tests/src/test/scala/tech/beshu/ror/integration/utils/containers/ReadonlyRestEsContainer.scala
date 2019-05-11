@@ -33,6 +33,9 @@ class ReadonlyRestEsContainer private(val name: String, underlying: GenericConta
 
   def adminClient: RestClient =
     new RestClient(true, host, port, Optional.of(Tuple.from(adminCredentials._1, adminCredentials._2)))
+
+  def client(user: String, password: String): RestClient =
+    new RestClient(true, host, port, Optional.of(Tuple.from(user, password)))
 }
 
 object ReadonlyRestEsContainer extends StrictLogging {
