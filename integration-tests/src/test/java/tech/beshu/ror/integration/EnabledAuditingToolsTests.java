@@ -21,7 +21,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.elasticsearch.AuditIndexManager;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
 import java.util.List;
@@ -37,7 +37,7 @@ public class EnabledAuditingToolsTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(), "/enabled_auditing_tools/elasticsearch.yml",
+      RorPluginGradleProjectJ.fromSystemProperty(), "/enabled_auditing_tools/elasticsearch.yml",
       Optional.of(new ElasticsearchTweetsInitializer())
   );
 

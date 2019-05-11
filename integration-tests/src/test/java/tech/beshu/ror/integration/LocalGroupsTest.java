@@ -27,7 +27,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.lang.reflect.Type;
@@ -45,7 +45,7 @@ public class LocalGroupsTest {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(), "/local_groups/elasticsearch.yml",
+          RorPluginGradleProjectJ.fromSystemProperty(), "/local_groups/elasticsearch.yml",
           Optional.empty()
       );
 

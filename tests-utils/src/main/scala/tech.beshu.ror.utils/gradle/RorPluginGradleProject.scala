@@ -1,4 +1,4 @@
-package tech.beshu.ror.integration.utils
+package tech.beshu.ror.utils.gradle
 
 /*
  *    This file is part of ReadonlyREST.
@@ -17,11 +17,10 @@ package tech.beshu.ror.integration.utils
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-import org.gradle.tooling.GradleConnector
 import java.io.File
 import java.nio.file.Paths
 
-import tech.beshu.ror.utils.gradle.GradleProperties
+import org.gradle.tooling.GradleConnector
 
 import scala.compat.java8.OptionConverters._
 import scala.util.Try

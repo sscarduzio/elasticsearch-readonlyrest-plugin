@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
 import tech.beshu.ror.utils.containers.LdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
 
@@ -35,7 +35,7 @@ public class LdapAutenticationLocalAuthorizationTests {
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
       ESWithReadonlyRestContainerUtils.create(
-          RorPluginGradleProject.fromSystemProperty(),
+          RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
               .add("LDAP1", () -> LdapContainer.create("/ldap_separate_authc_authz_mixed_local/ldap.ldif"))
               .build(),

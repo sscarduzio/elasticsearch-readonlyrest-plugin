@@ -6,9 +6,8 @@ import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.utils.JavaScalaUtils.bracket
-import tech.beshu.ror.integration.utils.ScalaUtils._
-import tech.beshu.ror.integration.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsClusterContainer, ReadonlyRestEsClusterInitializer}
+import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsClusterContainer, ReadonlyRestEsClusterInitializer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -75,7 +74,7 @@ object CrossClusterSearchTests {
           """.stripMargin))
         request
       }
-      bracket(Try(adminClient.execute(createRemoteClusterSettingsRequest()))) { response =>
+      Try(adminClient.execute(createRemoteClusterSettingsRequest())).bracket { response =>
         response.getStatusLine.getStatusCode match {
           case 200 =>
           case _ =>

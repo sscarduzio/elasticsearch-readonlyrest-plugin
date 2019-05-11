@@ -1,4 +1,4 @@
-package tech.beshu.ror.integration.utils.containers
+package tech.beshu.ror.utils.containers
 
 import java.io.File
 
@@ -6,7 +6,6 @@ import cats.data.NonEmptyList
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
-import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.misc.Version
 
 object ESWithReadonlyRestImage extends StrictLogging {

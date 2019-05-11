@@ -1,4 +1,4 @@
-package tech.beshu.ror.integration.utils.containers
+package tech.beshu.ror.utils.containers
 
 import java.io.File
 import java.util.Optional
@@ -10,10 +10,10 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
-import tech.beshu.ror.integration.utils.JavaScalaUtils.finiteDurationToJavaDuration
-import tech.beshu.ror.integration.utils.containers.ReadonlyRestEsContainer.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
+import ReadonlyRestEsContainer.adminCredentials
+import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._

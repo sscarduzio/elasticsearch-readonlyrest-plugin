@@ -26,7 +26,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.elasticsearch.SearchManager;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -47,7 +47,7 @@ public class IndexSettingsTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     create(
-      RorPluginGradleProject.fromSystemProperty(), "/index_settings/elasticsearch.yml",
+      RorPluginGradleProjectJ.fromSystemProperty(), "/index_settings/elasticsearch.yml",
       Optional.of(
         new ESWithReadonlyRestContainer.ESInitalizer() {
           @Override

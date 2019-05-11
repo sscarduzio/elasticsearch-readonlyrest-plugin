@@ -23,7 +23,7 @@ import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.elasticsearch.SearchManager;
 import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
 import java.time.Duration;
@@ -36,7 +36,7 @@ public class MSearchWithFilterTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(), "/msearch_with_filter/elasticsearch.yml",
+      RorPluginGradleProjectJ.fromSystemProperty(), "/msearch_with_filter/elasticsearch.yml",
       Optional.of(new ElasticsearchTweetsInitializer())
   );
 

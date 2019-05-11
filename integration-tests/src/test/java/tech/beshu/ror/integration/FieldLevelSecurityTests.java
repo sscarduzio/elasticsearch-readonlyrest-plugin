@@ -26,7 +26,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
@@ -46,7 +46,7 @@ public class FieldLevelSecurityTests {
   private static RestClient adminClient;
 
   @ClassRule
-  public static ESWithReadonlyRestContainer container = create(RorPluginGradleProject.fromSystemProperty(),
+  public static ESWithReadonlyRestContainer container = create(RorPluginGradleProjectJ.fromSystemProperty(),
       "/field_level_security/elasticsearch.yml", Optional.of(c -> {
         insertDoc("a1", c, "a", "dummy");
       })

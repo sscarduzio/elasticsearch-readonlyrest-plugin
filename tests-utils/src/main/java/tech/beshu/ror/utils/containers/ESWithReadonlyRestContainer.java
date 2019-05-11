@@ -27,9 +27,9 @@ import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.misc.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
 import tech.beshu.ror.utils.misc.Version;
 
@@ -61,7 +61,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     ESWithReadonlyRestContainer.esVersion = esVersion;
   }
 
-  public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
+  public static ESWithReadonlyRestContainer create(RorPluginGradleProjectJ project,
       String elasticsearchConfig,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     return create(project, ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
@@ -69,14 +69,14 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
 
   public static ESWithReadonlyRestContainer create(String elasticsearchConfig,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
-    return create(RorPluginGradleProject.fromSystemProperty(), ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
+    return create(RorPluginGradleProjectJ.fromSystemProperty(), ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
   }
 
   public static void main(String[] args) {
 
   }
 
-  public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
+  public static ESWithReadonlyRestContainer create(RorPluginGradleProjectJ project,
       File elasticsearchConfigFile,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File pluginFile = project.assemble().orElseThrow(() ->

@@ -7,11 +7,10 @@ import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.{ClassRule, Test}
 import org.testcontainers.shaded.com.google.common.net.HostAndPort
-import tech.beshu.ror.integration.utils.RestTestUtils
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.ESInitalizer
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject
-import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ
+import tech.beshu.ror.utils.httpclient.{RestClient, RestTestUtils}
 import tech.beshu.ror.utils.misc.TempFile
 
 
@@ -70,7 +69,7 @@ object MSearchTEST3_Tests {
   var restUtils: RestTestUtils = null
 
 
-  @ClassRule def container = ESWithReadonlyRestContainer.create(RorPluginGradleProject.fromSystemProperty,
+  @ClassRule def container = ESWithReadonlyRestContainer.create(RorPluginGradleProjectJ.fromSystemProperty,
     TempFile.newFile(getClass.getName, "elasticsearch.yml", TEST3.settingsYaml),
     Optional.of(new ESInitalizer {
 

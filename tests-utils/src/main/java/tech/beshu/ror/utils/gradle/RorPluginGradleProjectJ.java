@@ -23,20 +23,20 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.Optional;
 
-public class RorPluginGradleProject {
+public class RorPluginGradleProjectJ {
 
   private final GradleProperties esProjectProperties;
   private final GradleProperties rootProjectProperties;
   private final File project;
   private final String name;
 
-  public static RorPluginGradleProject fromSystemProperty() {
+  public static RorPluginGradleProjectJ fromSystemProperty() {
     return Optional.ofNullable(System.getProperty("esModule"))
-        .map(RorPluginGradleProject::new)
+        .map(RorPluginGradleProjectJ::new)
         .orElseThrow(() -> new IllegalStateException("No 'esModule' system property set"));
   }
 
-  public RorPluginGradleProject(String name) {
+  public RorPluginGradleProjectJ(String name) {
     this.name = name;
     this.project = esProject(name);
     this.esProjectProperties = GradleProperties.create(project).orElseThrow(() ->

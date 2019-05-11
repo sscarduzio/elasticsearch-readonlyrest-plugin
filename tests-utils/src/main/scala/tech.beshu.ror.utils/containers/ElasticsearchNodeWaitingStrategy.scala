@@ -1,4 +1,4 @@
-package tech.beshu.ror.integration.utils.containers
+package tech.beshu.ror.utils.containers
 
 import java.util.concurrent.TimeUnit
 
@@ -9,14 +9,12 @@ import monix.eval.Coeval
 import org.apache.http.client.methods.HttpGet
 import org.testcontainers.containers.ContainerLaunchException
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
-import retry.RetryPolicies.{constantDelay, limitRetriesByCumulativeDelay}
-import retry.{RetryDetails, RetryPolicy, retrying}
-import tech.beshu.ror.integration.utils.JavaScalaUtils.bracket
+import retry._
+import retry.RetryPolicies._
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody
-
-import scala.concurrent.duration.FiniteDuration
+import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -59,7 +57,7 @@ class ElasticsearchNodeWaitingStrategy(containerName: String,
 
   private def checkClusterHealth(client: RestClient) = {
     val clusterHealthRequest = new HttpGet(client.from("_cluster/health"))
-    bracket(Try(client.execute(clusterHealthRequest))) { response =>
+    Try(client.execute(clusterHealthRequest)).bracket { response =>
       response.getStatusLine.getStatusCode match {
         case 200 =>
           val healthJson = deserializeJsonBody(RestClient.bodyFrom(response))

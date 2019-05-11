@@ -26,7 +26,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.HashMap;
@@ -49,7 +49,7 @@ public class RorKbnAuthTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(), "/ror_kbn_auth/elasticsearch.yml",
+          RorPluginGradleProjectJ.fromSystemProperty(), "/ror_kbn_auth/elasticsearch.yml",
           Optional.empty()
       );
 

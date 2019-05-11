@@ -1,18 +1,15 @@
-package tech.beshu.ror.integration.utils.containers
+package tech.beshu.ror.utils.containers
 
 import java.io.File
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.Container
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
-import monix.execution.schedulers.CanBlock.permit
 import org.junit.runner.Description
-import tech.beshu.ror.integration.utils.RorPluginGradleProject
-import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
+import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
-
+import monix.execution.Scheduler.Implicits.global
 import scala.language.existentials
 
 object ReadonlyRestEsClusterContainer {

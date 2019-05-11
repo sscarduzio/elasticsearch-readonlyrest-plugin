@@ -1,4 +1,4 @@
-package tech.beshu.ror.integration.utils
+package tech.beshu.ror.utils.httpclient
 
 import java.util.Optional
 
@@ -6,14 +6,12 @@ import com.jayway.jsonpath.JsonPath
 import com.mashape.unirest.http.Unirest
 import org.junit.Assert.assertEquals
 import org.testcontainers.shaded.com.google.common.net.HostAndPort
-import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
 
 class RestTestUtils(restClient: RestClient, endpoint: HostAndPort) {
   val url = restClient.from("").toASCIIString
 
   Unirest.setHttpClient(restClient.getUnderlyingClient)
-
 
   def useCredentials(user: String, pass: String) = Unirest.setHttpClient(
     new RestClient(

@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.containers;
 
 import com.google.common.collect.ImmutableList;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -32,14 +32,14 @@ import java.util.regex.Pattern;
 public class ESWithReadonlyRestContainerUtils {
 
   public static MultiContainerDependent<ESWithReadonlyRestContainer> create(
-    RorPluginGradleProject project,
+    RorPluginGradleProjectJ project,
     MultiContainer externalDependencies,
     String elasticsearchConfig) {
     return create(project, externalDependencies, elasticsearchConfig, Optional.empty());
   }
 
   public static MultiContainerDependent<ESWithReadonlyRestContainer> create(
-    RorPluginGradleProject project,
+    RorPluginGradleProjectJ project,
     MultiContainer externalDependencies,
     String elasticsearchConfig,
     ESWithReadonlyRestContainer.ESInitalizer initalizer) {
@@ -47,7 +47,7 @@ public class ESWithReadonlyRestContainerUtils {
   }
 
   private static MultiContainerDependent<ESWithReadonlyRestContainer> create(
-    RorPluginGradleProject project,
+    RorPluginGradleProjectJ project,
     MultiContainer externalDependencies,
     String elasticsearchConfig,
     Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
