@@ -36,12 +36,13 @@ import java.util.Optional;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
+import static tech.beshu.ror.utils.assertions.EnhancedAssertion.assertNAttempts;
 import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create;
 import static org.apache.commons.lang3.StringEscapeUtils.unescapeJava;
 
 public class IndexSettingsTests {
 
-  private final static String NEW_CONFIGURATION = "readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: \\\"CONTAINER ADMIN\\\"\\r\\n      type: allow\\r\\n      auth_key: admin:container\\r\\n\\r\\n    - name: \\\"User 2\\\"\\r\\n      type: allow\\r\\n      auth_key_unix: \\\"logstash:$6$rounds=65535$d07dnv4N$jh8an.nDSXG6PZlfVh5ehigYL8.5gtV.9yoXAOYFHTQvwPWhBdEIOxnS8tpbuIAk86shjJiqxeap5o0A1PoFI/\\\"";
+  private final static String NEW_CONFIGURATION = "readonlyrest:\\r\\n    access_control_rules:\\r\\n\\r\\n    - name: \\\"CONTAINER ADMIN\\\"\\r\\n      type: allow\\r\\n      auth_key: admin:container\\r\\n\\r\\n    - name: \\\"User 2\\\"\\r\\n      type: allow\\r\\n      auth_key: user2:dev\\r\\n\\r\\n    - name: \\\"User 3\\\"\\r\\n      type: allow\\r\\n      auth_key_unix: \\\"logstash:$6$rounds=65535$d07dnv4N$jh8an.nDSXG6PZlfVh5ehigYL8.5gtV.9yoXAOYFHTQvwPWhBdEIOxnS8tpbuIAk86shjJiqxeap5o0A1PoFI/\\\"";
 
   @ClassRule
   public static ESWithReadonlyRestContainer container =
@@ -106,10 +107,14 @@ public class IndexSettingsTests {
   @Test
   public void testConfigStoredInIndexIsTheSameAsPassedToRestRealodEndpoint() {
     SearchManager searchManager = new SearchManager(container.getAdminClient());
-    SearchManager.SearchResult searchResult = searchManager.search("/.readonlyrest/_search");
-    assertEquals(200, searchResult.getResponseCode());
-    Map<String, String> source = (Map<String, String>) searchResult.getResults().get(0).get("_source");
-    assertEquals(unescapeJava(NEW_CONFIGURATION), source.get("settings"));
+    assertNAttempts(3, () -> {
+      SearchManager.SearchResult searchResult = searchManager.search("/.readonlyrest/_search");
+      assertEquals(200, searchResult.getResponseCode());
+      assertEquals(1, searchResult.getResults().size());
+      Map<String, String> source = (Map<String, String>) searchResult.getResults().get(0).get("_source");
+      assertEquals(unescapeJava(NEW_CONFIGURATION), source.get("settings"));
+      return null;
+    });
   }
 
   private String checkOK(HttpResponse resp) throws Exception {
