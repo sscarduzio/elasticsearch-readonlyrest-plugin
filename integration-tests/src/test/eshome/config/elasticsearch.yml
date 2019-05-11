@@ -6,3 +6,9 @@ path.repo: "/tmp/lolrepo1"
 #cluster.remote.cluster_one.seeds: 127.0.0.1:9300
 node.name: n1_it
 cluster.initial_master_nodes: n1_it
+
+#cluster:
+#  remote:
+#    cluster_one:
+#      seeds: 127.0.0.1:9300
+#      transport.ping_schedule: 30s

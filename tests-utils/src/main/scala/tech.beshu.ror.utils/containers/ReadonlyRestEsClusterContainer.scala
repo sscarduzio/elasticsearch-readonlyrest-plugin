@@ -28,6 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import monix.execution.Scheduler.Implicits.global
 import scala.language.existentials
 
+// todo: check logs size
 object ReadonlyRestEsClusterContainer {
 
   def create(rorConfigFileName: String,

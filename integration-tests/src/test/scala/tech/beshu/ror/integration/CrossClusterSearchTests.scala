@@ -46,7 +46,6 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer {
         val result = user1SearchManager.search("/odd:test1_index/_search")
         assertEquals(200, result.getResponseCode)
         assertEquals(2, result.getResults.size)
-
       }
     }
     "return 401" when {

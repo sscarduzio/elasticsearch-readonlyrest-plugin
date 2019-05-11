@@ -1,65 +1,22 @@
 readonlyrest:
-  #audit_collector: true
-  enable: true
-
   ssl:
     enable: true
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  ssl_internode:
-    enable: false
-    keystore_file: "keystore.jks"
-    keystore_pass: readonlyrest
-    key_pass: readonlyrest
-    verification: false
-
   access_control_rules:
 
-      - name: "::LOGSTASH::"
-        auth_key: logstash:logstash
-        actions: ["indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
-        indices: ["logstash-*"]
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
 
-      - name: "::KIBANA-SRV::"
-        auth_key: kibana:kibana
+    - name: "test1"
+      indices: ["test1_index"]
+      auth_key: dev1:test
 
-      - name: "::TEST::"
-        auth_key: test:dev
-       # filter: '{"query_string": {"query": "entity.plant: cactus"}}'
-       # filter: '{"bool": { "must_not": { "match": { "entity.plant": "cactus" }}}}'
-        filter: '{"bool": { "must_not": { "match": { "_id": "2" }}}}'
-
-      - name: "::RO::"
-        auth_key: ro:dev
-        kibana_access: ro
-        indices: [ ".kibana", ".kibana-devnull", "logstash-*"]
-        kibana_hide_apps: ["readonlyrest_kbn", "timelion", "kibana:dev_tools", "kibana:management"]
-
-      - name: "::RW::"
-        auth_key: rw:dev
-        kibana_access: rw
-        indices: [".kibana", ".kibana-devnull", "logstash-*"]
-        kibana_hide_apps: ["readonlyrest_kbn", "timelion", "kibana:dev_tools", "kibana:management"]
-
-      - name: "::ADMIN::"
-        auth_key: admin:dev
-        # KIBANA ADMIN ACCESS NEEDED TO EDIT SECURITY SETTINGS IN ROR KIBANA APP!
-        kibana_access: admin
-
-      - name: "::WEBSITE SEARCH BOX::"
-        indices: ["public"]
-        actions: ["indices:data/read/*"]
-
-      - name: "::anders::"
-        auth_key: anders:anders
-        kibana_access: rw
-        indices: [".kibana","cdr*"]
-
-      - name: "::anna::"
-        auth_key: anna:anna
-        kibana_access: rw
-        indices: [".kibana","cdr*"]
-        fields: ["~password"]
-        kibana_hide_apps: ["readonlyrest_kbn", "timelion", "kibana:dev_tools", "kibana:management"]
+    - name: "test2"
+      indices: ["test2_index"]
+      auth_key: dev2:test
