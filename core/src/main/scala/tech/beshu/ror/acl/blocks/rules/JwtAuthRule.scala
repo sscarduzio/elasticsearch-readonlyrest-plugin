@@ -78,6 +78,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       case Left(_) =>
         Task.now(Rejected)
       case Right((user, groups)) =>
+        logger.debug(s"JWT resolved user for claim ${settings.jwt.userClaim}: $user, and groups for claim ${settings.jwt.groupsClaim}: ${groups}")
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
