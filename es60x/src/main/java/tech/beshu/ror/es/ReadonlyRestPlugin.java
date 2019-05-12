@@ -27,6 +27,8 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.component.AbstractLifecycleComponent;
+import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
@@ -54,6 +56,8 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.RemoteClusterService;
+import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.AllowedSettings;
@@ -64,6 +68,7 @@ import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -72,6 +77,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -106,11 +113,18 @@ public class ReadonlyRestPlugin extends Plugin
       System.setProperty("es.set.netty.runtime.available.processors", "false");
       this.environment = environment;
       settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
+//      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, TransportServiceInterceptor.getRemoteClusterServiceSupplier());
       components.add(settingsObservable);
       return null;
     });
     return components;
+  }
+
+  @Override
+  public Collection<Class<? extends LifecycleComponent>> getGuiceServiceClasses() {
+    final List<Class<? extends LifecycleComponent>> services = new ArrayList<>(1);
+    services.add(TransportServiceInterceptor.class);
+    return services;
   }
 
   @Override
@@ -203,6 +217,47 @@ public class ReadonlyRestPlugin extends Plugin
       ThreadRepo.channel.set(channel);
       restHandler.handleRequest(request, channel, client);
     };
+  }
+
+  public static class TransportServiceInterceptor extends AbstractLifecycleComponent {
+
+    private static RemoteClusterServiceSupplier remoteClusterServiceSupplier;
+
+    @Inject
+    public TransportServiceInterceptor(Settings settings, final TransportService transportService) {
+      super(settings);
+      Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> getRemoteClusterServiceSupplier().update(r));
+    }
+
+    public synchronized static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
+      if (remoteClusterServiceSupplier == null) {
+        remoteClusterServiceSupplier = new RemoteClusterServiceSupplier();
+      }
+      return remoteClusterServiceSupplier;
+    }
+
+    @Override
+    protected void doStart() {}
+
+    @Override
+    protected void doStop() {}
+
+    @Override
+    protected void doClose() throws IOException {}
+  }
+
+  private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {
+
+    private final AtomicReference<Optional<RemoteClusterService>> remoteClusterServiceAtomicReference = new AtomicReference(Optional.empty());
+
+    @Override
+    public Optional<RemoteClusterService> get() {
+      return remoteClusterServiceAtomicReference.get();
+    }
+
+    void update(RemoteClusterService service) {
+      remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
+    }
   }
 
 }

@@ -31,7 +31,6 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -44,6 +43,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.RemoteClusterService;
 import scala.Function1;
 import scala.collection.JavaConverters$;
 import scala.concurrent.duration.FiniteDuration;
@@ -75,6 +75,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -87,11 +88,10 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final IndexNameExpressionResolver indexResolver;
   private final Logger logger;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-  private final Boolean hasRemoteClusters;
+  private final Supplier<Optional<RemoteClusterService>> remoteClusterServiceSupplier;
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
@@ -102,7 +102,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       Environment env
   ) {
     super(settings);
-    this.hasRemoteClusters = !clusterService.getSettings().getAsGroups().get("cluster").getGroups("remote").isEmpty();
+    this.remoteClusterServiceSupplier = ReadonlyRestPlugin.TransportServiceInterceptor.getRemoteClusterServiceSupplier();
 
     logger = LogManager.getLogger(this.getClass());
     BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
@@ -111,7 +111,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.context.set(new ESContextImpl(baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
     this.rorEngine = new AtomicReference<>(Optional.empty());
 
@@ -192,16 +191,22 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-        context.get(), hasRemoteClusters);
-    RequestContext requestContext = requestContextFrom(requestInfo);
 
-    Consumer<ActionListener<Response>> proceed = responseActionListener -> {
-      chain.proceed(task, action, request, responseActionListener);
-    };
+    Optional<RemoteClusterService> remoteClusterService = remoteClusterServiceSupplier.get();
+    if(remoteClusterService.isPresent()) {
+      RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
+          context.get(), remoteClusterService.get());
+      RequestContext requestContext = requestContextFrom(requestInfo);
 
-    engine.acl().handle(requestContext).runAsync(
-        handleAclResult(engine, listener, request, requestContext, requestInfo, proceed), Scheduler$.MODULE$.global());
+      Consumer<ActionListener<Response>> proceed =
+          responseActionListener -> chain.proceed(task, action, request, responseActionListener);
+
+      engine.acl()
+          .handle(requestContext)
+          .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed), Scheduler$.MODULE$.global());
+    } else {
+      listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"));
+    }
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AclHandlingResult>, BoxedUnit> handleAclResult(

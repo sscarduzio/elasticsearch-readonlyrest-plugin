@@ -55,6 +55,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.RemoteClusterService;
 import org.reflections.ReflectionUtils;
 import tech.beshu.ror.shims.es.ESContext;
 import tech.beshu.ror.shims.es.LoggerShim;
@@ -87,7 +88,7 @@ public class RequestInfo implements RequestInfoShim {
   private final String id;
   private final ClusterService clusterService;
   private final Long taskId;
-  private final Boolean hasRemoteClusters;
+  private final RemoteClusterService remoteClusterService;
   private final ThreadPool threadPool;
   private final LoggerShim logger;
   private final RestChannel channel;
@@ -95,9 +96,9 @@ public class RequestInfo implements RequestInfoShim {
   private Integer contentLength;
   private ESContext context;
 
-  RequestInfo(
-      RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool, ESContext context, Boolean hasRemoteClusters) {
+  RequestInfo(RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
+      ClusterService clusterService, ThreadPool threadPool, ESContext context,
+      RemoteClusterService remoteClusterService) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -107,7 +108,7 @@ public class RequestInfo implements RequestInfoShim {
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.taskId = taskId;
-    this.hasRemoteClusters = hasRemoteClusters;
+    this.remoteClusterService = remoteClusterService;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     if (taskId != null) {
       this.id = tmpID + "#" + taskId;
@@ -639,7 +640,7 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean extractHasRemoteClusters() {
-    return hasRemoteClusters;
+    return remoteClusterService.isCrossClusterSearchEnabled();
   }
 }
 

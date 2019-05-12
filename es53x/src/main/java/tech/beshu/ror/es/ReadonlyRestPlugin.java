@@ -24,6 +24,9 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
+import org.elasticsearch.common.component.AbstractLifecycleComponent;
+import org.elasticsearch.common.component.LifecycleComponent;
+import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
@@ -48,6 +51,8 @@ import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.RemoteClusterService;
+import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
@@ -58,9 +63,14 @@ import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.AbstractESContext;
 import tech.beshu.ror.shims.es.LoggerShim;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -68,7 +78,6 @@ import java.util.stream.Collectors;
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final LoggerShim logger;
   private final BasicSettings basicSettings;
   private Settings settings;
   private Environment environment;
@@ -77,7 +86,7 @@ public class ReadonlyRestPlugin extends Plugin
     this.settings = s;
     this.environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
+    LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
     basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
@@ -92,6 +101,13 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
+  public Collection<Class<? extends LifecycleComponent>> getGuiceServiceClasses() {
+    final List<Class<? extends LifecycleComponent>> services = new ArrayList<>(1);
+    services.add(TransportServiceInterceptor.class);
+    return services;
+  }
+
+  @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
       Settings settings,
       ThreadPool threadPool,
@@ -102,7 +118,7 @@ public class ReadonlyRestPlugin extends Plugin
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
 
-    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+    if (!basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
       return Collections.EMPTY_MAP;
     }
 
@@ -171,6 +187,47 @@ public class ReadonlyRestPlugin extends Plugin
       }
       return null;
     });
+  }
+
+  public static class TransportServiceInterceptor extends AbstractLifecycleComponent {
+
+    private static RemoteClusterServiceSupplier remoteClusterServiceSupplier;
+
+    @Inject
+    public TransportServiceInterceptor(Settings settings, final TransportService transportService) {
+      super(settings);
+      Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> getRemoteClusterServiceSupplier().update(r));
+    }
+
+    synchronized public static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
+      if (remoteClusterServiceSupplier == null) {
+        remoteClusterServiceSupplier = new RemoteClusterServiceSupplier();
+      }
+      return remoteClusterServiceSupplier;
+    }
+
+    @Override
+    protected void doStart() {}
+
+    @Override
+    protected void doStop() {}
+
+    @Override
+    protected void doClose() throws IOException {}
+  }
+
+  private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {
+
+    private final AtomicReference<Optional<RemoteClusterService>> remoteClusterServiceAtomicReference = new AtomicReference(Optional.empty());
+
+    @Override
+    public Optional<RemoteClusterService> get() {
+      return remoteClusterServiceAtomicReference.get();
+    }
+
+    void update(RemoteClusterService service) {
+      remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
+    }
   }
 
 }

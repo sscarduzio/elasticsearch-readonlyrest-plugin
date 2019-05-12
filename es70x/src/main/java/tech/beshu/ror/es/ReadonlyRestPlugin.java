@@ -130,32 +130,6 @@ public class ReadonlyRestPlugin extends Plugin
     return services;
   }
 
-  public static class TransportServiceInterceptor extends AbstractLifecycleComponent {
-
-    private static RemoteClusterServiceSupplier remoteClusterServiceSupplier;
-
-    @Inject
-    public TransportServiceInterceptor(final TransportService transportService) {
-      Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> remoteClusterServiceSupplier.update(r));
-    }
-
-    synchronized static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
-      if (remoteClusterServiceSupplier == null) {
-        remoteClusterServiceSupplier = new RemoteClusterServiceSupplier();
-      }
-      return remoteClusterServiceSupplier;
-    }
-
-    @Override
-    protected void doStart() {}
-
-    @Override
-    protected void doStop() {}
-
-    @Override
-    protected void doClose() throws IOException {}
-  }
-
   @Override
   public List<ActionFilter> getActionFilters() {
     return Collections.singletonList(ilaf);
@@ -260,6 +234,32 @@ public class ReadonlyRestPlugin extends Plugin
       ThreadRepo.channel.set(channel);
       restHandler.handleRequest(request, channel, client);
     };
+  }
+
+  public static class TransportServiceInterceptor extends AbstractLifecycleComponent {
+
+    private static RemoteClusterServiceSupplier remoteClusterServiceSupplier;
+
+    @Inject
+    public TransportServiceInterceptor(final TransportService transportService) {
+      Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> getRemoteClusterServiceSupplier().update(r));
+    }
+
+    synchronized static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
+      if (remoteClusterServiceSupplier == null) {
+        remoteClusterServiceSupplier = new RemoteClusterServiceSupplier();
+      }
+      return remoteClusterServiceSupplier;
+    }
+
+    @Override
+    protected void doStart() {}
+
+    @Override
+    protected void doStop() {}
+
+    @Override
+    protected void doClose() throws IOException {}
   }
 
   private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {

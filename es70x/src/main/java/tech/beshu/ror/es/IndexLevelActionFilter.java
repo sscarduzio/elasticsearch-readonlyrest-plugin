@@ -31,7 +31,6 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
@@ -88,7 +87,6 @@ public class IndexLevelActionFilter implements ActionFilter {
 
   private final AtomicReference<Optional<Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final IndexNameExpressionResolver indexResolver;
   private final Logger logger;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -116,7 +114,6 @@ public class IndexLevelActionFilter implements ActionFilter {
     this.context.set(new ESContextImpl(baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = new IndexNameExpressionResolver();
     this.threadPool = threadPool;
     this.rorEngine = new AtomicReference<>(Optional.empty());
 
