@@ -242,7 +242,8 @@ public class ReadonlyRestPlugin extends Plugin
     private static RemoteClusterServiceSupplier remoteClusterServiceSupplier;
 
     @Inject
-    public TransportServiceInterceptor(final TransportService transportService) {
+    public TransportServiceInterceptor(Settings settings, final TransportService transportService) {
+      super(settings);
       Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> getRemoteClusterServiceSupplier().update(r));
     }
 
