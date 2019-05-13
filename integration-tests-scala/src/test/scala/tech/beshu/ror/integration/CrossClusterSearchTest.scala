@@ -16,30 +16,26 @@
  */
 package tech.beshu.ror.integration
 
-import cats.implicits._
+import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.ForAllTestContainer
-import org.apache.http.client.methods.HttpPut
-import org.apache.http.entity.StringEntity
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsClusterContainer, ReadonlyRestEsClusterInitializer}
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
-import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.ScalaUtils._
-
-import scala.util.Try
 
 class CrossClusterSearchTest extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsClusterContainer.create(
-    rorConfigFileName = "/cross_cluster_search/readonlyrest.yml",
-    nodeDataInitializer = CrossClusterSearchTest.nodeDataInitializer(),
-    clusterInitializer = CrossClusterSearchTest.remoteClustersInitializer()
+  override val container: ReadonlyRestEsRemoteClustersContainer = ReadonlyRestEsCluster.createRemoteClustersContainer(
+    NonEmptyList.of(
+      LocalClusterDef(rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer()),
+      LocalClusterDef(rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer())
+    ),
+    CrossClusterSearchTest.remoteClustersInitializer()
   )
 
-  private lazy val user1SearchManager = new SearchManager(container.nodesContainers.head.client("dev1", "test"))
-  private lazy val user2SearchManager = new SearchManager(container.nodesContainers.head.client("dev2", "test"))
+  private lazy val user1SearchManager = new SearchManager(container.localClusters.head.nodesContainers.head.client("dev1", "test"))
+  private lazy val user2SearchManager = new SearchManager(container.localClusters.head.nodesContainers.head.client("dev2", "test"))
 
   "A cluster search for given index" should {
     "return 200 and allow user to its content" when {
@@ -67,36 +63,9 @@ object CrossClusterSearchTest {
     documentManager.insertDoc("/test2_index/test/2", "{\"hello\":\"ROR\"}")
   }
 
-  private def remoteClustersInitializer(): ReadonlyRestEsClusterInitializer =
-    (adminClient: RestClient, container: ReadonlyRestEsClusterContainer) => {
-      def createRemoteClusterSettingsRequest() = {
-        val (evenSeeds, oddSeeds) = container.nodesContainers.toList.map(c => s"${c.name}:9300").partitionByIndexMod2
-        val request = new HttpPut(adminClient.from("_cluster/settings"))
-        request.setHeader("Content-Type", "application/json")
-        request.setEntity(new StringEntity(
-          s"""
-             |{
-             |  "persistent": {
-             |    "search.remote": {
-             |      "even": {
-             |        "seeds": [${evenSeeds.map(s => s""""$s"""").mkString(",")}]
-             |      },
-             |      "odd": {
-             |        "seeds": [${oddSeeds.map(s => s""""$s"""").mkString(",")}]
-             |      }
-             |    }
-             |  }
-             |}
-          """.stripMargin))
-        request
-      }
-
-      Try(adminClient.execute(createRemoteClusterSettingsRequest())).bracket { response =>
-        response.getStatusLine.getStatusCode match {
-          case 200 =>
-          case _ =>
-            throw new IllegalStateException("Cannot initialize remote cluster settings")
-        }
-      }
+  private def remoteClustersInitializer(): RemoteClustersInitializer =
+    (localClusterRepresentatives: NonEmptyList[ReadonlyRestEsContainer]) => {
+      Map("odd" -> localClusterRepresentatives)
     }
+
 }
