@@ -22,19 +22,20 @@ import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsClusterContainer, ReadonlyRestEsClusterInitializer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.ScalaUtils._
 
 import scala.util.Try
 
-class CrossClusterSearchTests extends WordSpec with ForAllTestContainer {
+class CrossClusterSearchTest extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsClusterContainer.create(
     rorConfigFileName = "/cross_cluster_search/readonlyrest.yml",
-    nodeDataInitializer = CrossClusterSearchTests.nodeDataInitializer(),
-    clusterInitializer = CrossClusterSearchTests.remoteClustersInitializer()
+    nodeDataInitializer = CrossClusterSearchTest.nodeDataInitializer(),
+    clusterInitializer = CrossClusterSearchTest.remoteClustersInitializer()
   )
 
   private lazy val user1SearchManager = new SearchManager(container.nodesContainers.head.client("dev1", "test"))
@@ -42,14 +43,14 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer {
 
   "A cluster search for given index" should {
     "return 200 and allow user to its content" when {
-      "user has permission to do so" in {
+      "user has permission to do so" excludeES ("es51x", "es52x") in {
         val result = user1SearchManager.search("/odd:test1_index/_search")
         assertEquals(200, result.getResponseCode)
         assertEquals(2, result.getResults.size)
       }
     }
     "return 401" when {
-      "user has no permission to do so" in {
+      "user has no permission to do so" excludeES ("es51x", "es52x") in {
         val result = user2SearchManager.search("/odd:test1_index/_search")
         assertEquals(401, result.getResponseCode)
       }
@@ -57,7 +58,7 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer {
   }
 }
 
-object CrossClusterSearchTests {
+object CrossClusterSearchTest {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
@@ -74,21 +75,22 @@ object CrossClusterSearchTests {
         request.setHeader("Content-Type", "application/json")
         request.setEntity(new StringEntity(
           s"""
-            |{
-            |  "persistent": {
-            |    "search.remote": {
-            |      "even": {
-            |        "seeds": [${evenSeeds.map(s => s""""$s"""").mkString(",")}]
-            |      },
-            |      "odd": {
-            |        "seeds": [${oddSeeds.map(s => s""""$s"""").mkString(",")}]
-            |      }
-            |    }
-            |  }
-            |}
+             |{
+             |  "persistent": {
+             |    "search.remote": {
+             |      "even": {
+             |        "seeds": [${evenSeeds.map(s => s""""$s"""").mkString(",")}]
+             |      },
+             |      "odd": {
+             |        "seeds": [${oddSeeds.map(s => s""""$s"""").mkString(",")}]
+             |      }
+             |    }
+             |  }
+             |}
           """.stripMargin))
         request
       }
+
       Try(adminClient.execute(createRemoteClusterSettingsRequest())).bracket { response =>
         response.getStatusLine.getStatusCode match {
           case 200 =>

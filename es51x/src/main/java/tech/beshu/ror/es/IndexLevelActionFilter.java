@@ -29,7 +29,6 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -86,7 +85,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final IndexNameExpressionResolver indexResolver;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -100,7 +98,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     super(settings);
     LoggerShim loggerShim = ESContextImpl.mkLoggerShim(logger);
 
-    indexResolver = new IndexNameExpressionResolver(settings);
     Environment env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
 

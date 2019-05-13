@@ -23,7 +23,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.{Inside, Tag, WordSpec}
 import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
@@ -72,7 +72,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside wi
   "An ACL" when {
     "two blocks with auth_keys are configured" should {
       "allow to proceed" when {
-        "request is sent in behalf on admin user" in {
+        "request is sent in behalf on admin user" taggedAs Tag("es70x") in {
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:container")))
           val result = acl.handle(request).runSyncUnsafe()
           result.history should have size 1
@@ -83,7 +83,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside wi
             }
           }
         }
-        "request is sent in behalf of admin user, but the authorization token header is lower case string" in {
+        "request is sent in behalf of admin user, but the authorization token header is lower case string" taggedAs Tag("es63x") in {
           val request = MockRequestContext.default.copy(headers = Set(
             Header(
               Name(NonEmptyString.unsafeFrom("authorization")),

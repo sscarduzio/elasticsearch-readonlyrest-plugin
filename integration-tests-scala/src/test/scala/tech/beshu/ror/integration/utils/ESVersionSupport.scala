@@ -14,19 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.integration.utils
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'tests-utils'
-include 'integration-tests'
-include 'integration-tests-scala'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es60x'
-include 'es61x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
+import org.scalatest.{Tag, WordSpecLike}
+
+import scala.language.implicitConversions
+
+trait ESVersionSupport extends WordSpecLike {
+
+  implicit final class ESVersionSupportOps(string: String) {
+    def excludeES(esVersion: String, esVersions: String*): ResultOfTaggedAsInvocationOnString = {
+      string.taggedAs(new ExcludeESModule(esVersion), esVersions.map(new ExcludeESModule(_)).toList: _*)
+    }
+  }
+
+  private final class ExcludeESModule(value: String) extends Tag(s"tech.beshu.tags.ExcludeESModule.$value")
+}

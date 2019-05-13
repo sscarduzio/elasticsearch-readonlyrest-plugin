@@ -65,6 +65,10 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
+
+    tags {
+        exclude 'es70x'
+    }
 }
 
 dependencies {

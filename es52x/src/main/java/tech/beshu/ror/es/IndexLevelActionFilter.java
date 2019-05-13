@@ -86,7 +86,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final IndexNameExpressionResolver indexResolver;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -106,7 +105,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.context.set(new ESContextImpl(baseSettings));
 
     this.clusterService = clusterService;
-    this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
     this.rorEngine = new AtomicReference<>(Optional.empty());
 
