@@ -246,7 +246,7 @@ public class ReadonlyRestPlugin extends Plugin
       Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> getRemoteClusterServiceSupplier().update(r));
     }
 
-    synchronized static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
+    public synchronized static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
       if (remoteClusterServiceSupplier == null) {
         remoteClusterServiceSupplier = new RemoteClusterServiceSupplier();
       }
@@ -254,13 +254,13 @@ public class ReadonlyRestPlugin extends Plugin
     }
 
     @Override
-    protected void doStart() {}
+    protected void doStart() { /* unused */ }
 
     @Override
-    protected void doStop() {}
+    protected void doStop() {  /* unused */ }
 
     @Override
-    protected void doClose() throws IOException {}
+    protected void doClose() throws IOException {  /* unused */ }
   }
 
   private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {
@@ -272,7 +272,7 @@ public class ReadonlyRestPlugin extends Plugin
       return remoteClusterServiceAtomicReference.get();
     }
 
-    void update(RemoteClusterService service) {
+    private void update(RemoteClusterService service) {
       remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
     }
   }
