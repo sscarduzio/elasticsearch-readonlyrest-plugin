@@ -26,7 +26,7 @@ import org.apache.http.util.EntityUtils;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
@@ -41,7 +41,7 @@ public class DynamicVariablesTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(), "/dynamic_vars/elasticsearch.yml",
+          RorPluginGradleProjectJ.fromSystemProperty(), "/dynamic_vars/elasticsearch.yml",
           Optional.of(client -> {
             Unirest.setHttpClient(client.getUnderlyingClient());
             insertDoc(".kibana_simone", client);

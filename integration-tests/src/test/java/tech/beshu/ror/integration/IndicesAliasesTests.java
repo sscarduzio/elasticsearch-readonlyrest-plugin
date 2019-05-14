@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.elasticsearch.IndexManager;
 import tech.beshu.ror.utils.elasticsearch.IndexManager.GetIndexResult;
 import tech.beshu.ror.utils.elasticsearch.SearchManager;
 import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.util.Optional;
 
@@ -38,7 +38,7 @@ public class IndicesAliasesTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
       ESWithReadonlyRestContainer.create(
-          RorPluginGradleProject.fromSystemProperty(), "/indices_aliases_test/elasticsearch.yml",
+          RorPluginGradleProjectJ.fromSystemProperty(), "/indices_aliases_test/elasticsearch.yml",
           Optional.of(client -> {
             DocumentManager documentManager = new DocumentManager(client);
             documentManager.insertDoc("/my_data/test/1", "{\"hello\":\"world\"}");

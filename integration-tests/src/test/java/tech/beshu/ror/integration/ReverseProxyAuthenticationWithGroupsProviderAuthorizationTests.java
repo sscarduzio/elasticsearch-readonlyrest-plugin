@@ -21,7 +21,7 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.containers.WireMockContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -33,7 +33,7 @@ public class ReverseProxyAuthenticationWithGroupsProviderAuthorizationTests {
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
     ESWithReadonlyRestContainerUtils.create(
-      RorPluginGradleProject.fromSystemProperty(),
+      RorPluginGradleProjectJ.fromSystemProperty(),
       new MultiContainer.Builder()
         .add("GROUPS1", () -> WireMockContainer.create("/rev_proxy_groups_provider/wiremock_service1_cartman.json",
           "/rev_proxy_groups_provider/wiremock_service1_morgan.json"

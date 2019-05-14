@@ -3,9 +3,10 @@ buildscript {
         mavenLocal()
         mavenCentral()
         jcenter()
+        maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
+        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
     }
 }
 
@@ -17,7 +18,7 @@ subprojects {
 
 apply plugin: 'java'
 apply plugin: 'scala'
-apply plugin: 'license'
+apply plugin: "com.github.hierynomus.license"
 
 repositories {
     mavenCentral()
@@ -43,14 +44,12 @@ test {
 }
 
 dependencies {
-    compile group: 'org.scala-lang',                    name: 'scala-library',              version: '2.12.4'
-
     testCompile project(':tests-utils')
+    
+    testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
     testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testCompile group: 'ch.qos.logback',                name: 'logback-core',               version: '1.2.3'
-    testCompile group: 'com.jayway.jsonpath',           name: 'json-path',                  version: '2.2.0'
-    testCompile group: 'com.mashape.unirest',           name: 'unirest-java',               version: '1.4.9'
-    testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
+    testCompile group: 'org.scala-lang',                name: 'scala-library',              version: '2.12.4'
 
 }
 
@@ -60,6 +59,7 @@ license {
     useDefaultMappings = false
     mapping {
         java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
     }
 }
 

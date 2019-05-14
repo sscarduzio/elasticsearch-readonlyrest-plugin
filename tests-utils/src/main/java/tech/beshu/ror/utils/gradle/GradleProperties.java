@@ -23,8 +23,7 @@ import java.io.InputStream;
 import java.util.Optional;
 import java.util.Properties;
 
-public class
-GradleProperties {
+public class GradleProperties {
   private final Properties properties;
 
   private GradleProperties(Properties properties) {

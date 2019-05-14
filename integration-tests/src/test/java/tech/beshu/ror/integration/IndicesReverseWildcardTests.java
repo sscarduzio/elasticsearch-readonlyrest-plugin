@@ -26,7 +26,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
@@ -42,7 +42,7 @@ public class IndicesReverseWildcardTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(), "/indices_reverse_wildcards/elasticsearch.yml",
+      RorPluginGradleProjectJ.fromSystemProperty(), "/indices_reverse_wildcards/elasticsearch.yml",
       Optional.of(client -> {
         Lists.newArrayList("a1", "a2", "b1", "b2").forEach(doc -> insertDoc(doc, client));
       })

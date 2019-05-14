@@ -22,7 +22,7 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.elasticsearch.DeleteByQueryManager;
 import tech.beshu.ror.utils.elasticsearch.DeleteByQueryManager.DeleteByQueryResult;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.util.Optional;
 
@@ -32,7 +32,7 @@ public class DeleteByQueryTests {
 
   @ClassRule
   public static ESWithReadonlyRestContainer container = ESWithReadonlyRestContainer.create(
-      RorPluginGradleProject.fromSystemProperty(), "/delete_by_query/elasticsearch.yml",
+      RorPluginGradleProjectJ.fromSystemProperty(), "/delete_by_query/elasticsearch.yml",
       Optional.of(new ElasticsearchTweetsInitializer())
   );
 

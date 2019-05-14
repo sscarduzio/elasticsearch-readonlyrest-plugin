@@ -39,6 +39,7 @@ import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
+import org.elasticsearch.action.search.RemoteClusterService;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
@@ -86,7 +87,7 @@ public class RequestInfo implements RequestInfoShim {
   private final String id;
   private final ClusterService clusterService;
   private final Long taskId;
-  private final Boolean hasRemoteClusters;
+  private final RemoteClusterService remoteClusterService;
   private final ThreadPool threadPool;
   private final LoggerShim logger;
   private final RestChannel channel;
@@ -94,9 +95,9 @@ public class RequestInfo implements RequestInfoShim {
   private Integer contentLength;
   private ESContext context;
 
-  RequestInfo(
-      RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool, ESContext context, Boolean hasRemoteClusters) {
+  RequestInfo(RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
+      ClusterService clusterService, ThreadPool threadPool, ESContext context,
+      RemoteClusterService remoteClusterService) {
     this.context = context;
     this.logger = context.logger(getClass());
     this.threadPool = threadPool;
@@ -106,7 +107,7 @@ public class RequestInfo implements RequestInfoShim {
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.taskId = taskId;
-    this.hasRemoteClusters = hasRemoteClusters;
+    this.remoteClusterService = remoteClusterService;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     if (taskId != null) {
       this.id = tmpID + "#" + taskId;
@@ -118,6 +119,8 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeSnapshots(Set<String> newSnapshots) {
+    if(newSnapshots.isEmpty()) return;
+
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
     String[] newSnapshotsA = newSnapshots.toArray(new String[newSnapshots.size()]);
     if (actionRequest instanceof GetSnapshotsRequest) {
@@ -135,6 +138,8 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeRepositories(Set<String> newRepositories) {
+    if(newRepositories.isEmpty()) return;
+
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
     String[] newRepositoriesA = newRepositories.toArray(new String[newRepositories.size()]);
     if (actionRequest instanceof GetSnapshotsRequest) {
@@ -564,6 +569,7 @@ public class RequestInfo implements RequestInfoShim {
           "  in req id: " + extractId());
     }
   }
+
   @Override
   public void writeResponseHeaders(Map<String, String> hMap) {
     hMap.keySet().forEach(k -> {
@@ -628,7 +634,7 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean extractHasRemoteClusters() {
-    return hasRemoteClusters;
+    return (Boolean) ReflecUtils.invokeMethod(remoteClusterService, RemoteClusterService.class, "isCrossClusterSearchEnabled");
   }
 
 }

@@ -29,7 +29,7 @@ import org.elasticsearch.xpack.client.PreBuiltXPackTransportClient;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.net.InetAddress;
 import java.util.Optional;
@@ -41,7 +41,7 @@ public class InternodeSSLTest {
 //  @ClassRule
 //  public static ESWithReadonlyRestContainer multiContainerDependent =
 //      ESWithReadonlyRestContainer.create(
-//          RorPluginGradleProject.fromSystemProperty(),
+//          RorPluginGradleProjectJ.fromSystemProperty(),
 //          "/ssl_internode/elasticsearch.yml",
 //          Optional.empty()
 //      );

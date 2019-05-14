@@ -113,4 +113,5 @@ public class SettingsObservableImpl extends SettingsObservable {
       return false;
     }
   }
+
 }

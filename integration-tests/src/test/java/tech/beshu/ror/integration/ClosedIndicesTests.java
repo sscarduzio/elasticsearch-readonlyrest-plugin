@@ -24,7 +24,7 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -44,7 +44,7 @@ public class ClosedIndicesTests {
   @ClassRule
   public static ESWithReadonlyRestContainer container =
     create(
-      RorPluginGradleProject.fromSystemProperty(), "/closed_indices/elasticsearch.yml",
+      RorPluginGradleProjectJ.fromSystemProperty(), "/closed_indices/elasticsearch.yml",
       Optional.of(c -> {
         insertDoc("a1", c);
         insertDoc("a2", c);

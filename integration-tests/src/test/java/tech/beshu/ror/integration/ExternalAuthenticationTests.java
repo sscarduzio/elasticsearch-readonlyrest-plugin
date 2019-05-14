@@ -21,7 +21,7 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.containers.WireMockContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
 import org.junit.ClassRule;
@@ -34,7 +34,7 @@ public class ExternalAuthenticationTests {
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
     ESWithReadonlyRestContainerUtils.create(
-      RorPluginGradleProject.fromSystemProperty(),
+      RorPluginGradleProjectJ.fromSystemProperty(),
       new MultiContainer.Builder()
         .add("EXT1", () -> WireMockContainer.create("/external_authentication/wiremock_service1_cartman.json",
           "/external_authentication/wiremock_service1_morgan.json"
