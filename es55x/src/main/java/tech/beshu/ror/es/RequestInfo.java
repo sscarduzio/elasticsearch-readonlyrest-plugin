@@ -39,7 +39,6 @@ import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.MultiGetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.MultiSearchRequest;
-import org.elasticsearch.action.search.RemoteClusterService;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest;
 import org.elasticsearch.action.termvectors.TermVectorsRequest;
@@ -55,6 +54,7 @@ import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.RemoteClusterService;
 import org.reflections.ReflectionUtils;
 import tech.beshu.ror.shims.es.ESContext;
 import tech.beshu.ror.shims.es.LoggerShim;
@@ -634,7 +634,7 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean extractHasRemoteClusters() {
-    return (Boolean) ReflecUtils.invokeMethod(remoteClusterService, RemoteClusterService.class, "isCrossClusterSearchEnabled");
+    return remoteClusterService.isCrossClusterSearchEnabled();
   }
 
 }

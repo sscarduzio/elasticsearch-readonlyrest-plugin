@@ -44,6 +44,8 @@ env:
   - ROR_TASK="integration_es61x_scala"
   - ROR_TASK="integration_es60x"
   - ROR_TASK="integration_es60x_scala"
+  - ROR_TASK="integration_es55x"
+  - ROR_TASK="integration_es55x_scala"
   - ROR_TASK="integration_es53x"
   - ROR_TASK="integration_es53x_scala"
   - ROR_TASK="integration_es52x"

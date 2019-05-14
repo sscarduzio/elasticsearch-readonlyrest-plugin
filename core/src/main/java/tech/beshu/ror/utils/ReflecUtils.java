@@ -63,6 +63,26 @@ public class ReflecUtils {
     });
   }
 
+  public static Object invokeMethod(Object o, Class c, String method) {
+    String cacheKey = c.getName() + "#" + method;
+    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+      try {
+        Method m;
+        try {
+          m = c.getDeclaredMethod(method);
+        } catch (NoSuchMethodException nsme) {
+          m = c.getMethod(method);
+        }
+        m.setAccessible(true);
+        methodsCache.put(cacheKey, m);
+        return m.invoke(o);
+      } catch (Exception e) {
+        e.printStackTrace();
+        return null;
+      }
+    });
+  }
+
   public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, ESContext context) {
     final String[][] result = {new String[]{}};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
