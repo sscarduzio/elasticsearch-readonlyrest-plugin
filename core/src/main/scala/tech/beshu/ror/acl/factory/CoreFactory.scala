@@ -38,6 +38,7 @@ import tech.beshu.ror.acl.factory.decoders.definitions._
 import tech.beshu.ror.acl.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.acl.logging.AuditingTool
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.acl.utils.ScalaOps._

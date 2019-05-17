@@ -27,6 +27,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.logging.AuditingTool.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
+import tech.beshu.ror.acl.show.logs._
 
 class AuditingTool(settings: Settings,
                    auditSink: AuditSink)

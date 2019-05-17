@@ -19,7 +19,6 @@ package tech.beshu.ror.acl
 import cats.data.{NonEmptyList, WriterT}
 import cats.implicits._
 import monix.eval.Task
-import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
@@ -36,7 +35,7 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
         for {
           prevBlocksExecutionResult <- currentResult
           newCurrentResult <- prevBlocksExecutionResult match {
-            case Unmatched =>
+            case Unmatched(_) =>
               checkBlock(block, context)
             case Matched(_, _) =>
               lift(prevBlocksExecutionResult)
@@ -49,7 +48,7 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
             case Policy.Allow => Result.Allow(blockContext, block)
             case Policy.Forbid => Result.ForbiddenBy(blockContext, block)
           }
-        case Unmatched =>
+        case Unmatched(_) =>
           Result.ForbiddenByUnmatched
       }
       .run

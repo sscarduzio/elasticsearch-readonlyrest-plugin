@@ -16,24 +16,29 @@
  */
 package tech.beshu.ror.unit.acl.blocks
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import org.scalatest.Matchers._
 import monix.eval.Task
-import org.scalatest.WordSpec
+import org.scalatest.{Inside, WordSpec}
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import tech.beshu.ror.acl.blocks.{Block, BlockContext}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History, HistoryItem}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.acl.domain.{Group, IndexName, LoggedUser, User}
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
+import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.acl.orders._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Failure
 
-class BlockTests extends WordSpec {
+class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
   "A block execution result" should {
     "be unmatched and contain all history, up to unmatched rule" when {
@@ -44,22 +49,26 @@ class BlockTests extends WordSpec {
           policy = Block.Policy.Allow,
           verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromListUnsafe(
-            BlockTests.passingRule :: BlockTests.passingRule :: BlockTests.notPassingRule :: BlockTests.passingRule :: Nil
+            passingRule("r1") ::
+              passingRule("r2", _.withLoggedUser(LoggedUser(User.Id("user1")))) ::
+              notPassingRule("r3") ::
+              passingRule("r4", _.withCurrentGroup(Group("group1".nonempty))) :: Nil
           )
         )
-        val result = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
+        val requestContext = MockRequestContext.default
+        val result = block.execute(requestContext).runSyncUnsafe(1 second)
 
-        result shouldBe (
-          ExecutionResult.Unmatched,
-          History(
-            blockName,
-            Vector(
-              HistoryItem(BlockTests.passingRule.name, matched = true),
-              HistoryItem(BlockTests.passingRule.name, matched = true),
-              HistoryItem(BlockTests.notPassingRule.name, matched = false)
-            )
-          )
-        )
+        inside(result) {
+          case (ExecutionResult.Unmatched(_), History(`blockName`, historyItems, blockContext)) =>
+            historyItems should be (Vector(
+              HistoryItem(Rule.Name("r1"), matched = true),
+              HistoryItem(Rule.Name("r2"), matched = true),
+              HistoryItem(Rule.Name("r3"), matched = false)
+            ))
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user1")))) {
+              blockContext
+            }
+        }
       }
       "one of rules throws exception" in {
         val blockName = Block.Name("test_block")
@@ -68,22 +77,24 @@ class BlockTests extends WordSpec {
           policy = Block.Policy.Allow,
           verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromListUnsafe(
-            BlockTests.passingRule :: BlockTests.passingRule :: BlockTests.throwingRule :: BlockTests.notPassingRule :: BlockTests.passingRule :: Nil
+            passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule("r5") :: Nil
           )
         )
-        val result = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
+        val requestContext = MockRequestContext.default
+        val result = block.execute(requestContext).runSyncUnsafe(1 second)
 
-        result shouldBe (
-          ExecutionResult.Unmatched,
-          History(
-            blockName,
-            Vector(
-              HistoryItem(BlockTests.passingRule.name, matched = true),
-              HistoryItem(BlockTests.passingRule.name, matched = true),
-              HistoryItem(BlockTests.throwingRule.name, matched = false)
+        inside(result) {
+          case (ExecutionResult.Unmatched(_), History(`blockName`, historyItems, blockContext)) =>
+            historyItems should be(Vector(
+              HistoryItem(Rule.Name("r1"), matched = true),
+              HistoryItem(Rule.Name("r2"), matched = true),
+              HistoryItem(Rule.Name("r3"), matched = false)
+            ))
+            assertBlockContext(
+              expected = RequestContextInitiatedBlockContext.fromRequestContext(requestContext),
+              current = blockContext
             )
-          )
-        )
+        }
       }
     }
     "be matched and contain all rules history from the block" in {
@@ -92,43 +103,77 @@ class BlockTests extends WordSpec {
         name = blockName,
         policy = Block.Policy.Allow,
         verbosity = Block.Verbosity.Info,
-        rules = NonEmptyList.fromListUnsafe(BlockTests.passingRule :: BlockTests.passingRule :: BlockTests.passingRule :: Nil)
-      )
-      val (result, history) = block.execute(BlockTests.dummyRequestContext).runSyncUnsafe(1 second)
-
-      result should matchPattern { case ExecutionResult.Matched(_, _) => }
-      history shouldBe History(
-        blockName,
-        Vector(
-          HistoryItem(BlockTests.passingRule.name, matched = true),
-          HistoryItem(BlockTests.passingRule.name, matched = true),
-          HistoryItem(BlockTests.passingRule.name, matched = true)
+        rules = NonEmptyList.fromListUnsafe(
+          passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
         )
       )
+      val requestContext = MockRequestContext.default
+      val result = block.execute(requestContext).runSyncUnsafe(1 second)
+
+      inside(result) {
+        case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
+          historyItems should be(Vector(
+            HistoryItem(Rule.Name("r1"), matched = true),
+            HistoryItem(Rule.Name("r2"), matched = true),
+            HistoryItem(Rule.Name("r3"), matched = true)
+          ))
+          assertBlockContext(
+            expected = RequestContextInitiatedBlockContext.fromRequestContext(requestContext),
+            current = blockContext
+          )
+      }
+    }
+    "be matched and contain all rules history from the block with modified block context" in {
+      val blockName = Block.Name("test_block")
+      val block = new Block(
+        name = blockName,
+        policy = Block.Policy.Allow,
+        verbosity = Block.Verbosity.Info,
+        rules = NonEmptyList.fromListUnsafe(
+          passingRule("r1", _.withLoggedUser(LoggedUser(User.Id("user1")))) ::
+            passingRule("r2", _.withCurrentGroup(Group("group1".nonempty))) ::
+            passingRule("r3", _.withIndices(NonEmptySet.one(IndexName("idx1")))) ::
+            Nil
+        )
+      )
+      val requestContext = MockRequestContext.default
+      val result = block.execute(requestContext).runSyncUnsafe(1 second)
+
+      inside(result) {
+        case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
+          historyItems should be(Vector(
+            HistoryItem(Rule.Name("r1"), matched = true),
+            HistoryItem(Rule.Name("r2"), matched = true),
+            HistoryItem(Rule.Name("r3"), matched = true)
+          ))
+          assertBlockContext(
+            loggedUser = Some(LoggedUser(User.Id("user1"))),
+            currentGroup = Some(Group("group1".nonempty)),
+            indices = Set(IndexName("idx1"))
+          ) {
+            blockContext
+          }
+      }
     }
   }
 }
 
 object BlockTests extends MockFactory {
 
-  private val passingRule = new RegularRule {
-    override val name: Rule.Name = Rule.Name("matching")
-    override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
-      Task.now(Fulfilled(blockContext))
-  }
-  private val notPassingRule = new RegularRule {
-    override val name: Rule.Name = Rule.Name("non-matching")
+  private def passingRule(ruleName: String, modifyBlockContext: BlockContext => BlockContext = identity) =
+    new RegularRule {
+      override val name: Rule.Name = Rule.Name(ruleName)
+      override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
+        Task.now(Fulfilled(modifyBlockContext(blockContext)))
+    }
+  private def notPassingRule(ruleName: String) = new RegularRule {
+    override val name: Rule.Name = Rule.Name(ruleName)
     override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
       Task.now(Rejected)
   }
-  private val throwingRule = new RegularRule {
-    override val name: Rule.Name = Rule.Name("non-matching-throwing")
+  private def throwingRule(ruleName: String) = new RegularRule {
+    override val name: Rule.Name = Rule.Name(ruleName)
     override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
       Task.fromTry(Failure(new Exception("sth went wrong")))
-  }
-  private def dummyRequestContext = {
-    val requestContext = mock[RequestContext]
-    (requestContext.headers _).expects().returning(Set.empty)
-    requestContext
   }
 }

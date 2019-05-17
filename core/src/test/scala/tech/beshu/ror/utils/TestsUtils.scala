@@ -41,6 +41,21 @@ object TestsUtils {
 
   trait BlockContextAssertion {
 
+    def assertBlockContext(expected: BlockContext,
+                           current: BlockContext): Unit = {
+      assertBlockContext(responseHeaders = expected.responseHeaders,
+        contextHeaders = expected.contextHeaders,
+        kibanaIndex = expected.kibanaIndex,
+        loggedUser = expected.loggedUser,
+        currentGroup = expected.currentGroup,
+        availableGroups = expected.availableGroups.toSet,
+        indices = expected.indices,
+        repositories = expected.repositories,
+        snapshots = expected.snapshots) {
+        current
+      }
+    }
+
     def assertBlockContext(responseHeaders: Set[Header] = Set.empty,
                            contextHeaders: Set[Header] = Set.empty,
                            kibanaIndex: Option[IndexName] = None,
@@ -64,10 +79,15 @@ object TestsUtils {
   }
 
   sealed trait AssertionType
+
   object AssertionType {
+
     final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
+
     object RuleRejected extends AssertionType
+
     final case class RuleThrownException(exception: Throwable) extends AssertionType
+
   }
 
   def headerFrom(nameAndValue: (String, String)): Header = {
@@ -99,7 +119,7 @@ object TestsUtils {
   }
 
   def generateRsaRandomKeys: (PublicKey, PrivateKey) = {
-    val keyGen = KeyPairGenerator.getInstance("RSA")//.generateKeyPair()
+    val keyGen = KeyPairGenerator.getInstance("RSA") //.generateKeyPair()
     val random = SecureRandom.getInstance("SHA1PRNG", "SUN")
     keyGen.initialize(2048, random)
     val pair = keyGen.generateKeyPair()
