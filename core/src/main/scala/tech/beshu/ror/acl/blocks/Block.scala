@@ -28,6 +28,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.utils.TaskOps._
 import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
+import tech.beshu.ror.acl.show.logs._
 
 import scala.util.Success
 
@@ -58,32 +59,38 @@ class Block(val name: Name,
                       matched(newBlockContext)
                         .tell(Vector(HistoryItem(rule.name, matched = true)))
                     case RuleResult.Rejected =>
-                      unmatched
+                      unmatched(blockContext)
                         .tell(Vector(HistoryItem(rule.name, matched = false)))
                   }
-              case Unmatched =>
-                unmatched
+              case Unmatched(lastBlockContext) =>
+                unmatched(lastBlockContext)
             }
           } yield newCurrentResult
       }
-      .mapWritten(History(name, _))
+      .mapBoth { case (history, result) =>
+        (History(name, history, result.blockContext), result)
+      }
       .run
       .map(_.swap)
       .andThen {
         case Success((Matched(_, _), _)) =>
           val block: Block = this
           logger.debug(s"${ANSI_CYAN}matched ${block.show}$ANSI_RESET")
-        case Success((Unmatched, history)) =>
+        case Success((Unmatched(_), history)) =>
           implicit val requestShow: Show[RequestContext] = RequestContext.show(None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }
   }
 
-  private def matched[T <: BlockContext](blockContext: T) = lift(Task.now(Matched(this, blockContext): ExecutionResult))
+  private def matched[T <: BlockContext](blockContext: T): WriterT[Task, Vector[HistoryItem], ExecutionResult] =
+    lift(Task.now(Matched(this, blockContext): ExecutionResult))
 
-  private val unmatched = lift(Task.now(Unmatched: ExecutionResult))
+  private def unmatched[T <: BlockContext](blockContext: T): WriterT[Task, Vector[HistoryItem], ExecutionResult] =
+    lift(Task.now(Unmatched(blockContext)))
 
-  private def lift[T](task: Task[T]) = WriterT.liftF[Task, Vector[HistoryItem], T](task)
+  private def lift[T](task: Task[T]) =
+    WriterT.liftF[Task, Vector[HistoryItem], T](task)
+
 }
 
 object Block {
@@ -91,26 +98,15 @@ object Block {
   type BlockResultWithHistory = Task[(Block.ExecutionResult, History)]
 
   final case class Name(value: String) extends AnyVal
-  object Name {
-    implicit val show: Show[Name] = Show.show(_.value)
-  }
-
-  final case class History(block: Block.Name, items: Vector[HistoryItem])
-  object History {
-    implicit val show: Show[History] = Show.show { h =>
-      s"""[${h.block.show}->[${h.items.map(_.show).mkString(", ")}]]"""
-    }
-  }
-
+  final case class History(block: Block.Name, items: Vector[HistoryItem], blockContext: BlockContext)
   final case class HistoryItem(rule: Rule.Name, matched: Boolean)
-  object HistoryItem {
-    implicit val show: Show[HistoryItem] = Show.show { hi => s"${hi.rule.show}->${hi.matched}"}
-  }
 
-  sealed trait ExecutionResult
+  sealed trait ExecutionResult {
+    def blockContext: BlockContext
+  }
   object ExecutionResult {
-    final case class Matched(block: Block, context: BlockContext) extends ExecutionResult
-    case object Unmatched extends ExecutionResult
+    final case class Matched(block: Block, override val blockContext: BlockContext) extends ExecutionResult
+    final case class Unmatched(override val blockContext: BlockContext) extends ExecutionResult
   }
 
   sealed trait Policy
@@ -119,10 +115,7 @@ object Block {
     case object Forbid extends Policy
 
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
-    implicit val show: Show[Policy] = Show.show {
-      case Allow => "ALLOW"
-      case Forbid => "FORBID"
-    }
+
   }
 
   sealed trait Verbosity
@@ -133,7 +126,4 @@ object Block {
     implicit val eq: Eq[Verbosity] = Eq.fromUniversalEquals
   }
 
-  implicit val blockShow: Show[Block] = Show.show { b =>
-    s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.map(_.name.show).toList.mkString(",")}]"
-  }
 }

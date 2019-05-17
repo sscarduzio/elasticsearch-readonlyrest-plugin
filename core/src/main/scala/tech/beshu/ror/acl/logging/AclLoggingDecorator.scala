@@ -28,6 +28,7 @@ import tech.beshu.ror.acl.logging.ResponseContext._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.utils.TaskOps._
 import tech.beshu.ror.acl.{Acl, AclHandlingResult}
+import tech.beshu.ror.acl.show.logs._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

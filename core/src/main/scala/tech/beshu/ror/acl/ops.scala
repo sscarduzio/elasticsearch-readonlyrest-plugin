@@ -23,9 +23,11 @@ import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
 import shapeless.Nat
+import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
+import tech.beshu.ror.acl.blocks.Block.{History, HistoryItem, Name, Policy}
 import tech.beshu.ror.acl.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.blocks.RuleOrdering
+import tech.beshu.ror.acl.blocks.{Block, RuleOrdering}
 import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
@@ -117,6 +119,20 @@ object show {
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
+    implicit val blockNameShow: Show[Name] = Show.show(_.value)
+    implicit val historyItemShow: Show[HistoryItem] = Show.show { hi =>
+      s"${hi.rule.show}->${hi.matched}"
+    }
+    implicit val historyShow: Show[History] = Show.show { h =>
+      s"""[${h.block.show}->[${h.items.map(_.show).mkString(", ")}]]"""
+    }
+    implicit val policyShow: Show[Policy] = Show.show {
+      case Allow => "ALLOW"
+      case Forbid => "FORBID"
+    }
+    implicit val blockShow: Show[Block] = Show.show { b =>
+      s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.map(_.name.show).toList.mkString(",")}]"
+    }
   }
 }
 
