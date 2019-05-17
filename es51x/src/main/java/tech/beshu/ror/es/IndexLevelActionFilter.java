@@ -116,7 +116,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
+        FiniteDuration timeout = FiniteDuration.apply(30, TimeUnit.SECONDS);
         RorEngineFactory.Engine engine = AccessController.doPrivileged((PrivilegedAction<RorEngineFactory.Engine>) () ->
             RorEngineFactory$.MODULE$.reload(
                 createAuditSink(client, newBasicSettings),

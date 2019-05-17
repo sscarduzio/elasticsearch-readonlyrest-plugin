@@ -126,12 +126,14 @@ public class IndexLevelActionFilter implements ActionFilter {
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.SECONDS);
+        FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.MINUTES);
         Engine engine = AccessController.doPrivileged((PrivilegedAction<Engine>) () ->
-            RorEngineFactory$.MODULE$.reload(
-                createAuditSink(client, newBasicSettings),
-                newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit()
-            )
+            RorEngineFactory$.MODULE$
+                .reload(
+                  createAuditSink(client, newBasicSettings),
+                  newContext.getSettings().getRaw().yaml()
+                )
+                .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit())
         );
         Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));

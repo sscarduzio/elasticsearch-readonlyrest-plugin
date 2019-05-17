@@ -122,7 +122,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       this.context.set(newContext);
 
       if (newContext.getSettings().isEnabled()) {
-        FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.SECONDS);
+        FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(30, TimeUnit.SECONDS);
         Engine engine = AccessController.doPrivileged((PrivilegedAction<Engine>) () ->
             RorEngineFactory$.MODULE$.reload(
                 createAuditSink(client, newBasicSettings),
