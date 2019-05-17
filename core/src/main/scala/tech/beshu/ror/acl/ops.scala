@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.acl.blocks.Block.{History, HistoryItem, Name, Policy}
 import tech.beshu.ror.acl.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.blocks.{Block, RuleOrdering}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
@@ -36,7 +36,7 @@ import tech.beshu.ror.utils.FilterTransient
 
 import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
-import scala.language.implicitConversions
+import scala.language.{implicitConversions, postfixOps}
 
 object header {
 
@@ -119,12 +119,33 @@ object show {
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
+    implicit val blockContextShow: Show[BlockContext] = Show.show { bc =>
+      def showList[T : Show](name: String, list: List[T]) = {
+        list match {
+          case Nil => None
+          case elems => Some(s"$name=${elems.map(_.show).mkString(",")}")
+        }
+      }
+      def showOption[T : Show](name: String, option: Option[T]) = {
+        option.map(v => s"$name=${v.show}")
+      }
+      (showOption("user", bc.loggedUser) ::
+        showOption("group", bc.currentGroup) ::
+        showList("av_groups", bc.availableGroups.toList) ::
+        showList("indices", bc.indices.toList) ::
+        showOption("kibana_idx", bc.kibanaIndex) ::
+        showList("response_hdr", bc.responseHeaders.toList) ::
+        showList("context_hdr", bc.contextHeaders.toList) ::
+        showList("repositories", bc.repositories.toList) ::
+        showList("snapshots", bc.snapshots.toList) ::
+        Nil flatten) mkString ";"
+    }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
     implicit val historyItemShow: Show[HistoryItem] = Show.show { hi =>
       s"${hi.rule.show}->${hi.matched}"
     }
     implicit val historyShow: Show[History] = Show.show { h =>
-      s"""[${h.block.show}->[${h.items.map(_.show).mkString(", ")}]]"""
+      s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}], RESOLVED:[${h.blockContext.show}]]"""
     }
     implicit val policyShow: Show[Policy] = Show.show {
       case Allow => "ALLOW"

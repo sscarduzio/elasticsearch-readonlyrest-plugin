@@ -115,7 +115,6 @@ object Block {
     case object Forbid extends Policy
 
     implicit val eq: Eq[Policy] = Eq.fromUniversalEquals
-
   }
 
   sealed trait Verbosity
