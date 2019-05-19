@@ -29,7 +29,7 @@ import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContext.Id._
-import tech.beshu.ror.acl.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.SortedSet
 

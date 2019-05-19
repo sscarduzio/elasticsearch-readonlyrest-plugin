@@ -14,15 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.utils
+package tech.beshu.ror.utils
 
 import cats.Comonad
 import monix.eval.Task
 import monix.execution.Scheduler
 
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.{Failure, Success, Try}
 
 class TaskOps[T](val task: Task[T]) extends AnyVal {
 

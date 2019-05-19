@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.AuthorizationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.domain.{Group, LoggedUser}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps._
 
 abstract class BaseAuthorizationRule
   extends AuthorizationRule {

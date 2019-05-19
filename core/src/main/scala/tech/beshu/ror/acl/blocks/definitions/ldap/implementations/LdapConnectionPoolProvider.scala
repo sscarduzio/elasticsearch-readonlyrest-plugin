@@ -23,7 +23,7 @@ import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig._
-import tech.beshu.ror.acl.utils.ScalaOps.retry
+import tech.beshu.ror.utils.ScalaOps.retry
 
 import scala.util.control.NonFatal
 

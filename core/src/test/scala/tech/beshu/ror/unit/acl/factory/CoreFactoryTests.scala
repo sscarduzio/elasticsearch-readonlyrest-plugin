@@ -27,10 +27,11 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{BlocksLevelCreat
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.{CoreSettings, CoreFactory}
-import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
+import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
+import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.utils.{JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
 
 class CoreFactoryTests extends WordSpec with Inside with MockFactory {
 

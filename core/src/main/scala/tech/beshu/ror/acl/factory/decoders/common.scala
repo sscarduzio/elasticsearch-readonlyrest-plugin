@@ -38,7 +38,7 @@ import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.SyncDecoderCreator
 
 import scala.concurrent.duration._

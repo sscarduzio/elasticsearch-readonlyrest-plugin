@@ -23,7 +23,7 @@ import monix.eval.Task
 
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
-import TaskOps._
+import tech.beshu.ror.utils.TaskOps._
 import scala.concurrent.ExecutionContext._
 
 class CacheableAction[K, V](ttl: FiniteDuration Refined Positive,

@@ -23,13 +23,14 @@ import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.{CoreSettings, HttpClientsFactory, CoreFactory}
+import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings, HttpClientsFactory}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 
 import scala.reflect.ClassTag
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.utils.{EnvVarsProvider, JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
 
 abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
   this: Suite =>

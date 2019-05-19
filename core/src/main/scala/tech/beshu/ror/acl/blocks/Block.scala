@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.Block._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.acl.utils.TaskOps._
+import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.acl.show.logs._
 

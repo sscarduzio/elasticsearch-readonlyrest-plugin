@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{Malformed
 import tech.beshu.ror.acl.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils.StringOps
-import tech.beshu.ror.acl.utils.TaskOps.wait30SecTaskComonad
+import tech.beshu.ror.utils.TaskOps.wait30SecTaskComonad
 
 import scala.language.postfixOps
 

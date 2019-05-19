@@ -29,9 +29,10 @@ import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, CoreSettings}
-import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
+import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.{JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
 
 class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
   private val factory = {

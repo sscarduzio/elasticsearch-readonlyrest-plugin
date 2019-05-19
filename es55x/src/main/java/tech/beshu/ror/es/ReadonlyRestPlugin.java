@@ -54,7 +54,7 @@ import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.configuration.AllowedSettings;
+import tech.beshu.ror.settings.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;

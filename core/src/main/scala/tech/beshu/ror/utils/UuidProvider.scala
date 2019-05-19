@@ -14,14 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.utils
+package tech.beshu.ror.utils
 
-import scala.util.{Failure, Success, Try}
+import java.util.UUID
 
-object ScalaJavaHelper {
+trait UuidProvider {
 
-  def force[T](value: Try[T]): T = value match {
-    case Success(v) => v
-    case Failure(exception) => throw exception
-  }
+  def instanceUuid: UUID
+  def random: UUID
+}
+
+object JavaUuidProvider extends UuidProvider {
+  override val instanceUuid: UUID = random
+  override def random: UUID = UUID.randomUUID()
 }

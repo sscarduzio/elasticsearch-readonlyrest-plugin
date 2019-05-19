@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.logging.ResponseContext._
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.utils.TaskOps._
+import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.acl.{Acl, AclHandlingResult}
 import tech.beshu.ror.acl.show.logs._
 

@@ -23,8 +23,8 @@ import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.common
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.utils.UuidProvider
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.utils.UuidProvider
 
 class SessionMaxIdleRuleDecoder(implicit clock: Clock, uuidProvider: UuidProvider)
   extends RuleDecoderWithoutAssociatedFields(

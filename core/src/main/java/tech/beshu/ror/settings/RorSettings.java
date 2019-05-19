@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.configuration;
+package tech.beshu.ror.settings;
 
 
 public class RorSettings {

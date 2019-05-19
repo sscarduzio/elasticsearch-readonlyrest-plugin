@@ -14,12 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.acl.helpers
+package tech.beshu.ror.acl
 
 import cats.data._
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.AclHandlingResult
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.domain.Header.Name

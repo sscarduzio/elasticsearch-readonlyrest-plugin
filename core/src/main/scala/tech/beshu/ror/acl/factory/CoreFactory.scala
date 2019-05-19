@@ -41,10 +41,11 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
-import tech.beshu.ror.acl.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.utils.{UuidProvider, YamlOps}
 
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}

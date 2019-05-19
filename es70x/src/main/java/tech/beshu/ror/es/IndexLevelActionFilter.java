@@ -51,14 +51,14 @@ import tech.beshu.ror.SecurityPermissionException;
 import tech.beshu.ror.acl.AclHandlingResult;
 import tech.beshu.ror.acl.AclStaticContext;
 import tech.beshu.ror.acl.blocks.BlockContext;
-import tech.beshu.ror.acl.helpers.AclActionHandler;
-import tech.beshu.ror.acl.helpers.AclResultCommitter;
-import tech.beshu.ror.acl.helpers.BlockContextJavaHelper$;
-import tech.beshu.ror.acl.helpers.RorEngineFactory$;
+import tech.beshu.ror.acl.AclActionHandler;
+import tech.beshu.ror.acl.AclResultCommitter;
+import tech.beshu.ror.acl.BlockContextJavaHelper$;
+import tech.beshu.ror.RorEngineFactory$;
 import tech.beshu.ror.acl.logging.AuditSink;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
-import tech.beshu.ror.acl.utils.ScalaJavaHelper$;
+import tech.beshu.ror.utils.ScalaJavaHelper$;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
 
@@ -74,7 +74,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import static tech.beshu.ror.acl.helpers.RorEngineFactory.*;
+import static tech.beshu.ror.RorEngineFactory.*;
 
 /**
  * Created by sscarduzio on 19/12/2015.

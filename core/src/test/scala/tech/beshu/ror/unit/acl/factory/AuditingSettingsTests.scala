@@ -23,11 +23,12 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
-import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
+import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.utils.{JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
 
 class AuditingSettingsTests extends WordSpec with Inside {
 

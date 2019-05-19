@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.acl.utils.ADecoder
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.acl.utils.ScalaOps._
+import tech.beshu.ror.utils.ScalaOps._
 
 object DefinitionsBaseDecoder {
 
