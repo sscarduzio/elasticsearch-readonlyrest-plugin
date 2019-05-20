@@ -30,12 +30,12 @@ import tech.beshu.ror.mocks.MockHttpClientsFactory
 
 import scala.reflect.ClassTag
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.utils.{EnvVarsProvider, JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider, JavaUuidProvider, UuidProvider}
 
 abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
   this: Suite =>
 
-  protected def envVarsProvider: EnvVarsProvider = JavaEnvVarsProvider
+  protected def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()

@@ -28,14 +28,14 @@ import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.utils.{JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.utils.{OsEnvVarsProvider, JavaUuidProvider, UuidProvider}
 
 class AuditingSettingsTests extends WordSpec with Inside {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
+    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
     new CoreFactory
   }
 

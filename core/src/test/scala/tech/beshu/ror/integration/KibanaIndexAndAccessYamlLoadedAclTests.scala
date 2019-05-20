@@ -30,14 +30,14 @@ import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, headerFrom}
-import tech.beshu.ror.utils.{JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.utils.{OsEnvVarsProvider, JavaUuidProvider, UuidProvider}
 
 class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
+    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
     new CoreFactory
   }
   private val acl: Acl = factory

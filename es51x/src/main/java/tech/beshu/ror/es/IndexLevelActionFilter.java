@@ -55,7 +55,6 @@ import tech.beshu.ror.acl.AclResultCommitter;
 import tech.beshu.ror.acl.BlockContextJavaHelper$;
 import tech.beshu.ror.RorEngineFactory;
 import tech.beshu.ror.RorEngineFactory$;
-import tech.beshu.ror.acl.logging.AuditSink;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.utils.ScalaJavaHelper$;

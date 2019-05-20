@@ -6,7 +6,7 @@ trait EnvVarsProvider {
   def getEnv(name: String): Option[String]
 }
 
-object JavaEnvVarsProvider extends EnvVarsProvider {
+object OsEnvVarsProvider extends EnvVarsProvider {
   override def getEnv(name: String): Option[String] =
     Try(Option(System.getenv(name))).toOption.flatten
 }

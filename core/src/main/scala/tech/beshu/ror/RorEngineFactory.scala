@@ -5,17 +5,18 @@ import java.time.Clock
 import monix.eval.Task
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory}
-import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditSink, AuditingTool}
+import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditingTool}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
+import tech.beshu.ror.es.AuditSink
 import tech.beshu.ror.settings.SettingsMalformedException
-import tech.beshu.ror.utils.{JavaEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 object RorEngineFactory {
 
   private implicit val clock: Clock = Clock.systemUTC()
   private implicit val uuidProvider: UuidProvider = JavaUuidProvider
-  private implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
+  private implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
   private val aclFactory = new CoreFactory
 
   def reload(auditSink: AuditSink,
