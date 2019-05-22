@@ -8,10 +8,10 @@ import io.circe.Json
 import io.circe.yaml.parser
 import monix.eval.Task
 import tech.beshu.ror.Constants
+import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{InvalidContent, SpecializedError}
 import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.{FileNotExist, InvalidFileContent}
+import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.FileNotExist
 import tech.beshu.ror.utils.EnvVarsProvider
 
 class FileConfigLoader(esConfigFolderPath: Path,
@@ -35,7 +35,7 @@ class FileConfigLoader(esConfigFolderPath: Path,
   private def parseFileContent(file: File): Either[ConfigLoaderError[FileConfigError], Json] = {
     parser
       .parse(new InputStreamReader(file.inputStream.get()))
-      .left.map(ex => SpecializedError(InvalidFileContent(file, ex)))
+      .left.map(InvalidContent.apply)
       .flatMap { json => validateRorJson(json) }
   }
 }
@@ -45,6 +45,5 @@ object FileConfigLoader {
   sealed trait FileConfigError
   object FileConfigError {
     final case class FileNotExist(file: File) extends FileConfigError
-    final case class InvalidFileContent(file: File, throwable: Throwable) extends FileConfigError
   }
 }

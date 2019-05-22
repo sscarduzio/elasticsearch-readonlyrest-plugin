@@ -45,6 +45,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.configuration.ConfigLoader.RawRorConfig
 import tech.beshu.ror.utils.{UuidProvider, YamlOps}
 
 import scala.language.implicitConversions
@@ -56,6 +57,9 @@ class CoreFactory(implicit clock: Clock,
                   uuidProvider: UuidProvider,
                   resolver: StaticVariablesResolver)
   extends Logging {
+
+  def createCoreFrom(config: RawRorConfig,
+                     httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = ??? // todo:
 
   def createCoreFrom(settingsYamlString: String,
                      httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {

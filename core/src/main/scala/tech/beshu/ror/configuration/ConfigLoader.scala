@@ -26,6 +26,7 @@ object ConfigLoader {
   object ConfigLoaderError {
     case object NoRorSection extends ConfigLoaderError[Nothing]
     case object MoreThanOneRorSection extends ConfigLoaderError[Nothing]
+    final case class InvalidContent(throwable: Throwable) extends ConfigLoaderError[Nothing]
     final case class SpecializedError[ERROR](error: ERROR) extends ConfigLoaderError[ERROR]
   }
 }

@@ -19,6 +19,7 @@ object RorEngineFactory {
   private implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
   private val aclFactory = new CoreFactory
 
+
   def reload(auditSink: AuditSink,
              settingsYaml: String): Task[Engine] = synchronized {
     val httpClientsFactory = new AsyncHttpClientsFactory

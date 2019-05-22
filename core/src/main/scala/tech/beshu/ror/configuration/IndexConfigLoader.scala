@@ -3,9 +3,9 @@ package tech.beshu.ror.configuration
 import io.circe.yaml.parser
 import monix.eval.Task
 import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.SpecializedError
+import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{InvalidContent, SpecializedError}
 import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError
-import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError.{IndexConfigNotExist, InvalidIndexContent}
+import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.es.IndexContentProvider
 
 class IndexConfigLoader(indexContentProvider: IndexContentProvider)
@@ -26,7 +26,7 @@ class IndexConfigLoader(indexContentProvider: IndexContentProvider)
   private def parseIndexContent(content: String) = {
     parser
       .parse(content)
-      .left.map(ex => SpecializedError(InvalidIndexContent(ex)))
+      .left.map(InvalidContent.apply)
       .flatMap { json => validateRorJson(json) }
   }
 }
@@ -36,7 +36,6 @@ object IndexConfigLoader {
   sealed trait IndexConfigError
   object IndexConfigError {
     case object IndexConfigNotExist extends IndexConfigError
-    final case class InvalidIndexContent(throwable: Throwable) extends IndexConfigError
   }
 
 }
