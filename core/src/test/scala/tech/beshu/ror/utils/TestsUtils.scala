@@ -25,6 +25,8 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain._
+import io.circe.yaml._
+import tech.beshu.ror.configuration.ConfigLoader.RawRorConfig
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -124,6 +126,10 @@ object TestsUtils {
     keyGen.initialize(2048, random)
     val pair = keyGen.generateKeyPair()
     (pair.getPublic, pair.getPrivate)
+  }
+
+  def rorConfigFrom(yaml: String): RawRorConfig = {
+    RawRorConfig(parser.parse(yaml).right.get)
   }
 
 }

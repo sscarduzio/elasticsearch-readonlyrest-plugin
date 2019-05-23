@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{RulesLevelCreationError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{RulesLevelCreationError, GeneralReadonlyrestSettingsError}
 import tech.beshu.ror.utils.LdapContainer
 
 class LdapAuthenticationRuleSettingsTests
@@ -134,32 +134,6 @@ class LdapAuthenticationRuleSettingsTests
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message("Cannot find LDAP service with name: ldap2")))
-          }
-        )
-      }
-      "extended version of rule definition cannot be mixes with simple one" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |readonlyrest:
-               |
-               |  access_control_rules:
-               |
-               |  - name: test_block1
-               |    ldap_authentication: "ldap1"
-               |      cache_ttl: 10 sec
-               |
-               |  ldaps:
-               |
-               |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
-               |    ssl_enabled: false
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            inside(errors.head) { case UnparsableYamlContent(Message(_)) => }
           }
         )
       }

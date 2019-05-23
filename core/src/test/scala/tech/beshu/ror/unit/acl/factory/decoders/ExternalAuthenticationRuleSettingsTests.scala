@@ -18,12 +18,12 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, BasicAuthHttpExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError, UnparsableYamlContent}
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 
 class ExternalAuthenticationRuleSettingsTests
@@ -218,32 +218,6 @@ class ExternalAuthenticationRuleSettingsTests
                 |  service: "ext1"
                 |""".stripMargin
             )))
-          }
-        )
-      }
-      "extended version of rule definition cannot be mixes with simple one" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    external_authentication: "ext1"
-              |      cache_ttl_in_sec: 60
-              |
-              |  external_authentication_service_configs:
-              |
-              |  - name: "ext1"
-              |    authentication_endpoint: "http://localhost:8080/auth1"
-              |    success_status_code: 200
-              |    cache_ttl_in_sec: 60
-              |""".stripMargin,
-          httpClientsFactory = mockedHttpClientsFactory,
-          assertion = errors => {
-            errors should have size 1
-            errors.head shouldBe an [UnparsableYamlContent]
           }
         )
       }

@@ -22,18 +22,28 @@ import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError.IndexConf
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigLoader}
 import tech.beshu.ror.es.{AuditSink, IndexContentProvider}
 import tech.beshu.ror.utils.TaskOps._
-import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
+import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-object RorEngine {
+object Ror extends Ror {
 
-  private val envVarsProvider = OsEnvVarsProvider
-  private implicit val clock: Clock = Clock.systemUTC()
-  private implicit val uuidProvider: UuidProvider = JavaUuidProvider
-  private implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(envVarsProvider)
+  override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  override protected implicit val clock: Clock = Clock.systemUTC()
+  override protected implicit val uuidProvider: UuidProvider = JavaUuidProvider
+  override protected implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(envVarsProvider)
+
+}
+
+trait Ror {
+
+  protected def envVarsProvider: EnvVarsProvider
+  protected implicit def clock: Clock
+  protected implicit def uuidProvider: UuidProvider
+  protected implicit def resolver: StaticVariablesResolver
+
   private val aclFactory = new CoreFactory
 
   def start(esConfigPath: Path,
@@ -174,7 +184,7 @@ class RorInstance(initialEngine: Engine,
 
   private def scheduleIndexConfigChecking(): Cancelable = {
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
-      val loadEngineAction = RorEngine.loadRorConfigFromIndex(indexConfigLoader, auditSink, noIndexStartingFailure)
+      val loadEngineAction = Ror.loadRorConfigFromIndex(indexConfigLoader, auditSink, noIndexStartingFailure)
       loadEngineAction
         .andThen {
           handleLoadEngineResultAndRescheduleChecking(loadEngineAction, auditSink)
@@ -183,12 +193,18 @@ class RorInstance(initialEngine: Engine,
     }
   }
 
+  private def scheduleDelayedShutdown(engine: Engine) = {
+    scheduler.scheduleOnce(RorInstance.delayOfOldEngineShutdown) {
+      engine.shutdown()
+    }
+  }
+
   private def handleLoadEngineResultAndRescheduleChecking(reloadEngineJob: Task[Either[StartingFailure, Engine]],
                                                           auditSink: AuditSink): PartialFunction[Try[Either[StartingFailure, Engine]], Unit] = {
     case Success(Right(newEngine)) =>
       workingEngine.transform {
         case Some((oldEngine, _)) =>
-          oldEngine.shutdown() // todo: delayed
+          scheduleDelayedShutdown(oldEngine)
           Some(newEngine, scheduleIndexConfigChecking())
         case None =>
           newEngine.shutdown()
@@ -218,6 +234,7 @@ class RorInstance(initialEngine: Engine,
 object RorInstance {
 
   private val indexConfigCheckingSchedulerDelay = 1 second
+  private val delayOfOldEngineShutdown = 10 seconds
 }
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)

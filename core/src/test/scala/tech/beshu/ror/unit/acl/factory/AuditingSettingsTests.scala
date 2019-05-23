@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.factory
 
 import java.time.{Clock, ZoneId, ZonedDateTime}
 
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.AuditingSettingsCreationError
@@ -27,8 +28,8 @@ import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.utils.{OsEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 class AuditingSettingsTests extends WordSpec with Inside {
 
@@ -42,7 +43,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
   "Auditing settings" should {
     "be optional" when {
       "audit collector is not configured at all (by default - disabled)" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |
@@ -52,12 +53,12 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, None)) => }
       }
       "audit collector is disabled" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |  audit_collector: false
@@ -68,14 +69,14 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, None)) => }
       }
     }
     "be able to be loaded from config" when {
       "audit collector is enabled" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -86,8 +87,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
@@ -95,7 +96,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "custom audit index name is set" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -107,8 +108,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("custom_template_20181231")
@@ -116,7 +117,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "custom serializer in set" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -128,8 +129,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
@@ -137,7 +138,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "deprecated custom serializer is set" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -149,8 +150,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
@@ -160,7 +161,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
     }
     "not be able to be loaded from config" when {
       "not supported custom serializer is set" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -172,8 +173,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Left(errors) =>
           errors.length should be(1)
           errors.head should be (AuditingSettingsCreationError(Message(
@@ -182,7 +183,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "custom audit index name pattern is invalid" in {
-        val yaml =
+        val config = rorConfigFrom(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -194,8 +195,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    type: allow
             |    auth_key: admin:container
             |
-          """.stripMargin
-        val core = factory.createCoreFrom(yaml, MockHttpClientsFactory).runSyncUnsafe()
+          """.stripMargin)
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         inside(core) { case Left(errors) =>
           errors.length should be(1)
           errors.head should be (AuditingSettingsCreationError(Message(

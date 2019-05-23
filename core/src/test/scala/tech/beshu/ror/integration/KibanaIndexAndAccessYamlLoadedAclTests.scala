@@ -29,8 +29,8 @@ import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
-import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, headerFrom}
-import tech.beshu.ror.utils.{OsEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, headerFrom, _}
+import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
@@ -42,17 +42,19 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory w
   }
   private val acl: Acl = factory
     .createCoreFrom(
-      """
-        |readonlyrest:
-        |
-        |  access_control_rules:
-        |
-        |  - name: "Template Tenancy"
-        |    verbosity: error
-        |    kibana_access: admin
-        |    kibana_index: ".kibana_template"
-        |
-      """.stripMargin,
+      rorConfigFrom(
+        """
+          |readonlyrest:
+          |
+          |  access_control_rules:
+          |
+          |  - name: "Template Tenancy"
+          |    verbosity: error
+          |    kibana_access: admin
+          |    kibana_index: ".kibana_template"
+          |
+      """.stripMargin
+      ),
       MockHttpClientsFactory
     )
     .map {

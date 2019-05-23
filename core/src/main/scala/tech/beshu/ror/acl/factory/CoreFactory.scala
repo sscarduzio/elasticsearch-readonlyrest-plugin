@@ -22,10 +22,8 @@ import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
-import io.circe.yaml.parser
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import org.yaml.snakeyaml.Yaml
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
@@ -40,16 +38,14 @@ import tech.beshu.ror.acl.logging.AuditingTool
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
-import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
-import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.configuration.ConfigLoader.RawRorConfig
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.{UuidProvider, YamlOps}
 
 import scala.language.implicitConversions
-import scala.util.{Failure, Success, Try}
 
 final case class CoreSettings(aclEngine: Acl, aclStaticContext: AclStaticContext, auditingSettings: Option[AuditingTool.Settings])
 
@@ -59,40 +55,20 @@ class CoreFactory(implicit clock: Clock,
   extends Logging {
 
   def createCoreFrom(config: RawRorConfig,
-                     httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = ??? // todo:
-
-  def createCoreFrom(settingsYamlString: String,
                      httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
-    trimToRorPartOnly(settingsYamlString) match {
-      case Right(rorPartYamlString) =>
-        parser.parse(rorPartYamlString) match {
-          case Right(json) =>
-            createFrom(json, httpClientFactory).map {
-              case Right(settings) =>
-                Right(settings)
-              case Left(failure) =>
-                Left(NonEmptyList.one(failure.aclCreationError.getOrElse(BlocksLevelCreationError(Message(s"Malformed:\n$settingsYamlString")))))
-            }
-          case Left(ex) =>
-            logger.debug("Unparsable yaml", ex)
-            Task.now(Left(NonEmptyList.one(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString")))))
-        }
-      case Left(error) =>
-        Task.now(Left(NonEmptyList.one(error)))
+    config.rawConfig \\ Attributes.rorSectionName match {
+      case Nil => createCoreFromRorSection(config.rawConfig, httpClientFactory)
+      case rorSection :: Nil => createCoreFromRorSection(rorSection, httpClientFactory)
+      case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
     }
   }
 
-  private def trimToRorPartOnly(settingsYamlString: String): Either[AclCreationError, String] = {
-    val yaml = new Yaml()
-    Try(yaml.load[java.util.Map[String, Object]](settingsYamlString)) match {
-      case Success(map) =>
-        Option(map.get(Attributes.rorSectionName)).map(yaml.dump) match {
-          case Some(value) => Right(value)
-          case None => Left(ReadonlyrestSettingsCreationError(Message(s"No ${Attributes.rorSectionName} section found")))
-        }
-      case Failure(ex) =>
-        logger.debug("Unparsable yaml", ex)
-        Left(UnparsableYamlContent(Message(s"Malformed: $settingsYamlString")))
+  private def createCoreFromRorSection(rorSection: Json, httpClientFactory: HttpClientsFactory) = {
+    createFrom(rorSection, httpClientFactory).map {
+      case Right(settings) =>
+        Right(settings)
+      case Left(failure) =>
+        Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
     }
   }
 
@@ -279,8 +255,7 @@ object CoreFactory {
 
   object AclCreationError {
 
-    final case class UnparsableYamlContent(reason: Reason) extends AclCreationError
-    final case class ReadonlyrestSettingsCreationError(reason: Reason) extends AclCreationError
+    final case class GeneralReadonlyrestSettingsError(reason: Reason) extends AclCreationError
     final case class DefinitionsLevelCreationError(reason: Reason) extends AclCreationError
     final case class BlocksLevelCreationError(reason: Reason) extends AclCreationError
     final case class RulesLevelCreationError(reason: Reason) extends AclCreationError

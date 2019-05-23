@@ -27,13 +27,13 @@ import org.scalatest.{Inside, Tag, WordSpec}
 import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
-import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, basicAuthHeader}
-import tech.beshu.ror.utils.{OsEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, basicAuthHeader, _}
+import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
@@ -45,23 +45,25 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with MockFactory with Inside wi
   }
   private val acl: Acl = factory
     .createCoreFrom(
-      """
-        |other_non_ror_settings:
-        |
-        |  sth: "sth"
-        |
-        |readonlyrest:
-        |
-        |  access_control_rules:
-        |
-        |  - name: "CONTAINER ADMIN"
-        |    type: allow
-        |    auth_key: admin:container
-        |
-        |  - name: "User 1"
-        |    type: allow
-        |    auth_key: user1:dev
-      """.stripMargin,
+      rorConfigFrom(
+        """
+          |other_non_ror_settings:
+          |
+          |  sth: "sth"
+          |
+          |readonlyrest:
+          |
+          |  access_control_rules:
+          |
+          |  - name: "CONTAINER ADMIN"
+          |    type: allow
+          |    auth_key: admin:container
+          |
+          |  - name: "User 1"
+          |    type: allow
+          |    auth_key: user1:dev
+        """.stripMargin
+      ),
       MockHttpClientsFactory
     )
     .map {
