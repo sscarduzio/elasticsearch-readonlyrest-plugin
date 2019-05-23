@@ -24,8 +24,6 @@ public interface ESContext {
 
   LoggerShim logger(Class<?> clazz);
 
-  RuntimeException rorException(String message);
-
   BasicSettings getSettings();
 
   ESVersion getVersion();

@@ -40,7 +40,6 @@ import static tech.beshu.ror.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-  private final NodeClient client;
   private final SettingsObservableImpl settingsObservable;
 
   @Inject
@@ -48,7 +47,6 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
       ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
       NodeClient client, SettingsObservableImpl settingsObservable) {
     super(RRAdminAction.NAME, transportService,actionFilters, RRAdminRequest::new);
-    this.client = client;
     this.settingsObservable = settingsObservable;
 
   }
@@ -77,6 +75,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
             return;
           }
           // Can throw SettingsMalformedException
+          // todo: validate and save
           settingsObservable.refreshFromStringAndPersist(
               new RawSettings(SettingsUtils.extractYAMLfromJSONStorage(body), settingsObservable.getCurrent().getLogger()), new FutureCallback() {
                 @Override

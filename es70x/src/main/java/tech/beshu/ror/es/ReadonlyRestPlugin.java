@@ -114,8 +114,7 @@ public class ReadonlyRestPlugin extends Plugin
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
-      settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment, TransportServiceInterceptor.getRemoteClusterServiceSupplier());
+      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, environment, TransportServiceInterceptor.getRemoteClusterServiceSupplier());
       components.add(settingsObservable);
       return null;
     });

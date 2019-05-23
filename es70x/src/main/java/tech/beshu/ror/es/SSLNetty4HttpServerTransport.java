@@ -49,7 +49,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
   private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
   private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
-  private final Environment environment;
   private Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
@@ -57,18 +56,16 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
 
-    this.environment = environment;
     BasicSettings basicSettings = BasicSettings.fromFileObj(
         logger,
-        this.environment.configFile().toAbsolutePath(),
+        environment.configFile().toAbsolutePath(),
         settings
     );
 
-    if (basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+    if (basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
       sslSettings = basicSettings.getSslHttpSettings().get();
       logger.info("creating SSL HTTP transport");
       this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
-
     }
     else {
       sslSettings = null;

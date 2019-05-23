@@ -16,10 +16,11 @@ class IndexConfigLoader(indexContentProvider: IndexContentProvider)
       .contentOf(".readonlyrest", "settings", "1")
       .map {
         case Right(content) =>
+          // todo: get settings key value
           parseIndexContent(content).map(RawRorConfig.apply)
-        case Left(IndexContentProvider.Error.CannotReachContentSource) =>
+        case Left(IndexContentProvider.CannotReachContentSource) =>
           Left(SpecializedError[IndexConfigError](IndexConfigNotExist))
-        case Left(IndexContentProvider.Error.ContentNotFound) =>
+        case Left(IndexContentProvider.ContentNotFound) =>
           Left(SpecializedError[IndexConfigError](IndexConfigNotExist))
       }
 

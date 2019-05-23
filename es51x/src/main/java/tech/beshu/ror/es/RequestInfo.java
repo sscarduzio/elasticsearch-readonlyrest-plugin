@@ -54,7 +54,6 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.reflections.ReflectionUtils;
-import tech.beshu.ror.shims.es.ESContext;
 import tech.beshu.ror.shims.es.LoggerShim;
 import tech.beshu.ror.shims.request.RequestInfoShim;
 import tech.beshu.ror.utils.RCUtils;
@@ -89,13 +88,11 @@ public class RequestInfo implements RequestInfoShim {
   private final RestChannel channel;
   private String content = null;
   private Integer contentLength;
-  private ESContext context;
 
   RequestInfo(
       RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool, ESContext context) {
-    this.context = context;
-    this.logger = context.logger(getClass());
+      ClusterService clusterService, ThreadPool threadPool, LoggerShim logger) {
+    this.logger = logger;
     this.threadPool = threadPool;
     this.request = channel.request();
     this.channel = channel;
@@ -313,9 +310,9 @@ public class RequestInfo implements RequestInfoShim {
 
     // Last resort
     else {
-      indices = extractStringArrayFromPrivateMethod("indices", ar, context);
+      indices = extractStringArrayFromPrivateMethod("indices", ar, logger);
       if (indices == null || indices.length == 0) {
-        indices = extractStringArrayFromPrivateMethod("index", ar, context);
+        indices = extractStringArrayFromPrivateMethod("index", ar, logger);
       }
     }
 

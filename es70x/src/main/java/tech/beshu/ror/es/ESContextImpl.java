@@ -26,6 +26,7 @@ import tech.beshu.ror.shims.es.AbstractESContext;
 import tech.beshu.ror.shims.es.ESVersion;
 import tech.beshu.ror.shims.es.LoggerShim;
 
+// todo: to remove
 public class ESContextImpl extends AbstractESContext {
   private final BasicSettings settings;
 
@@ -83,11 +84,6 @@ public class ESContextImpl extends AbstractESContext {
   @Override
   public LoggerShim mkLogger(Class<?> clazz) {
     return mkLoggerShim(LogManager.getLogger(clazz.getName()));
-  }
-
-  @Override
-  public RuntimeException rorException(String message) {
-    return new ElasticsearchException(message);
   }
 
   @Override

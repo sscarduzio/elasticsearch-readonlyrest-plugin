@@ -37,7 +37,6 @@ public abstract class AbstractESContext implements ESContext {
   }
 
   public LoggerShim logger(Class<?> clazz) {
-
     LoggerShim shim = loggerCache.get(clazz);
     if (shim != null) {
       return shim;
@@ -52,8 +51,6 @@ public abstract class AbstractESContext implements ESContext {
   }
 
   protected abstract LoggerShim mkLogger(Class<?> clazz);
-
-  public abstract RuntimeException rorException(String message);
 
   public abstract ESVersion getVersion();
 

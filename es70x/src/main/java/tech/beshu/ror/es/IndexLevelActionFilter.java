@@ -17,14 +17,16 @@
 
 package tech.beshu.ror.es;
 
+import monix.eval.Task$;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
+import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.ActionFilter;
@@ -42,38 +44,42 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
+import scala.Function0;
 import scala.Function1;
+import scala.Option;
 import scala.collection.JavaConverters$;
 import scala.concurrent.duration.FiniteDuration;
 import scala.runtime.BoxedUnit;
 import scala.util.Either;
+import scala.util.Left$;
+import scala.util.Right$;
+import tech.beshu.ror.Engine;
+import tech.beshu.ror.Ror$;
+import tech.beshu.ror.RorInstance;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.acl.AclHandlingResult;
-import tech.beshu.ror.acl.AclStaticContext;
-import tech.beshu.ror.acl.blocks.BlockContext;
+import tech.beshu.ror.StartingFailure;
 import tech.beshu.ror.acl.AclActionHandler;
+import tech.beshu.ror.acl.AclHandlingResult;
 import tech.beshu.ror.acl.AclResultCommitter;
+import tech.beshu.ror.acl.AclStaticContext;
 import tech.beshu.ror.acl.BlockContextJavaHelper$;
-import tech.beshu.ror.RorEngineFactory$;
+import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
-import tech.beshu.ror.utils.ScalaJavaHelper$;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
+import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.time.Duration;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import static tech.beshu.ror.RorEngineFactory.*;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -84,71 +90,50 @@ public class IndexLevelActionFilter implements ActionFilter {
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<Engine>> rorEngine;
+  private final RorInstance rorInstance;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final Logger logger;
+  private final LoggerShim loggerShim;
 
-  private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
   private final Supplier<Optional<RemoteClusterService>> remoteClusterServiceSupplier;
 
   public IndexLevelActionFilter(Settings settings,
       ClusterService clusterService,
       NodeClient client,
       ThreadPool threadPool,
-      SettingsObservableImpl settingsObservable,
       Environment env,
       Supplier<Optional<RemoteClusterService>> remoteClusterServiceSupplier
   ) {
     this.remoteClusterServiceSupplier = remoteClusterServiceSupplier;
-    this.logger = LogManager.getLogger(this.getClass());
+    this.loggerShim = ESContextImpl.mkLoggerShim(LogManager.getLogger(this.getClass()));
     try {
       System.setProperty("es.set.netty.runtime.available.processors", "false");
     } catch (Exception ex) {
-      logger.error("Cannot set property 'es.set.netty.runtime.available.processors'", ex);
+      loggerShim.error("Cannot set property 'es.set.netty.runtime.available.processors'", ex);
     }
 
-    BasicSettings baseSettings = BasicSettings.fromFileObj(ESContextImpl.mkLoggerShim(logger),
-        env.configFile().toAbsolutePath(), settings);
+    // todo: remove
+    BasicSettings baseSettings = BasicSettings.fromFileObj(loggerShim, env.configFile().toAbsolutePath(), settings);
 
     this.context.set(new ESContextImpl(baseSettings));
 
     this.clusterService = clusterService;
     this.threadPool = threadPool;
-    this.rorEngine = new AtomicReference<>(Optional.empty());
 
-    settingsObservable.addObserver((o, arg) -> {
-      logger.info("Settings observer refreshing...");
-      Environment newEnv = new Environment(settings, env.configFile().toAbsolutePath());
-      BasicSettings newBasicSettings = new BasicSettings(settingsObservable.getCurrent(),
-          newEnv.configFile().toAbsolutePath());
-      ESContext newContext = new ESContextImpl(newBasicSettings);
-      this.context.set(newContext);
+    FiniteDuration startingTimeout = scala.concurrent.duration.FiniteDuration.apply(1, TimeUnit.MINUTES);
 
-      if (newContext.getSettings().isEnabled()) {
-        FiniteDuration timeout = scala.concurrent.duration.FiniteDuration.apply(10, TimeUnit.MINUTES);
-        Engine engine = AccessController.doPrivileged((PrivilegedAction<Engine>) () ->
-            RorEngineFactory$.MODULE$
-                .reload(
-                  createAuditSink(client, newBasicSettings),
-                  newContext.getSettings().getRaw().yaml()
-                )
-                .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit())
-        );
-        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
-        oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
-        logger.info("Configuration reloaded - ReadonlyREST enabled");
-      }
-      else {
-        Optional<Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
-        oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
-        logger.info("Configuration reloaded - ReadonlyREST disabled");
-      }
-    });
+    Either<StartingFailure, RorInstance> result = AccessController.doPrivileged((PrivilegedAction<Either<StartingFailure, RorInstance>>) () ->
+        Ror$.MODULE$.start(
+            env.configFile(),
+            createAuditSink(client),
+            createEsIndexContentProvider(client)
+        ).runSyncUnsafe(startingTimeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit())
+    );
 
-    settingsObservable.forceRefresh();
-    logger.info("Readonly REST plugin was loaded...");
-
-    settingsObservable.pollForIndex(context.get());
+    if(result.isRight()) {
+      this.rorInstance = result.right().get();
+    } else {
+      throw StartingFailureException.from(result.left().get());
+    }
   }
 
   @Override
@@ -163,11 +148,11 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionListener<Response> listener,
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      Optional<Engine> engine = this.rorEngine.get();
-      if (engine.isPresent()) {
+
+      Option<Engine> engine = rorInstance.engine();
+      if (engine.isDefined()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
-      }
-      else {
+      } else {
         chain.proceed(task, action, request, listener);
       }
       return null;
@@ -196,7 +181,7 @@ public class IndexLevelActionFilter implements ActionFilter {
     Optional<RemoteClusterService> remoteClusterService = remoteClusterServiceSupplier.get();
     if(remoteClusterService.isPresent()) {
       RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-          context.get(), remoteClusterService.get());
+          loggerShim, remoteClusterService.get());
       RequestContext requestContext = requestContextFrom(requestInfo);
 
       Consumer<ActionListener<Response>> proceed =
@@ -262,12 +247,12 @@ public class IndexLevelActionFilter implements ActionFilter {
           // the cache some times and would not be filtered
           if (aclStaticContext.involvesFilter()) {
             if (request instanceof SearchRequest) {
-              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
+              loggerShim.debug("ACL involves filters, will disable request cache for SearchRequest");
 
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
-              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
+              loggerShim.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
               for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
                 sr.requestCache(Boolean.FALSE);
               }
@@ -277,7 +262,7 @@ public class IndexLevelActionFilter implements ActionFilter {
           return (ActionListener<Response>) new ResponseActionListener((ActionListener<ActionResponse>) listener,
               requestContext, blockContext);
         } catch (Throwable e) {
-          logger.error("on allow exception", e);
+          loggerShim.error("on allow exception", e);
           return listener;
         }
       }
@@ -306,13 +291,31 @@ public class IndexLevelActionFilter implements ActionFilter {
     };
   }
 
-  private AuditSink createAuditSink(Client client, BasicSettings settings) {
+  private AuditSink createAuditSink(Client client) {
     return new AuditSink() {
-      AuditSinkImpl auditSink = new AuditSinkImpl(client, settings);
+      AuditSinkImpl auditSink = new AuditSinkImpl(client);
 
       @Override
       public void submit(String indexName, String documentId, String jsonRecord) {
         auditSink.submit(indexName, documentId, jsonRecord);
+      }
+    };
+  }
+
+  private IndexContentProvider createEsIndexContentProvider(NodeClient client) {
+    return new IndexContentProvider() {
+      @Override
+      public monix.eval.Task<Either<Error, String>> contentOf(String index, String type, String id) {
+        try {
+          GetResponse response = client.get(client.prepareGet(index, type, id).request()).actionGet();
+          return Task$.MODULE$
+              .eval((Function0<Either<Error, String>>) () -> Right$.MODULE$.apply(response.getSourceAsString()))
+              .executeOn(Ror$.MODULE$.blockingScheduler(), true);
+        } catch (ResourceNotFoundException ex) {
+          return Task$.MODULE$.now(Left$.MODULE$.apply(ContentNotFound$.MODULE$));
+        } catch (Throwable t) {
+          return Task$.MODULE$.now(Left$.MODULE$.apply(CannotReachContentSource$.MODULE$));
+        }
       }
     };
   }
@@ -323,10 +326,6 @@ public class IndexLevelActionFilter implements ActionFilter {
     } catch (Exception ex) {
       throw new SecurityPermissionException("Cannot create request context object", ex);
     }
-  }
-
-  private Consumer<Engine> scheduleDelayedEngineShutdown(Duration delay) {
-    return engine -> scheduler.schedule(() -> engine.shutdown(), delay.toMillis(), TimeUnit.MILLISECONDS);
   }
 
   private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {

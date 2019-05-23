@@ -84,6 +84,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
+  private final LoggerShim loggerShim;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
@@ -95,7 +96,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       SettingsObservableImpl settingsObservable
   ) {
     super(settings);
-    LoggerShim loggerShim = ESContextImpl.mkLoggerShim(logger);
+    this.loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     Environment env = new Environment(settings);
     BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
@@ -189,7 +190,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get());
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, loggerShim);
     RequestContext requestContext = requestContextFrom(requestInfo);
 
     Consumer<ActionListener<Response>> proceed = responseActionListener -> {

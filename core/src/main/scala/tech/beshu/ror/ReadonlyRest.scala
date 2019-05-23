@@ -5,7 +5,7 @@ import java.time.Clock
 
 import cats.data.EitherT
 import monix.eval.Task
-import monix.execution.Cancelable
+import monix.execution.{Cancelable, Scheduler}
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.Scheduler.{global => scheduler}
 import monix.execution.atomic.Atomic
@@ -28,7 +28,9 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-object Ror extends Ror {
+object Ror extends ReadonlyRest {
+
+  val blockingScheduler: Scheduler= Scheduler.io("blocking-index-content-provider")
 
   override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   override protected implicit val clock: Clock = Clock.systemUTC()
@@ -37,7 +39,7 @@ object Ror extends Ror {
 
 }
 
-trait Ror {
+trait ReadonlyRest {
 
   protected def envVarsProvider: EnvVarsProvider
   protected implicit def clock: Clock
@@ -88,7 +90,7 @@ trait Ror {
       loadRorConfigFromIndex(
         indexConfigLoader,
         auditSink,
-        loadRorConfigFromFile(fileConfigLoader, auditSink)
+        noIndexFallback = loadRorConfigFromFile(fileConfigLoader, auditSink)
       )
     }
     startEngineTask.map(_.map(engine => new RorInstance(engine, indexConfigLoader, auditSink)))
@@ -114,6 +116,7 @@ trait Ror {
   private[ror] def loadRorConfigFromIndex(indexConfigLoader: IndexConfigLoader,
                                           auditSink: AuditSink,
                                           noIndexFallback: Task[Either[StartingFailure, Engine]]) = {
+    // todo: wait if cluster is ready?
     indexConfigLoader
       .load()
       .flatMap {
@@ -170,6 +173,8 @@ class RorInstance(initialEngine: Engine,
                   auditSink: AuditSink) {
 
   private val workingEngine = Atomic(Option(initialEngine, scheduleIndexConfigChecking()))
+
+  def engine: Option[Engine] = workingEngine.get().map(_._1)
 
   def stop(): Unit = {
     workingEngine.transform {
@@ -239,8 +244,8 @@ object RorInstance {
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-private final class Engine(val acl: Acl, val context: AclStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
-  def shutdown(): Unit = {
+final class Engine(val acl: Acl, val context: AclStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
+  private [ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
   }
 }

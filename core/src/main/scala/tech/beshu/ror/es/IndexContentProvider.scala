@@ -10,8 +10,6 @@ trait IndexContentProvider {
 object IndexContentProvider {
 
   sealed trait Error
-  object Error {
-    case object ContentNotFound extends Error
-    case object CannotReachContentSource extends Error
-  }
+  case object ContentNotFound extends Error
+  case object CannotReachContentSource extends Error
 }
