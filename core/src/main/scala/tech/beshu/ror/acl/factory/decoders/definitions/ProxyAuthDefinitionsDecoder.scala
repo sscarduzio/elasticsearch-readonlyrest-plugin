@@ -20,8 +20,8 @@ import cats.Id
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions.ProxyAuth
 import tech.beshu.ror.acl.domain.Header
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder}
 

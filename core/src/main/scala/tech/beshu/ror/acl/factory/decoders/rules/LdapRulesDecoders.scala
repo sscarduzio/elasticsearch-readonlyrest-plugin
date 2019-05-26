@@ -24,9 +24,9 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions.ldap.{LdapAuthService, _}
 import tech.beshu.ror.acl.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule, Rule}
 import tech.beshu.ror.acl.domain.Group
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, LdapServicesDecoder}

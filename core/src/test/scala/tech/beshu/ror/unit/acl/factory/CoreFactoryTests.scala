@@ -22,12 +22,12 @@ import cats.data.NonEmptyList
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
+import tech.beshu.ror.acl.factory.{CirceCoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 import monix.execution.Scheduler.Implicits.global
@@ -40,7 +40,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
-    new CoreFactory
+    new CirceCoreFactory
   }
 
   "A RorAclFactory" should {

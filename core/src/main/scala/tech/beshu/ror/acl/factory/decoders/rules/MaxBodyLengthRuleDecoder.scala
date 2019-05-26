@@ -20,8 +20,8 @@ import io.circe.Decoder
 import squants.information.Bytes
 import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule
 import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule.Settings
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
 

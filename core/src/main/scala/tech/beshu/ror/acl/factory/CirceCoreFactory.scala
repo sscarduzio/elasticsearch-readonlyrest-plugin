@@ -27,9 +27,9 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError._
-import tech.beshu.ror.acl.factory.CoreFactory.{AclCreationError, Attributes}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError._
+import tech.beshu.ror.acl.factory.CirceCoreFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.acl.factory.RulesValidator.ValidationError
 import tech.beshu.ror.acl.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.acl.factory.decoders.definitions._
@@ -49,13 +49,18 @@ import scala.language.implicitConversions
 
 final case class CoreSettings(aclEngine: Acl, aclStaticContext: AclStaticContext, auditingSettings: Option[AuditingTool.Settings])
 
-class CoreFactory(implicit clock: Clock,
-                  uuidProvider: UuidProvider,
-                  resolver: StaticVariablesResolver)
-  extends Logging {
-
+trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
-                     httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
+                     httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
+}
+
+class CirceCoreFactory(implicit clock: Clock,
+                       uuidProvider: UuidProvider,
+                       resolver: StaticVariablesResolver)
+  extends CoreFactory with Logging {
+
+  override def createCoreFrom(config: RawRorConfig,
+                              httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
     config.rawConfig \\ Attributes.rorSectionName match {
       case Nil => createCoreFromRorSection(config.rawConfig, httpClientFactory)
       case rorSection :: Nil => createCoreFromRorSection(rorSection, httpClientFactory)
@@ -247,7 +252,7 @@ class CoreFactory(implicit clock: Clock,
     }
 }
 
-object CoreFactory {
+object CirceCoreFactory {
 
   sealed trait AclCreationError {
     def reason: Reason

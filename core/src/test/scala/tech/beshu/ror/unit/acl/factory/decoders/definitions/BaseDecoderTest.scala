@@ -20,7 +20,7 @@ import cats.implicits._
 import cats.{Comonad, Functor}
 import io.circe.DecodingFailure
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
 import tech.beshu.ror.acl.utils.ADecoder
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
 

@@ -27,10 +27,12 @@ object EsConfig {
 
   private def parseFileContent(file: File) = {
     val yaml = new Yaml()
-    Try(yaml.load[java.util.Map[String, Object]](file.inputStream.get()))
-      .toEither
-      .left.map(MalformedContent(file, _))
-      .map(_.asScala.toMap[String, Any])
+    file.inputStream.apply { is =>
+      Try(yaml.load[java.util.Map[String, Object]](is))
+        .toEither
+        .left.map(MalformedContent(file, _))
+        .map(_.asScala.toMap[String, Any])
+    }
   }
 
   private def get[T : ClassTag](config: Map[String, Any], key: String, default: T) = {

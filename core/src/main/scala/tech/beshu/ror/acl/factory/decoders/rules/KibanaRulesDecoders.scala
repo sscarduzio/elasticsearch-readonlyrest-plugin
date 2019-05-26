@@ -22,9 +22,9 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
 import tech.beshu.ror.acl.blocks.{Const, Value}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}

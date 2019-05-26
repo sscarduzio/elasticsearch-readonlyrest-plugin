@@ -53,8 +53,8 @@ import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.AclResultCommitter;
 import tech.beshu.ror.acl.BlockContextJavaHelper$;
-import tech.beshu.ror.RorEngineFactory;
-import tech.beshu.ror.RorEngineFactory$;
+import tech.beshu.ror.boot.RorEngineFactory;
+import tech.beshu.ror.boot.RorEngineFactory$;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
@@ -82,7 +82,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<RorEngineFactory.Engine>> rorEngine;
+  private final AtomicReference<Optional<RorEngineFactory.__old_Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
   private final LoggerShim loggerShim;
 
@@ -117,18 +117,18 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
       if (newContext.getSettings().isEnabled()) {
         FiniteDuration timeout = FiniteDuration.apply(30, TimeUnit.SECONDS);
-        RorEngineFactory.Engine engine = AccessController.doPrivileged((PrivilegedAction<RorEngineFactory.Engine>) () ->
+        RorEngineFactory.__old_Engine engine = AccessController.doPrivileged((PrivilegedAction<RorEngineFactory.__old_Engine>) () ->
             RorEngineFactory$.MODULE$.reload(
                 createAuditSink(client, newBasicSettings),
                 newContext.getSettings().getRaw().yaml()).runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit()
             )
         );
-        Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
+        Optional<RorEngineFactory.__old_Engine> oldEngine = rorEngine.getAndSet(Optional.of(engine));
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST enabled");
       }
       else {
-        Optional<RorEngineFactory.Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
+        Optional<RorEngineFactory.__old_Engine> oldEngine = rorEngine.getAndSet(Optional.empty());
         oldEngine.ifPresent(scheduleDelayedEngineShutdown(Duration.ofSeconds(10)));
         logger.info("Configuration reloaded - ReadonlyREST disabled");
       }
@@ -160,7 +160,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       ActionListener<Response> listener,
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      Optional<RorEngineFactory.Engine> engine = this.rorEngine.get();
+      Optional<RorEngineFactory.__old_Engine> engine = this.rorEngine.get();
       if (engine.isPresent()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
       }
@@ -172,7 +172,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(
-      RorEngineFactory.Engine engine,
+      RorEngineFactory.__old_Engine engine,
       Task task,
       String action,
       Request request,
@@ -202,7 +202,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AclHandlingResult>, BoxedUnit> handleAclResult(
-      RorEngineFactory.Engine engine,
+      RorEngineFactory.__old_Engine engine,
       ActionListener<Response> listener,
       Request request,
       RequestContext requestContext,
@@ -320,7 +320,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     }
   }
 
-  private Consumer<RorEngineFactory.Engine> scheduleDelayedEngineShutdown(Duration delay) {
+  private Consumer<RorEngineFactory.__old_Engine> scheduleDelayedEngineShutdown(Duration delay) {
     return engine -> scheduler.schedule(engine::shutdown, delay.toMillis(), TimeUnit.MILLISECONDS);
   }
 

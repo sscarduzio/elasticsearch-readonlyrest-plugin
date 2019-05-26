@@ -22,8 +22,8 @@ import java.time.format.DateTimeFormatter
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.AuditingSettingsCreationError
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.AuditingSettingsCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.logging.AuditingTool
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter

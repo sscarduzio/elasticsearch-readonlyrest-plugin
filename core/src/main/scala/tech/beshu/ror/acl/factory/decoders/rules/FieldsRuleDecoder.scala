@@ -19,8 +19,8 @@ package tech.beshu.ror.acl.factory.decoders.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import tech.beshu.ror.acl.blocks.rules.FieldsRule
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.FieldsRuleDecoderHelper._
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, _}

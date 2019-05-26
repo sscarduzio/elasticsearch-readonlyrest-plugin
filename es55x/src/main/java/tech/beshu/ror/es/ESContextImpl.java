@@ -97,11 +97,6 @@ public class ESContextImpl extends AbstractESContext {
   }
 
   @Override
-  public RuntimeException rorException(String message) {
-    return new ElasticsearchException(message);
-  }
-
-  @Override
   public ESVersion getVersion() {
     return new ESVersion(Version.CURRENT.id);
   }

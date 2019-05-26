@@ -27,8 +27,8 @@ import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule.Settings
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 

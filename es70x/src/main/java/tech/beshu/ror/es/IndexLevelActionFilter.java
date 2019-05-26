@@ -33,6 +33,7 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
@@ -53,11 +54,11 @@ import scala.runtime.BoxedUnit;
 import scala.util.Either;
 import scala.util.Left$;
 import scala.util.Right$;
-import tech.beshu.ror.Engine;
-import tech.beshu.ror.Ror$;
-import tech.beshu.ror.RorInstance;
+import tech.beshu.ror.boot.Engine;
+import tech.beshu.ror.boot.Ror$;
+import tech.beshu.ror.boot.RorInstance;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.StartingFailure;
+import tech.beshu.ror.boot.StartingFailure;
 import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.AclHandlingResult;
 import tech.beshu.ror.acl.AclResultCommitter;
@@ -134,6 +135,10 @@ public class IndexLevelActionFilter implements ActionFilter {
     } else {
       throw StartingFailureException.from(result.left().get());
     }
+  }
+
+  public void stop() {
+    rorInstance.stop();
   }
 
   @Override
@@ -307,6 +312,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       @Override
       public monix.eval.Task<Either<Error, String>> contentOf(String index, String type, String id) {
         try {
+          ClusterHealthStatus status = client.admin().cluster().prepareHealth().get().getStatus();
           GetResponse response = client.get(client.prepareGet(index, type, id).request()).actionGet();
           return Task$.MODULE$
               .eval((Function0<Either<Error, String>>) () -> Right$.MODULE$.apply(response.getSourceAsString()))

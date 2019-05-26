@@ -33,10 +33,12 @@ class FileConfigLoader(esConfigFolderPath: Path,
   }
 
   private def parseFileContent(file: File): Either[ConfigLoaderError[FileConfigError], Json] = {
-    parser
-      .parse(new InputStreamReader(file.inputStream.get()))
-      .left.map(InvalidContent.apply)
-      .flatMap { json => validateRorJson(json) }
+    file.inputStream.apply { is =>
+      parser
+        .parse(new InputStreamReader(is))
+        .left.map(InvalidContent.apply)
+        .flatMap { json => validateRorJson(json) }
+    }
   }
 }
 

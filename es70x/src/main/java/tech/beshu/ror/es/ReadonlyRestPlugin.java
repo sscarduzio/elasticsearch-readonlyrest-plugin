@@ -92,7 +92,6 @@ public class ReadonlyRestPlugin extends Plugin
   private final BasicSettings basicSettings;
 
   private IndexLevelActionFilter ilaf;
-  private SettingsObservableImpl settingsObservable;
   private Environment environment;
 
   @Inject
@@ -115,7 +114,6 @@ public class ReadonlyRestPlugin extends Plugin
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
       this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, environment, TransportServiceInterceptor.getRemoteClusterServiceSupplier());
-      components.add(settingsObservable);
       return null;
     });
 
@@ -184,6 +182,8 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public void close() {
+    ilaf.stop();
+    // todo: remove?
     ESContextImpl.shutDownObservable.shutDown();
   }
 

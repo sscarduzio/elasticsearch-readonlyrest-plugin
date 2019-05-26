@@ -20,8 +20,8 @@ import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.domain.KibanaApp
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.utils.TestsUtils._

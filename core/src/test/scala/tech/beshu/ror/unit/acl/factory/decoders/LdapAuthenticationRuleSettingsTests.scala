@@ -20,8 +20,8 @@ import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{RulesLevelCreationError, GeneralReadonlyrestSettingsError}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.{RulesLevelCreationError, GeneralReadonlyrestSettingsError}
 import tech.beshu.ror.utils.LdapContainer
 
 class LdapAuthenticationRuleSettingsTests

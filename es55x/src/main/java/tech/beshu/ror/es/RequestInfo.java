@@ -316,9 +316,9 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     else {
-      indices = extractStringArrayFromPrivateMethod("indices", ar, context);
+      indices = extractStringArrayFromPrivateMethod("indices", ar, logger);
       if (indices == null || indices.length == 0) {
-        indices = extractStringArrayFromPrivateMethod("index", ar, context);
+        indices = extractStringArrayFromPrivateMethod("index", ar, logger);
       }
     }
 

@@ -29,9 +29,9 @@ import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.blocks.Variable.ResolvedValue
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult._
 
 import scala.collection.SortedSet

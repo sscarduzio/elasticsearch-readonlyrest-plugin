@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.IndexName
-import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
+import tech.beshu.ror.acl.factory.{CirceCoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, headerFrom, _}
@@ -38,7 +38,7 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory w
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
-    new CoreFactory
+    new CirceCoreFactory
   }
   private val acl: Acl = factory
     .createCoreFrom(

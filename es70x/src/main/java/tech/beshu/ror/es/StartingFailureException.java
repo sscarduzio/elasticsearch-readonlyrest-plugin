@@ -1,7 +1,7 @@
 package tech.beshu.ror.es;
 
 import org.elasticsearch.ElasticsearchException;
-import tech.beshu.ror.StartingFailure;
+import tech.beshu.ror.boot.StartingFailure;
 
 public class StartingFailureException extends ElasticsearchException {
   private StartingFailureException(String msg) {

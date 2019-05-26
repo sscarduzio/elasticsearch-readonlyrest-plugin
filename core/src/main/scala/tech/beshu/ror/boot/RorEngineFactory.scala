@@ -1,4 +1,4 @@
-package tech.beshu.ror
+package tech.beshu.ror.boot
 
 import monix.eval.Task
 import tech.beshu.ror.acl.factory.AsyncHttpClientsFactory
@@ -9,9 +9,9 @@ import tech.beshu.ror.es.AuditSink
 object RorEngineFactory {
 
   def reload(auditSink: AuditSink,
-             settingsYaml: String): Task[Engine] = ???
+             settingsYaml: String): Task[__old_Engine] = ???
 
-  final class Engine(val acl: Acl, val context: AclStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
+  final class __old_Engine(val acl: Acl, val context: AclStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
     def shutdown(): Unit = {
       httpClientsFactory.shutdown()
     }

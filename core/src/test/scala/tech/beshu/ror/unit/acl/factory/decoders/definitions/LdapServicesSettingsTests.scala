@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.ldap.{LdapAuthService, LdapAuthenticationService, LdapService}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils.StringOps
