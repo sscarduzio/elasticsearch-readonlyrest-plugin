@@ -29,23 +29,26 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.Value.ConvertError
 import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.ValueLevelCreationError
+import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
+import tech.beshu.ror.acl.factory.decoders.definitions.ExternalAuthorizationServicesDecoder.logger
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.ScalaOps._
 import tech.beshu.ror.acl.utils.SyncDecoderCreator
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-object common {
+object common extends Logging {
 
   implicit val nonEmptyStringDecoder: Decoder[NonEmptyString] =
     Decoder
@@ -221,6 +224,21 @@ object common {
         validate.getOrElse(HttpClientsFactory.Config.default.validate)
       )
     }
+
+  implicit val jsonPathDecoder: Decoder[JsonPath] =
+    SyncDecoderCreator
+      .from(Decoder.decodeString)
+      .emapE[JsonPath] { jsonPathStr =>
+      Try(JsonPath.compile(jsonPathStr))
+        .toEither
+        .left
+        .map { ex =>
+          logger.error("JSON path compilation failed", ex)
+          DefinitionsLevelCreationError(Message(s"Cannot compile '$jsonPathStr' to JSON path"))
+        }
+    }
+      .decoder
+
 
   private lazy val finiteDurationStringDecoder: Decoder[FiniteDuration] =
     DecoderHelpers

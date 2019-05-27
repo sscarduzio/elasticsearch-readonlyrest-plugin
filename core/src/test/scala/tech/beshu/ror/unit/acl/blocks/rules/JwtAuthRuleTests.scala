@@ -32,6 +32,7 @@ import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
@@ -106,7 +107,7 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
           ),
           tokenHeader = Header(
@@ -126,8 +127,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
-            groupsClaim = Some(ClaimName("groups".nonempty))
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -146,6 +147,33 @@ class JwtAuthRuleTests
           )(blockContext)
         }
       }
+      "groups claim name is defined as http address and groups are passed in JWT token claim" in {
+        val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        assertMatchRule(
+          configuredJwtDef = JwtDef(
+            JwtDef.Name("test".nonempty),
+            AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+            SignatureCheckMethod.Hmac(key.getEncoded),
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("https://{domain}/claims/roles")))
+          ),
+          tokenHeader = Header(
+            Header.Name.authorization,
+            {
+              val jwtBuilder = Jwts.builder
+                .signWith(key)
+                .setSubject("test")
+                .claim("userId", "user1")
+                .claim("https://{domain}/claims/roles", List("group1", "group2").asJava)
+              NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+            }
+          )
+        ) {
+          blockContext => assertBlockContext(
+            loggedUser = Some(LoggedUser(User.Id("user1")))
+          )(blockContext)
+        }
+      }
       "groups claim name is defined and no groups field is passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertMatchRule(
@@ -153,8 +181,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
-            groupsClaim = Some(ClaimName("groups".nonempty))
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Set.empty,
           tokenHeader = Header(
@@ -180,8 +208,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
-            groupsClaim = Some(ClaimName("tech.beshu.groups".nonempty))
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups")))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -207,8 +235,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
-            groupsClaim = Some(ClaimName("groups".nonempty))
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Set(groupFrom("group3"), groupFrom("group2")),
           tokenHeader = Header(
@@ -325,7 +353,7 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
           ),
           tokenHeader = Header(
@@ -341,8 +369,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
-            groupsClaim = Some(ClaimName("groups".nonempty))
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           tokenHeader = Header(
             Header.Name.authorization,
@@ -357,8 +385,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
-            groupsClaim = Some(ClaimName("tech.beshu.groups.subgroups".nonempty))
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
           ),
           configuredGroups = Set(Group("group1".nonempty)),
           tokenHeader = Header(
@@ -381,8 +409,8 @@ class JwtAuthRuleTests
             JwtDef.Name("test".nonempty),
             AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
             SignatureCheckMethod.Hmac(key.getEncoded),
-            userClaim = Some(ClaimName("userId".nonempty)),
-            groupsClaim = Some(ClaimName("groups".nonempty))
+            userClaim = Some(ClaimName(JsonPath.compile("userId"))),
+            groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = Set(groupFrom("group3"), groupFrom("group4")),
           tokenHeader = Header(

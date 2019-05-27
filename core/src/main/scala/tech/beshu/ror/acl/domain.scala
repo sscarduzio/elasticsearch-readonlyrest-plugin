@@ -29,6 +29,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.Constants
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.util.Try
 
@@ -229,7 +230,17 @@ object domain {
   }
 
 
-  final case class ClaimName(value: NonEmptyString)
+  final case class ClaimName(name: JsonPath) {
+
+    override def equals(other: Any): Boolean = {
+      other match {
+        case that: ClaimName => that.name.getPath.equals(this.name.getPath)
+        case _ => false
+      }
+    }
+
+    override def hashCode: Int = name.getPath.hashCode
+  }
 
   final case class JwtToken(value: NonEmptyString)
 
