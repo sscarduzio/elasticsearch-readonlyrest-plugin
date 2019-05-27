@@ -44,9 +44,6 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
     }
     deprecatedResponseContext
       .map(underlying.createLoggableEntry)
-      .map { entry =>
-        entry
-      }
       .map {
         case entry: java.util.Map[String, Object] =>
           new JSONObject(entry)
