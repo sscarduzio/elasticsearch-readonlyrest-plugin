@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.{ClaimName, Group, Header, User}
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult._
@@ -26,7 +27,7 @@ import scala.collection.JavaConverters._
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 
-class ClaimsOps(val claims: Claims) extends AnyVal {
+class ClaimsOps(val claims: Claims) extends AnyVal with Logging {
 
   def headerNameClaim(name: Header.Name): ClaimSearchResult[Header] = {
     Option(claims.get(name.value.value, classOf[String]))
@@ -42,7 +43,13 @@ class ClaimsOps(val claims: Claims) extends AnyVal {
         case value: String => Found(User.Id(value))
         case _ => NotFound
       }
-      .getOrElse(NotFound)
+      .fold(
+        ex => {
+          logger.debug("JsonPath reading exception", ex)
+          NotFound
+        },
+        identity
+      )
   }
 
   def groupsClaim(claimName: ClaimName): ClaimSearchResult[Set[Group]] = {
@@ -60,7 +67,13 @@ class ClaimsOps(val claims: Claims) extends AnyVal {
         case _ =>
           NotFound
       }
-      .getOrElse(NotFound)
+      .fold(
+        ex => {
+          logger.debug("JsonPath reading exception", ex)
+          NotFound
+        },
+        identity
+      )
   }
 
   private def toGroup(value: String) = {
