@@ -35,6 +35,7 @@ import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.collection.SortedSet
 import scala.util.Try
@@ -139,6 +140,6 @@ object RorKbnAuthRule {
 
   final case class Settings(rorKbn: RorKbnDef, groups: Set[Group])
 
-  private val userClaimName = ClaimName(NonEmptyString.unsafeFrom("user"))
-  private val groupsClaimName = ClaimName(NonEmptyString.unsafeFrom("groups"))
+  private val userClaimName = ClaimName(JsonPath.compile("user"))
+  private val groupsClaimName = ClaimName(JsonPath.compile("groups"))
 }

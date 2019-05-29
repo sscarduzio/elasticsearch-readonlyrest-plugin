@@ -42,7 +42,7 @@ object JwtDefinitionsDecoder {
 
   implicit val jwtDefNameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  private implicit val claimDecoder: Decoder[ClaimName] = DecoderHelpers.decodeStringLikeNonEmpty.map(ClaimName.apply)
+  private implicit val claimDecoder: Decoder[ClaimName] = jsonPathDecoder.map(ClaimName.apply)
 
   private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
                             resolver: StaticVariablesResolver): Decoder[JwtDef] = {
