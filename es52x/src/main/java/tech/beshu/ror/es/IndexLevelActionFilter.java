@@ -184,7 +184,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get());
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool);
     RequestContext requestContext = requestContextFrom(requestInfo);
 
     Consumer<ActionListener<Response>> proceed = responseActionListener -> {
@@ -291,6 +291,11 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       @Override
       public void onError(Throwable t) {
         baseListener.onFailure((Exception) t);
+      }
+
+      @Override
+      public void onPassThrough() {
+        chainProceed.accept(baseListener);
       }
     };
   }

@@ -54,7 +54,6 @@ import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.AclResultCommitter;
 import tech.beshu.ror.acl.BlockContextJavaHelper$;
-import tech.beshu.ror.boot.Engine;
 import tech.beshu.ror.boot.RorEngineFactory;
 import tech.beshu.ror.boot.RorEngineFactory$;
 import tech.beshu.ror.acl.request.EsRequestContext;
@@ -190,8 +189,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
     Optional<RemoteClusterService> remoteClusterService = remoteClusterServiceSupplier.get();
     if(remoteClusterService.isPresent()) {
-      RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-          context.get(), remoteClusterService.get());
+      RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, remoteClusterService.get());
       RequestContext requestContext = requestContextFrom(requestInfo);
 
       Consumer<ActionListener<Response>> proceed =
@@ -297,6 +295,11 @@ public class IndexLevelActionFilter implements ActionFilter {
       @Override
       public void onError(Throwable t) {
         baseListener.onFailure((Exception) t);
+      }
+
+      @Override
+      public void onPassThrough() {
+        chainProceed.accept(baseListener);
       }
     };
   }

@@ -21,8 +21,16 @@ import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.rules.{FieldsRule, FilterRule}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 
-class AclStaticContext(blocks: NonEmptyList[Block],
-                       showBasicAuthPrompt: Boolean) {
+trait AclStaticContext {
+  def involvesFilter: Boolean
+  def doesRequirePassword: Boolean
+  def forbiddenRequestMessage: String
+}
+
+class EnabledAclStaticContext(blocks: NonEmptyList[Block],
+                              showBasicAuthPrompt: Boolean,
+                              val forbiddenRequestMessage: String)
+  extends AclStaticContext {
 
   val involvesFilter: Boolean = {
     blocks
@@ -50,4 +58,10 @@ class AclStaticContext(blocks: NonEmptyList[Block],
         )
         .isDefined
   }
+}
+
+object DisabledAclStaticContext extends AclStaticContext {
+  override val involvesFilter: Boolean = false
+  override val doesRequirePassword: Boolean = false
+  override val forbiddenRequestMessage: String = ""
 }

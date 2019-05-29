@@ -191,8 +191,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
     Optional<RemoteClusterService> remoteClusterService = remoteClusterServiceSupplier.get();
     if(remoteClusterService.isPresent()) {
-      RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-          context.get(), remoteClusterService.get());
+      RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, remoteClusterService.get());
       RequestContext requestContext = requestContextFrom(requestInfo);
 
       Consumer<ActionListener<Response>> proceed =
@@ -303,6 +302,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       public void onError(Throwable t) {
         baseListener.onFailure((Exception) t);
       }
+
+      @Override
+      public void onPassThrough() {
+        chainProceed.accept(baseListener);
+      }
+
     };
   }
 

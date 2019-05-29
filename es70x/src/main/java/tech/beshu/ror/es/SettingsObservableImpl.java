@@ -45,7 +45,7 @@ import java.nio.file.Path;
 // todo: remove
 @Singleton
 public class SettingsObservableImpl extends SettingsObservable {
-  private static final LoggerShim logger = ESContextImpl.mkLoggerShim(LogManager.getLogger(SettingsObservableImpl.class));
+  private static final LoggerShim logger = null;
 
   private final NodeClient client;
   private final Environment environment;

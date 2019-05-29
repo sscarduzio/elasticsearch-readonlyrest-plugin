@@ -18,9 +18,10 @@
 package tech.beshu.ror;
 
 import com.google.common.base.Joiner;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.settings.SettingsMalformedException;
-import tech.beshu.ror.shims.es.LoggerShim;
 
 import javax.net.ssl.SSLEngine;
 import java.io.FileInputStream;
@@ -36,22 +37,21 @@ import java.util.Base64;
  */
 public class SSLCertParser {
 
+  private static final Logger logger = LogManager.getLogger(SSLCertParser.class);
   private final SSLContextCreator creator;
-  private final LoggerShim logger;
 
-  public SSLCertParser(BasicSettings.SSLSettings settings, LoggerShim logger, SSLContextCreator creator) {
+  public SSLCertParser(BasicSettings.SSLSettings settings, SSLContextCreator creator) {
     this.creator = creator;
-    this.logger = logger;
     createContext(settings);
   }
 
-  public static boolean validateProtocolAndCiphers(SSLEngine eng, LoggerShim logger, BasicSettings.SSLSettings basicSettings) {
+  public static boolean validateProtocolAndCiphers(SSLEngine eng, BasicSettings.SSLSettings basicSettings) {
     try {
       String[] defaultProtocols = eng.getEnabledProtocols();
 
       logger.info("ROR SSL: Available ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
       basicSettings.getAllowedSSLCiphers()
-          .map(x -> x.toArray(new String[x.size()]))
+          .map(x -> x.toArray(new String[0]))
           .ifPresent(p -> {
             eng.setEnabledCipherSuites(p);
             logger.info("ROR SSL: Restricting to ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
@@ -59,7 +59,7 @@ public class SSLCertParser {
 
       logger.info("ROR SSL: Available SSL protocols: " + Joiner.on(",").join(defaultProtocols));
       basicSettings.getAllowedSSLProtocols()
-          .map(x -> x.toArray(new String[x.size()]))
+          .map(x -> x.toArray(new String[0]))
           .ifPresent(p -> {
             eng.setEnabledProtocols(p);
             logger.info("ROR SSL: Restricting to SSL protocols: " + Joiner.on(",").join(eng.getEnabledProtocols()));

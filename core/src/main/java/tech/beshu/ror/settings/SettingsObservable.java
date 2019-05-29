@@ -25,6 +25,7 @@ import tech.beshu.ror.shims.es.LoggerShim;
 import java.nio.file.Path;
 import java.util.Observable;
 
+// todo: to remove
 abstract public class SettingsObservable extends Observable {
 
   public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";

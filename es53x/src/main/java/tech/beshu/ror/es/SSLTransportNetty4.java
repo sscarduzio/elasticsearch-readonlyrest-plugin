@@ -55,7 +55,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     logger.info("creating SSL transport");
     this.sslSettings = sslSettings;
 
-    new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+    new SSLCertParser(sslSettings, (certChain, privateKey) -> {
 
       try {
         // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
@@ -70,7 +70,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
 
         logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-        SSLCertParser.validateProtocolAndCiphers(eng, logger, sslSettings);
+        SSLCertParser.validateProtocolAndCiphers(eng, sslSettings);
       } catch (Exception e) {
         logger.error("Failed to load SSL CertChain & private key from Keystore! "
             + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
@@ -111,9 +111,9 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       SSLEngine eng = sslContext.newEngine(ch.alloc());
 
       sslSettings.getAllowedSSLProtocols()
-                 .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[p.size()])));
+                 .ifPresent(p -> eng.setEnabledProtocols(p.toArray(new String[0])));
       sslSettings.getAllowedSSLCiphers()
-                 .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[c.size()])));
+                 .ifPresent(c -> eng.setEnabledCipherSuites(c.toArray(new String[0])));
 
       ch.pipeline().addFirst("ssl_netty4_handler", new SslHandler(eng));
 

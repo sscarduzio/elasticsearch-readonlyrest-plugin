@@ -43,9 +43,6 @@ import org.elasticsearch.index.shard.IndexSearcherWrapper;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.es.ESContextImpl;
-import tech.beshu.ror.settings.BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
 import tech.beshu.ror.utils.FilterTransient;
 
 import java.io.IOException;
@@ -57,10 +54,10 @@ import java.util.stream.Collectors;
  * @author Datasweet <contact@datasweet.fr>
  */
 public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
-  private final LoggerShim logger;
+
+  private static final Logger logger = Loggers.getLogger(RoleIndexSearcherWrapper.class);
   private final Function<ShardId, QueryShardContext> queryShardContextProvider;
   private final ThreadContext threadContext;
-  private final Boolean enabled;
 
   public RoleIndexSearcherWrapper(IndexService indexService, Settings s, Environment env) throws Exception {
     if (indexService == null) {
@@ -70,18 +67,15 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
     this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null, null);
     this.threadContext = indexService.getThreadPool().getThreadContext();
-
-    this.logger = ESContextImpl.mkLoggerShim(logger);
-    BasicSettings baseSettings = BasicSettings.fromFileObj(this.logger, env.configFile().toAbsolutePath(), s);
-    this.enabled = baseSettings.isEnabled();
   }
 
   @Override
   protected DirectoryReader wrap(DirectoryReader reader) {
-    if (!this.enabled) {
-      logger.debug("Document filtering not available. Return default reader");
-      return reader;
-    }
+    // todo: I think we don't need it - needs proof
+//    if (!this.enabled) {
+//      logger.debug("Document filtering not available. Return default reader");
+//      return reader;
+//    }
     // Field level security (FLS)
     try {
       String fieldsHeader = threadContext.getTransient(Constants.FIELDS_TRANSIENT);
@@ -124,7 +118,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
       return wrappedReader;
     } catch (IOException e) {
-      this.logger.error("Unable to setup document security");
+      logger.error("Unable to setup document security");
       throw ExceptionsHelper.convertToElastic(e);
     }
   }

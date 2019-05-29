@@ -40,6 +40,8 @@ object AclResultCommitter extends Logging {
           handler.onForbidden()
         case Result.Failed(ex) =>
           handler.onError(ex)
+        case Result.PassedThrough =>
+          handler.onPassThrough()
       }
     }
   } match {
@@ -53,6 +55,7 @@ trait AclActionHandler {
   def onAllow(blockContext: BlockContext): Unit
   def onForbidden(): Unit
   def onError(t: Throwable): Unit
+  def onPassThrough(): Unit
 }
 
 object BlockContextJavaHelper {

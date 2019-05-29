@@ -52,6 +52,8 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
               log(Forbidden(requestContext, result.history))
             case Result.Failed(ex) =>
               log(Errored(requestContext, ex))
+            case Result.PassedThrough =>
+              // ignore
           }
       }
   }

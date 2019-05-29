@@ -118,7 +118,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     public SslChannelInitializer(String name) {
       super(name);
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -133,7 +133,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
           }
 
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
           sslSettings.getAllowedSSLProtocols()

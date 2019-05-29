@@ -29,10 +29,11 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.PageCacheRecycler;
@@ -41,7 +42,6 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
 import tech.beshu.ror.SSLCertParser;
 import tech.beshu.ror.settings.BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
 
 import javax.net.ssl.SSLEngine;
 import java.io.ByteArrayInputStream;
@@ -53,7 +53,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
   private final BasicSettings.SSLSettings sslSettings;
-  private final LoggerShim logger;
+  private final Logger logger = LogManager.getLogger(this.getClass());
   private boolean sslVerification = DEFAULT_SSL_VERIFICATION_INTERNODE;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
@@ -62,7 +62,6 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     super(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService);
 
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
     this.sslSettings = sslSettings;
     this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
   }
@@ -118,7 +117,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     public SslChannelInitializer(String name) {
       super(name);
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -133,7 +132,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
           }
 
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
           sslSettings.getAllowedSSLProtocols()

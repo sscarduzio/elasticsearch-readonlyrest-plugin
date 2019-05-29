@@ -20,7 +20,6 @@ package tech.beshu.ror.es;
 /**
  * Created by sscarduzio on 28/11/2016.
  */
-
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -49,7 +48,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
   private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
   private final BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
-  private final Environment environment;
   private  Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
@@ -57,14 +55,13 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
 
-    this.environment = environment;
     BasicSettings basicSettings = BasicSettings.fromFileObj(
         logger,
-        this.environment.configFile().toAbsolutePath(),
+        environment.configFile().toAbsolutePath(),
         settings
     );
 
-    if (basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+    if (basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
       sslSettings = basicSettings.getSslHttpSettings().get();
       logger.info("creating SSL HTTP transport");
       this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
@@ -99,7 +96,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
 
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -109,7 +106,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           );
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
 
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
@@ -118,7 +115,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           }
 
           sslSettings.getAllowedSSLProtocols()
-                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
+                     .map(protoList -> protoList.toArray(new String[0]))
                      .ifPresent(sslCtxBuilder::protocols);
 
           context = Optional.of(sslCtxBuilder.build());

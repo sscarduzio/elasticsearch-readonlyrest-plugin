@@ -40,7 +40,7 @@ import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.acl.utils._
-import tech.beshu.ror.acl.{Acl, AclStaticContext, SequentialAcl}
+import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAcl, DisabledAclStaticContext, EnabledAclStaticContext, SequentialAcl}
 import tech.beshu.ror.configuration.ConfigLoader.RawRorConfig
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.{UuidProvider, YamlOps}
@@ -78,14 +78,32 @@ class CirceCoreFactory(implicit clock: Clock,
   }
 
   private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
-    val decoder = aclDecoder(httpClientFactory)
-      .flatMap { case (acl, context) =>
-        AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
-          .map { auditingTools =>
-            CoreSettings(acl, context, auditingTools)
+    val decoder = for {
+      enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
+      core <-
+      if (!enabled) {
+        AsyncDecoderCreator
+          .from(Decoder.const(CoreSettings(DisabledAcl, DisabledAclStaticContext, None)))
+      } else {
+        aclDecoder(httpClientFactory)
+          .flatMap { case (acl, context) =>
+            AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+              .map { auditingTools =>
+                CoreSettings(acl, context, auditingTools)
+              }
           }
       }
+    } yield core
+
     decoder(HCursor.fromJson(settingsJson))
+  }
+
+  private def coreEnabilityDecoder: Decoder[Boolean] = {
+    Decoder.instance { c =>
+      for {
+        enabled <- c.downField("enable").as[Option[Boolean]]
+      } yield enabled.getOrElse(true)
+    }
   }
 
   private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
@@ -203,16 +221,21 @@ class CirceCoreFactory(implicit clock: Clock,
       }
   }
 
-  private def aclStaticContextDecoder(blocks: NonEmptyList[Block]): Decoder[AclStaticContext] = {
+  private def aclStaticContextDecoder(blocks: NonEmptyList[Block]): Decoder[EnabledAclStaticContext] = {
     Decoder.instance { c =>
       for {
         basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
-      } yield new AclStaticContext(blocks, basicAuthPrompt.getOrElse(true))
+        forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
+      } yield new EnabledAclStaticContext(
+        blocks,
+        basicAuthPrompt.getOrElse(true),
+        forbiddenMessage.getOrElse("forbidden"),
+      )
     }
   }
 
-  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(Acl, AclStaticContext)] =
-    AsyncDecoderCreator.instance[(Acl, AclStaticContext)] { c =>
+  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(Acl, EnabledAclStaticContext)] =
+    AsyncDecoderCreator.instance[(Acl, EnabledAclStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))

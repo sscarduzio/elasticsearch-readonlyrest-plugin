@@ -31,7 +31,6 @@ import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
@@ -89,7 +88,7 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final Settings settings;
-  private final BasicSettings basicSettings;
+  private final BasicSettings basicSettings = null; // fixme:
 
   private IndexLevelActionFilter ilaf;
   private Environment environment;
@@ -99,8 +98,6 @@ public class ReadonlyRestPlugin extends Plugin
     this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
-    this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override
@@ -113,7 +110,7 @@ public class ReadonlyRestPlugin extends Plugin
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
-      this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, environment, TransportServiceInterceptor.getRemoteClusterServiceSupplier());
+      this.ilaf = new IndexLevelActionFilter(clusterService, (NodeClient) client, threadPool, environment, TransportServiceInterceptor.getRemoteClusterServiceSupplier());
       return null;
     });
 
@@ -155,7 +152,7 @@ public class ReadonlyRestPlugin extends Plugin
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
 
-    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+    if (!basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
       return Collections.EMPTY_MAP;
     }
 
@@ -170,7 +167,7 @@ public class ReadonlyRestPlugin extends Plugin
   public Map<String, Supplier<Transport>> getTransports(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
       CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService) {
 
-    if (!basicSettings.getSslInternodeSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+    if (!basicSettings.getSslInternodeSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
       return Collections.EMPTY_MAP;
     }
 
@@ -183,8 +180,6 @@ public class ReadonlyRestPlugin extends Plugin
   @Override
   public void close() {
     ilaf.stop();
-    // todo: remove?
-    ESContextImpl.shutDownObservable.shutDown();
   }
 
   @Override

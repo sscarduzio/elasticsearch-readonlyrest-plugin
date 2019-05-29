@@ -21,6 +21,7 @@ import monix.eval.Task$;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -33,10 +34,8 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.env.Environment;
@@ -54,11 +53,7 @@ import scala.runtime.BoxedUnit;
 import scala.util.Either;
 import scala.util.Left$;
 import scala.util.Right$;
-import tech.beshu.ror.boot.Engine;
-import tech.beshu.ror.boot.Ror$;
-import tech.beshu.ror.boot.RorInstance;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.boot.StartingFailure;
 import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.AclHandlingResult;
 import tech.beshu.ror.acl.AclResultCommitter;
@@ -67,9 +62,10 @@ import tech.beshu.ror.acl.BlockContextJavaHelper$;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
-import tech.beshu.ror.settings.BasicSettings;
-import tech.beshu.ror.shims.es.ESContext;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.boot.Engine;
+import tech.beshu.ror.boot.Ror$;
+import tech.beshu.ror.boot.RorInstance;
+import tech.beshu.ror.boot.StartingFailure;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.io.IOException;
@@ -77,7 +73,6 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -92,12 +87,11 @@ public class IndexLevelActionFilter implements ActionFilter {
   private final ClusterService clusterService;
 
   private final RorInstance rorInstance;
-  private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final LoggerShim loggerShim;
 
   private final Supplier<Optional<RemoteClusterService>> remoteClusterServiceSupplier;
+  private final Logger logger = LogManager.getLogger(this.getClass());
 
-  public IndexLevelActionFilter(Settings settings,
+  public IndexLevelActionFilter(
       ClusterService clusterService,
       NodeClient client,
       ThreadPool threadPool,
@@ -105,17 +99,11 @@ public class IndexLevelActionFilter implements ActionFilter {
       Supplier<Optional<RemoteClusterService>> remoteClusterServiceSupplier
   ) {
     this.remoteClusterServiceSupplier = remoteClusterServiceSupplier;
-    this.loggerShim = ESContextImpl.mkLoggerShim(LogManager.getLogger(this.getClass()));
     try {
       System.setProperty("es.set.netty.runtime.available.processors", "false");
     } catch (Exception ex) {
-      loggerShim.error("Cannot set property 'es.set.netty.runtime.available.processors'", ex);
+      logger.error("Cannot set property 'es.set.netty.runtime.available.processors'", ex);
     }
-
-    // todo: remove
-    BasicSettings baseSettings = BasicSettings.fromFileObj(loggerShim, env.configFile().toAbsolutePath(), settings);
-
-    this.context.set(new ESContextImpl(baseSettings));
 
     this.clusterService = clusterService;
     this.threadPool = threadPool;
@@ -186,7 +174,7 @@ public class IndexLevelActionFilter implements ActionFilter {
     Optional<RemoteClusterService> remoteClusterService = remoteClusterServiceSupplier.get();
     if(remoteClusterService.isPresent()) {
       RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
-          loggerShim, remoteClusterService.get());
+          remoteClusterService.get());
       RequestContext requestContext = requestContextFrom(requestInfo);
 
       Consumer<ActionListener<Response>> proceed =
@@ -252,12 +240,12 @@ public class IndexLevelActionFilter implements ActionFilter {
           // the cache some times and would not be filtered
           if (aclStaticContext.involvesFilter()) {
             if (request instanceof SearchRequest) {
-              loggerShim.debug("ACL involves filters, will disable request cache for SearchRequest");
+              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
 
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
-              loggerShim.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
+              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
               for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
                 sr.requestCache(Boolean.FALSE);
               }
@@ -267,7 +255,7 @@ public class IndexLevelActionFilter implements ActionFilter {
           return (ActionListener<Response>) new ResponseActionListener((ActionListener<ActionResponse>) listener,
               requestContext, blockContext);
         } catch (Throwable e) {
-          loggerShim.error("on allow exception", e);
+          logger.error("on allow exception", e);
           return listener;
         }
       }
@@ -275,11 +263,12 @@ public class IndexLevelActionFilter implements ActionFilter {
       @Override
       public void onForbidden() {
         ElasticsearchStatusException exc = new ElasticsearchStatusException(
-            context.get().getSettings().getForbiddenMessage(),
-            aclStaticContext.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN) {
+            aclStaticContext.forbiddenRequestMessage(),
+            aclStaticContext.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN
+        ) {
           @Override
           public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            builder.field("reason", context.get().getSettings().getForbiddenMessage());
+            builder.field("reason", aclStaticContext.forbiddenRequestMessage());
             return builder;
           }
         };
@@ -292,6 +281,11 @@ public class IndexLevelActionFilter implements ActionFilter {
       @Override
       public void onError(Throwable t) {
         baseListener.onFailure((Exception) t);
+      }
+
+      @Override
+      public void onPassThrough() {
+        chainProceed.accept(baseListener);
       }
     };
   }
@@ -312,7 +306,6 @@ public class IndexLevelActionFilter implements ActionFilter {
       @Override
       public monix.eval.Task<Either<Error, String>> contentOf(String index, String type, String id) {
         try {
-          ClusterHealthStatus status = client.admin().cluster().prepareHealth().get().getStatus();
           GetResponse response = client.get(client.prepareGet(index, type, id).request()).actionGet();
           return Task$.MODULE$
               .eval((Function0<Either<Error, String>>) () -> Right$.MODULE$.apply(response.getSourceAsString()))

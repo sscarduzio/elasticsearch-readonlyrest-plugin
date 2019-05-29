@@ -28,7 +28,8 @@ import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import org.elasticsearch.common.logging.Loggers;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
@@ -39,37 +40,31 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.SSLCertParser;
 import tech.beshu.ror.settings.BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
+
   private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
-  private final BasicSettings.SSLSettings sslSettings;
-  private final LoggerShim logger;
+  private final BasicSettings.SSLSettings sslSettings = null;
   private Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
+  private final Logger logger = LogManager.getLogger(this.getClass());
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
 
-    BasicSettings basicSettings = BasicSettings.fromFileObj(
-        logger,
-        environment.configFile().toAbsolutePath(),
-        settings
-    );
-
-    if (basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
-      sslSettings = basicSettings.getSslHttpSettings().get();
-      logger.info("creating SSL HTTP transport");
-      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
-    }
-    else {
-      sslSettings = null;
-    }
+    // fixme:
+//    if (basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
+//      sslSettings = basicSettings.getSslHttpSettings().get();
+//      logger.info("creating SSL HTTP transport");
+//      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
+//    }
+//    else {
+//      sslSettings = null;
+//    }
   }
 
   @Override
@@ -96,7 +91,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, handlingSettings);
 
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -106,7 +101,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           );
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
 
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 

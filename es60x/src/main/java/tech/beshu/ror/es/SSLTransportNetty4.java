@@ -20,7 +20,6 @@ package tech.beshu.ror.es;
 /**
  * Created by sscarduzio on 28/11/2016.
  */
-
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -85,7 +84,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
 
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -95,7 +94,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           );
 
           logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
 
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
