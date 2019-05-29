@@ -27,7 +27,7 @@ import scala.collection.JavaConverters._
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 
-class ClaimsOps(val claims: Claims) extends AnyVal with Logging {
+class ClaimsOps(val claims: Claims) extends Logging {
 
   def headerNameClaim(name: Header.Name): ClaimSearchResult[Header] = {
     Option(claims.get(name.value.value, classOf[String]))
