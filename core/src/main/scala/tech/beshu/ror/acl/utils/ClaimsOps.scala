@@ -16,18 +16,18 @@
  */
 package tech.beshu.ror.acl.utils
 
-import java.util
-
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.{ClaimName, Group, Header, User}
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult._
 
 import scala.collection.JavaConverters._
-import scala.language.implicitConversions
+import scala.language.{implicitConversions, postfixOps}
+import scala.util.Try
 
-class ClaimsOps(val claims: Claims) extends AnyVal {
+class ClaimsOps(val claims: Claims) extends Logging {
 
   def headerNameClaim(name: Header.Name): ClaimSearchResult[Header] = {
     Option(claims.get(name.value.value, classOf[String]))
@@ -37,39 +37,43 @@ class ClaimsOps(val claims: Claims) extends AnyVal {
     }
   }
 
-  def userIdClaim(name: ClaimName): ClaimSearchResult[User.Id] = {
-    Option(claims.get(name.value.value, classOf[String])) match {
-      case Some(id) => Found(User.Id(id))
-      case None => NotFound
-    }
+  def userIdClaim(claimName: ClaimName): ClaimSearchResult[User.Id] = {
+    Try(claimName.name.read[Any](claims))
+      .map {
+        case value: String => Found(User.Id(value))
+        case _ => NotFound
+      }
+      .fold(
+        ex => {
+          logger.debug("JsonPath reading exception", ex)
+          NotFound
+        },
+        identity
+      )
   }
 
-  // todo: use json path (with jackson? or maybe we can convert java map to json?)
-  def groupsClaim(name: ClaimName): ClaimSearchResult[Set[Group]] = {
-    val result = name.value.value.split("[.]").toList match {
-      case Nil | _ :: Nil =>
-        Option(claims.get(name.value.value, classOf[Object]))
-      case path :: restPaths =>
-        restPaths.foldLeft(Option(claims.get(path, classOf[Object]))) {
-          case (None, _) => None
-          case (Some(value), currentPath) =>
-            value match {
-              case map: util.Map[String, Object] =>
-                Option(map.get(currentPath))
-              case _ =>
-                Some(value)
-            }
-        }
-    }
-    result match {
-      case Some(value: String) =>
-        Found(toGroup(value).map(Set(_)).getOrElse(Set.empty))
-      case Some(values) if values.isInstanceOf[util.Collection[String]] =>
-        val collection = values.asInstanceOf[util.Collection[String]]
-        Found(collection.asScala.toList.flatMap(toGroup).toSet)
-      case _ =>
-        NotFound
-    }
+  def groupsClaim(claimName: ClaimName): ClaimSearchResult[Set[Group]] = {
+    Try(claimName.name.read[Any](claims))
+      .map {
+        case value: String =>
+          Found((value :: Nil).flatMap(toGroup).toSet)
+        case collection: java.util.Collection[_] =>
+          Found {
+            collection.asScala
+              .collect { case value: String => value }
+              .flatMap(toGroup)
+              .toSet
+          }
+        case _ =>
+          NotFound
+      }
+      .fold(
+        ex => {
+          logger.debug("JsonPath reading exception", ex)
+          NotFound
+        },
+        identity
+      )
   }
 
   private def toGroup(value: String) = {

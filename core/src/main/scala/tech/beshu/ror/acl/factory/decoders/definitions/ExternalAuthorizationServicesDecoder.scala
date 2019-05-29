@@ -75,20 +75,6 @@ object ExternalAuthorizationServicesDecoder extends Logging {
     }
       .decoder
 
-  private implicit val jsonPathDecoder: Decoder[JsonPath] =
-    SyncDecoderCreator
-      .from(Decoder.decodeString)
-      .emapE[JsonPath] { jsonPathStr =>
-      Try(JsonPath.compile(jsonPathStr))
-        .toEither
-        .left
-        .map { ex =>
-          logger.error("JSON path compilation failed", ex)
-          DefinitionsLevelCreationError(Message(s"Cannot compile '$jsonPathStr' to JSON path"))
-        }
-    }
-      .decoder
-
   private implicit val headerSetDecoder: Decoder[Set[Header]] =
     decoderTupleListDecoder.map(_.map(Header.apply).toSet)
 
