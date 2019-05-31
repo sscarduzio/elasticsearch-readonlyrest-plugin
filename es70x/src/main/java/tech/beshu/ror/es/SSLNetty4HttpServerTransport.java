@@ -20,7 +20,6 @@ package tech.beshu.ror.es;
 /**
  * Created by sscarduzio on 28/11/2016.
  */
-
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -34,37 +33,26 @@ import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.HttpChannel;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.SSLCertParser;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.configuration.SslConfiguration;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
-  private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
-  private final BasicSettings.SSLSettings sslSettings = null;
-  private Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
+  private final SslConfiguration ssl;
   private final Logger logger = LogManager.getLogger(this.getClass());
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, SslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-
-    // fixme:
-//    if (basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
-//      sslSettings = basicSettings.getSslHttpSettings().get();
-//      logger.info("creating SSL HTTP transport");
-//      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
-//    }
-//    else {
-//      sslSettings = null;
-//    }
+    this.ssl = ssl;
   }
 
   @Override
@@ -91,7 +79,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, handlingSettings);
 
-      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
+      new SSLCertParser(ssl, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -101,17 +89,23 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           );
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
-          sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
+          if(ssl.allowedCiphers().size() > 0) {
+            sslCtxBuilder.ciphers(
+                ssl.allowedCiphers().stream().map(SslConfiguration.Cipher::value).collect(Collectors.toList())
+            );
+          }
 
-          if (sslVerification) {
+          if (ssl.verifyClientAuth()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           }
 
-          sslSettings.getAllowedSSLProtocols()
-                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
-                     .ifPresent(sslCtxBuilder::protocols);
+          if(ssl.allowedProtocols().size() > 0) {
+            sslCtxBuilder.protocols(
+                ssl.allowedProtocols().stream().map(SslConfiguration.Protocol::value).toArray(String[]::new)
+            );
+          }
 
           context = Optional.of(sslCtxBuilder.build());
 

@@ -35,7 +35,7 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.SSLCertParser;
+import tech.beshu.ror.__old_SSLCertParser;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 
@@ -58,7 +58,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     logger.info("creating SSL transport");
     this.sslSettings = sslSettings;
 
-    new SSLCertParser(sslSettings, (certChain, privateKey) -> {
+    new __old_SSLCertParser(sslSettings, (certChain, privateKey) -> {
 
       try {
         // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
@@ -73,7 +73,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
 
         logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-        SSLCertParser.validateProtocolAndCiphers(eng, sslSettings);
+        __old_SSLCertParser.validateProtocolAndCiphers(eng, sslSettings);
 
       } catch (Exception e) {
         logger.error("Failed to load SSL CertChain & private key from Keystore! "

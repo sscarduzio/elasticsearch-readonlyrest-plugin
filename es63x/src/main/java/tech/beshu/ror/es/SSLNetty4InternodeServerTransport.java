@@ -38,7 +38,7 @@ import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
-import tech.beshu.ror.SSLCertParser;
+import tech.beshu.ror.__old_SSLCertParser;
 import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 
@@ -116,7 +116,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     public SslChannelInitializer(String name) {
       super(name);
-      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
+      new __old_SSLCertParser(sslSettings, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -131,7 +131,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
           }
 
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
+          __old_SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
           sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
 
           sslSettings.getAllowedSSLProtocols()

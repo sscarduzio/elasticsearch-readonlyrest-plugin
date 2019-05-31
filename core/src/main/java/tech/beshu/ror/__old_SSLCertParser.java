@@ -20,11 +20,10 @@ package tech.beshu.ror;
 import com.google.common.base.Joiner;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.settings.BasicSettings;
 import tech.beshu.ror.settings.SettingsMalformedException;
 
 import javax.net.ssl.SSLEngine;
-import java.io.File;
 import java.io.FileInputStream;
 import java.security.AccessControlException;
 import java.security.AccessController;
@@ -36,36 +35,35 @@ import java.util.Base64;
 /**
  * Created by sscarduzio on 02/07/2017.
  */
-public class SSLCertParser {
+public class __old_SSLCertParser {
 
-  private static final Logger logger = LogManager.getLogger(SSLCertParser.class);
+  private static final Logger logger = LogManager.getLogger(__old_SSLCertParser.class);
   private final SSLContextCreator creator;
 
-  public SSLCertParser(SslConfiguration sslConfiguration, SSLContextCreator creator) {
+  public __old_SSLCertParser(BasicSettings.SSLSettings settings, SSLContextCreator creator) {
     this.creator = creator;
-    createContext(sslConfiguration);
+    createContext(settings);
   }
 
-  public static boolean validateProtocolAndCiphers(SSLEngine eng, SslConfiguration config) {
+  public static boolean validateProtocolAndCiphers(SSLEngine eng, BasicSettings.SSLSettings basicSettings) {
     try {
       String[] defaultProtocols = eng.getEnabledProtocols();
 
       logger.info("ROR SSL: Available ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
-      if(config.allowedCiphers().size() > 0) {
-        eng.setEnabledCipherSuites(
-            config.allowedCiphers().stream().map(SslConfiguration.Cipher::value).toArray(String[]::new)
-        );
-        logger.info("ROR SSL: Restricting to ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
-      }
+      basicSettings.getAllowedSSLCiphers()
+          .map(x -> x.toArray(new String[0]))
+          .ifPresent(p -> {
+            eng.setEnabledCipherSuites(p);
+            logger.info("ROR SSL: Restricting to ciphers: " + Joiner.on(",").join(eng.getEnabledCipherSuites()));
+          });
 
       logger.info("ROR SSL: Available SSL protocols: " + Joiner.on(",").join(defaultProtocols));
-      if(config.allowedProtocols().size() > 0) {
-        eng.setEnabledProtocols(
-            config.allowedProtocols().stream().map(SslConfiguration.Protocol::value).toArray(String[]::new)
-        );
-        logger.info("ROR SSL: Restricting to SSL protocols: " + Joiner.on(",").join(eng.getEnabledProtocols()));
-      }
-
+      basicSettings.getAllowedSSLProtocols()
+          .map(x -> x.toArray(new String[0]))
+          .ifPresent(p -> {
+            eng.setEnabledProtocols(p);
+            logger.info("ROR SSL: Restricting to SSL protocols: " + Joiner.on(",").join(eng.getEnabledProtocols()));
+          });
       return true;
     } catch (Exception e) {
       logger.error("ROR SSL: cannot validate SSL protocols and ciphers! " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
@@ -73,12 +71,16 @@ public class SSLCertParser {
     }
   }
 
-  private void createContext(SslConfiguration config) {
+  private void createContext(BasicSettings.SSLSettings settings) {
+    if (!settings.isSSLEnabled()) {
+      logger.info("ROR SSL: SSL is disabled");
+      return;
+    }
     logger.info("ROR SSL: attempting with JKS keystore..");
     try {
       char[] keyStorePassBa = null;
-      if (config.keystorePassword().isDefined()) {
-        keyStorePassBa = config.keystorePassword().get().value().toCharArray();
+      if (settings.getKeystorePass().isPresent()) {
+        keyStorePassBa = settings.getKeystorePass().get().toCharArray();
       }
 
       // Load the JKS keystore
@@ -87,7 +89,7 @@ public class SSLCertParser {
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
 
         try {
-          File keystoreFile = config.keystoreFile();
+          String keystoreFile = settings.getKeystoreFile();
           ks.load(new FileInputStream(keystoreFile), finKeystoerPassBa);
         } catch (Exception e) {
           e.printStackTrace();
@@ -97,13 +99,13 @@ public class SSLCertParser {
 
 
       char[] keyPassBa = null;
-      if (config.keyPass().isDefined()) {
-        keyPassBa = config.keyPass().get().value().toCharArray();
+      if (settings.getKeyPass().isPresent()) {
+        keyPassBa = settings.getKeyPass().get().toCharArray();
       }
 
       // Get PrivKey from keystore
       String sslKeyAlias;
-      if (!config.keyAlias().isDefined()) {
+      if (!settings.getKeyAlias().isPresent()) {
         if (ks.aliases().hasMoreElements()) {
           String inferredAlias = ks.aliases().nextElement();
           logger.info("ROR SSL: ssl.key_alias not configured, took first alias in keystore: " + inferredAlias);
@@ -114,7 +116,7 @@ public class SSLCertParser {
         }
       }
       else {
-        sslKeyAlias = config.keyAlias().get().value();
+        sslKeyAlias = settings.getKeyAlias().get();
       }
       Key key = ks.getKey(sslKeyAlias, keyPassBa);
       if (key == null) {
@@ -155,7 +157,7 @@ public class SSLCertParser {
     } catch (Throwable t) {
       logger.error("ROR SSL: Failed to load SSL certs and keys from JKS Keystore! " + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
       if (t instanceof AccessControlException) {
-        logger.error("ROR SSL: Check the JKS Keystore path is correct: " + config.keystoreFile().getAbsolutePath());
+        logger.error("ROR SSL: Check the JKS Keystore path is correct: " + settings.getKeystoreFile());
       }
       t.printStackTrace();
     }

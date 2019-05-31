@@ -41,29 +41,26 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
 import tech.beshu.ror.SSLCertParser;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.configuration.SslConfiguration;
 
 import javax.net.ssl.SSLEngine;
 import java.io.ByteArrayInputStream;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
-  private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
-  private final BasicSettings.SSLSettings sslSettings;
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private boolean sslVerification = DEFAULT_SSL_VERIFICATION_INTERNODE;
+
+  private final SslConfiguration ssl;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
       CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService,
-      BasicSettings.SSLSettings sslSettings) {
-
+      SslConfiguration ssl) {
     super(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService);
-
-    this.sslSettings = sslSettings;
-    this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
+    this.ssl = ssl;
   }
 
   @Override
@@ -77,7 +74,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         logger.info(">> internode SSL channel initializing");
 
         SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
-        if (!sslVerification) {
+        if (ssl.verifyClientAuth()) {
           sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
         SslContext sslCtx = sslCtxBuilder.build();
@@ -117,7 +114,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     public SslChannelInitializer(String name) {
       super(name);
-      new SSLCertParser(sslSettings, (certChain, privateKey) -> {
+      new SSLCertParser(ssl, (certChain, privateKey) -> {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -127,17 +124,24 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
           );
 
           // Cert verification enable by default for internode
-          if (sslVerification) {
+          if (ssl.verifyClientAuth()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           }
 
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
-          sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
-          sslSettings.getAllowedSSLProtocols()
-                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
-                     .ifPresent(sslCtxBuilder::protocols);
+          if(ssl.allowedCiphers().size() > 0) {
+            sslCtxBuilder.ciphers(
+                ssl.allowedCiphers().stream().map(SslConfiguration.Cipher::value).collect(Collectors.toList())
+            );
+          }
+
+          if(ssl.allowedProtocols().size() > 0) {
+            sslCtxBuilder.protocols(
+                ssl.allowedProtocols().stream().map(SslConfiguration.Protocol::value).toArray(String[]::new)
+            );
+          }
 
           context = Optional.of(sslCtxBuilder.build());
 

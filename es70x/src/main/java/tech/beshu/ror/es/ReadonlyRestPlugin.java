@@ -18,6 +18,8 @@
 package tech.beshu.ror.es;
 
 import com.google.common.collect.Sets;
+import monix.execution.Scheduler$;
+import monix.execution.schedulers.CanBlock$;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -60,14 +62,15 @@ import org.elasticsearch.transport.RemoteClusterService;
 import org.elasticsearch.transport.Transport;
 import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
+import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
+import tech.beshu.ror.configuration.RorSsl;
+import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.settings.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
-import tech.beshu.ror.settings.BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -79,6 +82,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -88,7 +92,7 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final Settings settings;
-  private final BasicSettings basicSettings = null; // fixme:
+  private final RorSsl sslConfig;
 
   private IndexLevelActionFilter ilaf;
   private Environment environment;
@@ -98,6 +102,9 @@ public class ReadonlyRestPlugin extends Plugin
     this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
+    FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
+    this.sslConfig = SslConfiguration.load(environment.configFile())
+        .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
   }
 
   @Override
@@ -152,29 +159,29 @@ public class ReadonlyRestPlugin extends Plugin
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
 
-    if (!basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
+    if(sslConfig.externalSsl().isDefined()) {
+      return Collections.singletonMap(
+          "ssl_netty4", () ->
+              new SSLNetty4HttpServerTransport(
+                  settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, sslConfig.externalSsl().get()
+              ));
+    } else {
       return Collections.EMPTY_MAP;
     }
-
-    return Collections.singletonMap(
-        "ssl_netty4", () ->
-            new SSLNetty4HttpServerTransport(
-                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, environment
-            ));
   }
 
   @Override
   public Map<String, Supplier<Transport>> getTransports(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
       CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService) {
 
-    if (!basicSettings.getSslInternodeSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
+    if(sslConfig.interNodeSsl().isDefined()) {
+      return Collections.singletonMap("ror_ssl_internode", () ->
+          new SSLNetty4InternodeServerTransport(
+              settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, sslConfig.interNodeSsl().get())
+      );
+    } else {
       return Collections.EMPTY_MAP;
     }
-
-    return Collections.singletonMap("ror_ssl_internode", () ->
-        new SSLNetty4InternodeServerTransport(
-            settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, basicSettings.getSslHttpSettings().get())
-    );
   }
 
   @Override
@@ -182,6 +189,7 @@ public class ReadonlyRestPlugin extends Plugin
     ilaf.stop();
   }
 
+  // todo: check
   @Override
   public List<Setting<?>> getSettings() {
     // No need, we have settings in config/readonlyrest.yml
