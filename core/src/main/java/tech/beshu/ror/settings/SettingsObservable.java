@@ -49,7 +49,7 @@ abstract public class SettingsObservable extends Observable {
 
   public RawSettings getFromFile() {
     getLogger().info("reading settings from file " + getConfigPath().toAbsolutePath());
-    return BasicSettings.fromFile(getLogger(), getConfigPath(), current.asMap()).getRaw();
+    return __old_BasicSettings.fromFile(getLogger(), getConfigPath(), current.asMap()).getRaw();
   }
 
   public void refreshFromIndex() {

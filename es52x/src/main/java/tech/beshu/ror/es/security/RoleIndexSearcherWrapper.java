@@ -44,7 +44,7 @@ import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.ESContextImpl;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 import tech.beshu.ror.utils.FilterTransient;
 
@@ -73,7 +73,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
 
     this.logger = ESContextImpl.mkLoggerShim(logger);
-    BasicSettings baseSettings = BasicSettings.fromFile(this.logger, env.configFile().toAbsolutePath(), s.getAsStructuredMap());
+    __old_BasicSettings baseSettings = __old_BasicSettings.fromFile(this.logger, env.configFile().toAbsolutePath(), s.getAsStructuredMap());
     this.enabled = baseSettings.isEnabled();
   }
 

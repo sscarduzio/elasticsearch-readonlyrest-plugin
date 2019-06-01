@@ -34,7 +34,7 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.env.Environment;
 
 import com.google.common.util.concurrent.FutureCallback;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.settings.RawSettings;
 import tech.beshu.ror.settings.SettingsObservable;
 import tech.beshu.ror.settings.SettingsUtils;
@@ -55,7 +55,7 @@ public class SettingsObservableImpl extends SettingsObservable {
   public SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
     this.environment = env;
     this.client = client;
-    current = BasicSettings.fromFile(logger, environment.configFile().toAbsolutePath(), s.getAsStructuredMap()).getRaw();
+    current = __old_BasicSettings.fromFile(logger, environment.configFile().toAbsolutePath(), s.getAsStructuredMap()).getRaw();
   }
 
   @Override

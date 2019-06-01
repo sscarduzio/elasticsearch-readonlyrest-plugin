@@ -99,7 +99,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     ShardId shardId = ShardUtils.extractShardId(reader);
     if (shardId == null) {
       throw new IllegalStateException(
-          LoggerMessageFormat.format("Couldn't extract shardId from reader [{}]", new Object[] { reader }));
+          LoggerMessageFormat.format("Couldn't extract shardId from reader [{}]", reader));
     }
     String filter = filterTransient.getFilter();
 
@@ -115,8 +115,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       QueryBuilder queryBuilder = queryShardContext.parseInnerQueryBuilder(parser);
       ParsedQuery parsedQuery = queryShardContext.toQuery(queryBuilder);
       boolQuery.add(parsedQuery.query(), BooleanClause.Occur.SHOULD);
-      DirectoryReader wrappedReader = DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
-      return wrappedReader;
+      return DocumentFilterReader.wrap(reader, new ConstantScoreQuery(boolQuery.build()));
     } catch (IOException e) {
       logger.error("Unable to setup document security");
       throw ExceptionsHelper.convertToElastic(e);

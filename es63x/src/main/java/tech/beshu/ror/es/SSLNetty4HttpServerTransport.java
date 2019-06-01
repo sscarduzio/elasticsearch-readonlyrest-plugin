@@ -34,7 +34,7 @@ import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.__old_SSLCertParser;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
@@ -43,7 +43,7 @@ import java.util.Optional;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
   private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
-  private final BasicSettings.SSLSettings sslSettings;
+  private final __old_BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
   private final Environment environment;
   private  Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
@@ -54,13 +54,13 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
 
     this.environment = environment;
-    BasicSettings basicSettings = BasicSettings.fromFileObj(
+    __old_BasicSettings basicSettings = __old_BasicSettings.fromFileObj(
         logger,
         this.environment.configFile().toAbsolutePath(),
         settings
     );
 
-    if (basicSettings.getSslHttpSettings().map(BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
+    if (basicSettings.getSslHttpSettings().map(__old_BasicSettings.SSLSettings::isSSLEnabled).orElse(false)) {
       sslSettings = basicSettings.getSslHttpSettings().get();
       logger.info("creating SSL HTTP transport");
       this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);

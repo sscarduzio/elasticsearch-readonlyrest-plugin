@@ -58,7 +58,7 @@ import tech.beshu.ror.boot.RorEngineFactory$;
 import tech.beshu.ror.acl.request.EsRequestContext;
 import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
 import tech.beshu.ror.shims.es.LoggerShim;
 
@@ -99,7 +99,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     this.loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     Environment env = new Environment(settings);
-    BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
+    __old_BasicSettings baseSettings = __old_BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
 
     this.context.set(new ESContextImpl(baseSettings));
 
@@ -110,7 +110,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     settingsObservable.addObserver((o, arg) -> {
       logger.info("Settings observer refreshing...");
       Environment newEnv = new Environment(settings);
-      BasicSettings newBasicSettings = new BasicSettings(settingsObservable.getCurrent(),
+      __old_BasicSettings newBasicSettings = new __old_BasicSettings(settingsObservable.getCurrent(),
           newEnv.configFile().toAbsolutePath());
       ESContext newContext = new ESContextImpl(newBasicSettings);
       this.context.set(newContext);
@@ -306,7 +306,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     };
   }
 
-  private AuditSink createAuditSink(Client client, BasicSettings settings) {
+  private AuditSink createAuditSink(Client client, __old_BasicSettings settings) {
     return new AuditSink() {
       AuditSinkImpl auditSink = new AuditSinkImpl(client, settings);
 

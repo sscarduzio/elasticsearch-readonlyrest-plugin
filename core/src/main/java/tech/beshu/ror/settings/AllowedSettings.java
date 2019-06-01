@@ -41,15 +41,15 @@ public class AllowedSettings {
       .put(prefix + RorSettings.ATTRIBUTE_SEARCHLOG, SettingType.BOOL)
       .put(prefix + RorSettings.PROMPT_FOR_BASIC_AUTH, SettingType.BOOL)
       .put(prefix + RorSettings.AUDIT_COLLECTOR, SettingType.BOOL)
-      .put(prefix + BasicSettings.CUSTOM_AUDIT_SERIALIZER, SettingType.STRING)
-      .put(prefix + BasicSettings.CACHE_HASHING_ALGO, SettingType.STRING)
+      .put(prefix + __old_BasicSettings.CUSTOM_AUDIT_SERIALIZER, SettingType.STRING)
+      .put(prefix + __old_BasicSettings.CACHE_HASHING_ALGO, SettingType.STRING)
 
       // SSL
       .put(sslPrefix + "enable", SettingType.BOOL)
-      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEYSTORE_FILE, SettingType.STRING)
-      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEYSTORE_PASS, SettingType.STRING)
-      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEY_PASS, SettingType.STRING)
-      .put(sslPrefix + BasicSettings.ATTRIBUTE_SSL_KEY_ALIAS, SettingType.STRING)
+      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEYSTORE_FILE, SettingType.STRING)
+      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEYSTORE_PASS, SettingType.STRING)
+      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEY_PASS, SettingType.STRING)
+      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEY_ALIAS, SettingType.STRING)
 
       // Groups
       .put(rule_prefix, SettingType.GROUP)

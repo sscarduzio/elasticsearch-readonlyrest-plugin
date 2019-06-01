@@ -18,7 +18,6 @@
 package tech.beshu.ror.es.rradmin;
 
 import org.elasticsearch.action.Action;
-import org.elasticsearch.client.ElasticsearchClient;
 
 public class RRAdminAction extends Action<RRAdminResponse> {
 

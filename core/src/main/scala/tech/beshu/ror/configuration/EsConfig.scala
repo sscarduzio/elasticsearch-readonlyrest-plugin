@@ -15,8 +15,8 @@ final case class EsConfig(forceLoadRorFromFile: Boolean)
 
 object EsConfig {
 
-  def from(path: Path): Task[Either[LoadEsConfigError, EsConfig]] = Task {
-    val config = File(s"${path.toAbsolutePath}/elasticsearch.yml")
+  def from(esConfigFolderPath: Path): Task[Either[LoadEsConfigError, EsConfig]] = Task {
+    val config = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     for {
       _ <- Either.cond(config.exists, (), FileNotFound(config))
       content <- parseFileContent(config)

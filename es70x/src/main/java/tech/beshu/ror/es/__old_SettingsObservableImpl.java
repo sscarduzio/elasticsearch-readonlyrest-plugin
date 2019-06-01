@@ -18,7 +18,6 @@
 package tech.beshu.ror.es;
 
 import com.google.common.util.concurrent.FutureCallback;
-import org.apache.logging.log4j.LogManager;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
@@ -31,7 +30,7 @@ import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.env.Environment;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.settings.RawSettings;
 import tech.beshu.ror.settings.SettingsObservable;
 import tech.beshu.ror.settings.SettingsUtils;
@@ -44,17 +43,17 @@ import java.nio.file.Path;
  */
 // todo: remove
 @Singleton
-public class SettingsObservableImpl extends SettingsObservable {
+public class __old_SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = null;
 
   private final NodeClient client;
   private final Environment environment;
 
   @Inject
-  public SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
+  public __old_SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
     this.environment = env;
     this.client = client;
-    current = BasicSettings.fromFileObj(logger, env.configFile().toAbsolutePath(), s).getRaw();
+    current = __old_BasicSettings.fromFileObj(logger, env.configFile().toAbsolutePath(), s).getRaw();
   }
 
   @Override

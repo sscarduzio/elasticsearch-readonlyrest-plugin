@@ -29,7 +29,7 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.es.ResponseActionListener;
-import tech.beshu.ror.es.SettingsObservableImpl;
+import tech.beshu.ror.es.__old_SettingsObservableImpl;
 import tech.beshu.ror.settings.RawSettings;
 import tech.beshu.ror.settings.SettingsUtils;
 
@@ -40,12 +40,12 @@ import static tech.beshu.ror.Constants.REST_REFRESH_PATH;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
-  private final SettingsObservableImpl settingsObservable;
+  private final __old_SettingsObservableImpl settingsObservable;
 
   @Inject
   public TransportRRAdminAction(Settings settings, ThreadPool threadPool, TransportService transportService,
       ActionFilters actionFilters, IndexNameExpressionResolver indexNameExpressionResolver,
-      NodeClient client, SettingsObservableImpl settingsObservable) {
+      NodeClient client, __old_SettingsObservableImpl settingsObservable) {
     super(RRAdminAction.NAME, transportService,actionFilters, RRAdminRequest::new);
     this.settingsObservable = settingsObservable;
 

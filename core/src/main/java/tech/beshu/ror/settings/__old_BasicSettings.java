@@ -34,7 +34,7 @@ import java.util.Optional;
 
 import static tech.beshu.ror.Constants.SETTINGS_YAML_FILE;
 
-public class BasicSettings {
+public class __old_BasicSettings {
   public static final String ROR_YAML_SETTINGS_PATH = System.getProperty(Constants.SETTINGS_YAML_FILE_PATH_PROPERTY);
   public static final String ATTRIBUTE_NAME = "readonlyrest";
   public static final String ATTRIBUTE_ENABLE = "enable";
@@ -66,7 +66,7 @@ public class BasicSettings {
   private Optional<SSLSettings> sslTxpSettings;
 
   @SuppressWarnings("unchecked")
-  public BasicSettings(RawSettings raw_global, Path configPath) {
+  public __old_BasicSettings(RawSettings raw_global, Path configPath) {
     this.configPath = configPath;
     this.raw_global = raw_global;
     this.raw = raw_global.inner(ATTRIBUTE_NAME);
@@ -105,7 +105,7 @@ public class BasicSettings {
     return slurped[0];
   }
 
-  public static BasicSettings fromFileObj(LoggerShim logger, Path configPath, Object settingsObject) {
+  public static __old_BasicSettings fromFileObj(LoggerShim logger, Path configPath, Object settingsObject) {
     logger.debug("reading settings path (file obj) " + configPath);
     if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
       logger.info("overriding  settings path to " + ROR_YAML_SETTINGS_PATH);
@@ -114,7 +114,7 @@ public class BasicSettings {
     return fromFile(logger, configPath, (Map<String, ?>) ReflecUtils.invokeMethodCached(settingsObject, settingsObject.getClass(), "getAsStructuredMap"));
   }
 
-  public static BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String, ?> fallback) {
+  public static __old_BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String, ?> fallback) {
     logger.debug("reading settings path (file obj) " + configPath);
     if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
       logger.info("overriding settings  path to " + ROR_YAML_SETTINGS_PATH);
@@ -128,12 +128,12 @@ public class BasicSettings {
       String s4s = slurpFile(logger, rorSettingsFilePath);
       try {
         if (SettingsUtils.yaml2Map(s4s, logger).containsKey("readonlyrest")) {
-          return new BasicSettings(new RawSettings(s4s, logger), configPath);
+          return new __old_BasicSettings(new RawSettings(s4s, logger), configPath);
         }
-        return new BasicSettings(new RawSettings(fallback, logger), configPath);
+        return new __old_BasicSettings(new RawSettings(fallback, logger), configPath);
       } catch (Throwable t) {
         logger.error("cannot parse settings file ", t);
-        return new BasicSettings(new RawSettings(fallback, logger), configPath);
+        return new __old_BasicSettings(new RawSettings(fallback, logger), configPath);
       }
 
     } catch (Throwable t) {

@@ -18,19 +18,17 @@
 package tech.beshu.ror.es;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
-import org.elasticsearch.client.Client;
 import org.elasticsearch.common.logging.Loggers;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.AbstractESContext;
 import tech.beshu.ror.shims.es.ESVersion;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 public class ESContextImpl extends AbstractESContext {
-  private final BasicSettings settings;
+  private final __old_BasicSettings settings;
 
-  public ESContextImpl(BasicSettings settings) {
+  public ESContextImpl(__old_BasicSettings settings) {
     this.settings = settings;
   }
 
@@ -92,7 +90,7 @@ public class ESContextImpl extends AbstractESContext {
   }
 
   @Override
-  public BasicSettings getSettings() {
+  public __old_BasicSettings getSettings() {
     return settings;
   }
 }

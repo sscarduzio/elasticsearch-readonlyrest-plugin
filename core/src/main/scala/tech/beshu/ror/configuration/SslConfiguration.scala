@@ -1,15 +1,15 @@
 package tech.beshu.ror.configuration
 
-import better.files._
 import java.io.{File => JFile}
 import java.nio.file.Path
 
+import better.files._
 import io.circe.Decoder
-import monix.eval.Task
 import io.circe.yaml._
-import scala.collection.JavaConverters._
+import monix.eval.Task
+import tech.beshu.ror.configuration.SslConfiguration._
 
-import tech.beshu.ror.configuration.SslConfiguration.{Cipher, KeyAlias, KeyPass, KeystorePassword, Protocol}
+import scala.collection.JavaConverters._
 
 final case class RorSsl(externalSsl: Option[SslConfiguration], // todo: fox ext verification = false?
                         interNodeSsl: Option[SslConfiguration]) // todo: fox inter verification = true?
@@ -32,8 +32,29 @@ object SslConfiguration {
   final case class Cipher(value: String)
   final case class Protocol(value: String)
 
-  def load(path: Path): Task[RorSsl] = Task {
-    File(path).fileReader { reader =>
+  def load(esConfigFolderPath: Path): Task[RorSsl] = Task {
+    val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
+    loadSslConfigFromFile(esConfig)
+      .fold(
+        error => throw new IllegalArgumentException(s"Invalid SSL configuration: $error"),
+        {
+          case RorSsl(None, None) => fallbackToRorConfig(esConfigFolderPath)
+          case ssl => ssl
+        }
+      )
+  }
+
+  private def fallbackToRorConfig(esConfigFolderPath: Path) = {
+    val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
+    loadSslConfigFromFile(rorConfig)
+      .fold(
+        error => throw new IllegalArgumentException(s"Invalid SSL configuration: $error"),
+        identity
+      )
+  }
+
+  private def loadSslConfigFromFile(file: File) = {
+    file.fileReader { reader =>
       parser
         .parse(reader)
         .left.map(_.message)
@@ -44,10 +65,6 @@ object SslConfiguration {
             .decodeJson(json)
             .left.map(_.message)
         }
-        .fold(
-          msg => throw new IllegalArgumentException(s"Invalid SSL configuration: $msg"),
-          identity
-        )
     }
   }
 }
@@ -86,8 +103,8 @@ private object SslDecoders {
   // todo: enable
   implicit val rorSslDecoder: Decoder[RorSsl] = Decoder.instance { c =>
     for {
-      externalSsl <- c.downField("ssl").as[Option[SslConfiguration]]
-      interNodeSsl <- c.downField("ssl_internode").as[Option[SslConfiguration]]
+      externalSsl <- c.downField("readonlyrest").downField("ssl").as[Option[SslConfiguration]]
+      interNodeSsl <- c.downField("readonlyrest").downField("ssl_internode").as[Option[SslConfiguration]]
     } yield RorSsl(externalSsl, interNodeSsl)
   }
 

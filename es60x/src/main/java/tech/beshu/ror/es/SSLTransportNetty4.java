@@ -35,7 +35,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.__old_SSLCertParser;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.io.ByteArrayInputStream;
@@ -45,10 +45,10 @@ import java.util.Optional;
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   private final LoggerShim logger;
-  private BasicSettings.SSLSettings sslSettings;
+  private __old_BasicSettings.SSLSettings sslSettings;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, BasicSettings.SSLSettings sslSettings) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, __old_BasicSettings.SSLSettings sslSettings) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
     logger.info("creating SSL transport");

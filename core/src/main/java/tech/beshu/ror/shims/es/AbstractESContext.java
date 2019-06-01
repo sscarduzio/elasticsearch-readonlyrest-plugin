@@ -17,7 +17,7 @@
 package tech.beshu.ror.shims.es;
 
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 
 import java.util.HashMap;
 
@@ -54,5 +54,5 @@ public abstract class AbstractESContext implements ESContext {
 
   public abstract ESVersion getVersion();
 
-  public abstract BasicSettings getSettings();
+  public abstract __old_BasicSettings getSettings();
 }

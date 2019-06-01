@@ -39,7 +39,7 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
 import tech.beshu.ror.__old_SSLCertParser;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import javax.net.ssl.SSLEngine;
@@ -50,12 +50,12 @@ import java.util.Optional;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
   private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
-  private final BasicSettings.SSLSettings sslSettings;
+  private final __old_BasicSettings.SSLSettings sslSettings;
   private final LoggerShim logger;
   private final boolean sslVerification;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, NetworkService networkService, BigArrays bigArrays,
-      NamedWriteableRegistry namedWriteableRegistry, CircuitBreakerService circuitBreakerService, BasicSettings.SSLSettings sslSettings) {
+      NamedWriteableRegistry namedWriteableRegistry, CircuitBreakerService circuitBreakerService, __old_BasicSettings.SSLSettings sslSettings) {
     super(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService);
     this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
     this.sslSettings = sslSettings;

@@ -48,7 +48,7 @@ import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.util.Collections;
@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final BasicSettings basicSettings;
+  private final __old_BasicSettings basicSettings;
   private Settings settings;
   private Environment environment;
 
@@ -70,7 +70,7 @@ public class ReadonlyRestPlugin extends Plugin
     this.environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
-    this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
+    this.basicSettings = __old_BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 
   @Override

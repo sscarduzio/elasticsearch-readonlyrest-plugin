@@ -31,7 +31,7 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -51,10 +51,10 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
 
   private static final Logger logger = Loggers.getLogger(AuditSinkImpl.class);
   private final BulkProcessor bulkProcessor;
-  private final BasicSettings settings;
+  private final __old_BasicSettings settings;
 
   @Inject
-  public AuditSinkImpl(Client client, BasicSettings settings) {
+  public AuditSinkImpl(Client client, __old_BasicSettings settings) {
     this.settings = settings;
 
     if (!settings.isAuditorCollectorEnabled()) {

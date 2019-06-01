@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.shims.es;
 
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 
 public interface ESContext {
 
@@ -24,7 +24,7 @@ public interface ESContext {
 
   LoggerShim logger(Class<?> clazz);
 
-  BasicSettings getSettings();
+  __old_BasicSettings getSettings();
 
   ESVersion getVersion();
 }

@@ -12,22 +12,23 @@ import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{InvalidConte
 import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.FileNotExist
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
 
 class FileConfigLoader(esConfigFolderPath: Path,
-                       envVarsProvider: EnvVarsProvider) extends ConfigLoader[FileConfigError] {
+                       envVarsProvider: EnvVarsProvider)
+  extends ConfigLoader[FileConfigError] {
 
-  override def load(): Task[Either[ConfigLoaderError[FileConfigError], RawRorConfig]] = Task {
-    val configFile = envVarsProvider.getEnv(Constants.SETTINGS_YAML_FILE_PATH_PROPERTY) match {
+  def rawConfigFile: File = {
+    envVarsProvider.getEnv(Constants.SETTINGS_YAML_FILE_PATH_PROPERTY) match {
       case Some(customRorFilePath) => File(customRorFilePath)
       case None => File(s"${esConfigFolderPath.toAbsolutePath}/readonlyrest.yml")
     }
-    loadRorConfigFromFile(configFile)
   }
 
-  private def loadRorConfigFromFile(file: File) = {
+  override def load(): Task[Either[ConfigLoaderError[FileConfigError], RawRorConfig]] = Task {
+    val file = rawConfigFile
     for {
-      _ <- Either.cond(file.exists, (), SpecializedError(FileNotExist(file)))
+      _ <- Either.cond(file.exists, file, SpecializedError(FileNotExist(file)))
       content <- parseFileContent(file)
     } yield RawRorConfig(content)
   }
@@ -48,4 +49,6 @@ object FileConfigLoader {
   object FileConfigError {
     final case class FileNotExist(file: File) extends FileConfigError
   }
+
+  def create(esConfigFolderPath: Path): FileConfigLoader = new FileConfigLoader(esConfigFolderPath, OsEnvVarsProvider)
 }

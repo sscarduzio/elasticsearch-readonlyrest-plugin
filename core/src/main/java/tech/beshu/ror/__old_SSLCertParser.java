@@ -20,7 +20,7 @@ package tech.beshu.ror;
 import com.google.common.base.Joiner;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import tech.beshu.ror.settings.BasicSettings;
+import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.settings.SettingsMalformedException;
 
 import javax.net.ssl.SSLEngine;
@@ -40,12 +40,12 @@ public class __old_SSLCertParser {
   private static final Logger logger = LogManager.getLogger(__old_SSLCertParser.class);
   private final SSLContextCreator creator;
 
-  public __old_SSLCertParser(BasicSettings.SSLSettings settings, SSLContextCreator creator) {
+  public __old_SSLCertParser(__old_BasicSettings.SSLSettings settings, SSLContextCreator creator) {
     this.creator = creator;
     createContext(settings);
   }
 
-  public static boolean validateProtocolAndCiphers(SSLEngine eng, BasicSettings.SSLSettings basicSettings) {
+  public static boolean validateProtocolAndCiphers(SSLEngine eng, __old_BasicSettings.SSLSettings basicSettings) {
     try {
       String[] defaultProtocols = eng.getEnabledProtocols();
 
@@ -71,7 +71,7 @@ public class __old_SSLCertParser {
     }
   }
 
-  private void createContext(BasicSettings.SSLSettings settings) {
+  private void createContext(__old_BasicSettings.SSLSettings settings) {
     if (!settings.isSSLEnabled()) {
       logger.info("ROR SSL: SSL is disabled");
       return;
