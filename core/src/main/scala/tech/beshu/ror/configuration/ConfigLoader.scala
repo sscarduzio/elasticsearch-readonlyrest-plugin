@@ -1,5 +1,6 @@
 package tech.beshu.ror.configuration
 
+import cats.Show
 import io.circe.Json
 import monix.eval.Task
 import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
@@ -20,7 +21,7 @@ trait ConfigLoader[SPECIALIZED_ERROR] {
 
 object ConfigLoader {
 
-  final case class RawRorConfig(rawConfig: Json) extends AnyVal
+  final case class RawRorConfig(rawConfig: Json)
 
   sealed trait ConfigLoaderError[+SPECIALIZED_ERROR]
   object ConfigLoaderError {
@@ -28,5 +29,14 @@ object ConfigLoader {
     case object MoreThanOneRorSection extends ConfigLoaderError[Nothing]
     final case class InvalidContent(throwable: Throwable) extends ConfigLoaderError[Nothing]
     final case class SpecializedError[ERROR](error: ERROR) extends ConfigLoaderError[ERROR]
+
+    implicit def show[E: Show]: Show[ConfigLoaderError[E]] = Show.show {
+      case NoRorSection => "Cannot find any 'readonlyrest' section in config"
+      case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
+      case InvalidContent(_) => "Config file content is malformed"
+      case SpecializedError(error) => implicitly[Show[E]].show(error)
+    }
   }
+
+
 }

@@ -19,6 +19,7 @@ package tech.beshu.ror.es.security;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.search.BooleanClause;
@@ -55,7 +56,8 @@ import java.util.stream.Collectors;
  */
 public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
 
-  private static final Logger logger = Loggers.getLogger(RoleIndexSearcherWrapper.class);
+  private static final Logger logger = LogManager.getLogger(RoleIndexSearcherWrapper.class);
+
   private final Function<ShardId, QueryShardContext> queryShardContextProvider;
   private final ThreadContext threadContext;
 

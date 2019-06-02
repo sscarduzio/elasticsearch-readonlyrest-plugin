@@ -42,14 +42,12 @@ import java.nio.file.Path;
  * Created by sscarduzio on 25/06/2017.
  */
 // todo: remove
-@Singleton
 public class __old_SettingsObservableImpl extends SettingsObservable {
   private static final LoggerShim logger = null;
 
   private final NodeClient client;
   private final Environment environment;
 
-  @Inject
   public __old_SettingsObservableImpl(NodeClient client, Settings s, Environment env) {
     this.environment = env;
     this.client = client;

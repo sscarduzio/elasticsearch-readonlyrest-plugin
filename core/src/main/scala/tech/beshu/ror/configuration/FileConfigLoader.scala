@@ -4,6 +4,7 @@ import java.io.InputStreamReader
 import java.nio.file.Path
 
 import better.files.File
+import cats.Show
 import io.circe.Json
 import io.circe.yaml.parser
 import monix.eval.Task
@@ -48,6 +49,10 @@ object FileConfigLoader {
   sealed trait FileConfigError
   object FileConfigError {
     final case class FileNotExist(file: File) extends FileConfigError
+
+    implicit val show: Show[FileConfigError] = Show.show {
+      case FileNotExist(file) => s"Cannot find config file: ${file.pathAsString}"
+    }
   }
 
   def create(esConfigFolderPath: Path): FileConfigLoader = new FileConfigLoader(esConfigFolderPath, OsEnvVarsProvider)

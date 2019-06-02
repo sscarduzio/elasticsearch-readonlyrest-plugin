@@ -17,10 +17,12 @@ import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
 import tech.beshu.ror.boot.RorInstance.noIndexStartingFailure
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
-import tech.beshu.ror.configuration.ConfigLoader.RawRorConfig
+import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
-import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.FileNotExist
-import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError.IndexConfigNotExist
+import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
+import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
+import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError
+import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError.{IndexConfigNotExist, _}
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigLoader}
 import tech.beshu.ror.es.{AuditSink, IndexContentProvider}
 import tech.beshu.ror.utils.TaskOps._
@@ -44,7 +46,7 @@ object Ror extends ReadonlyRest {
   }
 }
 
-trait ReadonlyRest {
+trait ReadonlyRest extends Logging {
 
   protected def envVarsProvider: EnvVarsProvider
   protected implicit def clock: Clock
@@ -108,14 +110,14 @@ trait ReadonlyRest {
       .map {
         case Right(config) =>
           Right(config)
-        case Left(NoRorSection) =>
-          Left(StartingFailure("Cannot find any 'readonlyrest' section in config"))
-        case Left(MoreThanOneRorSection) =>
-          Left(StartingFailure("Only one 'readonlyrest' section is required"))
-        case Left(InvalidContent(ex)) =>
-          Left(StartingFailure("Config file content is malformed", Some(ex)))
-        case Left(SpecializedError(FileNotExist(file))) =>
-          Left(StartingFailure(s"Cannot find config file: ${file.pathAsString}"))
+        case Left(error@NoRorSection) =>
+          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
+        case Left(error@MoreThanOneRorSection) =>
+          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
+        case Left(error@InvalidContent(ex)) =>
+          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error), Some(ex)))
+        case Left(error@SpecializedError(_)) =>
+          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
       }
   }
 
@@ -128,18 +130,18 @@ trait ReadonlyRest {
       .flatMap {
         case Right(config) =>
           Task.now(Right(config))
-        case Left(NoRorSection) =>
-          lift(StartingFailure("Cannot find any 'readonlyrest' section in config"))
-        case Left(MoreThanOneRorSection) =>
-          lift(StartingFailure("Only one 'readonlyrest' section is required"))
-        case Left(InvalidContent(ex)) =>
-          lift(StartingFailure("Config file content is malformed", Some(ex)))
+        case Left(error@NoRorSection) =>
+          lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error)))
+        case Left(error@MoreThanOneRorSection) =>
+          lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error)))
+        case Left(error@InvalidContent(ex)) =>
+          lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error), Some(ex)))
         case Left(SpecializedError(IndexConfigNotExist)) =>
           noIndexFallback
       }
   }
 
-  private[ror] def loadRorCore(config: RawRorConfig, auditSink: AuditSink) = {
+  private[ror] def loadRorCore(config: RawRorConfig, auditSink: AuditSink): Task[Either[StartingFailure, Engine]] = {
       // todo: how to distinguish if core needs to be reloaded?
     val httpClientsFactory = new AsyncHttpClientsFactory
     coreFactory
@@ -148,7 +150,7 @@ trait ReadonlyRest {
         result
           .right
           .map { coreSettings =>
-            new Engine(
+            val engine = new Engine(
               new AclLoggingDecorator(
                 coreSettings.aclEngine,
                 coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
@@ -156,6 +158,8 @@ trait ReadonlyRest {
               coreSettings.aclStaticContext,
               httpClientsFactory
             )
+            logger.info("Readonly REST plugin core was loaded ...")
+            engine
           }
           .left
           .map { errors =>
@@ -224,6 +228,7 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
   }
 
   private def scheduleIndexConfigChecking(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): Cancelable = {
+    // todo: check what's going on with doubled log
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
       val loadEngineAction = Ror.loadRorConfigFromIndex(indexConfigLoader, auditSink, noIndexFallback)
       loadEngineAction

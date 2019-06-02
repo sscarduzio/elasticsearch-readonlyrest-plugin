@@ -1,5 +1,6 @@
 package tech.beshu.ror.configuration
 
+import cats.Show
 import io.circe.yaml.parser
 import monix.eval.Task
 import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
@@ -37,6 +38,13 @@ object IndexConfigLoader {
   sealed trait IndexConfigError
   object IndexConfigError {
     case object IndexConfigNotExist extends IndexConfigError
+
+    implicit val show: Show[IndexConfigError] = Show.show {
+      case IndexConfigNotExist => "Cannot find config index"
+    }
+
+    val indexConfigLoaderErrorShow: Show[ConfigLoaderError[IndexConfigError]] =
+      ConfigLoaderError.show[IndexConfigError]
   }
 
 }

@@ -17,17 +17,14 @@
 
 package tech.beshu.ror.es;
 
-import monix.eval.Task$;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.ElasticsearchStatusException;
-import org.elasticsearch.ResourceNotFoundException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.ActionFilter;
@@ -44,15 +41,12 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
-import scala.Function0;
 import scala.Function1;
 import scala.Option;
 import scala.collection.JavaConverters$;
 import scala.concurrent.duration.FiniteDuration;
 import scala.runtime.BoxedUnit;
 import scala.util.Either;
-import scala.util.Left$;
-import scala.util.Right$;
 import tech.beshu.ror.SecurityPermissionException;
 import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.AclHandlingResult;
@@ -114,7 +108,7 @@ public class IndexLevelActionFilter implements ActionFilter {
         Ror$.MODULE$.start(
             env.configFile(),
             createAuditSink(client),
-            createEsIndexContentProvider(client)
+            new EsIndexContentProvider(client)
         ).runSyncUnsafe(startingTimeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit())
     );
 
@@ -297,24 +291,6 @@ public class IndexLevelActionFilter implements ActionFilter {
       @Override
       public void submit(String indexName, String documentId, String jsonRecord) {
         auditSink.submit(indexName, documentId, jsonRecord);
-      }
-    };
-  }
-
-  private IndexContentProvider createEsIndexContentProvider(NodeClient client) {
-    return new IndexContentProvider() {
-      @Override
-      public monix.eval.Task<Either<Error, String>> contentOf(String index, String type, String id) {
-        try {
-          GetResponse response = client.get(client.prepareGet(index, type, id).request()).actionGet();
-          return Task$.MODULE$
-              .eval((Function0<Either<Error, String>>) () -> Right$.MODULE$.apply(response.getSourceAsString()))
-              .executeOn(Ror$.MODULE$.blockingScheduler(), true);
-        } catch (ResourceNotFoundException ex) {
-          return Task$.MODULE$.now(Left$.MODULE$.apply(ContentNotFound$.MODULE$));
-        } catch (Throwable t) {
-          return Task$.MODULE$.now(Left$.MODULE$.apply(CannotReachContentSource$.MODULE$));
-        }
       }
     };
   }

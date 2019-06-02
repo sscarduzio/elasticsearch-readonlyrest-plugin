@@ -1,7 +1,7 @@
 package tech.beshu.ror.configuration
 
 import java.io.{File => JFile}
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 
 import better.files._
 import io.circe.Decoder
@@ -10,6 +10,7 @@ import monix.eval.Task
 import tech.beshu.ror.configuration.SslConfiguration._
 
 import scala.collection.JavaConverters._
+import scala.language.implicitConversions
 
 final case class RorSsl(externalSsl: Option[SslConfiguration], // todo: fox ext verification = false?
                         interNodeSsl: Option[SslConfiguration]) // todo: fox inter verification = true?
@@ -33,6 +34,7 @@ object SslConfiguration {
   final case class Protocol(value: String)
 
   def load(esConfigFolderPath: Path): Task[RorSsl] = Task {
+    implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
       .fold(
@@ -44,7 +46,8 @@ object SslConfiguration {
       )
   }
 
-  private def fallbackToRorConfig(esConfigFolderPath: Path) = {
+  private def fallbackToRorConfig(esConfigFolderPath: Path)
+                                 (implicit rorSslDecoder: Decoder[RorSsl]) = {
     val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
     loadSslConfigFromFile(rorConfig)
       .fold(
@@ -53,15 +56,15 @@ object SslConfiguration {
       )
   }
 
-  private def loadSslConfigFromFile(file: File) = {
+  private def loadSslConfigFromFile(file: File)
+                                   (implicit rorSslDecoder: Decoder[RorSsl]) = {
     file.fileReader { reader =>
       parser
         .parse(reader)
         .left.map(_.message)
         .right
         .flatMap { json =>
-          SslDecoders
-            .rorSslDecoder
+          rorSslDecoder
             .decodeJson(json)
             .left.map(_.message)
         }
@@ -73,14 +76,19 @@ private object SslDecoders {
 
   // todo: better errors?
 
-  private implicit val keystoreFileDecoder: Decoder[JFile] = Decoder.decodeString.map(File(_)).map(_.toJava)
+  private implicit def keystoreFileDecoder(basePath: Path): Decoder[JFile] =
+    Decoder
+      .decodeString
+      .map { str => basePath.resolve(Paths.get(str)).toFile }
+
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = Decoder.decodeString.map(KeystorePassword.apply)
   private implicit val keyPassDecoder: Decoder[KeyPass] = Decoder.decodeString.map(KeyPass.apply)
   private implicit val keyAliasDecoder: Decoder[KeyAlias] = Decoder.decodeString.map(KeyAlias.apply)
   private implicit val cipherDecoder: Decoder[Cipher] = Decoder.decodeString.map(Cipher.apply)
   private implicit val protocolDecoder: Decoder[Protocol] = Decoder.decodeString.map(Protocol.apply)
 
-  private implicit val sslConfigurationDecoder: Decoder[SslConfiguration] = Decoder.instance { c =>
+  private implicit def sslConfigurationDecoder(basePath: Path): Decoder[SslConfiguration] = Decoder.instance { c =>
+    implicit val jFileDecoder: Decoder[JFile] = keystoreFileDecoder(basePath)
     for {
       keystoreFile <- c.downField("keystore_file").as[JFile]
       keystorePassword <- c.downField("keystore_pass").as[Option[KeystorePassword]]
@@ -101,7 +109,8 @@ private object SslDecoders {
   }
 
   // todo: enable
-  implicit val rorSslDecoder: Decoder[RorSsl] = Decoder.instance { c =>
+  implicit def rorSslDecoder(basePath: Path): Decoder[RorSsl] = Decoder.instance { c =>
+    implicit val sslConfigDecoder: Decoder[SslConfiguration] = sslConfigurationDecoder(basePath)
     for {
       externalSsl <- c.downField("readonlyrest").downField("ssl").as[Option[SslConfiguration]]
       interNodeSsl <- c.downField("readonlyrest").downField("ssl_internode").as[Option[SslConfiguration]]
