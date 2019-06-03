@@ -108,16 +108,17 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService,
-      ScriptService scriptService, NamedXContentRegistry xContentRegistry, Environment environment, NodeEnvironment nodeEnvironment,
-      NamedWriteableRegistry namedWriteableRegistry) {
+  public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool,
+      ResourceWatcherService resourceWatcherService, ScriptService scriptService, NamedXContentRegistry xContentRegistry,
+      Environment environment, NodeEnvironment nodeEnvironment, NamedWriteableRegistry namedWriteableRegistry) {
 
     final List<Object> components = new ArrayList<>(3);
 
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
-      this.ilaf = new IndexLevelActionFilter(clusterService, (NodeClient) client, threadPool, environment, TransportServiceInterceptor.getRemoteClusterServiceSupplier());
+      this.ilaf = new IndexLevelActionFilter(clusterService, (NodeClient) client, threadPool, environment,
+          TransportServiceInterceptor.getRemoteClusterServiceSupplier());
       return null;
     });
 
@@ -216,8 +217,7 @@ public class ReadonlyRestPlugin extends Plugin
   @Override
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
-    return Collections.singletonList(
-        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+    return Collections.singletonList(new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
   }
 
   @Override

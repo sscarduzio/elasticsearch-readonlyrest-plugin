@@ -1,12 +1,14 @@
 package tech.beshu.ror.utils
 
 import cats.data.EitherT
+import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 
 import scala.concurrent.duration._
-import scala.language.{higherKinds, postfixOps}
-import scala.util.Try
+import scala.concurrent.{Future, Promise}
+import scala.language.{higherKinds, implicitConversions, postfixOps}
+import scala.util.{Failure, Success, Try}
 
 object ScalaOps {
 
@@ -65,5 +67,16 @@ object ScalaOps {
         if (maxRetries > 0) repeat(maxRetries - 1, delay)(source)
         else Task.unit
       }
+  }
+
+  implicit def twitterToScalaTry[T](t: twitter.Try[T]): Try[T] = t match {
+    case twitter.Return(r) => Success(r)
+    case twitter.Throw(ex) => Failure(ex)
+  }
+
+  implicit def twitterToScalaFuture[T](f: twitter.Future[T]): Future[T] = {
+    val promise = Promise[T]()
+    f.respond(promise complete _)
+    promise.future
   }
 }

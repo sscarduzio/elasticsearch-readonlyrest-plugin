@@ -8,14 +8,14 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.Scheduler.{global => scheduler}
 import monix.execution.atomic.{Atomic, AtomicAny}
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.{Cancelable, CancelablePromise, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CirceCoreFactory, CoreFactory}
 import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditingTool}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
-import tech.beshu.ror.boot.RorInstance.noIndexStartingFailure
+import tech.beshu.ror.boot.RorInstance.{ForceReloadError, noIndexStartingFailure}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
@@ -30,7 +30,6 @@ import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvide
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
 
 object Ror extends ReadonlyRest {
 
@@ -158,6 +157,7 @@ trait ReadonlyRest extends Logging {
               coreSettings.aclStaticContext,
               httpClientsFactory
             )
+            // todo: move this log to the place where engine is reassigned
             logger.info("Readonly REST plugin core was loaded ...")
             engine
           }
@@ -206,18 +206,38 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
 
   def engine: Option[Engine] = instanceState.get() match {
     case State.Initiated(_) => None
-    case State.LoadingEngine(engineConfigOpt) => engineConfigOpt.map(_._1)
     case State.EngineLoaded(engine, _, _) => Some(engine)
     case State.Stopped => None
+  }
+
+  // todo: max one reload at time?
+  def forceReloadFromIndex(): Task[Either[ForceReloadError, Unit]] = {
+    val promise = CancelablePromise[Either[ForceReloadError, Unit]]()
+    reloadEngine(noIndexStartingFailure)
+        .runAsync {
+          case Right(Right(state)) =>
+            state match {
+              case State.Initiated(_) =>
+                logger.error(s"Unexpected state: Initialized")
+                promise.success(Left(ForceReloadError.ReloadingError))
+              case State.EngineLoaded(_, _, _) =>
+                promise.success(Right(()))
+              case State.Stopped =>
+                promise.success(Left(ForceReloadError.StoppedInstance))
+            }
+          case Right(Left(startingFailure)) =>
+            promise.success(Left(ForceReloadError.CannotReload(startingFailure)))
+          case Left(ex) =>
+            logger.error("Force reloading failed", ex)
+            promise.success(Left(ForceReloadError.ReloadingError))
+        }
+    Task.fromCancelablePromise(promise)
   }
 
   // todo: use it
   def stop(): Unit = {
     instanceState.transform {
       case State.Initiated(_) =>
-        State.Stopped
-      case State.LoadingEngine(engineConfigOpt) =>
-        engineConfigOpt.foreach(_._1.shutdown())
         State.Stopped
       case State.EngineLoaded(engine, _, _) =>
         engine.shutdown()
@@ -230,23 +250,52 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
   private def scheduleIndexConfigChecking(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): Cancelable = {
     // todo: check what's going on with doubled log
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
-      val loadEngineAction = Ror.loadRorConfigFromIndex(indexConfigLoader, auditSink, noIndexFallback)
-      loadEngineAction
-        .andThen {
-          case Success(Right(newConfig)) =>
-            newConfigFound(newConfig, auditSink)
-          case Success(Left(failure)) =>
+      reloadEngine(noIndexFallback)
+        .runAsync {
+          case Right(Right(_)) =>
+          case Right(Left(startingFailure)) =>
             // todo: better log
-            logger.warn(s"Checking index config failed: ${failure.message}")
+            logger.warn(s"Checking index config failed: ${startingFailure.message}")
             scheduleNewConfigCheck()
-          case Failure(exception) =>
+          case Left(ex) =>
             // todo: better log
-            if(logger.delegate.isDebugEnabled) logger.debug(s"Checking index config failed due to exception", exception)
+            if(logger.delegate.isDebugEnabled) logger.debug(s"Checking index config failed due to exception", ex)
             else logger.warn(s"Checking index config failed due to exception")
             scheduleNewConfigCheck()
         }
-        .runAsyncAndForget
     }
+  }
+
+  private def reloadEngine(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
+    (for {
+      result <- EitherT(loadNewEngineFromIndex(noIndexFallback))
+      (newEngine, newConfig) = result
+      state <- EitherT.right[StartingFailure](applyNewEngine(newEngine, newConfig))
+    } yield state).value
+  }
+
+  private def applyNewEngine(newEngine: Engine, newConfig: RawRorConfig) = {
+    val promise = CancelablePromise[State]()
+    instanceState.transform {
+      case State.Initiated(cancelable) =>
+        cancelable.cancel()
+        // todo: log (new engine loaded)
+        val newState = State.EngineLoaded(newEngine, newConfig, scheduleIndexConfigChecking(noIndexStartingFailure))
+        promise.success(newState)
+        newState
+      case State.EngineLoaded(oldEngine, _, _) =>
+        scheduleDelayedShutdown(oldEngine)
+        // todo: log (new engine loaded)
+        val newState = State.EngineLoaded(newEngine, newConfig, scheduleIndexConfigChecking(noIndexStartingFailure))
+        promise.success(newState)
+        newState
+      case State.Stopped =>
+        newEngine.shutdown()
+        val newState = State.Stopped
+        promise.success(newState)
+        newState
+    }
+    Task.fromCancelablePromise(promise)
   }
 
   private def scheduleDelayedShutdown(engine: Engine) = {
@@ -255,60 +304,22 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
     }
   }
 
-  private def newConfigFound(newConfig: RawRorConfig, auditSink: AuditSink): Unit = {
-    instanceState.transform {
-      case State.Initiated(_) =>
-        loadNewEngineUsingConfig(newConfig)
-        State.LoadingEngine(None)
-      case state:State.LoadingEngine =>
-        logger.error("Unexpected state: Loading Engine")
-        state
-      case state@State.EngineLoaded(engine, currentConfig, _) =>
-        if(currentConfig == newConfig) state
-        else {
-          loadNewEngineUsingConfig(newConfig)
-          State.LoadingEngine(Some(engine, currentConfig))
-        }
-      case State.Stopped =>
-        State.Stopped
-    }
-  }
-
-  private def loadNewEngineUsingConfig(config: RawRorConfig): Unit = {
+  private def loadNewEngineFromIndex(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
     Ror
-      .loadRorCore(config, auditSink)
-      .onErrorHandle(ex => Left(StartingFailure("Loading new core failed", Some(ex))))
-      .foreach {
-        case Right(newEngine) =>
-          instanceState.transform {
-            case State.Initiated(cancelable) =>
-              cancelable.cancel()
-              State.EngineLoaded(newEngine, config, scheduleIndexConfigChecking(noIndexStartingFailure))
-            case State.LoadingEngine(oldEngine) =>
-              oldEngine.foreach { case (engine, _) => scheduleDelayedShutdown(engine) }
-              State.EngineLoaded(newEngine, config, scheduleIndexConfigChecking(noIndexStartingFailure))
-            case state: State.EngineLoaded =>
-              logger.error("Unexpected state: Engine Loaded")
-              newEngine.shutdown()
-              state
-            case State.Stopped =>
-              newEngine.shutdown()
-              State.Stopped
-          }
+      .loadRorConfigFromIndex(indexConfigLoader, auditSink, noIndexFallback)
+      .flatMap {
+        case Right(config) =>
+          Ror
+            .loadRorCore(config, auditSink)
+            .map(_.map((_, config)))
         case Left(failure) =>
-          // todo: better log
-          logger.warn(failure.message)
-          scheduleNewConfigCheck()
+          Task.now(Left(failure))
       }
   }
 
   private def scheduleNewConfigCheck(): Unit = {
     instanceState.transform {
       case State.Initiated(_) =>
-        State.Initiated(scheduleIndexConfigChecking(noIndexStartingFailure))
-      case State.LoadingEngine(Some((oldEngine, oldConfig))) =>
-        State.EngineLoaded(oldEngine, oldConfig, scheduleIndexConfigChecking(noIndexStartingFailure))
-      case State.LoadingEngine(None) =>
         State.Initiated(scheduleIndexConfigChecking(noIndexStartingFailure))
       case State.EngineLoaded(engine, config, _) =>
         State.EngineLoaded(engine, config, scheduleIndexConfigChecking(noIndexStartingFailure))
@@ -320,7 +331,6 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
   private [this] sealed trait State
   private object State {
     sealed case class Initiated(scheduledInitLoadingJob: Cancelable) extends State
-    sealed case class LoadingEngine(oldEngine: Option[(Engine, RawRorConfig)]) extends State
     sealed case class EngineLoaded(engine: Engine, currentConfig: RawRorConfig, scheduledInitLoadingJob: Cancelable) extends State
     case object Stopped extends State
   }
@@ -332,6 +342,13 @@ object RorInstance {
   private val delayOfOldEngineShutdown = 10 seconds
 
   private val noIndexStartingFailure = Task.now(Left(StartingFailure("Cannot find index with ROR configuration")))
+
+  sealed trait ForceReloadError
+  object ForceReloadError {
+    final case class CannotReload(startingFailure: StartingFailure) extends ForceReloadError
+    case object ReloadingError extends ForceReloadError
+    case object StoppedInstance extends ForceReloadError
+  }
 }
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)

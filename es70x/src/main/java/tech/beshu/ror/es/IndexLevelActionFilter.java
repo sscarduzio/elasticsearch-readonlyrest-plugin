@@ -70,7 +70,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-
 /**
  * Created by sscarduzio on 19/12/2015.
  */
@@ -114,6 +113,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
     if(result.isRight()) {
       this.rorInstance = result.right().get();
+      RorInstanceSupplier.getInstance().update(rorInstance);
     } else {
       throw StartingFailureException.from(result.left().get());
     }

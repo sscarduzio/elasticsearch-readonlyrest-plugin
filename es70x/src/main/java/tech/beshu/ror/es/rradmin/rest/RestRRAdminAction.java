@@ -50,7 +50,7 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
     return (channel) -> {
       client.execute(
           new RRAdminAction(),
-          new RRAdminRequest(request.method().name(), request.path(), request.content().utf8ToString()),
+          new RRAdminRequest(request),
           new RestToXContentListener<>(channel)
       );
     };

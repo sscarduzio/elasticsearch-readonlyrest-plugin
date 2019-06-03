@@ -21,7 +21,6 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionResponse;
 import tech.beshu.ror.acl.blocks.BlockContext;
 import tech.beshu.ror.acl.request.RequestContext;
-import tech.beshu.ror.es.rradmin.RRMetadataResponse;
 
 public class ResponseActionListener implements ActionListener<ActionResponse> {
   private final ActionListener<ActionResponse> baseListener;
