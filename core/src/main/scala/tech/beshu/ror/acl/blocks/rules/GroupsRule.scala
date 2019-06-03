@@ -107,6 +107,7 @@ class GroupsRule(val settings: Settings)
                   .withAddedAvailableGroups(userDef.groups)
                   .withCurrentGroup(pickCurrentGroupFrom(resolvedGroups))
               }
+              case Some(_) => None
               case None => None
             }
         }
