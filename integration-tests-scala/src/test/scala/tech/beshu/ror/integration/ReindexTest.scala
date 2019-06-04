@@ -1,0 +1,46 @@
+package tech.beshu.ror.integration
+
+import com.dimafeng.testcontainers.ForAllTestContainer
+import org.junit.Assert.assertEquals
+import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
+
+class ReindexTest extends WordSpec with ForAllTestContainer {
+
+  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+    rorConfigFileName = "/reindex/readonlyrest.yml",
+    numberOfInstances = 1,
+    ReindexTest.nodeDataInitializer()
+  )
+
+  private lazy val user1ActionManager = new ActionManager(container.nodesContainers.head.client("dev1", "test"))
+
+  "A reindex request" should {
+    "be able to proceed" when {
+      "user has permission to source index" in {
+        val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test1_index"))
+        assertEquals(200, result.getResponseCode)
+      }
+    }
+    "not be able to proceed" when {
+      "user has no permission to source index" in {
+        val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test2_index"))
+        assertEquals(401, result.getResponseCode)
+      }
+    }
+  }
+}
+
+
+object ReindexTest {
+
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
+    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
+    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
+  }
+
+  private def reindexPayload(indexName: String) = {
+    s"""{"source":{"index":"$indexName"},"dest":{"index":"${indexName}_reindexed"}}"""
+  }
+}

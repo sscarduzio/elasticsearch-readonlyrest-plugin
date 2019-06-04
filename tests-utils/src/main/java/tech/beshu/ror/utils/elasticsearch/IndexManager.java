@@ -52,7 +52,6 @@ public class IndexManager {
     }
   }
 
-
   private HttpUriRequest createGetIndexRequest(String indexName) {
     return new HttpGet(restClient.from("/" + indexName));
   }
