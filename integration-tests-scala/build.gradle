@@ -47,6 +47,8 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
+
+    maxParallelForks = 1
 }
 
 dependencies {
