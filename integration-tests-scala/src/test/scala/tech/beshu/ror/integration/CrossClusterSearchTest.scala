@@ -28,8 +28,8 @@ class CrossClusterSearchTest extends WordSpec with ForAllTestContainer with ESVe
 
   override val container: ReadonlyRestEsRemoteClustersContainer = ReadonlyRestEsCluster.createRemoteClustersContainer(
     NonEmptyList.of(
-      LocalClusterDef(rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer()),
-      LocalClusterDef(rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer())
+      LocalClusterDef("ROR1", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer()),
+      LocalClusterDef("ROR2", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer())
     ),
     CrossClusterSearchTest.remoteClustersInitializer()
   )

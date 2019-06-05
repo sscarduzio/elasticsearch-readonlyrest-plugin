@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
 class ReindexTest extends WordSpec with ForAllTestContainer {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+    name = "ROR1",
     rorConfigFileName = "/reindex/readonlyrest.yml",
     numberOfInstances = 1,
     ReindexTest.nodeDataInitializer()
@@ -34,13 +35,13 @@ class ReindexTest extends WordSpec with ForAllTestContainer {
 
   "A reindex request" should {
     "be able to proceed" when {
-      "user has permission to source index" in {
+      "user has permission to source index and dest index" in {
         val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test1_index"))
         assertEquals(200, result.getResponseCode)
       }
     }
     "not be able to proceed" when {
-      "user has no permission to source index" in {
+      "user has no permission to source index and dest index" in {
         val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test2_index"))
         assertEquals(401, result.getResponseCode)
       }
