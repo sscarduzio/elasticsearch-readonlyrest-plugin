@@ -19,10 +19,11 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
 
-class ReindexTest extends WordSpec with ForAllTestContainer {
+class ReindexTest extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
@@ -35,13 +36,13 @@ class ReindexTest extends WordSpec with ForAllTestContainer {
 
   "A reindex request" should {
     "be able to proceed" when {
-      "user has permission to source index and dest index" in {
+      "user has permission to source index and dest index" excludeES ("es51x", "es52x") in {
         val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test1_index"))
         assertEquals(200, result.getResponseCode)
       }
     }
     "not be able to proceed" when {
-      "user has no permission to source index and dest index" in {
+      "user has no permission to source index and dest index" excludeES ("es51x", "es52x") in {
         val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test2_index"))
         assertEquals(401, result.getResponseCode)
       }
