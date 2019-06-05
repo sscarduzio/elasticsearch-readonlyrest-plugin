@@ -11,12 +11,6 @@ buildscript {
     }
 }
 
-subprojects {
-    tasks.withType(Test) {
-        maxParallelForks = 2
-    }
-}
-
 apply plugin: 'java'
 apply plugin: 'scala'
 apply plugin: 'com.github.maiflai.scalatest'
