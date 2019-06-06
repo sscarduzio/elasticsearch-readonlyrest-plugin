@@ -38,15 +38,13 @@ public class ReflecUtils {
   private static final HashMap<String, Method> methodsCache = new HashMap<>(128);
 
   public static Object invokeMethodCached(Object o, Class c, String method) {
-    final Object[] result = new Object[1];
     String cacheKey = c.getName() + "#" + method;
 
     return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
       try {
         Method m = methodsCache.get(cacheKey);
         if (m != null) {
-          result[0] = m.invoke(o);
-          return null;
+          return m.invoke(o);
         }
         try {
           m = c.getDeclaredMethod(method);
@@ -69,7 +67,7 @@ public class ReflecUtils {
       try {
         Method m;
         try {
-          m = c.getDeclaredMethod(method);
+          m = c.getDeclaredMethod( method);
         } catch (NoSuchMethodException nsme) {
           m = c.getMethod(method);
         }
