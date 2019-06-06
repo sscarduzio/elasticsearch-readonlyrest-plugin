@@ -11,12 +11,6 @@ buildscript {
     }
 }
 
-subprojects {
-    tasks.withType(Test) {
-        maxParallelForks = 2
-    }
-}
-
 apply plugin: 'java'
 apply plugin: 'scala'
 apply plugin: 'com.github.maiflai.scalatest'
@@ -47,6 +41,8 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
+
+    maxParallelForks = 1
 }
 
 dependencies {

@@ -21,12 +21,12 @@ import monix.execution.Scheduler;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.HandledTransportAction;
-import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.adminapi.AdminRestApi;
 import tech.beshu.ror.boot.SchedulerPools$;
+import tech.beshu.ror.es.EsIndexContentProvider;
 import tech.beshu.ror.es.RorInstanceSupplier;
 
 import java.util.Optional;
@@ -34,10 +34,13 @@ import java.util.Optional;
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
   private final Scheduler adminRestApiScheduler = SchedulerPools$.MODULE$.adminRestApiScheduler();
+  private final EsIndexContentProvider indexContentProvider;
 
   @Inject
-  public TransportRRAdminAction(TransportService transportService, ActionFilters actionFilters, NodeClient nodeClient) {
+  public TransportRRAdminAction(TransportService transportService, ActionFilters actionFilters,
+      EsIndexContentProvider indexContentProvider) {
     super(RRAdminAction.NAME, transportService, actionFilters, () -> new RRAdminRequest());
+    this.indexContentProvider = indexContentProvider;
   }
 
   @Override
@@ -59,7 +62,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   }
 
   private Optional<AdminRestApi> getApi() {
-    return RorInstanceSupplier.getInstance().get().map(AdminRestApi::new);
+    return RorInstanceSupplier.getInstance().get().map(instance -> new AdminRestApi(instance, indexContentProvider));
   }
 
 //  private Option<Void> forceRefreshRorConfigEndpoint(RRAdminRequest request,

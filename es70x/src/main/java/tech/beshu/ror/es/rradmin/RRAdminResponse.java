@@ -23,6 +23,9 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import scala.util.Either;
 import scala.util.Right$;
 import tech.beshu.ror.adminapi.AdminRestApi;
+import tech.beshu.ror.adminapi.AdminRestApi.ApiCallResult;
+import tech.beshu.ror.adminapi.AdminRestApi.Failure;
+import tech.beshu.ror.adminapi.AdminRestApi.Success;
 
 import java.io.IOException;
 
@@ -41,21 +44,26 @@ public class RRAdminResponse extends ActionResponse implements ToXContentObject 
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
     if(response.isRight()) {
-      AdminRestApi.AdminResponse r = response.right().get();
-      if (r.status() == 200) {
-        builder.value((Object) r.body());
+      ApiCallResult result = response.right().get().result();
+      if(result instanceof Success) {
+        Success success = (Success) result;
+        addResponseJson(builder,"ok", success.message());
+      } else if (result instanceof Failure) {
+        Failure failure = (Failure) result;
+        addResponseJson(builder,"ko", failure.message());
       } else {
-        builder.startObject();
-        builder.field("status", r.status());
-        builder.field("message", r.body());
-        builder.endObject();
+        addResponseJson(builder,"ko", AdminRestApi.AdminResponse$.MODULE$.internalError().result().message());
       }
     } else {
-      builder.startObject();
-      builder.field("status", 500);
-      builder.field("message", "Internal error");
-      builder.endObject();
+      addResponseJson(builder, "ko", AdminRestApi.AdminResponse$.MODULE$.internalError().result().message());
     }
     return builder;
+  }
+
+  private void addResponseJson(XContentBuilder builder, String status, String message) throws IOException {
+    builder.startObject();
+    builder.field("status", status);
+    builder.field("message", message);
+    builder.endObject();
   }
 }

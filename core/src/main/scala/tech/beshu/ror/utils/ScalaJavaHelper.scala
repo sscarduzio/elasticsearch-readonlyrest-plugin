@@ -1,5 +1,7 @@
 package tech.beshu.ror.utils
 
+import monix.execution.CancelablePromise
+
 import scala.util.{Failure, Success, Try}
 
 object ScalaJavaHelper {
@@ -8,4 +10,7 @@ object ScalaJavaHelper {
     case Success(v) => v
     case Failure(exception) => throw exception
   }
+
+  def newCancelablePromise[T]: CancelablePromise[T] =
+    CancelablePromise[T]()
 }

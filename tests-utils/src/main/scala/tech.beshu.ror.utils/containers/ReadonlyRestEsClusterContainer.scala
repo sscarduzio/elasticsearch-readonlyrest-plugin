@@ -37,13 +37,15 @@ import scala.util.Try
 // todo: check logs size
 object ReadonlyRestEsCluster {
 
-  def createLocalClusterContainer(rorConfigFileName: String,
+  def createLocalClusterContainer(name: String,
+                                  rorConfigFileName: String,
                                   numberOfInstances: Int = 2,
                                   nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
                                   clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer): ReadonlyRestEsClusterContainer =
-    createLocalClusterContainer(ContainerUtils.getResourceFile(rorConfigFileName), numberOfInstances, nodeDataInitializer, clusterInitializer)
+    createLocalClusterContainer(name, ContainerUtils.getResourceFile(rorConfigFileName), numberOfInstances, nodeDataInitializer, clusterInitializer)
 
-  def createLocalClusterContainer(rorConfigFile: File,
+  def createLocalClusterContainer(name: String,
+                                  rorConfigFile: File,
                                   numberOfInstances: Int,
                                   nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                   clusterInitializer: ReadonlyRestEsClusterInitializer): ReadonlyRestEsClusterContainer = {
@@ -52,7 +54,7 @@ object ReadonlyRestEsCluster {
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val esVersion = project.getESVersion
 
-    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, numberOfInstances)(_ + 1).toList.map(idx => s"ROR$idx"))
+    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, numberOfInstances)(_ + 1).toList.map(idx => s"${name}_$idx"))
     new ReadonlyRestEsClusterContainer(
       nodeNames.map { name =>
         Task(ReadonlyRestEsContainer.create(name, nodeNames, esVersion, rorPluginFile, rorConfigFile, nodeDataInitializer))
@@ -63,12 +65,12 @@ object ReadonlyRestEsCluster {
 
   def createRemoteClustersContainer(localClusters: NonEmptyList[LocalClusterDef],
                                     remoteClustersInitializer: RemoteClustersInitializer): ReadonlyRestEsRemoteClustersContainer = {
-    val startedClusters = localClusters.map(l => createLocalClusterContainer(l.rorConfigFileName, numberOfInstances = 1, l.nodeDataInitializer))
+    val startedClusters = localClusters.map(l => createLocalClusterContainer(l.name, l.rorConfigFileName, numberOfInstances = 1, l.nodeDataInitializer))
     new ReadonlyRestEsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
   }
 }
 
-final case class LocalClusterDef(rorConfigFileName: String, nodeDataInitializer: ElasticsearchNodeDataInitializer)
+final case class LocalClusterDef(name: String, rorConfigFileName: String, nodeDataInitializer: ElasticsearchNodeDataInitializer)
 
 class ReadonlyRestEsClusterContainer private[containers](containers: NonEmptyList[Task[ReadonlyRestEsContainer]],
                                                          clusterInitializer: ReadonlyRestEsClusterInitializer)

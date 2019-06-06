@@ -31,6 +31,6 @@ public class RRAdminAction extends Action<RRAdminResponse> {
 
   @Override
   public RRAdminResponse newResponse() {
-    return new RRAdminResponse(new AdminRestApi.AdminResponse(503, "not ready"));
+    return new RRAdminResponse(AdminRestApi.AdminResponse$.MODULE$.notAvailable());
   }
 }

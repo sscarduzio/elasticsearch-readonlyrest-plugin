@@ -1,42 +1,27 @@
 package tech.beshu.ror.configuration
 
 import cats.Show
-import io.circe.Json
 import monix.eval.Task
-import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{MoreThanOneRorSection, NoRorSection}
+import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError
 
 trait ConfigLoader[SPECIALIZED_ERROR] {
 
   def load(): Task[Either[ConfigLoaderError[SPECIALIZED_ERROR], RawRorConfig]]
 
-  protected def validateRorJson(json: Json): Either[ConfigLoaderError[SPECIALIZED_ERROR], Json] = {
-    json \\ "readonlyrest" match {
-      case Nil => Left(NoRorSection)
-      case one :: Nil => Right(one)
-      case _ => Left(MoreThanOneRorSection)
-    }
-  }
 }
 
 object ConfigLoader {
 
-  final case class RawRorConfig(rawConfig: Json)
-
   sealed trait ConfigLoaderError[+SPECIALIZED_ERROR]
   object ConfigLoaderError {
-    case object NoRorSection extends ConfigLoaderError[Nothing]
-    case object MoreThanOneRorSection extends ConfigLoaderError[Nothing]
-    final case class InvalidContent(throwable: Throwable) extends ConfigLoaderError[Nothing]
+    final case class ParsingError(error: ParsingRorConfigError) extends ConfigLoaderError[Nothing]
     final case class SpecializedError[ERROR](error: ERROR) extends ConfigLoaderError[ERROR]
 
     implicit def show[E: Show]: Show[ConfigLoaderError[E]] = Show.show {
-      case NoRorSection => "Cannot find any 'readonlyrest' section in config"
-      case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
-      case InvalidContent(_) => "Config file content is malformed"
+      case ParsingError(error) => RawRorConfig.ParsingRorConfigError.show.show(error)
       case SpecializedError(error) => implicitly[Show[E]].show(error)
     }
   }
-
 
 }

@@ -41,7 +41,7 @@ import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldLi
 import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAcl, DisabledAclStaticContext, EnabledAclStaticContext, SequentialAcl}
-import tech.beshu.ror.configuration.ConfigLoader.RawRorConfig
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.{UuidProvider, YamlOps}
 

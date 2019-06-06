@@ -17,14 +17,14 @@ import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
 import tech.beshu.ror.boot.RorInstance.{ForceReloadError, noIndexStartingFailure}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
-import tech.beshu.ror.configuration.ConfigLoader.{ConfigLoaderError, RawRorConfig}
+import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
-import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError
-import tech.beshu.ror.configuration.IndexConfigLoader.IndexConfigError.{IndexConfigNotExist, _}
-import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigLoader}
-import tech.beshu.ror.es.{AuditSink, IndexContentProvider}
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
+import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.es.{AuditSink, IndexContentManager}
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
@@ -53,10 +53,10 @@ trait ReadonlyRest extends Logging {
 
   def start(esConfigPath: Path,
             auditSink: AuditSink,
-            indexContentProvider: IndexContentProvider): Task[Either[StartingFailure, RorInstance]] = {
+            indexContentManager: IndexContentManager): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       fileConfigLoader <- createFileConfigLoader(esConfigPath)
-      indexConfigLoader <- createIndexConfigLoader(indexContentProvider)
+      indexConfigLoader <- createIndexConfigLoader(indexContentManager)
       esConfig <- loadEsConfig(esConfigPath)
       instance <- startRor(esConfig, fileConfigLoader, indexConfigLoader, auditSink)
     } yield instance).value
@@ -66,8 +66,8 @@ trait ReadonlyRest extends Logging {
     EitherT.pure[Task, StartingFailure](new FileConfigLoader(esConfigPath, envVarsProvider))
   }
 
-  private def createIndexConfigLoader(indexContentProvider: IndexContentProvider) = {
-    EitherT.pure[Task, StartingFailure](new IndexConfigLoader(indexContentProvider))
+  private def createIndexConfigLoader(indexContentManager: IndexContentManager) = {
+    EitherT.pure[Task, StartingFailure](new IndexConfigManager(indexContentManager))
   }
 
   private def loadEsConfig(esConfigPath: Path) = {
@@ -85,17 +85,17 @@ trait ReadonlyRest extends Logging {
 
   private def startRor(esConfig: EsConfig,
                        fileConfigLoader: FileConfigLoader,
-                       indexConfigLoader: IndexConfigLoader,
+                       indexConfigManager: IndexConfigManager,
                        auditSink: AuditSink) = {
     if (esConfig.forceLoadRorFromFile) {
       for {
         config <- EitherT(loadRorConfigFromFile(fileConfigLoader, auditSink))
         engine <- EitherT(loadRorCore(config, auditSink))
-      } yield new RorInstance(engine, config, indexConfigLoader, auditSink)
+      } yield new RorInstance(engine, config, indexConfigManager, auditSink)
     } else {
       EitherT.pure[Task, StartingFailure](
         new RorInstance(
-          indexConfigLoader,
+          indexConfigManager,
           auditSink,
           loadRorConfigFromFile(fileConfigLoader, auditSink)
         )
@@ -109,32 +109,24 @@ trait ReadonlyRest extends Logging {
       .map {
         case Right(config) =>
           Right(config)
-        case Left(error@NoRorSection) =>
+        case Left(error@ParsingError(_)) =>
           Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
-        case Left(error@MoreThanOneRorSection) =>
-          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
-        case Left(error@InvalidContent(ex)) =>
-          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error), Some(ex)))
         case Left(error@SpecializedError(_)) =>
           Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
       }
   }
 
-  private[ror] def loadRorConfigFromIndex(indexConfigLoader: IndexConfigLoader,
+  private[ror] def loadRorConfigFromIndex(indexConfigManager: IndexConfigManager,
                                           auditSink: AuditSink,
                                           noIndexFallback: => Task[Either[StartingFailure, RawRorConfig]]) = {
     // todo: wait if cluster is ready?
-    indexConfigLoader
+    indexConfigManager
       .load()
       .flatMap {
         case Right(config) =>
           Task.now(Right(config))
-        case Left(error@NoRorSection) =>
+        case Left(error@ParsingError(_)) =>
           lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error)))
-        case Left(error@MoreThanOneRorSection) =>
-          lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error)))
-        case Left(error@InvalidContent(ex)) =>
-          lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error), Some(ex)))
         case Left(SpecializedError(IndexConfigNotExist)) =>
           noIndexFallback
       }
@@ -180,22 +172,22 @@ trait ReadonlyRest extends Logging {
 }
 
 class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
-                           indexConfigLoader: IndexConfigLoader,
+                           indexConfigManager: IndexConfigManager,
                            auditSink: AuditSink,
                            initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]])
   extends Logging {
 
-  def this(indexConfigLoader: IndexConfigLoader,
+  def this(indexConfigManager: IndexConfigManager,
            auditSink: AuditSink,
            initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
-    this(None, indexConfigLoader, auditSink, initialNoIndexFallback)
+    this(None, indexConfigManager, auditSink, initialNoIndexFallback)
   }
 
   def this(engine: Engine,
            config: RawRorConfig,
-           indexConfigLoader: IndexConfigLoader,
+           indexConfigManager: IndexConfigManager,
            auditSink: AuditSink) = {
-    this(Some((engine, config)), indexConfigLoader, auditSink, noIndexStartingFailure)
+    this(Some((engine, config)), indexConfigManager, auditSink, noIndexStartingFailure)
   }
 
   private val instanceState: Atomic[State] =
@@ -306,7 +298,7 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
 
   private def loadNewEngineFromIndex(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
     Ror
-      .loadRorConfigFromIndex(indexConfigLoader, auditSink, noIndexFallback)
+      .loadRorConfigFromIndex(indexConfigManager, auditSink, noIndexFallback)
       .flatMap {
         case Right(config) =>
           Ror

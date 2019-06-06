@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain._
 import io.circe.yaml._
-import tech.beshu.ror.configuration.ConfigLoader.RawRorConfig
+import tech.beshu.ror.configuration.RawRorConfig
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -81,15 +81,10 @@ object TestsUtils {
   }
 
   sealed trait AssertionType
-
   object AssertionType {
-
     final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
-
     object RuleRejected extends AssertionType
-
     final case class RuleThrownException(exception: Throwable) extends AssertionType
-
   }
 
   def headerFrom(nameAndValue: (String, String)): Header = {
