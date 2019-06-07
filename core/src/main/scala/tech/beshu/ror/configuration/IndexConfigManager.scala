@@ -6,32 +6,43 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConsts}
-import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
-import tech.beshu.ror.es.IndexContentManager
-import tech.beshu.ror.es.IndexContentManager.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
+import tech.beshu.ror.es.IndexJsonContentManager
+import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.YamlOps
 
-class IndexConfigManager(indexContentManager: IndexContentManager)
+import scala.collection.JavaConverters._
+
+class IndexConfigManager(indexContentManager: IndexJsonContentManager)
   extends ConfigLoader[IndexConfigError]
     with Logging {
 
   override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexContentManager
-      .contentOf(auditIndexConsts.indexName, auditIndexConsts.typeName, auditIndexConsts.id)
+      .sourceOf(auditIndexConsts.indexName, auditIndexConsts.typeName, auditIndexConsts.id)
       .map {
-        case Right(content) =>
-          // todo: get settings key value
-          RawRorConfig.fromString(content).left.map(ParsingError.apply)
+        case Right(source) =>
+          source.asScala
+            .collect { case (key: String, value: String) => (key, value) }.toMap
+            .find(_._1 == auditIndexConsts.settingsKey)
+            .map { case (_, rorYamlString) => RawRorConfig.fromString(rorYamlString).left.map(ParsingError.apply) }
+            .getOrElse(configLoaderError(IndexConfigUnknownStructure))
         case Left(CannotReachContentSource) =>
-          Left(SpecializedError[IndexConfigError](IndexConfigNotExist))
+          configLoaderError(IndexConfigNotExist)
         case Left(ContentNotFound) =>
-          Left(SpecializedError[IndexConfigError](IndexConfigNotExist))
+          configLoaderError(IndexConfigNotExist)
       }
   }
 
   def save(config: RawRorConfig): Task[Either[SavingIndexConfigError, Unit]] = {
     indexContentManager
-      .saveContent(auditIndexConsts.indexName, auditIndexConsts.typeName, auditIndexConsts.id, config.rawConfig.noSpaces)
+      .saveContent(
+        auditIndexConsts.indexName,
+        auditIndexConsts.typeName,
+        auditIndexConsts.id,
+        Map(auditIndexConsts.settingsKey -> YamlOps.jsonToYamlString(config.rawConfig)).asJava
+      )
       .map {
         _.left.map {
           case CannotWriteToIndex(ex) =>
@@ -40,6 +51,8 @@ class IndexConfigManager(indexContentManager: IndexContentManager)
         }
       }
   }
+
+  private def configLoaderError(error: IndexConfigError) = Left(SpecializedError[IndexConfigError](error))
 }
 
 object IndexConfigManager {
@@ -47,9 +60,11 @@ object IndexConfigManager {
   sealed trait IndexConfigError
   object IndexConfigError {
     case object IndexConfigNotExist extends IndexConfigError
+    case object IndexConfigUnknownStructure extends IndexConfigError
 
     implicit val show: Show[IndexConfigError] = Show.show {
       case IndexConfigNotExist => "Cannot find config index"
+      case IndexConfigUnknownStructure => s"Unknown structure of index config"
     }
 
     val indexConfigLoaderErrorShow: Show[ConfigLoaderError[IndexConfigError]] =
@@ -69,6 +84,7 @@ object IndexConfigManager {
     val indexName = ".readonlyrest"
     val typeName = "settings"
     val id = "1"
+    val settingsKey = "settings"
   }
 }
 

@@ -11,18 +11,20 @@ import io.finch._
 import io.finch.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.adminapi.AdminRestApi.{ApiCallResult, Failure, Success, AdminRequest, AdminResponse}
+import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, Failure, Success}
 import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.ForceReloadError
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
-import tech.beshu.ror.es.IndexContentManager
+import tech.beshu.ror.es.IndexJsonContentManager
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.YamlOps
 
 import scala.language.{implicitConversions, postfixOps}
 
+// todo: logging decorator
 class AdminRestApi(rorInstance: RorInstance,
-                   indexContentManager: IndexContentManager)
+                   indexContentManager: IndexJsonContentManager)
   extends EndpointModule[Task] {
 
   import AdminRestApi.encoders._
@@ -45,15 +47,42 @@ class AdminRestApi(rorInstance: RorInstance,
       config <- rorConfigFrom(body)
       _ <- saveRorConfig(config)
     } yield ()
-    result.value map {
+    result.value.map {
       case Right(_) => Ok[ApiCallResult](Success("updated settings"))
       case Left(failure) => Ok[ApiCallResult](failure)
     }
   }
 
-  private val service = (forceReloadRorEndpoint :+:
-    updateIndexConfigurationEndpoint)
-    .toServiceAs[Application.Json]
+  private val provideRorFileConfigEndpoint = get("_readonlyrest" :: "admin" :: "config" :: "file") {
+    // todo: fixme file
+    indexConfigManager
+      .load()
+      .map {
+        case Right(config) => Ok[ApiCallResult](Success(YamlOps.jsonToYamlString(config.rawConfig)))
+        case Left(error) => Ok[ApiCallResult](Failure(error.show))
+      }
+  }
+
+  private val provideRorIndexConfigEndpoint = get("_readonlyrest" :: "admin" :: "config") {
+    indexConfigManager
+      .load()
+      .map {
+        case Right(config) => Ok[ApiCallResult](Success(YamlOps.jsonToYamlString(config.rawConfig)))
+        case Left(error) => Ok[ApiCallResult](Failure(error.show))
+      }
+  }
+
+  private val metadataEndpoint = get("_readonlyrest" :: "metadata" :: "current_user") {
+    Ok[ApiCallResult](Success("will be filled"))
+  }
+
+  private val service = {
+    forceReloadRorEndpoint :+:
+      updateIndexConfigurationEndpoint :+:
+      provideRorFileConfigEndpoint :+:
+      provideRorIndexConfigEndpoint :+:
+      metadataEndpoint
+  }.toServiceAs[Application.Json]
 
   def call(request: AdminRequest): Task[AdminResponse] = {
     AdminRestApi.converters.toRequest(request) match {
@@ -63,8 +92,15 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private def rorConfigFrom(payload: String) = {
+    for {
+      json <- EitherT.fromEither[Task](io.circe.parser.parse(payload).left.map(_ => Failure("JSON body malformed")))
+      rorConfig <- settingsValue(json)
+    } yield rorConfig
+  }
+
+  private def settingsValue(json: io.circe.Json) = {
     def liftFailure(failureMessage: String) = EitherT.leftT[Task, RawRorConfig](Failure(failureMessage))
-    io.circe.parser.parse(payload).right.get \\ "settings" match {
+    json \\ "settings" match {
       case Nil =>
         liftFailure("Malformed config payload - no settings key")
       case configJsonValue :: Nil  =>
@@ -77,7 +113,6 @@ class AdminRestApi(rorInstance: RorInstance,
       case _ =>
         liftFailure("Malformed config payload - only one settings value allowed")
     }
-
   }
 
   private def saveRorConfig(config: RawRorConfig) = {
@@ -101,8 +136,6 @@ object AdminRestApi extends Logging {
   final case class Success(message: String) extends ApiCallResult
   final case class Failure(message: String) extends ApiCallResult
 
-  private final case class SettingsPayload(value: String)
-
   private object encoders {
     import io.circe.generic.semiauto._
     implicit val apiCallResultEncoder: Encoder[ApiCallResult] = deriveEncoder
@@ -111,7 +144,6 @@ object AdminRestApi extends Logging {
   private object decoders {
     import io.circe.generic.semiauto._
     implicit val apiCallResultDecoder: Decoder[ApiCallResult] = deriveDecoder
-    implicit val settingsPayloadDecoder: Decoder[SettingsPayload] = Decoder.decodeString.map(SettingsPayload.apply)
   }
 
   private object converters {

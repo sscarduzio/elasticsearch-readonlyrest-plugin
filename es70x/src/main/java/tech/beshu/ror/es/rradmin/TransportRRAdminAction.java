@@ -26,7 +26,7 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.adminapi.AdminRestApi;
 import tech.beshu.ror.boot.SchedulerPools$;
-import tech.beshu.ror.es.EsIndexContentProvider;
+import tech.beshu.ror.es.EsIndexJsonContentProvider;
 import tech.beshu.ror.es.RorInstanceSupplier;
 
 import java.util.Optional;
@@ -34,11 +34,11 @@ import java.util.Optional;
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
   private final Scheduler adminRestApiScheduler = SchedulerPools$.MODULE$.adminRestApiScheduler();
-  private final EsIndexContentProvider indexContentProvider;
+  private final EsIndexJsonContentProvider indexContentProvider;
 
   @Inject
   public TransportRRAdminAction(TransportService transportService, ActionFilters actionFilters,
-      EsIndexContentProvider indexContentProvider) {
+      EsIndexJsonContentProvider indexContentProvider) {
     super(RRAdminAction.NAME, transportService, actionFilters, () -> new RRAdminRequest());
     this.indexContentProvider = indexContentProvider;
   }

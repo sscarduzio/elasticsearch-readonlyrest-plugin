@@ -22,9 +22,9 @@ import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
-import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
-import tech.beshu.ror.es.{AuditSink, IndexContentManager}
+import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
@@ -53,7 +53,7 @@ trait ReadonlyRest extends Logging {
 
   def start(esConfigPath: Path,
             auditSink: AuditSink,
-            indexContentManager: IndexContentManager): Task[Either[StartingFailure, RorInstance]] = {
+            indexContentManager: IndexJsonContentManager): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       fileConfigLoader <- createFileConfigLoader(esConfigPath)
       indexConfigLoader <- createIndexConfigLoader(indexContentManager)
@@ -66,7 +66,7 @@ trait ReadonlyRest extends Logging {
     EitherT.pure[Task, StartingFailure](new FileConfigLoader(esConfigPath, envVarsProvider))
   }
 
-  private def createIndexConfigLoader(indexContentManager: IndexContentManager) = {
+  private def createIndexConfigLoader(indexContentManager: IndexJsonContentManager) = {
     EitherT.pure[Task, StartingFailure](new IndexConfigManager(indexContentManager))
   }
 
@@ -128,6 +128,8 @@ trait ReadonlyRest extends Logging {
         case Left(error@ParsingError(_)) =>
           lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error)))
         case Left(SpecializedError(IndexConfigNotExist)) =>
+          noIndexFallback
+        case Left(SpecializedError(IndexConfigUnknownStructure)) =>
           noIndexFallback
       }
   }

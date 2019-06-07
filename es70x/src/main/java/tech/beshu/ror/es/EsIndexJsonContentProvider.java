@@ -18,25 +18,26 @@ import scala.util.Either;
 import scala.util.Left$;
 import scala.util.Right$;
 import tech.beshu.ror.boot.Ror$;
-import tech.beshu.ror.settings.SettingsUtils;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
+import java.util.Map;
+
 @Singleton
-public class EsIndexContentProvider implements IndexContentManager {
+public class EsIndexJsonContentProvider implements IndexJsonContentManager {
 
   private final NodeClient client;
 
   @Inject
-  public EsIndexContentProvider(NodeClient client) {
+  public EsIndexJsonContentProvider(NodeClient client) {
     this.client = client;
   }
 
   @Override
-  public Task<Either<ReadError, String>> contentOf(String index, String type, String id) {
+  public Task<Either<ReadError, Map<String, Object>>> sourceOf(String index, String type, String id) {
     try {
       GetResponse response = client.get(client.prepareGet(index, type, id).request()).actionGet();
       return Task$.MODULE$
-          .eval((Function0<Either<ReadError, String>>) () -> Right$.MODULE$.apply(response.getSourceAsString()))
+          .eval((Function0<Either<ReadError, Map<String, Object>>>) () -> Right$.MODULE$.apply(response.getSourceAsMap()))
           .executeOn(Ror$.MODULE$.blockingScheduler(), true);
     } catch (ResourceNotFoundException ex) {
       return Task$.MODULE$.now(Left$.MODULE$.apply(ContentNotFound$.MODULE$));
@@ -46,14 +47,14 @@ public class EsIndexContentProvider implements IndexContentManager {
   }
 
   @Override
-  public Task<Either<WriteError, BoxedUnit>> saveContent(String index, String type, String id, String content) {
+  public Task<Either<WriteError, BoxedUnit>> saveContent(String index, String type, String id, Map<String, String> content) {
     CancelablePromise<Either<WriteError, BoxedUnit>> promise = ScalaJavaHelper$.MODULE$.newCancelablePromise();
     client
         .prepareBulk()
         .add(
             client
                 .prepareIndex(index, type, id)
-                .setSource(SettingsUtils.toJsonStorage(content), XContentType.JSON)
+                .setSource(content, XContentType.JSON)
                 .request()
         )
         .execute(new PromiseActionListenerAdapter(promise));

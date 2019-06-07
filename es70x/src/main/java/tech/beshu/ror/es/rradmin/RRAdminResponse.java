@@ -17,6 +17,8 @@
 
 package tech.beshu.ror.es.rradmin;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -31,6 +33,7 @@ import java.io.IOException;
 
 public class RRAdminResponse extends ActionResponse implements ToXContentObject {
 
+  private static final Logger logger = LogManager.getLogger(RRAdminResponse.class);
   private final Either<Throwable, AdminRestApi.AdminResponse> response;
 
   public RRAdminResponse(Either<Throwable, AdminRestApi.AdminResponse> response) {
@@ -52,9 +55,11 @@ public class RRAdminResponse extends ActionResponse implements ToXContentObject 
         Failure failure = (Failure) result;
         addResponseJson(builder,"ko", failure.message());
       } else {
+        logger.error("RRAdmin: unknown type of response");
         addResponseJson(builder,"ko", AdminRestApi.AdminResponse$.MODULE$.internalError().result().message());
       }
     } else {
+      logger.error("RRAdmin internal error", response.left().get());
       addResponseJson(builder, "ko", AdminRestApi.AdminResponse$.MODULE$.internalError().result().message());
     }
     return builder;

@@ -107,7 +107,7 @@ public class IndexLevelActionFilter implements ActionFilter {
         Ror$.MODULE$.start(
             env.configFile(),
             createAuditSink(client),
-            new EsIndexContentProvider(client)
+            new EsIndexJsonContentProvider(client)
         ).runSyncUnsafe(startingTimeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit())
     );
 

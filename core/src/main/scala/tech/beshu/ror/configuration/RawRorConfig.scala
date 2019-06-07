@@ -33,7 +33,7 @@ object RawRorConfig {
   private def validateRorJson(json: Json): Either[ParsingRorConfigError, Json] = {
     json \\ "readonlyrest" match {
       case Nil => Left(NoRorSection)
-      case one :: Nil => Right(one)
+      case _ :: Nil => Right(json)
       case _ => Left(MoreThanOneRorSection)
     }
   }
