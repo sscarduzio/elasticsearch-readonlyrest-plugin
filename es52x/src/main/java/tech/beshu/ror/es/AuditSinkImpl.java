@@ -99,13 +99,6 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
     bulkProcessor.add(ir);
   }
 
-  public void stop() {
-    //#TODO do off-thread
-    try {
-      bulkProcessor.awaitClose(1, TimeUnit.MINUTES);
-    } catch (InterruptedException ie) {
-      ie.printStackTrace();
-    }
-  }
+
 
 }

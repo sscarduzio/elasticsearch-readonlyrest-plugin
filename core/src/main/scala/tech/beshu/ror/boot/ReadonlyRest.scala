@@ -26,7 +26,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexCo
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
-
+import tech.beshu.ror.utils.LoggerOps._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -103,6 +103,7 @@ trait ReadonlyRest extends Logging {
   }
 
   private def loadRorConfigFromFile(fileConfigLoader: FileConfigLoader, auditSink: AuditSink) = {
+    logger.info(s"Loading ReadonlyREST config from file: ${fileConfigLoader.rawConfigFile.pathAsString}")
     fileConfigLoader
       .load()
       .map {
@@ -118,7 +119,7 @@ trait ReadonlyRest extends Logging {
   private[ror] def loadRorConfigFromIndex(indexConfigManager: IndexConfigManager,
                                           auditSink: AuditSink,
                                           noIndexFallback: => Task[Either[StartingFailure, RawRorConfig]]) = {
-    // todo: wait if cluster is ready?
+    logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
     indexConfigManager
       .load()
       .flatMap {
@@ -134,7 +135,6 @@ trait ReadonlyRest extends Logging {
   }
 
   private[ror] def loadRorCore(config: RawRorConfig, auditSink: AuditSink): Task[Either[StartingFailure, Engine]] = {
-      // todo: how to distinguish if core needs to be reloaded?
     val httpClientsFactory = new AsyncHttpClientsFactory
     coreFactory
       .createCoreFrom(config, httpClientsFactory)
@@ -150,8 +150,6 @@ trait ReadonlyRest extends Logging {
               coreSettings.aclStaticContext,
               httpClientsFactory
             )
-            // todo: move this log to the place where engine is reassigned
-            logger.info("Readonly REST plugin core was loaded ...")
             engine
           }
           .left
@@ -193,11 +191,14 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
 
   private val instanceState: Atomic[State] =
     initialEngine match {
-      case Some((engine, config)) => AtomicAny(State.EngineLoaded(
-        State.EngineLoaded.EngineWithConfig(engine, config),
-        scheduleIndexConfigChecking(initialNoIndexFallback)
-      ))
-      case None => AtomicAny(State.Initiated(scheduleIndexConfigChecking(initialNoIndexFallback)))
+      case Some((engine, config)) =>
+        logger.info("Readonly REST plugin core was loaded ...")
+        AtomicAny(State.EngineLoaded(
+          State.EngineLoaded.EngineWithConfig(engine, config),
+          scheduleIndexConfigChecking(initialNoIndexFallback)
+        ))
+      case None =>
+        AtomicAny(State.Initiated(scheduleIndexConfigChecking(initialNoIndexFallback)))
     }
 
   def engine: Option[Engine] = instanceState.get() match {
@@ -205,8 +206,7 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
     case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, _), _) => Some(engine)
     case State.Stopped => None
   }
-
-  // todo: max one reload at time?
+  
   def forceReloadFromIndex(): Task[Either[ForceReloadError, Unit]] = {
     val promise = CancelablePromise[Either[ForceReloadError, Unit]]()
     tryReloadingEngine(noIndexStartingFailure)
@@ -214,7 +214,7 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
           case Right(Right(Some(state))) =>
             state match {
               case State.Initiated(_) =>
-                logger.error(s"Unexpected state: Initialized")
+                logger.error(s"[CLUSTERWIDE SETTINGS] Unexpected state: Initialized")
                 promise.success(Left(ForceReloadError.ReloadingError))
               case State.EngineLoaded(_, _) =>
                 promise.success(Right(()))
@@ -222,17 +222,17 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
                 promise.success(Left(ForceReloadError.StoppedInstance))
             }
           case Right(Right(None)) =>
-            logger.debug("Index configuration is the same as loaded one. Nothing to do.")
+            logger.debug("[CLUSTERWIDE SETTINGS] Index configuration is the same as loaded one. Nothing to do.")
+            promise.success(Left(ForceReloadError.ConfigUpToDate))
           case Right(Left(startingFailure)) =>
             promise.success(Left(ForceReloadError.CannotReload(startingFailure)))
           case Left(ex) =>
-            logger.error("Force reloading failed", ex)
+            logger.errorEx("[CLUSTERWIDE SETTINGS] Force reloading failed", ex)
             promise.success(Left(ForceReloadError.ReloadingError))
         }
     Task.fromCancelablePromise(promise)
   }
 
-  // todo: use it
   def stop(): Unit = {
     instanceState.transform {
       case State.Initiated(_) =>
@@ -246,19 +246,19 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
   }
 
   private def scheduleIndexConfigChecking(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): Cancelable = {
-    // todo: check what's going on with doubled log
+    logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index config check within ${RorInstance.indexConfigCheckingSchedulerDelay}")
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
       tryReloadingEngine(noIndexFallback)
         .runAsync {
-          case Right(Right(_)) =>
+          case Right(Right(Some(_))) =>
+          case Right(Right(None)) =>
+            logger.info("[CLUSTERWIDE SETTINGS] Config is up to date. Nothing to reload.")
+            scheduleNewConfigCheck()
           case Right(Left(startingFailure)) =>
-            // todo: better log
-            logger.warn(s"Checking index config failed: ${startingFailure.message}")
+            logger.warn(s"[CLUSTERWIDE SETTINGS] Checking index config failed: ${startingFailure.message}")
             scheduleNewConfigCheck()
           case Left(ex) =>
-            // todo: better log
-            if(logger.delegate.isDebugEnabled) logger.debug(s"Checking index config failed due to exception", ex)
-            else logger.warn(s"Checking index config failed due to exception")
+            logger.warnEx("[CLUSTERWIDE SETTINGS] Checking index config failed: error", ex)
             scheduleNewConfigCheck()
         }
     }
@@ -278,20 +278,21 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
     instanceState.transform {
       case State.Initiated(cancelable) =>
         cancelable.cancel()
-        // todo: log (new engine loaded)
         val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking(noIndexStartingFailure))
         promise.success(newState)
+        logger.info("ReadonlyREST plugin core was loaded ...")
         newState
       case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(oldEngine, _), _) =>
         scheduleDelayedShutdown(oldEngine)
-        // todo: log (new engine loaded)
         val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking(noIndexStartingFailure))
         promise.success(newState)
+        logger.info("ReadonlyREST plugin core was loaded ...")
         newState
       case State.Stopped =>
         newEngine.engine.shutdown()
         val newState = State.Stopped
         promise.success(newState)
+        logger.error("Cannot load new ReadonlyREST core, because it's instance was stopped")
         newState
     }
     Task.fromCancelablePromise(promise)
@@ -337,7 +338,7 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
     val promise = CancelablePromise[Boolean]()
     instanceState.transform {
       case state@State.Initiated(_) =>
-        promise.success(false)
+        promise.success(true)
         state
       case state@State.EngineLoaded(State.EngineLoaded.EngineWithConfig(_, oldConfig), _) =>
         promise.success(newConfig != oldConfig)
@@ -373,6 +374,7 @@ object RorInstance {
     final case class CannotReload(startingFailure: StartingFailure) extends ForceReloadError
     case object ReloadingError extends ForceReloadError
     case object StoppedInstance extends ForceReloadError
+    case object ConfigUpToDate extends ForceReloadError
   }
 }
 

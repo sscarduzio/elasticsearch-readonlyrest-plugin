@@ -1,6 +1,6 @@
 package tech.beshu.ror.adminapi
 
-import cats.data.EitherT
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import com.twitter.finagle.http.Status.Successful
 import com.twitter.finagle.http.{Request, Response}
@@ -11,7 +11,8 @@ import io.finch._
 import io.finch.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, Failure, Success}
+import shapeless.HNil
+import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, Failure, Success, forceReloadRorPath, provideRorFileConfigPath, provideRorIndexConfigPath, updateIndexConfigurationPath}
 import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.ForceReloadError
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
@@ -21,7 +22,6 @@ import tech.beshu.ror.utils.YamlOps
 
 import scala.language.{implicitConversions, postfixOps}
 
-// todo: logging decorator
 class AdminRestApi(rorInstance: RorInstance,
                    indexConfigManager: IndexConfigManager,
                    fileConfigLoader: FileConfigLoader)
@@ -29,18 +29,19 @@ class AdminRestApi(rorInstance: RorInstance,
 
   import AdminRestApi.encoders._
 
-  private val forceReloadRorEndpoint: Endpoint[Task, ApiCallResult] = post("_readonlyrest" :: "admin" :: "refreshconfig") {
+  private val forceReloadRorEndpoint: Endpoint[Task, ApiCallResult] = post(forceReloadRorPath.endpointPath) {
     rorInstance
       .forceReloadFromIndex()
       .map {
         case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST config was reloaded with success!"))
         case Left(ForceReloadError.CannotReload(failure)) => Ok(Failure(failure.message))
+        case Left(ForceReloadError.ConfigUpToDate) => Ok(Failure("Current configuration is up to date"))
         case Left(ForceReloadError.ReloadingError) => Ok(Failure("Reloading unexpected error"))
         case Left(ForceReloadError.StoppedInstance) => Ok(Failure("ROR is stopped"))
       }
   }
 
-  private val updateIndexConfigurationEndpoint = post("_readonlyrest" :: "admin" :: "config" :: stringBody) { body: String =>
+  private val updateIndexConfigurationEndpoint = post(updateIndexConfigurationPath.endpointPath :: stringBody) { body: String =>
     val result = for {
       config <- rorConfigFrom(body)
       _ <- saveRorConfig(config)
@@ -51,7 +52,7 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private val provideRorFileConfigEndpoint = get("_readonlyrest" :: "admin" :: "config" :: "file") {
+  private val provideRorFileConfigEndpoint = get(provideRorFileConfigPath.endpointPath) {
     fileConfigLoader
       .load()
       .map {
@@ -60,7 +61,7 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
-  private val provideRorIndexConfigEndpoint = get("_readonlyrest" :: "admin" :: "config") {
+  private val provideRorIndexConfigEndpoint = get(provideRorIndexConfigPath.endpointPath) {
     indexConfigManager
       .load()
       .map {
@@ -115,6 +116,11 @@ class AdminRestApi(rorInstance: RorInstance,
 
 object AdminRestApi extends Logging {
 
+  val forceReloadRorPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "refreshconfig"))
+  val updateIndexConfigurationPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config" ))
+  val provideRorFileConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "file"))
+  val provideRorIndexConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config"))
+
   final case class AdminRequest(method: String, uri: String, body: String)
   final case class AdminResponse(result: ApiCallResult)
   object AdminResponse {
@@ -127,6 +133,14 @@ object AdminRestApi extends Logging {
   }
   final case class Success(message: String) extends ApiCallResult
   final case class Failure(message: String) extends ApiCallResult
+
+  final case class Path private(endpointPath: Endpoint[Task, HNil], endpointString: String)
+  object Path {
+    def create(paths: NonEmptyList[String]): Path = new Path(
+      paths.map(EndpointModule.apply[Task].path(_)).reduceLeft(_ :: _),
+      paths.map(p => s"/$p").toList.mkString
+    )
+  }
 
   private object encoders {
     import io.circe.generic.semiauto._

@@ -8,6 +8,11 @@ class LoggerOps(logger: Logger) {
     if(logger.delegate.isDebugEnabled) logger.error(message, throwable)
     else logger.error(message)
   }
+
+  def warnEx(message: String, throwable: Throwable): Unit = {
+    if(logger.delegate.isDebugEnabled) logger.warn(message, throwable)
+    else logger.warn(message)
+  }
 }
 
 object LoggerOps {

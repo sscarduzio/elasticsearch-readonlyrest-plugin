@@ -121,13 +121,4 @@ public class AuditSinkImpl {
     bulkProcessor.add(ir);
   }
 
-  public void stop() {
-    //#TODO do off-thread
-    try {
-      bulkProcessor.awaitClose(1, TimeUnit.MINUTES);
-    } catch (InterruptedException ie) {
-      ie.printStackTrace();
-    }
-  }
-
 }

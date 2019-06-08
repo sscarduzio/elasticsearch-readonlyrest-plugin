@@ -28,7 +28,6 @@ import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.logging.LoggerMessageFormat;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
@@ -44,6 +43,7 @@ import org.elasticsearch.index.shard.IndexSearcherWrapper;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
 import tech.beshu.ror.Constants;
+import tech.beshu.ror.es.RorInstanceSupplier;
 import tech.beshu.ror.utils.FilterTransient;
 
 import java.io.IOException;
@@ -65,7 +65,6 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     if (indexService == null) {
       throw new IllegalArgumentException("Please provide an indexService");
     }
-    Logger logger = Loggers.getLogger(this.getClass(), getClass().getSimpleName());
     logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
     this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null, null);
     this.threadContext = indexService.getThreadPool().getThreadContext();
@@ -73,11 +72,10 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
 
   @Override
   protected DirectoryReader wrap(DirectoryReader reader) {
-    // todo: I think we don't need it - needs proof
-//    if (!this.enabled) {
-//      logger.debug("Document filtering not available. Return default reader");
-//      return reader;
-//    }
+    if(!RorInstanceSupplier.getInstance().get().isPresent()) {
+      logger.debug("Document filtering not available. Return default reader");
+      return reader;
+    }
     // Field level security (FLS)
     try {
       String fieldsHeader = threadContext.getTransient(Constants.FIELDS_TRANSIENT);
