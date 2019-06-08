@@ -25,7 +25,6 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
-import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 import scala.concurrent.duration._
@@ -194,31 +193,36 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
 
   private val instanceState: Atomic[State] =
     initialEngine match {
-      case Some((engine, config)) => AtomicAny(State.EngineLoaded(engine, config, scheduleIndexConfigChecking(initialNoIndexFallback)))
+      case Some((engine, config)) => AtomicAny(State.EngineLoaded(
+        State.EngineLoaded.EngineWithConfig(engine, config),
+        scheduleIndexConfigChecking(initialNoIndexFallback)
+      ))
       case None => AtomicAny(State.Initiated(scheduleIndexConfigChecking(initialNoIndexFallback)))
     }
 
   def engine: Option[Engine] = instanceState.get() match {
     case State.Initiated(_) => None
-    case State.EngineLoaded(engine, _, _) => Some(engine)
+    case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, _), _) => Some(engine)
     case State.Stopped => None
   }
 
   // todo: max one reload at time?
   def forceReloadFromIndex(): Task[Either[ForceReloadError, Unit]] = {
     val promise = CancelablePromise[Either[ForceReloadError, Unit]]()
-    reloadEngine(noIndexStartingFailure)
+    tryReloadingEngine(noIndexStartingFailure)
         .runAsync {
-          case Right(Right(state)) =>
+          case Right(Right(Some(state))) =>
             state match {
               case State.Initiated(_) =>
                 logger.error(s"Unexpected state: Initialized")
                 promise.success(Left(ForceReloadError.ReloadingError))
-              case State.EngineLoaded(_, _, _) =>
+              case State.EngineLoaded(_, _) =>
                 promise.success(Right(()))
               case State.Stopped =>
                 promise.success(Left(ForceReloadError.StoppedInstance))
             }
+          case Right(Right(None)) =>
+            logger.debug("Index configuration is the same as loaded one. Nothing to do.")
           case Right(Left(startingFailure)) =>
             promise.success(Left(ForceReloadError.CannotReload(startingFailure)))
           case Left(ex) =>
@@ -233,7 +237,7 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
     instanceState.transform {
       case State.Initiated(_) =>
         State.Stopped
-      case State.EngineLoaded(engine, _, _) =>
+      case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, _), _) =>
         engine.shutdown()
         State.Stopped
       case State.Stopped =>
@@ -244,7 +248,7 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
   private def scheduleIndexConfigChecking(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): Cancelable = {
     // todo: check what's going on with doubled log
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
-      reloadEngine(noIndexFallback)
+      tryReloadingEngine(noIndexFallback)
         .runAsync {
           case Right(Right(_)) =>
           case Right(Left(startingFailure)) =>
@@ -260,31 +264,32 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
     }
   }
 
-  private def reloadEngine(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
-    (for {
-      result <- EitherT(loadNewEngineFromIndex(noIndexFallback))
-      (newEngine, newConfig) = result
-      state <- EitherT.right[StartingFailure](applyNewEngine(newEngine, newConfig))
-    } yield state).value
+  private def tryReloadingEngine(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
+    loadNewEngineFromIndex(noIndexFallback)
+      .flatMap {
+        case Right(Some(newEngine)) => applyNewEngine(newEngine).map(Some.apply).map(Right.apply)
+        case Right(None) => Task.now(Right(None))
+        case Left(failure) => Task.now(Left(failure))
+      }
   }
 
-  private def applyNewEngine(newEngine: Engine, newConfig: RawRorConfig) = {
+  private def applyNewEngine(newEngine: State.EngineLoaded.EngineWithConfig) = {
     val promise = CancelablePromise[State]()
     instanceState.transform {
       case State.Initiated(cancelable) =>
         cancelable.cancel()
         // todo: log (new engine loaded)
-        val newState = State.EngineLoaded(newEngine, newConfig, scheduleIndexConfigChecking(noIndexStartingFailure))
+        val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking(noIndexStartingFailure))
         promise.success(newState)
         newState
-      case State.EngineLoaded(oldEngine, _, _) =>
+      case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(oldEngine, _), _) =>
         scheduleDelayedShutdown(oldEngine)
         // todo: log (new engine loaded)
-        val newState = State.EngineLoaded(newEngine, newConfig, scheduleIndexConfigChecking(noIndexStartingFailure))
+        val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking(noIndexStartingFailure))
         promise.success(newState)
         newState
       case State.Stopped =>
-        newEngine.shutdown()
+        newEngine.engine.shutdown()
         val newState = State.Stopped
         promise.success(newState)
         newState
@@ -303,9 +308,15 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
       .loadRorConfigFromIndex(indexConfigManager, auditSink, noIndexFallback)
       .flatMap {
         case Right(config) =>
-          Ror
-            .loadRorCore(config, auditSink)
-            .map(_.map((_, config)))
+          shouldBeReloaded(config)
+            .flatMap {
+              case true =>
+                Ror
+                  .loadRorCore(config, auditSink)
+                  .map(_.map(engine => Some(State.EngineLoaded.EngineWithConfig(engine, config))))
+              case false =>
+                Task.now(Right(Option.empty[State.EngineLoaded.EngineWithConfig]))
+            }
         case Left(failure) =>
           Task.now(Left(failure))
       }
@@ -315,18 +326,38 @@ class RorInstance private (initialEngine: Option[(Engine, RawRorConfig)],
     instanceState.transform {
       case State.Initiated(_) =>
         State.Initiated(scheduleIndexConfigChecking(noIndexStartingFailure))
-      case State.EngineLoaded(engine, config, _) =>
-        State.EngineLoaded(engine, config, scheduleIndexConfigChecking(noIndexStartingFailure))
+      case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, config), _) =>
+        State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, config), scheduleIndexConfigChecking(noIndexStartingFailure))
       case State.Stopped =>
         State.Stopped
     }
   }
 
+  private def shouldBeReloaded(newConfig: RawRorConfig) = {
+    val promise = CancelablePromise[Boolean]()
+    instanceState.transform {
+      case state@State.Initiated(_) =>
+        promise.success(false)
+        state
+      case state@State.EngineLoaded(State.EngineLoaded.EngineWithConfig(_, oldConfig), _) =>
+        promise.success(newConfig != oldConfig)
+        state
+      case state@State.Stopped =>
+        promise.success(false)
+        state
+    }
+    Task.fromCancelablePromise(promise)
+  }
+
   private [this] sealed trait State
   private object State {
     sealed case class Initiated(scheduledInitLoadingJob: Cancelable) extends State
-    sealed case class EngineLoaded(engine: Engine, currentConfig: RawRorConfig, scheduledInitLoadingJob: Cancelable) extends State
+    sealed case class EngineLoaded(engine: EngineLoaded.EngineWithConfig, scheduledInitLoadingJob: Cancelable) extends State
+    object EngineLoaded {
+      sealed case class EngineWithConfig(engine: Engine, config: RawRorConfig)
+    }
     case object Stopped extends State
+
   }
 }
 

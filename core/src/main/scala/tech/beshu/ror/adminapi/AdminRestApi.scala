@@ -15,8 +15,7 @@ import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCal
 import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.ForceReloadError
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
-import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
-import tech.beshu.ror.es.IndexJsonContentManager
+import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.YamlOps
 
@@ -24,12 +23,11 @@ import scala.language.{implicitConversions, postfixOps}
 
 // todo: logging decorator
 class AdminRestApi(rorInstance: RorInstance,
-                   indexContentManager: IndexJsonContentManager)
+                   indexConfigManager: IndexConfigManager,
+                   fileConfigLoader: FileConfigLoader)
   extends EndpointModule[Task] {
 
   import AdminRestApi.encoders._
-
-  private val indexConfigManager = new IndexConfigManager(indexContentManager)
 
   private val forceReloadRorEndpoint: Endpoint[Task, ApiCallResult] = post("_readonlyrest" :: "admin" :: "refreshconfig") {
     rorInstance
@@ -54,8 +52,7 @@ class AdminRestApi(rorInstance: RorInstance,
   }
 
   private val provideRorFileConfigEndpoint = get("_readonlyrest" :: "admin" :: "config" :: "file") {
-    // todo: fixme file
-    indexConfigManager
+    fileConfigLoader
       .load()
       .map {
         case Right(config) => Ok[ApiCallResult](Success(YamlOps.jsonToYamlString(config.rawConfig)))
@@ -72,16 +69,11 @@ class AdminRestApi(rorInstance: RorInstance,
       }
   }
 
-  private val metadataEndpoint = get("_readonlyrest" :: "metadata" :: "current_user") {
-    Ok[ApiCallResult](Success("will be filled"))
-  }
-
   private val service = {
     forceReloadRorEndpoint :+:
       updateIndexConfigurationEndpoint :+:
       provideRorFileConfigEndpoint :+:
-      provideRorIndexConfigEndpoint :+:
-      metadataEndpoint
+      provideRorIndexConfigEndpoint
   }.toServiceAs[Application.Json]
 
   def call(request: AdminRequest): Task[AdminResponse] = {

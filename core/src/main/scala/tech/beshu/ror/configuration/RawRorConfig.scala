@@ -3,7 +3,7 @@ package tech.beshu.ror.configuration
 import java.io.InputStreamReader
 
 import better.files.File
-import cats.Show
+import cats.{Eq, Show}
 import io.circe.yaml.parser
 import io.circe.{Json, ParsingFailure}
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
@@ -50,4 +50,6 @@ object RawRorConfig {
       case InvalidContent(_) => "Config file content is malformed"
     }
   }
+
+  implicit val eq: Eq[RawRorConfig] = Eq.fromUniversalEquals
 }

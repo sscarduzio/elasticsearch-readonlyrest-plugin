@@ -53,6 +53,6 @@ object TaskOps {
     override def map[A, B](fa: Task[A])(f: A => B): Task[B] = fa.map(f)
   }
 
-  implicit val wait30SecTaskComonad: Comonad[Task] =
+  val wait30SecTaskComonad: Comonad[Task] =
     new TaskComonad(30 seconds)(monix.execution.Scheduler.Implicits.global)
 }

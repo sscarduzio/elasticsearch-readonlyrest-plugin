@@ -22,25 +22,31 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.HandledTransportAction;
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.env.Environment;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.adminapi.AdminRestApi;
 import tech.beshu.ror.boot.SchedulerPools$;
+import tech.beshu.ror.configuration.FileConfigLoader;
+import tech.beshu.ror.configuration.IndexConfigManager;
 import tech.beshu.ror.es.EsIndexJsonContentProvider;
 import tech.beshu.ror.es.RorInstanceSupplier;
+import tech.beshu.ror.utils.OsEnvVarsProvider$;
 
 import java.util.Optional;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
 
   private final Scheduler adminRestApiScheduler = SchedulerPools$.MODULE$.adminRestApiScheduler();
-  private final EsIndexJsonContentProvider indexContentProvider;
+  private final IndexConfigManager indexConfigManager;
+  private final FileConfigLoader fileConfigLoader;
 
   @Inject
-  public TransportRRAdminAction(TransportService transportService, ActionFilters actionFilters,
+  public TransportRRAdminAction(TransportService transportService, ActionFilters actionFilters, Environment env,
       EsIndexJsonContentProvider indexContentProvider) {
     super(RRAdminAction.NAME, transportService, actionFilters, () -> new RRAdminRequest());
-    this.indexContentProvider = indexContentProvider;
+    this.indexConfigManager = new IndexConfigManager(indexContentProvider);
+    this.fileConfigLoader = new FileConfigLoader(env.configFile(), OsEnvVarsProvider$.MODULE$);
   }
 
   @Override
@@ -62,7 +68,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   }
 
   private Optional<AdminRestApi> getApi() {
-    return RorInstanceSupplier.getInstance().get().map(instance -> new AdminRestApi(instance, indexContentProvider));
+    return RorInstanceSupplier.getInstance().get().map(instance -> new AdminRestApi(instance, indexConfigManager, fileConfigLoader));
   }
 
 //  private Option<Void> forceRefreshRorConfigEndpoint(RRAdminRequest request,
