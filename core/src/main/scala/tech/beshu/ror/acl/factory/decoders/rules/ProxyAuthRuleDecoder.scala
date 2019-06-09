@@ -22,8 +22,8 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.domain.{Header, User}
 import tech.beshu.ror.acl.blocks.definitions.ProxyAuth
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.definitions.ProxyAuthDefinitionsDecoder._
 import tech.beshu.ror.acl.factory.decoders.rules.ProxyAuthRuleDecoderHelper.{defaultUserHeaderName, nonEmptySetOfUserIdsDecoder}

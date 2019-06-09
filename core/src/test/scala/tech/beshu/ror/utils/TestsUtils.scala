@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.utils
 
+import java.nio.file.Path
 import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
 import java.time.Duration
 import java.util.Base64
 
+import better.files.File
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -125,6 +127,10 @@ object TestsUtils {
 
   def rorConfigFrom(yaml: String): RawRorConfig = {
     RawRorConfig(parser.parse(yaml).right.get)
+  }
+
+  def getResourcePath(resource: String): Path = {
+    File(getClass.getResource(resource).getPath).path
   }
 
 }

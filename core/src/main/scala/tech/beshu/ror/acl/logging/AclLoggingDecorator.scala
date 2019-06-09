@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Success
 
-class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
+class AclLoggingDecorator(val underlying: Acl, auditingTool: Option[AuditingTool])
   extends Acl with Logging {
 
   override def handle(requestContext: RequestContext): Task[AclHandlingResult] = {

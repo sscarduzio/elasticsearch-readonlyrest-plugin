@@ -21,9 +21,9 @@ import java.time.{Clock, ZoneId, ZonedDateTime}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.AuditingSettingsCreationError
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.{CirceCoreFactory, CoreSettings}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.{RawRorConfigBasedCoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
@@ -37,7 +37,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
-    new CirceCoreFactory
+    new RawRorConfigBasedCoreFactory
   }
 
   "Auditing settings" should {

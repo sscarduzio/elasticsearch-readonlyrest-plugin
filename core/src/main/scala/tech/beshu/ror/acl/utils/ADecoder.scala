@@ -21,8 +21,8 @@ import cats.implicits._
 import cats.{Functor, Id}
 import io.circe._
 import monix.eval.Task
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.utils.YamlOps
 

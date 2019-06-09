@@ -7,31 +7,14 @@ import better.files._
 import io.circe.Decoder
 import io.circe.yaml._
 import monix.eval.Task
-import tech.beshu.ror.configuration.SslConfiguration._
+import org.apache.logging.log4j.scala.Logging
 
-import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
-final case class RorSsl(externalSsl: Option[SslConfiguration], // todo: fox ext verification = false?
-                        interNodeSsl: Option[SslConfiguration]) // todo: fox inter verification = true?
+final case class RorSsl(externalSsl: Option[SslConfiguration],
+                        interNodeSsl: Option[SslConfiguration])
 
-final case class SslConfiguration(keystoreFile: JFile,
-                                  keystorePassword: Option[KeystorePassword],
-                                  keyPass: Option[KeyPass],
-                                  keyAlias: Option[KeyAlias],
-                                  allowedProtocols: java.util.Set[Protocol],
-                                  allowedCiphers: java.util.Set[Cipher],
-                                  verifyClientAuth: Boolean)
-
-object SslConfiguration {
-
-  type Error = String
-
-  final case class KeystorePassword(value: String)
-  final case class KeyPass(value: String)
-  final case class KeyAlias(value: String)
-  final case class Cipher(value: String)
-  final case class Protocol(value: String)
+object RorSsl extends Logging {
 
   def load(esConfigFolderPath: Path): Task[RorSsl] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
@@ -49,6 +32,7 @@ object SslConfiguration {
   private def fallbackToRorConfig(esConfigFolderPath: Path)
                                  (implicit rorSslDecoder: Decoder[RorSsl]) = {
     val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
+    logger.info(s"Cannot find SSL configuration is elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     loadSslConfigFromFile(rorConfig)
       .fold(
         error => throw new IllegalArgumentException(s"Invalid SSL configuration: $error"),
@@ -72,10 +56,31 @@ object SslConfiguration {
   }
 }
 
+final case class SslConfiguration(keystoreFile: JFile,
+                                  keystorePassword: Option[SslConfiguration.KeystorePassword],
+                                  keyPass: Option[SslConfiguration.KeyPass],
+                                  keyAlias: Option[SslConfiguration.KeyAlias],
+                                  allowedProtocols: java.util.Set[SslConfiguration.Protocol],
+                                  allowedCiphers: java.util.Set[SslConfiguration.Cipher],
+                                  verifyClientAuth: Boolean)
+
+object SslConfiguration {
+
+  type Error = String
+
+  final case class KeystorePassword(value: String)
+  final case class KeyPass(value: String)
+  final case class KeyAlias(value: String)
+  final case class Cipher(value: String)
+  final case class Protocol(value: String)
+
+}
+
 private object SslDecoders {
 
-  // todo: better errors?
+  import tech.beshu.ror.configuration.SslConfiguration._
 
+  // todo: better errors?
   private implicit def keystoreFileDecoder(basePath: Path): Decoder[JFile] =
     Decoder
       .decodeString
@@ -88,6 +93,7 @@ private object SslDecoders {
   private implicit val protocolDecoder: Decoder[Protocol] = Decoder.decodeString.map(Protocol.apply)
 
   private implicit def sslConfigurationDecoder(basePath: Path): Decoder[SslConfiguration] = Decoder.instance { c =>
+    import scala.collection.JavaConverters._
     implicit val jFileDecoder: Decoder[JFile] = keystoreFileDecoder(basePath)
     for {
       keystoreFile <- c.downField("keystore_file").as[JFile]
@@ -112,8 +118,8 @@ private object SslDecoders {
   implicit def rorSslDecoder(basePath: Path): Decoder[RorSsl] = Decoder.instance { c =>
     implicit val sslConfigDecoder: Decoder[SslConfiguration] = sslConfigurationDecoder(basePath)
     for {
-      externalSsl <- c.downField("readonlyrest").downField("ssl").as[Option[SslConfiguration]]
       interNodeSsl <- c.downField("readonlyrest").downField("ssl_internode").as[Option[SslConfiguration]]
+      externalSsl <- c.downField("readonlyrest").downField("ssl").as[Option[SslConfiguration]]
     } yield RorSsl(externalSsl, interNodeSsl)
   }
 

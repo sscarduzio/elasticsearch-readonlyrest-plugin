@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
-import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CirceCoreFactory, CoreSettings}
+import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, RawRorConfigBasedCoreFactory, CoreSettings}
 import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -39,7 +39,7 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
-    new CirceCoreFactory
+    new RawRorConfigBasedCoreFactory
   }
   private val acl: Acl = factory
     .createCoreFrom(

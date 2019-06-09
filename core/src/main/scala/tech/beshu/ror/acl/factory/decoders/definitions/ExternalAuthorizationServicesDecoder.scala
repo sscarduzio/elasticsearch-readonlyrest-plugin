@@ -27,10 +27,10 @@ import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.SupportedHttpMethod.Get
 import tech.beshu.ror.acl.blocks.definitions.HttpExternalAuthorizationService.{AuthTokenName, AuthTokenSendMethod, QueryParam, SupportedHttpMethod}
 import tech.beshu.ror.acl.blocks.definitions._
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.HttpClientsFactory
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.decoders.common.decoderTupleListDecoder
 import tech.beshu.ror.acl.utils.CirceOps._
 

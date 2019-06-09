@@ -23,8 +23,8 @@ import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.SnapshotsRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
 class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRule] {

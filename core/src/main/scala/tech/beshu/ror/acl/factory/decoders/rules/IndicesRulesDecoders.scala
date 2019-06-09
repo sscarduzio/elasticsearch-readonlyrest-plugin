@@ -21,8 +21,8 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.{Const, Value}
 import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, IndicesRule, RepositoriesRule, SnapshotsRule}
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.IndicesDecodersHelper._
 import tech.beshu.ror.acl.utils.CirceOps._

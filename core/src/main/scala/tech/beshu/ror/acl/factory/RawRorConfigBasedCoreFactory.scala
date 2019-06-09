@@ -27,9 +27,9 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError._
-import tech.beshu.ror.acl.factory.CirceCoreFactory.{AclCreationError, Attributes}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError._
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.acl.factory.RulesValidator.ValidationError
 import tech.beshu.ror.acl.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.acl.factory.decoders.definitions._
@@ -54,9 +54,9 @@ trait CoreFactory {
                      httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
 }
 
-class CirceCoreFactory(implicit clock: Clock,
-                       uuidProvider: UuidProvider,
-                       resolver: StaticVariablesResolver)
+class RawRorConfigBasedCoreFactory(implicit clock: Clock,
+                                   uuidProvider: UuidProvider,
+                                   resolver: StaticVariablesResolver)
   extends CoreFactory with Logging {
 
   override def createCoreFrom(config: RawRorConfig,
@@ -275,7 +275,7 @@ class CirceCoreFactory(implicit clock: Clock,
     }
 }
 
-object CirceCoreFactory {
+object RawRorConfigBasedCoreFactory {
 
   sealed trait AclCreationError {
     def reason: Reason

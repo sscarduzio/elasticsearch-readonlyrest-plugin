@@ -23,11 +23,11 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions._
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration

@@ -20,9 +20,9 @@ import cats.Id
 import io.circe.{Decoder, HCursor}
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.{Name, SignatureCheckMethod}
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.acl.factory.CirceCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
