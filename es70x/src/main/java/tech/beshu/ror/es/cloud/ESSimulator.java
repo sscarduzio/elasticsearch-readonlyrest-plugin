@@ -129,8 +129,8 @@ public class ESSimulator {
 
   private static void logReq(ESAwareRequest ear){
     System.out.println("HTTP level request parsed into ES level request: " +
-        ear.getIr().getMethod() + ", " +
-        ear.getIr().getUri() + " -> " +
+        ear.getIncomingRequest().getMethod() + ", " +
+        ear.getIncomingRequest().getUri() + " -> " +
         ear.getAction() + ", " +
         ear.getActionRequest().getClass().getSimpleName()
     );

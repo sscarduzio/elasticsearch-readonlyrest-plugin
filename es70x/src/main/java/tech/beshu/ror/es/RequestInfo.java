@@ -95,7 +95,7 @@ public class RequestInfo implements RequestInfoShim {
   private Integer contentLength;
   private ESContext context;
 
-  RequestInfo(RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
+  public RequestInfo(RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
       ClusterService clusterService, ThreadPool threadPool, ESContext context, RemoteClusterService remoteClusterService) {
     this.context = context;
     this.logger = context.logger(getClass());
