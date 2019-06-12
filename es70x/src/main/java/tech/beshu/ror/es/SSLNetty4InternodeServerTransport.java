@@ -40,7 +40,7 @@ import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
-import tech.beshu.ror.SSLCertParser;
+import tech.beshu.ror.utils.SSLCertParser;
 import tech.beshu.ror.configuration.SslConfiguration;
 
 import javax.net.ssl.SSLEngine;

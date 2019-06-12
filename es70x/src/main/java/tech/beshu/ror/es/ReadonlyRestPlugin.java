@@ -65,7 +65,7 @@ import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.RorSsl;
-import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.settings.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
@@ -103,7 +103,7 @@ public class ReadonlyRestPlugin extends Plugin
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
-    this.sslConfig = SslConfiguration.load(environment.configFile())
+    this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
         .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
   }
 

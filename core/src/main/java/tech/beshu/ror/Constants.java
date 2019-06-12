@@ -20,7 +20,6 @@ package tech.beshu.ror;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import tech.beshu.ror.adminapi.AdminRestApi$;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -59,10 +58,10 @@ public class Constants {
   public static final String HEADER_USER_ORIGIN = "x-ror-origin";
 
   public static final List<List<String>> RR_ADMIN_ROUTES = new ArrayList<List<String>>() {{
-    add(Lists.newArrayList("POST", AdminRestApi$.MODULE$.forceReloadRorPath().endpointString()));
-    add(Lists.newArrayList("GET", AdminRestApi$.MODULE$.provideRorIndexConfigPath().endpointString()));
-    add(Lists.newArrayList("POST", AdminRestApi$.MODULE$.updateIndexConfigurationPath().endpointString()));
-    add(Lists.newArrayList("GET", AdminRestApi$.MODULE$.provideRorFileConfigPath().endpointString()));
+    add(Lists.newArrayList("POST", Constants.REST_REFRESH_PATH));
+    add(Lists.newArrayList("GET", Constants.REST_CONFIGURATION_PATH));
+    add(Lists.newArrayList("POST", Constants.REST_CONFIGURATION_PATH));
+    add(Lists.newArrayList("GET", Constants.REST_CONFIGURATION_FILE_PATH));
     add(Lists.newArrayList("GET", Constants.REST_METADATA_PATH));
   }};
 

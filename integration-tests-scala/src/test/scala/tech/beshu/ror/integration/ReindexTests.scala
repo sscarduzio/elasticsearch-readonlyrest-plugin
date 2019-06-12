@@ -23,13 +23,13 @@ import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
 
-class ReindexTest extends WordSpec with ForAllTestContainer with ESVersionSupport {
+class ReindexTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/reindex/readonlyrest.yml",
     numberOfInstances = 1,
-    ReindexTest.nodeDataInitializer()
+    ReindexTests.nodeDataInitializer()
   )
 
   private lazy val user1ActionManager = new ActionManager(container.nodesContainers.head.client("dev1", "test"))
@@ -37,21 +37,20 @@ class ReindexTest extends WordSpec with ForAllTestContainer with ESVersionSuppor
   "A reindex request" should {
     "be able to proceed" when {
       "user has permission to source index and dest index" excludeES ("es51x", "es52x") in {
-        val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test1_index"))
+        val result = user1ActionManager.action("_reindex", ReindexTests.reindexPayload("test1_index"))
         assertEquals(200, result.getResponseCode)
       }
     }
     "not be able to proceed" when {
       "user has no permission to source index and dest index" excludeES ("es51x", "es52x") in {
-        val result = user1ActionManager.action("_reindex", ReindexTest.reindexPayload("test2_index"))
+        val result = user1ActionManager.action("_reindex", ReindexTests.reindexPayload("test2_index"))
         assertEquals(401, result.getResponseCode)
       }
     }
   }
 }
 
-
-object ReindexTest {
+object ReindexTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")

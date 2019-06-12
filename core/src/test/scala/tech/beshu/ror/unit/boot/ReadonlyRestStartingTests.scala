@@ -10,7 +10,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
-import tech.beshu.ror.acl.{Acl, AclStaticContext}
+import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAclStaticContext}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword, SSLSettingsMalformedException}
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
@@ -24,7 +24,7 @@ import scala.collection.JavaConverters._
 class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory with Eventually {
 
   implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = scaled(Span(10, Seconds)), interval = scaled(Span(100, Millis)))
+    PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   "A ReadonlyREST core" should {
     "be loaded from file" when {
@@ -35,13 +35,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .once()
           .returns(Task.now(Left(CannotReachContentSource)))
 
-        val coreFactory = mock[CoreFactory]
-        (coreFactory.createCoreFrom _)
-          .expects(where {
-            (config: RawRorConfig, _) => config == rorConfigFromResource("/boot_tests/no_index_config_file_config_provided/readonlyrest.yml")
-          })
-          .once()
-          .returns(Task.now(Right(CoreSettings(mock[Acl], mock[AclStaticContext], None))))
+        val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/no_index_config_file_config_provided/readonlyrest.yml")
 
         val result = readonlyRestBoot(coreFactory)
           .start(
@@ -54,17 +48,12 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         inside(result) { case Right(instance) =>
           eventually {
             instance.engine.isDefined should be(true)
+            instance.engine.get.context
           }
         }
       }
       "file loading is forced in elasticsearch.yml" in {
-        val coreFactory = mock[CoreFactory]
-        (coreFactory.createCoreFrom _)
-          .expects(where {
-            (config: RawRorConfig, _) => config == rorConfigFromResource("/boot_tests/forced_file_loading/readonlyrest.yml")
-          })
-          .once()
-          .returns(Task.now(Right(CoreSettings(mock[Acl], mock[AclStaticContext], None))))
+        val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading/readonlyrest.yml")
 
         val result = readonlyRestBoot(coreFactory)
           .start(
@@ -83,21 +72,11 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       "index is available and file config is provided" in {
         val resourcesPath = "/boot_tests/index_config_available_file_config_provided/"
         val indexConfigFile = "readonlyrest_index.yml"
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
-        (mockedIndexJsonContentManager.sourceOf _)
-          .expects(".readonlyrest", "settings", "1")
-          .once()
-          .returns(Task.now(Right(
-            Map("settings" -> getResourceContent(resourcesPath + indexConfigFile).asInstanceOf[Any]).asJava
-          )))
 
-        val coreFactory = mock[CoreFactory]
-        (coreFactory.createCoreFrom _)
-          .expects(where {
-            (config: RawRorConfig, _) => config == rorConfigFromResource(resourcesPath + indexConfigFile)
-          })
-          .once()
-          .returns(Task.now(Right(CoreSettings(mock[Acl], mock[AclStaticContext], None))))
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+
+        val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
 
         val result = readonlyRestBoot(coreFactory)
           .start(
@@ -116,21 +95,11 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       "index is available and file config is not provided" in {
         val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
         val indexConfigFile = "readonlyrest_index.yml"
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
-        (mockedIndexJsonContentManager.sourceOf _)
-          .expects(".readonlyrest", "settings", "1")
-          .once()
-          .returns(Task.now(Right(
-            Map("settings" -> getResourceContent(resourcesPath + indexConfigFile).asInstanceOf[Any]).asJava
-          )))
 
-        val coreFactory = mock[CoreFactory]
-        (coreFactory.createCoreFrom _)
-          .expects(where {
-            (config: RawRorConfig, _) => config == rorConfigFromResource(resourcesPath + indexConfigFile)
-          })
-          .once()
-          .returns(Task.now(Right(CoreSettings(mock[Acl], mock[AclStaticContext], None))))
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+
+        val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
 
         val result = readonlyRestBoot(coreFactory)
           .start(
@@ -147,6 +116,38 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         }
       }
     }
+    "be reloaded if index config changes" in {
+      val resourcesPath = "/boot_tests/index_config_reloading/"
+      val originIndexConfigFile = "readonlyrest.yml"
+      val updatedIndexConfigFile = "updated_readonlyrest.yml"
+
+      val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + originIndexConfigFile)
+      mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
+
+      val coreFactory = mock[CoreFactory]
+      mockCoreFactory(coreFactory, resourcesPath + originIndexConfigFile, DisabledAclStaticContext)
+      mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
+
+      val result = readonlyRestBoot(coreFactory)
+        .start(
+          getResourcePath(resourcesPath),
+          mock[AuditSink],
+          mockedIndexJsonContentManager
+        )
+        .runSyncUnsafe()
+
+      inside(result) { case Right(instance) =>
+        eventually {
+          instance.engine.isDefined should be(true)
+          instance.engine.get.context should be (DisabledAclStaticContext)
+        }
+        eventually {
+          instance.engine.isDefined should be(true)
+          instance.engine.get.context should not be DisabledAclStaticContext
+        }
+      }
+    }
   }
 
   "A ReadonlyREST ES API SSL settings" should {
@@ -156,8 +157,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         file.getName should be("keystore.jks")
         keystorePassword should be(KeystorePassword("readonlyrest1"))
         keyPass should be(KeyPass("readonlyrest2"))
-        allowedProtocols.asScala should be(Set.empty)
-        allowedCiphers.asScala should be(Set.empty)
+        allowedProtocols should be(Set.empty)
+        allowedCiphers should be(Set.empty)
       }
       ssl.interNodeSsl should be(None)
     }
@@ -168,8 +169,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           file.getName should be("keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
-          allowedProtocols.asScala should be(Set.empty)
-          allowedCiphers.asScala should be(Set.empty)
+          allowedProtocols should be(Set.empty)
+          allowedCiphers should be(Set.empty)
         }
         ssl.interNodeSsl should be(None)
       }
@@ -204,8 +205,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         file.getName should be("keystore.jks")
         keystorePassword should be(KeystorePassword("readonlyrest1"))
         keyPass should be(KeyPass("readonlyrest2"))
-        allowedProtocols.asScala should be(Set.empty)
-        allowedCiphers.asScala should be(Set.empty)
+        allowedProtocols should be(Set.empty)
+        allowedCiphers should be(Set.empty)
       }
       ssl.externalSsl should be(None)
     }
@@ -216,8 +217,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           file.getName should be("keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
-          allowedProtocols.asScala should be(Set.empty)
-          allowedCiphers.asScala should be(Set.empty)
+          allowedProtocols should be(Set.empty)
+          allowedCiphers should be(Set.empty)
         }
         ssl.externalSsl should be(None)
       }
@@ -249,9 +250,30 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     new ReadonlyRest {
       override implicit protected val clock: Clock = Clock.systemUTC()
       override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-
       override protected def coreFactory: CoreFactory = factory
     }
+  }
+
+  private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexJsonContentManager, resourceFileName: String) = {
+    (mockedManager.sourceOf _)
+      .expects(".readonlyrest", "settings", "1")
+      .once()
+      .returns(Task.now(Right(
+        Map("settings" -> getResourceContent(resourceFileName).asInstanceOf[Any]).asJava
+      )))
+    mockedManager
+  }
+
+  private def mockCoreFactory(mockedCoreFactory: CoreFactory,
+                              resourceFileName: String,
+                              aclStaticContext: AclStaticContext = mock[AclStaticContext]) = {
+    (mockedCoreFactory.createCoreFrom _)
+      .expects(where {
+        (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
+      })
+      .once()
+      .returns(Task.now(Right(CoreSettings(mock[Acl], aclStaticContext, None))))
+    mockedCoreFactory
   }
 
 }

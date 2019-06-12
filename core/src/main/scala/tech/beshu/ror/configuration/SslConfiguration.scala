@@ -67,8 +67,8 @@ final case class SslConfiguration(keystoreFile: JFile,
                                   keystorePassword: Option[SslConfiguration.KeystorePassword],
                                   keyPass: Option[SslConfiguration.KeyPass],
                                   keyAlias: Option[SslConfiguration.KeyAlias],
-                                  allowedProtocols: java.util.Set[SslConfiguration.Protocol],
-                                  allowedCiphers: java.util.Set[SslConfiguration.Cipher],
+                                  allowedProtocols: Set[SslConfiguration.Protocol],
+                                  allowedCiphers: Set[SslConfiguration.Cipher],
                                   verifyClientAuth: Boolean)
 
 object SslConfiguration {
@@ -100,7 +100,6 @@ private object SslDecoders {
   private implicit val protocolDecoder: Decoder[Protocol] = Decoder.decodeString.map(Protocol.apply)
 
   private implicit def sslConfigurationDecoder(basePath: Path): Decoder[Option[SslConfiguration]] = Decoder.instance { c =>
-    import scala.collection.JavaConverters._
     implicit val jFileDecoder: Decoder[JFile] = keystoreFileDecoder(basePath)
     whenEnabled(c) {
       for {
@@ -116,8 +115,8 @@ private object SslDecoders {
         keystorePassword,
         keyPass,
         keyAlias,
-        protocols.getOrElse(Set.empty[Protocol]).asJava,
-        ciphers.getOrElse(Set.empty[Cipher]).asJava,
+        protocols.getOrElse(Set.empty[Protocol]),
+        ciphers.getOrElse(Set.empty[Cipher]),
         verify.getOrElse(false)
       )
     }

@@ -26,6 +26,7 @@ import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 import tech.beshu.ror.Constants;
+import tech.beshu.ror.adminapi.AdminRestApi$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.RRAdminRequest;
 
@@ -36,9 +37,11 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
   @Inject
   public RestRRAdminAction(Settings settings, RestController controller) {
     super(settings);
-    Constants.RR_ADMIN_ROUTES.forEach(kv -> {
-      controller.registerHandler(RestRequest.Method.valueOf(kv.get(0)), kv.get(1), this);
-    });
+    controller.registerHandler(RestRequest.Method.valueOf("POST"), AdminRestApi$.MODULE$.forceReloadRorPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("GET"), AdminRestApi$.MODULE$.provideRorIndexConfigPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("POST"), AdminRestApi$.MODULE$.updateIndexConfigurationPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("GET"), AdminRestApi$.MODULE$.provideRorFileConfigPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("GET"), Constants.REST_METADATA_PATH, this);
   }
 
   public String getName() {

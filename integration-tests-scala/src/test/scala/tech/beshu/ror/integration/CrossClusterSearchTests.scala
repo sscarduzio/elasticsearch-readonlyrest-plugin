@@ -24,14 +24,14 @@ import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 
-class CrossClusterSearchTest extends WordSpec with ForAllTestContainer with ESVersionSupport {
+class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
   override val container: ReadonlyRestEsRemoteClustersContainer = ReadonlyRestEsCluster.createRemoteClustersContainer(
     NonEmptyList.of(
-      LocalClusterDef("ROR1", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer()),
-      LocalClusterDef("ROR2", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTest.nodeDataInitializer())
+      LocalClusterDef("ROR1", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTests.nodeDataInitializer()),
+      LocalClusterDef("ROR2", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTests.nodeDataInitializer())
     ),
-    CrossClusterSearchTest.remoteClustersInitializer()
+    CrossClusterSearchTests.remoteClustersInitializer()
   )
 
   private lazy val user1SearchManager = new SearchManager(container.localClusters.head.nodesContainers.head.client("dev1", "test"))
@@ -54,7 +54,7 @@ class CrossClusterSearchTest extends WordSpec with ForAllTestContainer with ESVe
   }
 }
 
-object CrossClusterSearchTest {
+object CrossClusterSearchTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")

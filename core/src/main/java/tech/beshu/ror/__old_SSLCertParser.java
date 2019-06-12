@@ -35,6 +35,7 @@ import java.util.Base64;
 /**
  * Created by sscarduzio on 02/07/2017.
  */
+// todo: to remove
 public class __old_SSLCertParser {
 
   private static final Logger logger = LogManager.getLogger(__old_SSLCertParser.class);

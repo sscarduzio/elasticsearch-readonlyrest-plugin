@@ -36,7 +36,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpChannel;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.SSLCertParser;
+import tech.beshu.ror.utils.SSLCertParser;
 import tech.beshu.ror.configuration.SslConfiguration;
 
 import java.io.ByteArrayInputStream;
