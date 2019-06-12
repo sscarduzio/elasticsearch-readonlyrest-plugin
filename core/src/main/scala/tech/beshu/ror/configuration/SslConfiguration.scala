@@ -4,10 +4,11 @@ import java.io.{File => JFile}
 import java.nio.file.{Path, Paths}
 
 import better.files._
-import io.circe.Decoder
+import io.circe.{Decoder, DecodingFailure, HCursor}
 import io.circe.yaml._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.configuration.SslConfiguration.SSLSettingsMalformedException
 
 import scala.language.implicitConversions
 
@@ -16,12 +17,14 @@ final case class RorSsl(externalSsl: Option[SslConfiguration],
 
 object RorSsl extends Logging {
 
+  val noSsl = RorSsl(None, None)
+
   def load(esConfigFolderPath: Path): Task[RorSsl] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
       .fold(
-        error => throw new IllegalArgumentException(s"Invalid SSL configuration: $error"),
+        _ => throw SSLSettingsMalformedException(s"Invalid SSL configuration"),
         {
           case RorSsl(None, None) => fallbackToRorConfig(esConfigFolderPath)
           case ssl => ssl
@@ -33,11 +36,15 @@ object RorSsl extends Logging {
                                  (implicit rorSslDecoder: Decoder[RorSsl]) = {
     val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
     logger.info(s"Cannot find SSL configuration is elasticsearch.yml, trying: ${rorConfig.pathAsString}")
-    loadSslConfigFromFile(rorConfig)
-      .fold(
-        error => throw new IllegalArgumentException(s"Invalid SSL configuration: $error"),
-        identity
-      )
+    if(rorConfig.exists) {
+      loadSslConfigFromFile(rorConfig)
+        .fold(
+          _ => throw SSLSettingsMalformedException(s"Invalid SSL configuration"),
+          identity
+        )
+    } else {
+      RorSsl.noSsl
+    }
   }
 
   private def loadSslConfigFromFile(file: File)
@@ -74,13 +81,13 @@ object SslConfiguration {
   final case class Cipher(value: String)
   final case class Protocol(value: String)
 
+  final case class SSLSettingsMalformedException(message: String) extends Exception
 }
 
 private object SslDecoders {
 
   import tech.beshu.ror.configuration.SslConfiguration._
 
-  // todo: better errors?
   private implicit def keystoreFileDecoder(basePath: Path): Decoder[JFile] =
     Decoder
       .decodeString
@@ -92,35 +99,42 @@ private object SslDecoders {
   private implicit val cipherDecoder: Decoder[Cipher] = Decoder.decodeString.map(Cipher.apply)
   private implicit val protocolDecoder: Decoder[Protocol] = Decoder.decodeString.map(Protocol.apply)
 
-  private implicit def sslConfigurationDecoder(basePath: Path): Decoder[SslConfiguration] = Decoder.instance { c =>
+  private implicit def sslConfigurationDecoder(basePath: Path): Decoder[Option[SslConfiguration]] = Decoder.instance { c =>
     import scala.collection.JavaConverters._
     implicit val jFileDecoder: Decoder[JFile] = keystoreFileDecoder(basePath)
-    for {
-      keystoreFile <- c.downField("keystore_file").as[JFile]
-      keystorePassword <- c.downField("keystore_pass").as[Option[KeystorePassword]]
-      keyPass <- c.downField("key_pass").as[Option[KeyPass]]
-      keyAlias <- c.downField("key_alias").as[Option[KeyAlias]]
-      ciphers <- c.downField("allowed_ciphers").as[Option[Set[Cipher]]]
-      protocols <- c.downField("allowed_protocols").as[Option[Set[Protocol]]]
-      verify <- c.downField("verification").as[Option[Boolean]]
-    } yield SslConfiguration(
-      keystoreFile,
-      keystorePassword,
-      keyPass,
-      keyAlias,
-      protocols.getOrElse(Set.empty[Protocol]).asJava,
-      ciphers.getOrElse(Set.empty[Cipher]).asJava,
-      verify.getOrElse(false)
-    )
+    whenEnabled(c) {
+      for {
+        keystoreFile <- c.downField("keystore_file").as[JFile]
+        keystorePassword <- c.downField("keystore_pass").as[Option[KeystorePassword]]
+        keyPass <- c.downField("key_pass").as[Option[KeyPass]]
+        keyAlias <- c.downField("key_alias").as[Option[KeyAlias]]
+        ciphers <- c.downField("allowed_ciphers").as[Option[Set[Cipher]]]
+        protocols <- c.downField("allowed_protocols").as[Option[Set[Protocol]]]
+        verify <- c.downField("verification").as[Option[Boolean]]
+      } yield SslConfiguration(
+        keystoreFile,
+        keystorePassword,
+        keyPass,
+        keyAlias,
+        protocols.getOrElse(Set.empty[Protocol]).asJava,
+        ciphers.getOrElse(Set.empty[Cipher]).asJava,
+        verify.getOrElse(false)
+      )
+    }
   }
 
-  // todo: enable
   implicit def rorSslDecoder(basePath: Path): Decoder[RorSsl] = Decoder.instance { c =>
-    implicit val sslConfigDecoder: Decoder[SslConfiguration] = sslConfigurationDecoder(basePath)
+    implicit val sslConfigDecoder: Decoder[Option[SslConfiguration]] = sslConfigurationDecoder(basePath)
     for {
-      interNodeSsl <- c.downField("readonlyrest").downField("ssl_internode").as[Option[SslConfiguration]]
-      externalSsl <- c.downField("readonlyrest").downField("ssl").as[Option[SslConfiguration]]
-    } yield RorSsl(externalSsl, interNodeSsl)
+      interNodeSsl <- c.downField("readonlyrest").downField("ssl_internode").as[Option[Option[SslConfiguration]]]
+      externalSsl <- c.downField("readonlyrest").downField("ssl").as[Option[Option[SslConfiguration]]]
+    } yield RorSsl(externalSsl.flatten, interNodeSsl.flatten)
   }
 
+  private def whenEnabled(cursor: HCursor)(decoding: => Either[DecodingFailure, SslConfiguration]) = {
+    for {
+      isEnabled <- cursor.downField("enable").as[Option[Boolean]]
+      result <- if(isEnabled.getOrElse(true)) decoding.map(Some.apply) else Right(None)
+    } yield result
+  }
 }

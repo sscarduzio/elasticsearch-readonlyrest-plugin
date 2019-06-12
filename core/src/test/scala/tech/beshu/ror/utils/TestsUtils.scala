@@ -129,8 +129,18 @@ object TestsUtils {
     RawRorConfig(parser.parse(yaml).right.get)
   }
 
+  def rorConfigFromResource(resource: String): RawRorConfig = {
+    rorConfigFrom {
+      getResourceContent(resource)
+    }
+  }
+
   def getResourcePath(resource: String): Path = {
     File(getClass.getResource(resource).getPath).path
+  }
+
+  def getResourceContent(resource: String): String = {
+    File(getResourcePath(resource)).contentAsString
   }
 
 }
