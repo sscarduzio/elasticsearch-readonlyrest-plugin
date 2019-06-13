@@ -14,15 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.misc
+package tech.beshu.ror.utils.misc;
 
-import io.circe.Json
-import io.circe.yaml.parser
+import io.circe.Json;
+import io.circe.yaml.parser.package$;
 
-object CirceJsonHelper {
-
-  def jsonFrom(yaml: String): Json = {
-    parser.parse(yaml).right.get
+public class CirceJsonHelper {
+  public static Json jsonFrom(String yaml) {
+    return package$.MODULE$.parse(yaml).right().get();
   }
-
 }

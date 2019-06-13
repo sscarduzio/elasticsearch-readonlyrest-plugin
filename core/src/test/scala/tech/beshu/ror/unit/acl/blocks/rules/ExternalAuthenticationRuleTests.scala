@@ -43,6 +43,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
+        (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(baHeader))
 
         val blockContext = mock[BlockContext]
@@ -62,7 +63,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]
-
+        (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(baHeader))
         val blockContext = mock[BlockContext]
 

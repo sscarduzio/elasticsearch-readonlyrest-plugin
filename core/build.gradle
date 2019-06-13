@@ -117,8 +117,6 @@ dependencies {
 configurations {
     all*.exclude group: 'org.hdrhistogram', module: 'HdrHistogram'
     all*.exclude group: 'org.scala-lang', module: 'scala-compiler'
-    all*.exclude group: 'org.slf4j', module: 'slf4j-api'
-    all*.exclude group: 'org.slf4j', module: 'slf4j-simple'
     all*.exclude group: 'dom4j', module: 'dom4j'
 }
 

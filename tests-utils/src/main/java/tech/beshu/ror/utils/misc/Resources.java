@@ -14,20 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.misc
+package tech.beshu.ror.utils.misc;
 
-import java.nio.file.Path
+import better.files.File;
+import better.files.package$;
+import scala.collection.Seq$;
 
-import better.files.File
+import java.nio.file.Path;
 
-object Resources {
+public class Resources {
 
-  def getResourcePath(resource: String): Path = {
-    File(getClass.getResource(resource).getPath).path
+  public static Path getResourcePath(String resource) {
+    return File.apply(Resources.class.getResource(resource).getPath(), Seq$.MODULE$.<String>newBuilder().result()).path();
   }
 
-  def getResourceContent(resource: String): String = {
-    File(getResourcePath(resource)).contentAsString
+  public static String getResourceContent(String resource) {
+    return File.apply(getResourcePath(resource)).contentAsString(package$.MODULE$.DefaultCharset());
   }
 
 }
