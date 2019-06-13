@@ -39,7 +39,7 @@ public class ActionManager {
     this.restClient = restClient;
   }
 
-  public ActionResult action(String action, String payload) {
+  public ActionResult actionPost(String action, String payload) {
     try {
       return call(createPostActionRequest(action, payload));
     } catch (IOException e) {
@@ -47,7 +47,15 @@ public class ActionManager {
     }
   }
 
-  public ActionResult action(String action) {
+  public ActionResult actionPost(String action) {
+    try {
+      return call(createPostActionRequest(action));
+    } catch (IOException e) {
+      throw new IllegalStateException("Action manager '" + action + "' failed", e);
+    }
+  }
+
+  public ActionResult actionGet(String action) {
     try {
       return call(createGetActionRequest(action));
     } catch (IOException e) {
@@ -73,6 +81,10 @@ public class ActionManager {
     } catch (UnsupportedEncodingException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private HttpUriRequest createPostActionRequest(String action) {
+    return new HttpPost(restClient.from("/" + action));
   }
 
   private HttpUriRequest createGetActionRequest(String action) {

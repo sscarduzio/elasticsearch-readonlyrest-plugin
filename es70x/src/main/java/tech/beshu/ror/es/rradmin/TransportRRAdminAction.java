@@ -33,6 +33,8 @@ import tech.beshu.ror.es.EsIndexJsonContentProvider;
 import tech.beshu.ror.es.RorInstanceSupplier;
 import tech.beshu.ror.utils.OsEnvVarsProvider$;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
 
 public class TransportRRAdminAction extends HandledTransportAction<RRAdminRequest, RRAdminResponse> {
@@ -53,15 +55,18 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
   protected void doExecute(Task task, RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
     Optional<AdminRestApi> api = getApi();
     if(api.isPresent()) {
-      api.get()
-          .call(request.getAdminRequest())
-          .runAsync(
-              response -> {
-                listener.onResponse(new RRAdminResponse(response));
-                return null;
-              },
-              adminRestApiScheduler
-          );
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+        api.get()
+            .call(request.getAdminRequest())
+            .runAsync(
+                response -> {
+                  listener.onResponse(new RRAdminResponse(response));
+                  return null;
+                },
+                adminRestApiScheduler
+            );
+        return null;
+      });
     } else {
       listener.onResponse(new RRAdminResponse(AdminRestApi.AdminResponse$.MODULE$.notAvailable()));
     }

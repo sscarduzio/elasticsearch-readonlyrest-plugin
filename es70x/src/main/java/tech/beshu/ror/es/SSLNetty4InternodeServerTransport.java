@@ -47,8 +47,11 @@ import javax.net.ssl.SSLEngine;
 import java.io.ByteArrayInputStream;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import scala.collection.JavaConverters$;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
@@ -114,7 +117,24 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     public SslChannelInitializer(String name) {
       super(name);
-      new SSLCertParser(ssl, (certChain, privateKey) -> {
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        return null;
+      });
+    }
+
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
+      super.initChannel(ch);
+
+      context.ifPresent(sslCtx -> {
+        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
+      });
+    }
+
+    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
+      @Override
+      public void mkSSLContext(String certChain, String privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -133,13 +153,21 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
           if(ssl.allowedCiphers().size() > 0) {
             sslCtxBuilder.ciphers(
-                ssl.allowedCiphers().stream().map(SslConfiguration.Cipher::value).collect(Collectors.toList())
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedCiphers())
+                    .stream()
+                    .map(SslConfiguration.Cipher::value)
+                    .collect(Collectors.toList())
             );
           }
 
           if(ssl.allowedProtocols().size() > 0) {
             sslCtxBuilder.protocols(
-                ssl.allowedProtocols().stream().map(SslConfiguration.Protocol::value).toArray(String[]::new)
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedProtocols())
+                    .stream()
+                    .map(SslConfiguration.Protocol::value)
+                    .toArray(String[]::new)
             );
           }
 
@@ -150,16 +178,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
           logger.error("Failed to load SSL CertChain & private key from Keystore! "
               + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
-      });
-    }
-
-    @Override
-    protected void initChannel(Channel ch) throws Exception {
-      super.initChannel(ch);
-
-      context.ifPresent(sslCtx -> {
-        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
-      });
+      }
     }
   }
 

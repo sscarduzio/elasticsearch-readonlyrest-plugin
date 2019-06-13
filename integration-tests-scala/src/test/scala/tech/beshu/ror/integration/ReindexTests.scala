@@ -37,13 +37,13 @@ class ReindexTests extends WordSpec with ForAllTestContainer with ESVersionSuppo
   "A reindex request" should {
     "be able to proceed" when {
       "user has permission to source index and dest index" excludeES ("es51x", "es52x") in {
-        val result = user1ActionManager.action("_reindex", ReindexTests.reindexPayload("test1_index"))
+        val result = user1ActionManager.actionPost("_reindex", ReindexTests.reindexPayload("test1_index"))
         assertEquals(200, result.getResponseCode)
       }
     }
     "not be able to proceed" when {
       "user has no permission to source index and dest index" excludeES ("es51x", "es52x") in {
-        val result = user1ActionManager.action("_reindex", ReindexTests.reindexPayload("test2_index"))
+        val result = user1ActionManager.actionPost("_reindex", ReindexTests.reindexPayload("test2_index"))
         assertEquals(401, result.getResponseCode)
       }
     }

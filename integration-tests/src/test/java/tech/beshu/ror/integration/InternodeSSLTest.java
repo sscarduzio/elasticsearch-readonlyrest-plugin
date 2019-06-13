@@ -19,7 +19,7 @@
 package tech.beshu.ror.integration;
 
 import com.google.common.net.HostAndPort;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.actionPost.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
