@@ -21,7 +21,6 @@ import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -34,10 +33,8 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
-import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
@@ -62,7 +59,6 @@ import tech.beshu.ror.boot.RorInstance;
 import tech.beshu.ror.boot.StartingFailure;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
-import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
@@ -140,7 +136,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       if (engine.isDefined()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
       } else {
-        chain.proceed(task, action, request, listener);
+        listener.onFailure(new RorNotReadyResponse());
       }
       return null;
     });
@@ -256,20 +252,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       @Override
       public void onForbidden() {
-        ElasticsearchStatusException exc = new ElasticsearchStatusException(
-            aclStaticContext.forbiddenRequestMessage(),
-            aclStaticContext.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN
-        ) {
-          @Override
-          public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            builder.field("reason", aclStaticContext.forbiddenRequestMessage());
-            return builder;
-          }
-        };
-        if (aclStaticContext.doesRequirePassword()) {
-          exc.addHeader("WWW-Authenticate", "Basic");
-        }
-        baseListener.onFailure(exc);
+        baseListener.onFailure(new ForbiddenResponse(aclStaticContext));
       }
 
       @Override

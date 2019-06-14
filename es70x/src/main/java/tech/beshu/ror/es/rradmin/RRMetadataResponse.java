@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-package tech.beshu.ror.es;
+package tech.beshu.ror.es.rradmin;
 
 import com.google.common.collect.Maps;
 import org.elasticsearch.action.ActionResponse;
