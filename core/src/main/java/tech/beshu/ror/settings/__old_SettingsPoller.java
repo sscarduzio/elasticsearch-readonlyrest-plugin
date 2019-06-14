@@ -18,7 +18,7 @@
 package tech.beshu.ror.settings;
 
 import tech.beshu.ror.shims.es.ESContext;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -50,7 +50,7 @@ public class __old_SettingsPoller {
   }
 
   public void poll() {
-    LoggerShim logger = context.logger(getClass());
+    __old_LoggerShim logger = context.logger(getClass());
 
     // When ReloadableSettings is created at boot time, wait the cluster to stabilise and read in-index settings.
 

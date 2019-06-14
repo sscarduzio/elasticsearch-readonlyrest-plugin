@@ -14,33 +14,27 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.shims.es;
 
-package tech.beshu.ror.es.rradmin;
+/**
+ * Created by sscarduzio on 02/07/2017.
+ */
+// todo: to remove
+public interface __old_LoggerShim {
 
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionRequestValidationException;
-import org.elasticsearch.rest.RestRequest;
-import tech.beshu.ror.adminapi.AdminRestApi;
+  void trace(String message);
 
-public class RRAdminRequest extends ActionRequest {
+  void info(String message);
 
-  private RestRequest request;
+  void debug(String message);
 
-  public RRAdminRequest() {
-  }
+  void warn(String message);
 
-  public RRAdminRequest(RestRequest request) {
-    this.request = request;
-  }
+  void warn(String message, Throwable t);
 
-  public AdminRestApi.AdminRequest getAdminRequest() {
-    return new AdminRestApi.AdminRequest(request.method().name(), request.path(), request.content().utf8ToString());
-  }
+  void error(String message, Throwable t);
 
-  @Override
-  public ActionRequestValidationException validate() {
-    return null;
-  }
+  void error(String message);
 
-
+  boolean isDebugEnabled();
 }

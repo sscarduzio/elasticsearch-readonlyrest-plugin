@@ -29,54 +29,50 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
-import tech.beshu.ror.__old_SSLCertParser;
-import tech.beshu.ror.settings.__old_BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
+import scala.collection.JavaConverters$;
+import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.utils.SSLCertParser;
 
 import javax.net.ssl.SSLEngine;
 import java.io.ByteArrayInputStream;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
-  private static final boolean DEFAULT_SSL_VERIFICATION_INTERNODE = true;
-  private final __old_BasicSettings.SSLSettings sslSettings;
-  private final LoggerShim logger;
-  private final boolean sslVerification;
+
+  private final Logger logger = LogManager.getLogger(this.getClass());
+  private final SslConfiguration ssl;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, NetworkService networkService, BigArrays bigArrays,
-      NamedWriteableRegistry namedWriteableRegistry, CircuitBreakerService circuitBreakerService, __old_BasicSettings.SSLSettings sslSettings) {
+      NamedWriteableRegistry namedWriteableRegistry, CircuitBreakerService circuitBreakerService, SslConfiguration ssl) {
     super(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService);
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
-    this.sslSettings = sslSettings;
-    this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_INTERNODE);
+    this.ssl = ssl;
   }
 
-  protected ChannelHandler getClientChannelInitializer() {
-    return getClientChannelInitializer(null);
-  }
-
+  @Override
   protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
-
     return new ClientChannelInitializer() {
-
       @Override
       protected void initChannel(Channel ch) throws Exception {
         super.initChannel(ch);
         logger.info(">> internode SSL channel initializing");
 
         SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
-        if (!sslVerification) {
+        if (!ssl.verifyClientAuth()) {
           sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
         SslContext sslCtx = sslCtxBuilder.build();
@@ -116,35 +112,9 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     public SslChannelInitializer(String name) {
       super(name);
-      new __old_SSLCertParser(sslSettings, (certChain, privateKey) -> {
-        try {
-          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
-              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-              null
-          );
-
-          // Cert verification enable by default for internode
-          if (sslVerification) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
-          }
-
-          logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
-          __old_SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), sslSettings);
-          sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
-
-          sslSettings.getAllowedSSLProtocols()
-                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
-                     .ifPresent(sslCtxBuilder::protocols);
-
-          context = Optional.of(sslCtxBuilder.build());
-
-        } catch (Exception e) {
-          context = Optional.empty();
-          logger.error("Failed to load SSL CertChain & private key from Keystore! "
-              + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-        }
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        return null;
       });
     }
 
@@ -154,6 +124,55 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
       context.ifPresent(sslCtx -> {
         ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
       });
+    }
+
+    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
+      @Override
+      public void mkSSLContext(String certChain, String privateKey) {
+        try {
+          // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
+          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
+              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
+              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
+              null
+          );
+
+          // Cert verification enable by default for internode
+          if (ssl.verifyClientAuth()) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+          }
+
+          logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
+
+          if(ssl.allowedCiphers().size() > 0) {
+            sslCtxBuilder.ciphers(
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedCiphers())
+                    .stream()
+                    .map(SslConfiguration.Cipher::value)
+                    .collect(Collectors.toList())
+            );
+          }
+
+          if(ssl.allowedProtocols().size() > 0) {
+            sslCtxBuilder.protocols(
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedProtocols())
+                    .stream()
+                    .map(SslConfiguration.Protocol::value)
+                    .toArray(String[]::new)
+            );
+          }
+
+          context = Optional.of(sslCtxBuilder.build());
+
+        } catch (Exception e) {
+          context = Optional.empty();
+          logger.error("Failed to load SSL CertChain & private key from Keystore! "
+              + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+        }
+      }
     }
   }
 

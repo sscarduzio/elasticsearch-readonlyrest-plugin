@@ -23,7 +23,7 @@ import org.elasticsearch.common.logging.Loggers;
 import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.AbstractESContext;
 import tech.beshu.ror.shims.es.ESVersion;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -35,8 +35,8 @@ public class ESContextImpl extends AbstractESContext {
     this.settings = settings;
   }
 
-  public static LoggerShim mkLoggerShim(Logger l) {
-    return new LoggerShim() {
+  public static __old_LoggerShim mkLoggerShim(Logger l) {
+    return new __old_LoggerShim() {
 
       @Override
       public void trace(String message) {
@@ -91,7 +91,7 @@ public class ESContextImpl extends AbstractESContext {
     return sw.toString();
   }
   @Override
-  public LoggerShim mkLogger(Class<?> clazz) {
+  public __old_LoggerShim mkLogger(Class<?> clazz) {
     return mkLoggerShim(Loggers.getLogger(clazz.getName()));
   }
 

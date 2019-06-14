@@ -45,7 +45,7 @@ import org.elasticsearch.index.shard.ShardUtils;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.ESContextImpl;
 import tech.beshu.ror.settings.__old_BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 import tech.beshu.ror.utils.FilterTransient;
 
 import java.io.IOException;
@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
  * @author Datasweet <contact@datasweet.fr>
  */
 public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
-  private final LoggerShim logger;
+  private final __old_LoggerShim logger;
   private final Function<ShardId, QueryShardContext> queryShardContextProvider;
   private final ThreadContext threadContext;
   private final Boolean enabled;

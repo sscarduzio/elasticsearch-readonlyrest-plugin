@@ -48,7 +48,7 @@ import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 import tech.beshu.ror.settings.__old_BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -63,7 +63,7 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final __old_BasicSettings basicSettings;
-  private final LoggerShim logger;
+  private final __old_LoggerShim logger;
   private Settings settings;
   private Environment environment;
 

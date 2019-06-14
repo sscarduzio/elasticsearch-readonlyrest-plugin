@@ -61,7 +61,7 @@ import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -96,7 +96,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       SettingsObservableImpl settingsObservable
   ) {
     super(settings);
-    LoggerShim loggerShim = ESContextImpl.mkLoggerShim(logger);
+    __old_LoggerShim loggerShim = ESContextImpl.mkLoggerShim(logger);
 
     Environment env = new Environment(settings);
     __old_BasicSettings baseSettings = __old_BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());

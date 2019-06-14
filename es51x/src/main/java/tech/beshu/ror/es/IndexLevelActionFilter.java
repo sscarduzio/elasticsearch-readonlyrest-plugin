@@ -60,7 +60,7 @@ import tech.beshu.ror.acl.request.RequestContext;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.shims.es.ESContext;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.io.IOException;
 import java.security.AccessController;
@@ -84,7 +84,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private final AtomicReference<Optional<RorEngineFactory.__old_Engine>> rorEngine;
   private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final LoggerShim loggerShim;
+  private final __old_LoggerShim loggerShim;
 
   private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 

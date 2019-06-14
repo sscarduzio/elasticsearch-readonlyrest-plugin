@@ -19,7 +19,7 @@ package tech.beshu.ror.settings;
 
 import com.google.common.base.Strings;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 import tech.beshu.ror.utils.ReflecUtils;
 
 import java.nio.file.Files;
@@ -88,7 +88,7 @@ public class __old_BasicSettings {
     }
   }
 
-  private static String slurpFile(LoggerShim logger, String filePath) {
+  private static String slurpFile(__old_LoggerShim logger, String filePath) {
     final String[] slurped = new String[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {
@@ -105,7 +105,7 @@ public class __old_BasicSettings {
     return slurped[0];
   }
 
-  public static __old_BasicSettings fromFileObj(LoggerShim logger, Path configPath, Object settingsObject) {
+  public static __old_BasicSettings fromFileObj(__old_LoggerShim logger, Path configPath, Object settingsObject) {
     logger.debug("reading settings path (file obj) " + configPath);
     if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
       logger.info("overriding  settings path to " + ROR_YAML_SETTINGS_PATH);
@@ -114,7 +114,7 @@ public class __old_BasicSettings {
     return fromFile(logger, configPath, (Map<String, ?>) ReflecUtils.invokeMethodCached(settingsObject, settingsObject.getClass(), "getAsStructuredMap"));
   }
 
-  public static __old_BasicSettings fromFile(LoggerShim logger, Path configPath, Map<String, ?> fallback) {
+  public static __old_BasicSettings fromFile(__old_LoggerShim logger, Path configPath, Map<String, ?> fallback) {
     logger.debug("reading settings path (file obj) " + configPath);
     if (!Strings.isNullOrEmpty(ROR_YAML_SETTINGS_PATH)) {
       logger.info("overriding settings  path to " + ROR_YAML_SETTINGS_PATH);

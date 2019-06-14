@@ -21,7 +21,7 @@ import com.google.gson.Gson;
 import com.google.common.collect.Maps;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -66,7 +66,7 @@ public class __old_SettingsUtils {
     return s[0];
   }
 
-  public static Map<String, ?> yaml2Map(String s, LoggerShim logger) {
+  public static Map<String, ?> yaml2Map(String s, __old_LoggerShim logger) {
     final Map[] m = new Map[1];
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       try {

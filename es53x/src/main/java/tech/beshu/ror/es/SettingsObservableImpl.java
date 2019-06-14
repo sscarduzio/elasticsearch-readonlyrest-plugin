@@ -38,7 +38,7 @@ import tech.beshu.ror.settings.__old_BasicSettings;
 import tech.beshu.ror.settings.__old_RawSettings;
 import tech.beshu.ror.settings.__old_SettingsObservable;
 import tech.beshu.ror.settings.__old_SettingsUtils;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 /**
  * Created by sscarduzio on 25/06/2017.
@@ -46,7 +46,7 @@ import tech.beshu.ror.shims.es.LoggerShim;
 
 @Singleton
 public class SettingsObservableImpl extends __old_SettingsObservable {
-  private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
+  private static final __old_LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
   private final Environment environment;
@@ -64,7 +64,7 @@ public class SettingsObservableImpl extends __old_SettingsObservable {
   }
 
   @Override
-  protected LoggerShim getLogger() {
+  protected __old_LoggerShim getLogger() {
     return logger;
   }
 

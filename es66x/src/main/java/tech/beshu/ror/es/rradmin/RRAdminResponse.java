@@ -30,7 +30,6 @@ import java.io.IOException;
 
 public class RRAdminResponse extends ActionResponse implements ToXContentObject {
 
-
   private static final Logger logger = LogManager.getLogger(RRAdminResponse.class);
   private final Either<Throwable, AdminRestApi.AdminResponse> response;
 

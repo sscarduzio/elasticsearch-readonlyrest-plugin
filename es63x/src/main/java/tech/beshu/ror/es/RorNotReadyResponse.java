@@ -14,26 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.shims.es;
+package tech.beshu.ror.es;
 
-/**
- * Created by sscarduzio on 02/07/2017.
- */
-public interface LoggerShim {
+import org.elasticsearch.ElasticsearchStatusException;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.rest.RestStatus;
 
-  void trace(String message);
+import java.io.IOException;
 
-  void info(String message);
+public class RorNotReadyResponse extends ElasticsearchStatusException {
 
-  void debug(String message);
+  public RorNotReadyResponse() {
+    super("ReadonlyREST is not ready", RestStatus.SERVICE_UNAVAILABLE);
+  }
 
-  void warn(String message);
-
-  void warn(String message, Throwable t);
-
-  void error(String message, Throwable t);
-
-  void error(String message);
-
-  boolean isDebugEnabled();
+  @Override
+  public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+    builder.field("reason", "Waiting for ReadonlyREST start");
+    return builder;
+  }
 }

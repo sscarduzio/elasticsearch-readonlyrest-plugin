@@ -20,7 +20,7 @@ package tech.beshu.ror.settings;
 import com.google.common.util.concurrent.FutureCallback;
 import tech.beshu.ror.shims.es.ESContext;
 import tech.beshu.ror.shims.es.ESVersion;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.nio.file.Path;
 import java.util.Observable;
@@ -37,7 +37,7 @@ abstract public class __old_SettingsObservable extends Observable {
 
   protected abstract boolean isClusterReady();
 
-  protected abstract LoggerShim getLogger();
+  protected abstract __old_LoggerShim getLogger();
 
   protected abstract __old_RawSettings getFromIndex();
 
@@ -88,7 +88,7 @@ abstract public class __old_SettingsObservable extends Observable {
       writeToIndex(newSettings, fut);
     } catch (Throwable t) {
       current = oldSettings;
-      throw new SettingsMalformedException(t.getMessage());
+      throw new IllegalStateException(t.getMessage());
     }
   }
 

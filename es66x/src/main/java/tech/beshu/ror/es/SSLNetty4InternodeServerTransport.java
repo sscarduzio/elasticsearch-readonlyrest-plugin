@@ -130,6 +130,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
       });
     }
+
     private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
       @Override
       public void mkSSLContext(String certChain, String privateKey) {

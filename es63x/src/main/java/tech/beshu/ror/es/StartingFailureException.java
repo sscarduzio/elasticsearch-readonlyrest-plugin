@@ -14,33 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es;
 
-package tech.beshu.ror.es.rradmin;
+import org.elasticsearch.ElasticsearchException;
+import tech.beshu.ror.boot.StartingFailure;
 
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionRequestValidationException;
-import org.elasticsearch.rest.RestRequest;
-import tech.beshu.ror.adminapi.AdminRestApi;
-
-public class RRAdminRequest extends ActionRequest {
-
-  private RestRequest request;
-
-  public RRAdminRequest() {
+public class StartingFailureException extends ElasticsearchException {
+  private StartingFailureException(String msg) {
+    super(msg);
   }
 
-  public RRAdminRequest(RestRequest request) {
-    this.request = request;
+  private StartingFailureException(String message, Throwable throwable) {
+    super(message, throwable);
   }
 
-  public AdminRestApi.AdminRequest getAdminRequest() {
-    return new AdminRestApi.AdminRequest(request.method().name(), request.path(), request.content().utf8ToString());
+  public static StartingFailureException from(StartingFailure failure) {
+    if(failure.throwable().isDefined()) {
+      return new StartingFailureException(failure.message(), failure.throwable().get());
+    } else {
+      return new StartingFailureException(failure.message());
+    }
   }
-
-  @Override
-  public ActionRequestValidationException validate() {
-    return null;
-  }
-
-
 }

@@ -22,7 +22,7 @@ public interface ESContext {
 
   ESShutdownObservable getShutDownObservable();
 
-  LoggerShim logger(Class<?> clazz);
+  __old_LoggerShim logger(Class<?> clazz);
 
   __old_BasicSettings getSettings();
 

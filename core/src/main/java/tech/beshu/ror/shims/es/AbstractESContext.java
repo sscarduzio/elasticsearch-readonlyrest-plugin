@@ -23,7 +23,7 @@ import java.util.HashMap;
 
 public abstract class AbstractESContext implements ESContext {
   public static ESShutdownObservable shutDownObservable;
-  private HashMap<Class<?>, LoggerShim> loggerCache = new HashMap<>(128);
+  private HashMap<Class<?>, __old_LoggerShim> loggerCache = new HashMap<>(128);
 
   protected AbstractESContext() {
     if (shutDownObservable == null) {
@@ -36,8 +36,8 @@ public abstract class AbstractESContext implements ESContext {
     return shutDownObservable;
   }
 
-  public LoggerShim logger(Class<?> clazz) {
-    LoggerShim shim = loggerCache.get(clazz);
+  public __old_LoggerShim logger(Class<?> clazz) {
+    __old_LoggerShim shim = loggerCache.get(clazz);
     if (shim != null) {
       return shim;
     }
@@ -50,7 +50,7 @@ public abstract class AbstractESContext implements ESContext {
     return shim;
   }
 
-  protected abstract LoggerShim mkLogger(Class<?> clazz);
+  protected abstract __old_LoggerShim mkLogger(Class<?> clazz);
 
   public abstract ESVersion getVersion();
 

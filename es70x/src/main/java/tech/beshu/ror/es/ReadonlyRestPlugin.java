@@ -137,7 +137,7 @@ public class ReadonlyRestPlugin extends Plugin
   public void onIndexModule(IndexModule indexModule) {
     indexModule.setSearcherWrapper(indexService -> {
       try {
-        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+        return new RoleIndexSearcherWrapper(indexService);
       } catch (Exception e) {
         e.printStackTrace();
       }

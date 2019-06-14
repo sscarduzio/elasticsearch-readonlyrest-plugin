@@ -28,12 +28,10 @@ import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.logging.LoggerMessageFormat;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.json.JsonXContent;
-import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.IndexService;
 import org.elasticsearch.index.engine.EngineException;
 import org.elasticsearch.index.query.ParsedQuery;
@@ -61,7 +59,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   private final Function<ShardId, QueryShardContext> queryShardContextProvider;
   private final ThreadContext threadContext;
 
-  public RoleIndexSearcherWrapper(IndexService indexService, Settings s, Environment env) throws Exception {
+  public RoleIndexSearcherWrapper(IndexService indexService) throws Exception {
     if (indexService == null) {
       throw new IllegalArgumentException("Please provide an indexService");
     }

@@ -49,7 +49,7 @@ import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 import tech.beshu.ror.settings.__old_BasicSettings;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.util.Collections;
 import java.util.List;
@@ -69,7 +69,7 @@ public class ReadonlyRestPlugin extends Plugin
     this.settings = s;
     this.environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
+    __old_LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
     this.basicSettings = __old_BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
   }
 

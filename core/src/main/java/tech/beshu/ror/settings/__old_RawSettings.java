@@ -19,7 +19,7 @@ package tech.beshu.ror.settings;
 import com.google.common.base.Joiner;
 import tech.beshu.ror.com.jayway.jsonpath.DocumentContext;
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath;
-import tech.beshu.ror.shims.es.LoggerShim;
+import tech.beshu.ror.shims.es.__old_LoggerShim;
 
 import java.util.List;
 import java.util.Map;
@@ -32,24 +32,24 @@ public class __old_RawSettings {
   private final Map<String, ?> raw;
   private final DocumentContext jpathContext;
   private final String rawYaml;
-  private final LoggerShim logger;
+  private final __old_LoggerShim logger;
 
-  public __old_RawSettings(String rawYaml, LoggerShim logger) {
+  public __old_RawSettings(String rawYaml, __old_LoggerShim logger) {
     this.logger = logger;
     this.rawYaml = replaceEnvVars(rawYaml);
     this.raw = __old_SettingsUtils.yaml2Map(rawYaml, logger);
     if (raw == null) {
-      throw new SettingsMalformedException("Received null ROR settings: " + raw);
+      throw new IllegalStateException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
   }
 
-  public __old_RawSettings(Map<String, ?> raw, LoggerShim logger) {
+  public __old_RawSettings(Map<String, ?> raw, __old_LoggerShim logger) {
     this.logger = logger;
     this.rawYaml = replaceEnvVars(__old_SettingsUtils.map2yaml(raw));
     this.raw = __old_SettingsUtils.yaml2Map(rawYaml, logger);
     if (raw == null) {
-      throw new SettingsMalformedException("Received null ROR settings: " + raw);
+      throw new IllegalStateException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(this.raw);
   }
@@ -62,12 +62,12 @@ public class __old_RawSettings {
     return out;
   }
 
-  static __old_RawSettings fromMap(Map<String, ?> r, LoggerShim logger) {
+  static __old_RawSettings fromMap(Map<String, ?> r, __old_LoggerShim logger) {
     String syntheticYaml = __old_SettingsUtils.map2yaml(r);
     return new __old_RawSettings(syntheticYaml, logger);
   }
 
-  public LoggerShim getLogger() {
+  public __old_LoggerShim getLogger() {
     return logger;
   }
 
@@ -96,7 +96,7 @@ public class __old_RawSettings {
       val = null;
     }
     if (val == null) {
-      throw new SettingsMalformedException("Could not find required attribute '" + attr + "' in file " + Joiner.on(",").withKeyValueSeparator(":").join(raw));
+      throw new IllegalStateException("Could not find required attribute '" + attr + "' in file " + Joiner.on(",").withKeyValueSeparator(":").join(raw));
     }
     return (T) val;
   }

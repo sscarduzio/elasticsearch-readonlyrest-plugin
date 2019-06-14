@@ -34,6 +34,7 @@ import tech.beshu.ror.es.rradmin.RRAdminRequest;
  * Created by sscarduzio on 21/03/2017.
  */
 public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
+
   @Inject
   public RestRRAdminAction(Settings settings, RestController controller) {
     super(settings);

@@ -137,7 +137,7 @@ public class ReadonlyRestPlugin extends Plugin
   public void onIndexModule(IndexModule indexModule) {
     indexModule.setSearcherWrapper(indexService -> {
       try {
-        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+        return new RoleIndexSearcherWrapper(indexService);
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -183,7 +183,7 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Override
   public void close() {
-    ESContextImpl.shutDownObservable.shutDown();
+    ilaf.stop();
   }
 
   @Override

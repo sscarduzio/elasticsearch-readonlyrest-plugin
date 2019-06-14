@@ -21,7 +21,6 @@ import com.google.common.base.Joiner;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import tech.beshu.ror.settings.__old_BasicSettings;
-import tech.beshu.ror.settings.SettingsMalformedException;
 
 import javax.net.ssl.SSLEngine;
 import java.io.FileInputStream;
@@ -113,7 +112,7 @@ public class __old_SSLCertParser {
           sslKeyAlias = inferredAlias;
         }
         else {
-          throw new SettingsMalformedException("No alias found, therefore key found in keystore!");
+          throw new IllegalStateException("No alias found, therefore key found in keystore!");
         }
       }
       else {
@@ -121,7 +120,7 @@ public class __old_SSLCertParser {
       }
       Key key = ks.getKey(sslKeyAlias, keyPassBa);
       if (key == null) {
-        throw new SettingsMalformedException("Private key not found in keystore for alias: " + sslKeyAlias);
+        throw new IllegalStateException("Private key not found in keystore for alias: " + sslKeyAlias);
       }
 
 
