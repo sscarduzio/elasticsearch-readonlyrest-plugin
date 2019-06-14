@@ -27,7 +27,8 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Map;
 
-public class SettingsUtils {
+// todo: remove
+public class __old_SettingsUtils {
 
   private final static Gson gson = new Gson();
 

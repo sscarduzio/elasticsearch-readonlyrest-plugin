@@ -35,9 +35,9 @@ import org.elasticsearch.env.Environment;
 
 import com.google.common.util.concurrent.FutureCallback;
 import tech.beshu.ror.settings.__old_BasicSettings;
-import tech.beshu.ror.settings.RawSettings;
-import tech.beshu.ror.settings.SettingsObservable;
-import tech.beshu.ror.settings.SettingsUtils;
+import tech.beshu.ror.settings.__old_RawSettings;
+import tech.beshu.ror.settings.__old_SettingsObservable;
+import tech.beshu.ror.settings.__old_SettingsUtils;
 import tech.beshu.ror.shims.es.LoggerShim;
 
 /**
@@ -45,7 +45,7 @@ import tech.beshu.ror.shims.es.LoggerShim;
  */
 
 @Singleton
-public class SettingsObservableImpl extends SettingsObservable {
+public class SettingsObservableImpl extends __old_SettingsObservable {
   private static final LoggerShim logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(SettingsObservableImpl.class));
 
   private final NodeClient client;
@@ -68,7 +68,7 @@ public class SettingsObservableImpl extends SettingsObservable {
     return logger;
   }
 
-  protected RawSettings getFromIndex() {
+  protected __old_RawSettings getFromIndex() {
     GetResponse resp;
     try {
       resp = client.prepareGet(".readonlyrest", "settings", "1").get();
@@ -81,14 +81,14 @@ public class SettingsObservableImpl extends SettingsObservable {
       throw new ElasticsearchException(SETTINGS_NOT_FOUND_MESSAGE);
     }
     String yamlString = (String) resp.getSource().get("settings");
-    return new RawSettings(yamlString, logger);
+    return new __old_RawSettings(yamlString, logger);
   }
 
   @Override
-  protected void writeToIndex(RawSettings rawSettings, FutureCallback f) {
+  protected void writeToIndex(__old_RawSettings rawSettings, FutureCallback f) {
     client.prepareBulk().add(
       client.prepareIndex(".readonlyrest", "settings", "1")
-        .setSource(SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
+        .setSource(__old_SettingsUtils.toJsonStorage(rawSettings.yaml()), XContentType.JSON).request()
     ).execute().addListener(new ActionListener<BulkResponse>() {
       @Override
       public void onResponse(BulkResponse bulkItemResponses) {

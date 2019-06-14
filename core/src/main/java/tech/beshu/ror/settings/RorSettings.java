@@ -18,6 +18,7 @@
 package tech.beshu.ror.settings;
 
 
+// todo: do we need it?
 public class RorSettings {
   public static final String ATTRIBUTE_NAME = "readonlyrest";
   public static final String ATTRIBUTE_ENABLE = "enable";

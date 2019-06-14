@@ -26,8 +26,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-public class SettingsPoller {
-  private final SettingsObservable obs;
+public class __old_SettingsPoller {
+  private final __old_SettingsObservable obs;
   private final ESContext context;
   private final Integer subsequentAttemptsIntervalSeconds;
   private final Boolean forever;
@@ -35,7 +35,7 @@ public class SettingsPoller {
   private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
   private Integer intervalSeconds;
 
-  public SettingsPoller(SettingsObservable obs, ESContext context, Integer intervalSeconds, Integer subsequentAttemptsIntervalSeconds, Boolean forever) {
+  public __old_SettingsPoller(__old_SettingsObservable obs, ESContext context, Integer intervalSeconds, Integer subsequentAttemptsIntervalSeconds, Boolean forever) {
     this.obs = obs;
     this.context = context;
     this.intervalSeconds = intervalSeconds;

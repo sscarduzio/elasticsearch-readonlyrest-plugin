@@ -14,25 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es;
 
-package tech.beshu.ror.es.rradmin;
+import org.elasticsearch.ElasticsearchException;
+import tech.beshu.ror.boot.StartingFailure;
 
-import org.elasticsearch.action.Action;
-import org.elasticsearch.client.ElasticsearchClient;
-import tech.beshu.ror.adminapi.AdminRestApi;
-
-public class RRAdminAction extends Action<RRAdminResponse> {
-
-  public static final String NAME = "cluster:admin/rradmin/refreshsettings";
-  public static final RRAdminAction INSTANCE = new RRAdminAction();
-
-  public RRAdminAction() {
-    super(NAME);
+public class StartingFailureException extends ElasticsearchException {
+  private StartingFailureException(String msg) {
+    super(msg);
   }
 
-  @Override
-  public RRAdminResponse newResponse() {
-    return new RRAdminResponse(AdminRestApi.AdminResponse$.MODULE$.notAvailable());
+  private StartingFailureException(String message, Throwable throwable) {
+    super(message, throwable);
   }
 
+  public static StartingFailureException from(StartingFailure failure) {
+    if(failure.throwable().isDefined()) {
+      return new StartingFailureException(failure.message(), failure.throwable().get());
+    } else {
+      return new StartingFailureException(failure.message());
+    }
+  }
 }

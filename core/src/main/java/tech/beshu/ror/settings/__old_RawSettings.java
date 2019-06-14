@@ -26,27 +26,28 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-public class RawSettings {
+// todo: to remove
+public class __old_RawSettings {
 
   private final Map<String, ?> raw;
   private final DocumentContext jpathContext;
   private final String rawYaml;
   private final LoggerShim logger;
 
-  public RawSettings(String rawYaml, LoggerShim logger) {
+  public __old_RawSettings(String rawYaml, LoggerShim logger) {
     this.logger = logger;
     this.rawYaml = replaceEnvVars(rawYaml);
-    this.raw = SettingsUtils.yaml2Map(rawYaml, logger);
+    this.raw = __old_SettingsUtils.yaml2Map(rawYaml, logger);
     if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
     this.jpathContext = JsonPath.parse(raw);
   }
 
-  public RawSettings(Map<String, ?> raw, LoggerShim logger) {
+  public __old_RawSettings(Map<String, ?> raw, LoggerShim logger) {
     this.logger = logger;
-    this.rawYaml = replaceEnvVars(SettingsUtils.map2yaml(raw));
-    this.raw = SettingsUtils.yaml2Map(rawYaml, logger);
+    this.rawYaml = replaceEnvVars(__old_SettingsUtils.map2yaml(raw));
+    this.raw = __old_SettingsUtils.yaml2Map(rawYaml, logger);
     if (raw == null) {
       throw new SettingsMalformedException("Received null ROR settings: " + raw);
     }
@@ -61,9 +62,9 @@ public class RawSettings {
     return out;
   }
 
-  static RawSettings fromMap(Map<String, ?> r, LoggerShim logger) {
-    String syntheticYaml = SettingsUtils.map2yaml(r);
-    return new RawSettings(syntheticYaml, logger);
+  static __old_RawSettings fromMap(Map<String, ?> r, LoggerShim logger) {
+    String syntheticYaml = __old_SettingsUtils.map2yaml(r);
+    return new __old_RawSettings(syntheticYaml, logger);
   }
 
   public LoggerShim getLogger() {
@@ -122,13 +123,13 @@ public class RawSettings {
     return opt(attr).flatMap(obj -> ((List<?>) obj).isEmpty() ? Optional.empty() : Optional.of((List<?>) obj));
   }
 
-  public RawSettings inner(String attr) {
-    return new RawSettings((Map<String, ?>) req(attr), logger);
+  public __old_RawSettings inner(String attr) {
+    return new __old_RawSettings((Map<String, ?>) req(attr), logger);
   }
 
   @SuppressWarnings("unchecked")
-  public Optional<RawSettings> innerOpt(String attr) {
-    return opt(attr).map(r -> RawSettings.fromMap((Map<String, ?>) r, logger));
+  public Optional<__old_RawSettings> innerOpt(String attr) {
+    return opt(attr).map(r -> __old_RawSettings.fromMap((Map<String, ?>) r, logger));
   }
 
   public Map<String, ?> asMap() {

@@ -131,7 +131,6 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionListener<Response> listener,
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
       Option<Engine> engine = rorInstance.engine();
       if (engine.isDefined()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
@@ -141,6 +140,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       return null;
     });
   }
+
   private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(
       Engine engine,
       Task task,

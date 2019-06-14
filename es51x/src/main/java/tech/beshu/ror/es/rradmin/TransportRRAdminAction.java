@@ -28,8 +28,8 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import tech.beshu.ror.es.ResponseActionListener;
 import tech.beshu.ror.es.SettingsObservableImpl;
-import tech.beshu.ror.settings.RawSettings;
-import tech.beshu.ror.settings.SettingsUtils;
+import tech.beshu.ror.settings.__old_RawSettings;
+import tech.beshu.ror.settings.__old_SettingsUtils;
 
 import static tech.beshu.ror.Constants.REST_CONFIGURATION_FILE_PATH;
 import static tech.beshu.ror.Constants.REST_CONFIGURATION_PATH;
@@ -73,7 +73,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
             return;
           }
           // Can throw SettingsMalformedException
-          settingsObservable.refreshFromStringAndPersist(new RawSettings(SettingsUtils.extractYAMLfromJSONStorage(body), settingsObservable.getCurrent().getLogger()), new FutureCallback() {
+          settingsObservable.refreshFromStringAndPersist(new __old_RawSettings(__old_SettingsUtils.extractYAMLfromJSONStorage(body), settingsObservable.getCurrent().getLogger()), new FutureCallback() {
             @Override
             public void onSuccess(Object result) {
               listener.onResponse(new RRAdminResponse("updated settings"));

@@ -59,14 +59,14 @@ public class __old_BasicSettings {
   private final String forbiddenMessage;
   private final Boolean auditCollector;
 
-  private final RawSettings raw;
+  private final __old_RawSettings raw;
   private final Path configPath;
-  private final RawSettings raw_global;
+  private final __old_RawSettings raw_global;
   private Optional<SSLSettings> sslHttpSettings;
   private Optional<SSLSettings> sslTxpSettings;
 
   @SuppressWarnings("unchecked")
-  public __old_BasicSettings(RawSettings raw_global, Path configPath) {
+  public __old_BasicSettings(__old_RawSettings raw_global, Path configPath) {
     this.configPath = configPath;
     this.raw_global = raw_global;
     this.raw = raw_global.inner(ATTRIBUTE_NAME);
@@ -127,13 +127,13 @@ public class __old_BasicSettings {
 
       String s4s = slurpFile(logger, rorSettingsFilePath);
       try {
-        if (SettingsUtils.yaml2Map(s4s, logger).containsKey("readonlyrest")) {
-          return new __old_BasicSettings(new RawSettings(s4s, logger), configPath);
+        if (__old_SettingsUtils.yaml2Map(s4s, logger).containsKey("readonlyrest")) {
+          return new __old_BasicSettings(new __old_RawSettings(s4s, logger), configPath);
         }
-        return new __old_BasicSettings(new RawSettings(fallback, logger), configPath);
+        return new __old_BasicSettings(new __old_RawSettings(fallback, logger), configPath);
       } catch (Throwable t) {
         logger.error("cannot parse settings file ", t);
-        return new __old_BasicSettings(new RawSettings(fallback, logger), configPath);
+        return new __old_BasicSettings(new __old_RawSettings(fallback, logger), configPath);
       }
 
     } catch (Throwable t) {
@@ -154,7 +154,7 @@ public class __old_BasicSettings {
     return auditCollector;
   }
 
-  public RawSettings getRaw() {
+  public __old_RawSettings getRaw() {
     return raw_global;
   }
 
@@ -180,9 +180,9 @@ public class __old_BasicSettings {
     private String keystoreFile;
     private Optional<Boolean> verifyClient;
 
-    public SSLSettings(RawSettings raw, String prefix) {
+    public SSLSettings(__old_RawSettings raw, String prefix) {
       // SSL
-      Optional<RawSettings> sslSettingsOpt = raw.innerOpt(prefix.replaceFirst(".$", ""));
+      Optional<__old_RawSettings> sslSettingsOpt = raw.innerOpt(prefix.replaceFirst(".$", ""));
       Optional sslEnableOpt = raw.booleanOpt(prefix + "enable");
       Optional<String> ksOpt = raw.stringOpt(prefix + ATTRIBUTE_SSL_KEYSTORE_FILE);
 

@@ -56,7 +56,6 @@ import scala.collection.JavaConverters$;
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-
   private final SslConfiguration ssl;
 
   public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,

@@ -20,7 +20,6 @@ package tech.beshu.ror.es;
 import com.google.common.collect.Sets;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
@@ -36,7 +35,6 @@ import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
-import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
@@ -66,7 +64,6 @@ import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.RorSsl;
 import tech.beshu.ror.configuration.RorSsl$;
-import tech.beshu.ror.settings.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
@@ -86,7 +83,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
@@ -188,30 +184,6 @@ public class ReadonlyRestPlugin extends Plugin
   @Override
   public void close() {
     ilaf.stop();
-  }
-
-  // todo: check
-  @Override
-  public List<Setting<?>> getSettings() {
-    // No need, we have settings in config/readonlyrest.yml
-    //return super.getSettings();
-    return AllowedSettings.list().entrySet().stream().map((e) -> {
-      Setting<?> theSetting = null;
-      switch (e.getValue()) {
-        case BOOL:
-          theSetting = Setting.boolSetting(e.getKey(), Boolean.FALSE, Setting.Property.NodeScope);
-          break;
-        case STRING:
-          theSetting = new Setting<>(e.getKey(), "", (value) -> value, Setting.Property.NodeScope);
-          break;
-        case GROUP:
-          theSetting = Setting.groupSetting(e.getKey(), Setting.Property.Dynamic, Setting.Property.NodeScope);
-          break;
-        default:
-          throw new ElasticsearchException("invalid settings " + e);
-      }
-      return theSetting;
-    }).collect(Collectors.toList());
   }
 
   @Override

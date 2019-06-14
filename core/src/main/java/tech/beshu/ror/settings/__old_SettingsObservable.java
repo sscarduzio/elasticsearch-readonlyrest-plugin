@@ -26,11 +26,11 @@ import java.nio.file.Path;
 import java.util.Observable;
 
 // todo: to remove
-abstract public class SettingsObservable extends Observable {
+abstract public class __old_SettingsObservable extends Observable {
 
   public static final String SETTINGS_NOT_FOUND_MESSAGE = "no settings found in index";
 
-  protected RawSettings current;
+  protected __old_RawSettings current;
   private boolean printedInfo = false;
 
   abstract protected Path getConfigPath();
@@ -39,15 +39,15 @@ abstract public class SettingsObservable extends Observable {
 
   protected abstract LoggerShim getLogger();
 
-  protected abstract RawSettings getFromIndex();
+  protected abstract __old_RawSettings getFromIndex();
 
-  protected abstract void writeToIndex(RawSettings rawSettings, FutureCallback f);
+  protected abstract void writeToIndex(__old_RawSettings rawSettings, FutureCallback f);
 
-  public RawSettings getCurrent() {
+  public __old_RawSettings getCurrent() {
     return current;
   }
 
-  public RawSettings getFromFile() {
+  public __old_RawSettings getFromFile() {
     getLogger().info("reading settings from file " + getConfigPath().toAbsolutePath());
     return __old_BasicSettings.fromFile(getLogger(), getConfigPath(), current.asMap()).getRaw();
   }
@@ -55,7 +55,7 @@ abstract public class SettingsObservable extends Observable {
   public void refreshFromIndex() {
     try {
       getLogger().debug("[CLUSTERWIDE SETTINGS] checking index..");
-      RawSettings fromIndex = getFromIndex();
+      __old_RawSettings fromIndex = getFromIndex();
 
       if (!fromIndex.asMap().equals(current.asMap())) {
         updateSettings(fromIndex);
@@ -80,8 +80,8 @@ abstract public class SettingsObservable extends Observable {
     notifyObservers();
   }
 
-  public void refreshFromStringAndPersist(RawSettings newSettings, FutureCallback fut) {
-    RawSettings oldSettings = current;
+  public void refreshFromStringAndPersist(__old_RawSettings newSettings, FutureCallback fut) {
+    __old_RawSettings oldSettings = current;
     current = newSettings;
     try {
       forceRefresh();
@@ -96,10 +96,10 @@ abstract public class SettingsObservable extends Observable {
     if (context.getVersion().before(ESVersion.V_5_0_0)) {
       return;
     }
-    new SettingsPoller(this, context, 1, 5, true).poll();
+    new __old_SettingsPoller(this, context, 1, 5, true).poll();
   }
 
-  private void updateSettings(RawSettings newSettings) {
+  private void updateSettings(__old_RawSettings newSettings) {
     this.current = newSettings;
     setChanged();
     notifyObservers();

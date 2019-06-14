@@ -14,15 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es;
 
-package tech.beshu.ror.settings;
+import org.elasticsearch.ElasticsearchStatusException;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.rest.RestStatus;
 
-public class SettingsMalformedException extends RuntimeException {
-  public SettingsMalformedException(String msg) {
-    super(msg);
+import java.io.IOException;
+
+public class RorNotReadyResponse extends ElasticsearchStatusException {
+
+  public RorNotReadyResponse() {
+    super("ReadonlyREST is not ready", RestStatus.SERVICE_UNAVAILABLE);
   }
 
-  public SettingsMalformedException(String msg, Throwable t) {
-    super(msg, t);
+  @Override
+  public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+    builder.field("reason", "Waiting for ReadonlyREST start");
+    return builder;
   }
 }

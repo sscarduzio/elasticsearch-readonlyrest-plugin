@@ -49,8 +49,8 @@ import java.util.stream.Collectors;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
-  private final SslConfiguration ssl;
   private final Logger logger = LogManager.getLogger(this.getClass());
+  private final SslConfiguration ssl;
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
       ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, SslConfiguration ssl) {
