@@ -49,7 +49,6 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
     return "ror-admin-handler";
   }
 
-
   @Override
   protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) {
     return (channel) -> client.execute(

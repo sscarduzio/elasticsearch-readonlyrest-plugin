@@ -83,13 +83,13 @@ public class ReadonlyRestPlugin extends Plugin
 
   private final RorSsl sslConfig;
 
+  @Inject
   private IndexLevelActionFilter ilaf;
   private Environment environment;
 
   @Inject
-  public ReadonlyRestPlugin(Settings s, Path p, IndexLevelActionFilter ilaf) {
+  public ReadonlyRestPlugin(Settings s, Path p) {
     this.environment = new Environment(s, p);
-    this.ilaf = ilaf;
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
     this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())

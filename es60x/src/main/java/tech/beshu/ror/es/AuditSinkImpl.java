@@ -105,6 +105,5 @@ public class AuditSinkImpl {
       logger.error("Failed flushing the BulkProcessor: " + failure.getMessage());
       failure.printStackTrace();
     }
-
   }
 }
