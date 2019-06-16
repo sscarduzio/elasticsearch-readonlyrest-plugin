@@ -19,6 +19,7 @@ package tech.beshu.ror.es;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
+import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -31,10 +32,8 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import tech.beshu.ror.settings.__old_BasicSettings;
 
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -91,8 +90,8 @@ public class AuditSinkImpl {
       if (response.hasFailures()) {
         logger.error("Some failures flushing the BulkProcessor: ");
         Arrays.stream(response.getItems())
-            .filter(r -> r.isFailed())
-            .map(r -> r.getFailureMessage())
+            .filter(BulkItemResponse::isFailed)
+            .map(BulkItemResponse::getFailureMessage)
             .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
             .forEach((message, times) -> logger.error(times + "x: " + message));
       }

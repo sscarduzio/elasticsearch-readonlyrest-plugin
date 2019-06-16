@@ -17,13 +17,8 @@
 
 package tech.beshu.ror;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 public class Constants {
@@ -36,11 +31,6 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_KB = 100;
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
-  public static final String SETTINGS_YAML_FILE = "readonlyrest.yml";
-  // todo: clean up
-  public final static String REST_REFRESH_PATH = "/_readonlyrest/admin/refreshconfig";
-  public final static String REST_CONFIGURATION_PATH = "/_readonlyrest/admin/config";
-  public final static String REST_CONFIGURATION_FILE_PATH = "/_readonlyrest/admin/config/file";
   public final static String REST_METADATA_PATH = "/_readonlyrest/metadata/current_user";
   public final static String FILTER_TRANSIENT = "_filter";
   public final static String FIELDS_TRANSIENT = "_fields";
@@ -56,25 +46,6 @@ public class Constants {
   public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
   public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
   public static final String HEADER_USER_ORIGIN = "x-ror-origin";
-
-  public static final List<List<String>> RR_ADMIN_ROUTES = new ArrayList<List<String>>() {{
-    add(Lists.newArrayList("POST", Constants.REST_REFRESH_PATH));
-    add(Lists.newArrayList("GET", Constants.REST_CONFIGURATION_PATH));
-    add(Lists.newArrayList("POST", Constants.REST_CONFIGURATION_PATH));
-    add(Lists.newArrayList("GET", Constants.REST_CONFIGURATION_FILE_PATH));
-    add(Lists.newArrayList("GET", Constants.REST_METADATA_PATH));
-  }};
-
-  public static String makeAbsolutePath(String path, String basePath) {
-
-    if (Strings.isNullOrEmpty(basePath)) {
-      new Exception("Cannot find readonlyrest plugin base path!").printStackTrace();
-    }
-    if (path != null && !path.startsWith(File.separator)) {
-      return basePath + File.separator + path;
-    }
-    return path;
-  }
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",

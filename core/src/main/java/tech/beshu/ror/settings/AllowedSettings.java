@@ -23,8 +23,24 @@ import java.util.Map;
 // todo: refactor
 public class AllowedSettings {
 
+  public static final String ATTRIBUTE_NAME = "readonlyrest";
+  public static final String ATTRIBUTE_ENABLE = "enable";
+  public static final String ATTRIBUTE_FORBIDDEN_RESPONSE = "response_if_req_forbidden";
+  public static final String ATTRIBUTE_SEARCHLOG = "searchlog";
+  public static final String PROMPT_FOR_BASIC_AUTH = "prompt_for_basic_auth";
+  public static final String AUDIT_COLLECTOR = "audit_collector";
+
+  // SSL
+  public static final String ATTRIBUTE_SSL_KEYSTORE_FILE = "keystore_file";
+  public static final String ATTRIBUTE_SSL_KEYSTORE_PASS = "keystore_pass";
+  public static final String ATTRIBUTE_SSL_KEY_PASS = "key_pass";
+  public static final String ATTRIBUTE_SSL_KEY_ALIAS = "key_alias";
+
+  public static final String CUSTOM_AUDIT_SERIALIZER = "audit_serializer";
+  public static final String CACHE_HASHING_ALGO = "cache_hashing_algo";
+
   public static Map<String, SettingType> list() {
-    String prefix = RorSettings.ATTRIBUTE_NAME + ".";
+    String prefix = ATTRIBUTE_NAME + ".";
     String sslPrefix = prefix + "ssl" + ".";
     String rule_prefix = prefix + "access_control_rules.";
     String users_prefix = prefix + "users.";
@@ -36,20 +52,20 @@ public class AllowedSettings {
     return ImmutableMap.<String, SettingType>builder()
 
       // Top level
-      .put(prefix + RorSettings.ATTRIBUTE_ENABLE, SettingType.BOOL)
-      .put(prefix + RorSettings.ATTRIBUTE_FORBIDDEN_RESPONSE, SettingType.STRING)
-      .put(prefix + RorSettings.ATTRIBUTE_SEARCHLOG, SettingType.BOOL)
-      .put(prefix + RorSettings.PROMPT_FOR_BASIC_AUTH, SettingType.BOOL)
-      .put(prefix + RorSettings.AUDIT_COLLECTOR, SettingType.BOOL)
-      .put(prefix + __old_BasicSettings.CUSTOM_AUDIT_SERIALIZER, SettingType.STRING)
-      .put(prefix + __old_BasicSettings.CACHE_HASHING_ALGO, SettingType.STRING)
+      .put(prefix + ATTRIBUTE_ENABLE, SettingType.BOOL)
+      .put(prefix + ATTRIBUTE_FORBIDDEN_RESPONSE, SettingType.STRING)
+      .put(prefix + ATTRIBUTE_SEARCHLOG, SettingType.BOOL)
+      .put(prefix + PROMPT_FOR_BASIC_AUTH, SettingType.BOOL)
+      .put(prefix + AUDIT_COLLECTOR, SettingType.BOOL)
+      .put(prefix + CUSTOM_AUDIT_SERIALIZER, SettingType.STRING)
+      .put(prefix + CACHE_HASHING_ALGO, SettingType.STRING)
 
       // SSL
       .put(sslPrefix + "enable", SettingType.BOOL)
-      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEYSTORE_FILE, SettingType.STRING)
-      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEYSTORE_PASS, SettingType.STRING)
-      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEY_PASS, SettingType.STRING)
-      .put(sslPrefix + __old_BasicSettings.ATTRIBUTE_SSL_KEY_ALIAS, SettingType.STRING)
+      .put(sslPrefix + ATTRIBUTE_SSL_KEYSTORE_FILE, SettingType.STRING)
+      .put(sslPrefix + ATTRIBUTE_SSL_KEYSTORE_PASS, SettingType.STRING)
+      .put(sslPrefix + ATTRIBUTE_SSL_KEY_PASS, SettingType.STRING)
+      .put(sslPrefix + ATTRIBUTE_SSL_KEY_ALIAS, SettingType.STRING)
 
       // Groups
       .put(rule_prefix, SettingType.GROUP)
