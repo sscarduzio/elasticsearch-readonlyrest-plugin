@@ -58,7 +58,6 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
 
   @Override
   protected void doExecute(RRAdminRequest request, ActionListener<RRAdminResponse> listener) {
-
     Optional<AdminRestApi> api = getApi();
     if(api.isPresent()) {
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {

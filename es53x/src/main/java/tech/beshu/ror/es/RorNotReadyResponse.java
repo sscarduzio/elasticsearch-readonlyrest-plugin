@@ -14,30 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es;
 
+import org.elasticsearch.ElasticsearchStatusException;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.rest.RestStatus;
 
-package tech.beshu.ror.es.rradmin;
+import java.io.IOException;
 
-import org.elasticsearch.action.Action;
-import org.elasticsearch.client.ElasticsearchClient;
-import tech.beshu.ror.adminapi.AdminRestApi;
+public class RorNotReadyResponse extends ElasticsearchStatusException {
 
-public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
-
-  public static final String NAME = "cluster:admin/rradmin/refreshsettings";
-  public static final RRAdminAction INSTANCE = new RRAdminAction();
-
-  public RRAdminAction() {
-    super(NAME);
+  public RorNotReadyResponse() {
+    super("ReadonlyREST is not ready", RestStatus.SERVICE_UNAVAILABLE);
   }
 
   @Override
-  public RRAdminRequestBuilder newRequestBuilder(ElasticsearchClient client) {
-    return new RRAdminRequestBuilder(client, INSTANCE);
-  }
-
-  @Override
-  public RRAdminResponse newResponse() {
-    return new RRAdminResponse(AdminRestApi.AdminResponse$.MODULE$.notAvailable());
+  public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+    builder.field("reason", "Waiting for ReadonlyREST start");
+    return builder;
   }
 }

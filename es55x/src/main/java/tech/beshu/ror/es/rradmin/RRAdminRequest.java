@@ -23,6 +23,7 @@ import org.elasticsearch.rest.RestRequest;
 import tech.beshu.ror.adminapi.AdminRestApi;
 
 public class RRAdminRequest extends ActionRequest {
+
   private RestRequest request;
 
   public RRAdminRequest() {
