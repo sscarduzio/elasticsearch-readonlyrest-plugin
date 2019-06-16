@@ -19,14 +19,14 @@ package tech.beshu.ror.es;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.elasticsearch.ElasticsearchException;
+import monix.execution.Scheduler$;
+import monix.execution.schedulers.CanBlock$;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
+import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
-import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.env.Environment;
@@ -41,43 +41,41 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.settings.AllowedSettings;
+import tech.beshu.ror.configuration.RorSsl;
+import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
-import tech.beshu.ror.settings.__old_BasicSettings;
-import tech.beshu.ror.shims.es.__old_LoggerShim;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final __old_BasicSettings basicSettings;
-  private final __old_LoggerShim logger;
-  private Settings settings;
+  private final RorSsl sslConfig;
+
+  @Inject
+  private IndexLevelActionFilter ilaf;
   private Environment environment;
 
   public ReadonlyRestPlugin(Settings s) {
-    this.settings = s;
     this.environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
-    this.basicSettings = __old_BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
+    FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
+    this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
+        .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
   }
 
   @Override
   public void close() {
-    ESContextImpl.shutDownObservable.shutDown();
+    ilaf.stop();
   }
 
   @Override
@@ -94,41 +92,15 @@ public class ReadonlyRestPlugin extends Plugin
       NamedWriteableRegistry namedWriteableRegistry,
       NetworkService networkService
   ) {
-
-    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+    if(sslConfig.externalSsl().isDefined()) {
+      return Collections.singletonMap(
+          "ssl_netty4", () ->
+              new SSLTransportNetty4(
+                  settings, networkService, bigArrays, threadPool, sslConfig.externalSsl().get()
+              ));
+    } else {
       return Collections.EMPTY_MAP;
     }
-
-    AtomicReference<Map<String, Supplier<HttpServerTransport>>> result = new AtomicReference<>();
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      result.set(Collections.singletonMap(
-          "ssl_netty4", () ->
-              new SSLTransportNetty4(settings, networkService, bigArrays, threadPool, basicSettings.getSslHttpSettings().get())));
-      return null;
-    });
-
-    return result.get();
-  }
-
-  @Override
-  public List<Setting<?>> getSettings() {
-    return AllowedSettings.list().entrySet().stream().map((e) -> {
-      Setting<?> theSetting = null;
-      switch (e.getValue()) {
-        case BOOL:
-          theSetting = Setting.boolSetting(e.getKey(), Boolean.FALSE, Setting.Property.NodeScope);
-          break;
-        case STRING:
-          theSetting = new Setting<>(e.getKey(), "", (value) -> value, Setting.Property.NodeScope);
-          break;
-        case GROUP:
-          theSetting = Setting.groupSetting(e.getKey(), Setting.Property.Dynamic, Setting.Property.NodeScope);
-          break;
-        default:
-          throw new ElasticsearchException("invalid settings " + e);
-      }
-      return theSetting;
-    }).collect(Collectors.toList());
   }
 
   @Override
@@ -147,7 +119,7 @@ public class ReadonlyRestPlugin extends Plugin
   public void onIndexModule(IndexModule module) {
     module.setSearcherWrapper(indexService -> {
       try {
-        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+        return new RoleIndexSearcherWrapper(indexService);
       } catch (Exception e) {
         e.printStackTrace();
       }
