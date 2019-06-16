@@ -76,6 +76,7 @@ public class AuditSinkImpl {
   }
 
   private static class AuditSinkBulkProcessorListener implements BulkProcessor.Listener {
+
     @Override
     public void beforeBulk(long executionId,
         BulkRequest request) {
