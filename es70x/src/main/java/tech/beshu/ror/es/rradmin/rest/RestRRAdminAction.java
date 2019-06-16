@@ -34,6 +34,7 @@ import tech.beshu.ror.es.rradmin.RRAdminRequest;
  * Created by sscarduzio on 21/03/2017.
  */
 public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
+
   @Inject
   public RestRRAdminAction(Settings settings, RestController controller) {
     super(settings);
@@ -50,12 +51,10 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
 
   @Override
   protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) {
-    return (channel) -> {
-      client.execute(
-          new RRAdminAction(),
-          new RRAdminRequest(request),
-          new RestToXContentListener<>(channel)
-      );
-    };
+    return (channel) -> client.execute(
+        new RRAdminAction(),
+        new RRAdminRequest(request),
+        new RestToXContentListener<>(channel)
+    );
   }
 }

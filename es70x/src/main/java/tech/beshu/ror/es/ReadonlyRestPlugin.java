@@ -87,7 +87,6 @@ import java.util.function.UnaryOperator;
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final Settings settings;
   private final RorSsl sslConfig;
 
   private IndexLevelActionFilter ilaf;
@@ -95,7 +94,6 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Inject
   public ReadonlyRestPlugin(Settings s, Path p) {
-    this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
