@@ -18,11 +18,13 @@ package tech.beshu.ror.utils.containers
 
 import java.io.File
 import java.util.Optional
+import java.util.function.Consumer
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
+import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import tech.beshu.ror.utils.containers.ReadonlyRestEsContainer.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -68,7 +70,8 @@ object ReadonlyRestEsContainer extends StrictLogging {
         ESWithReadonlyRestImage.create(nodeName, seedNodes, esVersion, rorPluginFile, rorConfigFile)
       )
     )
-    rorContainer.container.withLogConsumer { outputFrame => logger.info(s"[$nodeName] ${outputFrame.getUtf8String}") }
+    val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
+    rorContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     rorContainer.container.addExposedPort(9200)
     rorContainer.container.setWaitStrategy(
       new ElasticsearchNodeWaitingStrategy(rorContainer.name, Coeval(rorContainer.adminClient), initializer)

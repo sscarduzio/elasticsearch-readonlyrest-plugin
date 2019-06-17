@@ -86,12 +86,6 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       Environment env
   ) {
     super(settings);
-    try {
-      System.setProperty("es.set.netty.runtime.available.processors", "false");
-    } catch (Exception ex) {
-      logger.error("Cannot set property 'es.set.netty.runtime.available.processors'", ex);
-    }
-
     this.clusterService = clusterService;
     this.threadPool = threadPool;
 

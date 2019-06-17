@@ -265,13 +265,13 @@ class RorInstance private (boot: ReadonlyRest,
   }
 
   private def scheduleIndexConfigChecking(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): Cancelable = {
-    logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index config check within ${RorInstance.indexConfigCheckingSchedulerDelay}")
+    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index config check within ${RorInstance.indexConfigCheckingSchedulerDelay}")
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
       tryReloadingEngine(noIndexFallback)
         .runAsync {
           case Right(Right(Some(_))) =>
           case Right(Right(None)) =>
-            logger.info("[CLUSTERWIDE SETTINGS] Config is up to date. Nothing to reload.")
+            logger.debug("[CLUSTERWIDE SETTINGS] Config is up to date. Nothing to reload.")
             scheduleNewConfigCheck()
           case Right(Left(startingFailure)) =>
             logger.warn(s"[CLUSTERWIDE SETTINGS] Checking index config failed: ${startingFailure.message}")
