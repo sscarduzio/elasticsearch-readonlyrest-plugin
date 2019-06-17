@@ -63,9 +63,8 @@ public class RRAdminResponse extends ActionResponse implements ToXContent {
   }
 
   private void addResponseJson(XContentBuilder builder, String status, String message) throws IOException {
-    builder.startObject();
+    // No need to wrap in object in pre-5.3.x!
     builder.field("status", status);
     builder.field("message", message);
-    builder.endObject();
   }
 }

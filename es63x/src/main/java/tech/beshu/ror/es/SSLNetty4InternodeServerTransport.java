@@ -63,7 +63,10 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
     this.ssl = ssl;
   }
 
-  @Override
+  protected ChannelHandler getClientChannelInitializer() {
+    return getClientChannelInitializer(null);
+  }
+
   protected ChannelHandler getClientChannelInitializer(DiscoveryNode node) {
     return new ClientChannelInitializer() {
       @Override
