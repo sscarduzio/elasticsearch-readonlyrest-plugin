@@ -27,7 +27,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.{Block, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.blocks.rules.MethodsRule
 import tech.beshu.ror.acl.logging.ResponseContext._
-import tech.beshu.ror.acl.logging.{AuditSink, AuditingTool}
+import tech.beshu.ror.acl.logging.AuditingTool
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.mocks.MockRequestContext
@@ -36,6 +36,7 @@ import org.json.JSONObject
 import tech.beshu.ror.acl.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
+import tech.beshu.ror.es.AuditSink
 
 class AuditingToolTests extends WordSpec with MockFactory {
 

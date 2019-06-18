@@ -50,7 +50,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
   }
 
   @Override
-  protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+  protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) {
     return null;
   }
 }

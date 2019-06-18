@@ -22,8 +22,8 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.ldap._
 import tech.beshu.ror.acl.blocks.rules.LdapAuthorizationRule
 import tech.beshu.ror.acl.domain.Group
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._

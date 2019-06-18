@@ -26,10 +26,10 @@ import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
+import tech.beshu.ror.utils.containers.ReadonlyRestEsContainer.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.Tuple
-import ReadonlyRestEsContainer.adminCredentials
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
+import tech.beshu.ror.utils.misc.Tuple
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -75,7 +75,7 @@ object ReadonlyRestEsContainer extends StrictLogging {
     rorContainer.container.addExposedPort(9200)
     rorContainer.container.setWaitStrategy(
       new ElasticsearchNodeWaitingStrategy(rorContainer.name, Coeval(rorContainer.adminClient), initializer)
-        .withStartupTimeout(5 minutes)
+        .withStartupTimeout(3 minutes)
     )
     rorContainer.container.setNetwork(Network.SHARED)
     rorContainer.container.setNetworkAliases((nodeName :: Nil).asJava)

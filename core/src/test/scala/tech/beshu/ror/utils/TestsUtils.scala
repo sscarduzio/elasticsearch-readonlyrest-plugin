@@ -16,15 +16,19 @@
  */
 package tech.beshu.ror.utils
 
+import java.nio.file.Path
 import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
 import java.time.Duration
 import java.util.Base64
 
+import better.files.File
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain._
+import io.circe.yaml._
+import tech.beshu.ror.configuration.RawRorConfig
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -79,15 +83,10 @@ object TestsUtils {
   }
 
   sealed trait AssertionType
-
   object AssertionType {
-
     final case class RuleFulfilled(blockContextAssertion: BlockContext => Unit) extends AssertionType
-
     object RuleRejected extends AssertionType
-
     final case class RuleThrownException(exception: Throwable) extends AssertionType
-
   }
 
   def headerFrom(nameAndValue: (String, String)): Header = {
@@ -124,6 +123,24 @@ object TestsUtils {
     keyGen.initialize(2048, random)
     val pair = keyGen.generateKeyPair()
     (pair.getPublic, pair.getPrivate)
+  }
+
+  def rorConfigFrom(yaml: String): RawRorConfig = {
+    RawRorConfig(parser.parse(yaml).right.get)
+  }
+
+  def rorConfigFromResource(resource: String): RawRorConfig = {
+    rorConfigFrom {
+      getResourceContent(resource)
+    }
+  }
+
+  def getResourcePath(resource: String): Path = {
+    File(getClass.getResource(resource).getPath).path
+  }
+
+  def getResourceContent(resource: String): String = {
+    File(getResourcePath(resource)).contentAsString
   }
 
 }

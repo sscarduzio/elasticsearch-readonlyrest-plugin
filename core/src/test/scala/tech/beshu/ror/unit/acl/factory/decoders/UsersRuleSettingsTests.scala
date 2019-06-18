@@ -23,8 +23,8 @@ import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.UsersRule
 import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
 
 class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {

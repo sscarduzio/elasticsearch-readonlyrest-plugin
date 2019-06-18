@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block.Verbosity
 import tech.beshu.ror.acl.logging.ResponseContext._
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.utils.TaskOps._
+import tech.beshu.ror.utils.TaskOps._
 import tech.beshu.ror.acl.{Acl, AclHandlingResult}
 import tech.beshu.ror.acl.show.logs._
 
@@ -34,7 +34,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Success
 
-class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
+class AclLoggingDecorator(val underlying: Acl, auditingTool: Option[AuditingTool])
   extends Acl with Logging {
 
   override def handle(requestContext: RequestContext): Task[AclHandlingResult] = {
@@ -52,6 +52,8 @@ class AclLoggingDecorator(underlying: Acl, auditingTool: Option[AuditingTool])
               log(Forbidden(requestContext, result.history))
             case Result.Failed(ex) =>
               log(Errored(requestContext, ex))
+            case Result.PassedThrough =>
+              // ignore
           }
       }
   }

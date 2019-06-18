@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.LdapAuthRule
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.LdapContainer
 
 class LdapAuthRuleSettingsTests

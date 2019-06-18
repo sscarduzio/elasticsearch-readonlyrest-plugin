@@ -22,7 +22,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.acl.utils.TaskOps._
+import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
 

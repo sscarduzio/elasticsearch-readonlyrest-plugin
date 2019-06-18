@@ -1,0 +1,6 @@
+readonlyrest:
+  access_control_rules:
+    - name: "CONTAINER ADMIN - index"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"

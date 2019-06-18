@@ -19,6 +19,7 @@ package tech.beshu.ror.es.rradmin;
 
 import org.elasticsearch.action.Action;
 import org.elasticsearch.client.ElasticsearchClient;
+import tech.beshu.ror.adminapi.AdminRestApi;
 
 public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
 
@@ -30,12 +31,12 @@ public class RRAdminAction extends Action<RRAdminRequest, RRAdminResponse, RRAdm
   }
 
   @Override
-  public RRAdminRequestBuilder newRequestBuilder(ElasticsearchClient client) {
-    return new RRAdminRequestBuilder(client, INSTANCE);
+  public RRAdminResponse newResponse() {
+    return new RRAdminResponse(AdminRestApi.AdminResponse$.MODULE$.notAvailable());
   }
 
   @Override
-  public RRAdminResponse newResponse() {
-    return new RRAdminResponse("static instance");
+  public RRAdminRequestBuilder newRequestBuilder(ElasticsearchClient client) {
+    return new RRAdminRequestBuilder(client, INSTANCE);
   }
 }

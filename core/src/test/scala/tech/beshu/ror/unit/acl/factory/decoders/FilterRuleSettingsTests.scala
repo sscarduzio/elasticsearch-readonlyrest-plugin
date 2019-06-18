@@ -22,8 +22,8 @@ import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.FilterRule
 import tech.beshu.ror.acl.blocks.{Const, Variable}
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 
 class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
 

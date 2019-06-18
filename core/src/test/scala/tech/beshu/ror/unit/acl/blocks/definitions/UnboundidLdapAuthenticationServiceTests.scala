@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.acl.domain.{Secret, User}
-import tech.beshu.ror.acl.utils.ScalaOps.repeat
+import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
 

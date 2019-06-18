@@ -28,66 +28,69 @@ import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
-import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, CoreSettings}
-import tech.beshu.ror.acl.utils.{JavaEnvVarsProvider, JavaUuidProvider, StaticVariablesResolver, UuidProvider}
+import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, RawRorConfigBasedCoreFactory, CoreSettings}
+import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 class RorKbnAuthYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(JavaEnvVarsProvider)
-    new CoreFactory
+    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
+    new RawRorConfigBasedCoreFactory
   }
   private val acl: Acl = factory
     .createCoreFrom(
-      """http.bind_host: _eth0:ipv4_
-        |network.host: _eth0:ipv4_
-        |
-        |http.type: ssl_netty4
-        |#transport.type: local
-        |
-        |readonlyrest:
-        |  ssl:
-        |    enable: true
-        |    keystore_file: "keystore.jks"
-        |    keystore_pass: readonlyrest
-        |    key_pass: readonlyrest
-        |
-        |  access_control_rules:
-        |    - name: Container housekeeping is allowed
-        |      type: allow
-        |      auth_key: admin:container
-        |
-        |    - name: Valid JWT token is present
-        |      type: allow
-        |      ror_kbn_auth:
-        |        name: "kbn1"
-        |
-        |    - name: Valid JWT token is present with another key
-        |      type: allow
-        |      ror_kbn_auth:
-        |        name: "kbn2"
-        |
-        |    - name: Valid JWT token is present with a third key + role
-        |      type: allow
-        |      ror_kbn_auth:
-        |        name: "kbn3"
-        |        roles: ["viewer_group"]
-        |
-        |  ror_kbn:
-        |
-        |    - name: kbn1
-        |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-        |
-        |    - name: kbn2
-        |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
-        |
-        |    - name: kbn3
-        |      signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
-        |
-    """.stripMargin,
+      rorConfigFrom(
+        """http.bind_host: _eth0:ipv4_
+          |network.host: _eth0:ipv4_
+          |
+          |http.type: ssl_netty4
+          |#transport.type: local
+          |
+          |readonlyrest:
+          |  ssl:
+          |    enable: true
+          |    keystore_file: "keystore.jks"
+          |    keystore_pass: readonlyrest
+          |    key_pass: readonlyrest
+          |
+          |  access_control_rules:
+          |    - name: Container housekeeping is allowed
+          |      type: allow
+          |      auth_key: admin:container
+          |
+          |    - name: Valid JWT token is present
+          |      type: allow
+          |      ror_kbn_auth:
+          |        name: "kbn1"
+          |
+          |    - name: Valid JWT token is present with another key
+          |      type: allow
+          |      ror_kbn_auth:
+          |        name: "kbn2"
+          |
+          |    - name: Valid JWT token is present with a third key + role
+          |      type: allow
+          |      ror_kbn_auth:
+          |        name: "kbn3"
+          |        roles: ["viewer_group"]
+          |
+          |  ror_kbn:
+          |
+          |    - name: kbn1
+          |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+          |
+          |    - name: kbn2
+          |      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+          |
+          |    - name: kbn3
+          |      signature_key: "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
+          |
+    """.stripMargin
+      ),
       new AsyncHttpClientsFactory
     )
     .map {

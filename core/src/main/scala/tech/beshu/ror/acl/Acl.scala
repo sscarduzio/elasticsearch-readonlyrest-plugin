@@ -38,5 +38,6 @@ object AclHandlingResult {
     final case class ForbiddenBy(blockContext: BlockContext, block: Block) extends Result
     case object ForbiddenByUnmatched extends Result
     final case class Failed(ex: Throwable) extends Result
+    case object PassedThrough extends Result
   }
 }

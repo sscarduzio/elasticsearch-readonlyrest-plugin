@@ -22,8 +22,8 @@ import cats.implicits._
 import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.blocks.Variable.ResolvedValue._
 
