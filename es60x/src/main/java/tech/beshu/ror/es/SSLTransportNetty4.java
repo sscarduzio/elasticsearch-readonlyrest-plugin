@@ -25,35 +25,38 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import org.elasticsearch.common.logging.Loggers;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.commons.SSLCertParser;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import scala.collection.JavaConverters$;
+import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.utils.SSLCertParser;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
-  private final LoggerShim logger;
-  private BasicSettings.SSLSettings sslSettings;
+  private final Logger logger = LogManager.getLogger(this.getClass());
+  private final SslConfiguration ssl;
 
   public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, BasicSettings.SSLSettings sslSettings) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, SslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass().getName()));
-    logger.info("creating SSL transport");
-    this.sslSettings = sslSettings;
+    this.ssl = ssl;
   }
 
   @Override
@@ -73,10 +76,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   @Override
   public ChannelHandler configureServerChannelHandler() {
-    if (sslSettings != null) {
-      return new SSLHandler(this);
-    }
-    return super.configureServerChannelHandler();
+    return new SSLHandler(this);
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
@@ -84,8 +84,23 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        return null;
+      });
+    }
 
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+    protected void initChannel(final Channel ch) throws Exception {
+      super.initChannel(ch);
+      context.ifPresent(sslCtx -> {
+        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
+      });
+    }
+
+    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
+
+      @Override
+      public void mkSSLContext(String certChain, String privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -95,29 +110,39 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
           );
 
           logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
-          sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
+          if(ssl.allowedCiphers().size() > 0) {
+            sslCtxBuilder.ciphers(
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedCiphers())
+                    .stream()
+                    .map(SslConfiguration.Cipher::value)
+                    .collect(Collectors.toList())
+            );
+          }
 
-          sslSettings.getAllowedSSLProtocols()
-                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
-                     .ifPresent(sslCtxBuilder::protocols);
+          if (ssl.verifyClientAuth()) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+          }
+
+          if(ssl.allowedProtocols().size() > 0) {
+            sslCtxBuilder.protocols(
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedProtocols())
+                    .stream()
+                    .map(SslConfiguration.Protocol::value)
+                    .toArray(String[]::new)
+            );
+          }
 
           context = Optional.of(sslCtxBuilder.build());
-
         } catch (Exception e) {
           context = Optional.empty();
           logger.error("Failed to load SSL CertChain & private key from Keystore! "
               + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
-      });
-    }
-
-    protected void initChannel(final Channel ch) throws Exception {
-      super.initChannel(ch);
-      context.ifPresent(sslCtx -> {
-        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
-      });
+      }
     }
   }
 }

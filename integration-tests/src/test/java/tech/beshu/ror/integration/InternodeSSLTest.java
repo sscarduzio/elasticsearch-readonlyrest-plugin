@@ -19,7 +19,7 @@
 package tech.beshu.ror.integration;
 
 import com.google.common.net.HostAndPort;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.actionPost.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
@@ -29,7 +29,7 @@ import org.elasticsearch.xpack.client.PreBuiltXPackTransportClient;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.net.InetAddress;
 import java.util.Optional;
@@ -39,24 +39,24 @@ import static junit.framework.TestCase.assertTrue;
 public class InternodeSSLTest {
 
 //  @ClassRule
-//  public static ESWithReadonlyRestContainer container =
+//  public static ESWithReadonlyRestContainer multiContainerDependent =
 //      ESWithReadonlyRestContainer.create(
-//          RorPluginGradleProject.fromSystemProperty(),
+//          RorPluginGradleProjectJ.fromSystemProperty(),
 //          "/ssl_internode/elasticsearch.yml",
 //          Optional.empty()
 //      );
 
   private HostAndPort getHostAndPort() {
     return HostAndPort.fromParts("localhost", 9300);
-    //return HostAndPort.fromParts(container.getESHost(), container.getTransportPort());
+    //return HostAndPort.fromParts(multiContainerDependent.getESHost(), multiContainerDependent.getTransportPort());
   }
 
 @Test
   public void testSSLnoVerification() throws Exception {
-//    if (Integer.parseInt(container.getEsVersion().replace(".", "")) < 660) {
+//    if (Integer.parseInt(multiContainerDependent.getEsVersion().replace(".", "")) < 660) {
 //      return;
 //    }
-//    System.out.println("transport port:   " + container.getTransportPort());
+//    System.out.println("transport port:   " + multiContainerDependent.getTransportPort());
 
     TransportClient client = new PreBuiltXPackTransportClient(
         Settings.builder()
@@ -78,10 +78,10 @@ public class InternodeSSLTest {
 
   @Test(expected = NoNodeAvailableException.class)
   public void testSSLwithServerVerification() throws Exception {
-    //    if (Integer.parseInt(container.getEsVersion().replace(".", "")) < 660) {
+    //    if (Integer.parseInt(multiContainerDependent.getEsVersion().replace(".", "")) < 660) {
     //      return;
     //    }
-    //    System.out.println("transport port:   " + container.getTransportPort());
+    //    System.out.println("transport port:   " + multiContainerDependent.getTransportPort());
 
     TransportClient client = new PreBuiltXPackTransportClient(
         Settings.builder()

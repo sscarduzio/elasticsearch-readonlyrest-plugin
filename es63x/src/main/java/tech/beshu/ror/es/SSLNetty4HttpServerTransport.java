@@ -17,10 +17,6 @@
 
 package tech.beshu.ror.es;
 
-/**
- * Created by sscarduzio on 28/11/2016.
- */
-
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
@@ -29,7 +25,8 @@ import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.NotSslRecordException;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import org.elasticsearch.common.logging.Loggers;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
@@ -37,42 +34,26 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.commons.SSLCertParser;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
+import scala.collection.JavaConverters$;
+import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.utils.SSLCertParser;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
-  private static final boolean DEFAULT_SSL_VERIFICATION_HTTP = false;
-  private final BasicSettings.SSLSettings sslSettings;
-  private final LoggerShim logger;
-  private final Environment environment;
-  private  Boolean sslVerification = DEFAULT_SSL_VERIFICATION_HTTP;
+
+  private final Logger logger = LogManager.getLogger(this.getClass());
+  private final SslConfiguration ssl;
 
   public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment) {
+      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment, SslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass(), getClass().getSimpleName()));
-
-    this.environment = environment;
-    BasicSettings basicSettings = BasicSettings.fromFileObj(
-        logger,
-        this.environment.configFile().toAbsolutePath(),
-        settings
-    );
-
-    if (basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
-      sslSettings = basicSettings.getSslHttpSettings().get();
-      logger.info("creating SSL HTTP transport");
-      this.sslVerification = sslSettings.isClientAuthVerify().orElse(DEFAULT_SSL_VERIFICATION_HTTP);
-
-    }
-    else {
-      sslSettings = null;
-    }
+    this.ssl = ssl;
   }
 
   protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
@@ -93,13 +74,27 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     return new SSLHandler(this);
   }
 
-  private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
+  private class SSLHandler extends HttpChannelHandler {
     private Optional<SslContext> context = Optional.empty();
 
     SSLHandler(final Netty4HttpServerTransport transport) {
       super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
+      AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+        SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
+        return null;
+      });
+    }
 
-      new SSLCertParser(sslSettings, logger, (certChain, privateKey) -> {
+    protected void initChannel(final Channel ch) throws Exception {
+      super.initChannel(ch);
+      context.ifPresent(sslCtx -> {
+        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
+      });
+    }
+
+    private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
+      @Override
+      public void mkSSLContext(String certChain, String privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
           SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
@@ -109,17 +104,31 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           );
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
-          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), logger, sslSettings);
+          SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
-          sslSettings.getAllowedSSLCiphers().ifPresent(sslCtxBuilder::ciphers);
+          if(ssl.allowedCiphers().size() > 0) {
+            sslCtxBuilder.ciphers(
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedCiphers())
+                    .stream()
+                    .map(SslConfiguration.Cipher::value)
+                    .collect(Collectors.toList())
+            );
+          }
 
-          if(sslVerification) {
+          if (ssl.verifyClientAuth()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           }
 
-          sslSettings.getAllowedSSLProtocols()
-                     .map(protoList -> protoList.toArray(new String[protoList.size()]))
-                     .ifPresent(sslCtxBuilder::protocols);
+          if(ssl.allowedProtocols().size() > 0) {
+            sslCtxBuilder.protocols(
+                JavaConverters$.MODULE$
+                    .setAsJavaSet(ssl.allowedProtocols())
+                    .stream()
+                    .map(SslConfiguration.Protocol::value)
+                    .toArray(String[]::new)
+            );
+          }
 
           context = Optional.of(sslCtxBuilder.build());
 
@@ -128,14 +137,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
           logger.error("Failed to load SSL HTTP CertChain & private key from Keystore! "
               + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
-      });
-    }
-
-    protected void initChannel(final Channel ch) throws Exception {
-      super.initChannel(ch);
-      context.ifPresent(sslCtx -> {
-        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
-      });
+      }
     }
   }
 }

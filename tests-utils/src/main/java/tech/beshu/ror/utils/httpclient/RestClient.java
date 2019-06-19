@@ -22,18 +22,22 @@ import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.auth.BasicScheme;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContextBuilder;
-import tech.beshu.ror.utils.Tuple;
+import org.apache.http.util.EntityUtils;
+import tech.beshu.ror.utils.misc.Tuple;
 
 import java.io.IOException;
 import java.net.URI;
@@ -45,7 +49,7 @@ import java.util.stream.Collectors;
 
 public class RestClient {
 
-  private final HttpClient underlying;
+  private final CloseableHttpClient underlying;
   private final String host;
   private final int port;
   private final boolean ssl;
@@ -64,7 +68,7 @@ public class RestClient {
     this.underlying = createUnderlyingClient(basicAuth, headers);
   }
 
-  private HttpClient createUnderlyingClient(Optional<Tuple<String, String>> basicAuth, Header... headers) {
+  private CloseableHttpClient createUnderlyingClient(Optional<Tuple<String, String>> basicAuth, Header... headers) {
     HttpClientBuilder builder = null;
 
     if (ssl) {
@@ -92,10 +96,17 @@ public class RestClient {
       headers = tmp;
     }
 
+    int timeout = 5;
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
       .setDefaultHeaders(Lists.newArrayList(headers))
-      .setDefaultSocketConfig(SocketConfig.custom().build());
+      .setDefaultSocketConfig(SocketConfig.custom().build())
+      .setDefaultRequestConfig(
+          RequestConfig.custom()
+              .setConnectTimeout(timeout * 1000)
+              .setConnectionRequestTimeout(timeout * 1000)
+              .setSocketTimeout(timeout * 1000).build()
+      );
 
     return builder.build();
   }
@@ -112,23 +123,21 @@ public class RestClient {
     return port;
   }
 
-  public URI from(String path) throws URISyntaxException {
-    return from(path, Maps.newHashMap());
+  public URI from(String path) {
+    try {
+      return from(path, Maps.newHashMap());
+    } catch (URISyntaxException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   public URI from(String path, Map<String, String> queryParams) throws URISyntaxException {
     URIBuilder uriBuilder = new URIBuilder();
-
-    if (ssl) {
-      uriBuilder.setScheme("https");
-    }
-
-    else {
-      uriBuilder.setScheme("http");
-    }
-    uriBuilder.setHost(host)
-      .setPort(port)
-      .setPath(("/" + path + "/").replaceAll("//", "/"));
+    uriBuilder
+        .setScheme(ssl ? "https" : "http")
+        .setHost(host)
+        .setPort(port)
+        .setPath(("/" + path + "/").replaceAll("//", "/"));
     if (!queryParams.isEmpty()) {
       uriBuilder.setParameters(
         queryParams.entrySet().stream()
@@ -140,8 +149,20 @@ public class RestClient {
 
   }
 
-  public HttpResponse execute(HttpUriRequest req) throws IOException {
-    return underlying.execute(req);
+  public CloseableHttpResponse execute(HttpUriRequest req) {
+    try {
+      return underlying.execute(req);
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  public static String bodyFrom(HttpResponse r) {
+    try {
+      return EntityUtils.toString(r.getEntity());
+    } catch (IOException e) {
+      throw new IllegalStateException("Cannot get string body", e);
+    }
   }
 
 }

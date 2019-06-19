@@ -17,8 +17,10 @@
 
 package tech.beshu.ror.es;
 
-import org.elasticsearch.ElasticsearchStatusException;
-import org.elasticsearch.ResourceNotFoundException;
+import monix.execution.Scheduler$;
+import monix.execution.schedulers.CanBlock$;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
@@ -26,33 +28,43 @@ import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.rest.RestChannel;
-import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
-import tech.beshu.ror.acl.ACL;
-import tech.beshu.ror.commons.domain.Variable;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.settings.RawSettings;
-import tech.beshu.ror.commons.shims.es.ACLHandler;
-import tech.beshu.ror.commons.shims.es.ESContext;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.requestcontext.RequestContext;
+import scala.Function1;
+import scala.Option;
+import scala.collection.JavaConverters$;
+import scala.concurrent.duration.FiniteDuration;
+import scala.runtime.BoxedUnit;
+import scala.util.Either;
+import tech.beshu.ror.SecurityPermissionException;
+import tech.beshu.ror.acl.AclActionHandler;
+import tech.beshu.ror.acl.AclHandlingResult;
+import tech.beshu.ror.acl.AclResultCommitter;
+import tech.beshu.ror.acl.AclStaticContext;
+import tech.beshu.ror.acl.BlockContextJavaHelper$;
+import tech.beshu.ror.acl.blocks.BlockContext;
+import tech.beshu.ror.acl.request.EsRequestContext;
+import tech.beshu.ror.acl.request.RequestContext;
+import tech.beshu.ror.boot.Engine;
+import tech.beshu.ror.boot.Ror$;
+import tech.beshu.ror.boot.RorInstance;
+import tech.beshu.ror.boot.StartingFailure;
+import tech.beshu.ror.utils.ScalaJavaHelper$;
 
-import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Created by sscarduzio on 19/12/2015.
@@ -63,64 +75,40 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
   private final ThreadPool threadPool;
   private final ClusterService clusterService;
 
-  private final AtomicReference<Optional<ACL>> acl;
-  private final AtomicReference<ESContext> context = new AtomicReference<>();
-  private final IndexNameExpressionResolver indexResolver;
-  private final LoggerShim loggerShim;
+  private final Logger logger = LogManager.getLogger(this.getClass());
+  private final RorInstance rorInstance;
 
   @Inject
   public IndexLevelActionFilter(Settings settings,
       ClusterService clusterService,
       NodeClient client,
       ThreadPool threadPool,
-      SettingsObservableImpl settingsObservable
+      Environment env
   ) {
     super(settings);
-    loggerShim = ESContextImpl.mkLoggerShim(logger);
-
-    Environment env = new Environment(settings);
-    BasicSettings baseSettings = BasicSettings.fromFile(loggerShim, env.configFile().toAbsolutePath(), settings.getAsStructuredMap());
-
-    this.context.set(new ESContextImpl(client, baseSettings));
-
     this.clusterService = clusterService;
-    this.indexResolver = new IndexNameExpressionResolver(settings);
     this.threadPool = threadPool;
-    this.acl = new AtomicReference<>(Optional.empty());
 
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+    FiniteDuration startingTimeout = scala.concurrent.duration.FiniteDuration.apply(1, TimeUnit.MINUTES);
 
-      settingsObservable.addObserver((o, arg) -> {
-        logger.info("Settings observer refreshing...");
-        RawSettings newRaw = new RawSettings(settingsObservable.getCurrent().asMap(), loggerShim);
-        Environment newEnv = new Environment(settings);
-        BasicSettings newBaseSettings = new BasicSettings(newRaw, newEnv.configFile().toAbsolutePath());
-        ESContext newContext = new ESContextImpl(client, newBaseSettings);
-        this.context.set(newContext);
+    Either<StartingFailure, RorInstance> result = AccessController.doPrivileged((PrivilegedAction<Either<StartingFailure, RorInstance>>) () ->
+        Ror$.MODULE$.start(
+            env.configFile(),
+            createAuditSink(client),
+            new EsIndexJsonContentProvider(client)
+        ).runSyncUnsafe(startingTimeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit())
+    );
 
-        if (newContext.getSettings().isEnabled()) {
-          try {
-            ACL newAcl = new ACL(newContext);
-            acl.set(Optional.of(newAcl));
-            logger.info("Configuration reloaded - ReadonlyREST enabled");
-          } catch (Exception ex) {
-            logger.error("Cannot configure ReadonlyREST plugin", ex);
-            throw ex;
-          }
-        }
-        else {
-          acl.set(Optional.empty());
-          logger.info("Configuration reloaded - ReadonlyREST disabled");
-        }
-      });
+    if(result.isRight()) {
+      this.rorInstance = result.right().get();
+      RorInstanceSupplier.getInstance().update(rorInstance);
+    } else {
+      throw StartingFailureException.from(result.left().get());
+    }
+  }
 
-      settingsObservable.forceRefresh();
-      logger.info("Readonly REST plugin was loaded...");
-
-      settingsObservable.pollForIndex(context.get());
-
-      return null;
-    });
+  public void stop() {
+    rorInstance.stop();
   }
 
   @Override
@@ -135,103 +123,178 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       ActionListener<Response> listener,
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-
-      Optional<ACL> acl = this.acl.get();
-      if (acl.isPresent()) {
-        handleRequest(acl.get(), task, action, request, listener, chain);
+      Option<Engine> engine = rorInstance.engine();
+      if (engine.isDefined()) {
+        handleRequest(engine.get(), task, action, request, listener, chain);
+      } else {
+        if(action.startsWith("internal:")) chain.proceed(task, action, request, listener);
+        else listener.onFailure(new RorNotReadyResponse());
       }
-      else {
-        chain.proceed(task, action, request, listener);
-      }
-
       return null;
     });
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(ACL acl,
+  private <Request extends ActionRequest, Response extends ActionResponse> void handleRequest(
+      Engine engine,
       Task task,
       String action,
       Request request,
       ActionListener<Response> listener,
-      ActionFilterChain<Request, Response> chain) {
+      ActionFilterChain<Request, Response> chain
+  ) {
     RestChannel channel = ThreadRepo.channel.get();
     if (channel != null) {
       ThreadRepo.channel.remove();
     }
+
     boolean chanNull = channel == null;
     boolean reqNull = channel == null ? true : channel.request() == null;
-    if (ACL.shouldSkipACL(chanNull, reqNull)) {
+    if (shouldSkipACL(chanNull, reqNull)) {
       chain.proceed(task, action, request, listener);
       return;
     }
-    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool, context.get(), indexResolver);
-    acl.check(requestInfo, new ACLHandler() {
-      @Override
-      public void onForbidden() {
-        ElasticsearchStatusException exc = new ElasticsearchStatusException(
-            context.get().getSettings().getForbiddenMessage(),
-            acl.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN
-        ) {
-          @Override
-          public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            builder.field("reason", context.get().getSettings().getForbiddenMessage());
-            return builder;
-          }
-        };
-        if (acl.doesRequirePassword()) {
-          exc.addHeader("WWW-Authenticate", "Basic");
+    RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool);
+    RequestContext requestContext = requestContextFrom(requestInfo);
+
+    Consumer<ActionListener<Response>> proceed = responseActionListener -> {
+      chain.proceed(task, action, request, responseActionListener);
+    };
+
+    engine.acl().handle(requestContext).runAsync(
+        handleAclResult(engine, listener, request, requestContext, requestInfo, proceed), Scheduler$.MODULE$.global());
+  }
+
+  private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AclHandlingResult>, BoxedUnit> handleAclResult(
+      Engine engine,
+      ActionListener<Response> listener,
+      Request request,
+      RequestContext requestContext,
+      RequestInfo requestInfo,
+      Consumer<ActionListener<Response>> chainProceed
+  ) {
+    return result -> {
+      try (ThreadContext.StoredContext ignored = threadPool.getThreadContext().stashContext()) {
+        if(result.isRight()) {
+          AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext, listener, chainProceed);
+          AclResultCommitter.commit(result.right().get(), handler);
+        } else {
+          listener.onFailure(new Exception(result.left().get()));
         }
-        listener.onFailure(exc);
+      }
+      return null;
+    };
+  }
+
+  private <Request extends ActionRequest, Response extends ActionResponse> AclActionHandler createAclActionHandler(
+      AclStaticContext aclStaticContext,
+      RequestInfo requestInfo,
+      Request request,
+      RequestContext requestContext,
+      ActionListener<Response> baseListener,
+      Consumer<ActionListener<Response>> chainProceed
+  ) {
+    return new AclActionHandler() {
+      @Override
+      public void onAllow(BlockContext blockContext) {
+        try {
+          ActionListener<Response> searchListener = createSearchListener(baseListener, request, requestContext,
+              blockContext);
+          requestInfo.writeResponseHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.responseHeadersFrom(blockContext)));
+          requestInfo.writeToThreadContextHeaders(JavaConverters$.MODULE$.mapAsJavaMap(BlockContextJavaHelper$.MODULE$.contextHeadersFrom(blockContext)));
+          requestInfo.writeIndices(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.indicesFrom(blockContext)));
+          requestInfo.writeSnapshots(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.snapshotsFrom(blockContext)));
+          requestInfo.writeRepositories(JavaConverters$.MODULE$.setAsJavaSet(BlockContextJavaHelper$.MODULE$.repositoriesFrom(blockContext)));
+
+          chainProceed.accept(searchListener);
+        } catch (Throwable e) {
+          e.printStackTrace();
+          chainProceed.accept(baseListener);
+        }
       }
 
-      @Override
-      public void onAllow(Object blockExitResult, Variable.VariableResolver rc) {
-        boolean hasProceeded = false;
+      private ActionListener<Response> createSearchListener(ActionListener<Response> listener,
+          Request request, RequestContext requestContext, BlockContext blockContext) {
         try {
           // Cache disabling for those 2 kind of request is crucial for
           // document level security to work. Otherwise we'd get an answer from
           // the cache some times and would not be filtered
-          if (acl.involvesFilter()) {
+          if (aclStaticContext.involvesFilter()) {
             if (request instanceof SearchRequest) {
+              logger.debug("ACL involves filters, will disable request cache for SearchRequest");
+
               ((SearchRequest) request).requestCache(Boolean.FALSE);
             }
             else if (request instanceof MultiSearchRequest) {
+              logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest");
               for (SearchRequest sr : ((MultiSearchRequest) request).requests()) {
                 sr.requestCache(Boolean.FALSE);
               }
             }
           }
 
-          ResponseActionListener searchListener =
-              new ResponseActionListener(action, request, (ActionListener<ActionResponse>) listener, (RequestContext) rc, logger);
-          chain.proceed(task, action, request, (ActionListener<Response>) searchListener);
-
-          hasProceeded = true;
-          return;
+          return (ActionListener<Response>) new ResponseActionListener((ActionListener<ActionResponse>) listener,
+              requestContext, blockContext);
         } catch (Throwable e) {
-          e.printStackTrace();
-        }
-        if (!hasProceeded) {
-          chain.proceed(task, action, request, listener);
+          logger.error("on allow exception", e);
+          return listener;
         }
       }
 
       @Override
-      public boolean isNotFound(Throwable throwable) {
-        return throwable.getCause() instanceof ResourceNotFoundException;
+      public void onForbidden() {
+        baseListener.onFailure(new ForbiddenResponse(aclStaticContext));
       }
 
       @Override
-      public void onNotFound(Throwable throwable) {
-        listener.onFailure((ResourceNotFoundException) throwable.getCause());
+      public void onError(Throwable t) {
+        baseListener.onFailure((Exception) t);
       }
 
       @Override
-      public void onErrored(Throwable t) {
-        listener.onFailure((Exception) t);
+      public void onPassThrough() {
+        chainProceed.accept(baseListener);
       }
-    });
+    };
+  }
 
+  private AuditSink createAuditSink(Client client) {
+    return new AuditSink() {
+      AuditSinkImpl auditSink = new AuditSinkImpl(client);
+
+      @Override
+      public void submit(String indexName, String documentId, String jsonRecord) {
+        auditSink.submit(indexName, documentId, jsonRecord);
+      }
+    };
+  }
+
+  private RequestContext requestContextFrom(RequestInfo requestInfo) {
+    try {
+      return ScalaJavaHelper$.MODULE$.force(EsRequestContext.from(requestInfo));
+    } catch (Exception ex) {
+      throw new SecurityPermissionException("Cannot create request context object", ex);
+    }
+  }
+
+  private static boolean shouldSkipACL(boolean chanNull, boolean reqNull) {
+
+    // This was not a REST message
+    if (reqNull && chanNull) {
+      return true;
+    }
+
+    // Bailing out in case of catastrophical misconfiguration that would lead to insecurity
+    if (reqNull != chanNull) {
+      if (chanNull) {
+        throw new SecurityPermissionException(
+            "Problems analyzing the channel object. " + "Have you checked the security permissions?", null);
+      }
+      if (reqNull) {
+        throw new SecurityPermissionException(
+            "Problems analyzing the request object. " + "Have you checked the security permissions?", null);
+      }
+    }
+    return false;
   }
 
 }

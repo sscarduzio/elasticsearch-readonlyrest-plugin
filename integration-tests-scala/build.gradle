@@ -1,0 +1,77 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+        classpath 'gradle.plugin.com.github.maiflai:gradle-scalatest:0.23'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'scala'
+apply plugin: 'com.github.maiflai.scalatest'
+apply plugin: "com.github.hierynomus.license"
+
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+    maven { url 'https://jitpack.io' }
+    maven { url 'https://artifacts.elastic.co/maven' }
+}
+
+test {
+    systemProperty "project.dir", rootProject.projectDir
+    enabled = project.hasProperty('esModule')
+    if (enabled) {
+        def module = project.properties['esModule']
+        systemProperty "esModule", module
+
+        tags {
+            exclude 'tech.beshu.tags.ExcludeESModule.' + module
+        }
+    }
+    outputs.upToDateWhen { false }
+
+    testLogging {
+        showStandardStreams = true
+        exceptionFormat = 'full'
+        events "standardOut", "started", "passed", "skipped", "failed"
+    }
+
+    maxParallelForks = 1
+}
+
+dependencies {
+    testCompile project(':tests-utils')
+    
+    testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
+    testCompile group: 'ch.qos.logback',                name: 'logback-core',               version: '1.2.3'
+    testRuntime group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
+    testCompile group: 'org.scala-lang',                name: 'scala-library',              version: '2.12.4'
+    testCompile group: 'org.scalatest',                 name: 'scalatest_2.12',             version: '3.0.5'
+
+}
+
+license {
+    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    skipExistingHeaders true
+    useDefaultMappings = false
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.5'
+}
+
+task ldapserver(type:JavaExec) {
+   systemProperties = System.properties
+   main = 'tech.beshu.ror.integration.LDAPServer'
+   classpath = sourceSets.test.runtimeClasspath
+}

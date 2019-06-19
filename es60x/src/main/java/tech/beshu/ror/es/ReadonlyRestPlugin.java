@@ -18,22 +18,22 @@
 package tech.beshu.ror.es;
 
 import com.google.common.collect.Sets;
-import org.elasticsearch.ElasticsearchException;
+import monix.execution.Scheduler$;
+import monix.execution.schedulers.CanBlock$;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.component.AbstractLifecycleComponent;
+import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
-import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
@@ -54,47 +54,46 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.RemoteClusterService;
+import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
-import tech.beshu.ror.commons.Constants;
-import tech.beshu.ror.commons.settings.BasicSettings;
-import tech.beshu.ror.commons.shims.es.LoggerShim;
-import tech.beshu.ror.configuration.AllowedSettings;
+import scala.concurrent.duration.FiniteDuration;
+import tech.beshu.ror.Constants;
+import tech.beshu.ror.configuration.RorSsl;
+import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 
-import java.io.IOException;
 import java.nio.file.Path;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final Settings settings;
-  private final LoggerShim logger;
-  private final BasicSettings basicSettings;
+  private final RorSsl sslConfig;
 
+  @Inject
   private IndexLevelActionFilter ilaf;
-  private SettingsObservableImpl settingsObservable;
   private Environment environment;
 
   @Inject
   public ReadonlyRestPlugin(Settings s, Path p) {
-    this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
-    this.logger = ESContextImpl.mkLoggerShim(Loggers.getLogger(getClass()));
-    this.basicSettings = BasicSettings.fromFileObj(logger, this.environment.configFile().toAbsolutePath(), settings);
+    FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
+    this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
+        .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
   }
 
   @Override
@@ -102,21 +101,15 @@ public class ReadonlyRestPlugin extends Plugin
       ScriptService scriptService, NamedXContentRegistry xContentRegistry, Environment environment, NodeEnvironment nodeEnvironment,
       NamedWriteableRegistry namedWriteableRegistry) {
     final List<Object> components = new ArrayList<>(3);
-
-    // Wrap all ROR logic into privileged action
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-      try {
-        this.environment = environment;
-        settingsObservable = new SettingsObservableImpl((NodeClient) client, settings, environment);
-        this.ilaf = new IndexLevelActionFilter(settings, clusterService, (NodeClient) client, threadPool, settingsObservable, environment);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-      components.add(settingsObservable);
-      return null;
-    });
-
+    this.environment = environment;
     return components;
+  }
+
+  @Override
+  public Collection<Class<? extends LifecycleComponent>> getGuiceServiceClasses() {
+    final List<Class<? extends LifecycleComponent>> services = new ArrayList<>(1);
+    services.add(TransportServiceInterceptor.class);
+    return services;
   }
 
   @Override
@@ -128,7 +121,7 @@ public class ReadonlyRestPlugin extends Plugin
   public void onIndexModule(IndexModule indexModule) {
     indexModule.setSearcherWrapper(indexService -> {
       try {
-        return new RoleIndexSearcherWrapper(indexService, this.settings, this.environment);
+        return new RoleIndexSearcherWrapper(indexService);
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -146,44 +139,20 @@ public class ReadonlyRestPlugin extends Plugin
       NamedXContentRegistry xContentRegistry,
       NetworkService networkService,
       HttpServerTransport.Dispatcher dispatcher) {
-
-    if (!basicSettings.getSslHttpSettings().map(x -> x.isSSLEnabled()).orElse(false)) {
+    if(sslConfig.externalSsl().isDefined()) {
+      return Collections.singletonMap(
+          "ssl_netty4", () ->
+              new SSLTransportNetty4(
+                  settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, sslConfig.externalSsl().get()
+              ));
+    } else {
       return Collections.EMPTY_MAP;
     }
-
-    return Collections.singletonMap(
-        "ssl_netty4", () ->
-            new SSLTransportNetty4(
-                settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, basicSettings.getSslHttpSettings().get()
-            ));
   }
 
   @Override
   public void close() {
-    ESContextImpl.shutDownObservable.shutDown();
-  }
-
-  @Override
-  public List<Setting<?>> getSettings() {
-    // No need, we have settings in config/readonlyrest.yml
-    //return super.getSettings();
-    return AllowedSettings.list().entrySet().stream().map((e) -> {
-      Setting<?> theSetting = null;
-      switch (e.getValue()) {
-        case BOOL:
-          theSetting = Setting.boolSetting(e.getKey(), Boolean.FALSE, Setting.Property.NodeScope);
-          break;
-        case STRING:
-          theSetting = new Setting<>(e.getKey(), "", (value) -> value, Setting.Property.NodeScope);
-          break;
-        case GROUP:
-          theSetting = Setting.groupSetting(e.getKey(), Setting.Property.Dynamic, Setting.Property.NodeScope);
-          break;
-        default:
-          throw new ElasticsearchException("invalid settings " + e);
-      }
-      return theSetting;
-    }).collect(Collectors.toList());
+    ilaf.stop();
   }
 
   @Override
@@ -209,6 +178,47 @@ public class ReadonlyRestPlugin extends Plugin
       ThreadRepo.channel.set(channel);
       restHandler.handleRequest(request, channel, client);
     };
+  }
+
+  public static class TransportServiceInterceptor extends AbstractLifecycleComponent {
+
+    private static RemoteClusterServiceSupplier remoteClusterServiceSupplier;
+
+    @Inject
+    public TransportServiceInterceptor(Settings settings, final TransportService transportService) {
+      super(settings);
+      Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> getRemoteClusterServiceSupplier().update(r));
+    }
+
+    public synchronized static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
+      if (remoteClusterServiceSupplier == null) {
+        remoteClusterServiceSupplier = new RemoteClusterServiceSupplier();
+      }
+      return remoteClusterServiceSupplier;
+    }
+
+    @Override
+    protected void doStart() { /* unused */ }
+
+    @Override
+    protected void doStop() {  /* unused */ }
+
+    @Override
+    protected void doClose() {  /* unused */ }
+  }
+
+  private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {
+
+    private final AtomicReference<Optional<RemoteClusterService>> remoteClusterServiceAtomicReference = new AtomicReference(Optional.empty());
+
+    @Override
+    public Optional<RemoteClusterService> get() {
+      return remoteClusterServiceAtomicReference.get();
+    }
+
+    private void update(RemoteClusterService service) {
+      remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
+    }
   }
 
 }

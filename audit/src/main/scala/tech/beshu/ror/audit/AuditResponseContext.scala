@@ -49,10 +49,6 @@ object AuditResponseContext {
                            cause: Throwable)
     extends AuditResponseContext
 
-  final case class NotFound(requestContext: AuditRequestContext,
-                            cause: Throwable)
-    extends AuditResponseContext
-
   sealed trait Verbosity
   object Verbosity {
     case object Info extends Verbosity

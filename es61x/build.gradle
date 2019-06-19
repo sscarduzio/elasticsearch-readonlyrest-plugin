@@ -27,9 +27,8 @@ buildscript {
         mavenCentral()
         jcenter()
     }
-
     dependencies {
-        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
+        classpath group: 'nl.javadude.gradle.plugins',  name: 'license-gradle-plugin', version: '0.10.0'
     }
 }
 
@@ -42,7 +41,6 @@ version = pluginVersion + '_es' + esVersion
 def pluginFullName = pluginName + '-' + version
 
 apply plugin: 'java'
-apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'license'
 
@@ -52,9 +50,10 @@ compileJava {
 }
 
 dependencies {
-    compile project(':core')
-   // compile project(':core2')
-    compile project(':commons')
+    compile project(path: ':core')
+
+    compile 'org.apache.logging.log4j:log4j-core:2.11.1'
+
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 }
@@ -80,7 +79,8 @@ configurations {
         extendsFrom runtime
         exclude group: 'org.elasticsearch'
         exclude group: 'lucene-core'
-        exclude group: 'org.apache.logging.log4j'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
         exclude group: 'lucene-analyzers-common'
         exclude group: 'org.apache.commons'
         exclude group: 'org.yaml'

@@ -31,18 +31,19 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
   private val timestampFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneId.of("GMT"))
 
   override def onResponse(responseContext: AuditResponseContext): Option[JSONObject] = responseContext match {
-    case Allowed(_, verbosity, _) if verbosity == Verbosity.Info =>
-      None
-    case Allowed(requestContext, _, reason) =>
-      Some(createEntry(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
+    case Allowed(requestContext, verbosity, reason) =>
+      verbosity match {
+        case Verbosity.Info =>
+          Some(createEntry(matched = true, "ALLOWED", reason, responseContext.duration, requestContext, None))
+        case Verbosity.Error =>
+          None
+      }
     case ForbiddenBy(requestContext, _, reason) =>
       Some(createEntry(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None))
     case Forbidden(requestContext) =>
       Some(createEntry(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None))
     case Errored(requestContext, cause) =>
       Some(createEntry(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
-    case NotFound(requestContext, cause) =>
-      Some(createEntry(matched = false, "NOT_FOUND", "not found", responseContext.duration, requestContext, Some(cause)))
   }
 
   private def createEntry(matched: Boolean,

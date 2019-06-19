@@ -17,27 +17,23 @@
 
 package tech.beshu.ror.utils.containers;
 
-import com.google.common.base.Strings;
 import org.apache.http.Header;
-import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.Version;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.util.VersionUtil;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
-import tech.beshu.ror.utils.Tuple;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
+import tech.beshu.ror.utils.misc.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
 import tech.beshu.ror.utils.httpclient.RestClient;
+import tech.beshu.ror.utils.misc.Version;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -65,34 +61,29 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
     ESWithReadonlyRestContainer.esVersion = esVersion;
   }
 
-  public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
+  public static ESWithReadonlyRestContainer create(RorPluginGradleProjectJ project,
       String elasticsearchConfig,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     return create(project, ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
   }
 
-  private static boolean greaterOrEqualThan(String esVersion, int maj, int min, int patchLevel) {
-    if (Strings.isNullOrEmpty(esVersion)) {
-      throw new IllegalArgumentException("invalid esVersion: " + esVersion);
-    }
-    return VersionUtil
-        .parseVersion(esVersion, "x", "y")
-        .compareTo(
-            new Version(maj, min, patchLevel, "", "x", "y")) >= 0;
+  public static ESWithReadonlyRestContainer create(String elasticsearchConfig,
+      Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
+    return create(RorPluginGradleProjectJ.fromSystemProperty(), ContainerUtils.getResourceFile(elasticsearchConfig), initalizer);
   }
 
   public static void main(String[] args) {
 
   }
 
-  public static ESWithReadonlyRestContainer create(RorPluginGradleProject project,
+  public static ESWithReadonlyRestContainer create(RorPluginGradleProjectJ project,
       File elasticsearchConfigFile,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
     File pluginFile = project.assemble().orElseThrow(() ->
         new ContainerCreationException("Plugin file assembly failed")
     );
 
-    String dockerImage = greaterOrEqualThan(project.getESVersion(), 6, 3, 0) ?
+    String dockerImage = Version.greaterOrEqualThan(project.getESVersion(), 6, 3, 0) ?
         "docker.elastic.co/elasticsearch/elasticsearch-oss" :
         "docker.elastic.co/elasticsearch/elasticsearch";
     String elasticsearchConfigName = "elasticsearch.yml";
@@ -119,22 +110,24 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
                   .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
                   .copy(javaOptionsFileName, "/usr/share/elasticsearch/config/")
                   .copy(elasticsearchConfigName, "/usr/share/elasticsearch/config/readonlyrest.yml")
+                  .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
+
                   .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
                   .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
-                  .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
+
                   .user("root")
                   .run("chown elasticsearch:elasticsearch config/*");
 
-              //              if (greaterOrEqualThan630) {
-              //                builder
-              //                    .env("JAVA_HOME", "/usr/lib/jvm/jre-1.8.0-openjdk")
-              //                    .run("yum update -y && yum install -y nc java-1.8.0-openjdk-headless && yum clean all");
-              //              }
-
+              if(Version.greaterOrEqualThan(project.getESVersion(), 7, 0, 0)){
+                builder
+                    .run("egrep -v 'node\\.name|initial_master_nodes' /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
+                    .run("echo 'node.name: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+                    .run("echo 'cluster.initial_master_nodes: n1' >> /usr/share/elasticsearch/config/elasticsearch.yml");
+              }
 
               builder.user("elasticsearch")
-                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms")
+                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms -Dcom.unboundid.ldap.sdk.debug.enabled=true")
                      .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + pluginFile.getName());
               logger.info("Dockerfile\n" + builder.build());
             })
@@ -202,8 +195,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
       }
 
       private boolean isReady(RestClient client) {
-        try {
-          HttpResponse result = client.execute(new HttpGet(client.from("_cluster/health")));
+        try (CloseableHttpResponse result = client.execute(new HttpGet(client.from("_cluster/health")))) {
           if (result.getStatusLine().getStatusCode() != 200) {
             return false;
           }
@@ -213,7 +205,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               }
           );
           return "green".equals(healthJson.get("status"));
-        } catch (IOException | URISyntaxException e) {
+        } catch (Exception e) {
           return false;
         }
       }

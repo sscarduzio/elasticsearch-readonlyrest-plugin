@@ -21,20 +21,20 @@ import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.containers.WireMockContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject;
-import tech.beshu.ror.utils.integration.ElasticsearchTweetsInitializer;
-import tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static tech.beshu.ror.utils.integration.ReadonlyRestedESAssertions.assertions;
+import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 
 public class ExternalAuthenticationTests {
 
   @ClassRule
-  public static MultiContainerDependent<ESWithReadonlyRestContainer> container =
+  public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
     ESWithReadonlyRestContainerUtils.create(
-      RorPluginGradleProject.fromSystemProperty(),
+      RorPluginGradleProjectJ.fromSystemProperty(),
       new MultiContainer.Builder()
         .add("EXT1", () -> WireMockContainer.create("/external_authentication/wiremock_service1_cartman.json",
           "/external_authentication/wiremock_service1_morgan.json"
@@ -44,21 +44,20 @@ public class ExternalAuthenticationTests {
       new ElasticsearchTweetsInitializer()
     );
 
-
   @Test
   public void testAuthenticationSuccessWithService1() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("cartman", "user1", "twitter");
+    assertions(multiContainerDependent.getContainer()).assertUserHasAccessToIndex("cartman", "user1", "twitter");
   }
 
   @Test
   public void testAuthenticationErrorWithService1() throws Exception {
-    ReadonlyRestedESAssertions assertions = assertions(container);
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserAccessToIndexForbidden("cartman", "user2", "twitter");
     assertions.assertUserAccessToIndexForbidden("morgan", "user2", "twitter");
   }
 
   @Test
   public void testAuthenticationSuccessWithService2() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("cartman", "user1", "facebook");
+    assertions(multiContainerDependent.getContainer()).assertUserHasAccessToIndex("cartman", "user1", "facebook");
   }
 }
