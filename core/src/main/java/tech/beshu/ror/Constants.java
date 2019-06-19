@@ -49,10 +49,10 @@ public class Constants {
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",
-      "indices:admin/mappings/fields/resolve*",
-      "indices:admin/mappings/resolve*",
+      "indices:admin/mappings/fields/get*",
+      "indices:admin/mappings/get*",
       "indices:admin/validate/query",
-      "indices:admin/resolve",
+      "indices:admin/get",
       "indices:admin/refresh*",
       "indices:data/read/*",
       "indices:admin/aliases/get",
