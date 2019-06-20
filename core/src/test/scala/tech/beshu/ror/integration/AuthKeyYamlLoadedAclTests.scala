@@ -32,7 +32,7 @@ import monix.execution.Scheduler.Implicits.global
 
 class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
 
-  protected val configYaml: String =
+  protected def configYaml: String =
     """
       |other_non_ror_settings:
       |

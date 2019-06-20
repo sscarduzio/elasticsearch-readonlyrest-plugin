@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.TestsUtils.headerFrom
 
 class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside  {
 
-  override protected val configYaml: String =
+  override protected def configYaml: String =
     """
       |readonlyrest:
       |

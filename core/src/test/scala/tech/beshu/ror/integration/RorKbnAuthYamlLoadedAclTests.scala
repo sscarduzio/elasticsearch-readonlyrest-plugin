@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.TestsUtils._
 
 class RorKbnAuthYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
 
-  override protected val configYaml: String =
+  override protected def configYaml: String =
     """http.bind_host: _eth0:ipv4_
       |network.host: _eth0:ipv4_
       |

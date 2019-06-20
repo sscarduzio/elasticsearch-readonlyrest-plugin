@@ -804,7 +804,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot resolve variable: @{env:SECRET}")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Cannot resolve ENV variable 'SECRET'")))
           }
         )
       }
@@ -996,7 +996,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
     }
   }
 
-  override protected val envVarsProvider: EnvVarsProvider = {
+  override implicit protected def envVarsProvider: EnvVarsProvider = {
     case EnvVarName(env) if env.value == "SECRET_RSA" =>
       val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
       Some(Base64.getEncoder.encodeToString(pkey.getEncoded))

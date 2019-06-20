@@ -1,19 +1,18 @@
 package tech.beshu.ror.integration
 
+import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.blocks.Block.ExecutionResult.Matched
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{basicAuthHeader, header}
+import tech.beshu.ror.utils.TestsUtils._
 
 class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
 
-  override protected val configYaml: String =
+  override protected def configYaml: String =
     """
       |readonlyrest:
       |
@@ -45,7 +44,11 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           result.history should have size 2
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header"))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user")))) { // todo: fix
+            assertBlockContext(
+              loggedUser = Some(LoggedUser(User.Id("user"))),
+              currentGroup = Some(groupFrom("g3")),
+              availableGroups = Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"))
+            ) {
               blockContext
             }
           }
@@ -60,7 +63,11 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           result.history should have size 2
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header"))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user")))) { // todo: fix
+            assertBlockContext(
+              loggedUser = Some(LoggedUser(User.Id("user"))),
+              currentGroup = Some(groupFrom("g3")),
+              availableGroups = Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"))
+            ) {
               blockContext
             }
           }

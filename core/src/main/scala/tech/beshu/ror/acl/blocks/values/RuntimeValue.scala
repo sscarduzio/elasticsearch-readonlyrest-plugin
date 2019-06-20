@@ -81,7 +81,7 @@ final case class HeaderVar(header: Header.Name) extends RuntimeValue {
 
 final case class JwtPayloadVar(jsonPath: JsonPath) extends RuntimeValue {
   override def extract(requestContext: RequestContext,
-                       blockContext: BlockContext): Either[ExtractError, String] = ???
+                       blockContext: BlockContext): Either[ExtractError, String] = ??? //todo: impl
 }
 
 sealed trait Variable[T] {

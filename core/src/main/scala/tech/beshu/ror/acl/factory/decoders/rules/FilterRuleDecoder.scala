@@ -27,12 +27,7 @@ import tech.beshu.ror.utils.EnvVarsProvider
 
 class FilterRuleDecoder(implicit provider: EnvVarsProvider)
   extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers.decodeStringLike
-    .map(str => VariableCreator.createFrom(str, extracted => Right(Filter(extracted))))
-    .toSyncDecoder
-    .emapE {
-      case Right(filter) => Right(new FilterRule(FilterRule.Settings(filter)))
-      case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
-    }
-    .decoder
+    DecoderHelpers
+      .alwaysRightVariableDecoder(Filter.apply)
+      .map(filter => new FilterRule(FilterRule.Settings(filter)))
 )
