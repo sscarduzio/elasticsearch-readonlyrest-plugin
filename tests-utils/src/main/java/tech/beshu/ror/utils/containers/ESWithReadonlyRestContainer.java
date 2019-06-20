@@ -18,7 +18,7 @@
 package tech.beshu.ror.utils.containers;
 
 import org.apache.http.Header;
-import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -195,8 +195,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
       }
 
       private boolean isReady(RestClient client) {
-        try {
-          HttpResponse result = client.execute(new HttpGet(client.from("_cluster/health")));
+        try (CloseableHttpResponse result = client.execute(new HttpGet(client.from("_cluster/health")))) {
           if (result.getStatusLine().getStatusCode() != 200) {
             return false;
           }

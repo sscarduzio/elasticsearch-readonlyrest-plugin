@@ -26,7 +26,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.apache.logging.log4j.scala.Logging
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
-import tech.beshu.ror.acl.utils.ScalaOps.retryBackoff
+import ScalaOps.retryBackoff
 import tech.beshu.ror.utils.LdapContainer.defaults
 
 import scala.concurrent.duration._

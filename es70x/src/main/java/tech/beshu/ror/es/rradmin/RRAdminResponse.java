@@ -17,47 +17,58 @@
 
 package tech.beshu.ror.es.rradmin;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.common.io.stream.StreamInput;
-import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import scala.util.Either;
+import scala.util.Right$;
+import tech.beshu.ror.adminapi.AdminRestApi;
+import tech.beshu.ror.adminapi.AdminRestApi.ApiCallResult;
+import tech.beshu.ror.adminapi.AdminRestApi.Failure;
+import tech.beshu.ror.adminapi.AdminRestApi.Success;
 
 import java.io.IOException;
 
 public class RRAdminResponse extends ActionResponse implements ToXContentObject {
 
-  private Throwable throwable;
-  private String body;
+  private static final Logger logger = LogManager.getLogger(RRAdminResponse.class);
+  private final Either<Throwable, AdminRestApi.AdminResponse> response;
 
-  public RRAdminResponse(String body) {
-    this.body = body;
+  public RRAdminResponse(Either<Throwable, AdminRestApi.AdminResponse> response) {
+    this.response = response;
   }
 
-  public RRAdminResponse(Throwable t) {
-    this.throwable = t;
-  }
-
-  @Override
-  public void writeTo(StreamOutput out) throws IOException {
-    super.writeTo(out);
-  }
-
-  @Override
-  public void readFrom(StreamInput in) throws IOException {
-    super.readFrom(in);
+  public RRAdminResponse(AdminRestApi.AdminResponse response) {
+    this.response = Right$.MODULE$.apply(response);
   }
 
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-    builder.startObject();
-    if (throwable == null) {
-      builder.field("status", "ok").field("message", body);
+    if(response.isRight()) {
+      ApiCallResult result = response.right().get().result();
+      if(result instanceof Success) {
+        Success success = (Success) result;
+        addResponseJson(builder,"ok", success.message());
+      } else if (result instanceof Failure) {
+        Failure failure = (Failure) result;
+        addResponseJson(builder,"ko", failure.message());
+      } else {
+        logger.error("RRAdmin: unknown type of response");
+        addResponseJson(builder,"ko", AdminRestApi.AdminResponse$.MODULE$.internalError().result().message());
+      }
+    } else {
+      logger.error("RRAdmin internal error", response.left().get());
+      addResponseJson(builder, "ko", AdminRestApi.AdminResponse$.MODULE$.internalError().result().message());
     }
-    else {
-      builder.field("status", "ko").field("message", throwable.getMessage());
-    }
-    builder.endObject();
     return builder;
+  }
+
+  private void addResponseJson(XContentBuilder builder, String status, String message) throws IOException {
+    builder.startObject();
+    builder.field("status", status);
+    builder.field("message", message);
+    builder.endObject();
   }
 }

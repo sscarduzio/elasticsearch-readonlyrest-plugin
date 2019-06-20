@@ -41,9 +41,8 @@ class ElasticsearchNodeWaitingStrategy(containerName: String,
   extends AbstractWaitStrategy
   with StrictLogging {
 
-  private val startupThreshold = FiniteDuration(startupTimeout.toMillis, TimeUnit.MILLISECONDS)
-
   override def waitUntilReady(): Unit = {
+    implicit val startupThreshold: FiniteDuration = FiniteDuration(startupTimeout.toMillis, TimeUnit.MILLISECONDS)
     val client = restClient.runAttempt().fold(throw _, identity)
     val started = retry {
       checkClusterHealth(client).fold(
@@ -60,7 +59,8 @@ class ElasticsearchNodeWaitingStrategy(containerName: String,
     initializer.initialize(new DocumentManager(client))
   }
 
-  private def retry[A](checkClusterHealthAction: => Boolean) = {
+  private def retry[A](checkClusterHealthAction: => Boolean)
+                      (implicit startupThreshold: FiniteDuration) = {
     val policy: RetryPolicy[Id] = limitRetriesByCumulativeDelay(startupThreshold, constantDelay(2 seconds))
     val predicate = (_: Boolean) == true
     def onFailure(failedValue: Boolean, details: RetryDetails): Unit = {

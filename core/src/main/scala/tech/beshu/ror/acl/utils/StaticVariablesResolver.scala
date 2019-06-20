@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.utils
 
-import scala.util.Try
+import tech.beshu.ror.utils.EnvVarsProvider
 
 class StaticVariablesResolver(envVarsProvider: EnvVarsProvider) {
 
@@ -62,13 +62,4 @@ class StaticVariablesResolver(envVarsProvider: EnvVarsProvider) {
     val text = "text:"
   }
 
-}
-
-trait EnvVarsProvider {
-  def getEnv(name: String): Option[String]
-}
-
-object JavaEnvVarsProvider extends EnvVarsProvider {
-  override def getEnv(name: String): Option[String] =
-    Try(Option(System.getenv(name))).toOption.flatten
 }

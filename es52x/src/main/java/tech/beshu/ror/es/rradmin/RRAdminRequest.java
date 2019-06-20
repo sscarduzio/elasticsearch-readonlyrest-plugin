@@ -19,45 +19,22 @@ package tech.beshu.ror.es.rradmin;
 
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionRequestValidationException;
+import org.elasticsearch.rest.RestRequest;
+import tech.beshu.ror.adminapi.AdminRestApi;
 
 public class RRAdminRequest extends ActionRequest {
 
-  private String method;
-  private String content;
-  private String path;
+  private RestRequest request;
 
   public RRAdminRequest() {
   }
 
-  public RRAdminRequest(String method, String path, String content) {
-    this.method = method;
-    this.content = content;
-    this.path = path;
+  public RRAdminRequest(RestRequest request) {
+    this.request = request;
   }
 
-  public String getPath() {
-    return path;
-  }
-
-  public void setPath(String path) {
-    this.path = path;
-  }
-
-  public String getMethod() {
-    return method;
-  }
-
-  public void setMethod(String method) {
-    this.method = method;
-  }
-
-  public String getContent() {
-
-    return content;
-  }
-
-  public void setContent(String content) {
-    this.content = content;
+  public AdminRestApi.AdminRequest getAdminRequest() {
+    return new AdminRestApi.AdminRequest(request.method().name(), request.path(), request.content().utf8ToString());
   }
 
   @Override

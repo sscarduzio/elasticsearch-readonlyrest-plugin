@@ -17,11 +17,11 @@
 
 package tech.beshu.ror.utils;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.reflections.ReflectionUtils;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.shims.es.ESContext;
-import tech.beshu.ror.shims.es.LoggerShim;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -36,6 +36,7 @@ import java.util.Set;
 public class ReflecUtils {
 
   private static final HashMap<String, Method> methodsCache = new HashMap<>(128);
+  private static final Logger logger = LogManager.getLogger(ReflecUtils.class);
 
   public static Object invokeMethodCached(Object o, Class c, String method) {
     String cacheKey = c.getName() + "#" + method;
@@ -81,11 +82,11 @@ public class ReflecUtils {
     });
   }
 
-  public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o, ESContext context) {
+  public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o) {
     final String[][] result = {new String[]{}};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       if (o == null) {
-        throw context.rorException("cannot extract field from null!");
+        throw new ReadonlyRestIllegalStateException("cannot extract field from null!");
       }
       Class<?> clazz = o.getClass();
       while (!clazz.equals(Object.class)) {
@@ -103,13 +104,11 @@ public class ReflecUtils {
             return null;
           }
         } catch (SecurityException e) {
-          context.logger(ReflecUtils.class)
-            .error("Can't get indices for request because of wrong security configuration " + o.getClass());
+          logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
             "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
-          context.logger(ReflecUtils.class)
-            .debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
+          logger.debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
         }
         clazz = clazz.getSuperclass();
       }
@@ -140,7 +139,7 @@ public class ReflecUtils {
     return null;
   }
 
-  public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices, LoggerShim logger) {
+  public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices) {
     if(newIndices.isEmpty()) return false;
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
@@ -170,5 +169,4 @@ public class ReflecUtils {
     });
     return res[0];
   }
-
 }

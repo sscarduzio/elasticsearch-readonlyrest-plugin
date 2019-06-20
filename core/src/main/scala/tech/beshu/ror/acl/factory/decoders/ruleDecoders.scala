@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.acl.factory.decoders.rules._
-import tech.beshu.ror.acl.utils.UuidProvider
+import tech.beshu.ror.utils.UuidProvider
 
 import scala.language.implicitConversions
 

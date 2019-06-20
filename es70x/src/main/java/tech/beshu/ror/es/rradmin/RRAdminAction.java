@@ -19,6 +19,7 @@ package tech.beshu.ror.es.rradmin;
 
 import org.elasticsearch.action.Action;
 import org.elasticsearch.client.ElasticsearchClient;
+import tech.beshu.ror.adminapi.AdminRestApi;
 
 public class RRAdminAction extends Action<RRAdminResponse> {
 
@@ -29,9 +30,9 @@ public class RRAdminAction extends Action<RRAdminResponse> {
     super(NAME);
   }
 
-
   @Override
   public RRAdminResponse newResponse() {
-    return new RRAdminResponse("static instance");
+    return new RRAdminResponse(AdminRestApi.AdminResponse$.MODULE$.notAvailable());
   }
+
 }

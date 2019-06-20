@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.utils.TaskOps._
+import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
 

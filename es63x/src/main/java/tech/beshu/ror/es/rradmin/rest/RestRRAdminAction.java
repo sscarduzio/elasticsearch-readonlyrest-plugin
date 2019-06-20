@@ -26,6 +26,7 @@ import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 import tech.beshu.ror.Constants;
+import tech.beshu.ror.adminapi.AdminRestApi$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.RRAdminRequest;
 import tech.beshu.ror.es.rradmin.RRAdminResponse;
@@ -36,12 +37,15 @@ import java.io.IOException;
  * Created by sscarduzio on 21/03/2017.
  */
 public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
+
   @Inject
   public RestRRAdminAction(Settings settings, RestController controller) {
     super(settings);
-    Constants.RR_ADMIN_ROUTES.forEach(kv -> {
-      controller.registerHandler(RestRequest.Method.valueOf(kv.get(0)), kv.get(1), this);
-    });
+    controller.registerHandler(RestRequest.Method.valueOf("POST"), AdminRestApi$.MODULE$.forceReloadRorPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("GET"), AdminRestApi$.MODULE$.provideRorIndexConfigPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("POST"), AdminRestApi$.MODULE$.updateIndexConfigurationPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("GET"), AdminRestApi$.MODULE$.provideRorFileConfigPath().endpointString(), this);
+    controller.registerHandler(RestRequest.Method.valueOf("GET"), Constants.REST_METADATA_PATH, this);
   }
 
   public String getName() {
@@ -49,12 +53,12 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
   }
 
   @Override
-  protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) throws IOException {
+  protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) {
     return (channel) -> {
       client.execute(
           new RRAdminAction(),
-          new RRAdminRequest(request.method().name(), request.path(), request.content().utf8ToString()),
-          new RestToXContentListener<RRAdminResponse>(channel)
+          new RRAdminRequest(request),
+          new RestToXContentListener<>(channel)
       );
     };
   }

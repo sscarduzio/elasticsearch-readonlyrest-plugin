@@ -28,6 +28,7 @@ import tech.beshu.ror.acl.logging.AuditingTool.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.es.AuditSink
 
 class AuditingTool(settings: Settings,
                    auditSink: AuditSink)
@@ -112,8 +113,4 @@ object AuditingTool {
   final case class Settings(indexNameFormatter: DateTimeFormatter,
                             logSerializer: AuditLogSerializer)
 
-}
-
-trait AuditSink {
-  def submit(indexName: String, documentId: String, jsonRecord: String): Unit
 }

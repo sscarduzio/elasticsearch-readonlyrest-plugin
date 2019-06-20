@@ -21,9 +21,10 @@ import cats.implicits._
 import cats.{Functor, Id}
 import io.circe._
 import monix.eval.Task
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.CoreFactory.AclCreationError.Reason
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.utils.YamlOps
 
 import scala.annotation.tailrec
 import scala.language.{higherKinds, implicitConversions}

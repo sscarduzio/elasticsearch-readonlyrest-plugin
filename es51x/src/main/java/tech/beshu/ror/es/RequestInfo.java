@@ -19,6 +19,8 @@ package tech.beshu.ror.es;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
 import org.elasticsearch.action.IndicesRequest;
@@ -54,8 +56,6 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.reflections.ReflectionUtils;
-import tech.beshu.ror.shims.es.ESContext;
-import tech.beshu.ror.shims.es.LoggerShim;
 import tech.beshu.ror.shims.request.RequestInfoShim;
 import tech.beshu.ror.utils.RCUtils;
 import tech.beshu.ror.utils.ReflecUtils;
@@ -77,6 +77,7 @@ import java.util.stream.Collectors;
 import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
 public class RequestInfo implements RequestInfoShim {
+  private final Logger logger = LogManager.getLogger(this.getClass());
 
   private final RestRequest request;
   private final String action;
@@ -85,17 +86,12 @@ public class RequestInfo implements RequestInfoShim {
   private final ClusterService clusterService;
   private final Long taskId;
   private final ThreadPool threadPool;
-  private final LoggerShim logger;
   private final RestChannel channel;
   private String content = null;
   private Integer contentLength;
-  private ESContext context;
 
-  RequestInfo(
-      RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool, ESContext context) {
-    this.context = context;
-    this.logger = context.logger(getClass());
+  RequestInfo(RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
+      ClusterService clusterService, ThreadPool threadPool) {
     this.threadPool = threadPool;
     this.request = channel.request();
     this.channel = channel;
@@ -117,7 +113,7 @@ public class RequestInfo implements RequestInfoShim {
     if(newSnapshots.isEmpty()) return;
 
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
-    String[] newSnapshotsA = newSnapshots.toArray(new String[newSnapshots.size()]);
+    String[] newSnapshotsA = newSnapshots.toArray(new String[0]);
     if (actionRequest instanceof GetSnapshotsRequest) {
       GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
       rsr.snapshots(newSnapshotsA);
@@ -136,7 +132,7 @@ public class RequestInfo implements RequestInfoShim {
     if(newRepositories.isEmpty()) return;
 
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
-    String[] newRepositoriesA = newRepositories.toArray(new String[newRepositories.size()]);
+    String[] newRepositoriesA = newRepositories.toArray(new String[0]);
     if (actionRequest instanceof GetSnapshotsRequest) {
       GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
       rsr.repository(newRepositoriesA[0]);
@@ -313,9 +309,9 @@ public class RequestInfo implements RequestInfoShim {
 
     // Last resort
     else {
-      indices = extractStringArrayFromPrivateMethod("indices", ar, context);
+      indices = extractStringArrayFromPrivateMethod("indices", ar);
       if (indices == null || indices.length == 0) {
-        indices = extractStringArrayFromPrivateMethod("index", ar, context);
+        indices = extractStringArrayFromPrivateMethod("index", ar);
       }
     }
 
@@ -551,7 +547,7 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     // Optimistic reflection attempt
-    boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices, logger);
+    boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices);
 
     if (okSetResult) {
       if (logger.isDebugEnabled()) {

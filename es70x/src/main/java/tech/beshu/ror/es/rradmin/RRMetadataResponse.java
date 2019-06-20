@@ -20,8 +20,6 @@ package tech.beshu.ror.es.rradmin;
 import com.google.common.collect.Maps;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.io.stream.StreamInput;
-import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.ToXContentObject;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import scala.collection.JavaConverters$;
@@ -73,8 +71,9 @@ public class RRMetadataResponse extends ActionResponse implements ToXContentObje
         h -> Constants.HEADER_KIBANA_HIDDEN_APPS.equals(h.name().value().toString())).findFirst().map(
         h -> h.value().toString()).orElse(null);
 
-    String[] hiddenApps = Strings.isNullOrEmpty(hiddenAppsStr) ? new String[] {} : hiddenAppsStr.split(",");
-    sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenApps);
+    if(!Strings.isNullOrEmpty(hiddenAppsStr)) {
+      sourceMap.put(Constants.HEADER_KIBANA_HIDDEN_APPS, hiddenAppsStr.split(","));
+    }
 
     builder.map(sourceMap);
     return builder;
