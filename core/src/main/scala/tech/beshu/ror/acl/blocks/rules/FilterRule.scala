@@ -22,8 +22,8 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.acl.blocks.values.Variable
-import tech.beshu.ror.acl.blocks.values.Variable.Unresolvable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain.{Filter, Header}
 import tech.beshu.ror.acl.headerValues.transientFilterHeaderValue
@@ -54,5 +54,5 @@ class FilterRule(val settings: Settings)
 object FilterRule {
   val name = Rule.Name("filter")
 
-  final case class Settings(filter: Variable[Filter])
+  final case class Settings(filter: RuntimeResolvableVariable[Filter])
 }

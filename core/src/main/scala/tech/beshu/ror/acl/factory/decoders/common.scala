@@ -30,8 +30,8 @@ import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.blocks.values.Variable.ConvertError
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -40,7 +40,6 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.acl.utils.SyncDecoderCreator
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.acl.utils.SyncDecoderCreator
 import tech.beshu.ror.utils.EnvVarsProvider
@@ -144,7 +143,7 @@ object common extends Logging {
       }
       .decoder
 
-  implicit def groupVariableDecoder(implicit provider: EnvVarsProvider): Decoder[Variable[Group]] =
+  implicit def groupVariableDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[Group]] =
     DecoderHelpers
       .variableDecoder[Group] { str =>
       NonEmptyString.from(str) match {
@@ -159,7 +158,7 @@ object common extends Logging {
       }
       .decoder
 
-  implicit def addressVariableDecoder(implicit provider: EnvVarsProvider): Decoder[Variable[Address]] = {
+  implicit def addressVariableDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[Address]] = {
     DecoderHelpers
       .variableDecoder[Address] { str =>
       Address.from(str) match {

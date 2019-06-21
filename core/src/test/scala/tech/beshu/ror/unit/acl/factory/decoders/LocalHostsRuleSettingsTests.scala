@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.domain.Address
-import tech.beshu.ror.acl.blocks.values._
+import tech.beshu.ror.acl.blocks.variables._
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 
@@ -43,7 +43,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get))
+            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -79,7 +79,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
+            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )

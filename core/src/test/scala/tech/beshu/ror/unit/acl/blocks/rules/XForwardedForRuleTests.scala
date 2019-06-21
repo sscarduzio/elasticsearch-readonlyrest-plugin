@@ -25,7 +25,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.acl.blocks.values.{Variable, VariableCreator}
+import tech.beshu.ror.acl.blocks.variables.{RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -108,9 +108,9 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): Variable[Address] = {
+  private def addressValueFrom(value: String): RuntimeResolvableVariable[Address] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    VariableCreator
+    RuntimeResolvableVariableCreator
       .createFrom(value, extracted => Right(Address.from(extracted).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))

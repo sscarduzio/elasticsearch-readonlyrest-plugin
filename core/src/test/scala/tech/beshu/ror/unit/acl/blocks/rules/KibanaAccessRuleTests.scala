@@ -29,7 +29,7 @@ import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, Const}
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, Const}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 
 import scala.collection.JavaConverters._

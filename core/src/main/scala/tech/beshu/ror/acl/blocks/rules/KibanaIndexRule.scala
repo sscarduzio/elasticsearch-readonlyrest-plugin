@@ -20,7 +20,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.MatchingAlwaysRule
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.domain.IndexName
 
@@ -42,5 +42,5 @@ class KibanaIndexRule(val settings: Settings)
 object KibanaIndexRule {
   val name = Rule.Name("kibana_index")
 
-  final case class Settings(kibanaIndex: Variable[IndexName])
+  final case class Settings(kibanaIndex: RuntimeResolvableVariable[IndexName])
 }

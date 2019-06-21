@@ -22,7 +22,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, RepositoriesRule}
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, Variable}
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariable}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.orders._
@@ -157,20 +157,20 @@ class RepositoriesRuleTests
     }
   }
 
-  private def assertMatchRule(configuredRepositories: NonEmptySet[Variable[IndexName]],
+  private def assertMatchRule(configuredRepositories: NonEmptySet[RuntimeResolvableVariable[IndexName]],
                               requestAction: Action,
                               requestRepositories: Set[IndexName],
                               readonlyRequest: Boolean = false)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, readonlyRequest, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredRepositories: NonEmptySet[Variable[IndexName]],
+  private def assertNotMatchRule(configuredRepositories: NonEmptySet[RuntimeResolvableVariable[IndexName]],
                                  requestAction: Action,
                                  requestRepositories: Set[IndexName],
                                  readonlyRequest: Boolean = false): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, readonlyRequest, blockContextAssertion = None)
 
-  private def assertRule(configuredRepositories: NonEmptySet[Variable[IndexName]],
+  private def assertRule(configuredRepositories: NonEmptySet[RuntimeResolvableVariable[IndexName]],
                          requestAction: Action,
                          requestRepositories: Set[IndexName],
                          readonlyRequest: Boolean,

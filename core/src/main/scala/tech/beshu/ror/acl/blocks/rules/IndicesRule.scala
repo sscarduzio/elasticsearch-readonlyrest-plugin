@@ -31,7 +31,7 @@ import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, Variable}
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariable}
 import tech.beshu.ror.acl.request.RequestContext
 
 import scala.collection.JavaConverters._
@@ -273,7 +273,7 @@ class IndicesRule(val settings: Settings)
 object IndicesRule {
   val name = Rule.Name("indices")
 
-  final case class Settings(allowedIndices: NonEmptySet[Variable[IndexName]])
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeResolvableVariable[IndexName]])
 
   private sealed trait CanPass
   private object CanPass {

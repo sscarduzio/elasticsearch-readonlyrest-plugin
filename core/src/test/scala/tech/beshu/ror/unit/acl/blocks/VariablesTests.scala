@@ -21,9 +21,9 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.fromRequestContext
-import tech.beshu.ror.acl.blocks.values.Variable.Unresolvable.CannotExtractValue
-import tech.beshu.ror.acl.blocks.values.VariableCreator
-import tech.beshu.ror.acl.blocks.values.VariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.Unresolvable.CannotExtractValue
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariableCreator.CreationError
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
@@ -72,7 +72,7 @@ class VariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "header name is empty string" in {
-        VariableCreator.createFrom("h:@{header:}", Right.apply) shouldBe Left(CreationError("No header name passed"))
+        RuntimeResolvableVariableCreator.createFrom("h:@{header:}", Right.apply) shouldBe Left(CreationError("No header name passed"))
       }
     }
   }
@@ -152,13 +152,18 @@ class VariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "variable is empty string" in {
-        VariableCreator.createFrom("h:@{}", Right.apply) shouldBe Left(CreationError("No header name passed"))
+        RuntimeResolvableVariableCreator.createFrom("h:@{}", Right.apply) shouldBe Left(CreationError("No header name passed"))
+      }
+    }
+    "have been treated as text" when {
+      "variable format doesn't have closing bracket" in {
+        RuntimeResolvableVariableCreator.createFrom("h:@{test", Right.apply) shouldBe Right(AlreadyResolved("h:@{test"))
       }
     }
   }
 
   private def createVariable(text: String) = {
-    VariableCreator.createFrom(text, Right.apply).right.get
+    RuntimeResolvableVariableCreator.createFrom(text, Right.apply).right.get
   }
 
 }

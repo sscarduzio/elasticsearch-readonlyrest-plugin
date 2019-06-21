@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, ToBeResolved, Variable, VariableCreator}
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, ToBeResolved, RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.orders._
 
 class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] with Inside {
@@ -50,7 +50,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: NonEmptySet[Variable[Group]] = NonEmptySet.one(AlreadyResolved(groupFrom("group1")))
+            val groups: NonEmptySet[RuntimeResolvableVariable[Group]] = NonEmptySet.one(AlreadyResolved(groupFrom("group1")))
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
@@ -84,7 +84,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: NonEmptySet[Variable[Group]] = NonEmptySet.of(AlreadyResolved(groupFrom("group1")), AlreadyResolved(groupFrom("group2")))
+            val groups: NonEmptySet[RuntimeResolvableVariable[Group]] = NonEmptySet.of(AlreadyResolved(groupFrom("group1")), AlreadyResolved(groupFrom("group2")))
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet

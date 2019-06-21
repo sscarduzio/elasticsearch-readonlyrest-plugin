@@ -21,10 +21,10 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.values._
 import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
@@ -49,7 +49,7 @@ class KibanaIndexRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDec
 )
 
 class KibanaAccessRuleDecoder(implicit provider: EnvVarsProvider)
-  extends RuleDecoderWithAssociatedFields[KibanaAccessRule, Variable[IndexName]](
+  extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeResolvableVariable[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
       .decodeStringLike
@@ -67,7 +67,7 @@ class KibanaAccessRuleDecoder(implicit provider: EnvVarsProvider)
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
   associatedFieldsDecoder =
-    Decoder.instance(_.downField("kibana_index").as[Variable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
+    Decoder.instance(_.downField("kibana_index").as[RuntimeResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
 )
 
 private object KibanaRulesDecoderHelper {
@@ -77,10 +77,10 @@ private object KibanaRulesDecoderHelper {
       .map(!"false".equalsIgnoreCase(_))
       .getOrElse(true)
 
-  implicit def kibanaIndexDecoder(implicit provider: EnvVarsProvider): Decoder[Variable[IndexName]] =
+  implicit def kibanaIndexDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[IndexName]] =
     DecoderHelpers
       .decodeStringLike
-      .map(str => VariableCreator.createFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
+      .map(str => RuntimeResolvableVariableCreator.createFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)

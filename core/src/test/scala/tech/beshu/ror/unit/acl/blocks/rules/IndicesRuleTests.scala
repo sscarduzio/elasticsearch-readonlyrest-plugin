@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.{Variable, VariableCreator}
+import tech.beshu.ror.acl.blocks.variables.{RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.collection.SortedSet
@@ -257,18 +257,18 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configured: NonEmptySet[Variable[IndexName]],
+  private def assertMatchRule(configured: NonEmptySet[RuntimeResolvableVariable[IndexName]],
                               requestIndices: Set[IndexName],
                               modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                               found: Set[IndexName] = Set.empty) =
     assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, found)
 
-  private def assertNotMatchRule(configured: NonEmptySet[Variable[IndexName]],
+  private def assertNotMatchRule(configured: NonEmptySet[RuntimeResolvableVariable[IndexName]],
                                  requestIndices: Set[IndexName],
                                  modifyRequestContext: MockRequestContext => MockRequestContext = identity) =
     assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Set.empty)
 
-  private def assertRule(configuredValues: NonEmptySet[Variable[IndexName]],
+  private def assertRule(configuredValues: NonEmptySet[RuntimeResolvableVariable[IndexName]],
                          requestIndices: Set[IndexName],
                          isMatched: Boolean,
                          modifyRequestContext: MockRequestContext => MockRequestContext,
@@ -302,9 +302,9 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def indexNameValueFrom(value: String): Variable[IndexName] = {
+  private def indexNameValueFrom(value: String): RuntimeResolvableVariable[IndexName] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    VariableCreator
+    RuntimeResolvableVariableCreator
       .createFrom(value, str => Right(IndexName(str)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))

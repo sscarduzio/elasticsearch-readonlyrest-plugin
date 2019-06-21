@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule.Settings
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -50,6 +50,6 @@ class XForwardedForRule(val settings: Settings)
 object XForwardedForRule {
   val name = Rule.Name("x_forwarded_for")
 
-  final case class Settings(allowedAddresses: NonEmptySet[Variable[Address]])
+  final case class Settings(allowedAddresses: NonEmptySet[RuntimeResolvableVariable[Address]])
 
 }

@@ -25,15 +25,14 @@ import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, ToBeResolved, Variable, VariableCreator}
-import tech.beshu.ror.acl.blocks.values.Variable.ConvertError
-import tech.beshu.ror.acl.blocks.values.VariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariable, RuntimeResolvableVariableCreator, ToBeResolved}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult._
-import tech.beshu.ror.utils.EnvVarsProvider
 
 import scala.collection.SortedSet
 import scala.language.higherKinds
@@ -43,9 +42,7 @@ object CirceOps {
   object DecoderHelpers {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
 
-    // todo: merge with above
-    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] =
-      Decoder.decodeString.or(Decoder.decodeInt.map(_.show)).emap(NonEmptyString.from)
+    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(NonEmptyString.from)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
@@ -91,7 +88,7 @@ object CirceOps {
       }
     }
 
-    def decodeStringLikeWithVarResolvedInPlace(implicit provider: EnvVarsProvider): Decoder[String] = {
+    val decodeStringLikeWithVarResolvedInPlace: Decoder[String] = {
       alwaysRightVariableDecoder(identity)
           .toSyncDecoder
           .emapE {
@@ -101,14 +98,12 @@ object CirceOps {
           .decoder
     }
 
-    def variableDecoder[T](convert: String => Either[ConvertError, T])
-                          (implicit provider: EnvVarsProvider): Decoder[Either[CreationError, Variable[T]]] =
+    def variableDecoder[T](convert: String => Either[ConvertError, T]): Decoder[Either[CreationError, RuntimeResolvableVariable[T]]] =
       DecoderHelpers
         .decodeStringLike
-        .map { str => VariableCreator.createFrom(str, convert) }
+        .map { str => RuntimeResolvableVariableCreator.createFrom(str, convert) }
 
-    def alwaysRightVariableDecoder[T](convert: String => T)
-                                     (implicit provider: EnvVarsProvider): Decoder[Variable[T]] =
+    def alwaysRightVariableDecoder[T](convert: String => T): Decoder[RuntimeResolvableVariable[T]] =
       SyncDecoderCreator
         .from(variableDecoder[T](rv => Right(convert(rv))))
         .emapE {

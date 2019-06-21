@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.{HostsRule, LocalHostsRule}
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.rules.HostRulesDecodersHelper._
@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.EnvVarsProvider
 class HostsRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithAssociatedFields[HostsRule, Boolean](
   ruleDecoderCreator = acceptXForwardedFor =>
     DecoderHelpers
-      .decodeStringLikeOrNonEmptySet[Variable[Address]]
+      .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[Address]]
       .map(nes => new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor))),
   associatedFields = NonEmptySet.one("accept_x-forwarded-for_header"),
   associatedFieldsDecoder =
@@ -42,7 +42,7 @@ class HostsRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWi
 
 class LocalHostsRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Variable[Address]]
+    .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[Address]]
     .map(addresses => new LocalHostsRule(LocalHostsRule.Settings(addresses)))
 )
 

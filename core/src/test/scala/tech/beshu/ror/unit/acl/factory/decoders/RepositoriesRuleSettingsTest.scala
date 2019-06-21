@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.blocks.rules.RepositoriesRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.values._
+import tech.beshu.ror.acl.blocks.variables._
 import tech.beshu.ror.acl.orders._
 
 
@@ -43,7 +43,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[Variable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1")))
+            val indices: NonEmptySet[RuntimeResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1")))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -79,7 +79,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[Variable[IndexName]] = NonEmptySet.of(AlreadyResolved(IndexName("index1")), AlreadyResolved(IndexName("index2")))
+            val indices: NonEmptySet[RuntimeResolvableVariable[IndexName]] = NonEmptySet.of(AlreadyResolved(IndexName("index1")), AlreadyResolved(IndexName("index2")))
             rule.settings.allowedIndices should be(indices)
           }
         )

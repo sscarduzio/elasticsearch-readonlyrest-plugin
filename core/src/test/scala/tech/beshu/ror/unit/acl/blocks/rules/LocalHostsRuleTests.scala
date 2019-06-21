@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.{Variable, VariableCreator}
+import tech.beshu.ror.acl.blocks.variables.{RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
@@ -64,13 +64,13 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredAddresses: NonEmptySet[Variable[Address]], localAddress: Address) =
+  private def assertMatchRule(configuredAddresses: NonEmptySet[RuntimeResolvableVariable[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = true)
 
-  private def assertNotMatchRule(configuredAddresses: NonEmptySet[Variable[Address]], localAddress: Address) =
+  private def assertNotMatchRule(configuredAddresses: NonEmptySet[RuntimeResolvableVariable[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = false)
 
-  private def assertRule(configuredAddresses: NonEmptySet[Variable[Address]], localAddress: Address, isMatched: Boolean) = {
+  private def assertRule(configuredAddresses: NonEmptySet[RuntimeResolvableVariable[Address]], localAddress: Address, isMatched: Boolean) = {
     val rule = new LocalHostsRule(LocalHostsRule.Settings(configuredAddresses))
     val blockContext = mock[BlockContext]
     val requestContext = MockRequestContext(localAddress = localAddress)
@@ -80,9 +80,9 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): Variable[Address] = {
+  private def addressValueFrom(value: String): RuntimeResolvableVariable[Address] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    VariableCreator
+    RuntimeResolvableVariableCreator
       .createFrom(value, extracted => Right(Address.from(extracted).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))

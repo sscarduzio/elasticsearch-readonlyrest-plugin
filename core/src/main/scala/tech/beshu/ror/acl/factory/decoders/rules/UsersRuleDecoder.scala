@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.UsersRule
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.UsersRuleDecoderHelper.userIdValueDecoder
@@ -29,11 +29,11 @@ import tech.beshu.ror.utils.EnvVarsProvider
 
 class UsersRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Variable[User.Id]]
+    .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[User.Id]]
     .map(users => new UsersRule(Settings(users)))
 )
 
 private object UsersRuleDecoderHelper {
-  implicit def userIdValueDecoder(implicit provider: EnvVarsProvider): Decoder[Variable[User.Id]] =
+  implicit def userIdValueDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[User.Id]] =
     DecoderHelpers.alwaysRightVariableDecoder(User.Id.apply)
 }

@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
@@ -37,7 +37,7 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
                        (implicit provider: EnvVarsProvider)
   extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Variable[Group]]
+    .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[Group]]
     .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>

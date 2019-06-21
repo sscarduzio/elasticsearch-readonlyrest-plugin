@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess}
 
 

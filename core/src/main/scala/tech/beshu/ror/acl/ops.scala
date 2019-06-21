@@ -58,9 +58,7 @@ object header {
     def toRawValue(t: T): String // todo: improvement for the future (NonEmptyString)
   }
   object ToHeaderValue {
-    def apply[T](func: T => String): ToHeaderValue[T] = new ToHeaderValue[T]() {
-      override def toRawValue(t: T): String = func(t)
-    }
+    def apply[T](func: T => String): ToHeaderValue[T] = (t: T) => func(t)
   }
 }
 

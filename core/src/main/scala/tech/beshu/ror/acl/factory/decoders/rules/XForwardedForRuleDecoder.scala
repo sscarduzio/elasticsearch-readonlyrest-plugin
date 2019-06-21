@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
@@ -27,6 +27,6 @@ import tech.beshu.ror.utils.EnvVarsProvider
 
 class XForwardedForRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Variable[Address]]
+    .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[Address]]
     .map(addresses => new XForwardedForRule(XForwardedForRule.Settings(addresses)))
 )

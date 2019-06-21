@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
@@ -52,8 +52,8 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
 
 private object RorKbnAuthRuleDecoder {
 
-  private implicit def groupsSetDecoder(implicit provider: EnvVarsProvider): Decoder[Set[Variable[Group]]] =
-    DecoderHelpers.decodeStringLikeOrSet[Variable[Group]]
+  private implicit def groupsSetDecoder(implicit provider: EnvVarsProvider): Decoder[Set[RuntimeResolvableVariable[Group]]] =
+    DecoderHelpers.decodeStringLikeOrSet[RuntimeResolvableVariable[Group]]
 
   private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, Set[Group])] =
     DecoderHelpers

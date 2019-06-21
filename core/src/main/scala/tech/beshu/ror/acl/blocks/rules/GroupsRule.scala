@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.values.Variable
+import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContext.Id._
@@ -136,7 +136,7 @@ class GroupsRule(val settings: Settings)
 object GroupsRule {
   val name = Rule.Name("groups")
 
-  final case class Settings(groups: NonEmptySet[Variable[Group]],
+  final case class Settings(groups: NonEmptySet[RuntimeResolvableVariable[Group]],
                             usersDefinitions: NonEmptySet[UserDef])
 
 }

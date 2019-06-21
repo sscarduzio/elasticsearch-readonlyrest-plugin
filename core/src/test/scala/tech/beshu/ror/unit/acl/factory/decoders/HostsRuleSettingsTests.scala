@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.HostsRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.values.{AlreadyResolved, ToBeResolved, Variable, VariableCreator}
+import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, ToBeResolved, RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 
@@ -42,7 +42,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get))
+            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(false)
           }
@@ -62,7 +62,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get))
+            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(true)
           }
@@ -99,7 +99,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Variable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
+            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
             rule.settings.allowedHosts should be(addresses)
             rule.settings.acceptXForwardedForHeader should be(false)
           }

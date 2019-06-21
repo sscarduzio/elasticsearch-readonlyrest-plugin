@@ -33,7 +33,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
-import tech.beshu.ror.acl.blocks.values.{RuntimeValue, Variable}
+import tech.beshu.ror.acl.blocks.variables.{Extractable, RuntimeResolvableVariable}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.acl.show.logs._
@@ -162,7 +162,7 @@ class KibanaAccessRule(val settings: Settings)
 object KibanaAccessRule {
   val name = Rule.Name("kibana_access")
 
-  final case class Settings(access: KibanaAccess, kibanaIndex: Variable[IndexName], kibanaMetadataEnabled: Boolean)
+  final case class Settings(access: KibanaAccess, kibanaIndex: RuntimeResolvableVariable[IndexName], kibanaMetadataEnabled: Boolean)
 
   private object Matchers {
     val roMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))
