@@ -4,6 +4,7 @@ import cats.instances.either._
 import cats.instances.list._
 import cats.syntax.traverse._
 import eu.timepit.refined.types.string.NonEmptyString
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.acl.domain.Header
@@ -13,9 +14,9 @@ import scala.language.postfixOps
 import scala.util.matching.Regex
 import scala.util.{Failure, Success, Try}
 
-object RuntimeResolvableVariableCreator {
+object RuntimeResolvableVariableCreator extends Logging {
 
-  final case class CreationError(msg: String, ex: Option[Throwable] = None)
+  final case class CreationError(msg: String) extends AnyVal
 
   def createFrom[T](text: String,
                     convert: String => Either[ConvertError, T]): Either[CreationError, RuntimeResolvableVariable[T]] = {
@@ -47,7 +48,9 @@ object RuntimeResolvableVariableCreator {
         case regexes.jwtPayloadPathVar(path) =>
           Try(JsonPath.compile(path)) match {
             case Success(compiledPath) => Right(JwtPayloadVar(compiledPath))
-            case Failure(ex) => Left(CreationError(s"Cannot compile '$path' to JsonPath", Some(ex)))
+            case Failure(ex) =>
+              logger.debug("Compiling JSON path failed", ex)
+              Left(CreationError(s"Cannot compile '$path' to JsonPath"))
           }
         case regexes.explicitHeaderVar(headerName) =>
           NonEmptyString.unapply(headerName) match {

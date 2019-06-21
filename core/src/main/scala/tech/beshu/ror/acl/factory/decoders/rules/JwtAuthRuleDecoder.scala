@@ -30,10 +30,10 @@ import tech.beshu.ror.acl.factory.decoders.definitions.JwtDefinitionsDecoder._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarsProvider
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
-                        (implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
+  extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
   JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
     .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
     .toSyncDecoder
@@ -51,7 +51,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
 
 private object JwtAuthRuleDecoder {
 
-  private implicit def groupsSetDecoder(implicit provider: EnvVarsProvider): Decoder[Set[RuntimeResolvableVariable[Group]]] =
+  private implicit val groupsSetDecoder: Decoder[Set[RuntimeResolvableVariable[Group]]] =
     DecoderHelpers.decodeStringLikeOrSet[RuntimeResolvableVariable[Group]]
 
   private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Group])] =

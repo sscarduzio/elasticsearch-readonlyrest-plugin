@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.blocks.variables.{RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.domain.{Filter, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
 class FilterRuleTests extends WordSpec with MockFactory {

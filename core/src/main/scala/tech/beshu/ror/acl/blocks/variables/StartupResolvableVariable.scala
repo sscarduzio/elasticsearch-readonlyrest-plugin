@@ -6,9 +6,9 @@ import cats.instances.list._
 import cats.instances.either._
 import cats.syntax.traverse._
 import tech.beshu.ror.acl.blocks.variables.StartupResolvableVariable.ExtractError
-import tech.beshu.ror.acl.domain.EnvVarName
-import tech.beshu.ror.utils.EnvVarsProvider
 import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.providers.EnvVarsProvider
 
 sealed trait StartupResolvableVariable {
   def extract(provider: EnvVarsProvider): Either[StartupResolvableVariable.ExtractError, String]

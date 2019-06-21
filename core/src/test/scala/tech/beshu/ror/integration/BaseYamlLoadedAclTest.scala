@@ -5,9 +5,9 @@ import java.time.Clock
 import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
-import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 
 trait BaseYamlLoadedAclTest extends BlockContextAssertion {
@@ -15,7 +15,8 @@ trait BaseYamlLoadedAclTest extends BlockContextAssertion {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory
   }
   val acl: Acl = factory

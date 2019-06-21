@@ -23,13 +23,13 @@ import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.{RawRorConfigBasedCoreFactory, CoreSettings, HttpClientsFactory}
+import tech.beshu.ror.acl.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 
 import scala.reflect.ClassTag
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider, JavaUuidProvider, UuidProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
 abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
@@ -40,6 +40,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
+    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory
   }
 

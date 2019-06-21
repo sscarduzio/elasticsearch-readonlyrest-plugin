@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWith
 import tech.beshu.ror.acl.factory.decoders.rules.UsersRuleDecoderHelper.userIdValueDecoder
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarsProvider
 
 class UsersRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
@@ -34,6 +34,6 @@ class UsersRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWi
 )
 
 private object UsersRuleDecoderHelper {
-  implicit def userIdValueDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[User.Id]] =
+  implicit val userIdValueDecoder: Decoder[RuntimeResolvableVariable[User.Id]] =
     DecoderHelpers.alwaysRightVariableDecoder(User.Id.apply)
 }

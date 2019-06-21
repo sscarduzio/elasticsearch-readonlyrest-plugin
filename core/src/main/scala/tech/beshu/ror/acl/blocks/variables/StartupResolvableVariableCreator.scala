@@ -5,13 +5,13 @@ import cats.instances.list._
 import cats.syntax.traverse._
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.acl.blocks.variables.Tokenizer.Token
-import tech.beshu.ror.acl.domain.EnvVarName
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 
 import scala.util.matching.Regex
 
 object StartupResolvableVariableCreator {
 
-  final case class CreationError(msg: String)
+  final case class CreationError(msg: String) extends AnyVal
 
   def createFrom(text: String): Either[CreationError, StartupResolvableVariable] = {
     oldFashionedEnvAndTextHandling(text).map(_ :: Nil)

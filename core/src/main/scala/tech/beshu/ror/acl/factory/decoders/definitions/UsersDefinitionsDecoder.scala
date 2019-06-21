@@ -32,7 +32,7 @@ import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarsProvider
 
 import scala.language.existentials
 

@@ -248,5 +248,4 @@ object domain {
 
   final case class AuthorizationToken(value: NonEmptyString)
 
-  final case class EnvVarName(value: NonEmptyString)
 }

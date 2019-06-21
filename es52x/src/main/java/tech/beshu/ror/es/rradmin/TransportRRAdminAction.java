@@ -33,7 +33,7 @@ import tech.beshu.ror.configuration.FileConfigLoader;
 import tech.beshu.ror.configuration.IndexConfigManager;
 import tech.beshu.ror.es.EsIndexJsonContentProvider;
 import tech.beshu.ror.es.RorInstanceSupplier;
-import tech.beshu.ror.utils.OsEnvVarsProvider$;
+import tech.beshu.ror.providers.JvmPropertiesProvider$;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -53,7 +53,7 @@ public class TransportRRAdminAction extends HandledTransportAction<RRAdminReques
           RRAdminRequest::new
     );
     this.indexConfigManager = new IndexConfigManager(indexContentProvider);
-    this.fileConfigLoader = new FileConfigLoader(env.configFile(), OsEnvVarsProvider$.MODULE$);
+    this.fileConfigLoader = new FileConfigLoader(env.configFile(), JvmPropertiesProvider$.MODULE$);
   }
 
   @Override

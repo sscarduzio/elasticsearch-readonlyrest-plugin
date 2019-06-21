@@ -29,7 +29,7 @@ import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 class UsersRuleTests extends WordSpec with MockFactory {
 

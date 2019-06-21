@@ -29,7 +29,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.request.RorSessionCookie.{ExtractingError, toSessionHeader}
 import tech.beshu.ror.acl.request.{RequestContext, RorSessionCookie}
-import tech.beshu.ror.utils.UuidProvider
+import tech.beshu.ror.providers.UuidProvider
 
 import scala.concurrent.duration.FiniteDuration
 

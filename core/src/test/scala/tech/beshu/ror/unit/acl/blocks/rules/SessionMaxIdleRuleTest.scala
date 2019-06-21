@@ -35,12 +35,12 @@ import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.refined._
+import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UuidProvider
 
 class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
 

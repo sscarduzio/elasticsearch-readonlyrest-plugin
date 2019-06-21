@@ -20,10 +20,9 @@ import tech.beshu.ror.acl.blocks.rules.FilterRule
 import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarsProvider
 
-class FilterRuleDecoder(implicit provider: EnvVarsProvider)
-  extends RuleDecoderWithoutAssociatedFields(
+class FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     DecoderHelpers
       .alwaysRightVariableDecoder(Filter.apply)
       .map(filter => new FilterRule(FilterRule.Settings(filter)))

@@ -1,11 +1,17 @@
-package tech.beshu.ror.utils
+package tech.beshu.ror.providers
 
-import tech.beshu.ror.acl.domain.EnvVarName
+import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 
 import scala.util.Try
 
 trait EnvVarsProvider {
   def getEnv(name: EnvVarName): Option[String]
+}
+
+object EnvVarProvider {
+
+  final case class EnvVarName(value: NonEmptyString)
 }
 
 object OsEnvVarsProvider extends EnvVarsProvider {

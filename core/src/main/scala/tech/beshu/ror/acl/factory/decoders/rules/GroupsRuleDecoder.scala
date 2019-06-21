@@ -29,12 +29,11 @@ import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarsProvider
 
 import scala.collection.SortedSet
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
-                       (implicit provider: EnvVarsProvider)
   extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[Group]]

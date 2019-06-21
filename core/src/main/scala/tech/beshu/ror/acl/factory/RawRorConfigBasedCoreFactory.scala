@@ -42,8 +42,9 @@ import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAcl, DisabledAclStaticContext, EnabledAclStaticContext, SequentialAcl}
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.{EnvVarsProvider, UuidProvider, YamlOps}
+import tech.beshu.ror.utils.YamlOps
 
 import scala.language.implicitConversions
 
@@ -56,6 +57,7 @@ trait CoreFactory {
 
 class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                                    uuidProvider: UuidProvider,
+                                   propertiesProvider: PropertiesProvider,
                                    envVarProvider: EnvVarsProvider)
   extends CoreFactory with Logging {
 

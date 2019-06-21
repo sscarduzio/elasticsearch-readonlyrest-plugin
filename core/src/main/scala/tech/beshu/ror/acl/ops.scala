@@ -32,6 +32,8 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.header.ToHeaderValue
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
 
 import scala.collection.SortedSet
@@ -118,6 +120,7 @@ object show {
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
+    implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val blockContextShow: Show[BlockContext] = Show.show { bc =>
       def showList[T : Show](name: String, list: List[T]) = {
         list match {

@@ -28,15 +28,15 @@ import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarsProvider
 
-class IndicesRuleDecoders(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields[IndicesRule](
+class IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[IndexName]]
     .map(indices => new IndicesRule(IndicesRule.Settings(indices)))
 )
 
-class SnapshotsRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
+class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[IndexName]]
     .toSyncDecoder
@@ -52,7 +52,7 @@ class SnapshotsRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecod
     .decoder
 )
 
-class RepositoriesRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields[RepositoriesRule](
+class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[RepositoriesRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[IndexName]]
     .toSyncDecoder
@@ -69,7 +69,7 @@ class RepositoriesRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDe
 )
 
 private object IndicesDecodersHelper {
-  implicit def indexNameValueDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[IndexName]] =
+  implicit val indexNameValueDecoder: Decoder[RuntimeResolvableVariable[IndexName]] =
     DecoderHelpers
       .decodeStringLike
       .toSyncDecoder

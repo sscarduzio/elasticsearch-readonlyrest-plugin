@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVa
 import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariableCreator.CreationError
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
 class VariablesTests extends WordSpec with MockFactory {

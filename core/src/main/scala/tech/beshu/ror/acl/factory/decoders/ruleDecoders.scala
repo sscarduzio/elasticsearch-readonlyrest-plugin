@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.acl.factory.decoders.rules._
-import tech.beshu.ror.utils.{EnvVarsProvider, UuidProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
 
 import scala.language.implicitConversions
 import scala.language.existentials
@@ -35,6 +35,7 @@ object ruleDecoders {
                              definitions: DefinitionsPack)
                             (implicit clock: Clock,
                              uuidProvider: UuidProvider,
+                             propertiesProvider: PropertiesProvider,
                              envVarsProvider: EnvVarsProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
@@ -68,8 +69,7 @@ object ruleDecoders {
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
-                                  rorKbnDefinitions: Definitions[RorKbnDef])
-                                 (implicit envVarsProvider: EnvVarsProvider): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
+                                  rorKbnDefinitions: Definitions[RorKbnDef]): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
     name match {
       case AuthKeyRule.name => Some(AuthKeyRuleDecoder)
       case AuthKeySha1Rule.name => Some(AuthKeySha1RuleDecoder)

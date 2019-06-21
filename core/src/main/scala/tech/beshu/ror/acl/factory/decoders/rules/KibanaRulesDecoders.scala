@@ -25,14 +25,13 @@ import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVa
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
+import tech.beshu.ror.acl.factory.consts.RorProperties
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.utils.EnvVarsProvider
-
-import scala.util.Try
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
+import KibanaRulesDecoderHelper.kibanaIndexDecoder
 
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
@@ -40,7 +39,7 @@ object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     .map(apps => new KibanaHideAppsRule(Settings(apps)))
 )
 
-class KibanaIndexRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
+class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   KibanaRulesDecoderHelper
     .kibanaIndexDecoder
     .map { index =>
@@ -48,7 +47,7 @@ class KibanaIndexRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDec
     }
 )
 
-class KibanaAccessRuleDecoder(implicit provider: EnvVarsProvider)
+class KibanaAccessRuleDecoder(implicit propertiesProvider: PropertiesProvider)
   extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeResolvableVariable[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
@@ -62,7 +61,7 @@ class KibanaAccessRuleDecoder(implicit provider: EnvVarsProvider)
       case "admin" => Right(KibanaAccess.Admin)
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
-      .map(KibanaAccessRule.Settings(_, kibanaIndexName, KibanaRulesDecoderHelper.readRorMetadataFlag))
+      .map(KibanaAccessRule.Settings(_, kibanaIndexName, RorProperties.readRorMetadataFlag))
       .map(s => new KibanaAccessRule(s))
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
@@ -71,13 +70,8 @@ class KibanaAccessRuleDecoder(implicit provider: EnvVarsProvider)
 )
 
 private object KibanaRulesDecoderHelper {
-  // fixme: system property here?
-  def readRorMetadataFlag: Boolean =
-    Try(System.getProperty("com.readonlyrest.kibana.metadata"))
-      .map(!"false".equalsIgnoreCase(_))
-      .getOrElse(true)
 
-  implicit def kibanaIndexDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[IndexName]] =
+  implicit val kibanaIndexDecoder: Decoder[RuntimeResolvableVariable[IndexName]] =
     DecoderHelpers
       .decodeStringLike
       .map(str => RuntimeResolvableVariableCreator.createFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))

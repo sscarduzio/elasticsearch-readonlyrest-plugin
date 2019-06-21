@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.variables.{RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 class KibanaIndexRuleTests extends WordSpec with MockFactory {
 

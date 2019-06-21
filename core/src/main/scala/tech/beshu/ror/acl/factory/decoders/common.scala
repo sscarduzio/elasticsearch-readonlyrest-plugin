@@ -42,7 +42,6 @@ import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.acl.utils.SyncDecoderCreator
-import tech.beshu.ror.utils.EnvVarsProvider
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -143,7 +142,7 @@ object common extends Logging {
       }
       .decoder
 
-  implicit def groupVariableDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[Group]] =
+  implicit val groupVariableDecoder: Decoder[RuntimeResolvableVariable[Group]] =
     DecoderHelpers
       .variableDecoder[Group] { str =>
       NonEmptyString.from(str) match {
@@ -158,7 +157,7 @@ object common extends Logging {
       }
       .decoder
 
-  implicit def addressVariableDecoder(implicit provider: EnvVarsProvider): Decoder[RuntimeResolvableVariable[Address]] = {
+  implicit val addressVariableDecoder: Decoder[RuntimeResolvableVariable[Address]] = {
     DecoderHelpers
       .variableDecoder[Address] { str =>
       Address.from(str) match {

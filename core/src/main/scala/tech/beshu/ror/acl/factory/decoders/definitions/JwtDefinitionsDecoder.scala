@@ -31,13 +31,11 @@ import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.acl.factory.decoders.common._
 import ExternalAuthenticationServicesDecoder.jwtExternalAuthenticationServiceDecoder
 import cats.Id
-import tech.beshu.ror.utils.EnvVarsProvider
 
 object JwtDefinitionsDecoder {
 
-  def instance(httpClientFactory: HttpClientsFactory)
-              (implicit provider: EnvVarsProvider): ADecoder[Id, Definitions[JwtDef]] = {
-    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory, provider))
+  def instance(httpClientFactory: HttpClientsFactory): ADecoder[Id, Definitions[JwtDef]] = {
+    implicit val decoder: SyncDecoder[JwtDef] = SyncDecoderCreator.from(jwtDefDecoder(httpClientFactory))
     DefinitionsBaseDecoder.instance[Id, JwtDef]("jwt")
   }
 
@@ -45,8 +43,7 @@ object JwtDefinitionsDecoder {
 
   private implicit val claimDecoder: Decoder[ClaimName] = jsonPathDecoder.map(ClaimName.apply)
 
-  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory,
-                            provider: EnvVarsProvider): Decoder[JwtDef] = {
+  private def jwtDefDecoder(implicit httpClientFactory: HttpClientsFactory): Decoder[JwtDef] = {
     SyncDecoderCreator
       .instance { c =>
         for {
@@ -92,8 +89,7 @@ object JwtDefinitionsDecoder {
       ES512       EC
     */
   private def signatureCheckMethod(c: HCursor)
-                                  (implicit httpClientFactory: HttpClientsFactory,
-                                   provider: EnvVarsProvider): Decoder.Result[SignatureCheckMethod] = {
+                                  (implicit httpClientFactory: HttpClientsFactory): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
         .decodeStringLikeWithVarResolvedInPlace
