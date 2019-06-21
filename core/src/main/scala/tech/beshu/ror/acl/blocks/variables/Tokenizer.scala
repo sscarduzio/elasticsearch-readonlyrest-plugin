@@ -21,12 +21,12 @@ object Tokenizer {
           case _ if specialChars.contains(char) =>
             (tokens, TokenizerState.PossiblyReadingVar(accumulator + specialChar, char))
           case other =>
-            (tokens, TokenizerState.ReadingConst(s"$accumulator@$other"))
+            (tokens, TokenizerState.ReadingConst(s"$accumulator$specialChar$other"))
         }
       case ((tokens, TokenizerState.ReadingVar(accumulator, specialChar)), char) =>
         char match {
           case '}' =>
-            (tokens :+ Token.Placeholder(accumulator), TokenizerState.ReadingConst(""))
+            (tokens :+ Token.Placeholder(accumulator, s"$specialChar{$accumulator}"), TokenizerState.ReadingConst(""))
           case other =>
             (tokens, TokenizerState.ReadingVar(accumulator + other, specialChar))
         }
@@ -42,7 +42,7 @@ object Tokenizer {
   sealed trait Token
   object Token {
     final case class Text(value: String) extends Token
-    final case class Placeholder(value: String) extends Token
+    final case class Placeholder(name: String, rawValue: String) extends Token
   }
 
   private sealed trait TokenizerState

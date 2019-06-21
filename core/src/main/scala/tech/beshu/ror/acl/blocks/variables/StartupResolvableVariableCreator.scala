@@ -33,15 +33,15 @@ object StartupResolvableVariableCreator {
   private def createVariable(token: Token) = token match {
     case Token.Text(value) =>
       Right(Text(value))
-    case Token.Placeholder(value) =>
-      value match {
+    case Token.Placeholder(name, rawValue) =>
+      name match {
         case regexes.envVar(envVarName) =>
           NonEmptyString.unapply(envVarName) match {
             case Some(nes) => Right(Env(EnvVarName(nes)))
             case None => Left(CreationError(s"No ENV variable name passed"))
           }
         case _ =>
-          Right(Text(value))
+          Right(Text(rawValue))
       }
   }
 

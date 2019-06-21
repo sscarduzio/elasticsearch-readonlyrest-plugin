@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.acl.domain.EnvVarName
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.utils.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -484,7 +484,7 @@ class RorKbnAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[RorKbnAuth
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot resolve ENV variable 'SECRET'")))
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
           }
         )
       }

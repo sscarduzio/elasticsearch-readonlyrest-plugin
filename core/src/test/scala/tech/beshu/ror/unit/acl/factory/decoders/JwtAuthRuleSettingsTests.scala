@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import java.security.KeyPairGenerator
 import java.util.Base64
+
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.utils.TestsUtils._
@@ -28,7 +29,7 @@ import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.utils.EnvVarsProvider
@@ -804,7 +805,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot resolve ENV variable 'SECRET'")))
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
           }
         )
       }

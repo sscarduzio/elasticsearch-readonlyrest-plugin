@@ -40,8 +40,8 @@ object RuntimeResolvableVariableCreator {
   private def createVariable(token: Token) = token match {
     case Token.Text(value) =>
       Right(Const(value))
-    case Token.Placeholder(value) =>
-      value match {
+    case Token.Placeholder(name, _) =>
+      name match {
         case regexes.userVar() =>
           Right(UserIdVar)
         case regexes.jwtPayloadPathVar(path) =>

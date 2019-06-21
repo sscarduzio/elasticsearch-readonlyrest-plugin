@@ -69,11 +69,16 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   }
 
   private def createCoreFromRorSection(rorSection: Json, httpClientFactory: HttpClientsFactory) = {
-    createFrom(rorSection, httpClientFactory).map {
-      case Right(settings) =>
-        Right(settings)
-      case Left(failure) =>
-        Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
+    JsonConfigStaticVariableResolver.resolve(rorSection) match {
+      case Right(resolvedRorSection) =>
+        createFrom(resolvedRorSection, httpClientFactory).map {
+          case Right(settings) =>
+            Right(settings)
+          case Left(failure) =>
+            Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
+        }
+      case Left(errors) =>
+        Task.now(Left(errors.map(e => GeneralReadonlyrestSettingsError(Message(e.msg)))))
     }
   }
 
