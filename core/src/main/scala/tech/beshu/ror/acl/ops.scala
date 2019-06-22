@@ -32,6 +32,7 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.header.ToHeaderValue
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
@@ -101,6 +102,7 @@ object show {
       case Address.Name(value) => value.toString
     }
     implicit val methodShow: Show[Method] = Show.show(_.m)
+    implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val headerShow: Show[Header] = Show.show {

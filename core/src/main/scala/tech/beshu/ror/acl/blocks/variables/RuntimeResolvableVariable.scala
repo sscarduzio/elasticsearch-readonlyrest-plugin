@@ -18,17 +18,16 @@ package tech.beshu.ror.acl.blocks.variables
 
 import cats.Order
 import cats.implicits._
-import cats.instances.list._
-import cats.instances.either._
-import cats.syntax.traverse._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.variables.Extractable.ExtractError
 import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.Unresolvable.{CannotExtractValue, CannotInstantiateResolvedValue}
 import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.{ConvertError, Unresolvable}
-import tech.beshu.ror.acl.domain.Header
+import tech.beshu.ror.acl.domain.{ClaimName, Header}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.acl.utils.ClaimsOps._
 
 sealed trait RuntimeResolvableVariable[T] {
 
@@ -125,6 +124,20 @@ final case class HeaderVar(header: Header.Name) extends Extractable {
 }
 
 final case class JwtPayloadVar(jsonPath: JsonPath) extends Extractable {
+  private val varClaim = ClaimName(jsonPath)
+
   override def extractUsing(requestContext: RequestContext,
-                            blockContext: BlockContext): Either[ExtractError, String] = ??? //todo: impl
+                            blockContext: BlockContext): Either[ExtractError, String] = {
+    blockContext.jsonToken match {
+      case Some(payload) =>
+        payload.claims.customClaim(varClaim) match {
+          case Found(value) =>
+            Right(value)
+          case NotFound =>
+            Left(ExtractError(s"Cannot find path '${jsonPath.show}' in JWT Token "))
+        }
+      case None =>
+        Left(ExtractError("Cannot extract JSON token payload from block context"))
+    }
+  }
 }

@@ -16,21 +16,21 @@
  */
 package tech.beshu.ror.acl.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
-import io.jsonwebtoken.{Claims, Jwts}
+import cats.implicits._
+import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.utils.SecureStringHasher
@@ -77,12 +77,12 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
         Task.now(Rejected)
-      case Right((user, groups)) =>
+      case Right((tokenPayload, user, groups)) =>
         logger.debug(s"JWT resolved user for claim ${settings.jwt.userClaim}: $user, and groups for claim ${settings.jwt.groupsClaim}: $groups")
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
-        } yield finalBlockContext
+        } yield finalBlockContext.withJsonToken(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
             Task.now(Rejected)
@@ -100,7 +100,9 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
   }
 
   private def userAndGroupsFromJwtToken(token: JwtToken) = {
-    claimsFrom(token).map { claims => (userIdFrom(claims), groupsFrom(claims)) }
+    claimsFrom(token).map { decodedJwtToken =>
+      (decodedJwtToken, userIdFrom(decodedJwtToken), groupsFrom(decodedJwtToken))
+    }
   }
 
   private def claimsFrom(token: JwtToken) = {
@@ -108,29 +110,33 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       case NoCheck(_) =>
         token.value.value.split("\\.").toList match {
           case fst :: snd :: _ =>
-            Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody).toEither.left.map {
-              ex =>
-                logger.error(s"JWT token '${token.show}' parsing error", ex)
-                ()
+            Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody)
+              .toEither
+              .map(JwtTokenPayload.apply)
+              .left.map { ex =>
+              logger.error(s"JWT token '${token.show}' parsing error", ex)
+              ()
             }
           case _ =>
             Left(())
         }
       case Hmac(_) | Rsa(_) | Ec(_) =>
-        Try(parser.parseClaimsJws(token.value.value).getBody).toEither.left.map {
-          ex =>
-            logger.error(s"JWT token '${token.show}' parsing error", ex)
-            ()
+        Try(parser.parseClaimsJws(token.value.value).getBody)
+          .toEither
+          .map(JwtTokenPayload.apply)
+          .left.map { ex =>
+          logger.error(s"JWT token '${token.show}' parsing error", ex)
+          ()
         }
     }
   }
 
-  private def userIdFrom(claims: Claims) = {
-    settings.jwt.userClaim.map(claims.userIdClaim)
+  private def userIdFrom(payload: JwtTokenPayload) = {
+    settings.jwt.userClaim.map(payload.claims.userIdClaim)
   }
 
-  private def groupsFrom(claims: Claims) = {
-    settings.jwt.groupsClaim.map(claims.groupsClaim)
+  private def groupsFrom(payload: JwtTokenPayload) = {
+    settings.jwt.groupsClaim.map(payload.claims.groupsClaim)
   }
 
   private def handleUserClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[User.Id]]) = {

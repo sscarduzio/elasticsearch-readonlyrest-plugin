@@ -20,23 +20,22 @@ import java.nio.file.Path
 
 import better.files.File
 import cats.Show
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
-import tech.beshu.ror.Constants
+import tech.beshu.ror.acl.factory.consts.RorProperties
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.FileNotExist
-import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.providers.{JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.providers.{JvmPropertiesProvider, PropertiesProvider}
 
 class FileConfigLoader(esConfigFolderPath: Path,
                        propertiesProvider: PropertiesProvider)
   extends ConfigLoader[FileConfigError] {
 
   def rawConfigFile: File = {
-    propertiesProvider.getProperty(PropName(NonEmptyString.unsafeFrom(Constants.SETTINGS_YAML_FILE_PATH_PROPERTY))) match {
-      case Some(customRorFilePath) => File(customRorFilePath)
+    implicit val _ = propertiesProvider
+    RorProperties.rorConfigCustomFile match {
+      case Some(customRorFile) => customRorFile
       case None => File(s"${esConfigFolderPath.toAbsolutePath}/readonlyrest.yml")
     }
   }

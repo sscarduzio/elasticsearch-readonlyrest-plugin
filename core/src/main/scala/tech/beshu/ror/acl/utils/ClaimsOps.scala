@@ -76,6 +76,29 @@ class ClaimsOps(val claims: Claims) extends Logging {
       )
   }
 
+  def customClaim(claimName: ClaimName): ClaimSearchResult[String] = {
+    Try(claimName.name.read[Any](claims))
+      .map {
+        case value: String =>
+          Found(value)
+        case collection: java.util.Collection[_] =>
+          Found {
+            collection.asScala
+              .collect { case value: String => value }
+              .mkString(",")
+          }
+        case _ =>
+          NotFound
+      }
+      .fold(
+        ex => {
+          logger.debug("JsonPath reading exception", ex)
+          NotFound
+        },
+        identity
+      )
+  }
+
   private def toGroup(value: String) = {
     NonEmptyString.unapply(value).map(Group.apply)
   }
