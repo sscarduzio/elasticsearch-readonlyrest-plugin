@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks
 
+import io.jsonwebtoken.impl.DefaultClaims
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
@@ -24,14 +25,12 @@ import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.fromRequest
 import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.Unresolvable.CannotExtractValue
 import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariableCreator.CreationError
-import tech.beshu.ror.acl.domain.{LoggedUser, User}
+import tech.beshu.ror.acl.domain.{JwtTokenPayload, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
+import scala.collection.JavaConverters._
 
-class VariablesTests extends WordSpec with MockFactory {
-
-  implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
 
   "A header variable" should {
     "have been resolved" when {
@@ -59,6 +58,14 @@ class VariablesTests extends WordSpec with MockFactory {
           )
         variable shouldBe Right("x_ok")
       }
+      "given variable has corresponding header in request context and is defined with new format using '${}' syntax" in {
+        val variable = createVariable("h_${header:key1}_ok")
+          .resolve(
+            MockRequestContext(headers = Set(headerFrom("key1" -> "x"))),
+            mock[BlockContext]
+          )
+        variable shouldBe Right("h_x_ok")
+      }
     }
     "have not been resolved" when {
       "given variable doesn't have corresponding header in request context" in {
@@ -71,8 +78,10 @@ class VariablesTests extends WordSpec with MockFactory {
       }
     }
     "have not been able to be created" when {
-      "header name is empty string" in {
-        RuntimeResolvableVariableCreator.createFrom("h:@{header:}", Right.apply) shouldBe Left(CreationError("No header name passed"))
+      "header name is an empty string" in {
+        RuntimeResolvableVariableCreator.createFrom("h:@{header:}", Right.apply) shouldBe {
+          Left(CreationError("Cannot create header variable, because no header name is passed"))
+        }
       }
     }
   }
@@ -102,21 +111,61 @@ class VariablesTests extends WordSpec with MockFactory {
 
   "A jwt variable" should {
     "have been resolved" when {
-      "jwt variable is used with correct JSON path and JWT token was set" in {
-
+      "jwt variable is used with correct JSON path to string value and JWT token was set" in {
+        val variable = createVariable("@{jwt:tech.beshu.mainGroup}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default)
+              .withJsonToken(JwtTokenPayload {
+                val claims = new DefaultClaims()
+                claims.put("tech", Map("beshu" -> Map("mainGroup" -> "group1").asJava).asJava)
+                claims
+              })
+          )
+        variable shouldBe Right("group1")
+      }
+      "jwt variable is used with correct JSON path to strings array value and JWT token was set" in {
+        val variable = createVariable("@{jwt:tech.beshu.groups}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default)
+              .withJsonToken(JwtTokenPayload {
+                val claims = new DefaultClaims()
+                claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
+                claims
+              })
+          )
+        variable shouldBe Right("group1,group2")
       }
     }
     "have not been resolved" when {
       "JWT token was not set" in {
-
+        val variable = createVariable("@{jwt:tech.beshu.groups}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default)
+          )
+        variable shouldBe Left(CannotExtractValue("Cannot extract JSON token payload from block context"))
       }
       "JSON path result is not a string or array of strings" in {
-
+        val variable = createVariable("@{jwt:tech.beshu}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default)
+              .withJsonToken(JwtTokenPayload {
+                val claims = new DefaultClaims()
+                claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
+                claims
+              })
+          )
+        variable shouldBe Left(CannotExtractValue("Cannot find value string or collection of strings in path '$['tech']['beshu']' of JWT Token"))
       }
     }
     "have not been able to be created" when {
       "JSON path cannot compile" in {
-
+        RuntimeResolvableVariableCreator.createFrom("@{jwt:tech[[.beshu}", Right.apply) shouldBe {
+          Left(CreationError("Cannot create JWT variable, because cannot compile 'tech[[.beshu' to JsonPath"))
+        }
       }
     }
   }
@@ -152,7 +201,9 @@ class VariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "variable is empty string" in {
-        RuntimeResolvableVariableCreator.createFrom("h:@{}", Right.apply) shouldBe Left(CreationError("No header name passed"))
+        RuntimeResolvableVariableCreator.createFrom("h:@{}", Right.apply) shouldBe {
+          Left(CreationError("Cannot create header variable, because no header name is passed"))
+        }
       }
     }
     "have been treated as text" when {

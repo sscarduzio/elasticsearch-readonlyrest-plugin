@@ -134,7 +134,7 @@ final case class JwtPayloadVar(jsonPath: JsonPath) extends Extractable {
           case Found(value) =>
             Right(value)
           case NotFound =>
-            Left(ExtractError(s"Cannot find path '${jsonPath.show}' in JWT Token "))
+            Left(ExtractError(s"Cannot find value string or collection of strings in path '${jsonPath.show}' of JWT Token"))
         }
       case None =>
         Left(ExtractError("Cannot extract JSON token payload from block context"))

@@ -25,7 +25,8 @@ object RuntimeResolvableVariableCreator extends Logging {
       .map(createVariable)
       .sequence
       .flatMap {
-        case Nil => Left(CreationError(s"Cannot create variable from '$text'"))
+        case Nil =>
+          Left(CreationError(s"Cannot create variable from '$text'"))
         case nonEmpty =>
           val alreadyResolved = nonEmpty.collect { case c: Const => c }
           if (alreadyResolved.length == nonEmpty.length) {
@@ -46,23 +47,28 @@ object RuntimeResolvableVariableCreator extends Logging {
         case regexes.userVar() =>
           Right(UserIdVar)
         case regexes.jwtPayloadPathVar(path) =>
-          Try(JsonPath.compile(path)) match {
-            case Success(compiledPath) => Right(JwtPayloadVar(compiledPath))
-            case Failure(ex) =>
-              logger.debug("Compiling JSON path failed", ex)
-              Left(CreationError(s"Cannot compile '$path' to JsonPath"))
-          }
+          createJwtVariable(path)
         case regexes.explicitHeaderVar(headerName) =>
-          NonEmptyString.unapply(headerName) match {
-            case Some(nes) => Right(HeaderVar(Header.Name(nes)))
-            case None => Left(CreationError(s"No header name passed"))
-          }
+          createHeaderVariable(headerName)
         case other => // backward compatibility - assuming that it's header
-          NonEmptyString.unapply(other) match {
-            case Some(nes) => Right(HeaderVar(Header.Name(nes)))
-            case None => Left(CreationError(s"No header name passed"))
-          }
+          createHeaderVariable(other)
       }
+  }
+
+  private def createJwtVariable(jsonPathStr: String) = {
+    Try(JsonPath.compile(jsonPathStr)) match {
+      case Success(compiledPath) => Right(JwtPayloadVar(compiledPath))
+      case Failure(ex) =>
+        logger.debug("Compiling JSON path failed", ex)
+        Left(CreationError(s"Cannot create JWT variable, because cannot compile '$jsonPathStr' to JsonPath"))
+    }
+  }
+
+  private def createHeaderVariable(headerNameStr: String) = {
+    NonEmptyString.unapply(headerNameStr) match {
+      case Some(nes) => Right(HeaderVar(Header.Name(nes)))
+      case None => Left(CreationError(s"Cannot create header variable, because no header name is passed"))
+    }
   }
 
   private object regexes {

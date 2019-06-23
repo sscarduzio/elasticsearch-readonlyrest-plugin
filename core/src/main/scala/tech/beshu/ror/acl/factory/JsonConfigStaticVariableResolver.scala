@@ -31,7 +31,7 @@ object JsonConfigStaticVariableResolver {
                                  (implicit envProvider: EnvVarsProvider): String = {
     StartupResolvableVariableCreator.createFrom(value) match {
       case Right(variable) =>
-        variable.extract(envProvider) match {
+        variable.resolve(envProvider) match {
           case Right(extracted) => extracted
           case Left(error) =>
             errors.values = errors.values :+ ResolvingError(error.msg)

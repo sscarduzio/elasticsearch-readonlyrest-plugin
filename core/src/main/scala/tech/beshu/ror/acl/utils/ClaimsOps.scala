@@ -60,7 +60,10 @@ class ClaimsOps(val claims: Claims) extends Logging {
         case collection: java.util.Collection[_] =>
           Found {
             collection.asScala
-              .collect { case value: String => value }
+              .collect {
+                case value: String => value
+                case value: Long => value.toString
+              }
               .flatMap(toGroup)
               .toSet
           }
@@ -84,7 +87,10 @@ class ClaimsOps(val claims: Claims) extends Logging {
         case collection: java.util.Collection[_] =>
           Found {
             collection.asScala
-              .collect { case value: String => value }
+              .collect {
+                case value: String => value
+                case value: Long => value.toString
+              }
               .mkString(",")
           }
         case _ =>

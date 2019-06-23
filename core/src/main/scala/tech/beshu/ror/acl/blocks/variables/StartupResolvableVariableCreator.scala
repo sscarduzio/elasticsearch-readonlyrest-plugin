@@ -36,17 +36,27 @@ object StartupResolvableVariableCreator {
     case Token.Placeholder(name, rawValue) =>
       name match {
         case regexes.envVar(envVarName) =>
-          NonEmptyString.unapply(envVarName) match {
-            case Some(nes) => Right(Env(EnvVarName(nes)))
-            case None => Left(CreationError(s"No ENV variable name passed"))
-          }
+          createEnvVariable(envVarName)
         case _ =>
-          Right(Text(rawValue))
+          rawValue match {
+            case regexes.envVarOldStyle(envVarName) =>
+              createEnvVariable(envVarName)
+            case _ =>
+              Right(Text(rawValue))
+          }
       }
+  }
+
+  private def createEnvVariable(envVarName: String) = {
+    NonEmptyString.unapply(envVarName) match {
+      case Some(nes) => Right(Env(EnvVarName(nes)))
+      case None => Left(CreationError(s"Cannot create env variable, because no name of env variable is passed"))
+    }
   }
 
   private object regexes {
     val envVar: Regex = "env:(.*)".r
+    val envVarOldStyle: Regex = """\$\{(.*)\}""".r
   }
 
 }

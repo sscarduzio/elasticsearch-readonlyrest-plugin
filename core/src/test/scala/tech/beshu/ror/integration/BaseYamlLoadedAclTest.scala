@@ -12,13 +12,17 @@ import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 
 trait BaseYamlLoadedAclTest extends BlockContextAssertion {
 
+  protected def configYaml: String
+
+  protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
     implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory
   }
+
   val acl: Acl = factory
     .createCoreFrom(
       RawRorConfig.fromString(configYaml).right.get,
@@ -29,6 +33,4 @@ trait BaseYamlLoadedAclTest extends BlockContextAssertion {
       case Right(CoreSettings(aclEngine, _, _)) => aclEngine
     }
     .runSyncUnsafe()
-
-  protected def configYaml: String
 }
