@@ -22,15 +22,17 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.fromRequestContext
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.Unresolvable.CannotExtractValue
-import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.runtime.Variable.Unresolvable.CannotExtractValue
 import tech.beshu.ror.acl.domain.{JwtTokenPayload, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+
 import scala.collection.JavaConverters._
 
-class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
+class RuntimeResolvableSingleVariablesTests extends WordSpec with MockFactory {
 
   "A header variable" should {
     "have been resolved" when {
@@ -79,7 +81,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "header name is an empty string" in {
-        RuntimeResolvableVariableCreator.createFrom("h:@{header:}", Right.apply) shouldBe {
+        RuntimeSingleResolvableVariableCreator.createFrom("h:@{header:}", Right.apply) shouldBe {
           Left(CreationError("Cannot create header variable, because no header name is passed"))
         }
       }
@@ -163,7 +165,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "JSON path cannot compile" in {
-        RuntimeResolvableVariableCreator.createFrom("@{jwt:tech[[.beshu}", Right.apply) shouldBe {
+        RuntimeSingleResolvableVariableCreator.createFrom("@{jwt:tech[[.beshu}", Right.apply) shouldBe {
           Left(CreationError("Cannot create JWT variable, because cannot compile 'tech[[.beshu' to JsonPath"))
         }
       }
@@ -201,20 +203,20 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "variable is empty string" in {
-        RuntimeResolvableVariableCreator.createFrom("h:@{}", Right.apply) shouldBe {
+        RuntimeSingleResolvableVariableCreator.createFrom("h:@{}", Right.apply) shouldBe {
           Left(CreationError("Cannot create header variable, because no header name is passed"))
         }
       }
     }
     "have been treated as text" when {
       "variable format doesn't have closing bracket" in {
-        RuntimeResolvableVariableCreator.createFrom("h:@{test", Right.apply) shouldBe Right(AlreadyResolved("h:@{test"))
+        RuntimeSingleResolvableVariableCreator.createFrom("h:@{test", Right.apply) shouldBe Right(AlreadyResolved("h:@{test"))
       }
     }
   }
 
   private def createVariable(text: String) = {
-    RuntimeResolvableVariableCreator.createFrom(text, Right.apply).right.get
+    RuntimeSingleResolvableVariableCreator.createFrom(text, Right.apply).right.get
   }
 
 }

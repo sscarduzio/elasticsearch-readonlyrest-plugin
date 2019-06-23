@@ -1,9 +1,10 @@
-package tech.beshu.ror.acl.blocks.variables
+package tech.beshu.ror.acl.blocks.variables.startup
 
 import cats.instances.either._
 import cats.instances.list._
 import cats.syntax.traverse._
 import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.acl.blocks.variables.Tokenizer
 import tech.beshu.ror.acl.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 

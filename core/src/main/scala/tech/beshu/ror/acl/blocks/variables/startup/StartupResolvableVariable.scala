@@ -1,11 +1,11 @@
-package tech.beshu.ror.acl.blocks.variables
+package tech.beshu.ror.acl.blocks.variables.startup
 
-import cats.syntax.show._
-import cats.syntax.either._
-import cats.instances.list._
 import cats.instances.either._
+import cats.instances.list._
+import cats.syntax.either._
+import cats.syntax.show._
 import cats.syntax.traverse._
-import tech.beshu.ror.acl.blocks.variables.StartupResolvableVariable.ResolvingError
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariable.ResolvingError
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider

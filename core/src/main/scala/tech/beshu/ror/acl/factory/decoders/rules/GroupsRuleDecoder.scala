@@ -21,22 +21,21 @@ import cats.implicits._
 import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.providers.EnvVarsProvider
 
 import scala.collection.SortedSet
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
   extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeResolvableVariable[Group]]
+    .decodeStringLikeOrNonEmptySet[RuntimeSingleResolvableVariable[Group]]
     .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>

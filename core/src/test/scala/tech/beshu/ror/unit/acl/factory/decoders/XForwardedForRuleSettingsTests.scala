@@ -21,7 +21,8 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.variables._
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 
@@ -42,7 +43,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("proxy1").get))
+            val addresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]] = NonEmptySet.one(AlreadyResolved(Address.from("proxy1").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -60,7 +61,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("proxy1").get), AlreadyResolved(Address.from("proxy2").get))
+            val addresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("proxy1").get), AlreadyResolved(Address.from("proxy2").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -97,7 +98,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val ips: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get))
+            val ips: NonEmptySet[RuntimeSingleResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get))
             rule.settings.allowedAddresses should be(ips)
           }
         )
@@ -115,7 +116,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val ips: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
+            val ips: NonEmptySet[RuntimeSingleResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("192.168.0.2").get))
             rule.settings.allowedAddresses should be(ips)
           }
         )
@@ -133,7 +134,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[RuntimeResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("proxy1").get))
+            val addresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]] = NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get), AlreadyResolved(Address.from("proxy1").get))
             rule.settings.allowedAddresses should be(addresses)
           }
         )

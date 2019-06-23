@@ -22,7 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule.Settings
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.request.RequestContext
 
 class UriRegexRule(val settings: Settings)
@@ -46,6 +46,6 @@ class UriRegexRule(val settings: Settings)
 object UriRegexRule {
   val name = Rule.Name("uri_re")
 
-  final case class Settings(uriPattern: RuntimeResolvableVariable[Pattern])
+  final case class Settings(uriPattern: RuntimeSingleResolvableVariable[Pattern])
 
 }

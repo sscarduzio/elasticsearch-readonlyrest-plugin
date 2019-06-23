@@ -21,17 +21,18 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
-import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
+import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
 import tech.beshu.ror.acl.factory.consts.RorProperties
+import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider}
-import KibanaRulesDecoderHelper.kibanaIndexDecoder
+import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.providers.PropertiesProvider
 
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
@@ -48,7 +49,7 @@ class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 )
 
 class KibanaAccessRuleDecoder(implicit propertiesProvider: PropertiesProvider)
-  extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeResolvableVariable[IndexName]](
+  extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
       .decodeStringLike
@@ -66,15 +67,15 @@ class KibanaAccessRuleDecoder(implicit propertiesProvider: PropertiesProvider)
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
   associatedFieldsDecoder =
-    Decoder.instance(_.downField("kibana_index").as[RuntimeResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
+    Decoder.instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
 )
 
 private object KibanaRulesDecoderHelper {
 
-  implicit val kibanaIndexDecoder: Decoder[RuntimeResolvableVariable[IndexName]] =
+  implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
     DecoderHelpers
       .decodeStringLike
-      .map(str => RuntimeResolvableVariableCreator.createFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
+      .map(str => RuntimeSingleResolvableVariableCreator.createFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)

@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
@@ -58,6 +58,6 @@ class UsersRule(val settings: Settings)
 object UsersRule {
   val name = Rule.Name("users")
 
-  final case class Settings(userIds: NonEmptySet[RuntimeResolvableVariable[User.Id]]) // todo: do we need Value here?
+  final case class Settings(userIds: NonEmptySet[RuntimeSingleResolvableVariable[User.Id]])
 }
 

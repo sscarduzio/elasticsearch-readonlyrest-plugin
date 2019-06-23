@@ -19,12 +19,11 @@ package tech.beshu.ror.acl.factory.decoders.rules
 import java.util.regex.Pattern
 
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.providers.EnvVarsProvider
 
 import scala.util.Try
 
@@ -34,7 +33,7 @@ class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
       Try(Pattern.compile(str))
         .toEither
         .left
-        .map(_ => ConvertError(str, s"Cannot compile pattern: $str"))
+        .map(_ => ConvertError(s"Cannot compile pattern: $str"))
     }
     .toSyncDecoder
     .emapE {

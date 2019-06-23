@@ -25,9 +25,10 @@ import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.ConvertError
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariableCreator.CreationError
-import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariable, RuntimeResolvableVariableCreator, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
@@ -98,12 +99,12 @@ object CirceOps {
           .decoder
     }
 
-    def variableDecoder[T](convert: String => Either[ConvertError, T]): Decoder[Either[CreationError, RuntimeResolvableVariable[T]]] =
+    def variableDecoder[T](convert: String => Either[ConvertError, T]): Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
       DecoderHelpers
         .decodeStringLike
-        .map { str => RuntimeResolvableVariableCreator.createFrom(str, convert) }
+        .map { str => RuntimeSingleResolvableVariableCreator.createFrom(str, convert) }
 
-    def alwaysRightVariableDecoder[T](convert: String => T): Decoder[RuntimeResolvableVariable[T]] =
+    def alwaysRightVariableDecoder[T](convert: String => T): Decoder[RuntimeSingleResolvableVariable[T]] =
       SyncDecoderCreator
         .from(variableDecoder[T](rv => Right(convert(rv))))
         .emapE {

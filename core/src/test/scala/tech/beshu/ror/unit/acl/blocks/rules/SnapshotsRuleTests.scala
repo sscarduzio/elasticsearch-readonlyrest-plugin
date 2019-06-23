@@ -22,7 +22,8 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, SnapshotsRule}
-import tech.beshu.ror.acl.blocks.variables.{AlreadyResolved, RuntimeResolvableVariable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.domain.{Action, IndexName}
 import tech.beshu.ror.acl.orders._
@@ -157,20 +158,20 @@ class SnapshotsRuleTests
     }
   }
 
-  private def assertMatchRule(configuredSnapshots: NonEmptySet[RuntimeResolvableVariable[IndexName]],
+  private def assertMatchRule(configuredSnapshots: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]],
                               requestAction: Action,
                               requestSnapshots: Set[IndexName],
                               readonlyRequest: Boolean = false)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredSnapshots, requestAction, requestSnapshots, readonlyRequest, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredSnapshots: NonEmptySet[RuntimeResolvableVariable[IndexName]],
+  private def assertNotMatchRule(configuredSnapshots: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]],
                                  requestAction: Action,
                                  requestSnapshots: Set[IndexName],
                                  readonlyRequest: Boolean = false): Unit =
     assertRule(configuredSnapshots, requestAction, requestSnapshots, readonlyRequest, blockContextAssertion = None)
 
-  private def assertRule(configuredSnapshots: NonEmptySet[RuntimeResolvableVariable[IndexName]],
+  private def assertRule(configuredSnapshots: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]],
                          requestAction: Action,
                          requestSnapshots: Set[IndexName],
                          readonlyRequest: Boolean,

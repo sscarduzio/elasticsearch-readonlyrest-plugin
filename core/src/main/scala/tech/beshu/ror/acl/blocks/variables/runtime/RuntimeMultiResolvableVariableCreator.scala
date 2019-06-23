@@ -1,25 +1,29 @@
-package tech.beshu.ror.acl.blocks.variables
+package tech.beshu.ror.acl.blocks.variables.runtime
 
+import cats.data.NonEmptyList
 import cats.instances.either._
 import cats.instances.list._
 import cats.syntax.traverse._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.Tokenizer
 import tech.beshu.ror.acl.blocks.variables.Tokenizer.Token
+import tech.beshu.ror.acl.blocks.variables.runtime.MultiExtractable.{Const, HeaderVar, JwtPayloadVar, UserIdVar}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{ToBeResolved, AlreadyResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
-import scala.language.postfixOps
 import scala.util.matching.Regex
 import scala.util.{Failure, Success, Try}
 
-object RuntimeResolvableVariableCreator extends Logging {
+// todo: refactoring needed
+object RuntimeMultiResolvableVariableCreator extends Logging {
 
   final case class CreationError(msg: String) extends AnyVal
 
   def createFrom[T](text: String,
-                    convert: String => Either[ConvertError, T]): Either[CreationError, RuntimeResolvableVariable[T]] = {
+                    convert: String => Either[ConvertError, T]): Either[CreationError, RuntimeMultiResolvableVariable[T]] = {
     Tokenizer
       .tokenize(text)
       .map(createVariable)
@@ -31,10 +35,10 @@ object RuntimeResolvableVariableCreator extends Logging {
           val alreadyResolved = nonEmpty.collect { case c: Const => c }
           if (alreadyResolved.length == nonEmpty.length) {
             convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
-              .map(AlreadyResolved.apply)
+              .map(value => AlreadyResolved(NonEmptyList.one(value)))
               .left.map(e => CreationError(e.msg))
           } else {
-            Right(ToBeResolved[T](nonEmpty, convert))
+            Right(ToBeResolved(nonEmpty, convert))
           }
       }
   }

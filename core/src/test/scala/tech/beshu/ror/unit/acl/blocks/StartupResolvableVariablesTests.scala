@@ -3,9 +3,9 @@ package tech.beshu.ror.unit.acl.blocks
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.variables.StartupResolvableVariable.ResolvingError
-import tech.beshu.ror.acl.blocks.variables.StartupResolvableVariableCreator
-import tech.beshu.ror.acl.blocks.variables.StartupResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariable.ResolvingError
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.StringOps

@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory
 
 import cats.data.NonEmptyList
 import io.circe.Json
-import tech.beshu.ror.acl.blocks.variables.StartupResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.providers.EnvVarsProvider
 
 object JsonConfigStaticVariableResolver {

@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
-import tech.beshu.ror.acl.blocks.variables.{Extractable, RuntimeResolvableVariable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
 
@@ -82,5 +82,5 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
 }
 
 object BaseSpecializedIndicesRule {
-  final case class Settings(allowedIndices: NonEmptySet[RuntimeResolvableVariable[IndexName]]) // todo: check don't allow to use _all || *
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]]) // todo: check don't allow to use _all || *
 }

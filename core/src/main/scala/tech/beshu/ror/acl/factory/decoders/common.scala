@@ -30,8 +30,8 @@ import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
 import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -142,12 +142,12 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val groupVariableDecoder: Decoder[RuntimeResolvableVariable[Group]] =
+  implicit val groupVariableDecoder: Decoder[RuntimeSingleResolvableVariable[Group]] =
     DecoderHelpers
       .variableDecoder[Group] { str =>
       NonEmptyString.from(str) match {
         case Right(nonEmptyResolvedValue) => Right(Group(nonEmptyResolvedValue))
-        case Left(_) => Left(ConvertError(str, "Group cannot be empty"))
+        case Left(_) => Left(ConvertError("Group cannot be empty"))
       }
     }
       .toSyncDecoder
@@ -157,12 +157,12 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val addressVariableDecoder: Decoder[RuntimeResolvableVariable[Address]] = {
+  implicit val addressVariableDecoder: Decoder[RuntimeSingleResolvableVariable[Address]] = {
     DecoderHelpers
       .variableDecoder[Address] { str =>
       Address.from(str) match {
         case Some(address) => Right(address)
-        case None => Left(ConvertError(str, s"Cannot create address (IP or hostname) from '$str'"))
+        case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '$str'"))
       }
     }
       .toSyncDecoder

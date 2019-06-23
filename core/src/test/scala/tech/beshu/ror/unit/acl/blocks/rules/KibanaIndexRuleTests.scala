@@ -23,7 +23,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.{RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -50,9 +50,9 @@ class KibanaIndexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def indexNameValueFrom(value: String): RuntimeResolvableVariable[IndexName] = {
+  private def indexNameValueFrom(value: String): RuntimeSingleResolvableVariable[IndexName] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    RuntimeResolvableVariableCreator
+    RuntimeSingleResolvableVariableCreator
       .createFrom(value, extracted => Right(IndexName(extracted)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))

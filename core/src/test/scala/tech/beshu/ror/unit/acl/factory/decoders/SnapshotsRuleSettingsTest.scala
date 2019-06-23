@@ -18,9 +18,10 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.blocks.rules.SnapshotsRule
-import tech.beshu.ror.acl.blocks.variables._
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
@@ -42,7 +43,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1")))
+            val indices: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1")))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -78,7 +79,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeResolvableVariable[IndexName]] = NonEmptySet.of(AlreadyResolved(IndexName("index1")), AlreadyResolved(IndexName("index2")))
+            val indices: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]] = NonEmptySet.of(AlreadyResolved(IndexName("index1")), AlreadyResolved(IndexName("index2")))
             rule.settings.allowedIndices should be(indices)
           }
         )

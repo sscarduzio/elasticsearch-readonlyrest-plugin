@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.{RuntimeResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -63,13 +63,13 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredAddresses: NonEmptySet[RuntimeResolvableVariable[Address]], localAddress: Address) =
+  private def assertMatchRule(configuredAddresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = true)
 
-  private def assertNotMatchRule(configuredAddresses: NonEmptySet[RuntimeResolvableVariable[Address]], localAddress: Address) =
+  private def assertNotMatchRule(configuredAddresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = false)
 
-  private def assertRule(configuredAddresses: NonEmptySet[RuntimeResolvableVariable[Address]], localAddress: Address, isMatched: Boolean) = {
+  private def assertRule(configuredAddresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]], localAddress: Address, isMatched: Boolean) = {
     val rule = new LocalHostsRule(LocalHostsRule.Settings(configuredAddresses))
     val blockContext = mock[BlockContext]
     val requestContext = MockRequestContext(localAddress = localAddress)
@@ -79,9 +79,9 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): RuntimeResolvableVariable[Address] = {
+  private def addressValueFrom(value: String): RuntimeSingleResolvableVariable[Address] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    RuntimeResolvableVariableCreator
+    RuntimeSingleResolvableVariableCreator
       .createFrom(value, extracted => Right(Address.from(extracted).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))

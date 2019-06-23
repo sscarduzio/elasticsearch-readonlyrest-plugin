@@ -20,9 +20,9 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
@@ -51,8 +51,8 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
 
 private object JwtAuthRuleDecoder {
 
-  private implicit val groupsSetDecoder: Decoder[Set[RuntimeResolvableVariable[Group]]] =
-    DecoderHelpers.decodeStringLikeOrSet[RuntimeResolvableVariable[Group]]
+  private implicit val groupsSetDecoder: Decoder[Set[RuntimeSingleResolvableVariable[Group]]] =
+    DecoderHelpers.decodeStringLikeOrSet[RuntimeSingleResolvableVariable[Group]]
 
   private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Group])] =
     DecoderHelpers

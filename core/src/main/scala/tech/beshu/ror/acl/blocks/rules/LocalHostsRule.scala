@@ -21,8 +21,8 @@ import monix.eval.Task
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.acl.blocks.variables.RuntimeResolvableVariable
 import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.request.RequestContext
 
 class LocalHostsRule(val settings: Settings)
@@ -43,6 +43,6 @@ class LocalHostsRule(val settings: Settings)
 object LocalHostsRule {
   val name = Rule.Name("hosts_local")
 
-  final case class Settings(allowedAddresses: NonEmptySet[RuntimeResolvableVariable[Address]])
+  final case class Settings(allowedAddresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]])
 
 }
