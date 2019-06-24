@@ -31,7 +31,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}

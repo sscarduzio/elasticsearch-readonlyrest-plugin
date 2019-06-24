@@ -28,7 +28,7 @@ import io.circe.parser._
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariableCreator.CreationError
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}

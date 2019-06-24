@@ -20,7 +20,7 @@ import cats.Order
 import cats.implicits._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.variables.runtime.Extractable.ExtractError
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.domain.{ClaimName, Header}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.show.logs._
@@ -28,15 +28,15 @@ import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
-trait RuntimeSingleResolvableVariable[T] extends Variable[T]
+trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T]
 object RuntimeSingleResolvableVariable {
   final case class AlreadyResolved[T](value: T)
-    extends Variable.AlreadyResolved(value)
+    extends RuntimeResolvableVariable.AlreadyResolved(value)
       with RuntimeSingleResolvableVariable[T]
 
   final case class ToBeResolved[T](values: List[SingleExtractable],
                                    convert: String => Either[ConvertError, T])
-    extends Variable.ToBeResolved(values, convert)
+    extends RuntimeResolvableVariable.ToBeResolved(values, convert)
       with RuntimeSingleResolvableVariable[T]
 
   implicit def runtimeResolvableOrder[T : Order]: Order[RuntimeSingleResolvableVariable[T]] =

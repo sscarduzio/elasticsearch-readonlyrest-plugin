@@ -4,17 +4,18 @@ import cats.implicits._
 import cats.kernel.Monoid
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.variables.runtime.Extractable.ExtractError
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.Unresolvable
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.Unresolvable.{CannotExtractValue, CannotInstantiateResolvedValue}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable.{CannotExtractValue, CannotInstantiateResolvedValue}
 import tech.beshu.ror.acl.request.RequestContext
 
-private [runtime] trait Variable[T] {
+// todo: better names for generics
+private [runtime] trait RuntimeResolvableVariable[T] {
 
   def resolve(requestContext: RequestContext,
               blockContext: BlockContext): Either[Unresolvable, T]
 }
 
-object Variable {
+object RuntimeResolvableVariable {
 
   final case class ConvertError(msg: String)
 
@@ -25,7 +26,7 @@ object Variable {
   }
 
   protected [runtime] abstract class AlreadyResolved[T](value: T)
-    extends Variable[T] {
+    extends RuntimeResolvableVariable[T] {
 
     override def resolve(requestContext: RequestContext,
                          blockContext: BlockContext): Either[Unresolvable, T] =
@@ -34,7 +35,7 @@ object Variable {
 
   protected [runtime] abstract class ToBeResolved[T, S : Monoid](values: List[Extractable[S]],
                                                                  convert: S => Either[ConvertError, T])
-    extends Variable[T] {
+    extends RuntimeResolvableVariable[T] {
 
     override def resolve(requestContext: RequestContext,
                          blockContext: BlockContext): Either[Unresolvable, T] = {

@@ -23,7 +23,7 @@ import tech.beshu.ror.acl.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.Unresolvable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain.{Filter, Header}
 import tech.beshu.ror.acl.headerValues.transientFilterHeaderValue

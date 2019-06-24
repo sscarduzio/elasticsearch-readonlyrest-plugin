@@ -21,23 +21,20 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.variables.runtime.Extractable.ExtractError
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.domain.{ClaimName, Header}
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
-import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
-trait RuntimeMultiResolvableVariable[T] extends Variable[NonEmptyList[T]]
+trait RuntimeMultiResolvableVariable[T] extends RuntimeResolvableVariable[NonEmptyList[T]]
 object RuntimeMultiResolvableVariable {
   final case class AlreadyResolved[T](value: NonEmptyList[T])
-    extends Variable.AlreadyResolved(value)
+    extends RuntimeResolvableVariable.AlreadyResolved(value)
     with RuntimeMultiResolvableVariable[T]
 
   final case class ToBeResolved[T](values: List[MultiExtractable],
                                    convert: String => Either[ConvertError, T])
-    extends Variable.ToBeResolved(
+    extends RuntimeResolvableVariable.ToBeResolved(
       values,
       (items: List[String]) =>
         items

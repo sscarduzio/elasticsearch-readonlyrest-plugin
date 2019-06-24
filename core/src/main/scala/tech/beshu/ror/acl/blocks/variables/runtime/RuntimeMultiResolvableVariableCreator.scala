@@ -10,7 +10,7 @@ import tech.beshu.ror.acl.blocks.variables.Tokenizer
 import tech.beshu.ror.acl.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.acl.blocks.variables.runtime.MultiExtractable.{Const, HeaderVar, JwtPayloadVar, UserIdVar}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{ToBeResolved, AlreadyResolved}
-import tech.beshu.ror.acl.blocks.variables.runtime.Variable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 

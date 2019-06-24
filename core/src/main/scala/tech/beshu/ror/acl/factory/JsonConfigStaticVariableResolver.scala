@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory
 
 import cats.data.NonEmptyList
 import io.circe.Json
-import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.startup.{StartupMultiResolvableVariableCreator, StartupSingleResolvableVariableCreator}
 import tech.beshu.ror.providers.EnvVarsProvider
 
 object JsonConfigStaticVariableResolver {
@@ -20,16 +20,23 @@ object JsonConfigStaticVariableResolver {
   private def mapJson(json: Json, errors: ResolvingErrors)
                      (implicit envProvider: EnvVarsProvider): Json = {
     json
-      .mapArray(_.map(mapJson(_, errors)))
+      .mapArray(_.flatMap { json =>
+        json.asString match {
+          case Some(str) =>
+            tryToResolveAllStaticMultipleVars(str, errors).map(Json.fromString).toList
+          case None =>
+            mapJson(json, errors) :: Nil
+        }
+      })
       .mapBoolean(identity)
       .mapNumber(identity)
       .mapObject(_.mapValues(mapJson(_, errors)))
-      .mapString(tryToResolveAllVars(_, errors))
+      .mapString(tryToResolveAllStaticSingleVars(_, errors))
   }
 
-  private def tryToResolveAllVars(value: String, errors: ResolvingErrors)
-                                 (implicit envProvider: EnvVarsProvider): String = {
-    StartupResolvableVariableCreator.createFrom(value) match {
+  private def tryToResolveAllStaticSingleVars(value: String, errors: ResolvingErrors)
+                                             (implicit envProvider: EnvVarsProvider): String = {
+    StartupSingleResolvableVariableCreator.createFrom(value) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
@@ -43,7 +50,24 @@ object JsonConfigStaticVariableResolver {
     }
   }
 
+  private def tryToResolveAllStaticMultipleVars(value: String, errors: ResolvingErrors)
+                                               (implicit envProvider: EnvVarsProvider): NonEmptyList[String] = {
+    StartupMultiResolvableVariableCreator.createFrom(value) match {
+      case Right(variable) =>
+        variable.resolve(envProvider) match {
+          case Right(extracted) => extracted
+          case Left(error) =>
+            errors.values = errors.values :+ ResolvingError(error.msg)
+            NonEmptyList.one(value)
+        }
+      case Left(error) =>
+        errors.values = errors.values :+ ResolvingError(error.msg)
+        NonEmptyList.one(value)
+    }
+  }
+
   final case class ResolvingError(msg: String) extends AnyVal
 
   private final case class ResolvingErrors(var values: Vector[ResolvingError])
+
 }

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils
 
-import cats.data.EitherT
+import cats.data.{EitherT, NonEmptyList}
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -43,6 +43,26 @@ object ScalaOps {
         .groupBy(provideComparatorOf)
         .collect { case (_, List(fst, _, _*)) => fst }
         .toList
+  }
+
+  implicit class ListOfListOps[T](val lists: List[List[T]]) extends AnyVal {
+
+    def cartesian: List[List[T]] = {
+      lists.foldRight(List(List.empty[T])) {
+        case (xs, yss) =>
+          for {
+            x <- xs
+            ys <- yss
+          } yield x :: ys
+      }
+    }
+  }
+
+  implicit class NonEmptyListOfNonEmptyListOps[T](val lists: NonEmptyList[NonEmptyList[T]]) extends AnyVal {
+
+    def cartesian: NonEmptyList[NonEmptyList[T]] = {
+      NonEmptyList.fromListUnsafe(new ListOfListOps(lists.map(_.toList).toList).cartesian.map(NonEmptyList.fromListUnsafe))
+    }
   }
 
   implicit class ListOfEitherOps[A, B](val either: List[Either[A, B]]) extends AnyVal {
@@ -95,4 +115,5 @@ object ScalaOps {
     f.respond(promise complete _)
     promise.future
   }
+
 }
