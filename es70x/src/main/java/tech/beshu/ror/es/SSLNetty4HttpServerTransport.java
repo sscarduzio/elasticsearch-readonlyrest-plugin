@@ -59,7 +59,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
   }
 
   @Override
-  protected void onException(HttpChannel channel, Exception cause) {
+  public void onException(HttpChannel channel, Exception cause) {
     if (!this.lifecycle.started()) {
       return;
     }
