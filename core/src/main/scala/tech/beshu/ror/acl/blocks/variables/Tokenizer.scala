@@ -43,6 +43,7 @@ object Tokenizer {
   object Token {
     final case class Text(value: String) extends Token
     final case class Placeholder(name: String, rawValue: String) extends Token
+    final case class ExplodablePlaceholder(name: String, rawValue: String) extends Token
   }
 
   private sealed trait TokenizerState
@@ -53,4 +54,5 @@ object Tokenizer {
   }
 
   private val specialChars: Set[Char] = Set('@', '$')
+  private val explodeKeyword: String = "explode"
 }
