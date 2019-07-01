@@ -135,7 +135,7 @@ trait ReadonlyRest extends Logging {
 
   private[ror] def loadRorConfigFromIndex(indexConfigManager: IndexConfigManager,
                                           noIndexFallback: => Task[Either[StartingFailure, RawRorConfig]]) = {
-    logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
+    logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
     indexConfigManager
       .load()
       .flatMap {
