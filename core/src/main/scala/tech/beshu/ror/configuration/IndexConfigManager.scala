@@ -26,7 +26,6 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexCo
 import tech.beshu.ror.es.IndexJsonContentManager
 import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 import tech.beshu.ror.utils.LoggerOps._
-import tech.beshu.ror.utils.YamlOps
 
 import scala.collection.JavaConverters._
 
@@ -57,7 +56,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
         auditIndexConsts.indexName,
         auditIndexConsts.typeName,
         auditIndexConsts.id,
-        Map(auditIndexConsts.settingsKey -> YamlOps.jsonToYamlString(config.rawConfig)).asJava
+        Map(auditIndexConsts.settingsKey -> config.raw).asJava
       )
       .map {
         _.left.map {

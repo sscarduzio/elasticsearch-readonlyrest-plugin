@@ -4,6 +4,8 @@ readonlyrest:
     keystore_file: "keystore.jks"
     keystore_pass: "readonlyrest"
     key_pass: "readonlyrest"
+
+  # comments should survive
   access_control_rules:
     - name: "CONTAINER ADMIN - file"
       verbosity: "error"

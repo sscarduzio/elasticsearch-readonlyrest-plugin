@@ -25,7 +25,7 @@ import io.circe.{Json, ParsingFailure}
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 import scala.collection.JavaConverters._
 
-final case class RawRorConfig(rawConfig: Json)
+final case class RawRorConfig(configJson: Json, raw: String)
 
 object RawRorConfig {
 
@@ -37,18 +37,20 @@ object RawRorConfig {
   //  }
 
   def fromFile(file: File): Either[ParsingRorConfigError, RawRorConfig] = {
-    handleParseResult(parser.parse(replaceEnvVars(file.contentAsString)))
+    val rawContent = file.contentAsString
+    handleParseResult(parser.parse(replaceEnvVars(rawContent)))
+      .map(RawRorConfig(_, rawContent))
   }
 
   def fromString(content: String): Either[ParsingRorConfigError, RawRorConfig] = {
     handleParseResult(parser.parse(replaceEnvVars(content)))
+      .map(RawRorConfig(_, content))
   }
 
   private def handleParseResult(result: Either[ParsingFailure, Json]) = {
     result
       .left.map(InvalidContent.apply)
       .flatMap { json => validateRorJson(json) }
-      .map(RawRorConfig.apply)
   }
 
   // fixme: RORDEV-6 will do it better
