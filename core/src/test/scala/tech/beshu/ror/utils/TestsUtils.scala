@@ -126,7 +126,7 @@ object TestsUtils {
   }
 
   def rorConfigFrom(yaml: String): RawRorConfig = {
-    RawRorConfig(parser.parse(yaml).right.get)
+    RawRorConfig(parser.parse(yaml).right.get, yaml)
   }
 
   def rorConfigFromResource(resource: String): RawRorConfig = {

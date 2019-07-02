@@ -72,7 +72,7 @@ class AdminRestApi(rorInstance: RorInstance,
     fileConfigLoader
       .load()
       .map {
-        case Right(config) => Ok[ApiCallResult](Success(YamlOps.jsonToYamlString(config.rawConfig)))
+        case Right(config) => Ok[ApiCallResult](Success(config.raw))
         case Left(error) => Ok[ApiCallResult](Failure(error.show))
       }
   }
@@ -81,7 +81,7 @@ class AdminRestApi(rorInstance: RorInstance,
     indexConfigManager
       .load()
       .map {
-        case Right(config) => Ok[ApiCallResult](Success(YamlOps.jsonToYamlString(config.rawConfig)))
+        case Right(config) => Ok[ApiCallResult](Success(config.raw))
         case Left(error) => Ok[ApiCallResult](Failure(error.show))
       }
   }
