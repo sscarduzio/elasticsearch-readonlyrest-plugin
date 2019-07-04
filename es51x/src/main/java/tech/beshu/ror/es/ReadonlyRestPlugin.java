@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import monix.execution.Scheduler$;
@@ -27,6 +28,7 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
+import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.env.Environment;
@@ -63,10 +65,9 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Inject
   private IndexLevelActionFilter ilaf;
-  private Environment environment;
 
   public ReadonlyRestPlugin(Settings s) {
-    this.environment = new Environment(s);
+    Environment environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
     this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
@@ -126,4 +127,12 @@ public class ReadonlyRestPlugin extends Plugin
       return null;
     });
   }
+
+  @Override
+  public List<Setting<?>> getSettings() {
+    return ImmutableList.of(
+        Setting.groupSetting("readonlyrest.", Setting.Property.Dynamic, Setting.Property.NodeScope)
+    );
+  }
+
 }
