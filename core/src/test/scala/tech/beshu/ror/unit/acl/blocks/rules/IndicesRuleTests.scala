@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.collection.SortedSet
@@ -304,8 +304,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
 
   private def indexNameValueFrom(value: String): RuntimeSingleResolvableVariable[IndexName] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    RuntimeSingleResolvableVariableCreator
-      .createFrom(value, str => Right(IndexName(str)))
+    RuntimeResolvableVariableCreator
+      .createSingleResolvableVariableFrom(value, str => Right(IndexName(str)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }

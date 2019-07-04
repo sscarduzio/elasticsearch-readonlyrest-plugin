@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 
 // todo: refactor
+// todo: add force_load?
 public class AllowedSettings {
 
   public static final String ATTRIBUTE_NAME = "readonlyrest";

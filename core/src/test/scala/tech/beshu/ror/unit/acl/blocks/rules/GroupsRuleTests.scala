@@ -26,7 +26,8 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.{GroupsRule, Rule}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.orders._
@@ -94,7 +95,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
       "no group can be resolved" in {
         assertNotMatchRule(
           settings = GroupsRule.Settings(
-            groups = NonEmptySet.one(RuntimeSingleResolvableVariableCreator.createFrom("group_@{user}", extracted => Right(groupFrom(extracted))).right.get),
+            groups = NonEmptySet.one(createSingleResolvableVariableFrom("group_@{user}", extracted => Right(groupFrom(extracted))).right.get),
             usersDefinitions = NonEmptySet.one(UserDef(User.Id("user1"), NonEmptySet.one(groupFrom("group_user1")), alwaysRejectingAuthRule))
           ),
           loggedUser = None,

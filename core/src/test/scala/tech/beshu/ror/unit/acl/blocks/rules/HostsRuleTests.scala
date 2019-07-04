@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.HostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -102,8 +102,8 @@ class HostsRuleTests extends WordSpec with MockFactory {
 
   private def addressValueFrom(value: String): RuntimeSingleResolvableVariable[Address] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    RuntimeSingleResolvableVariableCreator
-      .createFrom(value, extracted => Right(Address.from(extracted).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
+    RuntimeResolvableVariableCreator
+      .createSingleResolvableVariableFrom(value, extracted => Right(Address.from(extracted).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

@@ -26,8 +26,8 @@ import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createSingleResolvableVariableFrom}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
@@ -102,7 +102,7 @@ object CirceOps {
     def variableDecoder[T](convert: String => Either[ConvertError, T]): Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
       DecoderHelpers
         .decodeStringLike
-        .map { str => RuntimeSingleResolvableVariableCreator.createFrom(str, convert) }
+        .map { str => createSingleResolvableVariableFrom(str, convert) }
 
     def alwaysRightVariableDecoder[T](convert: String => T): Decoder[RuntimeSingleResolvableVariable[T]] =
       SyncDecoderCreator

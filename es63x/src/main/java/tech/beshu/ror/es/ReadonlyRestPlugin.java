@@ -191,6 +191,7 @@ public class ReadonlyRestPlugin extends Plugin
     ilaf.stop();
   }
 
+  // todo: to remove or not? just force load?
   @Override
   public List<Setting<?>> getSettings() {
     // No need, we have settings in config/readonlyrest.yml

@@ -21,8 +21,9 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeSingleResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -75,7 +76,7 @@ private object KibanaRulesDecoderHelper {
   implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
     DecoderHelpers
       .decodeStringLike
-      .map(str => RuntimeSingleResolvableVariableCreator.createFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
+      .map(str => createSingleResolvableVariableFrom(str, extracted => Right(IndexName(extracted.replace(" ", "_")))))
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)

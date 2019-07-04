@@ -46,6 +46,7 @@ public class Constants {
   public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
   public static final String HEADER_USER_ORIGIN = "x-ror-origin";
 
+  // todo: clean up
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",
       "indices:admin/mappings/fields/get*",

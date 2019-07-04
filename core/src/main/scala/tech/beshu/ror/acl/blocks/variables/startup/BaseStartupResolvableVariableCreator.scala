@@ -55,6 +55,8 @@ trait BaseStartupResolvableVariableCreator[T] {
               Right(createTextVariable(rawValue))
           }
       }
+    case Token.ExplodablePlaceholder(name, rawValue) =>
+      ??? // todo: impl
   }
 
   private def createEnvVariableFromString(envVarName: String) = {

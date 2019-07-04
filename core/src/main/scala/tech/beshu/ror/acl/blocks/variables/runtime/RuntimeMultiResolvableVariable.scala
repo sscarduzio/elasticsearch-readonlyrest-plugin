@@ -19,12 +19,7 @@ package tech.beshu.ror.acl.blocks.variables.runtime
 import cats.Order
 import cats.data.NonEmptyList
 import cats.implicits._
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.Extractable.ExtractError
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
-import tech.beshu.ror.acl.domain.{ClaimName, Header}
-import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 trait RuntimeMultiResolvableVariable[T] extends RuntimeResolvableVariable[NonEmptyList[T]]
 object RuntimeMultiResolvableVariable {
@@ -32,7 +27,7 @@ object RuntimeMultiResolvableVariable {
     extends RuntimeResolvableVariable.AlreadyResolved(value)
     with RuntimeMultiResolvableVariable[T]
 
-  final case class ToBeResolved[T](values: List[MultiExtractable],
+  final case class ToBeResolved[T](values: Vector[MultiExtractable],
                                    convert: String => Either[ConvertError, T])
     extends RuntimeResolvableVariable.ToBeResolved(
       values,
@@ -55,47 +50,5 @@ object RuntimeMultiResolvableVariable {
       case (_, AlreadyResolved(_)) => 1
       case (v1, v2) => v1.hashCode() compareTo v2.hashCode()
     }
-
-}
-
-sealed trait MultiExtractable extends Extractable[List[String]]
-
-object MultiExtractable {
-
-  final case class Const(value: String) extends MultiExtractable {
-    private val singleConst = SingleExtractable.Const(value)
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, List[String]] =
-      singleConst
-        .extractUsing(requestContext, blockContext)
-        .map(List(_))
-  }
-
-  case object UserIdVar extends MultiExtractable {
-    private val singleUserIdVar = SingleExtractable.UserIdVar
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, List[String]] = {
-      singleUserIdVar
-        .extractUsing(requestContext, blockContext)
-        .map(List(_))
-    }
-  }
-
-  final case class HeaderVar(header: Header.Name) extends MultiExtractable {
-    private val singleHeaderVar = SingleExtractable.HeaderVar(header)
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, List[String]] = {
-      singleHeaderVar
-        .extractUsing(requestContext, blockContext)
-        .map(List(_))
-    }
-  }
-
-  final case class JwtPayloadVar(jsonPath: JsonPath) extends MultiExtractable {
-    private val varClaim = ClaimName(jsonPath)
-
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, List[String]] = ??? // todo: impl
-  }
 
 }
