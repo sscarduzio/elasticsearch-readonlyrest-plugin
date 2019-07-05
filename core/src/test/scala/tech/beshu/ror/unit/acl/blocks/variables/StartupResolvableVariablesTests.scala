@@ -9,7 +9,7 @@ import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCrea
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.TestsUtils.StringOps
+import tech.beshu.ror.utils.TestsUtils._
 
 class StartupResolvableVariablesTests extends WordSpec with MockFactory {
 
@@ -48,7 +48,7 @@ class StartupResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "env name is an empty string" in {
-        StartupResolvableVariableCreator.createSingleVariableFrom("test_@{env:}") shouldBe {
+        StartupResolvableVariableCreator.createSingleVariableFrom("test_@{env:}".nonempty) shouldBe {
           Left(CreationError("Cannot create env variable, because no name of env variable is passed"))
         }
       }
@@ -83,11 +83,11 @@ class StartupResolvableVariablesTests extends WordSpec with MockFactory {
   }
 
   private def createSingleVariable(text: String) = {
-    StartupResolvableVariableCreator.createSingleVariableFrom(text).right.get
+    StartupResolvableVariableCreator.createSingleVariableFrom(text.nonempty).right.get
   }
 
   private def createMultiVariable(text: String) = {
-    StartupResolvableVariableCreator.createMultiVariableFrom(text).right.get
+    StartupResolvableVariableCreator.createMultiVariableFrom(text.nonempty).right.get
   }
 
   private def mockEnvVarProvider(envs: Map[String, Option[String]]) = {

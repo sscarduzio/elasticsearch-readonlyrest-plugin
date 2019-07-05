@@ -1,6 +1,7 @@
 package tech.beshu.ror.acl.factory
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.{createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -21,7 +22,7 @@ object JsonConfigStaticVariableResolver {
                      (implicit envProvider: EnvVarsProvider): Json = {
     json
       .mapArray(_.flatMap { json =>
-        json.asString match {
+        json.asString.flatMap(NonEmptyString.unapply) match {
           case Some(str) =>
             tryToResolveAllStaticMultipleVars(str, errors).map(Json.fromString).toList
           case None =>
@@ -31,38 +32,43 @@ object JsonConfigStaticVariableResolver {
       .mapBoolean(identity)
       .mapNumber(identity)
       .mapObject(_.mapValues(mapJson(_, errors)))
-      .mapString(tryToResolveAllStaticSingleVars(_, errors))
+      .mapString { str =>
+        NonEmptyString.unapply(str) match {
+          case Some(nes) => tryToResolveAllStaticSingleVars(nes, errors)
+          case None => str
+        }
+      }
   }
 
-  private def tryToResolveAllStaticSingleVars(value: String, errors: ResolvingErrors)
+  private def tryToResolveAllStaticSingleVars(str: NonEmptyString, errors: ResolvingErrors)
                                              (implicit envProvider: EnvVarsProvider): String = {
-    createSingleVariableFrom(value) match {
+    createSingleVariableFrom(str) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
           case Left(error) =>
             errors.values = errors.values :+ ResolvingError(error.msg)
-            value
+            str.value
         }
       case Left(error) =>
         errors.values = errors.values :+ ResolvingError(error.msg)
-        value
+        str.value
     }
   }
 
-  private def tryToResolveAllStaticMultipleVars(value: String, errors: ResolvingErrors)
+  private def tryToResolveAllStaticMultipleVars(str: NonEmptyString, errors: ResolvingErrors)
                                                (implicit envProvider: EnvVarsProvider): NonEmptyList[String] = {
-    createMultiVariableFrom(value) match {
+    createMultiVariableFrom(str) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
           case Left(error) =>
             errors.values = errors.values :+ ResolvingError(error.msg)
-            NonEmptyList.one(value)
+            NonEmptyList.one(str.value)
         }
       case Left(error) =>
         errors.values = errors.values :+ ResolvingError(error.msg)
-        NonEmptyList.one(value)
+        NonEmptyList.one(str.value)
     }
   }
 
