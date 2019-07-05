@@ -30,6 +30,7 @@ import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.utils.TestsUtils._
 
 class UsersRuleTests extends WordSpec with MockFactory {
 
@@ -90,7 +91,7 @@ class UsersRuleTests extends WordSpec with MockFactory {
   private def userIdValueFrom(value: String): RuntimeSingleResolvableVariable[User.Id] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value, extracted => Right(User.Id(extracted)))
+      .createSingleResolvableVariableFrom(value.nonempty, extracted => Right(User.Id(extracted)))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }

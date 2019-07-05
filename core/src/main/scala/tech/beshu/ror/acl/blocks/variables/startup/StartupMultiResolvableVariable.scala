@@ -4,7 +4,7 @@ import cats.data.NonEmptyList
 import cats.instances.either._
 import cats.syntax.show._
 import cats.syntax.traverse._
-import com.github.tototoshi.csv.{CSVParser, _}
+import com.github.tototoshi.csv._
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariable.ResolvingError
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -47,6 +47,11 @@ object StartupMultiResolvableVariable {
           resolvedVars.cartesian.map(_.toList.mkString)
         }
       }
+  }
+
+  final case class Wrapper(variable: StartupSingleResolvableVariable) extends StartupMultiResolvableVariable {
+    override def resolve(provider: EnvVarsProvider): Either[ResolvingError, NonEmptyList[String]] =
+      variable.resolve(provider).map(NonEmptyList.one)
   }
 
 }

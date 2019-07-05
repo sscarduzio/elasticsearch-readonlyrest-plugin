@@ -17,6 +17,7 @@
 package tech.beshu.ror.acl.blocks.variables.runtime
 
 import cats.Order
+import cats.data.NonEmptyList
 import cats.implicits._
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 
@@ -26,7 +27,7 @@ object RuntimeSingleResolvableVariable {
     extends RuntimeResolvableVariable.AlreadyResolved(value)
       with RuntimeSingleResolvableVariable[T]
 
-  final case class ToBeResolved[T](values: Vector[SingleExtractable],
+  final case class ToBeResolved[T](values: NonEmptyList[SingleExtractable],
                                    convert: String => Either[ConvertError, T])
     extends RuntimeResolvableVariable.ToBeResolved(values, convert)
       with RuntimeSingleResolvableVariable[T]

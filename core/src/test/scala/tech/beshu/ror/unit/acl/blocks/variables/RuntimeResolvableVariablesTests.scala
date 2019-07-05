@@ -81,7 +81,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "header name is an empty string" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{header:}", Right.apply) shouldBe {
+        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{header:}".nonempty, Right.apply) shouldBe {
           Left(CreationError("Cannot create header variable, because no header name is passed"))
         }
       }
@@ -165,7 +165,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "JSON path cannot compile" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("@{jwt:tech[[.beshu}", Right.apply) shouldBe {
+        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("@{jwt:tech[[.beshu}".nonempty, Right.apply) shouldBe {
           Left(CreationError("Cannot create JWT variable, because cannot compile 'tech[[.beshu' to JsonPath"))
         }
       }
@@ -203,20 +203,20 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "variable is empty string" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{}", Right.apply) shouldBe {
+        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{}".nonempty, Right.apply) shouldBe {
           Left(CreationError("Cannot create header variable, because no header name is passed"))
         }
       }
     }
     "have been treated as text" when {
       "variable format doesn't have closing bracket" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{test", Right.apply) shouldBe Right(AlreadyResolved("h:@{test"))
+        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{test".nonempty, Right.apply) shouldBe Right(AlreadyResolved("h:@{test"))
       }
     }
   }
 
   private def createVariable(text: String) = {
-    RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom(text, Right.apply).right.get
+    RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom(text.nonempty, Right.apply).right.get
   }
 
 }

@@ -16,23 +16,23 @@
  */
 package tech.beshu.ror.acl.utils
 
-import cats.{Applicative, Order}
 import cats.data.NonEmptySet
 import cats.implicits._
+import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
 import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createSingleResolvableVariableFrom}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createSingleResolvableVariableFrom}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult._
 
 import scala.collection.SortedSet
@@ -101,7 +101,7 @@ object CirceOps {
 
     def variableDecoder[T](convert: String => Either[ConvertError, T]): Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
       DecoderHelpers
-        .decodeStringLike
+        .decodeStringLikeNonEmpty
         .map { str => createSingleResolvableVariableFrom(str, convert) }
 
     def alwaysRightVariableDecoder[T](convert: String => T): Decoder[RuntimeSingleResolvableVariable[T]] =

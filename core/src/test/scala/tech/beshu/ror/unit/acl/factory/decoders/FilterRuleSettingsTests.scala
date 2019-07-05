@@ -23,6 +23,7 @@ import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCrea
 import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.utils.TestsUtils._
 
 class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
 
@@ -58,7 +59,10 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}", extracted => Right(Filter(extracted)))
+            val variable = RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom(
+              "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}".nonempty,
+              extracted => Right(Filter(extracted))
+            )
             rule.settings.filter shouldBe a [ToBeResolved[_]]
           }
         )

@@ -27,7 +27,7 @@ object RuntimeMultiResolvableVariable {
     extends RuntimeResolvableVariable.AlreadyResolved(value)
     with RuntimeMultiResolvableVariable[T]
 
-  final case class ToBeResolved[T](values: Vector[MultiExtractable],
+  final case class ToBeResolved[T](values: NonEmptyList[MultiExtractable],
                                    convert: String => Either[ConvertError, T])
     extends RuntimeResolvableVariable.ToBeResolved(
       values,

@@ -1,5 +1,6 @@
 package tech.beshu.ror.acl.blocks.variables.runtime
 
+import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -13,11 +14,10 @@ import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
-// todo: better names for generics
-private [runtime] trait RuntimeResolvableVariable[T] {
+private [runtime] trait RuntimeResolvableVariable[RESULT] {
 
   def resolve(requestContext: RequestContext,
-              blockContext: BlockContext): Either[Unresolvable, T]
+              blockContext: BlockContext): Either[Unresolvable, RESULT]
 }
 
 object RuntimeResolvableVariable {
@@ -30,27 +30,27 @@ object RuntimeResolvableVariable {
     final case class CannotInstantiateResolvedValue(msg: String) extends Unresolvable
   }
 
-  protected [runtime] abstract class AlreadyResolved[T](value: T)
-    extends RuntimeResolvableVariable[T] {
+  protected [runtime] abstract class AlreadyResolved[VALUE](value: VALUE)
+    extends RuntimeResolvableVariable[VALUE] {
 
     override def resolve(requestContext: RequestContext,
-                         blockContext: BlockContext): Either[Unresolvable, T] =
+                         blockContext: BlockContext): Either[Unresolvable, VALUE] =
       Right(value)
   }
 
-  protected [runtime] abstract class ToBeResolved[T, S : Monoid](values: Vector[Extractable[S]],
-                                                                 convert: S => Either[ConvertError, T])
-    extends RuntimeResolvableVariable[T] {
+  protected [runtime] abstract class ToBeResolved[RESULT, VALUE : Monoid](values: NonEmptyList[Extractable[VALUE]],
+                                                                          convert: VALUE => Either[ConvertError, RESULT])
+    extends RuntimeResolvableVariable[RESULT] {
 
     override def resolve(requestContext: RequestContext,
-                         blockContext: BlockContext): Either[Unresolvable, T] = {
+                         blockContext: BlockContext): Either[Unresolvable, RESULT] = {
       values
-        .foldLeft(Either.right[Unresolvable, S](implicitly[Monoid[S]].empty)) {
+        .foldLeft(Either.right[Unresolvable, VALUE](implicitly[Monoid[VALUE]].empty)) {
           case (Right(accumulator), value) =>
             value
               .extractUsing(requestContext, blockContext)
               .left.map(error => CannotExtractValue(error.msg))
-              .map(extracted => implicitly[Monoid[S]].combine(accumulator, extracted))
+              .map(extracted => implicitly[Monoid[VALUE]].combine(accumulator, extracted))
           case (left@Left(_), _) =>
             left
         }
@@ -61,10 +61,10 @@ object RuntimeResolvableVariable {
   }
 }
 
-sealed trait Extractable[T] {
+sealed trait Extractable[VALUE] {
 
   def extractUsing(requestContext: RequestContext,
-                   blockContext: BlockContext): Either[ExtractError, T]
+                   blockContext: BlockContext): Either[ExtractError, VALUE]
 }
 object Extractable {
 

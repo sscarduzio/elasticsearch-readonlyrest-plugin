@@ -4,9 +4,9 @@ import cats.data.NonEmptyList
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.variables.startup.BaseStartupResolvableVariableCreator.CreationError
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariable.ResolvingError
-import tech.beshu.ror.acl.blocks.variables.startup.{StartupMultiResolvableVariableCreator, StartupSingleResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils.StringOps
@@ -48,7 +48,7 @@ class StartupResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "env name is an empty string" in {
-        StartupSingleResolvableVariableCreator.createFrom("test_@{env:}") shouldBe {
+        StartupResolvableVariableCreator.createSingleVariableFrom("test_@{env:}") shouldBe {
           Left(CreationError("Cannot create env variable, because no name of env variable is passed"))
         }
       }
@@ -83,11 +83,11 @@ class StartupResolvableVariablesTests extends WordSpec with MockFactory {
   }
 
   private def createSingleVariable(text: String) = {
-    StartupSingleResolvableVariableCreator.createFrom(text).right.get
+    StartupResolvableVariableCreator.createSingleVariableFrom(text).right.get
   }
 
   private def createMultiVariable(text: String) = {
-    StartupMultiResolvableVariableCreator.createFrom(text).right.get
+    StartupResolvableVariableCreator.createMultiVariableFrom(text).right.get
   }
 
   private def mockEnvVarProvider(envs: Map[String, Option[String]]) = {

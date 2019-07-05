@@ -31,6 +31,7 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils._
 
 class XForwardedForRuleTests extends WordSpec with MockFactory {
 
@@ -111,7 +112,7 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
   private def addressValueFrom(value: String): RuntimeSingleResolvableVariable[Address] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value, extracted => Right(Address.from(extracted).get))
+      .createSingleResolvableVariableFrom(value.nonempty, extracted => Right(Address.from(extracted).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

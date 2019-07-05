@@ -1,14 +1,16 @@
 package tech.beshu.ror.acl.blocks.variables
 
+import cats.data.NonEmptyList
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 
 import scala.language.postfixOps
 
 object Tokenizer {
 
-  def tokenize(text: String): List[Token] = {
+  def tokenize(text: NonEmptyString): NonEmptyList[Token] = {
     val init: (Vector[Token], TokenizerState) = (Vector.empty[Token], TokenizerState.ReadingConst(""))
-    val (lastTokens, lastState) = text.foldLeft(init) {
+    val (foundTokens, lastState) = text.value.foldLeft(init) {
       case ((tokens, TokenizerState.ReadingConst(accumulator)), char) =>
         if(specialChars.contains(char)) {
           (tokens, TokenizerState.PossiblyReadingVar(accumulator, char))
@@ -60,14 +62,26 @@ object Tokenizer {
             (tokens, TokenizerState.ReadingVar(accumulator + other, specialChar, keyword))
         }
     }
-    lastTokens ++ (lastState match {
-      case TokenizerState.ReadingConst("") => Nil
-      case TokenizerState.ReadingConst(accumulator) => Token.Text(accumulator) :: Nil
-      case TokenizerState.PossiblyReadingVar(constAccumulator, specialChar) => Token.Text(constAccumulator + specialChar) :: Nil
-      case TokenizerState.PossiblyReadingVarWithKeyword(constAccumulator, specialChar, keywordPart) => Token.Text(constAccumulator + specialChar + keywordPart) :: Nil
-      case TokenizerState.ReadingVar(accumulator, specialChar, None) => Token.Text(s"$specialChar{$accumulator") :: Nil
-      case TokenizerState.ReadingVar(accumulator, specialChar, Some(keyword)) => Token.Text(s"$specialChar${keyword.name}{$accumulator") :: Nil
-    }) toList
+
+    val lastToken = lastState match {
+      case TokenizerState.ReadingConst(accumulator) =>
+        Token.Text(accumulator)
+      case TokenizerState.PossiblyReadingVar(constAccumulator, specialChar) =>
+        Token.Text(constAccumulator + specialChar)
+      case TokenizerState.PossiblyReadingVarWithKeyword(constAccumulator, specialChar, keywordPart) =>
+        Token.Text(constAccumulator + specialChar + keywordPart)
+      case TokenizerState.ReadingVar(accumulator, specialChar, None) =>
+        Token.Text(s"$specialChar{$accumulator")
+      case TokenizerState.ReadingVar(accumulator, specialChar, Some(keyword)) =>
+        Token.Text(s"$specialChar${keyword.name}{$accumulator")
+    }
+
+    NonEmptyList.fromFoldable(foundTokens) match {
+      case Some(nel) =>
+        nel.append(lastToken)
+      case None =>
+        NonEmptyList.one(lastToken)
+    }
   }
 
   sealed trait Token

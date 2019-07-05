@@ -71,7 +71,7 @@ class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposit
 private object IndicesDecodersHelper {
   implicit val indexNameValueDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
     DecoderHelpers
-      .decodeStringLike
+      .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
         RuntimeResolvableVariableCreator

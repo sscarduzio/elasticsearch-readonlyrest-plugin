@@ -32,6 +32,7 @@ import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, UriPath}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.utils.TestsUtils._
 
 import scala.util.Try
 
@@ -108,7 +109,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
   private def patternValueFrom(value: String): RuntimeSingleResolvableVariable[Pattern] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value, extracted => Try(Pattern.compile(extracted)).toEither.left.map(_ => ConvertError("msg")))
+      .createSingleResolvableVariableFrom(value.nonempty, extracted => Try(Pattern.compile(extracted)).toEither.left.map(_ => ConvertError("msg")))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
   }

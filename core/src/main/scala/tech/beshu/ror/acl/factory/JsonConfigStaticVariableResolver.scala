@@ -2,7 +2,7 @@ package tech.beshu.ror.acl.factory
 
 import cats.data.NonEmptyList
 import io.circe.Json
-import tech.beshu.ror.acl.blocks.variables.startup.{StartupMultiResolvableVariableCreator, StartupSingleResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.{createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.providers.EnvVarsProvider
 
 object JsonConfigStaticVariableResolver {
@@ -36,7 +36,7 @@ object JsonConfigStaticVariableResolver {
 
   private def tryToResolveAllStaticSingleVars(value: String, errors: ResolvingErrors)
                                              (implicit envProvider: EnvVarsProvider): String = {
-    StartupSingleResolvableVariableCreator.createFrom(value) match {
+    createSingleVariableFrom(value) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
@@ -52,7 +52,7 @@ object JsonConfigStaticVariableResolver {
 
   private def tryToResolveAllStaticMultipleVars(value: String, errors: ResolvingErrors)
                                                (implicit envProvider: EnvVarsProvider): NonEmptyList[String] = {
-    StartupMultiResolvableVariableCreator.createFrom(value) match {
+    createMultiVariableFrom(value) match {
       case Right(variable) =>
         variable.resolve(envProvider) match {
           case Right(extracted) => extracted
