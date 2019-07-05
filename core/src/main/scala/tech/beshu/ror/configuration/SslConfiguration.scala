@@ -102,6 +102,21 @@ object SslConfiguration {
 
 private object SslDecoders {
 
+  object consts {
+    val rorSection = "readonlyrest"
+    val forceLoadFromFile = "force_load_from_file"
+    val externalSsl = "ssl"
+    val internodeSsl = "ssl_internode"
+    val keystoreFile = "keystore_file"
+    val keystorePass = "keystore_pass"
+    val keyPass = "key_pass"
+    val keyAlias = "key_alias"
+    val allowedCiphers = "allowed_ciphers"
+    val allowedProtocols = "allowed_protocols"
+    val verification = "verification"
+    val enable = "enable"
+  }
+
   import tech.beshu.ror.configuration.SslConfiguration._
 
   private implicit def keystoreFileDecoder(basePath: Path): Decoder[JFile] =
@@ -119,13 +134,13 @@ private object SslDecoders {
     implicit val jFileDecoder: Decoder[JFile] = keystoreFileDecoder(basePath)
     whenEnabled(c) {
       for {
-        keystoreFile <- c.downField("keystore_file").as[JFile]
-        keystorePassword <- c.downField("keystore_pass").as[Option[KeystorePassword]]
-        keyPass <- c.downField("key_pass").as[Option[KeyPass]]
-        keyAlias <- c.downField("key_alias").as[Option[KeyAlias]]
-        ciphers <- c.downField("allowed_ciphers").as[Option[Set[Cipher]]]
-        protocols <- c.downField("allowed_protocols").as[Option[Set[Protocol]]]
-        verify <- c.downField("verification").as[Option[Boolean]]
+        keystoreFile <- c.downField(consts.keystoreFile).as[JFile]
+        keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
+        keyPass <- c.downField(consts.keyPass).as[Option[KeyPass]]
+        keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
+        ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
+        protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
+        verify <- c.downField(consts.verification).as[Option[Boolean]]
       } yield SslConfiguration(
         keystoreFile,
         keystorePassword,
@@ -141,14 +156,14 @@ private object SslDecoders {
   implicit def rorSslDecoder(basePath: Path): Decoder[RorSsl] = Decoder.instance { c =>
     implicit val sslConfigDecoder: Decoder[Option[SslConfiguration]] = sslConfigurationDecoder(basePath)
     for {
-      interNodeSsl <- c.downField("readonlyrest").downField("ssl_internode").as[Option[Option[SslConfiguration]]]
-      externalSsl <- c.downField("readonlyrest").downField("ssl").as[Option[Option[SslConfiguration]]]
+      interNodeSsl <- c.downField(consts.rorSection).downField(consts.internodeSsl).as[Option[Option[SslConfiguration]]]
+      externalSsl <- c.downField(consts.rorSection).downField(consts.externalSsl).as[Option[Option[SslConfiguration]]]
     } yield RorSsl(externalSsl.flatten, interNodeSsl.flatten)
   }
 
   private def whenEnabled(cursor: HCursor)(decoding: => Either[DecodingFailure, SslConfiguration]) = {
     for {
-      isEnabled <- cursor.downField("enable").as[Option[Boolean]]
+      isEnabled <- cursor.downField(consts.enable).as[Option[Boolean]]
       result <- if(isEnabled.getOrElse(true)) decoding.map(Some.apply) else Right(None)
     } yield result
   }

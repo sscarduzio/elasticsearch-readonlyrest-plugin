@@ -22,7 +22,6 @@ import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
-import tech.beshu.ror.utils.misc.CirceJsonHelper.jsonFrom
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 class AdminApiTests extends WordSpec with ForAllTestContainer {
@@ -72,8 +71,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
       val result = adminActionManager.actionGet("_readonlyrest/admin/config/file")
       result.getResponseCode should be (200)
       result.getResponseJson.get("status") should be ("ok")
-      jsonFrom(result.getResponseJson.get("message").asInstanceOf[String]) should be {
-        jsonFrom(getResourceContent("/admin_api/readonlyrest.yml"))
+      result.getResponseJson.get("message").asInstanceOf[String] should be {
+        getResourceContent("/admin_api/readonlyrest.yml")
       }
     }
     "get content of index config" in {
@@ -87,8 +86,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
       val getIndexConfigResult = adminActionManager.actionGet("_readonlyrest/admin/config")
       getIndexConfigResult.getResponseCode should be (200)
       getIndexConfigResult.getResponseJson.get("status") should be ("ok")
-      jsonFrom(getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String]) should be {
-        jsonFrom(getResourceContent("/admin_api/readonlyrest_index.yml"))
+      getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String] should be {
+        getResourceContent("/admin_api/readonlyrest_index.yml")
       }
     }
   }

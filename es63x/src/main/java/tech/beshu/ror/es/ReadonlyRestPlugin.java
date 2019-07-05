@@ -17,10 +17,10 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
-import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.support.ActionFilter;
@@ -66,7 +66,6 @@ import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.RorSsl;
 import tech.beshu.ror.configuration.RorSsl$;
-import tech.beshu.ror.settings.AllowedSettings;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
@@ -86,12 +85,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
-  private final Settings settings;
   private final RorSsl sslConfig;
 
   private IndexLevelActionFilter ilaf;
@@ -99,7 +96,6 @@ public class ReadonlyRestPlugin extends Plugin
 
   @Inject
   public ReadonlyRestPlugin(Settings s, Path p) {
-    this.settings = s;
     this.environment = new Environment(s, p);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
@@ -194,25 +190,8 @@ public class ReadonlyRestPlugin extends Plugin
   // todo: to remove or not? just force load?
   @Override
   public List<Setting<?>> getSettings() {
-    // No need, we have settings in config/readonlyrest.yml
-    //return super.getSettings();
-    return AllowedSettings.list().entrySet().stream().map((e) -> {
-      Setting<?> theSetting = null;
-      switch (e.getValue()) {
-        case BOOL:
-          theSetting = Setting.boolSetting(e.getKey(), Boolean.FALSE, Setting.Property.NodeScope);
-          break;
-        case STRING:
-          theSetting = new Setting<>(e.getKey(), "", (value) -> value, Setting.Property.NodeScope);
-          break;
-        case GROUP:
-          theSetting = Setting.groupSetting(e.getKey(), Setting.Property.Dynamic, Setting.Property.NodeScope);
-          break;
-        default:
-          throw new ElasticsearchException("invalid settings " + e);
-      }
-      return theSetting;
-    }).collect(Collectors.toList());
+    return ImmutableList.of(
+        Setting.groupSetting("readonlyrest.", Setting.Property.Dynamic, Setting.Property.NodeScope));
   }
 
   @Override

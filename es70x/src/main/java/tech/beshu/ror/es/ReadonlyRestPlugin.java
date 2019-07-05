@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
@@ -35,6 +36,7 @@ import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
 import org.elasticsearch.common.settings.IndexScopedSettings;
+import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
@@ -141,6 +143,13 @@ public class ReadonlyRestPlugin extends Plugin
       }
       return null;
     });
+  }
+
+  @Override
+  public List<Setting<?>> getSettings() {
+    return ImmutableList.of(
+        Setting.groupSetting("readonlyrest.", Setting.Property.Dynamic, Setting.Property.NodeScope)
+    );
   }
 
   @Override

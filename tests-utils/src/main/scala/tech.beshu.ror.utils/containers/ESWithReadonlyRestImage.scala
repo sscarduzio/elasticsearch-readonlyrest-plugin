@@ -58,7 +58,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .run(s"echo 'readonyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
           .user("root")
           .run("chown elasticsearch:elasticsearch config/*")

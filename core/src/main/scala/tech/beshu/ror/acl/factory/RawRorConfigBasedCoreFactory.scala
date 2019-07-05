@@ -63,8 +63,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   override def createCoreFrom(config: RawRorConfig,
                               httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
-    config.rawConfig \\ Attributes.rorSectionName match {
-      case Nil => createCoreFromRorSection(config.rawConfig, httpClientFactory)
+    config.configJson \\ Attributes.rorSectionName match {
+      case Nil => createCoreFromRorSection(config.configJson, httpClientFactory)
       case rorSection :: Nil => createCoreFromRorSection(rorSection, httpClientFactory)
       case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
     }
