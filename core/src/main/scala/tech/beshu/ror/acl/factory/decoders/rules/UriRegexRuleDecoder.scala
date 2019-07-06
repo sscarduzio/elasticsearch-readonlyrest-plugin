@@ -17,25 +17,23 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import java.util.regex.Pattern
+
 import cats.implicits._
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.show.logs._
+import UriRegexRuleDecoder.patternConvertible
 
 import scala.util.Try
 
 class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .variableDecoder { str =>
-      Try(Pattern.compile(str))
-        .toEither
-        .left
-        .map(_ => ConvertError(s"Cannot compile pattern: $str"))
-    }
+    .singleVariableDecoder[Pattern]
     .toSyncDecoder
     .emapE {
       case Right(pattern) => Right(new UriRegexRule(UriRegexRule.Settings(pattern)))
@@ -43,3 +41,14 @@ class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     }
     .decoder
 )
+
+object UriRegexRuleDecoder {
+  implicit val patternConvertible: Convertible[Pattern] = new Convertible[Pattern] {
+    override def convert: String => Either[Convertible.ConvertError, Pattern] = str => {
+      Try(Pattern.compile(str))
+        .toEither
+        .left
+        .map(_ => ConvertError(s"Cannot compile pattern: $str"))
+    }
+  }
+}

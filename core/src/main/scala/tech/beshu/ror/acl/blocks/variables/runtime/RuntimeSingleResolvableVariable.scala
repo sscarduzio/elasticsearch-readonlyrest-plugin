@@ -18,21 +18,46 @@ package tech.beshu.ror.acl.blocks.variables.runtime
 
 import cats.Order
 import cats.data.NonEmptyList
-import cats.implicits._
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
+import cats.instances.either._
+import cats.syntax.order._
+import cats.syntax.traverse._
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.request.RequestContext
 
-trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T]
+sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T]
+
 object RuntimeSingleResolvableVariable {
+
   final case class AlreadyResolved[T](value: T)
-    extends RuntimeResolvableVariable.AlreadyResolved(value)
-      with RuntimeSingleResolvableVariable[T]
+    extends RuntimeSingleResolvableVariable[T] {
 
-  final case class ToBeResolved[T](values: NonEmptyList[SingleExtractable],
-                                   convert: String => Either[ConvertError, T])
-    extends RuntimeResolvableVariable.ToBeResolved(values, convert)
-      with RuntimeSingleResolvableVariable[T]
+    override def resolve(requestContext: RequestContext,
+                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, T] =
+      Right(value)
+  }
 
-  implicit def runtimeResolvableOrder[T : Order]: Order[RuntimeSingleResolvableVariable[T]] =
+  final case class ToBeResolved[T : Convertible](values: NonEmptyList[SingleExtractable])
+    extends RuntimeSingleResolvableVariable[T] {
+
+    override def resolve(requestContext: RequestContext,
+                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, T] = {
+      values
+        .map { extractable =>
+          extractable
+            .extractUsing(requestContext, blockContext)
+            .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotExtractValue(error.msg))
+        }
+        .sequence
+        .map(_.toList.mkString)
+        .flatMap { result =>
+          implicitly[Convertible[T]].convert(result)
+            .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotInstantiateResolvedValue(error.msg))
+        }
+    }
+  }
+
+  implicit def runtimeResolvableOrder[T: Order]: Order[RuntimeSingleResolvableVariable[T]] =
     Order.from {
       case (AlreadyResolved(c1), AlreadyResolved(c2)) => c1 compare c2
       case (AlreadyResolved(_), _) => -1

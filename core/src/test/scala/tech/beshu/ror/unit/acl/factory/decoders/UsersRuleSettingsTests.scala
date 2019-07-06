@@ -19,12 +19,13 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.UsersRule
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.utils.TestsUtils._
 
 class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
 
@@ -43,7 +44,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: NonEmptySet[RuntimeSingleResolvableVariable[User.Id]] = NonEmptySet.one(AlreadyResolved(User.Id("user1")))
+            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] = NonEmptySet.one(AlreadyResolved(User.Id("user1").nel))
             rule.settings.userIds should be(userIds)
           }
         )
@@ -79,7 +80,8 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: NonEmptySet[RuntimeSingleResolvableVariable[User.Id]] = NonEmptySet.of(AlreadyResolved(User.Id("user1")), AlreadyResolved(User.Id("user2")))
+            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] =
+              NonEmptySet.of(AlreadyResolved(User.Id("user1").nel), AlreadyResolved(User.Id("user2").nel))
             rule.settings.userIds should be(userIds)
           }
         )

@@ -23,7 +23,7 @@ object StartupResolvableVariableCreator {
   }
 
   def createSingleVariableFrom(text: NonEmptyString): Either[CreationError, StartupSingleResolvableVariable] = {
-    oldFashionedEnvAndTextHandling(text)
+    oldFashionedEnvAndTextHandling(text, VariableType.Single)
       .getOrElse(createSingleVariablesFrom(Tokenizer.tokenize(text)))
       .map { variables => VariableType.Single.createComposedVariable(variables) }
   }
@@ -33,16 +33,16 @@ object StartupResolvableVariableCreator {
       .map { variables => VariableType.Multi.createComposedVariable(variables) }
   }
 
-  private def oldFashionedEnvAndTextHandling(text: NonEmptyString): Option[Either[CreationError, NonEmptyList[StartupSingleResolvableVariable]]] = {
+  private def oldFashionedEnvAndTextHandling(text: NonEmptyString, `type`: VariableType): Option[Either[CreationError, NonEmptyList[`type`.T]]] = {
     import cats.syntax.either._
     if (text.value.startsWith("env:")) {
       NonEmptyString
         .unapply(text.value.substring("env:".length))
-        .map(str => VariableType.Single.createEnvVariable(EnvVarName(str)))
+        .map(str => `type`.createEnvVariable(EnvVarName(str)))
         .map(variable => NonEmptyList.one(variable).asRight[CreationError])
     } else if (text.value.startsWith("text:")) {
       Some {
-        NonEmptyList.one(VariableType.Single.createTextVariable(text.value.substring("text:".length))).asRight[CreationError]
+        NonEmptyList.one(`type`.createTextVariable(text.value.substring("text:".length))).asRight[CreationError]
       }
     } else {
       None
@@ -94,6 +94,8 @@ object StartupResolvableVariableCreator {
     name match {
       case regexes.envVar(envVarName) =>
         createEnvVariableFromString(envVarName, `type`)
+      case _ if rawValue.startsWith("$") => // backward compatibility (old ${EX} === new @{env:EX})
+        createEnvVariableFromString(name, `type`)
       case _ =>
         Right(`type`.createTextVariable(rawValue))
     }

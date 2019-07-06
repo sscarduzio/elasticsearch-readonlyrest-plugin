@@ -25,10 +25,10 @@ import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.rules.HostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class HostsRuleTests extends WordSpec with MockFactory {
@@ -82,13 +82,13 @@ class HostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredHosts: NonEmptySet[RuntimeSingleResolvableVariable[Address]], remoteHost: Address) =
+  private def assertMatchRule(configuredHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]], remoteHost: Address) =
     assertRule(configuredHosts, Some(remoteHost), isMatched = true)
 
-  private def assertNotMatchRule(configuredHosts: NonEmptySet[RuntimeSingleResolvableVariable[Address]], remoteHost: Option[Address]) =
+  private def assertNotMatchRule(configuredHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]], remoteHost: Option[Address]) =
     assertRule(configuredHosts, remoteHost, isMatched = false)
 
-  private def assertRule(configuredValues: NonEmptySet[RuntimeSingleResolvableVariable[Address]], address: Option[Address], isMatched: Boolean) = {
+  private def assertRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[Address]], address: Option[Address], isMatched: Boolean) = {
     val rule = new HostsRule(HostsRule.Settings(configuredValues, acceptXForwardedForHeader = false))
     val requestContext = MockRequestContext(
       remoteAddress = address,
@@ -101,10 +101,9 @@ class HostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): RuntimeSingleResolvableVariable[Address] = {
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+  private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value.nonempty, extracted => Right(Address.from(extracted).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
+      .createMultiResolvableVariableFrom[Address](value.nonempty)(AlwaysRightConvertible.from(extracted => Address.from(extracted).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

@@ -1,28 +1,29 @@
 package tech.beshu.ror.integration
 
-import java.security.Key
+import java.util.Base64
 
 import eu.timepit.refined.types.string.NonEmptyString
-import io.jsonwebtoken.{Jwts, SignatureAlgorithm}
-import io.jsonwebtoken.security.Keys
+import io.jsonwebtoken.Jwts
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{Header, IndexName, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.collection.JavaConverters._
 
 class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
 
+  private lazy val (pub, secret) = TestsUtils.generateRsaRandomKeys
   override protected def configYaml: String =
-    """
+    s"""
       |readonlyrest:
       |
       |  access_control_rules:
@@ -40,11 +41,13 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
       |
       |   - name: "Group name from env variable (old syntax)"
       |     type: allow
-      |     groups: ["g${sys_group_2}"]
+      |     groups: ["g$${sys_group_2}"]
       |
       |   - name: "Group name from jwt variable"
       |     type: allow
-      |     groups: ["g@{jwt:tech.beshu.mainGroup}"]
+      |     jwt_auth:
+      |       name: "jwt1"
+      |     indices: ["g@explode{jwt:tech.beshu.mainGroup}"]
       |
       |  users:
       |   - username: user1
@@ -62,7 +65,10 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
       |  jwt:
       |
       |  - name: jwt1
-      |    signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+      |    signature_algo: "RSA"
+      |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
+      |    user_claim: "userId"
+      |    groups_claim: "tech.beshu.mainGroup"
     """.stripMargin
 
   "An ACL" when {
@@ -149,25 +155,24 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             headers = Set(Header(
               Header.Name.authorization,
               {
-                val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
                 val jwtBuilder = Jwts.builder
-                  .signWith(key)
+                  .signWith(secret)
                   .setSubject("test")
-                  .claim("userId", "user1")
-                  .claim("tech", Map("beshu" -> Map("mainGroup" -> "j1").asJava).asJava)
+                  .claim("userId", "user3")
+                  .claim("tech", Map("beshu" -> Map("mainGroup" -> "j1,j2").asJava).asJava)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
-              }))
+              })),
+            indices = Set(IndexName("gj1")),
+            involvesIndices = true
           )
 
           val result = acl.handle(request).runSyncUnsafe()
 
-          result.history should have size 3
+          result.history should have size 5
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group name from env variable"))
+            block.name should be(Block.Name("Group name from jwt variable"))
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user3"))),
-              currentGroup = Some(groupFrom("gj1")),
-              availableGroups = allUser3Groups
+              loggedUser = Some(LoggedUser(User.Id("user3")))
             ) {
               blockContext
             }

@@ -82,14 +82,8 @@ object RequestContext extends Logging {
       }
 
       def stringifyIndices = {
-        blockContext
-          .toSet
-          .flatMap { b: BlockContext => b.indices }
-          .toList
-          .map(_.show) match {
-          case Nil => "<N/A>"
-          case nel => nel.mkString(",")
-        }
+        if (r.indices.isEmpty) "<N/A>"
+        else r.indices.mkString(",")
       }
 
       s"""{

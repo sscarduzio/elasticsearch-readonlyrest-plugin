@@ -20,8 +20,8 @@ import java.net.URI
 import java.util.concurrent.TimeUnit
 
 import cats.Show
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.{Refined, Validate}
@@ -29,20 +29,21 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.acl.show.logs._
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.acl.domain.{Address, Group, Header, User}
+import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.refined._
+import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.acl.utils.SyncDecoderCreator
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -143,29 +144,38 @@ object common extends Logging {
       }
       .decoder
 
-  implicit val groupVariableDecoder: Decoder[RuntimeSingleResolvableVariable[Group]] =
-    DecoderHelpers
-      .variableDecoder[Group] { str =>
+  implicit val groupConvertible: Convertible[Group] = new Convertible[Group] {
+    override def convert: String => Either[ConvertError, Group] = str => {
       NonEmptyString.from(str) match {
         case Right(nonEmptyResolvedValue) => Right(Group(nonEmptyResolvedValue))
         case Left(_) => Left(ConvertError("Group cannot be empty"))
       }
     }
+  }
+
+  implicit val addressConvertible: Convertible[Address] = new Convertible[Address] {
+    override def convert: String => Either[ConvertError, Address] = str => {
+      Address.from(str) match {
+        case Some(address) => Right(address)
+        case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '$str'"))
+      }
+    }
+  }
+
+  implicit def valueLevelRuntimeSingleResolvableVariableDecoder[T : Convertible]: Decoder[RuntimeSingleResolvableVariable[T]] = {
+    DecoderHelpers
+      .singleVariableDecoder[T]
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
         case Left(error) => Left(ValueLevelCreationError(Message(error.show)))
       }
       .decoder
+  }
 
-  implicit val addressVariableDecoder: Decoder[RuntimeSingleResolvableVariable[Address]] = {
+  implicit def valueLevelRuntimeMultiResolvableVariableDecoder[T : Convertible]: Decoder[RuntimeMultiResolvableVariable[T]] = {
     DecoderHelpers
-      .variableDecoder[Address] { str =>
-      Address.from(str) match {
-        case Some(address) => Right(address)
-        case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '$str'"))
-      }
-    }
+      .multiVariableDecoder[T]
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)

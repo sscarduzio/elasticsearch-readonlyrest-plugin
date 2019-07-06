@@ -24,12 +24,12 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UsersRule
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
 class UsersRuleTests extends WordSpec with MockFactory {
@@ -71,13 +71,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredIds: NonEmptySet[RuntimeSingleResolvableVariable[User.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[LoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = true)
 
-  private def assertNotMatchRule(configuredIds: NonEmptySet[RuntimeSingleResolvableVariable[User.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertNotMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[LoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = false)
 
-  private def assertRule(configuredIds: NonEmptySet[RuntimeSingleResolvableVariable[User.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
+  private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds))
     val requestContext = MockRequestContext.default
     val blockContext = mock[BlockContext]
@@ -88,10 +88,9 @@ class UsersRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def userIdValueFrom(value: String): RuntimeSingleResolvableVariable[User.Id] = {
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+  private def userIdValueFrom(value: String): RuntimeMultiResolvableVariable[User.Id] = {
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value.nonempty, extracted => Right(User.Id(extracted)))
+      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(User.Id.apply))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }

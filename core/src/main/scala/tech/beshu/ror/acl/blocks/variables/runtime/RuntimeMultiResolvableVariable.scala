@@ -19,31 +19,49 @@ package tech.beshu.ror.acl.blocks.variables.runtime
 import cats.Order
 import cats.data.NonEmptyList
 import cats.implicits._
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.utils.ScalaOps._
 
-trait RuntimeMultiResolvableVariable[T] extends RuntimeResolvableVariable[NonEmptyList[T]]
+sealed trait RuntimeMultiResolvableVariable[T] extends RuntimeResolvableVariable[NonEmptyList[T]]
+
 object RuntimeMultiResolvableVariable {
+
   final case class AlreadyResolved[T](value: NonEmptyList[T])
-    extends RuntimeResolvableVariable.AlreadyResolved(value)
-    with RuntimeMultiResolvableVariable[T]
+    extends RuntimeMultiResolvableVariable[T] {
 
-  final case class ToBeResolved[T](values: NonEmptyList[MultiExtractable],
-                                   convert: String => Either[ConvertError, T])
-    extends RuntimeResolvableVariable.ToBeResolved(
-      values,
-      (items: List[String]) =>
-        items
-          .map(convert)
-          .sequence
-          .flatMap { result =>
-            NonEmptyList.fromList(result) match {
-              case Some(nel) => Right(nel)
-              case None => Left(ConvertError("Resolved values list is empty"))
+    override def resolve(requestContext: RequestContext,
+                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, NonEmptyList[T]] =
+      Right(value)
+  }
+
+  final case class ToBeResolved[T : Convertible](values: NonEmptyList[MultiExtractable])
+    extends RuntimeMultiResolvableVariable[T] {
+
+    override def resolve(requestContext: RequestContext,
+                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, NonEmptyList[T]] = {
+      values
+        .map { extractable =>
+          extractable
+            .extractUsing(requestContext, blockContext)
+            .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotExtractValue(error.msg))
+        }
+        .sequence
+        .flatMap { resolvedVars =>
+          resolvedVars
+            .cartesian
+            .map(_.toList.mkString)
+            .map { result =>
+              implicitly[Convertible[T]].convert(result)
+                .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotInstantiateResolvedValue(error.msg))
             }
-          }
-    ) with RuntimeMultiResolvableVariable[T]
+            .sequence
+        }
+    }
+  }
 
-  implicit def runtimeResolvableOrder[T : Order]: Order[RuntimeMultiResolvableVariable[T]] =
+  implicit def runtimeResolvableOrder[T: Order]: Order[RuntimeMultiResolvableVariable[T]] =
     Order.from {
       case (AlreadyResolved(c1), AlreadyResolved(c2)) => c1 compare c2
       case (AlreadyResolved(_), _) => -1

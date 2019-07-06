@@ -64,23 +64,25 @@ object Tokenizer {
     }
 
     val lastToken = lastState match {
+      case TokenizerState.ReadingConst("") =>
+        None
       case TokenizerState.ReadingConst(accumulator) =>
-        Token.Text(accumulator)
+        Some(Token.Text(accumulator))
       case TokenizerState.PossiblyReadingVar(constAccumulator, specialChar) =>
-        Token.Text(constAccumulator + specialChar)
+        Some(Token.Text(constAccumulator + specialChar))
       case TokenizerState.PossiblyReadingVarWithKeyword(constAccumulator, specialChar, keywordPart) =>
-        Token.Text(constAccumulator + specialChar + keywordPart)
+        Some(Token.Text(constAccumulator + specialChar + keywordPart))
       case TokenizerState.ReadingVar(accumulator, specialChar, None) =>
-        Token.Text(s"$specialChar{$accumulator")
+        Some(Token.Text(s"$specialChar{$accumulator"))
       case TokenizerState.ReadingVar(accumulator, specialChar, Some(keyword)) =>
-        Token.Text(s"$specialChar${keyword.name}{$accumulator")
+        Some(Token.Text(s"$specialChar${keyword.name}{$accumulator"))
     }
 
     NonEmptyList.fromFoldable(foundTokens) match {
       case Some(nel) =>
-        nel.append(lastToken)
+        lastToken.map(nel.append).getOrElse(nel)
       case None =>
-        NonEmptyList.one(lastToken)
+        NonEmptyList.one(lastToken.getOrElse(throw new IllegalStateException("Last token cannot be empty string")))
     }
   }
 

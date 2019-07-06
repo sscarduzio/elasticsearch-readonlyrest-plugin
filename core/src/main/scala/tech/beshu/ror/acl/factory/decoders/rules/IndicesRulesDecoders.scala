@@ -16,34 +16,36 @@
  */
 package tech.beshu.ror.acl.factory.decoders.rules
 
+import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, IndicesRule, RepositoriesRule, SnapshotsRule}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.IndicesDecodersHelper._
-import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.domain.IndexName
-import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.utils.CirceOps._
 
 class IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeSingleResolvableVariable[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
     .map(indices => new IndicesRule(IndicesRule.Settings(indices)))
 )
 
 class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeSingleResolvableVariable[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
     .toSyncDecoder
     .emapE { indices =>
-      if(indices.contains(AlreadyResolved(IndexName.all)))
+      if(checkIfAlreadyResolvedVariableContains(indices, IndexName.all))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
-      else if(indices.contains(AlreadyResolved(IndexName.wildcard)))
+      else if(checkIfAlreadyResolvedVariableContains(indices, IndexName.wildcard))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - index ${IndexName.wildcard.show}")))
       else
         Right(indices)
@@ -54,12 +56,12 @@ class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsR
 
 class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[RepositoriesRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeSingleResolvableVariable[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
     .toSyncDecoder
     .emapE { indices =>
-      if(indices.contains(AlreadyResolved(IndexName.all)))
+      if(checkIfAlreadyResolvedVariableContains(indices, IndexName.all))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
-      else if(indices.contains(AlreadyResolved(IndexName.wildcard)))
+      else if(checkIfAlreadyResolvedVariableContains(indices, IndexName.wildcard))
         Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - index ${IndexName.wildcard.show}")))
       else
         Right(indices)
@@ -69,14 +71,27 @@ class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposit
 )
 
 private object IndicesDecodersHelper {
-  implicit val indexNameValueDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
+  private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
+    override def convert: String => Either[Convertible.ConvertError, IndexName] = str => Right(IndexName(str))
+  }
+  implicit val indexNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[IndexName]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
         RuntimeResolvableVariableCreator
-          .createSingleResolvableVariableFrom(str, extracted => Right(IndexName(extracted)))
+          .createMultiResolvableVariableFrom[IndexName](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }
       .decoder
+
+  private [rules] def checkIfAlreadyResolvedVariableContains(indicesVars: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                             indexName: IndexName): Boolean = {
+    indicesVars
+      .find {
+        case AlreadyResolved(indices) => indices.contains_(indexName)
+        case ToBeResolved(_) => false
+      }
+      .isDefined
+  }
 }

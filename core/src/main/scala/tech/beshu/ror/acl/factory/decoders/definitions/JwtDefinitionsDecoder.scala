@@ -52,7 +52,7 @@ object JwtDefinitionsDecoder {
           headerName <- c.downField("header_name").as[Option[Header.Name]]
           authTokenPrefix <- c.downField("header_prefix").as[Option[String]]
           userClaim <- c.downField("user_claim").as[Option[ClaimName]]
-          groupsClaim <- c.downField("roles_claim").as[Option[ClaimName]]
+          groupsClaim <- c.downFields("roles_claim", "groups_claim").as[Option[ClaimName]]
         } yield JwtDef(
           name,
           AuthorizationTokenDef(
@@ -92,7 +92,7 @@ object JwtDefinitionsDecoder {
                                   (implicit httpClientFactory: HttpClientsFactory): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
-        .decodeStringLikeWithVarResolvedInPlace
+        .decodeStringLikeWithSingleVarResolvedInPlace
         .tryDecode(c.downField("signature_key"))
 
     for {

@@ -20,20 +20,24 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.Group
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContext.Id._
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.SortedSet
 
+// todo:  seems that there is a problem with this rule. Eg. when we use as authentication method JWT token auth.
+//        We're trying to get group names first and then check authentication. We cannot resolve JWT token variable
+//        when user is not authenticated (using JWT auth token)
 class GroupsRule(val settings: Settings)
   extends AuthenticationRule
     with AuthorizationRule
@@ -121,11 +125,7 @@ class GroupsRule(val settings: Settings)
 
   private def resolveGroups(requestContext: RequestContext,
                             blockContext: BlockContext) = {
-    SortedSet.empty[Group] ++ settings
-      .groups
-      .map(_.resolve(requestContext, blockContext).toOption)
-      .toSortedSet
-      .flatten
+    SortedSet.empty[Group] ++ resolveAll(settings.groups, requestContext, blockContext)
   }
 
   private def pickCurrentGroupFrom(resolvedGroups: NonEmptySet[Group]): Group = {
@@ -136,7 +136,7 @@ class GroupsRule(val settings: Settings)
 object GroupsRule {
   val name = Rule.Name("groups")
 
-  final case class Settings(groups: NonEmptySet[RuntimeSingleResolvableVariable[Group]],
+  final case class Settings(groups: NonEmptySet[RuntimeMultiResolvableVariable[Group]],
                             usersDefinitions: NonEmptySet[UserDef])
 
 }

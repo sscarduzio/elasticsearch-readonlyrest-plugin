@@ -168,7 +168,7 @@ object show {
       case RuntimeResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
         s"Variable malformed, cause: $cause"
       case RuntimeResolvableVariableCreator.CreationError.VariableConversionError(cause) =>
-        s"Cannot create value: $cause"
+        cause
     }
     implicit val startupResolvableVariableCreationErrorShow: Show[StartupResolvableVariableCreator.CreationError] = Show.show {
       case StartupResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>

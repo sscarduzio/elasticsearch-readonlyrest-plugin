@@ -19,11 +19,9 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.FilterRule
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.TestsUtils._
 
 class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
 
@@ -59,10 +57,6 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom(
-              "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}".nonempty,
-              extracted => Right(Filter(extracted))
-            )
             rule.settings.filter shouldBe a [ToBeResolved[_]]
           }
         )

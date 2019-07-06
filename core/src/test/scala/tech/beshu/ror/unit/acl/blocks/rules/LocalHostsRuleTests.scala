@@ -21,14 +21,14 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.domain.Address
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
 class LocalHostsRuleTests extends WordSpec with MockFactory {
@@ -64,13 +64,13 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredAddresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]], localAddress: Address) =
+  private def assertMatchRule(configuredAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = true)
 
-  private def assertNotMatchRule(configuredAddresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]], localAddress: Address) =
+  private def assertNotMatchRule(configuredAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]], localAddress: Address) =
     assertRule(configuredAddresses, localAddress, isMatched = false)
 
-  private def assertRule(configuredAddresses: NonEmptySet[RuntimeSingleResolvableVariable[Address]], localAddress: Address, isMatched: Boolean) = {
+  private def assertRule(configuredAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]], localAddress: Address, isMatched: Boolean) = {
     val rule = new LocalHostsRule(LocalHostsRule.Settings(configuredAddresses))
     val blockContext = mock[BlockContext]
     val requestContext = MockRequestContext(localAddress = localAddress)
@@ -80,10 +80,9 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): RuntimeSingleResolvableVariable[Address] = {
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+  private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value.nonempty, extracted => Right(Address.from(extracted).get))
+      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(str => Address.from(str).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

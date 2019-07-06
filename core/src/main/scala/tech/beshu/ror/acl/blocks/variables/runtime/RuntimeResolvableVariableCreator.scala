@@ -7,7 +7,8 @@ import cats.syntax.traverse._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.variables.Tokenizer.Token
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.acl.blocks.variables.{Tokenizer, runtime}
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -25,16 +26,14 @@ object RuntimeResolvableVariableCreator extends Logging {
     final case class VariableConversionError(msg: String) extends CreationError
   }
 
-  def createSingleResolvableVariableFrom[T](text: NonEmptyString,
-                                            convert: String => Either[ConvertError, T]): Either[CreationError, RuntimeSingleResolvableVariable[T]] = {
+  def createSingleResolvableVariableFrom[T : Convertible](text: NonEmptyString): Either[CreationError, RuntimeSingleResolvableVariable[T]] = {
     singleExtactablesFrom(Tokenizer.tokenize(text))
-      .flatMap(variableFromSingleExtractables(_, convert))
+      .flatMap(variableFromSingleExtractables[T])
   }
 
-  def createMultiResolvableVariableFrom[T](text: NonEmptyString,
-                                           convert: String => Either[ConvertError, T]): Either[CreationError, RuntimeMultiResolvableVariable[T]] = {
+  def createMultiResolvableVariableFrom[T : Convertible](text: NonEmptyString): Either[CreationError, RuntimeMultiResolvableVariable[T]] = {
     multiExtractablesFrom(Tokenizer.tokenize(text))
-      .flatMap(variableFromMultiExtractables(_, convert))
+      .flatMap(variableFromMultiExtractables[T])
   }
 
   private def singleExtactablesFrom(tokens: NonEmptyList[Token]): Either[CreationError, NonEmptyList[SingleExtractable]] = {
@@ -50,15 +49,14 @@ object RuntimeResolvableVariableCreator extends Logging {
       .sequence
   }
 
-  private def variableFromSingleExtractables[T](extractables: NonEmptyList[SingleExtractable],
-                                                convert: String => Either[ConvertError, T]) = {
+  private def variableFromSingleExtractables[T : Convertible](extractables: NonEmptyList[SingleExtractable]) = {
     val alreadyResolved = extractables.collect { case c: SingleExtractable.Const => c }
     if (alreadyResolved.length == extractables.length) {
-      convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
+      implicitly[Convertible[T]].convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
         .map(value => RuntimeSingleResolvableVariable.AlreadyResolved(value))
         .left.map(e => CreationError.VariableConversionError(e.msg))
     } else {
-      Right(RuntimeSingleResolvableVariable.ToBeResolved[T](extractables, convert))
+      Right(RuntimeSingleResolvableVariable.ToBeResolved[T](extractables))
     }
   }
 
@@ -68,7 +66,7 @@ object RuntimeResolvableVariableCreator extends Logging {
         case Token.Text(value) =>
           Acc(results :+ Right(ExtractableType.Multi.createConstExtractable(value)), multiExtractableCount)
         case Token.Placeholder(name, _) =>
-          Acc(results :+ createExtractableFromToken(name, ExtractableType.Single).map(MultiExtractable.fromSingleExtractable), multiExtractableCount)
+          Acc(results :+ createExtractableFromToken(name, ExtractableType.Single).map(SingleExtractableWrapper.apply), multiExtractableCount)
         case Token.ExplodablePlaceholder(name, _) =>
           Acc(results :+ createExtractableFromToken(name, ExtractableType.Multi), multiExtractableCount + 1)
       }
@@ -80,15 +78,14 @@ object RuntimeResolvableVariableCreator extends Logging {
     }
   }
 
-  private def variableFromMultiExtractables[T](extractables: NonEmptyList[MultiExtractable],
-                                               convert: String => Either[ConvertError, T]) = {
+  private def variableFromMultiExtractables[T : Convertible](extractables: NonEmptyList[MultiExtractable]) = {
     val alreadyResolved = extractables.collect { case c: runtime.MultiExtractable.Const => c }
     if (alreadyResolved.length == extractables.length) {
-      convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
+      implicitly[Convertible[T]].convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
         .map(value => RuntimeMultiResolvableVariable.AlreadyResolved(NonEmptyList.one(value)))
         .left.map(e => CreationError.VariableConversionError(e.msg))
     } else {
-      Right(RuntimeMultiResolvableVariable.ToBeResolved[T](extractables, convert))
+      Right(RuntimeMultiResolvableVariable.ToBeResolved[T](extractables))
     }
   }
 

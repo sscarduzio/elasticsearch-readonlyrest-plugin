@@ -22,9 +22,10 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
@@ -43,12 +44,7 @@ class UsersRule(val settings: Settings)
   }
 
   private def matchUser(user: LoggedUser, requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
-    val resolvedIds = settings
-      .userIds
-      .toNonEmptyList
-      .toList
-      .flatMap(_.resolve(requestContext, blockContext).toOption)
-      .toSet
+    val resolvedIds = resolveAll(settings.userIds, requestContext, blockContext).toSet
     RuleResult.fromCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value).asJava).`match`(user.id.value)
     }
@@ -58,6 +54,6 @@ class UsersRule(val settings: Settings)
 object UsersRule {
   val name = Rule.Name("users")
 
-  final case class Settings(userIds: NonEmptySet[RuntimeSingleResolvableVariable[User.Id]])
+  final case class Settings(userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]])
 }
 

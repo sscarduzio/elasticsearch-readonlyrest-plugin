@@ -18,12 +18,12 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.acl.domain.Address
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 
@@ -69,7 +69,7 @@ object HostsRule {
 
   val name: Rule.Name = Rule.Name("hosts")
 
-  final case class Settings(allowedHosts: NonEmptySet[RuntimeSingleResolvableVariable[Address]],
+  final case class Settings(allowedHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
                             acceptXForwardedForHeader: Boolean)
 
 }

@@ -17,13 +17,13 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import tech.beshu.ror.acl.blocks.rules.FilterRule
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.providers.EnvVarsProvider
 
 class FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     DecoderHelpers
-      .alwaysRightVariableDecoder(Filter.apply)
+      .alwaysRightSingleVariableDecoder(AlwaysRightConvertible.from(Filter.apply))
       .map(filter => new FilterRule(FilterRule.Settings(filter)))
 )

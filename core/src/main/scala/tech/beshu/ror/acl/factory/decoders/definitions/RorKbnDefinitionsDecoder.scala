@@ -73,7 +73,7 @@ object RorKbnDefinitionsDecoder {
   private def signatureCheckMethod(c: HCursor): Decoder.Result[SignatureCheckMethod] = {
     def decodeSignatureKey =
       DecoderHelpers
-        .decodeStringLikeWithVarResolvedInPlace
+        .decodeStringLikeWithSingleVarResolvedInPlace
         .tryDecode(c.downField("signature_key"))
     for {
       alg <- c.downField("signature_algo").as[Option[String]]

@@ -25,13 +25,13 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, UriPath}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.util.Try
@@ -93,10 +93,10 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     val requestContext = uriRegex match {
       case AlreadyResolved(_) =>
         MockRequestContext(uriPath = uriPath)
-      case ToBeResolved(_, _) if isUserLogged =>
+      case ToBeResolved(_) if isUserLogged =>
         (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id(userName))))
         MockRequestContext(uriPath = uriPath)
-      case ToBeResolved(_, _) =>
+      case ToBeResolved(_) =>
         (blockContext.loggedUser _).expects().returning(None)
         MockRequestContext.default
     }
@@ -107,9 +107,13 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
   }
 
   private def patternValueFrom(value: String): RuntimeSingleResolvableVariable[Pattern] = {
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val patternConvertible: Convertible[Pattern] = new Convertible[Pattern] {
+      override def convert: String => Either[Convertible.ConvertError, Pattern] = str => {
+        Try(Pattern.compile(str)).toEither.left.map(_ => ConvertError("msg"))
+      }
+    }
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value.nonempty, extracted => Try(Pattern.compile(extracted)).toEither.left.map(_ => ConvertError("msg")))
+      .createSingleResolvableVariableFrom[Pattern](value.nonempty)
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
   }

@@ -25,12 +25,11 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.XForwardedForRule
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeSingleResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.TestsUtils._
 
 class XForwardedForRuleTests extends WordSpec with MockFactory {
@@ -109,10 +108,9 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def addressValueFrom(value: String): RuntimeSingleResolvableVariable[Address] = {
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+  private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom(value.nonempty, extracted => Right(Address.from(extracted).get))
+      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(extracted => Address.from(extracted).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

@@ -19,13 +19,13 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.RepositoriesRule
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
-
+import tech.beshu.ror.utils.TestsUtils._
 
 class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[RepositoriesRule] {
 
@@ -44,7 +44,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1")))
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1").nel))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -80,7 +80,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeSingleResolvableVariable[IndexName]] = NonEmptySet.of(AlreadyResolved(IndexName("index1")), AlreadyResolved(IndexName("index2")))
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.of(AlreadyResolved(IndexName("index1").nel), AlreadyResolved(IndexName("index2").nel))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -100,7 +100,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
           assertion = rule => {
             rule.settings.allowedIndices.length == 2
 
-            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1")))
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1").nel))
             rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
           }
         )
