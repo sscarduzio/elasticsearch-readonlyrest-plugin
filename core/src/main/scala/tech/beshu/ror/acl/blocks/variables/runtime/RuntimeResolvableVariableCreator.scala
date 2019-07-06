@@ -17,7 +17,13 @@ import scala.util.{Failure, Success, Try}
 
 object RuntimeResolvableVariableCreator extends Logging {
 
-  final case class CreationError(msg: String) extends AnyVal
+  sealed trait CreationError
+  object CreationError {
+    case object CannotUserMultiVariableInSingleVariableContext extends CreationError
+    case object OnlyOneMultiVariableCanBeUsedInVariableDefinition extends CreationError
+    final case class InvalidVariableDefinition(cause: String) extends CreationError
+    final case class VariableConversionError(msg: String) extends CreationError
+  }
 
   def createSingleResolvableVariableFrom[T](text: NonEmptyString,
                                             convert: String => Either[ConvertError, T]): Either[CreationError, RuntimeSingleResolvableVariable[T]] = {
@@ -39,7 +45,7 @@ object RuntimeResolvableVariableCreator extends Logging {
         case Token.Placeholder(name, _) =>
           createExtractableFromToken(name, ExtractableType.Single)
         case Token.ExplodablePlaceholder(_, _) =>
-          Left(CreationError("Cannot use multi value variable in non-array context"))
+          Left(CreationError.CannotUserMultiVariableInSingleVariableContext)
       }
       .sequence
   }
@@ -50,7 +56,7 @@ object RuntimeResolvableVariableCreator extends Logging {
     if (alreadyResolved.length == extractables.length) {
       convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
         .map(value => RuntimeSingleResolvableVariable.AlreadyResolved(value))
-        .left.map(e => CreationError(e.msg))
+        .left.map(e => CreationError.VariableConversionError(e.msg))
     } else {
       Right(RuntimeSingleResolvableVariable.ToBeResolved[T](extractables, convert))
     }
@@ -70,7 +76,7 @@ object RuntimeResolvableVariableCreator extends Logging {
     if(acc.multiExtractableCount <= 1) {
       acc.results.toList.sequence.map(NonEmptyList.fromListUnsafe)
     } else {
-      Left(CreationError(s"Cannot use more than one multi-value variable"))
+      Left(CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition)
     }
   }
 
@@ -80,7 +86,7 @@ object RuntimeResolvableVariableCreator extends Logging {
     if (alreadyResolved.length == extractables.length) {
       convert(alreadyResolved.map(_.value).foldLeft("")(_ + _))
         .map(value => RuntimeMultiResolvableVariable.AlreadyResolved(NonEmptyList.one(value)))
-        .left.map(e => CreationError(e.msg))
+        .left.map(e => CreationError.VariableConversionError(e.msg))
     } else {
       Right(RuntimeMultiResolvableVariable.ToBeResolved[T](extractables, convert))
     }
@@ -105,7 +111,7 @@ object RuntimeResolvableVariableCreator extends Logging {
         Right(`type`.createJwtVariableExtractable(compiledPath))
       case Failure(ex) =>
         logger.debug("Compiling JSON path failed", ex)
-        Left(CreationError(s"Cannot create JWT variable, because cannot compile '$jsonPathStr' to JsonPath"))
+        Left(CreationError.InvalidVariableDefinition(s"cannot compile '$jsonPathStr' to JsonPath"))
     }
   }
 
@@ -114,7 +120,7 @@ object RuntimeResolvableVariableCreator extends Logging {
       case Some(nes) =>
         Right(`type`.createHeaderVariableExtractable(Header.Name(nes)))
       case None =>
-        Left(CreationError(s"Cannot create header variable, because no header name is passed"))
+        Left(CreationError.InvalidVariableDefinition(s"No header name is passed"))
     }
   }
 

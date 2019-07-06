@@ -31,6 +31,8 @@ import tech.beshu.ror.acl.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -157,6 +159,24 @@ object show {
     }
     implicit val blockShow: Show[Block] = Show.show { b =>
       s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.map(_.name.show).toList.mkString(",")}]"
+    }
+    implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
+      case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
+        "Cannot use multi value variable in non-array context"
+      case RuntimeResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
+        "Cannot use more than one multi-value variable"
+      case RuntimeResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
+        s"Variable malformed, cause: $cause"
+      case RuntimeResolvableVariableCreator.CreationError.VariableConversionError(cause) =>
+        s"Cannot create value: $cause"
+    }
+    implicit val startupResolvableVariableCreationErrorShow: Show[StartupResolvableVariableCreator.CreationError] = Show.show {
+      case StartupResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
+        "Cannot use multi value variable in non-array context"
+      case StartupResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
+        "Cannot use more than one multi-value variable"
+      case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
+        s"Variable malformed, cause: $cause"
     }
   }
 }

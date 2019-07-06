@@ -32,6 +32,7 @@ import tech.beshu.ror.acl.factory.consts.RorProperties
 import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.providers.PropertiesProvider
 
@@ -80,7 +81,7 @@ private object KibanaRulesDecoderHelper {
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)
-        case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
+        case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
       }
       .decoder
 }

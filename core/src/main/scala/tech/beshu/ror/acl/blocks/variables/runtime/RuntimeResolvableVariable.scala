@@ -114,7 +114,7 @@ object SingleExtractable {
         case Some(payload) =>
           payload.claims.customClaim(varClaim) match {
             case Found(values) =>
-              Right(values.head)
+              Right(values.toList.mkString(","))
             case NotFound =>
               Left(ExtractError(s"Cannot find value string or collection of strings in path '${jsonPath.show}' of JWT Token"))
           }
@@ -147,30 +147,34 @@ object MultiExtractable {
   }
 
   case object UserIdVar extends MultiExtractable {
-    private val singleUserIdVar = SingleExtractable.UserIdVar
+    private val singleUserIdExtractable = SingleExtractable.UserIdVar
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, List[String]] = {
-      singleUserIdVar
+      singleUserIdExtractable
         .extractUsing(requestContext, blockContext)
         .map(List(_))
     }
   }
 
   final case class HeaderVar(header: Header.Name) extends MultiExtractable {
-    private val singleHeaderVar = SingleExtractable.HeaderVar(header)
+    private val singleHeaderExtractable = SingleExtractable.HeaderVar(header)
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, List[String]] = {
-      singleHeaderVar
+      singleHeaderExtractable
         .extractUsing(requestContext, blockContext)
         .map(List(_))
     }
   }
 
   final case class JwtPayloadVar(jsonPath: JsonPath) extends MultiExtractable {
-    private val varClaim = ClaimName(jsonPath)
+    private val singleJwtPayloadExtractable = SingleExtractable.JwtPayloadVar(jsonPath)
 
     override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, List[String]] = ??? // todo: impl
+                              blockContext: BlockContext): Either[ExtractError, List[String]] = {
+      singleJwtPayloadExtractable
+        .extractUsing(requestContext, blockContext)
+        .map(List(_))
+    }
   }
 
 }

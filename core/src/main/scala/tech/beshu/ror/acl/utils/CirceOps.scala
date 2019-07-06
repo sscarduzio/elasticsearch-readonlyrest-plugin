@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.utils
 
 import cats.data.NonEmptySet
 import cats.implicits._
+import tech.beshu.ror.acl.show.logs._
 import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
@@ -108,7 +109,7 @@ object CirceOps {
       SyncDecoderCreator
         .from(variableDecoder[T](rv => Right(convert(rv))))
         .emapE {
-          _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.msg)))
+          _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.show)))
         }
         .decoder
 

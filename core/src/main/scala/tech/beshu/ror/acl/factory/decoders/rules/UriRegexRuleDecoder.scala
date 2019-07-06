@@ -17,13 +17,14 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import java.util.regex.Pattern
-
+import cats.implicits._
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.acl.show.logs._
 
 import scala.util.Try
 
@@ -38,7 +39,7 @@ class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     .toSyncDecoder
     .emapE {
       case Right(pattern) => Right(new UriRegexRule(UriRegexRule.Settings(pattern)))
-      case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
+      case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
     }
     .decoder
 )

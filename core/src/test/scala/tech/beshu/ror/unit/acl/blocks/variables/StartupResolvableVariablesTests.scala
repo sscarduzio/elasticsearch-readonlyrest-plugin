@@ -6,7 +6,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariable.ResolvingError
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.{CreationError, createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils._
@@ -25,18 +25,17 @@ class StartupResolvableVariablesTests extends WordSpec with MockFactory {
           .resolve(mockEnvVarProvider(Map("test" -> Some("x"))))
         variable shouldBe Right("x")
       }
-      "multi variable is used" in {
-        val variable = createMultiVariable("@{env:test-multi}")
+      "multivariable is used" in {
+        val variable = createMultiVariable("@explode{env:test-multi}")
           .resolve(mockEnvVarProvider(Map("test-multi" -> Some("x,y,z"))))
         variable shouldBe Right(NonEmptyList.of("x", "y", "z"))
       }
-      "multi variable is used with some text prefix" in {
-        val variable = createMultiVariable("@{env:test-multi1}_&_@{env:test-multi2}")
+      "multivariable is used with some text prefix" in {
+        val variable = createMultiVariable("test_@explode{env:test-multi}")
           .resolve(mockEnvVarProvider(Map(
-            "test-multi1" -> Some("x,y"),
-            "test-multi2" -> Some("a,b")
+            "test-multi" -> Some("x,y")
           )))
-        variable shouldBe Right(NonEmptyList.of("x_&_a", "x_&_b", "y_&_a", "y_&_b"))
+        variable shouldBe Right(NonEmptyList.of("test_x", "test_y"))
       }
     }
     "have not been resolved" when {
@@ -48,8 +47,18 @@ class StartupResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "env name is an empty string" in {
-        StartupResolvableVariableCreator.createSingleVariableFrom("test_@{env:}".nonempty) shouldBe {
-          Left(CreationError("Cannot create env variable, because no name of env variable is passed"))
+        createSingleVariableFrom("test_@{env:}".nonempty) shouldBe {
+          Left(CreationError.InvalidVariableDefinition("Empty ENV name passed"))
+        }
+      }
+      "more than one multivariable is used" in {
+        createMultiVariableFrom("@explode{env:test-multi1}x@explode{env:test-multi2}".nonempty) shouldBe {
+          Left(CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition)
+        }
+      }
+      "multivariable is used in single variable context" in {
+        createSingleVariableFrom("@explode{env:test-multi1}".nonempty) shouldBe {
+          Left(CreationError.CannotUserMultiVariableInSingleVariableContext)
         }
       }
     }
@@ -83,7 +92,7 @@ class StartupResolvableVariablesTests extends WordSpec with MockFactory {
   }
 
   private def createSingleVariable(text: String) = {
-    StartupResolvableVariableCreator.createSingleVariableFrom(text.nonempty).right.get
+    createSingleVariableFrom(text.nonempty).right.get
   }
 
   private def createMultiVariable(text: String) = {

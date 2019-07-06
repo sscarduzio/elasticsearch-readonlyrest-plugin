@@ -76,7 +76,7 @@ private object IndicesDecodersHelper {
       .emapE { str =>
         RuntimeResolvableVariableCreator
           .createSingleResolvableVariableFrom(str, extracted => Right(IndexName(extracted)))
-          .left.map(error => RulesLevelCreationError(Message(error.msg)))
+          .left.map(error => RulesLevelCreationError(Message(error.show)))
       }
       .decoder
 }

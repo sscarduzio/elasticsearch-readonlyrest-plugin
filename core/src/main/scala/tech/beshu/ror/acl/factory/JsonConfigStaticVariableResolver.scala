@@ -3,6 +3,8 @@ package tech.beshu.ror.acl.factory
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Json
+import cats.implicits._
+import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.{createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.providers.EnvVarsProvider
 
@@ -51,7 +53,7 @@ object JsonConfigStaticVariableResolver {
             str.value
         }
       case Left(error) =>
-        errors.values = errors.values :+ ResolvingError(error.msg)
+        errors.values = errors.values :+ ResolvingError(error.show)
         str.value
     }
   }
@@ -67,7 +69,7 @@ object JsonConfigStaticVariableResolver {
             NonEmptyList.one(str.value)
         }
       case Left(error) =>
-        errors.values = errors.values :+ ResolvingError(error.msg)
+        errors.values = errors.values :+ ResolvingError(error.show)
         NonEmptyList.one(str.value)
     }
   }

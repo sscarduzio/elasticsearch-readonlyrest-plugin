@@ -8,13 +8,19 @@ import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.acl.blocks.variables.Tokenizer
 import tech.beshu.ror.acl.blocks.variables.Tokenizer.Token
 import tech.beshu.ror.acl.blocks.variables.startup.StartupMultiResolvableVariable.Wrapper
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.CreationError.{CannotUserMultiVariableInSingleVariableContext, InvalidVariableDefinition, OnlyOneMultiVariableCanBeUsedInVariableDefinition}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 
 import scala.util.matching.Regex
 
 object StartupResolvableVariableCreator {
 
-  final case class CreationError(msg: String) extends AnyVal
+  sealed trait CreationError
+  object CreationError {
+    case object CannotUserMultiVariableInSingleVariableContext extends CreationError
+    case object OnlyOneMultiVariableCanBeUsedInVariableDefinition extends CreationError
+    final case class InvalidVariableDefinition(cause: String) extends CreationError
+  }
 
   def createSingleVariableFrom(text: NonEmptyString): Either[CreationError, StartupSingleResolvableVariable] = {
     oldFashionedEnvAndTextHandling(text)
@@ -24,12 +30,7 @@ object StartupResolvableVariableCreator {
 
   def createMultiVariableFrom(text: NonEmptyString): Either[CreationError, StartupMultiResolvableVariable] = {
     createMultiVariablesFrom(Tokenizer.tokenize(text))
-      .flatMap { variables =>
-        NonEmptyList.fromList(variables) match {
-          case Some(nel) => Right(VariableType.Multi.createComposedVariable(nel))
-          case None => Left(CreationError("Cannot create non empty list of variables"))
-        }
-      }
+      .map { variables => VariableType.Multi.createComposedVariable(variables) }
   }
 
   private def oldFashionedEnvAndTextHandling(text: NonEmptyString): Option[Either[CreationError, NonEmptyList[StartupSingleResolvableVariable]]] = {
@@ -66,12 +67,12 @@ object StartupResolvableVariableCreator {
               }
           }
         case Token.ExplodablePlaceholder(_, _) =>
-          Left(CreationError("Cannot use multi value variable in non-array context"))
+          Left(CannotUserMultiVariableInSingleVariableContext)
       }
       .sequence
   }
 
-  private def createMultiVariablesFrom(tokens: NonEmptyList[Token]): Either[CreationError, List[StartupMultiResolvableVariable]] = {
+  private def createMultiVariablesFrom(tokens: NonEmptyList[Token]): Either[CreationError, NonEmptyList[StartupMultiResolvableVariable]] = {
     val acc = tokens.foldLeft(Acc(Vector.empty, 0)) {
       case (Acc(results, multiVariableCount), token) => token match {
         case Token.Text(value) =>
@@ -83,9 +84,9 @@ object StartupResolvableVariableCreator {
       }
     }
     if(acc.realMultiVariablesCount <= 1) {
-      acc.results.toList.sequence
+      acc.results.toList.sequence.map(NonEmptyList.fromListUnsafe)
     } else {
-      Left(CreationError(s"Cannot use more than one multi-value variable"))
+      Left(OnlyOneMultiVariableCanBeUsedInVariableDefinition)
     }
   }
 
@@ -101,7 +102,7 @@ object StartupResolvableVariableCreator {
   private def createEnvVariableFromString(envVarName: String, `type`: VariableType): Either[CreationError, `type`.T] = {
     NonEmptyString.unapply(envVarName) match {
       case Some(nes) => Right(`type`.createEnvVariable(EnvVarName(nes)))
-      case None => Left(CreationError(s"Cannot create env variable, because no name of env variable is passed"))
+      case None => Left(InvalidVariableDefinition("Empty ENV name passed"))
     }
   }
 

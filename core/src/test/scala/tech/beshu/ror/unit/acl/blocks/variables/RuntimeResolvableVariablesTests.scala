@@ -24,8 +24,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.fromRequestContext
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable.CannotExtractValue
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.CreationError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createSingleResolvableVariableFrom, createMultiResolvableVariableFrom}
 import tech.beshu.ror.acl.domain.{JwtTokenPayload, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -37,7 +36,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
   "A header variable" should {
     "have been resolved" when {
       "given variable has corresponding header in request context" in {
-        val variable = createVariable("@{key1}")
+        val variable = createSingleVariable("@{key1}")
           .resolve(
             MockRequestContext(headers = Set(headerFrom("key1" -> "x"))),
             mock[BlockContext]
@@ -45,7 +44,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         variable shouldBe Right("x")
       }
       "given variable has corresponding header in request context but upper-case" in {
-        val variable = createVariable("h:@{key1}")
+        val variable = createSingleVariable("h:@{key1}")
           .resolve(
             MockRequestContext(headers = Set(headerFrom("KEY1" -> "x"))),
             mock[BlockContext]
@@ -53,7 +52,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         variable shouldBe Right("h:x")
       }
       "given variable has corresponding header in request context and is defined with new format" in {
-        val variable = createVariable("@{header:key1}_ok")
+        val variable = createSingleVariable("@{header:key1}_ok")
           .resolve(
             MockRequestContext(headers = Set(headerFrom("key1" -> "x"))),
             mock[BlockContext]
@@ -61,7 +60,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         variable shouldBe Right("x_ok")
       }
       "given variable has corresponding header in request context and is defined with new format using '${}' syntax" in {
-        val variable = createVariable("h_${header:key1}_ok")
+        val variable = createSingleVariable("h_${header:key1}_ok")
           .resolve(
             MockRequestContext(headers = Set(headerFrom("key1" -> "x"))),
             mock[BlockContext]
@@ -71,7 +70,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "given variable doesn't have corresponding header in request context" in {
-        val variable = createVariable("@{key1}")
+        val variable = createSingleVariable("@{key1}")
           .resolve(
             MockRequestContext(headers = Set(headerFrom("key2" -> "x"))),
             mock[BlockContext]
@@ -81,8 +80,8 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "header name is an empty string" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{header:}".nonempty, Right.apply) shouldBe {
-          Left(CreationError("Cannot create header variable, because no header name is passed"))
+        createMultiResolvableVariableFrom("h:@{header:}".nonempty, Right.apply) shouldBe {
+          Left(CreationError.InvalidVariableDefinition("No header name is passed"))
         }
       }
     }
@@ -91,7 +90,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
   "A user variable" should {
     "have been resolved" when {
       "user variable is used and there is logged user" in {
-        val variable = createVariable("@{user}")
+        val variable = createSingleVariable("@{user}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default).withLoggedUser(LoggedUser(User.Id("simone")))
@@ -101,7 +100,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "user variable is used but there is no logged user" in {
-        val variable = createVariable("@{user}")
+        val variable = createSingleVariable("@{user}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
@@ -114,7 +113,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
   "A jwt variable" should {
     "have been resolved" when {
       "jwt variable is used with correct JSON path to string value and JWT token was set" in {
-        val variable = createVariable("@{jwt:tech.beshu.mainGroup}")
+        val variable = createSingleVariable("@{jwt:tech.beshu.mainGroup}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
@@ -127,7 +126,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         variable shouldBe Right("group1")
       }
       "jwt variable is used with correct JSON path to strings array value and JWT token was set" in {
-        val variable = createVariable("@{jwt:tech.beshu.groups}")
+        val variable = createSingleVariable("@{jwt:tech.beshu.groups}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
@@ -142,7 +141,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "JWT token was not set" in {
-        val variable = createVariable("@{jwt:tech.beshu.groups}")
+        val variable = createSingleVariable("@{jwt:tech.beshu.groups}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
@@ -150,7 +149,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         variable shouldBe Left(CannotExtractValue("Cannot extract JSON token payload from block context"))
       }
       "JSON path result is not a string or array of strings" in {
-        val variable = createVariable("@{jwt:tech.beshu}")
+        val variable = createSingleVariable("@{jwt:tech.beshu}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
@@ -165,8 +164,8 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "JSON path cannot compile" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("@{jwt:tech[[.beshu}".nonempty, Right.apply) shouldBe {
-          Left(CreationError("Cannot create JWT variable, because cannot compile 'tech[[.beshu' to JsonPath"))
+        createMultiResolvableVariableFrom("@{jwt:tech[[.beshu}".nonempty, Right.apply) shouldBe {
+          Left(CreationError.InvalidVariableDefinition("cannot compile 'tech[[.beshu' to JsonPath"))
         }
       }
     }
@@ -177,23 +176,23 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
       "@ is used as usual char" in {
         val requestContext = MockRequestContext(headers = Set(headerFrom("key1" -> "x")))
 
-        val variable1 = createVariable("@@@@explode{key1}")
+        val variable1 = createSingleVariable("@@@@{key1}")
         variable1.resolve(requestContext, mock[BlockContext]) shouldBe Right("@@@x")
 
-        val variable2 = createVariable("@one@two@{key1}@three@@@")
+        val variable2 = createSingleVariable("@one@two@{key1}@three@@@")
         variable2.resolve(requestContext, mock[BlockContext]) shouldBe Right("@one@twox@three@@@")
 
-        val variable3 = createVariable(".@one@two.@{key1}@three@@@")
+        val variable3 = createSingleVariable(".@one@two.@{key1}@three@@@")
         variable3.resolve(requestContext, mock[BlockContext]) shouldBe Right(".@one@two.x@three@@@")
       }
       "@ can be used as usual char inside header name" in {
         val requestContext = MockRequestContext(headers = Set(headerFrom("@key" -> "x")))
-        val variable1 = createVariable("test_@{@key}_sth")
+        val variable1 = createSingleVariable("test_@{@key}_sth")
         variable1.resolve(requestContext, mock[BlockContext]) shouldBe Right("test_x_sth")
       }
       "used together" in {
         val requestContext = MockRequestContext(headers = Set(headerFrom("key1" -> "x")))
-        val variable = createVariable("u:@{user}_@{key1}")
+        val variable = createSingleVariable("u:@{user}_@{key1}")
           .resolve(
             requestContext,
             fromRequestContext(requestContext).withLoggedUser(LoggedUser(User.Id("simone")))
@@ -203,20 +202,24 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
     "have not been resolved" when {
       "variable is empty string" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{}".nonempty, Right.apply) shouldBe {
-          Left(CreationError("Cannot create header variable, because no header name is passed"))
+        createSingleResolvableVariableFrom("h:@{}".nonempty, Right.apply) shouldBe {
+          Left(CreationError.InvalidVariableDefinition("No header name is passed"))
         }
       }
     }
     "have been treated as text" when {
       "variable format doesn't have closing bracket" in {
-        RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom("h:@{test".nonempty, Right.apply) shouldBe Right(AlreadyResolved("h:@{test"))
+        createSingleResolvableVariableFrom("h:@{test".nonempty, Right.apply) shouldBe Right(AlreadyResolved("h:@{test"))
       }
     }
   }
 
-  private def createVariable(text: String) = {
-    RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom(text.nonempty, Right.apply).right.get
+  private def createSingleVariable(text: String) = {
+    createSingleResolvableVariableFrom(text.nonempty, Right.apply).right.get
+  }
+
+  private def createMultiVariable(text: String) = {
+    createMultiResolvableVariableFrom(text.nonempty, Right.apply).right.get
   }
 
 }

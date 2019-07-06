@@ -29,6 +29,7 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
+import tech.beshu.ror.acl.show.logs._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.ConvertError
@@ -153,7 +154,7 @@ object common extends Logging {
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
-        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.msg}")))
+        case Left(error) => Left(ValueLevelCreationError(Message(error.show)))
       }
       .decoder
 
@@ -168,7 +169,7 @@ object common extends Logging {
       .toSyncDecoder
       .emapE {
         case Right(value) => Right(value)
-        case Left(error) => Left(ValueLevelCreationError(Message(s"${error.msg}: ${error.msg}")))
+        case Left(error) => Left(ValueLevelCreationError(Message(error.show)))
       }
       .decoder
   }
