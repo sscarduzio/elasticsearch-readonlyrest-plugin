@@ -59,11 +59,17 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
       |     type: allow
       |     groups: ["g$${sys_group_2}"]
       |
-      |   - name: "Group name from jwt variable"
+      |   - name: "Group name from jwt variable (array)"
       |     type: allow
       |     jwt_auth:
       |       name: "jwt1"
       |     indices: ["g@explode{jwt:tech.beshu.mainGroup}"]
+      |
+      |   - name: "Group name from jwt variable"
+      |     type: allow
+      |     jwt_auth:
+      |       name: "jwt2"
+      |     indices: ["g@explode{jwt:tech.beshu.mainGroupsString}"]
       |
       |  users:
       |   - username: user1
@@ -74,10 +80,6 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
       |     auth_key: user2:passwd
       |     groups: ["g1", "g2", "g3", "gs2"]
       |
-      |   - username: user3
-      |     jwt_auth: jwt1
-      |     groups: ["g1", "g2", "g3", "gj2"]
-      |
       |  jwt:
       |
       |  - name: jwt1
@@ -85,6 +87,12 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
       |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
       |    user_claim: "userId"
       |    groups_claim: "tech.beshu.mainGroup"
+      |
+      |  - name: jwt2
+      |    signature_algo: "RSA"
+      |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
+      |    user_claim: "userId"
+      |    groups_claim: "tech.beshu.mainGroupsString"
     """.stripMargin
 
   "An ACL" when {
@@ -166,7 +174,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             }
           }
         }
-        "JWT variable is used" in {
+        "JWT variable is used (array)" in {
           val request = MockRequestContext.default.copy(
             headers = Set(Header(
               Header.Name.authorization,
@@ -175,7 +183,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
                   .signWith(secret)
                   .setSubject("test")
                   .claim("userId", "user3")
-                  .claim("tech", Map("beshu" -> Map("mainGroup" -> "j1,j2").asJava).asJava)
+                  .claim("tech", Map("beshu" -> Map("mainGroup" -> List("j1", "j2").asJava).asJava).asJava)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
             indices = Set(IndexName("gj1")),
@@ -186,9 +194,37 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
 
           result.history should have size 5
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
-            block.name should be(Block.Name("Group name from jwt variable"))
+            block.name should be(Block.Name("Group name from jwt variable (array)"))
             assertBlockContext(
               loggedUser = Some(LoggedUser(User.Id("user3")))
+            ) {
+              blockContext
+            }
+          }
+        }
+        "JWT variable is used (CSV string)" in {
+          val request = MockRequestContext.default.copy(
+            headers = Set(Header(
+              Header.Name.authorization,
+              {
+                val jwtBuilder = Jwts.builder
+                  .signWith(secret)
+                  .setSubject("test")
+                  .claim("userId", "user4")
+                  .claim("tech", Map("beshu" -> Map("mainGroupsString" -> "j0,j3").asJava).asJava)
+                NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+              })),
+            indices = Set(IndexName("gj0")),
+            involvesIndices = true
+          )
+
+          val result = acl.handle(request).runSyncUnsafe()
+
+          result.history should have size 6
+          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+            block.name should be(Block.Name("Group name from jwt variable"))
+            assertBlockContext(
+              loggedUser = Some(LoggedUser(User.Id("user4")))
             ) {
               blockContext
             }
@@ -210,6 +246,4 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
   private val allUser2Groups =
     Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"), groupFrom("gs2"))
 
-  private val allUser3Groups =
-    Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"), groupFrom("gj1"))
 }
