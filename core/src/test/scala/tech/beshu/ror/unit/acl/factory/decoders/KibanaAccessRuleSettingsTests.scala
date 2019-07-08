@@ -18,13 +18,12 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess}
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
-import tech.beshu.ror.acl.blocks.{Const, Variable}
 import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess}
+
 
 class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
 
@@ -44,7 +43,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.kibanaIndex should be(Const(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
             rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
@@ -63,7 +62,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
-            rule.settings.kibanaIndex should be(Const(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
             rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
@@ -82,7 +81,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.ROStrict)
-            rule.settings.kibanaIndex should be(Const(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
             rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
@@ -101,7 +100,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(Const(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
             rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
@@ -121,7 +120,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(Const(IndexName(".kibana_admin")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana_admin")))
             rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
@@ -141,9 +140,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            val variable = Variable(ValueWithVariable(".kibana_@{user}"), rv => Right(IndexName(rv.value)))
-            rule.settings.kibanaIndex shouldBe a [Variable[_]]
-            rule.settings.kibanaIndex.asInstanceOf[Variable[IndexName]].representation should be(variable.representation)
+            rule.settings.kibanaIndex shouldBe a [ToBeResolved[_]]
             rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
@@ -163,7 +160,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(Const(IndexName(".kibana")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
             rule.settings.kibanaMetadataEnabled should be (false)
           }
         )

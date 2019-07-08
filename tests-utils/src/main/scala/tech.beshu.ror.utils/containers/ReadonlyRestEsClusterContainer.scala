@@ -34,7 +34,6 @@ import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.language.existentials
 import scala.util.Try
 
-// todo: check logs size
 object ReadonlyRestEsCluster {
 
   def createLocalClusterContainer(name: String,

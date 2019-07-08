@@ -26,6 +26,8 @@ import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.utils.ScalaOps._
 
+import scala.language.higherKinds
+
 object DefinitionsBaseDecoder {
 
   def instance[F[_] : Applicative, A <: Item](definitionsSectionName: String)

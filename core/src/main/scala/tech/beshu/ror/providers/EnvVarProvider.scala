@@ -14,15 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
+package tech.beshu.ror.providers
+
+import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 
 import scala.util.Try
 
 trait EnvVarsProvider {
-  def getEnv(name: String): Option[String]
+  def getEnv(name: EnvVarName): Option[String]
+}
+
+object EnvVarProvider {
+
+  final case class EnvVarName(value: NonEmptyString)
 }
 
 object OsEnvVarsProvider extends EnvVarsProvider {
-  override def getEnv(name: String): Option[String] =
-    Try(Option(System.getenv(name))).toOption.flatten
+  override def getEnv(name: EnvVarName): Option[String] =
+    Try(Option(System.getenv(name.value.value))).toOption.flatten
 }

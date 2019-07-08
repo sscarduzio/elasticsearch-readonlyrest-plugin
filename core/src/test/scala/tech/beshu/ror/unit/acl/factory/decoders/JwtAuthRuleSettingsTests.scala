@@ -29,10 +29,11 @@ import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.providers.EnvVarsProvider
 
 class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] with MockFactory {
 
@@ -805,7 +806,7 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot resolve variable: @{env:SECRET}")))
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
           }
         )
       }
@@ -997,15 +998,14 @@ class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
     }
   }
 
-  override protected def envVarsProvider: EnvVarsProvider = new EnvVarsProvider {
-    override def getEnv(name: String): Option[String] = name match {
-      case "SECRET_RSA" =>
-        val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-        Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
-      case _ =>
-        None
-    }
+  override implicit protected def envVarsProvider: EnvVarsProvider = {
+    case EnvVarName(env) if env.value == "SECRET_RSA" =>
+      val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
+      Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
+    case _ =>
+      None
   }
+
   private val mockedHttpClientsFactory: HttpClientsFactory = {
     val httpClientMock = mock[HttpClient]
     new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)

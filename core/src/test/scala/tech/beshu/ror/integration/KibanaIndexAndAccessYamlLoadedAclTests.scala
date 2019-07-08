@@ -16,53 +16,30 @@
  */
 package tech.beshu.ror.integration
 
-import java.time.Clock
-
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.Acl
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.IndexName
-import tech.beshu.ror.acl.factory.{RawRorConfigBasedCoreFactory, CoreSettings}
-import tech.beshu.ror.acl.utils.StaticVariablesResolver
-import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockRequestContext}
-import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, headerFrom, _}
-import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
+import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils.headerFrom
 
-class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
+class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside  {
 
-  private val factory = {
-    implicit val clock: Clock = Clock.systemUTC()
-    implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
-    new RawRorConfigBasedCoreFactory
-  }
-  private val acl: Acl = factory
-    .createCoreFrom(
-      rorConfigFrom(
-        """
-          |readonlyrest:
-          |
-          |  access_control_rules:
-          |
-          |  - name: "Template Tenancy"
-          |    verbosity: error
-          |    kibana_access: admin
-          |    kibana_index: ".kibana_template"
-          |
+  override protected def configYaml: String =
+    """
+      |readonlyrest:
+      |
+      |  access_control_rules:
+      |
+      |  - name: "Template Tenancy"
+      |    verbosity: error
+      |    kibana_access: admin
+      |    kibana_index: ".kibana_template"
+      |
       """.stripMargin
-      ),
-      MockHttpClientsFactory
-    )
-    .map {
-      case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-      case Right(CoreSettings(aclEngine, _, _)) => aclEngine
-    }
-    .runSyncUnsafe()
-
 
   "An ACL" when {
     "kibana index and kibana access rules are used" should {
@@ -75,8 +52,8 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory w
         inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
-            responseHeaders = Set(headerFrom("x-ror-kibana_access" -> "admin")),
-            kibanaIndex = Some(IndexName(".kibana_template"))
+          responseHeaders = Set(headerFrom("x-ror-kibana_access" -> "admin")),
+          kibanaIndex = Some(IndexName(".kibana_template"))
           ) {
             blockContext
           }
@@ -84,4 +61,5 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with MockFactory w
       }
     }
   }
+
 }

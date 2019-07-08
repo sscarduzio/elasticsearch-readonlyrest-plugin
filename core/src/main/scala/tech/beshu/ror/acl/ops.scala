@@ -31,7 +31,12 @@ import tech.beshu.ror.acl.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.acl.header.ToHeaderValue
+import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
 
 import scala.collection.SortedSet
@@ -58,9 +63,7 @@ object header {
     def toRawValue(t: T): String // todo: improvement for the future (NonEmptyString)
   }
   object ToHeaderValue {
-    def apply[T](func: T => String): ToHeaderValue[T] = new ToHeaderValue[T]() {
-      override def toRawValue(t: T): String = func(t)
-    }
+    def apply[T](func: T => String): ToHeaderValue[T] = (t: T) => func(t)
   }
 }
 
@@ -101,6 +104,7 @@ object show {
       case Address.Name(value) => value.toString
     }
     implicit val methodShow: Show[Method] = Show.show(_.m)
+    implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val headerShow: Show[Header] = Show.show {
@@ -119,6 +123,8 @@ object show {
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
     implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
+    implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
+    implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val blockContextShow: Show[BlockContext] = Show.show { bc =>
       def showList[T : Show](name: String, list: List[T]) = {
         list match {
@@ -153,6 +159,24 @@ object show {
     }
     implicit val blockShow: Show[Block] = Show.show { b =>
       s"{ name: '${b.name.show}', policy: ${b.policy.show}, rules: [${b.rules.map(_.name.show).toList.mkString(",")}]"
+    }
+    implicit val runtimeResolvableVariableCreationErrorShow: Show[RuntimeResolvableVariableCreator.CreationError] = Show.show {
+      case RuntimeResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
+        "Cannot use multi value variable in non-array context"
+      case RuntimeResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
+        "Cannot use more than one multi-value variable"
+      case RuntimeResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
+        s"Variable malformed, cause: $cause"
+      case RuntimeResolvableVariableCreator.CreationError.VariableConversionError(cause) =>
+        cause
+    }
+    implicit val startupResolvableVariableCreationErrorShow: Show[StartupResolvableVariableCreator.CreationError] = Show.show {
+      case StartupResolvableVariableCreator.CreationError.CannotUserMultiVariableInSingleVariableContext =>
+        "Cannot use multi value variable in non-array context"
+      case StartupResolvableVariableCreator.CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition =>
+        "Cannot use more than one multi-value variable"
+      case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
+        s"Variable malformed, cause: $cause"
     }
   }
 }

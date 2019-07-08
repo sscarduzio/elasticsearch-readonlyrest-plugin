@@ -26,7 +26,7 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.blocks.{Block, BlockContext, VariablesManager, VariablesResolver}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
@@ -58,8 +58,6 @@ trait RequestContext {
   def isCompositeRequest: Boolean
   def isAllowedForDLS: Boolean
   def hasRemoteClusters: Boolean
-
-  def variablesResolver: VariablesResolver = new VariablesManager(this)
 }
 
 object RequestContext extends Logging {
@@ -84,14 +82,8 @@ object RequestContext extends Logging {
       }
 
       def stringifyIndices = {
-        blockContext
-          .toSet
-          .flatMap { b: BlockContext => b.indices }
-          .toList
-          .map(_.show) match {
-          case Nil => "<N/A>"
-          case nel => nel.mkString(",")
-        }
+        if (r.indices.isEmpty) "<N/A>"
+        else r.indices.mkString(",")
       }
 
       s"""{

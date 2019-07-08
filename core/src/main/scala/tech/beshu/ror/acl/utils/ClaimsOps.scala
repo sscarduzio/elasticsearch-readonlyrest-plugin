@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.utils
 
+import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
@@ -60,9 +61,40 @@ class ClaimsOps(val claims: Claims) extends Logging {
         case collection: java.util.Collection[_] =>
           Found {
             collection.asScala
-              .collect { case value: String => value }
+              .collect {
+                case value: String => value
+                case value: Long => value.toString
+              }
               .flatMap(toGroup)
               .toSet
+          }
+        case _ =>
+          NotFound
+      }
+      .fold(
+        ex => {
+          logger.debug("JsonPath reading exception", ex)
+          NotFound
+        },
+        identity
+      )
+  }
+
+  def customClaim(claimName: ClaimName): ClaimSearchResult[NonEmptyList[String]] = {
+    Try(claimName.name.read[Any](claims))
+      .map {
+        case value: String =>
+          Found(NonEmptyList.one(value))
+        case collection: java.util.Collection[_] =>
+          val items = collection.asScala
+            .collect {
+              case value: String => value
+              case value: Long => value.toString
+            }
+            .toList
+          NonEmptyList.fromList(items) match {
+            case Some(nel) => Found(nel)
+            case None => NotFound
           }
         case _ =>
           NotFound

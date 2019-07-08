@@ -17,21 +17,24 @@
 package tech.beshu.ror.acl.factory.decoders.rules
 
 import io.circe.Decoder
-import tech.beshu.ror.acl.domain.User
-import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.UsersRule
 import tech.beshu.ror.acl.blocks.rules.UsersRule.Settings
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules.UsersRuleDecoderHelper.userIdValueDecoder
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.providers.EnvVarsProvider
 
-object UsersRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+class UsersRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Value[User.Id]]
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
     .map(users => new UsersRule(Settings(users)))
 )
 
 private object UsersRuleDecoderHelper {
-  implicit val userIdValueDecoder: Decoder[Value[User.Id]] = DecoderHelpers.alwaysRightValueDecoder(rv => User.Id(rv.value))
+  implicit val userIdValueDecoder: Decoder[RuntimeMultiResolvableVariable[User.Id]] =
+    DecoderHelpers.alwaysRightMultiVariableDecoder[User.Id](AlwaysRightConvertible.from(User.Id.apply))
 }

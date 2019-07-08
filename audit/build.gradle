@@ -49,7 +49,7 @@ compileScala {
 }
 
 dependencies {
-    compile group: 'org.scala-lang',            name: 'scala-library',              version: '2.12.4'
+    compile group: 'org.scala-lang',            name: 'scala-library',              version: '2.12.6'
     compile group: 'org.json',                  name: 'json',                       version: '20180813'
 }
 

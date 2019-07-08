@@ -73,7 +73,7 @@ object ExternalAuthorizationRule {
   val name = Rule.Name("groups_provider_authorization")
 
   final case class Settings(service: ExternalAuthorizationService,
-                            permittedGroups: NonEmptySet[Group], // todo: shouldn't group be variable?
+                            permittedGroups: NonEmptySet[Group],
                             users: NonEmptySet[User.Id])
 
 }

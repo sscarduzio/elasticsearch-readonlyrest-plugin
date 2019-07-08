@@ -22,6 +22,7 @@ import java.time.Duration
 import java.util.Base64
 
 import better.files.File
+import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.BlockContext
@@ -117,8 +118,12 @@ object TestsUtils {
     def nonempty: NonEmptyString = NonEmptyString.unsafeFrom(value)
   }
 
+  implicit class NonEmptyListOps[T](val value: T) extends AnyVal {
+    def nel: NonEmptyList[T] = NonEmptyList.one(value)
+  }
+
   def generateRsaRandomKeys: (PublicKey, PrivateKey) = {
-    val keyGen = KeyPairGenerator.getInstance("RSA") //.generateKeyPair()
+    val keyGen = KeyPairGenerator.getInstance("RSA")
     val random = SecureRandom.getInstance("SHA1PRNG", "SUN")
     keyGen.initialize(2048, random)
     val pair = keyGen.generateKeyPair()

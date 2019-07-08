@@ -21,17 +21,21 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
-import tech.beshu.ror.acl.blocks.{Const, Value}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper._
-import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.acl.domain.{IndexName, KibanaAccess, KibanaApp}
+import tech.beshu.ror.acl.factory.consts.RorProperties
+import tech.beshu.ror.acl.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.acl.orders._
-
-import scala.util.Try
+import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.utils.CirceOps._
+import tech.beshu.ror.providers.PropertiesProvider
 
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
@@ -39,7 +43,7 @@ object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     .map(apps => new KibanaHideAppsRule(Settings(apps)))
 )
 
-object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   KibanaRulesDecoderHelper
     .kibanaIndexDecoder
     .map { index =>
@@ -47,7 +51,8 @@ object KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     }
 )
 
-object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAccessRule, Value[IndexName]](
+class KibanaAccessRuleDecoder(implicit propertiesProvider: PropertiesProvider)
+  extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
       .decodeStringLike
@@ -60,28 +65,28 @@ object KibanaAccessRuleDecoder extends RuleDecoderWithAssociatedFields[KibanaAcc
       case "admin" => Right(KibanaAccess.Admin)
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
-      .map(KibanaAccessRule.Settings(_, kibanaIndexName, KibanaRulesDecoderHelper.readRorMetadataFlag))
+      .map(KibanaAccessRule.Settings(_, kibanaIndexName, RorProperties.readRorMetadataFlag))
       .map(s => new KibanaAccessRule(s))
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
   associatedFieldsDecoder =
-    Decoder.instance(_.downField("kibana_index").as[Value[IndexName]]) or Decoder.const(Const(IndexName.kibana))
+    Decoder.instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
 )
 
 private object KibanaRulesDecoderHelper {
-  def readRorMetadataFlag: Boolean =
-    Try(System.getProperty("com.readonlyrest.kibana.metadata"))
-      .map(!"false".equalsIgnoreCase(_))
-      .getOrElse(true)
-
-  implicit val kibanaIndexDecoder: Decoder[Value[IndexName]] =
+  private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
+    override def convert: String => Either[Convertible.ConvertError, IndexName] = str => {
+      Right(IndexName(str.replace(" ", "_")))
+    }
+  }
+  implicit val kibanaIndexDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
     DecoderHelpers
-      .decodeStringLike
-      .map(e => Value.fromString(e, rv => Right(IndexName(rv.value.replace(" ", "_")))))
+      .decodeStringLikeNonEmpty
+      .map(createSingleResolvableVariableFrom[IndexName])
       .toSyncDecoder
       .emapE {
         case Right(index) => Right(index)
-        case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
+        case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
       }
       .decoder
 }

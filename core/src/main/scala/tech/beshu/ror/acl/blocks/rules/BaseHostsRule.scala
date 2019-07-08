@@ -21,9 +21,10 @@ import cats.implicits._
 import com.comcast.ip4s.interop.cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.Address
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.TaskOps._
 
@@ -33,7 +34,7 @@ abstract class BaseHostsRule extends RegularRule with Logging {
 
   protected def checkAllowedAddresses(requestContext: RequestContext,
                                       blockContext: BlockContext)
-                                     (allowedAddresses: NonEmptySet[Value[Address]],
+                                     (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
                                       addressToCheck: Address): Task[Boolean] = {
     allowedAddresses
       .foldLeft(Task.now(false)) {
@@ -44,8 +45,8 @@ abstract class BaseHostsRule extends RegularRule with Logging {
                 Task.now(true)
               case false =>
                 host
-                  .get(requestContext.variablesResolver, blockContext).toOption
-                  .existsM(ipMatchesAddress(_, addressToCheck))
+                  .resolve(requestContext, blockContext).toOption
+                  .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck)))
             }
       }
   }

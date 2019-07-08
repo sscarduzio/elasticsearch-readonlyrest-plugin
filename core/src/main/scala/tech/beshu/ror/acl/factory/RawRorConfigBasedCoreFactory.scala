@@ -42,8 +42,9 @@ import tech.beshu.ror.acl.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.acl.utils._
 import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAcl, DisabledAclStaticContext, EnabledAclStaticContext, SequentialAcl}
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.{UuidProvider, YamlOps}
+import tech.beshu.ror.utils.YamlOps
 
 import scala.language.implicitConversions
 
@@ -56,7 +57,8 @@ trait CoreFactory {
 
 class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                                    uuidProvider: UuidProvider,
-                                   resolver: StaticVariablesResolver)
+                                   propertiesProvider: PropertiesProvider,
+                                   envVarProvider: EnvVarsProvider)
   extends CoreFactory with Logging {
 
   override def createCoreFrom(config: RawRorConfig,
@@ -69,11 +71,16 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   }
 
   private def createCoreFromRorSection(rorSection: Json, httpClientFactory: HttpClientsFactory) = {
-    createFrom(rorSection, httpClientFactory).map {
-      case Right(settings) =>
-        Right(settings)
-      case Left(failure) =>
-        Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
+    JsonConfigStaticVariableResolver.resolve(rorSection) match {
+      case Right(resolvedRorSection) =>
+        createFrom(resolvedRorSection, httpClientFactory).map {
+          case Right(settings) =>
+            Right(settings)
+          case Left(failure) =>
+            Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
+        }
+      case Left(errors) =>
+        Task.now(Left(errors.map(e => GeneralReadonlyrestSettingsError(Message(e.msg)))))
     }
   }
 
@@ -240,9 +247,9 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
         authenticationServices <- AsyncDecoderCreator.from(ExternalAuthenticationServicesDecoder.instance(httpClientFactory))
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
-        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory, resolver))
+        jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder
-        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance(resolver))
+        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
         blocks <- {
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {

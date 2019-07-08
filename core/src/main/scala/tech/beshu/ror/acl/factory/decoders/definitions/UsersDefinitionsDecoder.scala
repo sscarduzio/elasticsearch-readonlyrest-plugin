@@ -32,6 +32,9 @@ import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.providers.EnvVarsProvider
+
+import scala.language.existentials
 
 object UsersDefinitionsDecoder {
 
@@ -39,9 +42,10 @@ object UsersDefinitionsDecoder {
                authProxyDefinitions: Definitions[ProxyAuth],
                jwtDefinitions: Definitions[JwtDef],
                ldapDefinitions: Definitions[LdapService],
-               rorKbnDefinitions: Definitions[RorKbnDef]): ADecoder[Id, Definitions[UserDef]] = {
+               rorKbnDefinitions: Definitions[RorKbnDef])
+              (implicit envVarsProvider: EnvVarsProvider): ADecoder[Id, Definitions[UserDef]] = {
     implicit val userDefDecoder: SyncDecoder[UserDef] = SyncDecoderCreator
-      .from(UsersDefinitionsDecoder.userDefDecoder(authenticationServiceDefinitions, authProxyDefinitions, jwtDefinitions, ldapDefinitions, rorKbnDefinitions))
+      .from(UsersDefinitionsDecoder.userDefDecoder(authenticationServiceDefinitions, authProxyDefinitions, jwtDefinitions, ldapDefinitions, rorKbnDefinitions, envVarsProvider))
     DefinitionsBaseDecoder.instance[Id, UserDef]("users")
   }
 
@@ -49,7 +53,8 @@ object UsersDefinitionsDecoder {
                                       authProxyDefinitions: Definitions[ProxyAuth],
                                       jwtDefinitions: Definitions[JwtDef],
                                       ldapDefinitions: Definitions[LdapService],
-                                      rorKbnDefinitions: Definitions[RorKbnDef]): Decoder[UserDef] = {
+                                      rorKbnDefinitions: Definitions[RorKbnDef],
+                                      envVarsProvider: EnvVarsProvider): Decoder[UserDef] = {
     SyncDecoderCreator
       .instance { c =>
         val usernameKey = "username"
@@ -69,7 +74,8 @@ object UsersDefinitionsDecoder {
                                 authProxyDefinitions: Definitions[ProxyAuth],
                                 jwtDefinitions: Definitions[JwtDef],
                                 ldapDefinitions: Definitions[LdapService],
-                                rorKbnDefinitions: Definitions[RorKbnDef]) = {
+                                rorKbnDefinitions: Definitions[RorKbnDef],
+                                envVarsProvider: EnvVarsProvider) = {
     adjustedCursor.keys.map(_.toList) match {
       case Some(key :: Nil) =>
         val decoder = authenticationRuleDecoderBy(

@@ -22,12 +22,17 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.domain.User.Id
-import tech.beshu.ror.acl.domain.{LoggedUser, UriPath}
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.acl.domain.User.Id
+import tech.beshu.ror.acl.domain.{LoggedUser, UriPath}
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils._
 
 import scala.util.Try
 
@@ -76,22 +81,22 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(uriRegex: Value[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
+  private def assertMatchRule(uriRegex: RuntimeSingleResolvableVariable[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
     assertRule(uriRegex, uriPath, isMatched = true, isUserLogged, userName)
 
-  private def assertNotMatchRule(uriRegex: Value[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
+  private def assertNotMatchRule(uriRegex: RuntimeSingleResolvableVariable[Pattern], uriPath: UriPath, isUserLogged: Boolean, userName: String = "mia") =
     assertRule(uriRegex, uriPath, isMatched = false, isUserLogged, userName)
 
-  private def assertRule(uriRegex: Value[Pattern], uriPath: UriPath, isMatched: Boolean, isUserLogged: Boolean, userName: String) = {
+  private def assertRule(uriRegex: RuntimeSingleResolvableVariable[Pattern], uriPath: UriPath, isMatched: Boolean, isUserLogged: Boolean, userName: String) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val blockContext = mock[BlockContext]
     val requestContext = uriRegex match {
-      case Const(_) =>
+      case AlreadyResolved(_) =>
         MockRequestContext(uriPath = uriPath)
-      case Variable(_, _) if isUserLogged =>
+      case ToBeResolved(_) if isUserLogged =>
         (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id(userName))))
         MockRequestContext(uriPath = uriPath)
-      case Variable(_, _) =>
+      case ToBeResolved(_) =>
         (blockContext.loggedUser _).expects().returning(None)
         MockRequestContext.default
     }
@@ -101,9 +106,14 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def patternValueFrom(value: String): Value[Pattern] = {
-    Value
-      .fromString(value, rv => Try(Pattern.compile(rv.value)).toEither.left.map(_ => Value.ConvertError(rv, "msg")))
+  private def patternValueFrom(value: String): RuntimeSingleResolvableVariable[Pattern] = {
+    implicit val patternConvertible: Convertible[Pattern] = new Convertible[Pattern] {
+      override def convert: String => Either[Convertible.ConvertError, Pattern] = str => {
+        Try(Pattern.compile(str)).toEither.left.map(_ => ConvertError("msg"))
+      }
+    }
+    RuntimeResolvableVariableCreator
+      .createSingleResolvableVariableFrom[Pattern](value.nonempty)
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
   }

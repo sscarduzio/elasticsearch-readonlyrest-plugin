@@ -16,21 +16,14 @@
  */
 package tech.beshu.ror.acl.factory.decoders.rules
 
-import tech.beshu.ror.acl.blocks.Value
 import tech.beshu.ror.acl.blocks.rules.FilterRule
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.domain.Filter
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
 
-object FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers.decodeStringLike
-    .map(e => Value.fromString(e, rv => Right(Filter(rv.value))))
-    .toSyncDecoder
-    .emapE {
-      case Right(filter) => Right(new FilterRule(FilterRule.Settings(filter)))
-      case Left(error) => Left(RulesLevelCreationError(Message(error.msg)))
-    }
-    .decoder
+class FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+    DecoderHelpers
+      .alwaysRightSingleVariableDecoder(AlwaysRightConvertible.from(Filter.apply))
+      .map(filter => new FilterRule(FilterRule.Settings(filter)))
 )

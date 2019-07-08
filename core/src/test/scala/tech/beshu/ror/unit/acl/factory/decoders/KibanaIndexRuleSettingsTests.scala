@@ -17,12 +17,10 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
-import tech.beshu.ror.acl.blocks.{Const, Variable}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.domain.IndexName
 
 class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {
@@ -42,7 +40,7 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaIndex should be(Const(IndexName("some_kibana_index")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName("some_kibana_index")))
           }
         )
       }
@@ -59,9 +57,7 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = Variable(ValueWithVariable("@{user}_kibana_index"), rv => Right(IndexName(rv.value)))
-            rule.settings.kibanaIndex shouldBe a [Variable[_]]
-            rule.settings.kibanaIndex.asInstanceOf[Variable[IndexName]].representation should be(variable.representation)
+            rule.settings.kibanaIndex shouldBe a [ToBeResolved[_]]
           }
         )
       }

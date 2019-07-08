@@ -17,11 +17,9 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.domain.Filter
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.FilterRule
-import tech.beshu.ror.acl.blocks.{Const, Variable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 
@@ -42,7 +40,7 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.filter should be(Const(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
+            rule.settings.filter should be(AlreadyResolved(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
           }
         )
       }
@@ -59,9 +57,7 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val variable = Variable(ValueWithVariable("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"), rv => Right(Filter(rv.value)))
-            rule.settings.filter shouldBe a [Variable[_]]
-            rule.settings.filter.asInstanceOf[Variable[Filter]].representation should be(variable.representation)
+            rule.settings.filter shouldBe a [ToBeResolved[_]]
           }
         )
       }

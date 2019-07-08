@@ -16,22 +16,25 @@
  */
 package tech.beshu.ror.acl.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.Action.{mSearchAction, searchAction}
-import tech.beshu.ror.acl.domain.IndexName
-import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.ZeroKnowledgeIndexFilter
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.IndicesRule.{CanPass, Settings}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.ZeroKnowledgeIndexFilter
-import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.acl.blocks.{BlockContext, Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.acl.domain.Action.{mSearchAction, searchAction}
+import tech.beshu.ror.acl.domain.IndexName
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 import scala.collection.SortedSet
@@ -57,13 +60,7 @@ class IndicesRule(val settings: Settings)
 
   private def process(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
     val matcher: Matcher = initialMatcher.getOrElse {
-      val resolvedIndices = settings.allowedIndices.toList
-        .flatMap { v =>
-          v.get(requestContext.variablesResolver, blockContext) match {
-            case Right(index) => index :: Nil
-            case Left(_) => Nil
-          }
-        }
+      val resolvedIndices = resolveAll(settings.allowedIndices, requestContext, blockContext)
       new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(resolvedIndices.map(_.value).toSet.asJava))
     }
     // Cross cluster search awareness
@@ -87,7 +84,7 @@ class IndicesRule(val settings: Settings)
         // Run the local algorithm
         val processedLocalIndices =
           if (localIndices.isEmpty && crossClusterIndices.nonEmpty) {
-            // Don't run locally if only have crossCluster, otherwise you'll get the equivalent of "*"
+            // Don't run locally if only have crossCluster, otherwise you'll resolve the equivalent of "*"
             localIndices
           } else {
             canPass(requestContext, matcher) match {
@@ -244,21 +241,29 @@ class IndicesRule(val settings: Settings)
       .filter(requestContext.allIndicesAndAliases.flatMap(_.all))
   }
 
+  private val alreadyResolvedIndices =
+    settings
+      .allowedIndices
+      .toList
+      .collect { case AlreadyResolved(indices) => indices.toList }
+      .flatten
+      .toSet
+
   private val initialMatcher = {
     val hasVariables = settings.allowedIndices.exists {
-      case Const(_) => false
-      case Variable(_, _) => true
+      case AlreadyResolved(_) => false
+      case _ => true
     }
     if (hasVariables) None
     else Some {
       new MatcherWithWildcardsScalaAdapter(
-        new MatcherWithWildcards(settings.allowedIndices.collect { case Const(IndexName(rawValue)) => rawValue } asJava)
+        new MatcherWithWildcards(alreadyResolvedIndices.map(_.value).asJava)
       )
     }
   }
 
   private val matchAll = settings.allowedIndices.exists {
-    case Const(IndexName.`wildcard`) => true
+    case AlreadyResolved(indices) if indices.contains_(IndexName.`wildcard`) => true
     case _ => false
   }
 
@@ -272,7 +277,7 @@ class IndicesRule(val settings: Settings)
 object IndicesRule {
   val name = Rule.Name("indices")
 
-  final case class Settings(allowedIndices: NonEmptySet[Value[IndexName]])
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]])
 
   private sealed trait CanPass
   private object CanPass {

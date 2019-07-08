@@ -29,7 +29,8 @@ import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.{BlockContext, Const, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -153,7 +154,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
     }
     "X-Pack cluster settings update" in {
       def assertMatchClusterRule(access: KibanaAccess) = {
-        assertMatchRule(settingsOf(access, IndexName(".kibana")), Action("cluster:admin/xpack/ccr/auto_follow_pattern/get"), Set.empty, Some(UriPath("/_ccr/auto_follow"))) {
+        assertMatchRule(settingsOf(access, IndexName(".kibana")), Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"), Set.empty, Some(UriPath("/_ccr/auto_follow"))) {
           assertBlockContext(
             responseHeaders = Set(Header(Name.kibanaAccess, access)),
             kibanaIndex = None
@@ -212,7 +213,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
   }
 
   private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana")) = {
-    KibanaAccessRule.Settings(access, Const(kibanaIndex), kibanaMetadataEnabled = true)
+    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), kibanaMetadataEnabled = true)
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings): BlockContext => Unit =

@@ -24,38 +24,43 @@ import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.acl.factory.decoders.rules._
-import tech.beshu.ror.utils.UuidProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
 
 import scala.language.implicitConversions
+import scala.language.existentials
 
 object ruleDecoders {
 
-  implicit def ruleDecoderBy(name: Rule.Name, definitions: DefinitionsPack)
-                            (implicit clock: Clock, uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] =
+  implicit def ruleDecoderBy(name: Rule.Name,
+                             definitions: DefinitionsPack)
+                            (implicit clock: Clock,
+                             uuidProvider: UuidProvider,
+                             propertiesProvider: PropertiesProvider,
+                             envVarsProvider: EnvVarsProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
       case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices))
       case FieldsRule.name => Some(FieldsRuleDecoder)
-      case FilterRule.name => Some(FilterRuleDecoder)
+      case FilterRule.name => Some(new FilterRuleDecoder)
       case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))
       case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
-      case HostsRule.name => Some(HostsRuleDecoder)
-      case IndicesRule.name => Some(IndicesRuleDecoders)
-      case KibanaAccessRule.name => Some(KibanaAccessRuleDecoder)
+      case HostsRule.name => Some(new HostsRuleDecoder)
+      case IndicesRule.name => Some(new IndicesRuleDecoders)
+      case KibanaAccessRule.name => Some(new KibanaAccessRuleDecoder)
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
-      case KibanaIndexRule.name => Some(KibanaIndexRuleDecoder)
+      case KibanaIndexRule.name => Some(new KibanaIndexRuleDecoder)
       case LdapAuthorizationRule.name => Some(new LdapAuthorizationRuleDecoder(definitions.ldaps))
-      case LocalHostsRule.name => Some(LocalHostsRuleDecoder)
+      case LocalHostsRule.name => Some(new LocalHostsRuleDecoder)
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.name => Some(MethodsRuleDecoder)
-      case RepositoriesRule.name => Some(RepositoriesRuleDecoder)
+      case RepositoriesRule.name => Some(new RepositoriesRuleDecoder)
       case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder)
-      case SnapshotsRule.name => Some(SnapshotsRuleDecoder)
-      case UriRegexRule.name => Some(UriRegexRuleDecoder)
-      case UsersRule.name => Some(UsersRuleDecoder)
-      case XForwardedForRule.name => Some(XForwardedForRuleDecoder)
+      case SnapshotsRule.name => Some(new SnapshotsRuleDecoder)
+      case UriRegexRule.name => Some(new UriRegexRuleDecoder)
+      case UsersRule.name => Some(new UsersRuleDecoder)
+      case XForwardedForRule.name => Some(new XForwardedForRuleDecoder)
       case _ => authenticationRuleDecoderBy(name, definitions.authenticationServices, definitions.proxies, definitions.jwts, definitions.ldaps, definitions.rorKbns)
     }
 

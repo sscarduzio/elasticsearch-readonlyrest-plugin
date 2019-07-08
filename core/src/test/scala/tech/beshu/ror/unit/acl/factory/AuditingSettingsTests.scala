@@ -23,20 +23,20 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.{RawRorConfigBasedCoreFactory, CoreSettings}
-import tech.beshu.ror.acl.utils.StaticVariablesResolver
+import tech.beshu.ror.acl.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
 
 class AuditingSettingsTests extends WordSpec with Inside {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
+    implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory
   }
 

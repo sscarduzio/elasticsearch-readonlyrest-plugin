@@ -25,6 +25,7 @@ import cats.implicits._
 import com.comcast.ip4s.interop.cats.HostnameResolver
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
+import io.jsonwebtoken.Claims
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.header.ToHeaderValue
@@ -244,7 +245,10 @@ object domain {
 
   final case class JwtToken(value: NonEmptyString)
 
+  final case class JwtTokenPayload(claims: Claims)
+
   final case class AuthorizationTokenDef(headerName: Header.Name, prefix: String)
 
   final case class AuthorizationToken(value: NonEmptyString)
+
 }

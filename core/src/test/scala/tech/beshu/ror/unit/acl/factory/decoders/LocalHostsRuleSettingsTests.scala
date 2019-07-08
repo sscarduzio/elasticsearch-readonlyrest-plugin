@@ -18,14 +18,14 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-
-import tech.beshu.ror.acl.blocks.Variable.ValueWithVariable
 import tech.beshu.ror.acl.blocks.rules.LocalHostsRule
-import tech.beshu.ror.acl.blocks.{Const, Value, Variable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.utils.TestsUtils._
 
 class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHostsRule] {
 
@@ -44,7 +44,8 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Const(Address.from("192.168.0.1").get))
+            val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
+              NonEmptySet.one(AlreadyResolved(Address.from("192.168.0.1").get.nel))
             rule.settings.allowedAddresses should be(addresses)
           }
         )
@@ -62,8 +63,8 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.one(Variable(ValueWithVariable("@{user}.com"), rv => Right(Address.from(rv.value).get)))
-            rule.settings.allowedAddresses should be(addresses)
+            rule.settings.allowedAddresses.length should be (1)
+            rule.settings.allowedAddresses.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
@@ -80,7 +81,8 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |
               |""".stripMargin,
           assertion = rule => {
-            val addresses: NonEmptySet[Value[Address]] = NonEmptySet.of(Const(Address.from("192.168.0.1").get), Const(Address.from("192.168.0.2").get))
+            val addresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]] =
+              NonEmptySet.of(AlreadyResolved(Address.from("192.168.0.1").get.nel), AlreadyResolved(Address.from("192.168.0.2").get.nel))
             rule.settings.allowedAddresses should be(addresses)
           }
         )

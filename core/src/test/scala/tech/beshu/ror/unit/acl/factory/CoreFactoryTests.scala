@@ -27,11 +27,10 @@ import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.
 import tech.beshu.ror.acl.SequentialAcl
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.{RawRorConfigBasedCoreFactory, CoreSettings}
-import tech.beshu.ror.acl.utils.StaticVariablesResolver
+import tech.beshu.ror.acl.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.utils.{JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
 class CoreFactoryTests extends WordSpec with Inside with MockFactory {
@@ -39,7 +38,8 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(OsEnvVarsProvider)
+    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
+    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory
   }
 

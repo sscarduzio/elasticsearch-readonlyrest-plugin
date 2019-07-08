@@ -31,7 +31,7 @@ import tech.beshu.ror.acl.request.RorSessionCookie.ExtractingError.{Absent, Expi
 import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.domain.Header.Name.setCookie
 import tech.beshu.ror.acl.show.logs._
-import tech.beshu.ror.utils.UuidProvider
+import tech.beshu.ror.providers.UuidProvider
 
 import scala.collection.JavaConverters._
 import scala.util.Try

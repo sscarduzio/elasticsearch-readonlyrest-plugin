@@ -18,6 +18,8 @@ package tech.beshu.ror.acl.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
 
+import scala.language.implicitConversions
+
 object RefinedOps {
 
   implicit def nonEmptyStringToString(str: NonEmptyString): String = str.value

@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.blocks
 
 import cats.implicits._
 import cats.data.NonEmptySet
-import tech.beshu.ror.acl.domain.{Group, Header, IndexName, LoggedUser}
+import tech.beshu.ror.acl.domain.{JwtTokenPayload, Group, Header, IndexName, LoggedUser}
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps.RequestGroup._
@@ -31,6 +31,9 @@ trait BlockContext {
 
   def loggedUser: Option[LoggedUser]
   def withLoggedUser(user: LoggedUser): BlockContext
+
+  def jsonToken: Option[JwtTokenPayload]
+  def withJsonToken(token: JwtTokenPayload): BlockContext
 
   def currentGroup: Option[Group]
   def withCurrentGroup(group: Group): BlockContext
@@ -104,6 +107,11 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
 
   override def withSnapshots(snapshots: NonEmptySet[IndexName]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(snapshots = snapshots.toSortedSet))
+
+  override def jsonToken: Option[JwtTokenPayload] = data.jsonToken
+
+  override def withJsonToken(token: JwtTokenPayload): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(jsonToken = Some(token)))
 }
 
 object RequestContextInitiatedBlockContext {
@@ -116,7 +124,8 @@ object RequestContextInitiatedBlockContext {
                                     kibanaIndex: Option[IndexName],
                                     indices: Set[IndexName],
                                     repositories: Set[IndexName],
-                                    snapshots: Set[IndexName])
+                                    snapshots: Set[IndexName],
+                                    jsonToken: Option[JwtTokenPayload])
 
   def fromRequestContext(requestContext: RequestContext): RequestContextInitiatedBlockContext =
     new RequestContextInitiatedBlockContext(
@@ -132,7 +141,8 @@ object RequestContextInitiatedBlockContext {
         kibanaIndex = None,
         indices = Set.empty,
         repositories = Set.empty,
-        snapshots = Set.empty
+        snapshots = Set.empty,
+        jsonToken = None
       )
     )
 }

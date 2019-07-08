@@ -18,6 +18,8 @@ package tech.beshu.ror.utils
 
 import org.apache.logging.log4j.scala.Logger
 
+import scala.language.implicitConversions
+
 class LoggerOps(logger: Logger) {
 
   def errorEx(message: String, throwable: Throwable): Unit = {

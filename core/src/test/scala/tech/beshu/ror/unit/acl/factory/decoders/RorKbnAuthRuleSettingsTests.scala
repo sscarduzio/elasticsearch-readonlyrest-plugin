@@ -21,18 +21,18 @@ import java.util.Base64
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
-import tech.beshu.ror.acl.factory.HttpClientsFactory
-import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
-import tech.beshu.ror.utils.EnvVarsProvider
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
+import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.TestsUtils._
 
 class RorKbnAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] with MockFactory {
+
+
 
   "A RorKbnAuthRule" should {
     "be able to be loaded from config" when {
@@ -484,7 +484,7 @@ class RorKbnAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[RorKbnAuth
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot resolve variable: @{env:SECRET}")))
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot resolve ENV variable 'SECRET'")))
           }
         )
       }
@@ -515,17 +515,11 @@ class RorKbnAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[RorKbnAuth
     }
   }
 
-  override protected def envVarsProvider: EnvVarsProvider = new EnvVarsProvider {
-    override def getEnv(name: String): Option[String] = name match {
-      case "SECRET_RSA" =>
-        val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
-        Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
-      case _ =>
-        None
-    }
-  }
-  private val mockedHttpClientsFactory: HttpClientsFactory = {
-    val httpClientMock = mock[HttpClient]
-    new MockHttpClientsFactoryWithFixedHttpClient(httpClientMock)
+  override implicit protected def envVarsProvider: EnvVarsProvider = {
+    case EnvVarName(env) if env.value == "SECRET_RSA" =>
+      val pkey = KeyPairGenerator.getInstance("RSA").generateKeyPair().getPublic
+      Some(Base64.getEncoder.encodeToString(pkey.getEncoded))
+    case _ =>
+      None
   }
 }

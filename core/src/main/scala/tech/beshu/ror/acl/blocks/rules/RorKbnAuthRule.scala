@@ -18,7 +18,6 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -69,11 +68,11 @@ class RorKbnAuthRule(val settings: Settings)
     jwtTokenData(token) match {
       case Left(_) =>
         Rejected
-      case Right((user, groups, userOrigin)) =>
+      case Right((tokenPayload, user, groups, userOrigin)) =>
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
-        } yield handleUserOriginResult(finalBlockContext, userOrigin)
+        } yield handleUserOriginResult(finalBlockContext, userOrigin).withJsonToken(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
             Rejected
@@ -85,20 +84,23 @@ class RorKbnAuthRule(val settings: Settings)
 
   private def jwtTokenData(token: JwtToken) = {
     claimsFrom(token)
-      .map { claims =>
+      .map { tokenPayload =>
         (
-          claims.userIdClaim(RorKbnAuthRule.userClaimName),
-          claims.groupsClaim(RorKbnAuthRule.groupsClaimName),
-          claims.headerNameClaim(Header.Name.xUserOrigin)
+          tokenPayload,
+          tokenPayload.claims.userIdClaim(RorKbnAuthRule.userClaimName),
+          tokenPayload.claims.groupsClaim(RorKbnAuthRule.groupsClaimName),
+          tokenPayload.claims.headerNameClaim(Header.Name.xUserOrigin)
         )
       }
   }
 
   private def claimsFrom(token: JwtToken) = {
-    Try(parser.parseClaimsJws(token.value.value).getBody).toEither.left.map {
-      ex =>
-        logger.error(s"JWT token '${token.show}' parsing error", ex)
-        ()
+    Try(parser.parseClaimsJws(token.value.value).getBody)
+      .toEither
+      .map(JwtTokenPayload.apply)
+      .left.map { ex =>
+      logger.error(s"JWT token '${token.show}' parsing error", ex)
+      ()
     }
   }
 

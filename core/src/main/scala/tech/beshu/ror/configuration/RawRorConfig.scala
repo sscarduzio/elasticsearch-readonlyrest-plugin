@@ -16,34 +16,24 @@
  */
 package tech.beshu.ror.configuration
 
-import java.util.regex.Pattern
-
 import better.files.File
 import cats.{Eq, Show}
 import io.circe.yaml.parser
 import io.circe.{Json, ParsingFailure}
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
-import scala.collection.JavaConverters._
 
 final case class RawRorConfig(configJson: Json, raw: String)
 
 object RawRorConfig {
 
-  // todo: this is better implementation. Replace with it when RORDEV-6 will be finished
-  //  def fromFile(file: File): Either[ParsingRorConfigError, RawRorConfig] = {
-  //    file.inputStream.apply { is =>
-  //      handleParseResult(parser.parse(new InputStreamReader(is)))
-  //    }
-  //  }
-
   def fromFile(file: File): Either[ParsingRorConfigError, RawRorConfig] = {
     val rawContent = file.contentAsString
-    handleParseResult(parser.parse(replaceEnvVars(rawContent)))
+    handleParseResult(parser.parse(rawContent))
       .map(RawRorConfig(_, rawContent))
   }
 
   def fromString(content: String): Either[ParsingRorConfigError, RawRorConfig] = {
-    handleParseResult(parser.parse(replaceEnvVars(content)))
+    handleParseResult(parser.parse(content))
       .map(RawRorConfig(_, content))
   }
 
@@ -51,14 +41,6 @@ object RawRorConfig {
     result
       .left.map(InvalidContent.apply)
       .flatMap { json => validateRorJson(json) }
-  }
-
-  // fixme: RORDEV-6 will do it better
-  private def replaceEnvVars(rawYaml: String) = {
-    System.getenv.keySet.asScala.fold(rawYaml) {
-      case (yaml, envKey) =>
-        yaml.replaceAll(Pattern.quote("${" + envKey + "}"), System.getenv(envKey))
-    }
   }
 
   private def validateRorJson(json: Json) = {

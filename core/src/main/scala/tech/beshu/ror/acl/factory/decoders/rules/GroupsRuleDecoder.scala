@@ -18,11 +18,10 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import tech.beshu.ror.acl.domain.Group
-import tech.beshu.ror.acl.blocks.Value
-import tech.beshu.ror.acl.blocks.Value._
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.GroupsRule
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.common._
@@ -33,9 +32,10 @@ import tech.beshu.ror.acl.utils.CirceOps._
 
 import scala.collection.SortedSet
 
-class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef]) extends RuleDecoderWithoutAssociatedFields[GroupsRule](
+class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
+  extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Value[Group]]
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Group]]
     .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>

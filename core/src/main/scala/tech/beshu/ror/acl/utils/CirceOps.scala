@@ -16,22 +16,25 @@
  */
 package tech.beshu.ror.acl.utils
 
-import cats.{Applicative, Order}
 import cats.data.NonEmptySet
 import cats.implicits._
+import tech.beshu.ror.acl.show.logs._
+import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
 import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
-import tech.beshu.ror.acl.blocks.Value
-import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.blocks.Value.ConvertError
-import tech.beshu.ror.acl.blocks.Variable.ResolvedValue
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult._
 
 import scala.collection.SortedSet
@@ -42,9 +45,7 @@ object CirceOps {
   object DecoderHelpers {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
 
-    // todo: merge with above
-    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] =
-      Decoder.decodeString.or(Decoder.decodeInt.map(_.show)).emap(NonEmptyString.from)
+    implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(NonEmptyString.from)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
@@ -90,28 +91,39 @@ object CirceOps {
       }
     }
 
-    def decodeStringLikeWithVarResolvedInPlace(implicit resolver: StaticVariablesResolver): Decoder[String] = {
-      SyncDecoderCreator
-        .from(decodeStringLike)
-        .emapE { variable =>
-          resolver.resolve(variable) match {
-            case Some(resolved) => Right(resolved)
-            case None => Left(ValueLevelCreationError(Message(s"Cannot resolve variable: $variable")))
+    val decodeStringLikeWithSingleVarResolvedInPlace: Decoder[String] = {
+      alwaysRightSingleVariableDecoder(AlwaysRightConvertible.stringAlwaysRightConvertible)
+          .toSyncDecoder
+          .emapE {
+            case AlreadyResolved(resolved) => Right(resolved)
+            case _: ToBeResolved[String] => Left(ValueLevelCreationError(Message(s"Only statically resolved variables can be used")))
           }
-        }
-        .decoder
+          .decoder
     }
 
-    def valueDecoder[T](convert: ResolvedValue => Either[Value.ConvertError, T]): Decoder[Either[ConvertError, Value[T]]] =
+    def singleVariableDecoder[T : Convertible]: Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
       DecoderHelpers
-        .decodeStringLike
-        .map { str => Value.fromString(str, convert) }
+        .decodeStringLikeNonEmpty
+        .map { str => createSingleResolvableVariableFrom(str) }
 
-    def alwaysRightValueDecoder[T](convert: ResolvedValue => T): Decoder[Value[T]] =
+    def multiVariableDecoder[T : Convertible]: Decoder[Either[CreationError, RuntimeMultiResolvableVariable[T]]] =
+      DecoderHelpers
+        .decodeStringLikeNonEmpty
+        .map { str => createMultiResolvableVariableFrom(str) }
+
+    def alwaysRightSingleVariableDecoder[T : AlwaysRightConvertible]: Decoder[RuntimeSingleResolvableVariable[T]] =
       SyncDecoderCreator
-        .from(valueDecoder[T](rv => Right(convert(rv))))
+        .from(singleVariableDecoder[T])
         .emapE {
-          _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.msg)))
+          _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.show)))
+        }
+        .decoder
+
+    def alwaysRightMultiVariableDecoder[T : AlwaysRightConvertible]: Decoder[RuntimeMultiResolvableVariable[T]] =
+      SyncDecoderCreator
+        .from(multiVariableDecoder[T])
+        .emapE {
+          _.left.map(error => AclCreationError.RulesLevelCreationError(Message(error.show)))
         }
         .decoder
 

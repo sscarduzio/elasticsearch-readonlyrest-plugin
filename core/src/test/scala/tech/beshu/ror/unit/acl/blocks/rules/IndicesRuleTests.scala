@@ -27,9 +27,12 @@ import tech.beshu.ror.acl.domain.{Action, IndexName, IndexWithAliases}
 import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
+import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 
 import scala.collection.SortedSet
+import tech.beshu.ror.utils.TestsUtils._
 
 class IndicesRuleTests extends WordSpec with MockFactory {
 
@@ -255,18 +258,18 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configured: NonEmptySet[Value[IndexName]],
+  private def assertMatchRule(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                               requestIndices: Set[IndexName],
                               modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                               found: Set[IndexName] = Set.empty) =
     assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, found)
 
-  private def assertNotMatchRule(configured: NonEmptySet[Value[IndexName]],
+  private def assertNotMatchRule(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                                  requestIndices: Set[IndexName],
                                  modifyRequestContext: MockRequestContext => MockRequestContext = identity) =
     assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Set.empty)
 
-  private def assertRule(configuredValues: NonEmptySet[Value[IndexName]],
+  private def assertRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                          requestIndices: Set[IndexName],
                          isMatched: Boolean,
                          modifyRequestContext: MockRequestContext => MockRequestContext,
@@ -300,9 +303,9 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def indexNameValueFrom(value: String): Value[IndexName] = {
-    Value
-      .fromString(value, rv => Right(IndexName(rv.value)))
+  private def indexNameValueFrom(value: String): RuntimeMultiResolvableVariable[IndexName] = {
+    RuntimeResolvableVariableCreator
+      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(IndexName.apply))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }

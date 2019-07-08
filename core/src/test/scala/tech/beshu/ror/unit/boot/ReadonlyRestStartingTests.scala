@@ -32,8 +32,8 @@ import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword,
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
 import tech.beshu.ror.es.IndexJsonContentManager.CannotReachContentSource
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource}
-import tech.beshu.ror.utils.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.collection.JavaConverters._
 

@@ -70,7 +70,7 @@ object ExternalAuthorizationServicesDecoder extends Logging {
       .from(Decoder.decodeString)
       .emapE[SupportedHttpMethod] {
       case "POST" | "post" => Right(SupportedHttpMethod.Post)
-      case "GET" | "get" => Right(Get)
+      case "GET" | "resolve" => Right(Get)
       case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown value '$unknown' of 'http_method' attribute")))
     }
       .decoder

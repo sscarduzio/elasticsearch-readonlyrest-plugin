@@ -27,9 +27,8 @@ import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.execution.{Cancelable, CancelablePromise, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
-import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, RawRorConfigBasedCoreFactory, CoreFactory}
+import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditingTool}
-import tech.beshu.ror.acl.utils.StaticVariablesResolver
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
 import tech.beshu.ror.boot.RorInstance.{ForceReloadError, noIndexStartingFailure}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
@@ -41,8 +40,9 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
-import tech.beshu.ror.utils.{EnvVarsProvider, JavaUuidProvider, OsEnvVarsProvider, UuidProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.LoggerOps._
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -55,7 +55,8 @@ object Ror extends ReadonlyRest {
 
   override protected val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val resolver: StaticVariablesResolver = new StaticVariablesResolver(envVarsProvider)
+    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
+    implicit val _ = envVarsProvider
     new RawRorConfigBasedCoreFactory
   }
 }
@@ -78,7 +79,7 @@ trait ReadonlyRest extends Logging {
   }
 
   private def createFileConfigLoader(esConfigPath: Path) = {
-    EitherT.pure[Task, StartingFailure](new FileConfigLoader(esConfigPath, envVarsProvider))
+    EitherT.pure[Task, StartingFailure](FileConfigLoader.create(esConfigPath))
   }
 
   private def createIndexConfigLoader(indexContentManager: IndexJsonContentManager) = {

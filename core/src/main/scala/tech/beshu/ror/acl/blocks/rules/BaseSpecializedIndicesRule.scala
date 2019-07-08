@@ -16,18 +16,20 @@
  */
 package tech.beshu.ror.acl.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.acl.domain.{Action, IndexName}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BaseSpecializedIndicesRule.Settings
-import tech.beshu.ror.acl.blocks.{BlockContext, Value}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
+import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.acl.domain.{Action, IndexName}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
@@ -40,15 +42,15 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
+
     if (!isSpecializedIndexAction(requestContext.action)) Fulfilled(blockContext)
-    else checkAllowedIndices(
-      settings
-        .allowedIndices
-        .toSortedSet
-        .flatMap(_.get(requestContext.variablesResolver, blockContext).toOption),
-      requestContext,
-      blockContext
-    )
+    else {
+      checkAllowedIndices(
+        resolveAll(settings.allowedIndices, requestContext, blockContext).toSet,
+        requestContext,
+        blockContext
+      )
+    }
   }
 
   private def checkAllowedIndices(allowedSpecializedIndices: Set[IndexName],
@@ -81,5 +83,5 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
 }
 
 object BaseSpecializedIndicesRule {
-  final case class Settings(allowedIndices: NonEmptySet[Value[IndexName]]) // todo: check don't allow to use _all || *
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]]) // todo: check don't allow to use _all || *
 }
