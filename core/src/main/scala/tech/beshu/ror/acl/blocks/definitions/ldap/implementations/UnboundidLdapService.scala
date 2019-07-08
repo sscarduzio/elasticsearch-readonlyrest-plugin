@@ -37,6 +37,7 @@ import tech.beshu.ror.acl.utils.LdapConnectionPoolOps._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
+import tech.beshu.ror.utils.LoggerOps._
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
                                                  connectionPool: LDAPConnectionPool,
@@ -64,8 +65,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
       )
       .map(_.getResultCode == ResultCode.SUCCESS)
       .recover { case ex =>
-        if (logger.delegate.isDebugEnabled) logger.error("LDAP authenticate operation failed", ex)
-        else logger.error("LDAP authenticate operation failed")
+        logger.errorEx("LDAP authenticate operation failed", ex)
         false
       }
   }
@@ -232,7 +232,7 @@ abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.error("LDAP getting user operation failed.", ex))
+        Task(logger.errorEx("LDAP getting user operation failed.", ex))
       }
   }
 
@@ -248,7 +248,8 @@ abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
   }
 }
 
-final case class LdapUnexpectedResult(code: ResultCode, cause: String) extends Throwable
+final case class LdapUnexpectedResult(code: ResultCode, cause: String)
+  extends Throwable(s"LDAP returned code: ${code.getName} [${code.intValue()}], cause: $cause")
 
 final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
                                       poolSize: Int Refined Positive,

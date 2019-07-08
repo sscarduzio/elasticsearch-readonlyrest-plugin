@@ -44,7 +44,7 @@ import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils.SyncDecoderCreator
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
-
+import tech.beshu.ror.utils.LoggerOps._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -243,7 +243,7 @@ object common extends Logging {
         .toEither
         .left
         .map { ex =>
-          logger.error("JSON path compilation failed", ex)
+          logger.errorEx("JSON path compilation failed", ex)
           DefinitionsLevelCreationError(Message(s"Cannot compile '$jsonPathStr' to JSON path"))
         }
     }
