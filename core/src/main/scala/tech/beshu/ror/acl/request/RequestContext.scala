@@ -82,8 +82,9 @@ object RequestContext extends Logging {
       }
 
       def stringifyIndices = {
-        if (r.indices.isEmpty) "<N/A>"
-        else r.indices.mkString(",")
+        val idx = r.indices.toList.map(_.show)
+        if (idx.isEmpty) "<N/A>"
+        else idx.mkString(",")
       }
 
       s"""{
