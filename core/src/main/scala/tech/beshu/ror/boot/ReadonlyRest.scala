@@ -107,10 +107,10 @@ trait ReadonlyRest extends Logging {
       for {
         config <- EitherT(loadRorConfigFromFile(fileConfigLoader))
         engine <- EitherT(loadRorCore(config, auditSink))
-      } yield new RorInstance(this, engine, config, indexConfigManager, auditSink)
+      } yield RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
     } else {
       EitherT.pure[Task, StartingFailure](
-        new RorInstance(
+        RorInstance.createWithPeriodicIndexCheck(
           this,
           indexConfigManager,
           auditSink,
@@ -194,28 +194,13 @@ class RorInstance private (boot: ReadonlyRest,
                            initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]])
   extends Logging {
 
-  def this(boot: ReadonlyRest,
-           indexConfigManager: IndexConfigManager,
-           auditSink: AuditSink,
-           initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
-    this(boot, None, indexConfigManager, auditSink, initialNoIndexFallback)
-  }
-
-  def this(boot: ReadonlyRest,
-           engine: Engine,
-           config: RawRorConfig,
-           indexConfigManager: IndexConfigManager,
-           auditSink: AuditSink) = {
-    this(boot, Some((engine, config)), indexConfigManager, auditSink, noIndexStartingFailure)
-  }
-
   private val instanceState: Atomic[State] =
     initialEngine match {
       case Some((engine, config)) =>
         logger.info("Readonly REST plugin core was loaded ...")
         AtomicAny(State.EngineLoaded(
           State.EngineLoaded.EngineWithConfig(engine, config),
-          scheduleIndexConfigChecking(initialNoIndexFallback)
+          Cancelable.empty
         ))
       case None =>
         AtomicAny(State.Initiated(scheduleIndexConfigChecking(initialNoIndexFallback)))
@@ -383,6 +368,21 @@ class RorInstance private (boot: ReadonlyRest,
 }
 
 object RorInstance {
+
+  def createWithPeriodicIndexCheck(boot: ReadonlyRest,
+                                   indexConfigManager: IndexConfigManager,
+                                   auditSink: AuditSink,
+                                   initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): RorInstance = {
+    new RorInstance(boot, None, indexConfigManager, auditSink, initialNoIndexFallback)
+  }
+
+  def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
+                                      engine: Engine,
+                                      config: RawRorConfig,
+                                      indexConfigManager: IndexConfigManager,
+                                      auditSink: AuditSink): RorInstance = {
+    new RorInstance(boot, Some((engine, config)), indexConfigManager, auditSink, noIndexStartingFailure)
+  }
 
   private val indexConfigCheckingSchedulerDelay = 5 second
   private val delayOfOldEngineShutdown = 10 seconds
