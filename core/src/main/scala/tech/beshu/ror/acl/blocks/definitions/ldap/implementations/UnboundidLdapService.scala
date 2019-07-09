@@ -65,7 +65,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
       )
       .map(_.getResultCode == ResultCode.SUCCESS)
       .recover { case ex =>
-        logger.errorEx("LDAP authenticate operation failed", ex)
+        logger.errorEx(s"LDAP authenticate operation failed - cause [${ex.getMessage}]", ex)
         false
       }
   }
@@ -120,7 +120,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
               .toSet
           }
         case Left(errorResult) =>
-          logger.debug(s"LDAP getting user groups returned error code: [${errorResult.getResultString}]")
+          logger.error(s"LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
@@ -146,7 +146,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
               .toSet
           }
         case Left(errorResult) =>
-          logger.debug(s"LDAP getting user groups returned error code: [${errorResult.getResultString}]")
+          logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
@@ -229,6 +229,7 @@ abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
           logger.warn(s"LDAP search user - more than one user was returned: ${all.mkString(",")}. Picking first")
           Task(Some(LdapUser(userId, Dn(NonEmptyString.unsafeFrom(user.getDN)))))
         case Left(errorResult) =>
+          logger.error(s"LDAP getting user CN returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
