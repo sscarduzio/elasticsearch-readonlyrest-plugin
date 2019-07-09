@@ -35,7 +35,7 @@ import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
-
+import tech.beshu.ror.utils.LoggerOps._
 import scala.collection.SortedSet
 import scala.util.Try
 
@@ -99,7 +99,7 @@ class RorKbnAuthRule(val settings: Settings)
       .toEither
       .map(JwtTokenPayload.apply)
       .left.map { ex =>
-      logger.error(s"JWT token '${token.show}' parsing error", ex)
+      logger.errorEx(s"JWT token '${token.show}' parsing error", ex)
       ()
     }
   }

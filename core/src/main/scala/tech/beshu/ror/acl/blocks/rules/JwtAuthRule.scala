@@ -37,6 +37,7 @@ import tech.beshu.ror.utils.SecureStringHasher
 
 import scala.collection.SortedSet
 import scala.util.Try
+import tech.beshu.ror.utils.LoggerOps._
 
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
@@ -114,7 +115,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
               .toEither
               .map(JwtTokenPayload.apply)
               .left.map { ex =>
-              logger.error(s"JWT token '${token.show}' parsing error", ex)
+              logger.errorEx(s"JWT token '${token.show}' parsing error", ex)
               ()
             }
           case _ =>
@@ -125,7 +126,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
           .toEither
           .map(JwtTokenPayload.apply)
           .left.map { ex =>
-          logger.error(s"JWT token '${token.show}' parsing error", ex)
+          logger.errorEx(s"JWT token '${token.show}' parsing error", ex)
           ()
         }
     }

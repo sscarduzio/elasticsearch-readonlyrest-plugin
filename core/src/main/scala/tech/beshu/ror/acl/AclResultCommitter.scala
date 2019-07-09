@@ -25,6 +25,7 @@ import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain.{Header, IndexName}
 import tech.beshu.ror.acl.headerValues._
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.immutable.SortedSet
 import scala.util.{Failure, Success, Try}
@@ -47,7 +48,7 @@ object AclResultCommitter extends Logging {
   } match {
     case Success(_) =>
     case Failure(ex) =>
-      logger.error("ACL committing result failure", ex)
+      logger.errorEx("ACL committing result failure", ex)
   }
 }
 
