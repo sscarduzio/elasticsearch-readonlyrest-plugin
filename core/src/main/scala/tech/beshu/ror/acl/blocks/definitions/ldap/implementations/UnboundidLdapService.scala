@@ -124,7 +124,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.debug(s"LDAP getting user groups returned error", ex))
+        Task(logger.errorEx(s"LDAP getting user groups returned error", ex))
       }
   }
 
@@ -150,7 +150,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
           Task.raiseError(LdapUnexpectedResult(errorResult.getResultCode, errorResult.getResultString))
       }
       .onError { case ex =>
-        Task(logger.debug(s"LDAP getting user groups returned error", ex))
+        Task(logger.errorEx(s"LDAP getting user groups returned error", ex))
       }
   }
 
