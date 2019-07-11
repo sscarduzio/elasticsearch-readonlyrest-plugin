@@ -24,7 +24,7 @@ import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 class LoggableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService)
   extends LdapAuthenticationService
@@ -41,8 +41,11 @@ class LoggableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationS
     logger.debug(s"Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying
       .authenticate(user, secret)
-      .andThen { case Success(authenticationResult) =>
-        logger.debug(s"User [${user.show}] ${if (authenticationResult) "" else "not"} authenticated by LDAP [${id.show}]")
+      .andThen {
+        case Success(authenticationResult) =>
+          logger.debug(s"User [${user.show}] ${if (authenticationResult) "" else "not"} authenticated by LDAP [${id.show}]")
+        case Failure(ex) =>
+          logger.debug(s"LDAP authentication failed:", ex)
       }
   }
 }
@@ -62,8 +65,11 @@ class LoggableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSer
     logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}]")
     underlying
       .groupsOf(userId)
-      .andThen { case Success(groups) =>
-        logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+      .andThen {
+        case Success(groups) =>
+          logger.debug(s"LDAP [${id.show}] returned for user [${userId.show}] following groups: [${groups.map(_.show).mkString(",")}]")
+        case Failure(ex) =>
+          logger.debug(s"Fetching LDAP user's groups failed:", ex)
       }
   }
 }
@@ -96,11 +102,14 @@ private class LoggableLdapUserServiceDecorator(underlying: LdapUserService)
     logger.debug(s"Trying to fetch user with identifier [${userId.show}] from LDAP [${id.show}]")
     underlying
       .ldapUserBy(userId)
-      .andThen { case Success(ldapUser) =>
-        ldapUser match {
-          case Some(user) => logger.debug(s"User with identifier [${userId.show}] found [dn = ${user.dn.show}]")
-          case None => logger.debug(s"User with  identifier [${userId.show}] not found")
-        }
+      .andThen {
+        case Success(ldapUser) =>
+          ldapUser match {
+            case Some(user) => logger.debug(s"User with identifier [${userId.show}] found [dn = ${user.dn.show}]")
+            case None => logger.debug(s"User with identifier [${userId.show}] not found")
+          }
+        case Failure(ex) =>
+          logger.debug(s"Fetching LDAP user failed:", ex)
       }
   }
 }
