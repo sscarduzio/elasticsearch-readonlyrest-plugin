@@ -129,7 +129,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       if (engine.isDefined()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
       } else {
-        if(action.startsWith("internal:")) chain.proceed(task, action, request, listener);
+        if(action.startsWith("internal:") || ThreadRepo.channel.get() == null) chain.proceed(task, action, request, listener);
         else listener.onFailure(new RorNotReadyResponse());
       }
       return null;
