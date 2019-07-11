@@ -126,7 +126,7 @@ class LdapServicesSettingsTests
                |    host: ${containerLdap1.ldapHost}
                |    port: ${containerLdap1.ldapSSLPort}
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    ssl_trust_all_certs: true  #xthis is actually not required (but we use openLDAP default cert to test)
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
            """.stripMargin,
           assertion = { definitions =>
             definitions.items should have size 1

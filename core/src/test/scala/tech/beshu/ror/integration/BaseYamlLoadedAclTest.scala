@@ -39,7 +39,7 @@ trait BaseYamlLoadedAclTest extends BlockContextAssertion {
     new RawRorConfigBasedCoreFactory
   }
 
-  val acl: Acl = factory
+  lazy val acl: Acl = factory
     .createCoreFrom(
       RawRorConfig.fromString(configYaml).right.get,
       MockHttpClientsFactory
