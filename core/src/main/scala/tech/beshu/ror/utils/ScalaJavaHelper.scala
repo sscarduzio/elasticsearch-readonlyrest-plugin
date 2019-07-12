@@ -29,4 +29,11 @@ object ScalaJavaHelper {
 
   def newCancelablePromise[T]: CancelablePromise[T] =
     CancelablePromise[T]()
+
+  def getOrElse[A, B](either: Either[A, B], toException: A => Exception): B = {
+    either.fold(
+      left => throw toException(left),
+      identity,
+    )
+  }
 }
