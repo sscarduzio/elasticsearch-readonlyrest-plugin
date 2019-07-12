@@ -70,6 +70,12 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
             requestHeaders = Set(headerFrom("Hkey" -> "hvalue"))
           )
         }
+        "configured header value has a column in its value" in {
+          assertMatchRule(
+            configuredHeaders = NonEmptySet.of(headerFrom("hkey" -> "x:y")),
+            requestHeaders = Set(headerFrom("hkey" -> "x:y"))
+          )
+        }
       }
       "two headers are configured and two headers are passed with request" when {
         "their names are different" in {
