@@ -44,6 +44,7 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with BaseYamlLoade
   "An ACL" when {
     "kibana index and kibana access rules are used" should {
       "allow to proceed" in {
+        System.setProperty("com.readonlyrest.kibana.metadata", "true")
         val request = MockRequestContext.default
 
         val result = acl.handle(request).runSyncUnsafe()

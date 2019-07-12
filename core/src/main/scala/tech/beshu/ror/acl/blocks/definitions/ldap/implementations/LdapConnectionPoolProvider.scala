@@ -33,49 +33,32 @@ object LdapConnectionPoolProvider extends Logging {
 
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
     val options = ldapOptions(connectionConfig)
-    val serverSets = connectionConfig.connectionMethod match {
-      case ConnectionMethod.SingleServer(ldap) if ldap.isSecure =>
-        (ldap, new SingleServerSet(ldap.host, ldap.port, socketFactory(connectionConfig.trustAllCerts), options)) :: Nil
-      case ConnectionMethod.SingleServer(ldap) =>
-        (ldap, new SingleServerSet(ldap.host, ldap.port, options)) :: Nil
-      case ConnectionMethod.SeveralServers(ldaps, _) if ldaps.toNonEmptyList.head.isSecure =>
-        ldaps
-          .toSortedSet
-          .map { ldap => (ldap, new SingleServerSet(ldap.host, ldap.port, socketFactory(connectionConfig.trustAllCerts), options)) }
-          .toList
-      case ConnectionMethod.SeveralServers(ldaps, _) =>
-        ldaps
-          .toSortedSet
-          .map { ldap => (ldap, new SingleServerSet(ldap.host, ldap.port, options)) }
-          .toList
-    }
+    val server = ldapServerSet(connectionConfig.connectionMethod, options, connectionConfig.trustAllCerts)
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
-    Task
-      .sequence {
-        serverSets
-          .map { case (host, server) =>
-            retry(
-              Task(server.getConnection)
-                .bracket(
-                  use = connection => Task {
-                    connection.bind(bindReq)
-                  }
-                )(
-                  release = connection => Task(connection.close())
-                )
-            )
-              .map { result => (host, result.getResultCode == ResultCode.SUCCESS) }
-              .recover { case NonFatal(ex) =>
-                logger.error("LDAP binding exception", ex)
-                (host, false)
-              }
+    val bindResult = retry(
+      Task(server.getConnection)
+        .bracket(
+          use = connection => Task {
+            connection.bind(bindReq)
           }
+        )(
+          release = connection => Task(connection.close())
+        )
+    )
+    bindResult
+      .map(_.getResultCode == ResultCode.SUCCESS)
+      .recover { case NonFatal(ex) =>
+        logger.error("LDAP binding exception", ex)
+        false
       }
-      .map(_.collect { case (host, false) => host })
-      .map(NonEmptyList.fromList)
       .map {
-        case None => Right(())
-        case Some(hostsWithNoConnection) => Left(ConnectionError(hostsWithNoConnection))
+        case true => Right(())
+        case false => Left(ConnectionError{
+          connectionConfig.connectionMethod match {
+            case ConnectionMethod.SingleServer(host) => NonEmptyList.one(host)
+            case ConnectionMethod.SeveralServers(hosts, _) => hosts.toNonEmptyList
+          }
+        })
       }
   }
 
