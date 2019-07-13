@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.search.RemoteClusterService;
@@ -62,6 +63,7 @@ import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
+import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -87,6 +89,7 @@ public class ReadonlyRestPlugin extends Plugin
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);
     this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
+        .map(result -> ScalaJavaHelper$.MODULE$.getOrElse(result, error -> new ElasticsearchException(error.message())))
         .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
   }
 

@@ -24,7 +24,6 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import io.circe.yaml._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.SslConfiguration.SSLSettingsMalformedException
 
 import scala.language.implicitConversions
 
@@ -35,15 +34,17 @@ object RorSsl extends Logging {
 
   val noSsl = RorSsl(None, None)
 
-  def load(esConfigFolderPath: Path): Task[RorSsl] = Task {
+  final case class MalformedSettings(message: String)
+
+  def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
       .fold(
-        _ => throw SSLSettingsMalformedException(s"Invalid SSL configuration"),
+        error => Left(error),
         {
           case RorSsl(None, None) => fallbackToRorConfig(esConfigFolderPath)
-          case ssl => ssl
+          case ssl => Right(ssl)
         }
       )
   }
@@ -54,12 +55,8 @@ object RorSsl extends Logging {
     logger.info(s"Cannot find SSL configuration is elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     if(rorConfig.exists) {
       loadSslConfigFromFile(rorConfig)
-        .fold(
-          _ => throw SSLSettingsMalformedException(s"Invalid SSL configuration"),
-          identity
-        )
     } else {
-      RorSsl.noSsl
+      Right(RorSsl.noSsl)
     }
   }
 
@@ -68,12 +65,12 @@ object RorSsl extends Logging {
     file.fileReader { reader =>
       parser
         .parse(reader)
-        .left.map(_.message)
+        .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
         .right
         .flatMap { json =>
           rorSslDecoder
             .decodeJson(json)
-            .left.map(_.message)
+            .left.map(e => MalformedSettings(s"Invalid ROR SSL configuration"))
         }
     }
   }
@@ -96,8 +93,6 @@ object SslConfiguration {
   final case class KeyAlias(value: String)
   final case class Cipher(value: String)
   final case class Protocol(value: String)
-
-  final case class SSLSettingsMalformedException(message: String) extends Exception
 }
 
 private object SslDecoders {

@@ -3,6 +3,8 @@ readonlyrest:
     enable: true
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest
+    keystoress_file: "keystore.jks"
+    keystorse_pass: readonlyrest
     key_pass: readonlyrest
 
   access_control_rules:
@@ -10,6 +12,7 @@ readonlyrest:
     # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
+    - name: "Test Rule"
       type: allow
       auth_key: admin:container
 
@@ -20,3 +23,4 @@ readonlyrest:
     - name: "test2"
       indices: ["test2_index"]
       auth_key: dev2:test
+      indices: ["*"]

@@ -28,7 +28,7 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAclStaticContext}
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword, SSLSettingsMalformedException}
+import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword}
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
 import tech.beshu.ror.es.IndexJsonContentManager.CannotReachContentSource
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
@@ -168,7 +168,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
 
   "A ReadonlyREST ES API SSL settings" should {
     "be loaded from elasticsearch config file" in {
-      val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe()
+      val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
       inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
         file.getName should be("keystore.jks")
         keystorePassword should be(KeystorePassword("readonlyrest1"))
@@ -180,7 +180,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     }
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe()
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
           file.getName should be("keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
@@ -193,12 +193,12 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     }
     "be disabled" when {
       "no ssl section is provided" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/no_es_api_ssl_settings/")).runSyncUnsafe()
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/no_es_api_ssl_settings/")).runSyncUnsafe().right.get
         ssl.externalSsl should be (None)
         ssl.interNodeSsl should be (None)
       }
       "it's disabled by proper settings" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_disabled/")).runSyncUnsafe()
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_disabled/")).runSyncUnsafe().right.get
         ssl.externalSsl should be (None)
         ssl.interNodeSsl should be (None)
       }
@@ -206,17 +206,21 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
-          intercept[SSLSettingsMalformedException] {
-            RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_malformed/")).runSyncUnsafe()
+          RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_malformed/")).runSyncUnsafe() shouldBe Left{
+            RorSsl.MalformedSettings("Invalid ROR SSL configuration")
           }
         }
+      }
+      "file content is not valid yaml" in {
+        val error = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_file_invalid_yaml/")).runSyncUnsafe().left.get
+        error.message should startWith ("Cannot parse file")
       }
     }
   }
 
   "A ReadonlyREST internode SSL settings" should {
     "be loaded from elasticsearch config file" in {
-      val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe()
+      val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
       inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
         file.getName should be("keystore.jks")
         keystorePassword should be(KeystorePassword("readonlyrest1"))
@@ -228,7 +232,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     }
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe()
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
         inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
           file.getName should be("keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
@@ -241,12 +245,12 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     }
     "be disabled" when {
       "no ssl section is provided" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/no_internode_ssl_settings/")).runSyncUnsafe()
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/no_internode_ssl_settings/")).runSyncUnsafe().right.get
         ssl.externalSsl should be (None)
         ssl.interNodeSsl should be (None)
       }
       "it's disabled by proper settings" in {
-        val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_disabled/")).runSyncUnsafe()
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_disabled/")).runSyncUnsafe().right.get
         ssl.externalSsl should be (None)
         ssl.interNodeSsl should be (None)
       }
@@ -254,8 +258,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     "not be able to load" when {
       "SSL settings are malformed" when {
         "keystore_file entry is missing" in {
-          intercept[SSLSettingsMalformedException] {
-            RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_malformed/")).runSyncUnsafe()
+          RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_malformed/")).runSyncUnsafe() shouldBe Left {
+            RorSsl.MalformedSettings("Invalid ROR SSL configuration")
           }
         }
       }

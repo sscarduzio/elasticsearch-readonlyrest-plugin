@@ -31,13 +31,21 @@ final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings, ssl: RorSsl)
 object EsConfig {
 
   def from(esConfigFolderPath: Path): Task[Either[LoadEsConfigError, EsConfig]] = {
-    import decoders._
     val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
-      rorEsLevelSettings <- EitherT.fromEither[Task](new JsonFile(configFile).parse[RorEsLevelSettings].left.map(MalformedContent(configFile, _)))
-      ssl <- EitherT.right[LoadEsConfigError](RorSsl.load(esConfigFolderPath))
+      rorEsLevelSettings <- parse(configFile)
+      ssl <- loadSslSettings(esConfigFolderPath, configFile)
     } yield EsConfig(rorEsLevelSettings, ssl)).value
+  }
+
+  private def parse(configFile: File): EitherT[Task, LoadEsConfigError, RorEsLevelSettings] = {
+    import decoders._
+    EitherT.fromEither[Task](new JsonFile(configFile).parse[RorEsLevelSettings].left.map(MalformedContent(configFile, _)))
+  }
+
+  private def loadSslSettings(esConfigFolderPath: Path, configFile: File): EitherT[Task, LoadEsConfigError, RorSsl] = {
+    EitherT(RorSsl.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
   final case class RorEsLevelSettings(forceLoadRorFromFile: Boolean)

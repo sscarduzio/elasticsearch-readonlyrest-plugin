@@ -64,7 +64,7 @@ object RawRorConfig {
     implicit val show: Show[ParsingRorConfigError] = Show.show {
       case NoRorSection => "Cannot find any 'readonlyrest' section in config"
       case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
-      case InvalidContent(_) => "Config file content is malformed"
+      case InvalidContent(ex) => s"Config file content is malformed. Details: ${ex.getMessage}"
     }
   }
 
