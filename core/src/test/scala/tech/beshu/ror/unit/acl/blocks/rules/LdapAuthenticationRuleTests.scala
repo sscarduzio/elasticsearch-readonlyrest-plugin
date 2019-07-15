@@ -29,6 +29,7 @@ import tech.beshu.ror.acl.domain.{LoggedUser, Secret, User}
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
 
@@ -38,10 +39,10 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
         val requestContext = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:pass")))
         val blockContext = mock[BlockContext]
         val modifiedBlockContext = mock[BlockContext]
-        (blockContext.withLoggedUser _).expects(LoggedUser(Id("admin"))).returning(modifiedBlockContext)
+        (blockContext.withLoggedUser _).expects(LoggedUser(Id("admin".nonempty))).returning(modifiedBlockContext)
 
         val service = mock[LdapAuthenticationService]
-        (service.authenticate _).expects(User.Id("admin"), Secret("pass")).returning(Task.now(true))
+        (service.authenticate _).expects(User.Id("admin".nonempty), Secret("pass")).returning(Task.now(true))
 
         val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))
         rule.check(requestContext, blockContext).runSyncStep shouldBe  Right(RuleResult.Fulfilled(modifiedBlockContext))
@@ -53,7 +54,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
 
         val service = mock[LdapAuthenticationService]
-        (service.authenticate _).expects(User.Id("admin"), Secret("pass")).returning(Task.now(false))
+        (service.authenticate _).expects(User.Id("admin".nonempty), Secret("pass")).returning(Task.now(false))
 
         val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
@@ -71,7 +72,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
 
         val service = mock[LdapAuthenticationService]
-        (service.authenticate _).expects(User.Id("admin"), Secret("pass")).returning(Task.raiseError(TestException("Cannot reach LDAP")))
+        (service.authenticate _).expects(User.Id("admin".nonempty), Secret("pass")).returning(Task.raiseError(TestException("Cannot reach LDAP")))
 
         val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))
         val thrown = the [TestException] thrownBy rule.check(requestContext, blockContext).runSyncUnsafe()

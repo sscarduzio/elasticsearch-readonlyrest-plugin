@@ -34,7 +34,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   extends BaseAuthorizationRule {
 
   private val userMatcher: Matcher = new MatcherWithWildcardsScalaAdapter(
-    new MatcherWithWildcards(settings.users.map(_.value).toSortedSet.asJava)
+    new MatcherWithWildcards(settings.users.map(_.value.value).toSortedSet.asJava)
   )
 
   override val name: Rule.Name = ExternalAuthorizationRule.name

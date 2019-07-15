@@ -1,0 +1,34 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "test1"
+      indices: ["test1_index", "odd:test1_index"]
+      auth_key: dev1:test
+
+    - name: "test2"
+      indices: ["test2_index", "even:test1_index"]
+      auth_key: dev2:test
+
+  impersonation:
+    - impersonator: admin
+      auth_key: admin:container
+      users: [*]
+    - impersonator: anotheradmin
+      jwt_auth: "jwt1"
+      users: ["dev1"]
+
+  jwt:
+    - name: jwt1
+      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"

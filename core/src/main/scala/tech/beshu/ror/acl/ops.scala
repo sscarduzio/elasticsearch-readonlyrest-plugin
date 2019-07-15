@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl
 
+import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
@@ -38,8 +39,6 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
-
-import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 
@@ -60,10 +59,10 @@ object header {
   }
 
   trait ToHeaderValue[T] {
-    def toRawValue(t: T): String // todo: improvement for the future (NonEmptyString)
+    def toRawValue(t: T): NonEmptyString
   }
   object ToHeaderValue {
-    def apply[T](func: T => String): ToHeaderValue[T] = (t: T) => func(t)
+    def apply[T](func: T => NonEmptyString): ToHeaderValue[T] = (t: T) => func(t)
   }
 }
 
@@ -95,8 +94,8 @@ object show {
 
   object logs {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
-    implicit val userIdShow: Show[User.Id] = Show.show(_.value)
-    implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value)
+    implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
+    implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
     implicit val typeShow: Show[Type] = Show.show(_.value)
     implicit val actionShow: Show[Action] = Show.show(_.value)
     implicit val addressShow: Show[Address] = Show.show {
@@ -116,7 +115,7 @@ object show {
       case f: NegatedDocumentField => s"~${f.value}"
     }
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
-    implicit val indexNameShow: Show[IndexName] = Show.show(_.value)
+    implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
@@ -190,20 +189,21 @@ object refined {
 }
 
 object headerValues {
-  implicit def setHeaderValue[T : ToHeaderValue]: ToHeaderValue[SortedSet[T]] = ToHeaderValue {
+  implicit def nonEmptyListHeaderValue[T : ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
+    implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
     val tToHeaderValue = implicitly[ToHeaderValue[T]]
-    _.map(tToHeaderValue.toRawValue).mkString(",")
+    NonEmptyString.unsafeFrom(list.map(tToHeaderValue.toRawValue).mkString_(","))
   }
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
   implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>
-    FilterTransient.createFromFilter(filter.value).serialize()
+    NonEmptyString.unsafeFrom(FilterTransient.createFromFilter(filter.value.value).serialize())
   }
   implicit val kibanaAccessHeaderValue: ToHeaderValue[KibanaAccess] = ToHeaderValue {
-    case KibanaAccess.RO => "ro"
-    case KibanaAccess.ROStrict => "ro_strict"
-    case KibanaAccess.RW => "rw"
-    case KibanaAccess.Admin => "admin"
+    case KibanaAccess.RO => NonEmptyString.unsafeFrom("ro")
+    case KibanaAccess.ROStrict => NonEmptyString.unsafeFrom("ro_strict")
+    case KibanaAccess.RW => NonEmptyString.unsafeFrom("rw")
+    case KibanaAccess.Admin => NonEmptyString.unsafeFrom("admin")
   }
-  implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value.value)
+  implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

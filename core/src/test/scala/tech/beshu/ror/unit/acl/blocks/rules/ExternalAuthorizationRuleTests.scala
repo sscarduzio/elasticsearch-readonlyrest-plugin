@@ -43,50 +43,50 @@ class ExternalAuthorizationRuleTests
       "user is logged and match configured used list" when {
         "has current groups and the groups is present in intersection set" in {
           val service = mock[ExternalAuthorizationService]
-          (service.grantsFor _).expects(LoggedUser(User.Id("user2"))).returning(Task.now(Set(groupFrom("g2"), groupFrom("g3"))))
+          (service.grantsFor _).expects(LoggedUser(User.Id("user2".nonempty))).returning(Task.now(Set(groupFrom("g2"), groupFrom("g3"))))
 
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service,
               NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-              NonEmptySet.of(User.Id("user1"), User.Id("user2"))
+              NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty))
             ),
-            loggedUser = Some(User.Id("user2")),
+            loggedUser = Some(User.Id("user2".nonempty)),
             preferredGroup = Some(groupFrom("g2"))
           )(
-            blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user2"), groupFrom("g2"), Set(groupFrom("g2")))
+            blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user2".nonempty), groupFrom("g2"), Set(groupFrom("g2")))
           )
         }
         "doesn't have current group set, but there is non empty intersection set between fetched groups and configured ones" in {
           val service = mock[ExternalAuthorizationService]
-          (service.grantsFor _).expects(LoggedUser(User.Id("user2"))).returning(Task.now(Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"))))
+          (service.grantsFor _).expects(LoggedUser(User.Id("user2".nonempty))).returning(Task.now(Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"))))
 
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service,
               NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-              NonEmptySet.of(User.Id("user1"), User.Id("user2"))
+              NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty))
             ),
-            loggedUser = Some(User.Id("user2")),
+            loggedUser = Some(User.Id("user2".nonempty)),
             preferredGroup = None
           )(
-            blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user2"), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
+            blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user2".nonempty), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
           )
         }
         "configured user name has wildcard" in {
           val service = mock[ExternalAuthorizationService]
-          (service.grantsFor _).expects(LoggedUser(User.Id("user2"))).returning(Task.now(Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"))))
+          (service.grantsFor _).expects(LoggedUser(User.Id("user2".nonempty))).returning(Task.now(Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"))))
 
           assertMatchRule(
             settings = ExternalAuthorizationRule.Settings(
               service,
               NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-              NonEmptySet.of(User.Id("*"))
+              NonEmptySet.of(User.Id("*".nonempty))
             ),
-            loggedUser = Some(User.Id("user2")),
+            loggedUser = Some(User.Id("user2".nonempty)),
             preferredGroup = None
           )(
-            blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user2"), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
+            blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user2".nonempty), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
           )
         }
       }
@@ -97,7 +97,7 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             mock[ExternalAuthorizationService],
             NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-            NonEmptySet.of(User.Id("user1"))
+            NonEmptySet.of(User.Id("user1".nonempty))
           ),
           loggedUser = None,
           preferredGroup = None
@@ -108,51 +108,51 @@ class ExternalAuthorizationRuleTests
           settings = ExternalAuthorizationRule.Settings(
             mock[ExternalAuthorizationService],
             NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-            NonEmptySet.of(User.Id("user1"))
+            NonEmptySet.of(User.Id("user1".nonempty))
           ),
-          loggedUser = Some(User.Id("user2")),
+          loggedUser = Some(User.Id("user2".nonempty)),
           preferredGroup = None
         )
       }
       "authorization service returns empty groups list" in {
         val service = mock[ExternalAuthorizationService]
-        (service.grantsFor _).expects(LoggedUser(User.Id("user2"))).returning(Task.now(Set.empty))
+        (service.grantsFor _).expects(LoggedUser(User.Id("user2".nonempty))).returning(Task.now(Set.empty))
 
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service,
             NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-            NonEmptySet.of(User.Id("*"))
+            NonEmptySet.of(User.Id("*".nonempty))
           ),
-          loggedUser = Some(User.Id("user2")),
+          loggedUser = Some(User.Id("user2".nonempty)),
           preferredGroup = None
         )
       }
       "authorization service groups for given user has empty intersection with configured groups" in {
         val service = mock[ExternalAuthorizationService]
-        (service.grantsFor _).expects(LoggedUser(User.Id("user2"))).returning(Task.now(Set(groupFrom("g3"), groupFrom("g4"))))
+        (service.grantsFor _).expects(LoggedUser(User.Id("user2".nonempty))).returning(Task.now(Set(groupFrom("g3"), groupFrom("g4"))))
 
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service,
             NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-            NonEmptySet.of(User.Id("*"))
+            NonEmptySet.of(User.Id("*".nonempty))
           ),
-          loggedUser = Some(User.Id("user2")),
+          loggedUser = Some(User.Id("user2".nonempty)),
           preferredGroup = None
         )
       }
       "current group is set for a given user but it's not present in intersection groups set" in {
         val service = mock[ExternalAuthorizationService]
-        (service.grantsFor _).expects(LoggedUser(User.Id("user2"))).returning(Task.now(Set(groupFrom("g1"), groupFrom("g2"))))
+        (service.grantsFor _).expects(LoggedUser(User.Id("user2".nonempty))).returning(Task.now(Set(groupFrom("g1"), groupFrom("g2"))))
 
         assertNotMatchRule(
           settings = ExternalAuthorizationRule.Settings(
             service,
             NonEmptySet.of(groupFrom("g1"), groupFrom("g2")),
-            NonEmptySet.of(User.Id("*"))
+            NonEmptySet.of(User.Id("*".nonempty))
           ),
-          loggedUser = Some(User.Id("user2")),
+          loggedUser = Some(User.Id("user2".nonempty)),
           preferredGroup = Some(groupFrom("g3"))
         )
       }

@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
+import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class LdapConnectivityCheckYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with ForAllTestContainer with Inside {
 
@@ -62,7 +63,7 @@ class LdapConnectivityCheckYamlLoadedAclTests extends WordSpec with BaseYamlLoad
         result.history should have size 1
         inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
           block.name should be(Block.Name("LDAP test"))
-          assertBlockContext(loggedUser = Some(LoggedUser(User.Id("cartman")))) {
+          assertBlockContext(loggedUser = Some(LoggedUser(User.Id("cartman".nonempty)))) {
             blockContext
           }
         }

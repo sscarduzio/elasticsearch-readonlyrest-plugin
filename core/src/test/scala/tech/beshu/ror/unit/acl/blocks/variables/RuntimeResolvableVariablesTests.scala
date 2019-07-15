@@ -111,7 +111,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         val variable = forceCreateSingleVariable("@{user}")
           .resolve(
             MockRequestContext.default,
-            fromRequestContext(MockRequestContext.default).withLoggedUser(LoggedUser(User.Id("simone")))
+            fromRequestContext(MockRequestContext.default).withLoggedUser(LoggedUser(User.Id("simone".nonempty)))
           )
         variable shouldBe Right("simone")
       }
@@ -119,7 +119,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         val variable = forceCreateMultiVariable("@explode{user}")
           .resolve(
             MockRequestContext.default,
-            fromRequestContext(MockRequestContext.default).withLoggedUser(LoggedUser(User.Id("simone,tony")))
+            fromRequestContext(MockRequestContext.default).withLoggedUser(LoggedUser(User.Id("simone,tony".nonempty)))
           )
         variable shouldBe Right(NonEmptyList.of("simone", "tony"))
       }
@@ -234,7 +234,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         val variable = forceCreateSingleVariable("u:@{user}_@{key1}")
           .resolve(
             requestContext,
-            fromRequestContext(requestContext).withLoggedUser(LoggedUser(User.Id("simone")))
+            fromRequestContext(requestContext).withLoggedUser(LoggedUser(User.Id("simone".nonempty)))
           )
         variable shouldBe Right("u:simone_x")
       }

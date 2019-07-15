@@ -42,7 +42,7 @@ object domain {
   }
 
   object User {
-    final case class Id(value: String)
+    final case class Id(value: NonEmptyString)
     object Id {
       implicit val eqId: Eq[Id] = Eq.fromUniversalEquals
     }
@@ -70,13 +70,14 @@ object domain {
       val kibanaIndex = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_INDEX))
       val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
       val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
+      val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase)
     }
 
     def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
     def apply[T](name: Name, value: T)
-                (implicit ev: ToHeaderValue[T]): Header = new Header(name, NonEmptyString.unsafeFrom(ev.toRawValue(value))) // todo: remove unsafe in future
+                (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
@@ -117,12 +118,17 @@ object domain {
       Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
         .map { decoded =>
           decoded.indexOf(":") match {
-            case -1 => None
-            case index if index == decoded.length -1 => None
-            case index => Some(BasicAuth(
-              User.Id(decoded.substring(0, index)),
-              Secret(decoded.substring(index + 1))
-            ))
+            case -1 =>
+              None
+            case index if index == decoded.length -1 =>
+              None
+            case index =>
+              NonEmptyString.from(decoded.substring(0, index)) match {
+                case Left(_) =>
+                  None
+                case Right(value) =>
+                  Some(BasicAuth(User.Id(value), Secret(decoded.substring(index + 1))))
+              }
           }
         }
         .getOrElse(None)
@@ -161,20 +167,23 @@ object domain {
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
 
-  final case class IndexName(value: String) {
-    def isClusterIndex: Boolean = value.contains(":")
-    def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
-    def hasWildcard: Boolean = value.contains("*")
+  final case class IndexName(value: NonEmptyString) {
+    def isClusterIndex: Boolean = value.value.contains(":")
+    def hasPrefix(prefix: String): Boolean = value.value.startsWith(prefix)
+    def hasWildcard: Boolean = value.value.contains("*")
   }
   object IndexName {
-
-    val wildcard = IndexName("*")
-    val all = IndexName("_all")
-    val devNullKibana = IndexName(".kibana-devnull")
-    val kibana = IndexName(".kibana")
-    val readonlyrest: IndexName = IndexName(".readonlyrest")
+    val wildcard: IndexName = fromUnsafeString("*")
+    val all: IndexName = fromUnsafeString("_all")
+    val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
+    val kibana: IndexName = fromUnsafeString(".kibana")
+    val readonlyrest: IndexName = fromUnsafeString(".readonlyrest")
 
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
+
+    def fromString(value: String): Option[IndexName] = NonEmptyString.from(value).map(IndexName.apply).toOption
+
+    private def fromUnsafeString(value: String) = IndexName(NonEmptyString.unsafeFrom(value))
   }
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
@@ -208,7 +217,7 @@ object domain {
 
   final case class Type(value: String) extends AnyVal
 
-  final case class Filter(value: String) extends AnyVal
+  final case class Filter(value: NonEmptyString)
 
   sealed trait KibanaAccess
   object KibanaAccess {

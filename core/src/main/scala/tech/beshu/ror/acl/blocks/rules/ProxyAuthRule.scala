@@ -37,7 +37,7 @@ class ProxyAuthRule(val settings: Settings)
   extends AuthenticationRule with Logging {
 
   private val userMatcher = new MatcherWithWildcardsScalaAdapter(
-    new MatcherWithWildcards(settings.userIds.toSortedSet.map(_.value).asJava)
+    new MatcherWithWildcards(settings.userIds.toSortedSet.map(_.value.value).asJava)
   )
 
   override val name: Rule.Name = ProxyAuthRule.name
@@ -58,7 +58,7 @@ class ProxyAuthRule(val settings: Settings)
     context
       .headers
       .find(_.name === settings.userHeaderName)
-      .map(h => LoggedUser(Id(h.value.value)))
+      .map(h => LoggedUser(Id(h.value)))
   }
 
   private def shouldAuthenticate(user: LoggedUser) = {

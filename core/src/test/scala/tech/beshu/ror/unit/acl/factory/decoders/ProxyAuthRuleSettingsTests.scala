@@ -43,7 +43,7 @@ class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRu
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.userIds should be(NonEmptySet.one(User.Id("user1")))
+            rule.settings.userIds should be(NonEmptySet.one(User.Id("user1".nonempty)))
             rule.settings.userHeaderName should be(headerNameFrom("X-Forwarded-User"))
           }
         )
@@ -68,7 +68,7 @@ class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRu
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.userIds should be(NonEmptySet.one(User.Id("user1")))
+            rule.settings.userIds should be(NonEmptySet.one(User.Id("user1".nonempty)))
             rule.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
           }
         )
@@ -93,7 +93,7 @@ class ProxyAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[ProxyAuthRu
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.userIds should be(NonEmptySet.of(User.Id("user1"), User.Id("user2")))
+            rule.settings.userIds should be(NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty)))
             rule.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
           }
         )

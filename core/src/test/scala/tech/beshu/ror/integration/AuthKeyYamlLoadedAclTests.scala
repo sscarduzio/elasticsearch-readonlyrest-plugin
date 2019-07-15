@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 import monix.execution.Scheduler.Implicits.global
 
 class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
@@ -60,7 +60,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with
           result.history should have size 1
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("admin")))) {
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("admin".nonempty)))) {
               blockContext
             }
           }
@@ -77,7 +77,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with
           result.history should have size 1
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("admin")))) {
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("admin".nonempty)))) {
               blockContext
             }
           }

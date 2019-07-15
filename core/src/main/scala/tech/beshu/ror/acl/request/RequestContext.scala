@@ -110,6 +110,11 @@ object RequestContext extends Logging {
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
+  def impersonateAs: Option[User.Id] = {
+    findHeader(Header.Name.impersonateAs)
+      .map { header => User.Id(header.value) }
+  }
+
   def xForwardedForHeaderValue: Option[Address] = {
     findHeader(Header.Name.xForwardedFor)
       .flatMap { header =>

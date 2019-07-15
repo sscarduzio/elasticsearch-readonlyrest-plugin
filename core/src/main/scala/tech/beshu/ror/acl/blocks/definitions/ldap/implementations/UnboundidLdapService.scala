@@ -244,7 +244,7 @@ abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
       listener,
       userSearchFiler.searchUserBaseDN.value.value,
       SearchScope.SUB,
-      s"${userSearchFiler.uidAttribute}=${Filter.encodeValue(userId.value)}"
+      s"${userSearchFiler.uidAttribute}=${Filter.encodeValue(userId.value.value)}"
     )
   }
 }

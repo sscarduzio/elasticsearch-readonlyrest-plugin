@@ -39,13 +39,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
       "configured user id is the same as logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("asd")),
-          loggedUser = Some(LoggedUser(Id("asd")))
+          loggedUser = Some(LoggedUser(Id("asd".nonempty)))
         )
       }
       "configured user id has wildcard and can be applied to logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(LoggedUser(Id("asd")))
+          loggedUser = Some(LoggedUser(Id("asd".nonempty)))
         )
       }
     }
@@ -53,13 +53,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
       "configured user id is different than logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("_asd")),
-          loggedUser = Some(LoggedUser(Id("asd")))
+          loggedUser = Some(LoggedUser(Id("asd".nonempty)))
         )
       }
       "configured user id has wildcard but cannot be applied to logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(LoggedUser(Id("aXsd")))
+          loggedUser = Some(LoggedUser(Id("aXsd".nonempty)))
         )
       }
       "user is not logged" in {

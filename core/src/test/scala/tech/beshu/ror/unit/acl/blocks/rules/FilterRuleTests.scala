@@ -51,7 +51,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.default.copy(isReadOnlyRequest = false)
         val blockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(User.Id("bob"))))
+        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(User.Id("bob".nonempty))))
         val newBlockContext = mock[BlockContext]
         (blockContext.withAddedContextHeader _)
           .expects(headerFrom("_filter" -> "rO0ABXNyACR0ZWNoLmJlc2h1LnJvci51dGlscy5GaWx0ZXJUcmFuc2llbnSE82rPUgVsWwIAAUwAB19maWx0ZXJ0ABJMamF2YS9sYW5nL1N0cmluZzt4cHQANXsiYm9vbCI6eyJtdXN0IjpbeyJ0ZXJtIjp7IlVzZXIiOnsidmFsdWUiOiJib2IifX19XX19"))

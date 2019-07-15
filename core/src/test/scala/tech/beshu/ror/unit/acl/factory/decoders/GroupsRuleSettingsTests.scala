@@ -55,7 +55,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman"))
+              name should be(User.Id("cartman".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(Secret("cartman:pass")))
@@ -91,13 +91,13 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet
             inside(sortedUserDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman"))
+              name should be(User.Id("cartman".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(Secret("cartman:pass")))
             }
             inside(sortedUserDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("morgan"))
+              name should be(User.Id("morgan".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group2"), groupFrom("group3")))
               authRule shouldBe an[AuthKeySha1Rule]
               authRule.asInstanceOf[AuthKeySha1Rule].settings should be(BasicAuthenticationRule.Settings(Secret("d27aaf7fa3c1603948bb29b7339f2559dc02019a")))
@@ -129,7 +129,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
 
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman"))
+              name should be(User.Id("cartman".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be(BasicAuthenticationRule.Settings(Secret("cartman:pass")))

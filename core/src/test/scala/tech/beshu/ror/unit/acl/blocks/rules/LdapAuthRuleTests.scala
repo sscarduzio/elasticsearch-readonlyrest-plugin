@@ -48,17 +48,17 @@ class LdapAuthRuleTests
       "user can be authenticated and has at least one LDAP group which is permitted" in {
         assertMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1"), Secret("pass"), Task.now(true))
+            mockLdapAuthenticationService(User.Id("user1".nonempty), Secret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1"), Task.now(Set(Group("g1".nonempty)))),
+            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(Set(Group("g1".nonempty)))),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = basicAuthHeader("user1:pass")
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
-            user = User.Id("user1"),
+            user = User.Id("user1".nonempty),
             group = groupFrom("g1"),
             availableGroups = Set(groupFrom("g1"))
           )
@@ -80,7 +80,7 @@ class LdapAuthRuleTests
       "user cannot be authenticated" in {
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1"), Secret("pass"), Task.now(false))
+            mockLdapAuthenticationService(User.Id("user1".nonempty), Secret("pass"), Task.now(false))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
@@ -93,10 +93,10 @@ class LdapAuthRuleTests
       "user don't have permitted group" in {
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1"), Secret("pass"), Task.now(true))
+            mockLdapAuthenticationService(User.Id("user1".nonempty), Secret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1"), Task.now(Set.empty)),
+            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(Set.empty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
@@ -106,7 +106,7 @@ class LdapAuthRuleTests
       "LDAP authentication fails" in {
         assertRuleThrown(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1"), Secret("pass"), Task.raiseError(TestException("authentication failure")))
+            mockLdapAuthenticationService(User.Id("user1".nonempty), Secret("pass"), Task.raiseError(TestException("authentication failure")))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
@@ -120,10 +120,10 @@ class LdapAuthRuleTests
       "LDAP authorization fails" in {
         assertRuleThrown(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1"), Secret("pass"), Task.now(true))
+            mockLdapAuthenticationService(User.Id("user1".nonempty), Secret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1"), Task.raiseError(TestException("authorization failure"))),
+            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.raiseError(TestException("authorization failure"))),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
             NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
           ),

@@ -79,21 +79,21 @@ object BlockContextJavaHelper {
 
   def indicesFrom(blockContext: BlockContext): Set[String] = {
     NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.indices) match {
-      case Some(indices) => indices.toSortedSet.map(_.value)
+      case Some(indices) => indices.toSortedSet.map(_.value.value)
       case None => Set.empty
     }
   }
 
   def repositoriesFrom(blockContext: BlockContext): Set[String] = {
     NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.repositories) match {
-      case Some(indices) => indices.toSortedSet.map(_.value)
+      case Some(indices) => indices.toSortedSet.map(_.value.value)
       case None => Set.empty
     }
   }
 
   def snapshotsFrom(blockContext: BlockContext): Set[String] = {
     NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.snapshots) match {
-      case Some(indices) => indices.toSortedSet.map(_.value)
+      case Some(indices) => indices.toSortedSet.map(_.value.value)
       case None => Set.empty
     }
   }
@@ -111,7 +111,8 @@ object BlockContextJavaHelper {
   }
 
   private def availableGroupsHeaderFrom(blockContext: BlockContext): Option[Header] = {
-    if (blockContext.availableGroups.isEmpty) None
-    else Some(Header(Name.availableGroups, blockContext.availableGroups))
+    NonEmptyList
+      .fromList(blockContext.availableGroups.toList)
+      .map(groups => Header(Name.availableGroups, groups))
   }
 }

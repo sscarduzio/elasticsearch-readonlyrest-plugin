@@ -30,6 +30,7 @@ import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
 
@@ -39,7 +40,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { (user: User.Id, secret: Secret) => user.value === "user" && secret.value == "pass" })
+          .expects(where { (user: User.Id, secret: Secret) => user.value === "user".nonempty && secret.value == "pass" })
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
@@ -48,7 +49,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
 
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
-        (blockContext.withLoggedUser _).expects(LoggedUser(Id("user"))).returning(newBlockContext)
+        (blockContext.withLoggedUser _).expects(LoggedUser(Id("user".nonempty))).returning(newBlockContext)
 
         val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(newBlockContext))
@@ -59,7 +60,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { (user: User.Id, secret: Secret) => user.value === "user" && secret.value == "pass" })
+          .expects(where { (user: User.Id, secret: Secret) => user.value === "user".nonempty && secret.value == "pass" })
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]

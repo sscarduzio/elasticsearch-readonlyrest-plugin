@@ -94,7 +94,7 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest w
           result.history should have size 2
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user")))) {
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user".nonempty)))) {
               blockContext
             }
           }

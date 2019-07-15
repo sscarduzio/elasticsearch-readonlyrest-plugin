@@ -115,7 +115,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
   private def queryParams(userId: User.Id): Map[String, String] = {
     defaultQueryParams.map(p => (autoUnwrap(p.name), autoUnwrap(p.value))).toMap ++
       (authTokenSendMethod match {
-        case UsingQueryParam => Map(tokenName.value.value -> userId.value)
+        case UsingQueryParam => Map(tokenName.value.value -> userId.value.value)
         case UsingHeader => Map.empty[String, String]
       })
   }
@@ -123,7 +123,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
   private def headersMap(userId: User.Id): Map[String, String] = {
     defaultHeaders.map(h => (h.name.value.value, h.value.value)).toMap ++
       (authTokenSendMethod match {
-        case UsingHeader => Map(tokenName.value.value -> userId.value)
+        case UsingHeader => Map(tokenName.value.value -> userId.value.value)
         case UsingQueryParam => Map.empty
       })
   }

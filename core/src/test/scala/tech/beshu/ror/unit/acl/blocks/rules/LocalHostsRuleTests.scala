@@ -82,7 +82,7 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(str => Address.from(str).get))
+      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(str => Address.from(str.value).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

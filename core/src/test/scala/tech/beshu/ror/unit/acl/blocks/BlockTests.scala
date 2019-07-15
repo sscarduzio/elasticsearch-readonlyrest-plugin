@@ -50,7 +50,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") ::
-              passingRule("r2", _.withLoggedUser(LoggedUser(User.Id("user1")))) ::
+              passingRule("r2", _.withLoggedUser(LoggedUser(User.Id("user1".nonempty)))) ::
               notPassingRule("r3") ::
               passingRule("r4", _.withCurrentGroup(Group("group1".nonempty))) :: Nil
           )
@@ -65,7 +65,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
               HistoryItem(Rule.Name("r2"), matched = true),
               HistoryItem(Rule.Name("r3"), matched = false)
             ))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user1")))) {
+            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))) {
               blockContext
             }
         }
@@ -130,9 +130,9 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         policy = Block.Policy.Allow,
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
-          passingRule("r1", _.withLoggedUser(LoggedUser(User.Id("user1")))) ::
+          passingRule("r1", _.withLoggedUser(LoggedUser(User.Id("user1".nonempty)))) ::
             passingRule("r2", _.withCurrentGroup(Group("group1".nonempty))) ::
-            passingRule("r3", _.withIndices(NonEmptySet.one(IndexName("idx1")))) ::
+            passingRule("r3", _.withIndices(NonEmptySet.one(IndexName("idx1".nonempty)))) ::
             Nil
         )
       )
@@ -147,9 +147,9 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             HistoryItem(Rule.Name("r3"), matched = true)
           ))
           assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1"))),
+            loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
             currentGroup = Some(Group("group1".nonempty)),
-            indices = Set(IndexName("idx1"))
+            indices = Set(IndexName("idx1".nonempty))
           ) {
             blockContext
           }

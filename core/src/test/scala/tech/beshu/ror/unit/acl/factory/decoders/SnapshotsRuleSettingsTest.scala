@@ -44,7 +44,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1").nel))
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1".nonempty).nel))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -81,7 +81,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |""".stripMargin,
           assertion = rule => {
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] =
-              NonEmptySet.of(AlreadyResolved(IndexName("index1").nel), AlreadyResolved(IndexName("index2").nel))
+              NonEmptySet.of(AlreadyResolved(IndexName("index1".nonempty).nel), AlreadyResolved(IndexName("index2".nonempty).nel))
             rule.settings.allowedIndices should be(indices)
           }
         )
@@ -101,7 +101,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
           assertion = rule => {
             rule.settings.allowedIndices.length == 2
 
-            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1").nel))
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
             rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
           }
         )

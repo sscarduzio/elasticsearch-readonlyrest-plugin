@@ -19,6 +19,7 @@ package tech.beshu.ror.acl.blocks.rules
 import java.util.regex.Pattern
 
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.acl.domain.{BasicAuth, Secret, User}
@@ -31,8 +32,13 @@ class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)
   override protected def compare(configuredAuthKey: Secret,
                                  basicAuth: BasicAuth): Task[Boolean] = Task {
     configuredAuthKey.value.split(":").toList match {
-      case user :: pass :: Nil if User.Id(user) === basicAuth.user =>
-        configuredAuthKey === roundHash(pass, basicAuth)
+      case user :: pass :: Nil =>
+        NonEmptyString.from(user) match {
+          case Right(userStr) if User.Id(userStr) === basicAuth.user =>
+            configuredAuthKey === roundHash(pass, basicAuth)
+          case Left(_) =>
+            false
+        }
       case _ =>
         false
     }

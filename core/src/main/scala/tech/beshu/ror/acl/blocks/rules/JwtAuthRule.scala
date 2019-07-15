@@ -33,11 +33,12 @@ import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
+import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.SecureStringHasher
+import tech.beshu.ror.utils.SecureStringHasher.Algorithm
 
 import scala.collection.SortedSet
 import scala.util.Try
-import tech.beshu.ror.utils.LoggerOps._
 
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
@@ -53,7 +54,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
   }
 
-  private val hasher = new SecureStringHasher("sha256")
+  private val hasher = new SecureStringHasher(Algorithm.Sha256)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task
@@ -91,7 +92,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
             settings.jwt.checkMethod match {
               case NoCheck(service) =>
                 service
-                  .authenticate(User.Id(hasher.hash(token.value.value)), Secret(token.value.value))
+                  .authenticate(User.Id(hasher.hash(token.value)), Secret(token.value.value))
                   .map(RuleResult.fromCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))

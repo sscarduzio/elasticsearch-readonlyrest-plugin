@@ -52,7 +52,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           assertRule(
             sessionMaxIdle = positive(10 minutes),
             setRawCookie = rorSessionCookie.forUser1,
-            loggedUser = Some(LoggedUser(User.Id("user1"))),
+            loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
             isMatched = true
           )
         }
@@ -62,7 +62,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = rorSessionCookie.forUser1,
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(LoggedUser(User.Id("user1"))),
+              loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
               isMatched = true
             )
           }
@@ -71,7 +71,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = s"cookie1=test;${rorSessionCookie.forUser1};last_cookie=123",
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(LoggedUser(User.Id("user1"))),
+              loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
               isMatched = true
             )
           }
@@ -93,7 +93,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user1"))),
+          loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
           isMatched = false
         )
       }
@@ -103,7 +103,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user2"))),
+          loggedUser = Some(LoggedUser(User.Id("user2".nonempty))),
           isMatched = false
         )
       }
@@ -113,7 +113,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.wrongSignature,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user1"))),
+          loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
           isMatched = false
         )
       }
@@ -123,7 +123,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.malformed,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user1"))),
+          loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
           isMatched = false
         )
       }

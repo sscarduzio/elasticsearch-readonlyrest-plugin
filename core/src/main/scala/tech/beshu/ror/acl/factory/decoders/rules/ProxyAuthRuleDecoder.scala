@@ -53,5 +53,5 @@ private object ProxyAuthRuleDecoderHelper {
   val defaultUserHeaderName: Header.Name = Header.Name.xForwardedUser
 
   implicit val nonEmptySetOfUserIdsDecoder: Decoder[NonEmptySet[User.Id]] =
-    DecoderHelpers.decodeStringLikeOrNonEmptySet(User.Id.apply)
+    DecoderHelpers.decodeNonEmptyStringLikeOrNonEmptySet(User.Id.apply)
 }

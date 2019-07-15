@@ -46,15 +46,15 @@ class LdapAuthorizationRuleTests
       "user has at least one LDAP group which is permitted" in {
         assertMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(User.Id("user1"), Task.now(Set(groupFrom("g1"), groupFrom("g2")))),
+            ldap = mockLdapService(User.Id("user1".nonempty), Task.now(Set(groupFrom("g1"), groupFrom("g2")))),
             permittedGroups = NonEmptySet.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
             allLdapGroups = NonEmptySet.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
           ),
-          loggedUser = Some(User.Id("user1")),
+          loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = None
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
-            user = User.Id("user1"),
+            user = User.Id("user1".nonempty),
             group = groupFrom("g1"),
             availableGroups = Set(groupFrom("g1"), groupFrom("g2"))
           )
@@ -76,11 +76,11 @@ class LdapAuthorizationRuleTests
       "user has no group which is permitted" in {
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(User.Id("user1"), Task.now(Set(groupFrom("g5")))),
+            ldap = mockLdapService(User.Id("user1".nonempty), Task.now(Set(groupFrom("g5")))),
             permittedGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1")),
             allLdapGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1"))
           ),
-          loggedUser = Some(User.Id("user1")),
+          loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = None
         )
       }
@@ -91,18 +91,18 @@ class LdapAuthorizationRuleTests
             permittedGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1")),
             allLdapGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1"))
           ),
-          loggedUser = Some(User.Id("user1")),
+          loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = Some(groupFrom("g3"))
         )
       }
       "LDAP service fails" in {
         assertRuleThrown(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(User.Id("user1"), Task.raiseError(TestException("LDAP failed"))),
+            ldap = mockLdapService(User.Id("user1".nonempty), Task.raiseError(TestException("LDAP failed"))),
             permittedGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1")),
             allLdapGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1"))
           ),
-          loggedUser = Some(User.Id("user1")),
+          loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = None,
           exception = TestException("LDAP failed")
         )

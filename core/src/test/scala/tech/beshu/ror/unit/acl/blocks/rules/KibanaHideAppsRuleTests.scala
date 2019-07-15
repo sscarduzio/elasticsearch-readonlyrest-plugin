@@ -17,17 +17,17 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
+import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
-import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.domain.{Header, KibanaApp, LoggedUser}
+import tech.beshu.ror.acl.domain.User.Id
+import tech.beshu.ror.acl.domain.{KibanaApp, LoggedUser}
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
@@ -39,7 +39,7 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id("user1"))))
+        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id("user1".nonempty))))
         (blockContext.withAddedResponseHeader _).expects(headerFrom("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext) )
       }

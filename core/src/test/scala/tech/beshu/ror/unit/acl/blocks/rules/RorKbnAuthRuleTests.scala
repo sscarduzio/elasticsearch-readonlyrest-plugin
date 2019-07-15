@@ -65,7 +65,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1")))
+              loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
             )(blockContext)
         }
       }
@@ -90,7 +90,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1")))
+              loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
             )(blockContext)
         }
       }
@@ -115,7 +115,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1")))
+              loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
             )(blockContext)
         }
       }
@@ -141,7 +141,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1"))),
+              loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(Group("group2".nonempty)),
               availableGroups = Set(Group("group2".nonempty))
             )(blockContext)
