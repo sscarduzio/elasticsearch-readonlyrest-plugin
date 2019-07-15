@@ -27,7 +27,6 @@ import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps.fromError
 import tech.beshu.ror.acl.utils.CryptoOps.keyStringToPublicKey
 import tech.beshu.ror.acl.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
-import tech.beshu.ror.providers.EnvVarsProvider
 
 object RorKbnDefinitionsDecoder {
 

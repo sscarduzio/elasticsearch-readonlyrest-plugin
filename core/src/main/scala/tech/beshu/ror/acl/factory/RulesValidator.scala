@@ -16,29 +16,44 @@
  */
 package tech.beshu.ror.acl.factory
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.acl.blocks.rules.Rule
+import cats.data.Validated._
+import cats.data.{NonEmptyList, Validated, _}
+import cats.syntax.all._
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.acl.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
 
 object RulesValidator {
 
-  def validate(rules: NonEmptyList[Rule]): Either[ValidationError, Unit] = {
-    for {
-      _ <- validateAuthorizationWithAuthenticationPrinciple(rules)
-    } yield ()
+  def validate(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
+    (
+      validateAuthorizationWithAuthenticationPrinciple(rules),
+      validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules)
+    ).mapN { case _ => () }
   }
 
-  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[Rule]) = {
+  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
     rules.find(_.isInstanceOf[AuthorizationRule]) match {
-      case None => Right(())
-      case Some(_) if rules.exists(_.isInstanceOf[AuthenticationRule]) => Right(())
-      case Some(_) => Left(ValidationError.AuthorizationWithoutAuthentication)
+      case None => Validated.Valid(())
+      case Some(_) if rules.exists(_.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
+      case Some(_) => Validated.Invalid(NonEmptyList.one(ValidationError.AuthorizationWithoutAuthentication))
+    }
+  }
+
+  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
+    val kibanaAccessRules = rules.collect { case r: KibanaAccessRule => r }
+    val actionsRules = rules.collect { case r: ActionsRule => r}
+    (kibanaAccessRules, actionsRules) match {
+      case (Nil, Nil) => Validated.Valid(())
+      case (Nil, _) => Validated.Valid(())
+      case (_, Nil) => Validated.Valid(())
+      case (_, _) => Validated.Invalid(NonEmptyList.one(ValidationError.KibanaAccessRuleTogetherWithActionsRule))
     }
   }
 
   sealed trait ValidationError
   object ValidationError {
     case object AuthorizationWithoutAuthentication extends ValidationError
+    case object KibanaAccessRuleTogetherWithActionsRule extends ValidationError
   }
 
 }

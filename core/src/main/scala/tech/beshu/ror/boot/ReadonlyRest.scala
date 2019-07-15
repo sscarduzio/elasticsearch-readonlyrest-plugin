@@ -260,10 +260,10 @@ class RorInstance private (boot: ReadonlyRest,
             logger.debug("[CLUSTERWIDE SETTINGS] Config is up to date. Nothing to reload.")
             scheduleNewConfigCheck()
           case Right(Left(startingFailure)) =>
-            logger.debug(s"[CLUSTERWIDE SETTINGS] Checking index config failed: ${startingFailure.message}")
+            logger.error(s"[CLUSTERWIDE SETTINGS] ROR configuration starting failed: ${startingFailure.message}")
             scheduleNewConfigCheck()
           case Left(ex) =>
-            logger.debug("[CLUSTERWIDE SETTINGS] Checking index config failed: error", ex)
+            logger.error("[CLUSTERWIDE SETTINGS] Checking index config failed: error", ex)
             scheduleNewConfigCheck()
         }
     }

@@ -1,0 +1,25 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: "readonlyrest"
+    key_pass: "readonlyrest"
+
+  access_control_rules:
+    - name: "CONTAINER ADMIN - file"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
+
+    - name: "user:forbidden"
+      type: forbid
+      actions:
+        - "indices:data/write/*"
+      indices:
+        - "test1_index"
+
+    - name: "user"
+      actions:
+        - "indices:data/write/*"
+      indices:
+        - "test2_index"

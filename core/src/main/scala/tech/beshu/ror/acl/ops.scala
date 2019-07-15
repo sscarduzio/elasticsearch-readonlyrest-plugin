@@ -34,6 +34,7 @@ import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, Pro
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.acl.factory.RulesValidator.ValidationError
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -176,6 +177,12 @@ object show {
         "Cannot use more than one multi-value variable"
       case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
         s"Variable malformed, cause: $cause"
+    }
+    def blockValidationErrorShow(block: Block.Name): Show[ValidationError] = Show.show {
+      case ValidationError.AuthorizationWithoutAuthentication =>
+        s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
+      case ValidationError.KibanaAccessRuleTogetherWithActionsRule =>
+        s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
     }
   }
 }

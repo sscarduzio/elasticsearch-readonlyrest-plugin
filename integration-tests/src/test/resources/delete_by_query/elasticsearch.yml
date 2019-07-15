@@ -25,7 +25,6 @@ readonlyrest:
 
     - name: "::RED-TEAM::"
       kibana_access: rw
-      actions: ["*"]
       indices: ["*"]
       kibana_index: ".kibana"
       auth_key: red:dev
