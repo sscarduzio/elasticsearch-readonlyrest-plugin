@@ -112,14 +112,6 @@ public class LocalGroupsTest {
   }
 
   @Test
-  public void testFail_GoodCredsBadRule() throws Exception {
-    assertNotEquals(
-        200,
-        mkRequest("user", "passwd", "/_search").getStatusLine().getStatusCode()
-    );
-  }
-
-  @Test
   public void testIdentityRetrieval() throws Exception {
 
     HttpResponse response = mkRequest("user", "passwd", "/_readonlyrest/metadata/current_user");

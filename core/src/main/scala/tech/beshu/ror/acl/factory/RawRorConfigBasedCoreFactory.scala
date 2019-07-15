@@ -18,7 +18,8 @@ package tech.beshu.ror.acl.factory
 
 import java.time.Clock
 
-import cats.data.{NonEmptyList, State}
+import cats.Show
+import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
@@ -175,9 +176,10 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       .toSyncDecoder
       .emapE { rules =>
         RulesValidator.validate(rules) match {
-          case Right(_) => Right(rules)
-          case Left(ValidationError.AuthorizationWithoutAuthentication) =>
-            Left(BlocksLevelCreationError(Message(s"The '${blockName.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))
+          case Validated.Valid(_) => Right(rules)
+          case Validated.Invalid(errors) =>
+            implicit val validationErrorShow: Show[ValidationError] = blockValidationErrorShow(blockName)
+            Left(BlocksLevelCreationError(Message(errors.map(_.show).mkString_("\n"))))
         }
       }
       .decoder
