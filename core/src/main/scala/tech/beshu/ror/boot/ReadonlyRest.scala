@@ -113,14 +113,6 @@ trait ReadonlyRest extends Logging {
         config <- EitherT(loadRorConfigFromIndex(indexConfigManager, loadRorConfigFromFile(fileConfigLoader)))
         engine <- EitherT(loadRorCore(config, auditSink))
       } yield RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
-      // todo: remove
-//      EitherT.pure[Task, StartingFailure](
-//        RorInstance.createWithPeriodicIndexCheck(
-//          this,
-//          indexConfigManager,
-//          auditSink,
-//          loadRorConfigFromFile(fileConfigLoader)
-//        )
     }
   }
 
