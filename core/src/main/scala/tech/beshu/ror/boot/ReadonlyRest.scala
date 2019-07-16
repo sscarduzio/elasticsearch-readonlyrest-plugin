@@ -30,9 +30,9 @@ import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.
 import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditingTool}
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
-import tech.beshu.ror.boot.RorInstance.{ForceReloadError, noIndexStartingFailure}
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
+import tech.beshu.ror.boot.RorInstance.{ForceReloadError, Mode, noIndexStartingFailure}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
@@ -40,7 +40,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
-import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
+import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.concurrent.duration._
@@ -94,7 +94,7 @@ trait ReadonlyRest extends Logging {
           case LoadEsConfigError.FileNotFound(file) =>
             StartingFailure(s"Cannot find elasticsearch config file: [${file.pathAsString}]")
           case LoadEsConfigError.MalformedContent(file, msg) =>
-            StartingFailure(s"Elasticsearch config file is malformed: [${file.pathAsString}], $msg")
+            StartingFailure(s"Config file is malformed: [${file.pathAsString}], $msg")
         })
     }
   }
@@ -109,14 +109,18 @@ trait ReadonlyRest extends Logging {
         engine <- EitherT(loadRorCore(config, auditSink))
       } yield RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
     } else {
-      EitherT.pure[Task, StartingFailure](
-        RorInstance.createWithPeriodicIndexCheck(
-          this,
-          indexConfigManager,
-          auditSink,
-          loadRorConfigFromFile(fileConfigLoader)
-        )
-      )
+      for {
+        config <- EitherT(loadRorConfigFromIndex(indexConfigManager, loadRorConfigFromFile(fileConfigLoader)))
+        engine <- EitherT(loadRorCore(config, auditSink))
+      } yield RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
+      // todo: remove
+//      EitherT.pure[Task, StartingFailure](
+//        RorInstance.createWithPeriodicIndexCheck(
+//          this,
+//          indexConfigManager,
+//          auditSink,
+//          loadRorConfigFromFile(fileConfigLoader)
+//        )
     }
   }
 
@@ -188,23 +192,22 @@ trait ReadonlyRest extends Logging {
 }
 
 class RorInstance private (boot: ReadonlyRest,
-                           initialEngine: Option[(Engine, RawRorConfig)],
+                           mode: Mode,
+                           initialEngine: (Engine, RawRorConfig),
                            indexConfigManager: IndexConfigManager,
                            auditSink: AuditSink,
                            initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]])
   extends Logging {
 
+  logger.info("Readonly REST plugin core was loaded ...")
   private val instanceState: Atomic[State] =
-    initialEngine match {
-      case Some((engine, config)) =>
-        logger.info("Readonly REST plugin core was loaded ...")
-        AtomicAny(State.EngineLoaded(
-          State.EngineLoaded.EngineWithConfig(engine, config),
-          Cancelable.empty
-        ))
-      case None =>
-        AtomicAny(State.Initiated(scheduleIndexConfigChecking(initialNoIndexFallback)))
-    }
+    AtomicAny(State.EngineLoaded(
+      State.EngineLoaded.EngineWithConfig(initialEngine._1, initialEngine._2),
+      mode match {
+        case Mode.WithPeriodicIndexCheck => scheduleIndexConfigChecking(initialNoIndexFallback)
+        case Mode.NoPeriodicIndexCheck => Cancelable.empty
+      }
+    ))
 
   def engine: Option[Engine] = instanceState.get() match {
     case State.Initiated(_) => None
@@ -370,10 +373,11 @@ class RorInstance private (boot: ReadonlyRest,
 object RorInstance {
 
   def createWithPeriodicIndexCheck(boot: ReadonlyRest,
+                                   engine: Engine,
+                                   config: RawRorConfig,
                                    indexConfigManager: IndexConfigManager,
-                                   auditSink: AuditSink,
-                                   initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): RorInstance = {
-    new RorInstance(boot, None, indexConfigManager, auditSink, initialNoIndexFallback)
+                                   auditSink: AuditSink): RorInstance = {
+    new RorInstance(boot, Mode.WithPeriodicIndexCheck, (engine, config), indexConfigManager, auditSink, noIndexStartingFailure)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
@@ -381,7 +385,13 @@ object RorInstance {
                                       config: RawRorConfig,
                                       indexConfigManager: IndexConfigManager,
                                       auditSink: AuditSink): RorInstance = {
-    new RorInstance(boot, Some((engine, config)), indexConfigManager, auditSink, noIndexStartingFailure)
+    new RorInstance(boot, Mode.NoPeriodicIndexCheck, (engine, config), indexConfigManager, auditSink, noIndexStartingFailure)
+  }
+
+  private sealed trait Mode
+  private object Mode {
+    case object WithPeriodicIndexCheck extends Mode
+    case object NoPeriodicIndexCheck extends Mode
   }
 
   private val indexConfigCheckingSchedulerDelay = 5 second

@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.boot
 
 import java.time.Clock
 
+import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -25,12 +26,14 @@ import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAclStaticContext}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword}
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
-import tech.beshu.ror.es.IndexJsonContentManager.CannotReachContentSource
+import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource}
@@ -164,6 +167,116 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         }
       }
     }
+    "failed to load" when {
+      "force load from file is set and config is malformed" in {
+        val result = readonlyRestBoot(mock[CoreFactory])
+          .start(
+            getResourcePath("/boot_tests/forced_file_loading_malformed_config/"),
+            mock[AuditSink],
+            mock[IndexJsonContentManager]
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Left(failure) =>
+          failure.message should startWith ("Config file is malformed:")
+        }
+      }
+      "force load from file is set and config cannot be loaded" in {
+        val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/forced_file_loading_bad_config/readonlyrest.yml")
+
+        val result = readonlyRestBoot(coreFactory)
+          .start(
+            getResourcePath("/boot_tests/forced_file_loading_bad_config/"),
+            mock[AuditSink],
+            mock[IndexJsonContentManager]
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Left(failure) =>
+          failure.message shouldBe "Errors:\nfailed"
+        }
+      }
+      "index config doesn't exist and file config is malformed" in {
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        (mockedIndexJsonContentManager.sourceOf _)
+          .expects(".readonlyrest", "settings", "1")
+          .once()
+          .returns(Task.now(Left(ContentNotFound)))
+
+        val result = readonlyRestBoot(mock[CoreFactory])
+          .start(
+            getResourcePath("/boot_tests/index_config_not_exists_malformed_file_config/"),
+            mock[AuditSink],
+            mockedIndexJsonContentManager
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Left(failure) =>
+          failure.message should startWith ("Config file content is malformed.")
+        }
+      }
+      "index config doesn't exist and file config cannot be loaded" in {
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        (mockedIndexJsonContentManager.sourceOf _)
+          .expects(".readonlyrest", "settings", "1")
+          .once()
+          .returns(Task.now(Left(ContentNotFound)))
+
+        val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/index_config_not_exists_bad_file_config/readonlyrest.yml")
+
+        val result = readonlyRestBoot(coreFactory)
+          .start(
+            getResourcePath("/boot_tests/index_config_not_exists_bad_file_config/"),
+            mock[AuditSink],
+            mockedIndexJsonContentManager
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Left(failure) =>
+          failure.message shouldBe "Errors:\nfailed"
+        }
+      }
+      "index config is malformed" in {
+        val resourcesPath = "/boot_tests/malformed_index_config/"
+        val indexConfigFile = "readonlyrest_index.yml"
+
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+
+        val result = readonlyRestBoot(mock[CoreFactory])
+          .start(
+            getResourcePath(resourcesPath),
+            mock[AuditSink],
+            mockedIndexJsonContentManager
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Left(failure) =>
+          failure.message should startWith ("Config file content is malformed.")
+        }
+      }
+      "index config cannot be loaded" in {
+        val resourcesPath = "/boot_tests/bad_index_config/"
+        val indexConfigFile = "readonlyrest_index.yml"
+
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+
+        val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
+
+        val result = readonlyRestBoot(coreFactory)
+          .start(
+            getResourcePath(resourcesPath),
+            mock[AuditSink],
+            mockedIndexJsonContentManager
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Left(failure) =>
+          failure.message shouldBe "Errors:\nfailed"
+        }
+      }
+    }
   }
 
   "A ReadonlyREST ES API SSL settings" should {
@@ -285,14 +398,25 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                              resourceFileName: String,
-                              aclStaticContext: AclStaticContext = mock[AclStaticContext]) = {
+                               resourceFileName: String,
+                               aclStaticContext: AclStaticContext = mock[AclStaticContext]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(Task.now(Right(CoreSettings(mock[Acl], aclStaticContext, None))))
+    mockedCoreFactory
+  }
+
+  private def mockFailedCoreFactory(mockedCoreFactory: CoreFactory,
+                                    resourceFileName: String) = {
+    (mockedCoreFactory.createCoreFrom _)
+      .expects(where {
+        (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
+      })
+      .once()
+      .returns(Task.now(Left(NonEmptyList.one(AclCreationError.GeneralReadonlyrestSettingsError(Message("failed"))))))
     mockedCoreFactory
   }
 
