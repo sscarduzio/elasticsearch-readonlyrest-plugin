@@ -19,17 +19,19 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.{BasicAuth, LoggedUser, Secret}
+import tech.beshu.ror.acl.domain.{BasicAuth, LoggedUser, Secret, User}
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 
 abstract class BaseBasicAuthenticationRule
   extends AuthenticationRule
+    with ImpersonationSupport
     with Logging {
 
   protected def authenticate(basicAuth: BasicAuth): Task[Boolean]
@@ -52,6 +54,8 @@ abstract class BaseBasicAuthenticationRule
             Task.now(Rejected)
         }
       }
+
+  override def exists(user: User.Id): Task[Boolean] = ???
 }
 
 abstract class BasicAuthenticationRule(val settings: Settings)

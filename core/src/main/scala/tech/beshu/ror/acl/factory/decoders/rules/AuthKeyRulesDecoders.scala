@@ -18,28 +18,44 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules._
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationRuleDecorator
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.domain.Secret
 
 object AuthKeyRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeyRule(_))
+  AuthKeyDecodersHelper
+    .basicAuthenticationRuleSettingsDecoder
+    .map(new AuthKeyRule(_))
+    .map(new ImpersonationRuleDecorator(_))
 )
 
 object AuthKeySha1RuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeySha1Rule(_))
+  AuthKeyDecodersHelper
+    .basicAuthenticationRuleSettingsDecoder
+    .map(new AuthKeySha1Rule(_))
+    .map(new ImpersonationRuleDecorator(_))
 )
 
 object AuthKeySha256RuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeySha256Rule(_))
+  AuthKeyDecodersHelper
+    .basicAuthenticationRuleSettingsDecoder
+    .map(new AuthKeySha256Rule(_))
+    .map(new ImpersonationRuleDecorator(_))
 )
 
 object AuthKeySha512RuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeySha512Rule(_))
+  AuthKeyDecodersHelper
+    .basicAuthenticationRuleSettingsDecoder
+    .map(new AuthKeySha512Rule(_))
+    .map(new ImpersonationRuleDecorator(_))
 )
 
 object AuthKeyUnixRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  AuthKeyDecodersHelper.basicAuthenticationRuleSettingsDecoder.map(new AuthKeyUnixRule(_))
+  AuthKeyDecodersHelper
+    .basicAuthenticationRuleSettingsDecoder
+    .map(new AuthKeyUnixRule(_))
+    .map(new ImpersonationRuleDecorator(_))
 )
 
 private object AuthKeyDecodersHelper {
