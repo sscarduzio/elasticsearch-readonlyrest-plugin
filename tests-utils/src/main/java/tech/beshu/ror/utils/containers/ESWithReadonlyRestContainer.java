@@ -79,6 +79,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
   public static ESWithReadonlyRestContainer create(RorPluginGradleProjectJ project,
       File elasticsearchConfigFile,
       Optional<ESWithReadonlyRestContainer.ESInitalizer> initalizer) {
+    System.setProperty("es.set.netty.runtime.available.processors", "false");
     File pluginFile = project.assemble().orElseThrow(() ->
         new ContainerCreationException("Plugin file assembly failed")
     );
