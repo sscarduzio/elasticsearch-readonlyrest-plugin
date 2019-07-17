@@ -30,7 +30,7 @@ import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.
 import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditingTool}
 import tech.beshu.ror.acl.{Acl, AclStaticContext}
-import tech.beshu.ror.boot.RorInstance.{ForceReloadError, Mode, noIndexStartingFailure}
+import tech.beshu.ror.boot.RorInstance.{ForceReloadError, Mode}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
@@ -42,9 +42,11 @@ import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigMana
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.TaskOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.Success
 
 object Ror extends ReadonlyRest {
 
@@ -128,21 +130,29 @@ trait ReadonlyRest extends Logging {
         case Left(error@SpecializedError(_)) =>
           Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
       }
+      .andThen {
+        case Success(Left(error)) =>
+          logger.error(s"Loading ReadonlyREST from file failed: ${error.message}")
+      }
   }
 
   private[ror] def loadRorConfigFromIndex(indexConfigManager: IndexConfigManager,
                                           noIndexFallback: => Task[Either[StartingFailure, RawRorConfig]]) = {
-    logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
+    logger.info(s"Loading ReadonlyREST config from index")
     indexConfigManager
       .load()
       .flatMap {
         case Right(config) =>
           Task.now(Right(config))
         case Left(error@ParsingError(_)) =>
-          lift(StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error)))
+          val failure = StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error))
+          logger.error(s"Loading ReadonlyREST config from index failed: ${failure.message}")
+          lift(failure)
         case Left(SpecializedError(IndexConfigNotExist)) =>
+          logger.info(s"Loading ReadonlyREST config from index failed: cannot find index")
           noIndexFallback
         case Left(SpecializedError(IndexConfigUnknownStructure)) =>
+          logger.info(s"Loading ReadonlyREST config from index failed: index content malformed")
           noIndexFallback
       }
   }
@@ -187,8 +197,7 @@ class RorInstance private (boot: ReadonlyRest,
                            mode: Mode,
                            initialEngine: (Engine, RawRorConfig),
                            indexConfigManager: IndexConfigManager,
-                           auditSink: AuditSink,
-                           initialNoIndexFallback: Task[Either[StartingFailure, RawRorConfig]])
+                           auditSink: AuditSink)
   extends Logging {
 
   logger.info("Readonly REST plugin core was loaded ...")
@@ -196,7 +205,7 @@ class RorInstance private (boot: ReadonlyRest,
     AtomicAny(State.EngineLoaded(
       State.EngineLoaded.EngineWithConfig(initialEngine._1, initialEngine._2),
       mode match {
-        case Mode.WithPeriodicIndexCheck => scheduleIndexConfigChecking(initialNoIndexFallback)
+        case Mode.WithPeriodicIndexCheck => scheduleIndexConfigChecking()
         case Mode.NoPeriodicIndexCheck => Cancelable.empty
       }
     ))
@@ -209,7 +218,7 @@ class RorInstance private (boot: ReadonlyRest,
 
   def forceReloadFromIndex(): Task[Either[ForceReloadError, Unit]] = {
     val promise = CancelablePromise[Either[ForceReloadError, Unit]]()
-    tryReloadingEngine(noIndexStartingFailure)
+    tryReloadingEngine()
         .runAsync {
           case Right(Right(Some(state))) =>
             state match {
@@ -225,6 +234,7 @@ class RorInstance private (boot: ReadonlyRest,
             logger.debug("[CLUSTERWIDE SETTINGS] Index configuration is the same as loaded one. Nothing to do.")
             promise.success(Left(ForceReloadError.ConfigUpToDate))
           case Right(Left(startingFailure)) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] ROR configuration starting failed: ${startingFailure.message}")
             promise.success(Left(ForceReloadError.CannotReload(startingFailure)))
           case Left(ex) =>
             logger.errorEx("[CLUSTERWIDE SETTINGS] Force reloading failed", ex)
@@ -245,17 +255,18 @@ class RorInstance private (boot: ReadonlyRest,
     }
   }
 
-  private def scheduleIndexConfigChecking(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): Cancelable = {
+  private def scheduleIndexConfigChecking(): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index config check within ${RorInstance.indexConfigCheckingSchedulerDelay}")
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
-      tryReloadingEngine(noIndexFallback)
+      logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
+      tryReloadingEngine()
         .runAsync {
           case Right(Right(Some(_))) =>
           case Right(Right(None)) =>
             logger.debug("[CLUSTERWIDE SETTINGS] Config is up to date. Nothing to reload.")
             scheduleNewConfigCheck()
           case Right(Left(startingFailure)) =>
-            logger.error(s"[CLUSTERWIDE SETTINGS] ROR configuration starting failed: ${startingFailure.message}")
+            logger.debug(s"[CLUSTERWIDE SETTINGS] ROR configuration starting failed: ${startingFailure.message}")
             scheduleNewConfigCheck()
           case Left(ex) =>
             logger.error("[CLUSTERWIDE SETTINGS] Checking index config failed: error", ex)
@@ -264,10 +275,12 @@ class RorInstance private (boot: ReadonlyRest,
     }
   }
 
-  private def tryReloadingEngine(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
-    loadNewEngineFromIndex(noIndexFallback)
+  private def tryReloadingEngine() = {
+    loadNewEngineFromIndex()
       .flatMap {
-        case Right(Some(newEngine)) => applyNewEngine(newEngine).map(Some.apply).map(Right.apply)
+        case Right(Some(newEngine)) =>
+          logger.info("ReadonlyREST new configuration found ...")
+          applyNewEngine(newEngine).map(Some.apply).map(Right.apply)
         case Right(None) => Task.now(Right(None))
         case Left(failure) => Task.now(Left(failure))
       }
@@ -278,15 +291,15 @@ class RorInstance private (boot: ReadonlyRest,
     instanceState.transform {
       case State.Initiated(cancelable) =>
         cancelable.cancel()
-        val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking(noIndexStartingFailure))
+        val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking())
         promise.success(newState)
-        logger.info("ReadonlyREST plugin core was loaded ...")
+        logger.info("ReadonlyREST plugin core was reloaded ...")
         newState
       case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(oldEngine, _), _) =>
         scheduleDelayedShutdown(oldEngine)
-        val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking(noIndexStartingFailure))
+        val newState = State.EngineLoaded(newEngine, scheduleIndexConfigChecking())
         promise.success(newState)
-        logger.info("ReadonlyREST plugin core was loaded ...")
+        logger.info("ReadonlyREST plugin core was reloaded ...")
         newState
       case State.Stopped =>
         newEngine.engine.shutdown()
@@ -304,9 +317,9 @@ class RorInstance private (boot: ReadonlyRest,
     }
   }
 
-  private def loadNewEngineFromIndex(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]) = {
-    boot
-      .loadRorConfigFromIndex(indexConfigManager, noIndexFallback)
+  private def loadNewEngineFromIndex(): Task[Either[StartingFailure, Option[State.EngineLoaded.EngineWithConfig]]] = {
+    indexConfigManager
+      .load()
       .flatMap {
         case Right(config) =>
           shouldBeReloaded(config)
@@ -318,7 +331,8 @@ class RorInstance private (boot: ReadonlyRest,
               case false =>
                 Task.now(Right(Option.empty[State.EngineLoaded.EngineWithConfig]))
             }
-        case Left(failure) =>
+        case Left(error) =>
+          val failure = StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error))
           Task.now(Left(failure))
       }
   }
@@ -326,9 +340,9 @@ class RorInstance private (boot: ReadonlyRest,
   private def scheduleNewConfigCheck(): Unit = {
     instanceState.transform {
       case State.Initiated(_) =>
-        State.Initiated(scheduleIndexConfigChecking(noIndexStartingFailure))
+        State.Initiated(scheduleIndexConfigChecking())
       case State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, config), _) =>
-        State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, config), scheduleIndexConfigChecking(noIndexStartingFailure))
+        State.EngineLoaded(State.EngineLoaded.EngineWithConfig(engine, config), scheduleIndexConfigChecking())
       case State.Stopped =>
         State.Stopped
     }
@@ -369,7 +383,7 @@ object RorInstance {
                                    config: RawRorConfig,
                                    indexConfigManager: IndexConfigManager,
                                    auditSink: AuditSink): RorInstance = {
-    new RorInstance(boot, Mode.WithPeriodicIndexCheck, (engine, config), indexConfigManager, auditSink, noIndexStartingFailure)
+    new RorInstance(boot, Mode.WithPeriodicIndexCheck, (engine, config), indexConfigManager, auditSink)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
@@ -377,7 +391,7 @@ object RorInstance {
                                       config: RawRorConfig,
                                       indexConfigManager: IndexConfigManager,
                                       auditSink: AuditSink): RorInstance = {
-    new RorInstance(boot, Mode.NoPeriodicIndexCheck, (engine, config), indexConfigManager, auditSink, noIndexStartingFailure)
+    new RorInstance(boot, Mode.NoPeriodicIndexCheck, (engine, config), indexConfigManager, auditSink)
   }
 
   private sealed trait Mode
