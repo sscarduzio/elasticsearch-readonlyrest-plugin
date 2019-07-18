@@ -51,6 +51,9 @@ public class RRAdminResponse extends ActionResponse implements ToXContentObject 
       if(result instanceof Success) {
         Success success = (Success) result;
         addResponseJson(builder,"ok", success.message());
+      } else if (result instanceof AdminRestApi.ConfigNotFound) {
+        AdminRestApi.ConfigNotFound configNotFound = (AdminRestApi.ConfigNotFound) result;
+        addResponseJson(builder,"empty", configNotFound.message());
       } else if (result instanceof Failure) {
         Failure failure = (Failure) result;
         addResponseJson(builder,"ko", failure.message());
