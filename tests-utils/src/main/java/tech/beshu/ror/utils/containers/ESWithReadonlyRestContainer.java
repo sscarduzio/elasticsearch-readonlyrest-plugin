@@ -127,7 +127,7 @@ public class ESWithReadonlyRestContainer extends GenericContainer<ESWithReadonly
               }
 
               builder.user("elasticsearch")
-                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms -Dcom.unboundid.ldap.sdk.debug.enabled=true")
+                     .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms -Dcom.unboundid.ldap.sdk.debug.enabled=true -Des.set.netty.runtime.available.processors=false")
                      .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + pluginFile.getName());
               logger.info("Dockerfile\n" + builder.build());
             })

@@ -56,7 +56,7 @@ object FileConfigLoader {
     final case class FileNotExist(file: File) extends FileConfigError
 
     implicit val show: Show[FileConfigError] = Show.show {
-      case FileNotExist(file) => s"Cannot find config file: ${file.pathAsString}"
+      case FileNotExist(file) => s"Cannot find settings file: ${file.pathAsString}"
     }
   }
 
