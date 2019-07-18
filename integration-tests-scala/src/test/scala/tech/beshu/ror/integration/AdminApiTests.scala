@@ -40,9 +40,9 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
       val result  = adminActionManager.actionPost("_readonlyrest/admin/refreshconfig")
       result.getResponseCode should be (200)
       if(result.getResponseJson.get("status") == "ok") {
-        result.getResponseJson.get("message") should be ("ReadonlyREST config was reloaded with success!")
+        result.getResponseJson.get("message") should be ("ReadonlyREST settings were reloaded with success!")
       } else {
-        result.getResponseJson.get("message") should be ("Current configuration is up to date")
+        result.getResponseJson.get("message") should be ("Current settings are up to date")
       }
     }
     "provide update index configuration method" which {

@@ -48,7 +48,7 @@ class AdminRestApi(rorInstance: RorInstance,
     rorInstance
       .forceReloadFromIndex()
       .map {
-        case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings was reloaded with success!"))
+        case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings were reloaded with success!"))
         case Left(ForceReloadError.CannotReload(failure)) => Ok(Failure(failure.message))
         case Left(ForceReloadError.ConfigUpToDate) => Ok(Failure("Current settings are up to date"))
         case Left(ForceReloadError.ReloadingError) => Ok(Failure("Reloading unexpected error"))
