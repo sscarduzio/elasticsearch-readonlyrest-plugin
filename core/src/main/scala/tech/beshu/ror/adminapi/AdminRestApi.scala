@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.adminapi
 
+import cats.{Contravariant, Show}
 import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import com.twitter.finagle.http.Status.Successful
@@ -28,13 +29,15 @@ import io.finch.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import shapeless.HNil
-import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, Failure, Success, forceReloadRorPath, provideRorFileConfigPath, provideRorIndexConfigPath, updateIndexConfigurationPath}
+import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, ConfigNotFound, Failure, Success, forceReloadRorPath, provideRorFileConfigPath, provideRorIndexConfigPath, updateIndexConfigurationPath}
 import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.ForceReloadError
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
+import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.SpecializedError
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.YamlOps
 
 import scala.language.{implicitConversions, postfixOps}
 
@@ -81,8 +84,13 @@ class AdminRestApi(rorInstance: RorInstance,
     indexConfigManager
       .load()
       .map {
-        case Right(config) => Ok[ApiCallResult](Success(config.raw))
-        case Left(error) => Ok[ApiCallResult](Failure(error.show))
+        case Right(config) =>
+          Ok[ApiCallResult](Success(config.raw))
+        case Left(SpecializedError(error@IndexConfigNotExist)) =>
+          implicit val show = Contravariant[Show].narrow[IndexConfigError, IndexConfigNotExist.type](IndexConfigError.show)
+          Ok[ApiCallResult](ConfigNotFound(error.show))
+        case Left(error) =>
+          Ok[ApiCallResult](Failure(error.show))
       }
   }
 
@@ -148,6 +156,7 @@ object AdminRestApi extends Logging {
     def message: String
   }
   final case class Success(message: String) extends ApiCallResult
+  final case class ConfigNotFound(message: String) extends ApiCallResult
   final case class Failure(message: String) extends ApiCallResult
 
   final case class Path private(endpointPath: Endpoint[Task, HNil], endpointString: String)
