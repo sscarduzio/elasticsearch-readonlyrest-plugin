@@ -28,13 +28,15 @@ import io.finch.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import shapeless.HNil
-import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, Failure, Success, forceReloadRorPath, provideRorFileConfigPath, provideRorIndexConfigPath, updateIndexConfigurationPath}
+import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, ConfigNotFound, Failure, Success, forceReloadRorPath, provideRorFileConfigPath, provideRorIndexConfigPath, updateIndexConfigurationPath}
 import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.ForceReloadError
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
+import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.SpecializedError
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
+import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.YamlOps
 
 import scala.language.{implicitConversions, postfixOps}
 
@@ -49,9 +51,9 @@ class AdminRestApi(rorInstance: RorInstance,
     rorInstance
       .forceReloadFromIndex()
       .map {
-        case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST config was reloaded with success!"))
+        case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings were reloaded with success!"))
         case Left(ForceReloadError.CannotReload(failure)) => Ok(Failure(failure.message))
-        case Left(ForceReloadError.ConfigUpToDate) => Ok(Failure("Current configuration is up to date"))
+        case Left(ForceReloadError.ConfigUpToDate) => Ok(Failure("Current settings are up to date"))
         case Left(ForceReloadError.ReloadingError) => Ok(Failure("Reloading unexpected error"))
         case Left(ForceReloadError.StoppedInstance) => Ok(Failure("ROR is stopped"))
       }
@@ -81,8 +83,13 @@ class AdminRestApi(rorInstance: RorInstance,
     indexConfigManager
       .load()
       .map {
-        case Right(config) => Ok[ApiCallResult](Success(config.raw))
-        case Left(error) => Ok[ApiCallResult](Failure(error.show))
+        case Right(config) =>
+          Ok[ApiCallResult](Success(config.raw))
+        case Left(SpecializedError(error@IndexConfigNotExist)) =>
+          implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
+          Ok[ApiCallResult](ConfigNotFound(error.show))
+        case Left(error) =>
+          Ok[ApiCallResult](Failure(error.show))
       }
   }
 
@@ -111,16 +118,16 @@ class AdminRestApi(rorInstance: RorInstance,
     def liftFailure(failureMessage: String) = EitherT.leftT[Task, RawRorConfig](Failure(failureMessage))
     json \\ "settings" match {
       case Nil =>
-        liftFailure("Malformed config payload - no settings key")
+        liftFailure("Malformed settings payload - no settings key")
       case configJsonValue :: Nil  =>
         configJsonValue.asString match {
           case Some(configString) =>
             EitherT.fromEither[Task](RawRorConfig.fromString(configString).left.map(error => Failure(error.show)))
           case None =>
-            liftFailure("Malformed config payload - settings key value is not string")
+            liftFailure("Malformed settings payload - settings key value is not string")
         }
       case _ =>
-        liftFailure("Malformed config payload - only one settings value allowed")
+        liftFailure("Malformed settings payload - only one settings value allowed")
     }
   }
 
@@ -148,6 +155,7 @@ object AdminRestApi extends Logging {
     def message: String
   }
   final case class Success(message: String) extends ApiCallResult
+  final case class ConfigNotFound(message: String) extends ApiCallResult
   final case class Failure(message: String) extends ApiCallResult
 
   final case class Path private(endpointPath: Endpoint[Task, HNil], endpointString: String)
