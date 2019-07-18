@@ -67,7 +67,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     config.configJson \\ Attributes.rorSectionName match {
       case Nil => createCoreFromRorSection(config.configJson, httpClientFactory)
       case rorSection :: Nil => createCoreFromRorSection(rorSection, httpClientFactory)
-      case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
+      case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
     }
   }
 
@@ -78,7 +78,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           case Right(settings) =>
             Right(settings)
           case Left(failure) =>
-            Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed configuration")))))
+            Left(NonEmptyList.one(failure.aclCreationError.getOrElse(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
         }
       case Left(errors) =>
         Task.now(Left(errors.map(e => GeneralReadonlyrestSettingsError(Message(e.msg)))))
@@ -251,7 +251,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         authorizationServices <- AsyncDecoderCreator.from(ExternalAuthorizationServicesDecoder.instance(httpClientFactory))
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder
-        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance)
+        rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
         blocks <- {
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {

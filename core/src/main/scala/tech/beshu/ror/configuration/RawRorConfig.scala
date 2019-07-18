@@ -62,9 +62,9 @@ object RawRorConfig {
     final case class InvalidContent(throwable: Throwable) extends ParsingRorConfigError
 
     implicit val show: Show[ParsingRorConfigError] = Show.show {
-      case NoRorSection => "Cannot find any 'readonlyrest' section in config"
+      case NoRorSection => "Cannot find any 'readonlyrest' section in settings"
       case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
-      case InvalidContent(ex) => s"Config file content is malformed. Details: ${ex.getMessage}"
+      case InvalidContent(ex) => s"Settings file content is malformed. Details: ${ex.getMessage}"
     }
   }
 
