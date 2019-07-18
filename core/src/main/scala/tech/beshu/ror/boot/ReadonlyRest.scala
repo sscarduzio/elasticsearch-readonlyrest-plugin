@@ -92,9 +92,9 @@ trait ReadonlyRest extends Logging {
         .from(esConfigPath)
         .map(_.left.map {
           case LoadEsConfigError.FileNotFound(file) =>
-            StartingFailure(s"Cannot find elasticsearch config file: [${file.pathAsString}]")
+            StartingFailure(s"Cannot find elasticsearch settings file: [${file.pathAsString}]")
           case LoadEsConfigError.MalformedContent(file, msg) =>
-            StartingFailure(s"Config file is malformed: [${file.pathAsString}], $msg")
+            StartingFailure(s"Settings file is malformed: [${file.pathAsString}], $msg")
         })
     }
   }
@@ -117,7 +117,7 @@ trait ReadonlyRest extends Logging {
   }
 
   private def loadRorConfigFromFile(fileConfigLoader: FileConfigLoader) = {
-    logger.info(s"Loading ReadonlyREST config from file: ${fileConfigLoader.rawConfigFile.pathAsString}")
+    logger.info(s"Loading ReadonlyREST settings from file: ${fileConfigLoader.rawConfigFile.pathAsString}")
     fileConfigLoader
       .load()
       .map {
@@ -132,7 +132,7 @@ trait ReadonlyRest extends Logging {
 
   private[ror] def loadRorConfigFromIndex(indexConfigManager: IndexConfigManager,
                                           noIndexFallback: => Task[Either[StartingFailure, RawRorConfig]]) = {
-    logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
+    logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
     indexConfigManager
       .load()
       .flatMap {
@@ -171,7 +171,7 @@ trait ReadonlyRest extends Logging {
               .map(_.reason)
               .map {
                 case Reason.Message(msg) => msg
-                case Reason.MalformedValue(yamlString) => s"Malformed config: $yamlString"
+                case Reason.MalformedValue(yamlString) => s"Malformed settings: $yamlString"
               }
               .toList
               .mkString("Errors:\n", "\n", "")
@@ -222,7 +222,7 @@ class RorInstance private (boot: ReadonlyRest,
                 promise.success(Left(ForceReloadError.StoppedInstance))
             }
           case Right(Right(None)) =>
-            logger.debug("[CLUSTERWIDE SETTINGS] Index configuration is the same as loaded one. Nothing to do.")
+            logger.debug("[CLUSTERWIDE SETTINGS] Index settings is the same as loaded one. Nothing to do.")
             promise.success(Left(ForceReloadError.ConfigUpToDate))
           case Right(Left(startingFailure)) =>
             promise.success(Left(ForceReloadError.CannotReload(startingFailure)))
@@ -246,19 +246,19 @@ class RorInstance private (boot: ReadonlyRest,
   }
 
   private def scheduleIndexConfigChecking(noIndexFallback: Task[Either[StartingFailure, RawRorConfig]]): Cancelable = {
-    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index config check within ${RorInstance.indexConfigCheckingSchedulerDelay}")
+    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${RorInstance.indexConfigCheckingSchedulerDelay}")
     scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
       tryReloadingEngine(noIndexFallback)
         .runAsync {
           case Right(Right(Some(_))) =>
           case Right(Right(None)) =>
-            logger.debug("[CLUSTERWIDE SETTINGS] Config is up to date. Nothing to reload.")
+            logger.debug("[CLUSTERWIDE SETTINGS] Settings are up to date. Nothing to reload.")
             scheduleNewConfigCheck()
           case Right(Left(startingFailure)) =>
-            logger.error(s"[CLUSTERWIDE SETTINGS] ROR configuration starting failed: ${startingFailure.message}")
+            logger.error(s"[CLUSTERWIDE SETTINGS] ReadonlyREST starting failed: ${startingFailure.message}")
             scheduleNewConfigCheck()
           case Left(ex) =>
-            logger.error("[CLUSTERWIDE SETTINGS] Checking index config failed: error", ex)
+            logger.error("[CLUSTERWIDE SETTINGS] Checking index settings failed: error", ex)
             scheduleNewConfigCheck()
         }
     }
@@ -292,7 +292,7 @@ class RorInstance private (boot: ReadonlyRest,
         newEngine.engine.shutdown()
         val newState = State.Stopped
         promise.success(newState)
-        logger.error("Cannot load new ReadonlyREST core, because it's instance was stopped")
+        logger.error("Cannot load new ReadonlyREST core, because its instance was stopped")
         newState
     }
     Task.fromCancelablePromise(promise)
@@ -389,7 +389,7 @@ object RorInstance {
   private val indexConfigCheckingSchedulerDelay = 5 second
   private val delayOfOldEngineShutdown = 10 seconds
 
-  private val noIndexStartingFailure = Task.now(Left(StartingFailure("Cannot find index with ROR configuration")))
+  private val noIndexStartingFailure = Task.now(Left(StartingFailure("Cannot find index with ROR settings")))
 
   sealed trait ForceReloadError
   object ForceReloadError {

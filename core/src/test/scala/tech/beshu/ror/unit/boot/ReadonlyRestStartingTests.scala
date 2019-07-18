@@ -178,7 +178,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
-          failure.message should startWith ("Config file is malformed:")
+          failure.message should startWith ("Settings file is malformed:")
         }
       }
       "force load from file is set and config cannot be loaded" in {
@@ -212,7 +212,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
-          failure.message should startWith ("Config file content is malformed.")
+          failure.message should startWith ("Settings file content is malformed.")
         }
       }
       "index config doesn't exist and file config cannot be loaded" in {
@@ -252,7 +252,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
-          failure.message should startWith ("Config file content is malformed.")
+          failure.message should startWith ("Settings file content is malformed.")
         }
       }
       "index config cannot be loaded" in {
