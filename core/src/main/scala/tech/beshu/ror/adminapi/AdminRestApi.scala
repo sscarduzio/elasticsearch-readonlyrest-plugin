@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.adminapi
 
-import cats.{Contravariant, Show}
 import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import com.twitter.finagle.http.Status.Successful
@@ -52,7 +51,7 @@ class AdminRestApi(rorInstance: RorInstance,
     rorInstance
       .forceReloadFromIndex()
       .map {
-        case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings was reloaded with success!"))
+        case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings were reloaded with success!"))
         case Left(ForceReloadError.CannotReload(failure)) => Ok(Failure(failure.message))
         case Left(ForceReloadError.ConfigUpToDate) => Ok(Failure("Current settings are up to date"))
         case Left(ForceReloadError.ReloadingError) => Ok(Failure("Reloading unexpected error"))
@@ -87,7 +86,7 @@ class AdminRestApi(rorInstance: RorInstance,
         case Right(config) =>
           Ok[ApiCallResult](Success(config.raw))
         case Left(SpecializedError(error@IndexConfigNotExist)) =>
-          implicit val show = Contravariant[Show].narrow[IndexConfigError, IndexConfigNotExist.type](IndexConfigError.show)
+          implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
           Ok[ApiCallResult](ConfigNotFound(error.show))
         case Left(error) =>
           Ok[ApiCallResult](Failure(error.show))

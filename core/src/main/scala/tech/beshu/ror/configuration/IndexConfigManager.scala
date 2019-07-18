@@ -61,7 +61,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
       .map {
         _.left.map {
           case CannotWriteToIndex(ex) =>
-            logger.errorEx("Cannot save config in index", ex)
+            logger.errorEx("Cannot save setting in index", ex)
             SavingIndexConfigError.CannotSaveConfig
         }
       }
@@ -78,8 +78,8 @@ object IndexConfigManager {
     case object IndexConfigUnknownStructure extends IndexConfigError
 
     implicit val show: Show[IndexConfigError] = Show.show {
-      case IndexConfigNotExist => "Cannot find config index"
-      case IndexConfigUnknownStructure => s"Unknown structure of index config"
+      case IndexConfigNotExist => "Cannot find settings index"
+      case IndexConfigUnknownStructure => s"Unknown structure of index settings"
     }
 
     val indexConfigLoaderErrorShow: Show[ConfigLoaderError[IndexConfigError]] =
@@ -91,7 +91,7 @@ object IndexConfigManager {
     case object CannotSaveConfig extends SavingIndexConfigError
 
     implicit val show: Show[SavingIndexConfigError] = Show.show {
-      case CannotSaveConfig => "Cannot save config to index"
+      case CannotSaveConfig => "Cannot save settings in index"
     }
   }
 
