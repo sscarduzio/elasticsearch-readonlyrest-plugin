@@ -33,7 +33,7 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnection
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.acl.domain.Secret
+import tech.beshu.ror.acl.domain.PlainTextSecret
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -298,12 +298,12 @@ object LdapServicesDecoder {
       .instance { c =>
         for {
           dnOpt <- c.downField("bind_dn").as[Option[Dn]]
-          secretOpt <- c.downField("bind_password").as[Option[String]]
+          secretOpt <- c.downField("bind_password").as[Option[NonEmptyString]]
         } yield (dnOpt, secretOpt)
       }
       .toSyncDecoder
       .emapE[BindRequestUser] {
-      case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, Secret(secret)))
+      case (Some(dn), Some(secret)) => Right(BindRequestUser.CustomUser(dn, PlainTextSecret(secret)))
       case (None, None) => Right(BindRequestUser.Anonymous)
       case (_, _) => Left(DefinitionsLevelCreationError(Message(s"'bind_dn' & 'bind_password' should be both present or both absent")))
     }

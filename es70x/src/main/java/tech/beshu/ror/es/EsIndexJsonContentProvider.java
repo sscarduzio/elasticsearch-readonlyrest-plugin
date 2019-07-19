@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es;
 
+import com.google.common.collect.Maps;
 import monix.eval.Task;
 import monix.eval.Task$;
 import monix.execution.CancelablePromise;

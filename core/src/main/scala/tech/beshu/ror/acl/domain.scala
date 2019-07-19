@@ -28,8 +28,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.Constants
+import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.util.Try
@@ -83,12 +83,14 @@ object domain {
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
   }
 
-  final case class BasicAuth private(user: User.Id, secret: Secret) {
+  final case class Credentials(user: User.Id, secret: PlainTextSecret)
+  final case class BasicAuth private(credentials: Credentials) {
     def header: Header = Header(
       Header.Name.authorization,
-      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${user.value}:${secret.value}".getBytes(UTF_8))}")
+      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
     )
-    def colonSeparatedString: String = s"${user.value}:${secret.value}"
+    //todo: remove?
+    def colonSeparatedString: String = s"${credentials.user.value}:${credentials.secret.value}"
   }
   object BasicAuth extends Logging {
     def fromHeader(header: Header): Option[BasicAuth] = {
@@ -115,23 +117,13 @@ object domain {
     }
 
     private def fromBase64(base64Value: String) = {
+      import tech.beshu.ror.utils.StringOps._
       Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
-        .map { decoded =>
-          decoded.indexOf(":") match {
-            case -1 =>
-              None
-            case index if index == decoded.length -1 =>
-              None
-            case index =>
-              NonEmptyString.from(decoded.substring(0, index)) match {
-                case Left(_) =>
-                  None
-                case Right(value) =>
-                  Some(BasicAuth(User.Id(value), Secret(decoded.substring(index + 1))))
-              }
-          }
+        .toOption
+        .flatMap(_.toNonEmptyStringsTuple)
+        .map { case (first, second) =>
+          BasicAuth(Credentials(User.Id(first), PlainTextSecret(second)))
         }
-        .getOrElse(None)
     }
   }
 
@@ -195,10 +187,9 @@ object domain {
     implicit val eqApiKey: Eq[ApiKey] = Eq.fromUniversalEquals
   }
 
-  final case class Secret(value: String) extends AnyVal
-  object Secret {
-    implicit val eqAuthKey: Eq[Secret] = Eq.fromUniversalEquals
-    val empty: Secret = Secret("")
+  final case class PlainTextSecret(value: NonEmptyString)
+  object PlainTextSecret {
+    implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
   }
 
   final case class KibanaApp(value: NonEmptyString) 

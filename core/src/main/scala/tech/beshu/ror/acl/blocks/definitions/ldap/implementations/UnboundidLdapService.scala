@@ -31,7 +31,7 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnection
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider.ConnectionError
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
-import tech.beshu.ror.acl.domain.{Group, Secret, User}
+import tech.beshu.ror.acl.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.acl.utils.LdapConnectionPoolOps._
 
 import scala.concurrent.duration._
@@ -46,7 +46,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
     with LdapAuthenticationService {
 
-  override def authenticate(user: User.Id, secret: Secret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean] = {
     ldapUserBy(user)
       .flatMap {
         case Some(ldapUser) =>
@@ -56,10 +56,10 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
       }
   }
 
-  private def ldapAuthenticate(user: LdapUser, password: Secret) = {
+  private def ldapAuthenticate(user: LdapUser, password: PlainTextSecret) = {
     Task(connectionPool.getConnection)
       .bracket(
-        use = connection => Task(connection.bind(new SimpleBindRequest(user.dn.value.value, password.value)))
+        use = connection => Task(connection.bind(new SimpleBindRequest(user.dn.value.value, password.value.value)))
       )(
         release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
       )
@@ -300,7 +300,7 @@ object LdapConnectionConfig {
   sealed trait BindRequestUser
   object BindRequestUser {
     case object Anonymous extends BindRequestUser
-    final case class CustomUser(dn: Dn, password: Secret) extends BindRequestUser
+    final case class CustomUser(dn: Dn, password: PlainTextSecret) extends BindRequestUser
   }
 
 }

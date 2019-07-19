@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.acl.domain.{Group, Secret, User}
+import tech.beshu.ror.acl.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -69,7 +69,7 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
           trustAllCerts = false,
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
-            Secret("password")
+            PlainTextSecret("password".nonempty)
           )
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),

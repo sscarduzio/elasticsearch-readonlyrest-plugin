@@ -9,7 +9,9 @@ import tech.beshu.ror.acl.domain.LoggedUser
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 
-class ImpersonationRuleDecorator(underlying: AuthenticationRule with ImpersonationSupport) extends AuthenticationRule {
+class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSupport](val underlying: R)
+  extends AuthenticationRule {
+
   override val name: Rule.Name = underlying.name
 
   override def check(requestContext: RequestContext,

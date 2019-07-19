@@ -17,13 +17,14 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-
+import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.acl.blocks.rules.AuthKeySha256Rule
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationRuleDecorator
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.domain.Secret
+import tech.beshu.ror.utils.TestsUtils._
 
-class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha256Rule] {
+class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[AuthKeySha256Rule]] {
 
   "An AuthKeySha256Rule" should {
     "be able to be loaded from config" when {
@@ -40,7 +41,9 @@ class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.authKey should be(Secret("bdf2f78928097ae90a029c33fe06a83e3a572cb48371fb2de290d1c2ffee010b"))
+            rule.underlying.settings.credentials should be {
+              HashedCredentials.HashedUserAndPassword("bdf2f78928097ae90a029c33fe06a83e3a572cb48371fb2de290d1c2ffee010b".nonempty)
+            }
           }
         )
       }

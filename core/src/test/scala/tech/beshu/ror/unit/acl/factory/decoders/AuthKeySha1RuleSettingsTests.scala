@@ -17,12 +17,14 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
+import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.acl.blocks.rules.AuthKeySha1Rule
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationRuleDecorator
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.domain.Secret
+import tech.beshu.ror.utils.TestsUtils._
 
-class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha1Rule] {
+class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[AuthKeySha1Rule]] {
 
   "An AuthKeySha1Rule" should {
     "be able to be loaded from config" when {
@@ -39,7 +41,9 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.authKey should be(Secret("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
+            rule.underlying.settings.credentials should be {
+              HashedCredentials.HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty)
+            }
           }
         )
       }

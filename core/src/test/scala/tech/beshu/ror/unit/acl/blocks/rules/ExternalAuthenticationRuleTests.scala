@@ -22,7 +22,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.acl.domain.{LoggedUser, Secret, User}
+import tech.beshu.ror.acl.domain.{Credentials, LoggedUser, PlainTextSecret, User}
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
@@ -40,7 +40,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { (user: User.Id, secret: Secret) => user.value === "user".nonempty && secret.value == "pass" })
+          .expects(where { credentials: Credentials => credentials.user.value === "user".nonempty && credentials.secret.value == "pass".nonempty })
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
@@ -60,7 +60,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { (user: User.Id, secret: Secret) => user.value === "user".nonempty && secret.value == "pass" })
+          .expects(where { credentials: Credentials => credentials.user.value === "user".nonempty && credentials.secret.value == "pass".nonempty })
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]

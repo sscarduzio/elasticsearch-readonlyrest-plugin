@@ -460,7 +460,9 @@ class JwtAuthRuleTests
 
   private def authService(rawToken: String, authenticated: Boolean) = {
     val service = mock[ExternalAuthenticationService]
-    (service.authenticate _).expects(*, Secret(rawToken)).returning(Task.now(authenticated))
+    (service.authenticate _)
+      .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(rawToken.nonempty) })
+      .returning(Task.now(authenticated))
     service
   }
 }

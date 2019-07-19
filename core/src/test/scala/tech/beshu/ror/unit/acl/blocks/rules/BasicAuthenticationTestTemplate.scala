@@ -32,7 +32,7 @@ import tech.beshu.ror.utils.TestsUtils.StringOps
 trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
 
   protected def ruleName: String
-  protected def rule: BasicAuthenticationRule
+  protected def rule: BasicAuthenticationRule[_]
 
   s"An $ruleName" should {
     "match" when {

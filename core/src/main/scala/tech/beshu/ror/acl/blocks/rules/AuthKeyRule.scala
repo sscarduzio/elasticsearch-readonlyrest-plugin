@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.acl.blocks.rules
 
-import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.{BasicAuth, Secret}
+import tech.beshu.ror.acl.domain.Credentials
 
-class AuthKeyRule(settings: BasicAuthenticationRule.Settings)
+
+class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials])
   extends BasicAuthenticationRule(settings)
     with Logging {
 
   override val name: Rule.Name = AuthKeyRule.name
 
-  override protected def compare(configuredAuthKey: Secret,
-                                 basicAuth: BasicAuth): Task[Boolean] = Task {
-    configuredAuthKey === Secret(basicAuth.colonSeparatedString)
+  override protected def compare(configuredCredentials: Credentials,
+                                 credentials: Credentials): Task[Boolean] = Task.now {
+    configuredCredentials == credentials
   }
 }
 

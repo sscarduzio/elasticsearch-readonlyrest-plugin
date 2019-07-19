@@ -92,7 +92,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
             settings.jwt.checkMethod match {
               case NoCheck(service) =>
                 service
-                  .authenticate(User.Id(hasher.hash(token.value)), Secret(token.value.value))
+                  .authenticate(Credentials(User.Id(hasher.hash(token.value)), PlainTextSecret(token.value)))
                   .map(RuleResult.fromCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))

@@ -18,32 +18,57 @@ package tech.beshu.ror.acl.blocks.rules
 
 import java.nio.charset.Charset
 
-import cats.implicits._
 import com.google.common.hash.{HashFunction, Hashing}
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.Secret._
-import tech.beshu.ror.acl.domain.{BasicAuth, Secret}
+import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
+import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
+import tech.beshu.ror.acl.domain.{Credentials, User}
 
-abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings,
+abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
                                   hashFunction: HashFunction)
   extends BasicAuthenticationRule(settings)
     with Logging {
 
-  override protected def compare(configuredAuthKey: Secret,
-                                 basicAuth: BasicAuth): Task[Boolean] = Task {
-    val shaProvided =
-      if (configuredAuthKey.value.contains(":"))
-        Secret(basicAuth.user.value + ":" + hashFunction.hashString(basicAuth.secret.value, Charset.defaultCharset))
-      else
-        Secret(hashFunction.hashString(basicAuth.colonSeparatedString, Charset.defaultCharset).toString)
-
-    configuredAuthKey === shaProvided
-
+  override protected def compare(configuredCredentials: HashedCredentials,
+                                 credentials: Credentials): Task[Boolean] = Task {
+    configuredCredentials match {
+      case secret: HashedUserAndPassword =>
+        secret == HashedUserAndPassword.from(credentials, hashFunction)
+      case secret: HashedOnlyPassword =>
+        secret == HashedOnlyPassword.from(credentials, hashFunction)
+    }
   }
 }
 
-class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings)
+object AuthKeyHashingRule {
+
+  sealed trait HashedCredentials
+
+  object HashedCredentials {
+
+    final case class HashedUserAndPassword(hash: NonEmptyString) extends HashedCredentials
+    object HashedUserAndPassword {
+      def from(credentials: Credentials, hashFunction: HashFunction): HashedUserAndPassword = HashedUserAndPassword {
+        NonEmptyString.unsafeFrom(
+          hashFunction.hashString(s"${credentials.user.value.value}:${credentials.secret.value}", Charset.defaultCharset).toString
+        )
+      }
+    }
+
+    final case class HashedOnlyPassword(userId: User.Id, hash: NonEmptyString) extends HashedCredentials
+    object HashedOnlyPassword {
+      def from(credentials: Credentials, hashFunction: HashFunction): HashedOnlyPassword = HashedOnlyPassword(
+        credentials.user,
+        NonEmptyString.unsafeFrom(hashFunction.hashString(credentials.secret.value.value, Charset.defaultCharset).toString)
+      )
+    }
+  }
+
+}
+
+class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials])
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha1()) {
 
   override val name: Rule.Name = AuthKeySha1Rule.name
@@ -53,7 +78,7 @@ object AuthKeySha1Rule {
   val name = Rule.Name("auth_key_sha1")
 }
 
-class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings)
+class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials])
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha256()) {
 
   override val name: Rule.Name = AuthKeySha256Rule.name
@@ -63,7 +88,7 @@ object AuthKeySha256Rule {
   val name = Rule.Name("auth_key_sha256")
 }
 
-class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings)
+class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials])
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha512()) {
 
   override val name: Rule.Name = AuthKeySha512Rule.name
