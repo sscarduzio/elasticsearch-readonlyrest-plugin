@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.acl.blocks.rules
 
+import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.Credentials
-
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials])
   extends BasicAuthenticationRule(settings)
@@ -30,6 +31,11 @@ class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials])
   override protected def compare(configuredCredentials: Credentials,
                                  credentials: Credentials): Task[Boolean] = Task.now {
     configuredCredentials == credentials
+  }
+
+  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+    if (user === settings.credentials.user) UserExistence.Exists
+    else UserExistence.NotExist
   }
 }
 

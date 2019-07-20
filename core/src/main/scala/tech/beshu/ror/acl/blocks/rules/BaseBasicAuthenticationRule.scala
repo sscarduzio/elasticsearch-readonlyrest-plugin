@@ -54,8 +54,6 @@ abstract class BaseBasicAuthenticationRule
             Task.now(Rejected)
         }
       }
-
-  override def exists(user: User.Id): Task[Boolean] = ???
 }
 
 abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDENTIALS])

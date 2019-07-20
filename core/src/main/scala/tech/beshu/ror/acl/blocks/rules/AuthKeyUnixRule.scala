@@ -18,10 +18,12 @@ package tech.beshu.ror.acl.blocks.rules
 
 import java.util.regex.Pattern
 
+import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.acl.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
 import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials])
@@ -33,6 +35,11 @@ class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCrede
                                  credentials: Credentials): Task[Boolean] = Task {
     configuredCredentials.userId == credentials.user &&
       configuredCredentials.from(credentials).contains(configuredCredentials)
+  }
+
+  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+    if (user === settings.credentials.userId) UserExistence.Exists
+    else UserExistence.NotExist
   }
 }
 

@@ -5,6 +5,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
 import tech.beshu.ror.acl.domain.LoggedUser
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -21,10 +22,9 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
         underlying
           .exists(userId)
           .map {
-            case true =>
-              Fulfilled(blockContext.withLoggedUser(LoggedUser(userId)))
-            case false =>
-              Rejected
+            case Exists => Fulfilled(blockContext.withLoggedUser(LoggedUser(userId)))
+            case NotExist => Rejected
+            case CannotCheck => Rejected // todo: maybe we can indicate it somehow
           }
       case None =>
         underlying.check(requestContext, blockContext)

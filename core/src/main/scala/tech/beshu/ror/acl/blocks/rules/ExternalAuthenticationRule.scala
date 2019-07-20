@@ -18,7 +18,8 @@ package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
-import tech.beshu.ror.acl.domain.Credentials
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings)
   extends BaseBasicAuthenticationRule {
@@ -27,6 +28,8 @@ class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settin
 
   override protected def authenticate(credentials: Credentials): Task[Boolean] =
     settings.service.authenticate(credentials)
+
+  override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
 }
 
 object ExternalAuthenticationRule {

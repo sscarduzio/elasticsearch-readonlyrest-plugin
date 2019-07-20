@@ -16,15 +16,16 @@
  */
 package tech.beshu.ror.acl.blocks.rules
 
+import cats.implicits._
 import java.nio.charset.Charset
-
 import com.google.common.hash.{HashFunction, Hashing}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
-import tech.beshu.ror.acl.domain.{Credentials, User}
+import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.domain._
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
                                   hashFunction: HashFunction)
@@ -38,6 +39,14 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
         secret == HashedUserAndPassword.from(credentials, hashFunction)
       case secret: HashedOnlyPassword =>
         secret == HashedOnlyPassword.from(credentials, hashFunction)
+    }
+  }
+
+  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+    settings.credentials match {
+      case HashedUserAndPassword(_) => UserExistence.CannotCheck
+      case HashedOnlyPassword(userId, _) if userId === user => UserExistence.Exists
+      case HashedOnlyPassword(_, _) => UserExistence.NotExist
     }
   }
 }
