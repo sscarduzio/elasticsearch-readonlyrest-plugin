@@ -24,6 +24,7 @@ import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils._
 
+// todo: add tests
 class AuthKeySha256RuleSettingsTests extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[AuthKeySha256Rule]] {
 
   "An AuthKeySha256Rule" should {

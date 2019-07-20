@@ -26,7 +26,8 @@ import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.utils.StringOps._
+import tech.beshu.ror.utils.StringWiseSplitter
+import tech.beshu.ror.utils.StringWiseSplitter._
 
 object AuthKeyRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
@@ -70,10 +71,12 @@ private object AuthKeyDecodersHelper {
       .toSyncDecoder
       .emapE { str =>
         str.value.toNonEmptyStringsTuple match {
-          case Some((first, second)) =>
+          case Right((first, second)) =>
             Right(AuthKeyHashingRule.HashedCredentials.HashedOnlyPassword(User.Id(first), second))
-          case None =>
+          case Left(StringWiseSplitter.Error.CannotSplitUsingColon) =>
             Right(AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword(str))
+          case Left(StringWiseSplitter.Error.TupleMemberCannotBeEmpty) =>
+            Left(RulesLevelCreationError(Message(s"SHA credentials malformed (expected two non-empty values separated with colon)")))
         }
       }
       .map(identity[AuthKeyHashingRule.HashedCredentials])
@@ -96,14 +99,10 @@ private object AuthKeyDecodersHelper {
     DecoderHelpers
       .decodeStringLike
       .toSyncDecoder
-      .emapE { str =>
-        str.toNonEmptyStringsTuple match {
-          case Some(nonEmptyStringsTuple) =>
-            Right(nonEmptyStringsTuple)
-          case None =>
-            Left(RulesLevelCreationError(Message(s"$fieldNameForMessage malformed (expected two non-empty values separated with colon)")))
-        }
+      .emapE {
+        _.value
+          .toNonEmptyStringsTuple
+          .left.map(_ => RulesLevelCreationError(Message(s"$fieldNameForMessage malformed (expected two non-empty values separated with colon)")))
       }
       .decoder
-
 }

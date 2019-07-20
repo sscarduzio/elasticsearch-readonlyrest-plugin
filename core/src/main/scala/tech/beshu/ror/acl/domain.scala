@@ -117,10 +117,10 @@ object domain {
     }
 
     private def fromBase64(base64Value: String) = {
-      import tech.beshu.ror.utils.StringOps._
+      import tech.beshu.ror.utils.StringWiseSplitter._
       Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
         .toOption
-        .flatMap(_.toNonEmptyStringsTuple)
+        .flatMap(_.toNonEmptyStringsTuple.toOption)
         .map { case (first, second) =>
           BasicAuth(Credentials(User.Id(first), PlainTextSecret(second)))
         }
