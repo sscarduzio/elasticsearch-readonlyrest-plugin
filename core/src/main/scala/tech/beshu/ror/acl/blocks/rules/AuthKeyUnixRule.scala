@@ -48,7 +48,7 @@ object AuthKeyUnixRule {
 
     private def roundHash(credentials: Credentials): Option[NonEmptyString] = {
       val m = AuthKeyUnixRule.pattern.matcher(hash.value)
-      if (m.find) NonEmptyString.unapply(s"${credentials.user.value.value}:${crypt(credentials.secret.value.value, m.group(1))}")
+      if (m.find) NonEmptyString.unapply(crypt(credentials.secret.value.value, m.group(1)))
       else None
     }
   }
