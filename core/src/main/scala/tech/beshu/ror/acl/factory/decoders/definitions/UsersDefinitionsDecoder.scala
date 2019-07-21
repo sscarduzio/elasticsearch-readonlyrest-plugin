@@ -44,8 +44,18 @@ object UsersDefinitionsDecoder {
                ldapDefinitions: Definitions[LdapService],
                rorKbnDefinitions: Definitions[RorKbnDef])
               (implicit envVarsProvider: EnvVarsProvider): ADecoder[Id, Definitions[UserDef]] = {
-    implicit val userDefDecoder: SyncDecoder[UserDef] = SyncDecoderCreator
-      .from(UsersDefinitionsDecoder.userDefDecoder(authenticationServiceDefinitions, authProxyDefinitions, jwtDefinitions, ldapDefinitions, rorKbnDefinitions, envVarsProvider))
+    implicit val userDefDecoder: SyncDecoder[UserDef] =
+      SyncDecoderCreator.from(
+        UsersDefinitionsDecoder
+          .userDefDecoder(
+            authenticationServiceDefinitions,
+            authProxyDefinitions,
+            jwtDefinitions,
+            ldapDefinitions,
+            rorKbnDefinitions,
+            envVarsProvider
+          )
+      )
     DefinitionsBaseDecoder.instance[Id, UserDef]("users")
   }
 
@@ -84,7 +94,8 @@ object UsersDefinitionsDecoder {
           authProxyDefinitions,
           jwtDefinitions,
           ldapDefinitions,
-          rorKbnDefinitions
+          rorKbnDefinitions,
+          None
         ) match {
           case Some(authRuleDecoder) => authRuleDecoder
           case None => DecoderHelpers.failed[AuthenticationRule](

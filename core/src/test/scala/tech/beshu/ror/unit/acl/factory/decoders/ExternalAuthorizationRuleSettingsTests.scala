@@ -824,12 +824,12 @@ class ExternalAuthorizationRuleSettingsTests
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
               |    response_groups_json_path: "$..groups[?(@.name)].name"
-              |    default_query_parameters: "query:value:123;query1:12345"
+              |    default_query_parameters: "query:;query1:12345"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse pairs: query:value:123;query1:12345")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse pairs: query:")))
           }
         )
       }
@@ -854,12 +854,12 @@ class ExternalAuthorizationRuleSettingsTests
               |    auth_token_name: "user"
               |    auth_token_passed_as: QUERY_PARAM
               |    response_groups_json_path: "$..groups[?(@.name)].name"
-              |    default_headers: "header1:value:123;header2:12345"
+              |    default_headers: "header1:;header2:12345"
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse pairs: header1:value:123;header2:12345")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse pairs: header1:")))
           }
         )
       }

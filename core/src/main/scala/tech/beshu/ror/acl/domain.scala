@@ -89,8 +89,6 @@ object domain {
       Header.Name.authorization,
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
     )
-    //todo: remove?
-    def colonSeparatedString: String = s"${credentials.user.value}:${credentials.secret.value}"
   }
   object BasicAuth extends Logging {
     def fromHeader(header: Header): Option[BasicAuth] = {
