@@ -25,7 +25,6 @@ import tech.beshu.ror.acl.show.logs.userIdShow
 
 final case class UserDef(id: UserDef#Id,
                          groups: NonEmptySet[Group],
-                         // todo: what about impersonation here?
                          authenticationRule: AuthenticationRule) extends Item {
   override type Id = User.Id
   override implicit val show: Show[User.Id] = userIdShow

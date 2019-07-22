@@ -26,7 +26,7 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
     impersonators
       .map { i =>
         val matcher = new MatcherWithWildcardsScalaAdapter(
-          new MatcherWithWildcards(i.users.map(_.value.value).asJava)
+          new MatcherWithWildcards(i.users.map(_.value.value).toSortedSet.asJava)
         )
         (i, matcher)
       }
