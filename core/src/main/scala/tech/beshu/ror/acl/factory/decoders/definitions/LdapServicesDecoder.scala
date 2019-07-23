@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.acl.factory.decoders.definitions
 
-import cats.data.NonEmptySet
+import cats.data.NonEmptyList
 import cats.implicits._
 import com.comcast.ip4s.Port
 import eu.timepit.refined.api.Refined
@@ -42,7 +42,6 @@ import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.acl.utils._
 
-import scala.collection.SortedSet
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.language.postfixOps
 
@@ -228,7 +227,7 @@ object LdapServicesDecoder {
                 Left(DefinitionsLevelCreationError(Message(s"Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
             }
           case (None, Some(hostsList)) =>
-            NonEmptySet.fromSet(SortedSet.empty[LdapHost] ++ hostsList) match {
+            NonEmptyList.fromList(hostsList) match {
               case Some(hosts) if allHostsWithTheSameSchema(hosts) =>
                 Right(SeveralServers(hosts, haMethod.getOrElse(HaMethod.Failover)))
               case Some(_) =>
@@ -245,7 +244,7 @@ object LdapServicesDecoder {
       .emapE[ConnectionMethod](identity)
       .decoder
 
-  private def allHostsWithTheSameSchema(hosts: NonEmptySet[LdapHost]) = hosts.toList.map(_.isSecure).distinct.length == 1
+  private def allHostsWithTheSameSchema(hosts: NonEmptyList[LdapHost]) = hosts.map(_.isSecure).distinct.length == 1
 
   private implicit val haMethodDecoder: Decoder[HaMethod] =
     SyncDecoderCreator
