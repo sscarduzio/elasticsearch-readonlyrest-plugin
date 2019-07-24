@@ -40,7 +40,6 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
       "search api is used" in {
         val result = searchManager.search("/test1_index/_search")
         assertEquals(200, result.getResponseCode)
-        assertEquals(200, result.getResponseCode)
         result.getResults.size() should be (1)
         result.getResults.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be ("db_user1")
       }

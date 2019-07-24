@@ -65,7 +65,7 @@ public class DocumentManager {
 
   private void makeInsertCall(String docPath, String content) {
     try {
-      HttpPut request = new HttpPut(restClient.from(docPath));
+      HttpPut request = new HttpPut(restClient.from(docPath + "?refresh=wait_for"));
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
       request.setHeader("Content-Type", "application/json");
