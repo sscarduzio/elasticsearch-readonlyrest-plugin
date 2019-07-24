@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.http.HttpResponse;
@@ -65,7 +66,10 @@ public class DocumentManager {
 
   private void makeInsertCall(String docPath, String content) {
     try {
-      HttpPut request = new HttpPut(restClient.from(docPath + "?refresh=wait_for"));
+      HttpPut request = new HttpPut(restClient.from(
+          docPath,
+          new ImmutableMap.Builder<String, String>().put("refresh", "wait_for").build()
+      ));
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
       request.setHeader("Content-Type", "application/json");
