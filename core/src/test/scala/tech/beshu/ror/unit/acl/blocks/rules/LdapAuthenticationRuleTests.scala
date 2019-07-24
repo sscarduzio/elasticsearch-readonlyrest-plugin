@@ -25,6 +25,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{LoggedUser, PlainTextSecret, User}
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
@@ -39,7 +40,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
         val requestContext = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:pass")))
         val blockContext = mock[BlockContext]
         val modifiedBlockContext = mock[BlockContext]
-        (blockContext.withLoggedUser _).expects(LoggedUser(Id("admin".nonempty))).returning(modifiedBlockContext)
+        (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id("admin".nonempty))).returning(modifiedBlockContext)
 
         val service = mock[LdapAuthenticationService]
         (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.now(true))

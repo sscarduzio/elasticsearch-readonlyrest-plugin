@@ -29,6 +29,7 @@ import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariabl
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
@@ -161,7 +162,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
       headers = preferredGroup.map(_.value).map(v => Header(Header.Name.currentGroup, v)).toSet[Header]
     )
     val blockContext = loggedUser
-      .map(LoggedUser(_))
+      .map(DirectlyLoggedUser(_))
       .foldLeft(RequestContextInitiatedBlockContext.fromRequestContext(requestContext): BlockContext)(_ withLoggedUser _)
     val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
@@ -178,7 +179,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
                                                  group: Group, availableGroups: Set[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
-        loggedUser = Some(LoggedUser(user)),
+        loggedUser = Some(DirectlyLoggedUser(user)),
         currentGroup = Some(group),
         availableGroups = availableGroups
       )(blockContext)
@@ -200,6 +201,6 @@ object GroupsRuleTests {
   private def alwaysFulfillingAuthRule(user: User.Id): AuthenticationRule = new AuthenticationRule {
     override def name: Rule.Name = Rule.Name("dummy-fulfilling")
     override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
-      Task.now(Fulfilled(blockContext.withLoggedUser(LoggedUser(user))))
+      Task.now(Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(user))))
   }
 }

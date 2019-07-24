@@ -275,6 +275,8 @@ object CirceOps {
                           rorKbnDefinitions: Definitions[RorKbnDef],
                           impersonatorDefs: Option[Definitions[ImpersonatorDef]]) = {
       value.keys.map(_.toList) match {
+        case None | Some(Nil) =>
+          Left(Message(s"No authentication method defined for user ['${username.show}']"))
         case Some(key :: Nil) =>
           val decoder = authenticationRuleDecoderBy(
             Rule.Name(key),
@@ -294,8 +296,6 @@ object CirceOps {
             .left.map(_ => Message(s"Cannot parse '$key' rule declared in user '${username.show}' definition"))
         case Some(keys) =>
           Left(Message(s"Only one authentication should be defined for user ['${username.show}']. Found ${keys.mkString(", ")}"))
-        case None | Some(Nil) =>
-          Left(Message(s"No authentication method defined for user ['${username.show}']"))
       }
     }
   }

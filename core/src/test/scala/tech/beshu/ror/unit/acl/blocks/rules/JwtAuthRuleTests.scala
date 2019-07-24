@@ -31,6 +31,7 @@ import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, Jwt
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
@@ -116,7 +117,7 @@ class JwtAuthRuleTests
           )
         ) {
           blockContext => assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
           )(blockContext)
         }
       }
@@ -143,7 +144,7 @@ class JwtAuthRuleTests
           )
         ) {
           blockContext => assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
           )(blockContext)
         }
       }
@@ -170,7 +171,7 @@ class JwtAuthRuleTests
           )
         ) {
           blockContext => assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
           )(blockContext)
         }
       }
@@ -197,7 +198,7 @@ class JwtAuthRuleTests
           )
         ) {
           blockContext => assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
           )(blockContext)
         }
       }
@@ -224,7 +225,7 @@ class JwtAuthRuleTests
           )
         ) {
           blockContext => assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
           )(blockContext)
         }
       }
@@ -252,7 +253,7 @@ class JwtAuthRuleTests
           )
         ) {
           blockContext => assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
             currentGroup = Some(Group("group2".nonempty)),
             availableGroups = Set(Group("group2".nonempty))
           )(blockContext)

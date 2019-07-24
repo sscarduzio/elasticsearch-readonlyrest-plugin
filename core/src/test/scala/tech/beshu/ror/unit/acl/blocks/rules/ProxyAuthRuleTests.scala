@@ -25,6 +25,7 @@ import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
@@ -84,7 +85,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     val newBlockContext = mock[BlockContext]
     (requestContext.headers _).expects().returning(Set(header))
-    if(isMatched) (blockContext.withLoggedUser _).expects(LoggedUser(Id(header.value))).returning(newBlockContext)
+    if(isMatched) (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id(header.value))).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(newBlockContext)
       else Rejected

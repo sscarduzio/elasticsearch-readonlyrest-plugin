@@ -24,6 +24,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{KibanaApp, LoggedUser}
 import tech.beshu.ror.acl.orders._
@@ -39,7 +40,7 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id("user1".nonempty))))
+        (blockContext.loggedUser _).expects().returning(Some(DirectlyLoggedUser(Id("user1".nonempty))))
         (blockContext.withAddedResponseHeader _).expects(headerFrom("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext) )
       }

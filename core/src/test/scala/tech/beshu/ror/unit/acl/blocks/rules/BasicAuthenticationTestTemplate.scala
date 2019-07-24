@@ -27,6 +27,7 @@ import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
@@ -42,7 +43,7 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
         val modifiedBlockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:logstash")))
-        (blockContext.withLoggedUser _).expects(LoggedUser(Id("logstash".nonempty))).returning(modifiedBlockContext)
+        (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id("logstash".nonempty))).returning(modifiedBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(modifiedBlockContext))
       }
     }

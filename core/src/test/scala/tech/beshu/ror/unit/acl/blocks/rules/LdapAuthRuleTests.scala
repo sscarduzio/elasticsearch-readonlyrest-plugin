@@ -36,6 +36,7 @@ import scala.util.{Failure, Success, Try}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import TestsUtils._
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 
 class LdapAuthRuleTests
   extends WordSpec
@@ -188,7 +189,7 @@ class LdapAuthRuleTests
                                                  availableGroups: Set[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
-        loggedUser = Some(LoggedUser(user)),
+        loggedUser = Some(DirectlyLoggedUser(user)),
         currentGroup = Some(group),
         availableGroups = availableGroups
       )(blockContext)

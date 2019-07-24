@@ -26,6 +26,7 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthorizationService
 import tech.beshu.ror.acl.blocks.rules.LdapAuthorizationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -129,7 +130,7 @@ class LdapAuthorizationRuleTests
       headers = preferredGroup.map(_.value).map(v => Header(Header.Name.currentGroup, v)).toSet[Header]
     )
     val blockContext = loggedUser
-      .map(LoggedUser(_))
+      .map(DirectlyLoggedUser(_))
       .foldLeft(RequestContextInitiatedBlockContext.fromRequestContext(requestContext): BlockContext)(_ withLoggedUser _)
     val result = Try(rule.check(requestContext, blockContext).runSyncUnsafe(1 second))
     assertionType match {
@@ -155,7 +156,7 @@ class LdapAuthorizationRuleTests
                                                  availableGroups: Set[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
-        loggedUser = Some(LoggedUser(user)),
+        loggedUser = Some(DirectlyLoggedUser(user)),
         currentGroup = Some(group),
         availableGroups = availableGroups
       )(blockContext)

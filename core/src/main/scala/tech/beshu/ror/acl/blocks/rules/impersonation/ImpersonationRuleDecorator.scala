@@ -11,7 +11,8 @@ import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserEx
 import tech.beshu.ror.acl.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.acl.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.acl.blocks.{BlockContext, NoOpBlockContext}
-import tech.beshu.ror.acl.domain.{LoggedUser, User}
+import tech.beshu.ror.acl.domain.LoggedUser.ImpersonatedUser
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.utils.MatcherWithWildcards
@@ -40,7 +41,7 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
           impersonatorDef <- findImpersonator(theImpersonatedUserId, requestContext)
           _ <- authenticateImpersonator(impersonatorDef, requestContext)
           _ <- checkIfTheImpersonatedUserExist(theImpersonatedUserId)
-        } yield blockContext.withLoggedUser(LoggedUser(theImpersonatedUserId))
+        } yield blockContext.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id))
       }
       case None =>
         underlying.check(requestContext, blockContext)

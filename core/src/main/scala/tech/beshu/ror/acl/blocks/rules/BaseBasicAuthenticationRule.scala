@@ -24,6 +24,7 @@ import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{Credentials, LoggedUser, User}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -46,7 +47,7 @@ abstract class BaseBasicAuthenticationRule
             logger.debug(s"Attempting Login as: ${credentials.user.show} rc: ${requestContext.id.show}")
             authenticate(credentials)
               .map {
-                case true => Fulfilled(blockContext.withLoggedUser(LoggedUser(credentials.user)))
+                case true => Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(credentials.user)))
                 case false => Rejected
               }
           case None =>

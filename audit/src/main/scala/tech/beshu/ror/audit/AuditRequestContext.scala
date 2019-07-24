@@ -35,6 +35,7 @@ trait AuditRequestContext {
   def taskId: Long
   def httpMethod: String
   def loggedInUserName: Option[String]
+  def impersonatedByUserName: Option[String]
   def involvesIndices: Boolean
 
 }

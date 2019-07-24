@@ -27,6 +27,7 @@ import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History, HistoryItem}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{Group, IndexName, LoggedUser, User}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext
@@ -50,7 +51,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") ::
-              passingRule("r2", _.withLoggedUser(LoggedUser(User.Id("user1".nonempty)))) ::
+              passingRule("r2", _.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))) ::
               notPassingRule("r3") ::
               passingRule("r4", _.withCurrentGroup(Group("group1".nonempty))) :: Nil
           )
@@ -65,7 +66,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
               HistoryItem(Rule.Name("r2"), matched = true),
               HistoryItem(Rule.Name("r3"), matched = false)
             ))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user1".nonempty)))) {
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))) {
               blockContext
             }
         }
@@ -130,7 +131,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         policy = Block.Policy.Allow,
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
-          passingRule("r1", _.withLoggedUser(LoggedUser(User.Id("user1".nonempty)))) ::
+          passingRule("r1", _.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))) ::
             passingRule("r2", _.withCurrentGroup(Group("group1".nonempty))) ::
             passingRule("r3", _.withIndices(NonEmptySet.one(IndexName("idx1".nonempty)))) ::
             Nil
@@ -147,7 +148,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             HistoryItem(Rule.Name("r3"), matched = true)
           ))
           assertBlockContext(
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
             currentGroup = Some(Group("group1".nonempty)),
             indices = Set(IndexName("idx1".nonempty))
           ) {

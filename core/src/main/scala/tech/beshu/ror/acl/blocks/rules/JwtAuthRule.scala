@@ -26,6 +26,7 @@ import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
@@ -144,7 +145,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
   private def handleUserClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[User.Id]]) = {
     result match {
       case None => Right(blockContext)
-      case Some(Found(userId)) => Right(blockContext.withLoggedUser(LoggedUser(userId)))
+      case Some(Found(userId)) => Right(blockContext.withLoggedUser(DirectlyLoggedUser(userId)))
       case Some(NotFound) => Left(())
     }
   }

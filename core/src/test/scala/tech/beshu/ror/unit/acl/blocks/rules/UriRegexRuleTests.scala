@@ -30,6 +30,7 @@ import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Con
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.User.Id
 import tech.beshu.ror.acl.domain.{LoggedUser, UriPath}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -95,7 +96,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
       case AlreadyResolved(_) =>
         MockRequestContext(uriPath = uriPath)
       case ToBeResolved(_) if isUserLogged =>
-        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(Id(userName))))
+        (blockContext.loggedUser _).expects().returning(Some(DirectlyLoggedUser(Id(userName))))
         MockRequestContext(uriPath = uriPath)
       case ToBeResolved(_) =>
         (blockContext.loggedUser _).expects().returning(None)

@@ -26,8 +26,9 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.UsersRule
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.User.Id
-import tech.beshu.ror.acl.domain.{LoggedUser, User}
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -39,13 +40,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
       "configured user id is the same as logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("asd")),
-          loggedUser = Some(LoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
         )
       }
       "configured user id has wildcard and can be applied to logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(LoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
         )
       }
     }
@@ -53,13 +54,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
       "configured user id is different than logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("_asd")),
-          loggedUser = Some(LoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
         )
       }
       "configured user id has wildcard but cannot be applied to logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(LoggedUser(Id("aXsd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("aXsd".nonempty)))
         )
       }
       "user is not logged" in {
@@ -71,13 +72,13 @@ class UsersRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = true)
 
-  private def assertNotMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[LoggedUser]) =
+  private def assertNotMatchRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser]) =
     assertRule(configuredIds, loggedUser, isMatched = false)
 
-  private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[LoggedUser], isMatched: Boolean) = {
+  private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds))
     val requestContext = MockRequestContext.default
     val blockContext = mock[BlockContext]

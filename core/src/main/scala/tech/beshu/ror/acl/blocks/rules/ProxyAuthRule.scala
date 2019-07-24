@@ -32,6 +32,7 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 import StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 
 class ProxyAuthRule(val settings: Settings)
   extends AuthenticationRule with Logging {
@@ -58,7 +59,7 @@ class ProxyAuthRule(val settings: Settings)
     context
       .headers
       .find(_.name === settings.userHeaderName)
-      .map(h => LoggedUser(Id(h.value)))
+      .map(h => DirectlyLoggedUser(Id(h.value)))
   }
 
   private def shouldAuthenticate(user: LoggedUser) = {

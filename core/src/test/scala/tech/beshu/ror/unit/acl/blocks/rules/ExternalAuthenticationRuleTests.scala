@@ -29,6 +29,7 @@ import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
@@ -49,7 +50,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
 
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
-        (blockContext.withLoggedUser _).expects(LoggedUser(Id("user".nonempty))).returning(newBlockContext)
+        (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id("user".nonempty))).returning(newBlockContext)
 
         val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(newBlockContext))

@@ -36,9 +36,14 @@ import scala.util.Try
 
 object domain {
 
-  final case class LoggedUser(id: User.Id)
+  sealed trait LoggedUser {
+    def id: User.Id
+  }
   object LoggedUser {
-    implicit val eqLoggedUser: Eq[LoggedUser] = Eq.fromUniversalEquals
+    final case class DirectlyLoggedUser(id: User.Id) extends LoggedUser
+    final case class ImpersonatedUser(id: User.Id, impersonatedBy: User.Id) extends LoggedUser
+
+    implicit val eqLoggedUser: Eq[DirectlyLoggedUser] = Eq.fromUniversalEquals
   }
 
   object User {

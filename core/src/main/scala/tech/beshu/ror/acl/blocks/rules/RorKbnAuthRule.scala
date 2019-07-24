@@ -28,6 +28,7 @@ import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec,
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -36,6 +37,7 @@ import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.LoggerOps._
+
 import scala.collection.SortedSet
 import scala.util.Try
 
@@ -106,7 +108,7 @@ class RorKbnAuthRule(val settings: Settings)
 
   private def handleUserClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[User.Id]) = {
     result match {
-      case Found(userId) => Right(blockContext.withLoggedUser(LoggedUser(userId)))
+      case Found(userId) => Right(blockContext.withLoggedUser(DirectlyLoggedUser(userId)))
       case NotFound => Left(())
     }
   }

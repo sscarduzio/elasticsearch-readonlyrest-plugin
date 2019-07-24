@@ -44,7 +44,7 @@ object ImpersonationDefinitionsDecoder {
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
         } yield ImpersonatorDef(impersonator, authRule, users)
       }
-      .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
+      .withError(DefinitionsLevelCreationError.apply, Message("Impersonation definition malformed"))
       .decoder
   }
 }

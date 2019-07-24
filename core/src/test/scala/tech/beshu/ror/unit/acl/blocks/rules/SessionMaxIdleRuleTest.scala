@@ -32,8 +32,9 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{Header, User}
 import tech.beshu.ror.acl.refined._
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
@@ -52,7 +53,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           assertRule(
             sessionMaxIdle = positive(10 minutes),
             setRawCookie = rorSessionCookie.forUser1,
-            loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
             isMatched = true
           )
         }
@@ -62,7 +63,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = rorSessionCookie.forUser1,
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               isMatched = true
             )
           }
@@ -71,7 +72,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = s"cookie1=test;${rorSessionCookie.forUser1};last_cookie=123",
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               isMatched = true
             )
           }
@@ -93,7 +94,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
           isMatched = false
         )
       }
@@ -103,7 +104,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user2".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
           isMatched = false
         )
       }
@@ -113,7 +114,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.wrongSignature,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
           isMatched = false
         )
       }
@@ -123,7 +124,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.malformed,
           setRawCookie = "",
-          loggedUser = Some(LoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
           isMatched = false
         )
       }
@@ -133,7 +134,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
   private def assertRule(sessionMaxIdle: FiniteDuration Refined Positive,
                          rawCookie: String = "",
                          setRawCookie: String,
-                         loggedUser: Option[LoggedUser],
+                         loggedUser: Option[DirectlyLoggedUser],
                          isMatched: Boolean)
                         (implicit clock: Clock) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle))
