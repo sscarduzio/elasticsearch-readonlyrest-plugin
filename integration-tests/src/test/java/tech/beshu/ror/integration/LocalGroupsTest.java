@@ -141,8 +141,7 @@ public class LocalGroupsTest {
     RestClient rcl = container.getBasicAuthClient(user, pass);
     HttpGet req = new HttpGet(rcl.from(
         endpoint,
-        new ImmutableMap.Builder<String, String>()
-            .build()
+        new ImmutableMap.Builder<String, String>().build()
     ));
 
     if (!Strings.isNullOrEmpty(preferredGroup)) {

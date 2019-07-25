@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,9 +36,16 @@ import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
 public class SearchManager {
 
   private final RestClient restClient;
+  private final Map<String, String> additionalHeaders;
 
   public SearchManager(RestClient restClient) {
     this.restClient = restClient;
+    this.additionalHeaders = new HashMap<>();
+  }
+
+  public SearchManager(RestClient restClient, Map<String, String> additionalHeaders) {
+    this.restClient = restClient;
+    this.additionalHeaders = additionalHeaders;
   }
 
   public SearchResult search(String endpoint) {
@@ -69,6 +77,7 @@ public class SearchManager {
     HttpGet request = new HttpGet(restClient.from(endpoint));
     request.setHeader("timeout", "50s");
     request.setHeader("x-caller-" + caller, "true");
+    additionalHeaders.forEach(request::setHeader);
     return request;
   }
 
@@ -76,6 +85,7 @@ public class SearchManager {
     try {
       HttpPost request = new HttpPost(restClient.from("/_msearch"));
       request.addHeader("Content-type", "application/json");
+      additionalHeaders.forEach(request::setHeader);
       request.setEntity(new StringEntity(query));
       return request;
     } catch (UnsupportedEncodingException e) {

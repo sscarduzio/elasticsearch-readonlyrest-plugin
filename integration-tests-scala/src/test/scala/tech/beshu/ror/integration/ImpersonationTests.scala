@@ -1,9 +1,11 @@
 package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.ForAllTestContainer
+import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.DocumentManager
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import scala.collection.JavaConverters._
 
 class ImpersonationTests extends WordSpec with ForAllTestContainer {
 
@@ -14,10 +16,16 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
     ImpersonationTests.nodeDataInitializer()
   )
 
+  private lazy val impersonatorSearchManager = new SearchManager(
+    container.nodesContainers.head.client("admin1", "pass"),
+    Map("impersonate_as" -> "dev1").asJava
+  )
+
   "Impersonation can be done" when {
     "user uses local auth rule" when {
       "impersonator can be properly authenticated" in {
-
+        val result = impersonatorSearchManager.search("/test1_index/_search")
+        assertEquals(200, result.getResponseCode)
       }
     }
   }

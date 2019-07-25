@@ -14,17 +14,17 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "test1"
-      indices: ["test1_index", "odd:test1_index"]
+      indices: ["test1_index"]
       auth_key: dev1:test
 
     - name: "test2"
-      indices: ["test2_index", "even:test1_index"]
-      auth_key: dev2:test
+      indices: ["test2_index"]
+      auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
 
   impersonation:
-    - impersonator: admin
-      auth_key: admin:container
-      users: [*]
+    - impersonator: admin1
+      auth_key: admin1:pass
+      users: ["*"]
     - impersonator: anotheradmin
       jwt_auth: "jwt1"
       users: ["dev1"]
