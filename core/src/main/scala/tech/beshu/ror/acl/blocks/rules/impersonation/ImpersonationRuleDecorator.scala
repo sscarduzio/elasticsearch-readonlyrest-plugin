@@ -38,7 +38,7 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
     requestContext.impersonateAs match {
       case Some(theImpersonatedUserId) => toRuleResult {
         for {
-          impersonatorDef <- findImpersonator(theImpersonatedUserId, requestContext)
+          impersonatorDef <- findImpersonatorWithProperRights(theImpersonatedUserId, requestContext)
           _ <- authenticateImpersonator(impersonatorDef, requestContext)
           _ <- checkIfTheImpersonatedUserExist(theImpersonatedUserId)
         } yield blockContext.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id))
@@ -48,8 +48,8 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
     }
   }
 
-  private def findImpersonator(theImpersonatedUserId: User.Id,
-                               requestContext: RequestContext) = {
+  private def findImpersonatorWithProperRights(theImpersonatedUserId: User.Id,
+                                               requestContext: RequestContext) = {
     EitherT.fromOption[Task](
       requestContext
         .basicAuth
