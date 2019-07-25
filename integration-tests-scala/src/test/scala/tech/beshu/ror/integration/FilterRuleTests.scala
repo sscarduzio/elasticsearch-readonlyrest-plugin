@@ -57,8 +57,8 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
 object FilterRuleTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
-    documentManager.insertDoc("/test1_index/test/1", s"""{"db_name":"db_user1"}""")
-    documentManager.insertDoc("/test1_index/test/2", s"""{"db_name":"db_user2"}""")
-    documentManager.insertDoc("/test1_index/test/3", s"""{"db_name":"db_user3"}""")
+    documentManager.insertDocAndWaitForRefresh("/test1_index/test/1", s"""{"db_name":"db_user1"}""")
+    documentManager.insertDocAndWaitForRefresh("/test1_index/test/2", s"""{"db_name":"db_user2"}""")
+    documentManager.insertDocAndWaitForRefresh("/test1_index/test/3", s"""{"db_name":"db_user3"}""")
   }
 }

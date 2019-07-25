@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.elasticsearch;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.http.HttpResponse;
@@ -46,8 +47,12 @@ public class DocumentManager {
     this.restClient = restClient;
   }
 
+  public void insertDocAndWaitForRefresh(String docPath, String content) {
+    makeInsertCall(docPath, content, true);
+  }
+
   public void insertDoc(String docPath, String content) {
-    makeInsertCall(docPath, content);
+    makeInsertCall(docPath, content, false);
     RetryPolicy<Boolean> retryPolicy = new RetryPolicy<Boolean>()
         .handleIf(isNotIndexedYet())
         .withMaxRetries(20)
@@ -64,11 +69,13 @@ public class DocumentManager {
     Failsafe.with(retryPolicy).get(() -> isAliasIndexed(alias));
   }
 
-  private void makeInsertCall(String docPath, String content) {
+  private void makeInsertCall(String docPath, String content, boolean waitForRefresh) {
     try {
       HttpPut request = new HttpPut(restClient.from(
           docPath,
-          new ImmutableMap.Builder<String, String>().put("refresh", "wait_for").build()
+          waitForRefresh
+              ? new ImmutableMap.Builder<String, String>().put("refresh", "wait_for").build()
+              : Maps.newHashMap()
       ));
       request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
