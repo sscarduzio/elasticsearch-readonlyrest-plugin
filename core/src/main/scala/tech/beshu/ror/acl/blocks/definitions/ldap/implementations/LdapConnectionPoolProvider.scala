@@ -56,7 +56,7 @@ object LdapConnectionPoolProvider extends Logging {
         case false => Left(ConnectionError{
           connectionConfig.connectionMethod match {
             case ConnectionMethod.SingleServer(host) => NonEmptyList.one(host)
-            case ConnectionMethod.SeveralServers(hosts, _) => hosts.toNonEmptyList
+            case ConnectionMethod.SeveralServers(hosts, _) => hosts
           }
         })
       }
@@ -82,7 +82,7 @@ object LdapConnectionPoolProvider extends Logging {
         new SingleServerSet(ldap.host, ldap.port, socketFactory(trustAllCerts), options)
       case ConnectionMethod.SingleServer(ldap) =>
         new SingleServerSet(ldap.host, ldap.port, options)
-      case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) if hosts.toNonEmptyList.head.isSecure =>
+      case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) if hosts.head.isSecure =>
         new FailoverServerSet(
           hosts.toList.map(_.host).toArray[String],
           hosts.toList.map(_.port).toArray[Int],
@@ -95,7 +95,7 @@ object LdapConnectionPoolProvider extends Logging {
           hosts.toList.map(_.port).toArray[Int],
           options
         )
-      case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) if hosts.toNonEmptyList.head.isSecure =>
+      case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) if hosts.head.isSecure =>
         new RoundRobinServerSet(
           hosts.toList.map(_.host).toArray[String],
           hosts.toList.map(_.port).toArray[Int],
