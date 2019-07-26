@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule.Settings
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
 import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class LdapAuthenticationRule(val settings: Settings)

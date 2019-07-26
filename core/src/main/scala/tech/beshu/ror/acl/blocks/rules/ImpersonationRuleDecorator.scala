@@ -1,13 +1,13 @@
-package tech.beshu.ror.acl.blocks.rules.impersonation
+package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.EitherT
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
-import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence._
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, ImpersonationSupport}
 import tech.beshu.ror.acl.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.acl.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.acl.blocks.{BlockContext, NoOpBlockContext}
@@ -60,7 +60,7 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
           if (matcher.`match`(theImpersonatedUserId)) Some(impersonatorDef)
           else None
         },
-      ifNone = ()
+      ifNone = Rejected(Cause.ImpersonationNotAllowed)
     )
   }
 
@@ -71,7 +71,7 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
       .check(requestContext, NoOpBlockContext)
       .map {
         case Fulfilled(_) => Right(())
-        case Rejected => Left(())
+        case Rejected(_) => Left(Rejected(Cause.ImpersonationNotAllowed))
       }
   }
 
@@ -80,17 +80,17 @@ class ImpersonationRuleDecorator[R <: AuthenticationRule with ImpersonationSuppo
       .exists(theImpersonatedUserId)
       .map {
         case Exists => Right(())
-        case NotExist => Left(())
-        case CannotCheck => Left(()) // todo: maybe we can indicate it somehow
+        case NotExist => Left(Rejected())
+        case CannotCheck => Left(Rejected(Cause.ImpersonationNotSupported))
       }
   }
 
-  private def toRuleResult(result: EitherT[Task, Unit, BlockContext]) = {
+  private def toRuleResult(result: EitherT[Task, Rejected, BlockContext]) = {
     result
       .value
       .map {
         case Right(newBlockContext) => Fulfilled(newBlockContext)
-        case Left(_) => Rejected
+        case Left(rejected) => rejected
       }
   }
 }

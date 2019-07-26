@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
 import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings)

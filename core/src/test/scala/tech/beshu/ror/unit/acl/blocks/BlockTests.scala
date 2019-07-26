@@ -17,23 +17,23 @@
 package tech.beshu.ror.unit.acl.blocks
 
 import cats.data.{NonEmptyList, NonEmptySet}
-import org.scalatest.Matchers._
 import monix.eval.Task
-import org.scalatest.{Inside, WordSpec}
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import tech.beshu.ror.acl.blocks.{Block, BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History, HistoryItem}
+import org.scalatest.Matchers._
+import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.acl.blocks.{Block, BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{Group, IndexName, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{Group, IndexName, User}
+import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.acl.orders._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -42,7 +42,7 @@ import scala.util.Failure
 class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
   "A block execution result" should {
-    "be unmatched and contain all history, up to unmatched rule" when {
+    "be mismatched and contain all history, up to mismatched rule" when {
       "one of rules doesn't match" in {
         val blockName = Block.Name("test_block")
         val block = new Block(
@@ -60,12 +60,15 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
-          case (ExecutionResult.Unmatched(_), History(`blockName`, historyItems, blockContext)) =>
-            historyItems should be (Vector(
-              HistoryItem(Rule.Name("r1"), matched = true),
-              HistoryItem(Rule.Name("r2"), matched = true),
-              HistoryItem(Rule.Name("r3"), matched = false)
-            ))
+          case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
+            historyItems should have size 3
+            historyItems(0).rule should be (Rule.Name("r1"))
+            historyItems(0).result shouldBe a [RuleResult.Fulfilled]
+            historyItems(1).rule should be (Rule.Name("r2"))
+            historyItems(1).result shouldBe a [RuleResult.Fulfilled]
+            historyItems(2).rule should be (Rule.Name("r3"))
+            historyItems(2).result shouldBe a [RuleResult.Rejected]
+
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))) {
               blockContext
             }
@@ -85,12 +88,15 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
 
         inside(result) {
-          case (ExecutionResult.Unmatched(_), History(`blockName`, historyItems, blockContext)) =>
-            historyItems should be(Vector(
-              HistoryItem(Rule.Name("r1"), matched = true),
-              HistoryItem(Rule.Name("r2"), matched = true),
-              HistoryItem(Rule.Name("r3"), matched = false)
-            ))
+          case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
+            historyItems should have size 3
+            historyItems(0).rule should be (Rule.Name("r1"))
+            historyItems(0).result shouldBe a [RuleResult.Fulfilled]
+            historyItems(1).rule should be (Rule.Name("r2"))
+            historyItems(1).result shouldBe a [RuleResult.Fulfilled]
+            historyItems(2).rule should be (Rule.Name("r3"))
+            historyItems(2).result shouldBe a [RuleResult.Rejected]
+
             assertBlockContext(
               expected = RequestContextInitiatedBlockContext.fromRequestContext(requestContext),
               current = blockContext
@@ -113,11 +119,14 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
-          historyItems should be(Vector(
-            HistoryItem(Rule.Name("r1"), matched = true),
-            HistoryItem(Rule.Name("r2"), matched = true),
-            HistoryItem(Rule.Name("r3"), matched = true)
-          ))
+          historyItems should have size 3
+          historyItems(0).rule should be (Rule.Name("r1"))
+          historyItems(0).result shouldBe a [RuleResult.Fulfilled]
+          historyItems(1).rule should be (Rule.Name("r2"))
+          historyItems(1).result shouldBe a [RuleResult.Fulfilled]
+          historyItems(2).rule should be (Rule.Name("r3"))
+          historyItems(2).result shouldBe a [RuleResult.Fulfilled]
+
           assertBlockContext(
             expected = RequestContextInitiatedBlockContext.fromRequestContext(requestContext),
             current = blockContext
@@ -142,11 +151,14 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
-          historyItems should be(Vector(
-            HistoryItem(Rule.Name("r1"), matched = true),
-            HistoryItem(Rule.Name("r2"), matched = true),
-            HistoryItem(Rule.Name("r3"), matched = true)
-          ))
+          historyItems should have size 3
+          historyItems(0).rule should be (Rule.Name("r1"))
+          historyItems(0).result shouldBe a [RuleResult.Fulfilled]
+          historyItems(1).rule should be (Rule.Name("r2"))
+          historyItems(1).result shouldBe a [RuleResult.Fulfilled]
+          historyItems(2).rule should be (Rule.Name("r3"))
+          historyItems(2).result shouldBe a [RuleResult.Fulfilled]
+
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
             currentGroup = Some(Group("group1".nonempty)),
@@ -170,7 +182,7 @@ object BlockTests extends MockFactory {
   private def notPassingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
     override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
-      Task.now(Rejected)
+      Task.now(Rejected())
   }
   private def throwingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)

@@ -19,7 +19,7 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
 import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials])

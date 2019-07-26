@@ -54,14 +54,14 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:nologstash")))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "basic auth header is absent" in {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set.empty)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
   }

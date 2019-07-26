@@ -90,7 +90,7 @@ class IndicesRule(val settings: Settings)
           } else {
             canPass(requestContext, matcher) match {
               case CanPass.No =>
-                return Rejected
+                return Rejected()
               case CanPass.Yes(indices) =>
                 indices
             }
@@ -99,7 +99,7 @@ class IndicesRule(val settings: Settings)
         val allProcessedIndices = zKindexFilter.check(crossClusterIndices, matcher) match {
           case CheckResult.Ok(processedIndices) => processedIndices ++ processedLocalIndices
           case CheckResult.Failed =>
-            return Rejected
+            return Rejected()
         }
 
         return Fulfilled(blockContextWithIndices(blockContext, allProcessedIndices))
@@ -110,7 +110,7 @@ class IndicesRule(val settings: Settings)
       case CanPass.Yes(indices) =>
         Fulfilled(blockContextWithIndices(blockContext, indices))
       case CanPass.No =>
-        Rejected
+        Rejected()
     }
   }
 

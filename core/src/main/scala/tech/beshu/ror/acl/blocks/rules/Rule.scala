@@ -19,8 +19,11 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.Show
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.{Name, RuleResult}
+import tech.beshu.ror.acl.domain.User
 
 sealed trait Rule {
   def name: Name
@@ -33,11 +36,19 @@ object Rule {
   sealed trait RuleResult
   object RuleResult {
     final case class Fulfilled(blockContext: BlockContext) extends RuleResult
-    case object Rejected extends RuleResult
+    final case class Rejected(specialCause: Option[Cause] = None) extends RuleResult
+    object Rejected {
+      def apply(specialCause: Cause): Rejected = new Rejected(Some(specialCause))
+      sealed trait Cause
+      object Cause {
+        case object ImpersonationNotSupported extends Cause
+        case object ImpersonationNotAllowed extends Cause
+      }
+    }
 
     private [rules] def fromCondition(blockContext: BlockContext)(condition: => Boolean): RuleResult = {
       if(condition) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 
@@ -58,4 +69,20 @@ object Rule {
                        blockContext: BlockContext): Task[RuleResult] =
       process(requestContext, blockContext).map(RuleResult.Fulfilled.apply)
   }
+
+  trait ImpersonationSupport {
+    this: AuthenticationRule =>
+
+    def exists(user: User.Id): Task[UserExistence]
+  }
+
+  object ImpersonationSupport {
+    sealed trait UserExistence
+    object UserExistence {
+      case object Exists extends UserExistence
+      case object NotExist extends UserExistence
+      case object CannotCheck extends UserExistence
+    }
+  }
+
 }

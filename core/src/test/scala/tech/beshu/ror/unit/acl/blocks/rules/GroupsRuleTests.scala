@@ -162,7 +162,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
       headers = preferredGroup.map(_.value).map(v => Header(Header.Name.currentGroup, v)).toSet[Header]
     )
     val blockContext = loggedUser
-      .map(DirectlyLoggedUser(_))
+      .map(DirectlyLoggedUser.apply)
       .foldLeft(RequestContextInitiatedBlockContext.fromRequestContext(requestContext): BlockContext)(_ withLoggedUser _)
     val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
@@ -171,7 +171,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Rejected)
+        result should be(Rejected())
     }
   }
 
@@ -189,7 +189,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
 object GroupsRuleTests {
   private val alwaysRejectingAuthRule: AuthenticationRule = new AuthenticationRule {
     override def name: Rule.Name = Rule.Name("dummy-rejecting")
-    override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = Task.now(Rejected)
+    override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = Task.now(Rejected())
   }
 
   private val alwaysThrowingAuthRule: AuthenticationRule = new AuthenticationRule {

@@ -97,7 +97,7 @@ class HostsRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 

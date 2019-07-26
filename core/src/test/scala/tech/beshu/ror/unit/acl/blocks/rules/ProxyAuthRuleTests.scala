@@ -88,7 +88,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
     if(isMatched) (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id(header.value))).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(newBlockContext)
-      else Rejected
+      else Rejected()
     }
   }
 }

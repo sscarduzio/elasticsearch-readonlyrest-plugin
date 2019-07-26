@@ -49,10 +49,10 @@ class GroupsRule(val settings: Settings)
                      blockContext: BlockContext): Task[RuleResult] = Task.unit
     .flatMap { _ =>
       NonEmptySet.fromSet(resolveGroups(requestContext, blockContext)) match {
-        case None => Task.now(Rejected)
+        case None => Task.now(Rejected())
         case Some(groups) =>
           blockContext.currentGroup match {
-            case Some(preferredGroup) if !groups.contains(preferredGroup) => Task.now(Rejected)
+            case Some(preferredGroup) if !groups.contains(preferredGroup) => Task.now(Rejected())
             case _ => continueCheckingWithUserDefinitions(requestContext, blockContext, groups)
           }
       }
@@ -66,7 +66,7 @@ class GroupsRule(val settings: Settings)
       case Some(user) =>
         NonEmptySet.fromSet(settings.usersDefinitions.filter(_.id === user.id)) match {
           case None =>
-            Task.now(Rejected)
+            Task.now(Rejected())
           case Some(filteredUserDefinitions) =>
             tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, requestContext, blockContext, resolvedGroups)
         }
@@ -89,7 +89,7 @@ class GroupsRule(val settings: Settings)
       }
       .map {
         case Some(newBlockContext) => Fulfilled(newBlockContext)
-        case None => Rejected
+        case None => Rejected()
       }
   }
 
@@ -103,7 +103,7 @@ class GroupsRule(val settings: Settings)
         .authenticationRule
         .check(requestContext, blockContext)
         .map {
-          case RuleResult.Rejected =>
+          case RuleResult.Rejected(_) =>
             None
           case RuleResult.Fulfilled(newBlockContext) =>
             newBlockContext.loggedUser match {

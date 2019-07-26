@@ -166,7 +166,7 @@ class LdapAuthRuleTests
           blockContextAssertion(outBlockContext)
         }
       case AssertionType.RuleRejected =>
-        result should be(Success(Rejected))
+        result should be(Success(Rejected()))
       case AssertionType.RuleThrownException(ex) =>
         result should be(Failure(ex))
     }

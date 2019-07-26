@@ -70,7 +70,7 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
             case Some(nesIndices) if requestContext.isReadOnlyRequest =>
               Fulfilled(blockContextWithSpecializedIndices(blockContext, nesIndices))
             case None | Some(_) =>
-              Rejected
+              Rejected()
           }
       }
     }

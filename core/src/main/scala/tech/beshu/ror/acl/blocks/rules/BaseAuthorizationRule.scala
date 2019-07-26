@@ -39,7 +39,7 @@ abstract class BaseAuthorizationRule
         authorize(requestContext, blockContext, user)
           .map {
             case AuthorizationResult.Unauthorized =>
-              Rejected
+              Rejected()
             case AuthorizationResult.Authorized(currentGroup, availableGroups) =>
               Fulfilled {
                 blockContext
@@ -48,7 +48,7 @@ abstract class BaseAuthorizationRule
               }
           }
       case None =>
-        Task.now(Rejected)
+        Task.now(Rejected())
     }
   }
 

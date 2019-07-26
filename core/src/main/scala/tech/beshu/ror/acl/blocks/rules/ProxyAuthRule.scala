@@ -47,11 +47,11 @@ class ProxyAuthRule(val settings: Settings)
                      blockContext: BlockContext): Task[RuleResult] = Task {
     getLoggedUser(requestContext) match {
       case None =>
-        Rejected
+        Rejected()
       case Some(loggedUser) if shouldAuthenticate(loggedUser) =>
         Fulfilled(blockContext.withLoggedUser(loggedUser))
       case Some(_) =>
-        Rejected
+        Rejected()
     }
   }
 

@@ -187,7 +187,7 @@ class RepositoriesRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Rejected)
+        result should be(Rejected())
     }
   }
 

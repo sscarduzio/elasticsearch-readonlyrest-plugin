@@ -70,7 +70,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
 
         val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
   }

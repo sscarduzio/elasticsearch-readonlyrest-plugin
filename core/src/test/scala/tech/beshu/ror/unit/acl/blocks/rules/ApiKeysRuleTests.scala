@@ -49,13 +49,13 @@ class ApiKeysRuleTests extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         (requestContext.headers _).expects().returning(Set(headerFrom("X-Api-Key" -> "x")))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected())
       }
       "x-api-key header is absent" in {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         (requestContext.headers _).expects().returning(Set.empty)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected())
       }
     }
   }

@@ -41,7 +41,7 @@ class XForwardedForRule(val settings: Settings)
           addressToCheck = xForwardedForAddress
         ).map(condition => RuleResult.fromCondition(blockContext)(condition))
       case None =>
-        Task.now(Rejected)
+        Task.now(Rejected())
     }
   }
 

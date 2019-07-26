@@ -34,8 +34,8 @@ class LdapAuthRule(val authentication: LdapAuthenticationRule,
       .flatMap {
         case Fulfilled(modifiedBlockContext) =>
           authorization.check(requestContext, modifiedBlockContext)
-        case Rejected =>
-          Task.now(Rejected)
+        case Rejected(_) =>
+          Task.now(Rejected())
       }
   }
 }

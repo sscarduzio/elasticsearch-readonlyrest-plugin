@@ -209,7 +209,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Rejected)
+        result should be(Rejected())
     }
   }
 

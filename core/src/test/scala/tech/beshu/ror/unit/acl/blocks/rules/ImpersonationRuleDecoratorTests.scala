@@ -10,8 +10,9 @@ import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.impersonation.{ImpersonationRuleDecorator, ImpersonationSupport}
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, ImpersonationRuleDecorator}
 import tech.beshu.ror.acl.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.acl.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.acl.orders.userIdOrder
@@ -32,7 +33,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
 
         val result = rule.check(requestContext, blockContext).runSyncUnsafe()
 
-        result should be (Rejected)
+        result should be (Rejected())
       }
     }
     "allow to impersonate user" when {
@@ -80,7 +81,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
 
         val result = rule.check(requestContext, blockContext).runSyncUnsafe()
 
-        result should be (Rejected)
+        result should be (Rejected(Cause.ImpersonationNotAllowed))
       }
       "impersonator has no rights to impersonate given user" in {
         val requestContext = MockRequestContext.default.copy(
@@ -90,7 +91,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
 
         val result = rule.check(requestContext, blockContext).runSyncUnsafe()
 
-        result should be (Rejected)
+        result should be (Rejected(Cause.ImpersonationNotAllowed))
       }
       "impersonator authentication failed" in {
         val requestContext = MockRequestContext.default.copy(
@@ -100,11 +101,11 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
 
         val result = rule.check(requestContext, blockContext).runSyncUnsafe()
 
-        result should be (Rejected)
+        result should be (Rejected(Cause.ImpersonationNotAllowed))
       }
       "impersonation is not supported by underlying rule" in {
         val requestContext = MockRequestContext.default.copy(
-          headers = Set(basicAuthHeader("admin1:invalid_password"), Header(Header.Name.impersonateAs, "user1".nonempty))
+          headers = Set(basicAuthHeader("admin1:pass"), Header(Header.Name.impersonateAs, "user1".nonempty))
         )
         val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
 
@@ -112,7 +113,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         val rule = impersonationRule(underlyingRule)
         val result = rule.check(requestContext, blockContext).runSyncUnsafe()
 
-        result should be (Rejected)
+        result should be (Rejected(Cause.ImpersonationNotSupported))
       }
       "underlying rule returns info that given user doesn't exist" in {
         val requestContext = MockRequestContext.default.copy(
@@ -122,7 +123,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
 
         val result = rule.check(requestContext, blockContext).runSyncUnsafe()
 
-        result should be (Rejected)
+        result should be (Rejected())
       }
     }
   }

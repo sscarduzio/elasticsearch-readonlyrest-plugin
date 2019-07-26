@@ -24,7 +24,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
 import tech.beshu.ror.acl.domain._
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[HashedCredentials],

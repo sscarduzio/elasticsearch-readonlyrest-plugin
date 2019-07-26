@@ -22,7 +22,7 @@ import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
-import tech.beshu.ror.acl.blocks.rules.impersonation.{ImpersonationRuleDecorator, ImpersonationSupport}
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport
 import tech.beshu.ror.acl.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError

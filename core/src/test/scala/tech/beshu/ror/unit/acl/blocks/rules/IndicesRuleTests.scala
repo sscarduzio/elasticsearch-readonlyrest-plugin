@@ -299,7 +299,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(returnedBlock)
-      else Rejected
+      else Rejected()
     }
   }
 

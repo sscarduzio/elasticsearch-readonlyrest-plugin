@@ -130,7 +130,7 @@ class LdapAuthorizationRuleTests
       headers = preferredGroup.map(_.value).map(v => Header(Header.Name.currentGroup, v)).toSet[Header]
     )
     val blockContext = loggedUser
-      .map(DirectlyLoggedUser(_))
+      .map(DirectlyLoggedUser.apply)
       .foldLeft(RequestContextInitiatedBlockContext.fromRequestContext(requestContext): BlockContext)(_ withLoggedUser _)
     val result = Try(rule.check(requestContext, blockContext).runSyncUnsafe(1 second))
     assertionType match {
@@ -139,7 +139,7 @@ class LdapAuthorizationRuleTests
           blockContextAssertion(outBlockContext)
         }
       case AssertionType.RuleRejected =>
-        result should be(Success(Rejected))
+        result should be(Success(Rejected()))
       case AssertionType.RuleThrownException(ex) =>
         result should be(Failure(ex))
     }

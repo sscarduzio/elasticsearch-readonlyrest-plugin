@@ -37,7 +37,7 @@ object AclResultCommitter extends Logging {
       result.handlingResult match {
         case Result.Allow(blockContext, _) =>
           handler.onAllow(blockContext)
-        case Result.ForbiddenBy(_, _) | Result.ForbiddenByUnmatched =>
+        case Result.ForbiddenBy(_, _) | Result.ForbiddenByMismatched(_) =>
           handler.onForbidden()
         case Result.Failed(ex) =>
           handler.onError(ex)

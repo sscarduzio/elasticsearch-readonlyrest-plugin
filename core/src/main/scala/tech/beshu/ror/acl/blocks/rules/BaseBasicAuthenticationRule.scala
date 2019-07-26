@@ -23,9 +23,9 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport
+import tech.beshu.ror.acl.domain.Credentials
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{Credentials, LoggedUser, User}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
@@ -48,11 +48,11 @@ abstract class BaseBasicAuthenticationRule
             authenticate(credentials)
               .map {
                 case true => Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(credentials.user)))
-                case false => Rejected
+                case false => Rejected()
               }
           case None =>
             logger.debug(s"No basic auth, rc: ${requestContext.id.show}")
-            Task.now(Rejected)
+            Task.now(Rejected())
         }
       }
 }

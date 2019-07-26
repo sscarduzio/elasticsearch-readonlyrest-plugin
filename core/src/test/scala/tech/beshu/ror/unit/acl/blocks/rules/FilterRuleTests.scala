@@ -67,14 +67,14 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val requestContext = MockRequestContext.default.copy(isReadOnlyRequest = false)
         val blockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(None)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "request is not allowed for DLS" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.default.copy(isAllowedForDLS = false)
         val blockContext = mock[BlockContext]
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
   }

@@ -21,8 +21,7 @@ import org.scalatest.Inside
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationRuleDecorator
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
+import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule, ImpersonationRuleDecorator}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.domain.{Credentials, Group, PlainTextSecret, User}

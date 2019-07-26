@@ -16,14 +16,17 @@
  */
 package tech.beshu.ror.acl
 
-import cats.data.{NonEmptyList, WriterT}
+import cats.data.{NonEmptyList, NonEmptySet, WriterT}
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.acl.AclHandlingResult.Result
+import tech.beshu.ror.acl.AclHandlingResult.Result.ForbiddenByMismatched
 import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
+import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History, Policy}
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.orders.forbiddenByMismatchedCauseOrder
 
 class SequentialAcl(val blocks: NonEmptyList[Block])
   extends Acl {
@@ -35,24 +38,26 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
         for {
           prevBlocksExecutionResult <- currentResult
           newCurrentResult <- prevBlocksExecutionResult match {
-            case Unmatched(_) =>
+            case Mismatched(_) =>
               checkBlock(block, context)
             case Matched(_, _) =>
               lift(prevBlocksExecutionResult)
           }
         } yield newCurrentResult
       }
-      .map {
-        case Matched(block, blockContext) =>
-          block.policy match {
-            case Policy.Allow => Result.Allow(blockContext, block)
-            case Policy.Forbid => Result.ForbiddenBy(blockContext, block)
-          }
-        case Unmatched(_) =>
-          Result.ForbiddenByUnmatched
-      }
       .run
-      .map { case (history, res) =>
+      .map { case (history, result) =>
+        val res = result match {
+          case Matched(block, blockContext) =>
+            block.policy match {
+              case Policy.Allow => Result.Allow(blockContext, block)
+              case Policy.Forbid => Result.ForbiddenBy(blockContext, block)
+            }
+          case Mismatched(_) =>
+            Result.ForbiddenByMismatched(
+              nonEmptySetOfMismatchedCausesFromHistory(history)
+            )
+        }
         aclResult(history, res)
       }
       .onErrorHandle { ex =>
@@ -77,4 +82,17 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
       override val history: Vector[History] = aHistory
       override val handlingResult: Result = aResult
     }
+
+  private def nonEmptySetOfMismatchedCausesFromHistory(history: Vector[History]): NonEmptySet[ForbiddenByMismatched.Cause] = {
+    val rejections = history.flatMap(_.items.map(_.result).collect { case r: Rejected => r })
+    val causes = rejections.map {
+      case Rejected(None) => ForbiddenByMismatched.Cause.ActionNotAllowed
+      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => ForbiddenByMismatched.Cause.ImpersonationNotAllowed
+      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => ForbiddenByMismatched.Cause.ImpersonationNotSupported
+    }
+    NonEmptyList
+      .fromList(causes.toList)
+      .getOrElse(NonEmptyList.one(ForbiddenByMismatched.Cause.ActionNotAllowed))
+      .toNes
+  }
 }

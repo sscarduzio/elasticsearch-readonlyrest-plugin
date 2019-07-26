@@ -58,7 +58,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
         (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.now(false))
 
         val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "there is no basic auth header" in {
         val requestContext = MockRequestContext.default
@@ -66,7 +66,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
         val service = mock[LdapAuthenticationService]
 
         val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "LDAP service fails" in {
         val requestContext = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:pass")))

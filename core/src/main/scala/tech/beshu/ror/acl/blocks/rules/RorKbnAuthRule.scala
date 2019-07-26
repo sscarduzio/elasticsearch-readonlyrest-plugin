@@ -60,7 +60,7 @@ class RorKbnAuthRule(val settings: Settings)
     requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Rejected
+        Rejected()
       case Some(token) =>
         process(token, blockContext)
     }
@@ -69,7 +69,7 @@ class RorKbnAuthRule(val settings: Settings)
   private def process(token: JwtToken, blockContext: BlockContext) = {
     jwtTokenData(token) match {
       case Left(_) =>
-        Rejected
+        Rejected()
       case Right((tokenPayload, user, groups, userOrigin)) =>
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
@@ -77,7 +77,7 @@ class RorKbnAuthRule(val settings: Settings)
         } yield handleUserOriginResult(finalBlockContext, userOrigin).withJsonToken(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
-            Rejected
+            Rejected()
           case Right(modifiedBlockContext) =>
             Fulfilled(modifiedBlockContext)
         }

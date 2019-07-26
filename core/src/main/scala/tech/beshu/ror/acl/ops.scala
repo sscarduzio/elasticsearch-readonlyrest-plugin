@@ -24,22 +24,25 @@ import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
 import shapeless.Nat
+import tech.beshu.ror.acl.AclHandlingResult.Result.ForbiddenByMismatched
 import tech.beshu.ror.acl.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.acl.blocks.Block.{History, HistoryItem, Name, Policy}
-import tech.beshu.ror.acl.domain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
 import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.acl.blocks.{Block, BlockContext, RuleOrdering}
+import tech.beshu.ror.acl.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.factory.RulesValidator.ValidationError
 import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
+
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 
@@ -89,6 +92,11 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
+  implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
+    case ForbiddenByMismatched.Cause.ActionNotAllowed => 1
+    case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
+    case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
+  }
 }
 
 object show {
@@ -148,7 +156,12 @@ object show {
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
     implicit val historyItemShow: Show[HistoryItem] = Show.show { hi =>
-      s"${hi.rule.show}->${hi.matched}"
+      s"${hi.rule.show}->${
+        hi.result match {
+          case RuleResult.Fulfilled(_) => "true"
+          case RuleResult.Rejected(_) => "false"
+        }
+      }"
     }
     implicit val historyShow: Show[History] = Show.show { h =>
       s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}], RESOLVED:[${h.blockContext.show}]]"""

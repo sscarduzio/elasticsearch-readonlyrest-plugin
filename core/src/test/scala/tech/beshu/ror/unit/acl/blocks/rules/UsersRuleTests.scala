@@ -85,7 +85,7 @@ class UsersRuleTests extends WordSpec with MockFactory {
     (blockContext.loggedUser _).expects().returning(loggedUser)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 

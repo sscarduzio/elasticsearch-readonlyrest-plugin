@@ -21,7 +21,7 @@ import cats.implicits._
 import cats.{Eq, Show}
 import org.apache.logging.log4j.scala.Logging
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Unmatched}
+import tech.beshu.ror.acl.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.acl.blocks.Block._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule
@@ -51,19 +51,19 @@ class Block(val name: Name,
                   .check(requestContext, blockContext)
                   .recover { case e =>
                     logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
-                    RuleResult.Rejected
+                    RuleResult.Rejected()
                   }
                 lift(ruleResult)
                   .flatMap {
-                    case RuleResult.Fulfilled(newBlockContext) =>
+                    case result@RuleResult.Fulfilled(newBlockContext) =>
                       matched(newBlockContext)
-                        .tell(Vector(HistoryItem(rule.name, matched = true)))
-                    case RuleResult.Rejected =>
-                      unmatched(blockContext)
-                        .tell(Vector(HistoryItem(rule.name, matched = false)))
+                        .tell(Vector(HistoryItem(rule.name, result)))
+                    case result: RuleResult.Rejected =>
+                      mismatched(blockContext)
+                        .tell(Vector(HistoryItem(rule.name, result)))
                   }
-              case Unmatched(lastBlockContext) =>
-                unmatched(lastBlockContext)
+              case Mismatched(lastBlockContext) =>
+                mismatched(lastBlockContext)
             }
           } yield newCurrentResult
       }
@@ -76,7 +76,7 @@ class Block(val name: Name,
         case Success((Matched(_, _), _)) =>
           val block: Block = this
           logger.debug(s"${ANSI_CYAN}matched ${block.show}$ANSI_RESET")
-        case Success((Unmatched(_), history)) =>
+        case Success((_: Mismatched, history)) =>
           implicit val requestShow: Show[RequestContext] = RequestContext.show(None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }
@@ -85,8 +85,8 @@ class Block(val name: Name,
   private def matched[T <: BlockContext](blockContext: T): WriterT[Task, Vector[HistoryItem], ExecutionResult] =
     lift(Task.now(Matched(this, blockContext): ExecutionResult))
 
-  private def unmatched[T <: BlockContext](blockContext: T): WriterT[Task, Vector[HistoryItem], ExecutionResult] =
-    lift(Task.now(Unmatched(blockContext)))
+  private def mismatched[T <: BlockContext](blockContext: T): WriterT[Task, Vector[HistoryItem], ExecutionResult] =
+    lift(Task.now(Mismatched(blockContext)))
 
   private def lift[T](task: Task[T]) =
     WriterT.liftF[Task, Vector[HistoryItem], T](task)
@@ -99,14 +99,14 @@ object Block {
 
   final case class Name(value: String) extends AnyVal
   final case class History(block: Block.Name, items: Vector[HistoryItem], blockContext: BlockContext)
-  final case class HistoryItem(rule: Rule.Name, matched: Boolean)
+  final case class HistoryItem(rule: Rule.Name, result: RuleResult)
 
   sealed trait ExecutionResult {
     def blockContext: BlockContext
   }
   object ExecutionResult {
     final case class Matched(block: Block, override val blockContext: BlockContext) extends ExecutionResult
-    final case class Unmatched(override val blockContext: BlockContext) extends ExecutionResult
+    final case class Mismatched(override val blockContext: BlockContext) extends ExecutionResult
   }
 
   sealed trait Policy

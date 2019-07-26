@@ -18,8 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.acl.blocks.rules.AuthKeySha256Rule
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationRuleDecorator
+import tech.beshu.ror.acl.blocks.rules.{AuthKeySha256Rule, ImpersonationRuleDecorator}
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError

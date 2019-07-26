@@ -38,7 +38,7 @@ class UsersRule(val settings: Settings)
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
     blockContext.loggedUser match {
-      case None => Rejected
+      case None => Rejected()
       case Some(user) => matchUser(user, requestContext, blockContext)
     }
   }

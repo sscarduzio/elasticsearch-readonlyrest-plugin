@@ -455,7 +455,7 @@ class JwtAuthRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Rejected)
+        result should be(Rejected())
     }
   }
 

@@ -64,7 +64,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       jwtTokenFrom(requestContext) match {
         case None =>
           logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-          Task.now(Rejected)
+          Task.now(Rejected())
         case Some(token) =>
           process(token, blockContext)
       }
@@ -79,7 +79,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
   private def process(token: JwtToken, blockContext: BlockContext) = {
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
-        Task.now(Rejected)
+        Task.now(Rejected())
       case Right((tokenPayload, user, groups)) =>
         logger.debug(s"JWT resolved user for claim ${settings.jwt.userClaim}: $user, and groups for claim ${settings.jwt.groupsClaim}: $groups")
         val claimProcessingResult = for {
@@ -88,7 +88,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
         } yield finalBlockContext.withJsonToken(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
-            Task.now(Rejected)
+            Task.now(Rejected())
           case Right(modifiedBlockContext) =>
             settings.jwt.checkMethod match {
               case NoCheck(service) =>

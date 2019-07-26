@@ -23,7 +23,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.acl.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.acl.blocks.rules.impersonation.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
 import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials])
