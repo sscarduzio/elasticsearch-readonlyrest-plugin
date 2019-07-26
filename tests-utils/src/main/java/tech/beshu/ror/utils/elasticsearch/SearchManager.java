@@ -127,6 +127,7 @@ public class SearchManager {
     public List<Map<String, Object>> getResults() {
       return results;
     }
+
   }
 
 }

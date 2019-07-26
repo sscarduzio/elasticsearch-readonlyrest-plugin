@@ -18,7 +18,7 @@ package tech.beshu.ror.acl.blocks.definitions.ldap.implementations
 
 import cats.Order
 import cats.implicits._
-import cats.data.{EitherT, NonEmptySet}
+import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -288,7 +288,7 @@ object LdapConnectionConfig {
   sealed trait ConnectionMethod
   object ConnectionMethod {
     final case class SingleServer(host: LdapHost) extends ConnectionMethod
-    final case class SeveralServers(hosts: NonEmptySet[LdapHost], haMethod: HaMethod) extends ConnectionMethod
+    final case class SeveralServers(hosts: NonEmptyList[LdapHost], haMethod: HaMethod) extends ConnectionMethod
   }
 
   sealed trait HaMethod

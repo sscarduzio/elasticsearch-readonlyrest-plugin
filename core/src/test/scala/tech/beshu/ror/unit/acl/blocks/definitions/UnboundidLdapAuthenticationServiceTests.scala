@@ -105,7 +105,7 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
         Name("my_ldap".nonempty),
         LdapConnectionConfig(
           ConnectionMethod.SeveralServers(
-            NonEmptySet.of(
+            NonEmptyList.of(
               LdapHost.from(s"ldap://${ldap1Container.ldapHost}:${ldap1Container.ldapPort}").get,
               LdapHost.from(s"ldap://${ldap2Container.ldapHost}:${ldap2Container.ldapPort}").get,
             ),
