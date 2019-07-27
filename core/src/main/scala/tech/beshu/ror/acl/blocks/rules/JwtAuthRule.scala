@@ -115,7 +115,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
               .toEither
               .map(JwtTokenPayload.apply)
               .left.map { ex =>
-              logger.errorEx(s"JWT token '${token.show}' parsing error", ex)
+              logger.errorEx(s"JWT token '${token.show}' parsing error: " + ex.getClass.getSimpleName, ex)
               ()
             }
           case _ =>
@@ -126,7 +126,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
           .toEither
           .map(JwtTokenPayload.apply)
           .left.map { ex =>
-          logger.errorEx(s"JWT token '${token.show}' parsing error", ex)
+          logger.errorEx(s"JWT token '${token.show}' parsing error: " + ex.getClass.getSimpleName, ex)
           ()
         }
     }
