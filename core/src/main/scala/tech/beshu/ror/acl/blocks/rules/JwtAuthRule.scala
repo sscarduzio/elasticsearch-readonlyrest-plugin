@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.orders._
@@ -44,6 +44,7 @@ import scala.util.Try
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
     with AuthorizationRule
+    with NoImpersonationSupport
     with Logging {
 
   override val name: Rule.Name = JwtAuthRule.name

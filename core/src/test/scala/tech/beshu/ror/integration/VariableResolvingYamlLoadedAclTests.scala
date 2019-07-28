@@ -27,7 +27,7 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{Header, IndexName, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{Header, IndexName, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider

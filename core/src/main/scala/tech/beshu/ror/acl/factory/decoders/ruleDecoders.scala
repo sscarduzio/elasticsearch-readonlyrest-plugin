@@ -20,11 +20,12 @@ import java.time.Clock
 
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, ImpersonationSupport}
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, DefinitionsPack}
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules._
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
+import tech.beshu.ror.providers.{PropertiesProvider, UuidProvider}
 
 import scala.language.{existentials, implicitConversions}
 
@@ -34,8 +35,7 @@ object ruleDecoders {
                              definitions: DefinitionsPack)
                             (implicit clock: Clock,
                              uuidProvider: UuidProvider,
-                             propertiesProvider: PropertiesProvider,
-                             envVarsProvider: EnvVarsProvider): Option[RuleBaseDecoder[_ <: Rule]] =
+                             propertiesProvider: PropertiesProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
@@ -60,15 +60,16 @@ object ruleDecoders {
       case UriRegexRule.name => Some(new UriRegexRuleDecoder)
       case UsersRule.name => Some(new UsersRuleDecoder)
       case XForwardedForRule.name => Some(new XForwardedForRuleDecoder)
-      case _ => authenticationRuleDecoderBy(
-        name,
-        definitions.authenticationServices,
-        definitions.proxies,
-        definitions.jwts,
-        definitions.ldaps,
-        definitions.rorKbns,
-        Some(definitions.impersonators)
-      )
+      case _ =>
+        authenticationRuleDecoderBy(
+          name,
+          definitions.authenticationServices,
+          definitions.proxies,
+          definitions.jwts,
+          definitions.ldaps,
+          definitions.rorKbns
+        ).map(_.map(rule => new ImpersonationRuleDecorator(rule, definitions.impersonators.items)))
+          .map(new RuleDecoderWithoutAssociatedFields(_))
     }
 
   def authenticationRuleDecoderBy(name: Rule.Name,
@@ -76,14 +77,13 @@ object ruleDecoders {
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
-                                  rorKbnDefinitions: Definitions[RorKbnDef],
-                                  impersonatorDefs: Option[Definitions[ImpersonatorDef]]): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
+                                  rorKbnDefinitions: Definitions[RorKbnDef]): Option[RuleBaseDecoder[_ <: AuthenticationRule with ImpersonationSupport]] = {
     name match {
-      case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorDefs))
-      case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorDefs))
-      case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder(impersonatorDefs))
-      case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder(impersonatorDefs))
-      case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorDefs))
+      case AuthKeyRule.name => Some(new AuthKeyRuleDecoder())
+      case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder())
+      case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder())
+      case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder())
+      case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder())
       case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions))
       case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions))
       case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions))

@@ -75,6 +75,10 @@ object Rule {
 
     def exists(user: User.Id): Task[UserExistence]
   }
+  trait NoImpersonationSupport extends ImpersonationSupport {
+    this: AuthenticationRule =>
+    override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+  }
 
   object ImpersonationSupport {
     sealed trait UserExistence

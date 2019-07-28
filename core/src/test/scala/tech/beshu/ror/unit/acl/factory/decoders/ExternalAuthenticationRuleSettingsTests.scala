@@ -19,15 +19,15 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.{BasicAuthHttpExternalAuthenticationService, CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
-import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
+import tech.beshu.ror.acl.blocks.rules.{ExternalAuthenticationRule, ImpersonationRuleDecorator}
 import tech.beshu.ror.acl.factory.HttpClientsFactory
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 
 class ExternalAuthenticationRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[ExternalAuthenticationRule] with MockFactory {
+  extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[ExternalAuthenticationRule]] with MockFactory {
 
   "An ExternalAuthenticationRule" should {
     "be able to be loaded from config" when {
@@ -51,8 +51,8 @@ class ExternalAuthenticationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            rule.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
-            rule.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+            rule.underlying.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
+            rule.underlying.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
           }
         )
       }
@@ -80,8 +80,8 @@ class ExternalAuthenticationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            rule.settings.service.id should be(ExternalAuthenticationService.Name("ext2"))
-            rule.settings.service shouldBe a[BasicAuthHttpExternalAuthenticationService]
+            rule.underlying.settings.service.id should be(ExternalAuthenticationService.Name("ext2"))
+            rule.underlying.settings.service shouldBe a[BasicAuthHttpExternalAuthenticationService]
           }
         )
       }
@@ -103,8 +103,8 @@ class ExternalAuthenticationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            rule.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
-            rule.settings.service shouldBe a[BasicAuthHttpExternalAuthenticationService]
+            rule.underlying.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
+            rule.underlying.settings.service shouldBe a[BasicAuthHttpExternalAuthenticationService]
           }
         )
       }
@@ -129,8 +129,8 @@ class ExternalAuthenticationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            rule.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
-            rule.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+            rule.underlying.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
+            rule.underlying.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
           }
         )
       }
@@ -159,8 +159,8 @@ class ExternalAuthenticationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            rule.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
-            rule.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+            rule.underlying.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
+            rule.underlying.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
           }
         )
       }
@@ -184,8 +184,8 @@ class ExternalAuthenticationRuleSettingsTests
               |""".stripMargin,
           httpClientsFactory = mockedHttpClientsFactory,
           assertion = rule => {
-            rule.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
-            rule.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
+            rule.underlying.settings.service.id should be(ExternalAuthenticationService.Name("ext1"))
+            rule.underlying.settings.service shouldBe a[CacheableExternalAuthenticationServiceDecorator]
           }
         )
       }

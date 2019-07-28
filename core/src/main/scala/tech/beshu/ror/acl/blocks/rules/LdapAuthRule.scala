@@ -19,12 +19,14 @@ package tech.beshu.ror.acl.blocks.rules
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.acl.request.RequestContext
 
 class LdapAuthRule(val authentication: LdapAuthenticationRule,
                    val authorization: LdapAuthorizationRule)
-  extends AuthenticationRule with AuthorizationRule {
+  extends AuthenticationRule
+    with AuthorizationRule
+    with NoImpersonationSupport {
 
   override val name: Rule.Name = LdapAuthRule.name
 

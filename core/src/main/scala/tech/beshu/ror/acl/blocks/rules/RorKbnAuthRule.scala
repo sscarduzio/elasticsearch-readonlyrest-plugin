@@ -27,7 +27,7 @@ import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
@@ -44,6 +44,7 @@ import scala.util.Try
 class RorKbnAuthRule(val settings: Settings)
   extends AuthenticationRule
     with AuthorizationRule
+    with NoImpersonationSupport
     with Logging {
 
   override val name: Rule.Name = RorKbnAuthRule.name

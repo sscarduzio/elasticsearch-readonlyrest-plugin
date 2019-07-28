@@ -19,13 +19,13 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
-import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule
+import tech.beshu.ror.acl.blocks.rules.{ImpersonationRuleDecorator, LdapAuthenticationRule}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{RulesLevelCreationError, GeneralReadonlyrestSettingsError}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.utils.LdapContainer
 
 class LdapAuthenticationRuleSettingsTests
-  extends BaseRuleSettingsDecoderTest[LdapAuthenticationRule]
+  extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[LdapAuthenticationRule]]
     with ForAllTestContainer{
 
   private val containerLdap1 = new LdapContainer("LDAP1", "/test_example.ldif")
@@ -55,7 +55,7 @@ class LdapAuthenticationRuleSettingsTests
               |    search_user_base_DN: "ou=People,dc=example,dc=com"
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
+            rule.underlying.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
           }
         )
       }
@@ -81,7 +81,7 @@ class LdapAuthenticationRuleSettingsTests
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [CacheableLdapAuthenticationServiceDecorator]
+            rule.underlying.settings.ldap shouldBe a [CacheableLdapAuthenticationServiceDecorator]
           }
         )
       }
@@ -106,7 +106,7 @@ class LdapAuthenticationRuleSettingsTests
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
+            rule.underlying.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
           }
         )
       }

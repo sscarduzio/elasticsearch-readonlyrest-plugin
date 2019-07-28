@@ -21,16 +21,15 @@ import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.rules.JwtAuthRule
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.factory.decoders.common._
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
 import tech.beshu.ror.acl.factory.decoders.definitions.JwtDefinitionsDecoder._
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.providers.EnvVarsProvider
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
   extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](

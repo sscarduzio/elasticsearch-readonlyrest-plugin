@@ -21,6 +21,8 @@ import cats.data.NonEmptySet
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.acl.blocks.rules.ImpersonationRuleDecorator
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, ImpersonationSupport}
 import tech.beshu.ror.acl.domain.{Group, User}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -68,7 +70,7 @@ object UsersDefinitionsDecoder {
           rule <- c.withoutKeys(Set(usernameKey, groupsKey))
             .tryDecodeAuthRule(username)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
-        } yield UserDef(username, groups, rule)
+        } yield UserDef(username, groups, new ImpersonationRuleDecorator(rule.asInstanceOf[AuthenticationRule with ImpersonationSupport], impersonatorDefs.items))
       }
       .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
       .decoder

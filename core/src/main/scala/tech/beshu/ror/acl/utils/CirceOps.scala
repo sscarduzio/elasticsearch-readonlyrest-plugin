@@ -25,8 +25,8 @@ import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
+import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, ImpersonatorDef, JwtDef, ProxyAuth, RorKbnDef}
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -45,8 +45,7 @@ import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult._
 
 import scala.collection.SortedSet
-import scala.language.higherKinds
-import scala.language.existentials
+import scala.language.{existentials, higherKinds}
 
 object CirceOps {
 
@@ -272,8 +271,7 @@ object CirceOps {
                           authProxyDefinitions: Definitions[ProxyAuth],
                           jwtDefinitions: Definitions[JwtDef],
                           ldapDefinitions: Definitions[LdapService],
-                          rorKbnDefinitions: Definitions[RorKbnDef],
-                          impersonatorDefs: Option[Definitions[ImpersonatorDef]]) = {
+                          rorKbnDefinitions: Definitions[RorKbnDef]) = {
       value.keys.map(_.toList) match {
         case None | Some(Nil) =>
           Left(Message(s"No authentication method defined for user ['${username.show}']"))
@@ -284,15 +282,15 @@ object CirceOps {
             authProxyDefinitions,
             jwtDefinitions,
             ldapDefinitions,
-            rorKbnDefinitions,
-            impersonatorDefs
+            rorKbnDefinitions
           ) match {
             case Some(authRuleDecoder) => authRuleDecoder
             case None => DecoderHelpers.failed[AuthenticationRule](
               DefinitionsLevelCreationError(Message(s"Rule $key is not authentication rule"))
             )
           }
-          decoder.tryDecode(value.downField(key))
+          decoder
+            .tryDecode(value.downField(key))
             .left.map(_ => Message(s"Cannot parse '$key' rule declared in user '${username.show}' definition"))
         case Some(keys) =>
           Left(Message(s"Only one authentication should be defined for user ['${username.show}']. Found ${keys.mkString(", ")}"))

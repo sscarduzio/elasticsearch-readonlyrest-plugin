@@ -22,9 +22,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.blocks.definitions.UserDef
+import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.acl.blocks.rules.{GroupsRule, Rule}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, ImpersonationSupport, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.{GroupsRule, ImpersonationRuleDecorator, Rule}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom
@@ -187,20 +188,33 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
 }
 
 object GroupsRuleTests {
-  private val alwaysRejectingAuthRule: AuthenticationRule = new AuthenticationRule {
-    override def name: Rule.Name = Rule.Name("dummy-rejecting")
-    override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = Task.now(Rejected())
-  }
+  private val alwaysRejectingAuthRule = new ImpersonationRuleDecorator(
+    new AuthenticationRule with ImpersonationSupport {
+      override def name: Rule.Name = Rule.Name("dummy-rejecting")
+      override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = Task.now(Rejected())
+      override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+    },
+    List.empty
+  )
 
-  private val alwaysThrowingAuthRule: AuthenticationRule = new AuthenticationRule {
-    override def name: Rule.Name = Rule.Name("dummy-throwing")
-    override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
-      Task.raiseError(new Exception("Sth went wrong"))
-  }
+  private val alwaysThrowingAuthRule = new ImpersonationRuleDecorator(
+    new AuthenticationRule with ImpersonationSupport {
+      override def name: Rule.Name = Rule.Name("dummy-throwing")
+      override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
+        Task.raiseError(new Exception("Sth went wrong"))
+      override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+    },
+    List.empty
+  )
 
-  private def alwaysFulfillingAuthRule(user: User.Id): AuthenticationRule = new AuthenticationRule {
-    override def name: Rule.Name = Rule.Name("dummy-fulfilling")
-    override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
-      Task.now(Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(user))))
-  }
+  private def alwaysFulfillingAuthRule(user: User.Id) =
+    new ImpersonationRuleDecorator(
+      new AuthenticationRule with ImpersonationSupport {
+        override def name: Rule.Name = Rule.Name("dummy-fulfilling")
+        override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
+          Task.now(Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(user))))
+        override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+      },
+      List.empty
+    )
 }

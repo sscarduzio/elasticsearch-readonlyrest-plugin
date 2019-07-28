@@ -18,54 +18,44 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
-import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport
 import tech.beshu.ror.acl.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
-import tech.beshu.ror.acl.factory.decoders.rules.AuthKeyDecodersHelper.optionallyDecorateWithImpersonation
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.utils.CirceOps._
 import tech.beshu.ror.utils.StringWiseSplitter
 import tech.beshu.ror.utils.StringWiseSplitter._
 
-class AuthKeyRuleDecoder(impersonatorDefs: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeyRuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .plainTextCredentialsDecoder
     .map(new AuthKeyRule(_))
-    .map(optionallyDecorateWithImpersonation(impersonatorDefs, _))
 )
 
-class AuthKeySha1RuleDecoder(impersonatorDefs: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeySha1RuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .hashedCredentialsDecoder
     .map(new AuthKeySha1Rule(_))
-    .map(optionallyDecorateWithImpersonation(impersonatorDefs, _))
 )
 
-class AuthKeySha256RuleDecoder(impersonatorDefs: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeySha256RuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .hashedCredentialsDecoder
     .map(new AuthKeySha256Rule(_))
-    .map(optionallyDecorateWithImpersonation(impersonatorDefs, _))
 )
 
-class AuthKeySha512RuleDecoder(impersonatorDefs: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeySha512RuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .hashedCredentialsDecoder
     .map(new AuthKeySha512Rule(_))
-    .map(optionallyDecorateWithImpersonation(impersonatorDefs, _))
 )
 
-class AuthKeyUnixRuleDecoder(impersonatorDefs: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeyUnixRuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .unixHashedCredentialsDecoder
     .map(new AuthKeyUnixRule(_))
-    .map(optionallyDecorateWithImpersonation(impersonatorDefs, _))
 )
 
 private object AuthKeyDecodersHelper {
@@ -110,11 +100,4 @@ private object AuthKeyDecodersHelper {
       }
       .decoder
 
-  private [rules] def optionallyDecorateWithImpersonation(impersonatorDefs: Option[Definitions[ImpersonatorDef]],
-                                                  rule: AuthenticationRule with ImpersonationSupport) = {
-    impersonatorDefs match {
-      case Some(defs) => new ImpersonationRuleDecorator(rule, defs.items)
-      case None => rule
-    }
-  }
 }
