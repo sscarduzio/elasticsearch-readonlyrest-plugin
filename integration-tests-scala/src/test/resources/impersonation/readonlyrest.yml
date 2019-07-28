@@ -25,10 +25,6 @@ readonlyrest:
     - impersonator: admin1
       auth_key: admin1:pass
       users: ["*"]
-    - impersonator: anotheradmin
-      jwt_auth: "jwt1"
-      users: ["dev1"]
-
-  jwt:
-    - name: jwt1
-      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+    - impersonator: admin2
+      auth_key: admin2:pass
+      users: ["dev2"]

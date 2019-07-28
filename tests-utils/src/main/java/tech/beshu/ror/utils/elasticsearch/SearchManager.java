@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import com.google.common.collect.Lists;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -51,9 +50,10 @@ public class SearchManager {
   public SearchResult search(String endpoint) {
     try (CloseableHttpResponse response = restClient.execute(createSearchRequest(endpoint))) {
       int statusCode = response.getStatusLine().getStatusCode();
+      Map<String, Object> jsonBody = deserializeJsonBody(EntityUtils.toString(response.getEntity()));
       return statusCode != 200
-          ? new SearchResult(statusCode, Lists.newArrayList())
-          : new SearchResult(statusCode, getSearchHits(deserializeJsonBody(bodyFrom(response))));
+          ? new SearchResult(statusCode, getError(jsonBody))
+          : new SearchResult(statusCode, getSearchHits(jsonBody));
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }
@@ -63,9 +63,10 @@ public class SearchManager {
     try {
       try (CloseableHttpResponse response = restClient.execute(createMSearchRequest(query))) {
         int statusCode = response.getStatusLine().getStatusCode();
+        Map<String, Object> jsonBody = deserializeJsonBody(EntityUtils.toString(response.getEntity()));
         return statusCode != 200
-            ? new SearchResult(statusCode, Lists.newArrayList())
-            : new SearchResult(statusCode, getMSearchHits(deserializeJsonBody(EntityUtils.toString(response.getEntity()))));
+            ? new SearchResult(statusCode, getError(jsonBody))
+            : new SearchResult(statusCode, getMSearchHits(jsonBody));
       }
     } catch (IOException e) {
       throw new IllegalStateException(e);
@@ -108,6 +109,10 @@ public class SearchManager {
   private static List<Map<String, Object>> getMSearchHits(Map<String, Object> result) {
     List<Map<String, Object>> responses = (List<Map<String, Object>>)result.get("responses");
     return (List<Map<String, Object>>) ((Map<String, Object>)responses.get(0).get("hits")).get("hits");
+  }
+
+  private static List<Map<String, Object>> getError(Map<String, Object> result) {
+    return (List<Map<String, Object>>) ((Map<String, Object>)result.get("error")).get("root_cause");
   }
 
   public static class SearchResult {

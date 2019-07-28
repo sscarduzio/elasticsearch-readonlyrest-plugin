@@ -19,7 +19,9 @@ package tech.beshu.ror.acl
 import cats.data._
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.acl.AclActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
 import tech.beshu.ror.acl.AclHandlingResult.Result
+import tech.beshu.ror.acl.AclHandlingResult.Result.ForbiddenByMismatched.Cause
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.domain.Header.Name
 import tech.beshu.ror.acl.domain.{Header, IndexName}
@@ -28,6 +30,7 @@ import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.immutable.SortedSet
+import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 object AclResultCommitter extends Logging {
@@ -37,8 +40,10 @@ object AclResultCommitter extends Logging {
       result.handlingResult match {
         case Result.Allow(blockContext, _) =>
           handler.onAllow(blockContext)
-        case Result.ForbiddenBy(_, _) | Result.ForbiddenByMismatched(_) =>
-          handler.onForbidden()
+        case Result.ForbiddenBy(_, _) =>
+          handler.onForbidden(List[ForbiddenCause](ForbiddenBlockMatch).asJava)
+        case Result.ForbiddenByMismatched(causes) =>
+          handler.onForbidden(causes.toList.map(AclActionHandler.fromMismatchedCause).asJava)
         case Result.Failed(ex) =>
           handler.onError(ex)
         case Result.PassedThrough =>
@@ -54,9 +59,35 @@ object AclResultCommitter extends Logging {
 
 trait AclActionHandler {
   def onAllow(blockContext: BlockContext): Unit
-  def onForbidden(): Unit
+  def onForbidden(causes: java.util.List[ForbiddenCause]): Unit
   def onError(t: Throwable): Unit
   def onPassThrough(): Unit
+}
+
+object AclActionHandler {
+  sealed trait ForbiddenCause {
+    def stringify: String
+  }
+  case object ForbiddenBlockMatch extends ForbiddenCause {
+    override def stringify: String = "FORBIDDEN_BY_BLOCK"
+  }
+  case object ActionNotAllowed extends ForbiddenCause {
+    override def stringify: String = "ACTION_NOT_ALLOWED"
+  }
+  case object ImpersonationNotSupported extends ForbiddenCause {
+    override def stringify: String = "IMPERSONATION_NOT_SUPPORTED"
+  }
+  case object ImpersonationNotAllowed extends ForbiddenCause {
+    override def stringify: String = "IMPERSONATION_NOT_ALLOWED"
+  }
+
+  def fromMismatchedCause(cause: Cause): ForbiddenCause = {
+    cause match {
+      case Cause.ActionNotAllowed => ActionNotAllowed
+      case Cause.ImpersonationNotSupported => ImpersonationNotSupported
+      case Cause.ImpersonationNotAllowed => ImpersonationNotAllowed
+    }
+  }
 }
 
 object BlockContextJavaHelper {
