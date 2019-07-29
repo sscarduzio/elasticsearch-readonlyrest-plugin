@@ -86,13 +86,13 @@ class SequentialAcl(val blocks: NonEmptyList[Block])
   private def nonEmptySetOfMismatchedCausesFromHistory(history: Vector[History]): NonEmptySet[ForbiddenByMismatched.Cause] = {
     val rejections = history.flatMap(_.items.map(_.result).collect { case r: Rejected => r })
     val causes = rejections.map {
-      case Rejected(None) => ForbiddenByMismatched.Cause.ActionNotAllowed
+      case Rejected(None) => ForbiddenByMismatched.Cause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => ForbiddenByMismatched.Cause.ImpersonationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => ForbiddenByMismatched.Cause.ImpersonationNotSupported
     }
     NonEmptyList
       .fromList(causes.toList)
-      .getOrElse(NonEmptyList.one(ForbiddenByMismatched.Cause.ActionNotAllowed))
+      .getOrElse(NonEmptyList.one(ForbiddenByMismatched.Cause.OperationNotAllowed))
       .toNes
   }
 }

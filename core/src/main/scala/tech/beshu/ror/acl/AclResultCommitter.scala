@@ -71,8 +71,8 @@ object AclActionHandler {
   case object ForbiddenBlockMatch extends ForbiddenCause {
     override def stringify: String = "FORBIDDEN_BY_BLOCK"
   }
-  case object ActionNotAllowed extends ForbiddenCause {
-    override def stringify: String = "ACTION_NOT_ALLOWED"
+  case object OpetationNotAllowed extends ForbiddenCause {
+    override def stringify: String = "OPERATION_NOT_ALLOWED"
   }
   case object ImpersonationNotSupported extends ForbiddenCause {
     override def stringify: String = "IMPERSONATION_NOT_SUPPORTED"
@@ -83,7 +83,7 @@ object AclActionHandler {
 
   def fromMismatchedCause(cause: Cause): ForbiddenCause = {
     cause match {
-      case Cause.ActionNotAllowed => ActionNotAllowed
+      case Cause.OperationNotAllowed => OpetationNotAllowed
       case Cause.ImpersonationNotSupported => ImpersonationNotSupported
       case Cause.ImpersonationNotAllowed => ImpersonationNotAllowed
     }

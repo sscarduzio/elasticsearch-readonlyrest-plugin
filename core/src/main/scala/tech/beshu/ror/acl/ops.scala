@@ -93,7 +93,7 @@ object orders {
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
   implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
-    case ForbiddenByMismatched.Cause.ActionNotAllowed => 1
+    case ForbiddenByMismatched.Cause.OperationNotAllowed => 1
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
     case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
   }

@@ -42,7 +42,7 @@ object AclHandlingResult {
     case object ForbiddenByMismatched {
       sealed trait Cause
       object Cause {
-        case object ActionNotAllowed extends Cause
+        case object OperationNotAllowed extends Cause
         case object ImpersonationNotSupported extends Cause
         case object ImpersonationNotAllowed extends Cause
       }
