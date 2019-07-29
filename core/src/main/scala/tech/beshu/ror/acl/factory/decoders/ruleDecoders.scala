@@ -20,10 +20,9 @@ import java.time.Clock
 
 import tech.beshu.ror.acl.blocks.definitions._
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, ImpersonationSupport}
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.rules._
 import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, DefinitionsPack}
-import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.factory.decoders.rules._
 import tech.beshu.ror.providers.{PropertiesProvider, UuidProvider}
 
@@ -67,9 +66,9 @@ object ruleDecoders {
           definitions.proxies,
           definitions.jwts,
           definitions.ldaps,
-          definitions.rorKbns
-        ).map(_.map(rule => new ImpersonationRuleDecorator(rule, definitions.impersonators.items)))
-          .map(new RuleDecoderWithoutAssociatedFields(_))
+          definitions.rorKbns,
+          Some(definitions.impersonators)
+        )
     }
 
   def authenticationRuleDecoderBy(name: Rule.Name,
@@ -77,13 +76,14 @@ object ruleDecoders {
                                   authProxyDefinitions: Definitions[ProxyAuth],
                                   jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
-                                  rorKbnDefinitions: Definitions[RorKbnDef]): Option[RuleBaseDecoder[_ <: AuthenticationRule with ImpersonationSupport]] = {
+                                  rorKbnDefinitions: Definitions[RorKbnDef],
+                                  impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
     name match {
-      case AuthKeyRule.name => Some(new AuthKeyRuleDecoder())
-      case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder())
-      case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder())
-      case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder())
-      case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder())
+      case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions))
+      case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions))
+      case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions))
+      case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions))
+      case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions))
       case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions))
       case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions))
       case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions))

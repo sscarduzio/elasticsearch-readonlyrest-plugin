@@ -23,7 +23,6 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport
 import tech.beshu.ror.acl.domain.Credentials
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.request.RequestContext
@@ -32,20 +31,19 @@ import tech.beshu.ror.acl.show.logs._
 
 abstract class BaseBasicAuthenticationRule
   extends AuthenticationRule
-    with ImpersonationSupport
     with Logging {
 
-  protected def authenticate(credentials: Credentials): Task[Boolean]
+  protected def authenticateUsing(credentials: Credentials): Task[Boolean]
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] =
+  override def tryToAuthenticate(requestContext: RequestContext,
+                                 blockContext: BlockContext): Task[RuleResult] =
     Task
       .unit
       .flatMap { _ =>
         requestContext.basicAuth.map(_.credentials) match {
           case Some(credentials) =>
             logger.debug(s"Attempting Login as: ${credentials.user.show} rc: ${requestContext.id.show}")
-            authenticate(credentials)
+            authenticateUsing(credentials)
               .map {
                 case true => Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(credentials.user)))
                 case false => Rejected()
@@ -60,7 +58,7 @@ abstract class BaseBasicAuthenticationRule
 abstract class BasicAuthenticationRule[CREDENTIALS](val settings: Settings[CREDENTIALS])
   extends BaseBasicAuthenticationRule {
 
-  override protected def authenticate(credentials: Credentials): Task[Boolean] =
+  override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     compare(settings.credentials, credentials)
 
   protected def compare(configuredCredentials: CREDENTIALS, credentials: Credentials): Task[Boolean]

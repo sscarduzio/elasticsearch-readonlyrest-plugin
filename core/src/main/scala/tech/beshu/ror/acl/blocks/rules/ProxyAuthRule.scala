@@ -45,8 +45,8 @@ class ProxyAuthRule(val settings: Settings)
 
   override val name: Rule.Name = ProxyAuthRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def tryToAuthenticate(requestContext: RequestContext,
+                                 blockContext: BlockContext): Task[RuleResult] = Task {
     getLoggedUser(requestContext) match {
       case None =>
         Rejected()

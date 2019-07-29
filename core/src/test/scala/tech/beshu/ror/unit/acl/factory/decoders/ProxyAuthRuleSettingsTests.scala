@@ -18,15 +18,15 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.domain.User
-import tech.beshu.ror.acl.blocks.rules.{ImpersonationRuleDecorator, ProxyAuthRule}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.utils.TestsUtils._
 
 class ProxyAuthRuleSettingsTests 
-  extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[ProxyAuthRule]] {
+  extends BaseRuleSettingsDecoderTest[ProxyAuthRule] {
 
   "A ProxyAuthRule" should {
     "be able to be loaded from config" when {
@@ -44,8 +44,8 @@ class ProxyAuthRuleSettingsTests
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.underlying.settings.userIds should be(NonEmptySet.one(User.Id("user1".nonempty)))
-            rule.underlying.settings.userHeaderName should be(headerNameFrom("X-Forwarded-User"))
+            rule.settings.userIds should be(NonEmptySet.one(User.Id("user1".nonempty)))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Forwarded-User"))
           }
         )
       }
@@ -69,8 +69,8 @@ class ProxyAuthRuleSettingsTests
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.underlying.settings.userIds should be(NonEmptySet.one(User.Id("user1".nonempty)))
-            rule.underlying.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
+            rule.settings.userIds should be(NonEmptySet.one(User.Id("user1".nonempty)))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
           }
         )
       }
@@ -94,8 +94,8 @@ class ProxyAuthRuleSettingsTests
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.underlying.settings.userIds should be(NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty)))
-            rule.underlying.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
+            rule.settings.userIds should be(NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty)))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Auth-Token"))
           }
         )
       }

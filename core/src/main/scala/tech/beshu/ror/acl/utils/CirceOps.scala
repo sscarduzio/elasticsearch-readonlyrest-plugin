@@ -271,7 +271,8 @@ object CirceOps {
                           authProxyDefinitions: Definitions[ProxyAuth],
                           jwtDefinitions: Definitions[JwtDef],
                           ldapDefinitions: Definitions[LdapService],
-                          rorKbnDefinitions: Definitions[RorKbnDef]) = {
+                          rorKbnDefinitions: Definitions[RorKbnDef],
+                          imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
       value.keys.map(_.toList) match {
         case None | Some(Nil) =>
           Left(Message(s"No authentication method defined for user ['${username.show}']"))
@@ -282,7 +283,8 @@ object CirceOps {
             authProxyDefinitions,
             jwtDefinitions,
             ldapDefinitions,
-            rorKbnDefinitions
+            rorKbnDefinitions,
+            imperonatorsDefinitions
           ) match {
             case Some(authRuleDecoder) => authRuleDecoder
             case None => DecoderHelpers.failed[AuthenticationRule](

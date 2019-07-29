@@ -21,7 +21,7 @@ import org.scalatest.Inside
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.definitions.UserDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule, ImpersonationRuleDecorator}
+import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.domain.{Credentials, Group, PlainTextSecret, User}
@@ -58,8 +58,8 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("cartman".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
-              authRule shouldBe an[ImpersonationRuleDecorator[AuthKeyRule]]
-              authRule.asInstanceOf[ImpersonationRuleDecorator[AuthKeyRule]].underlying.settings should be {
+              authRule shouldBe an[AuthKeyRule]
+              authRule.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
               }
             }
@@ -96,16 +96,16 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             inside(sortedUserDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("cartman".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
-              authRule shouldBe an[ImpersonationRuleDecorator[AuthKeyRule]]
-              authRule.asInstanceOf[ImpersonationRuleDecorator[AuthKeyRule]].underlying.settings should be {
+              authRule shouldBe an[AuthKeyRule]
+              authRule.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
               }
             }
             inside(sortedUserDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("morgan".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group2"), groupFrom("group3")))
-              authRule shouldBe an[ImpersonationRuleDecorator[AuthKeySha1Rule]]
-              authRule.asInstanceOf[ImpersonationRuleDecorator[AuthKeySha1Rule]].underlying.settings should be {
+              authRule shouldBe an[AuthKeySha1Rule]
+              authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
                 BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty))
               }
             }
@@ -138,8 +138,8 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("cartman".nonempty))
               userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
-              authRule shouldBe an[ImpersonationRuleDecorator[AuthKeyRule]]
-              authRule.asInstanceOf[ImpersonationRuleDecorator[AuthKeyRule]].underlying.settings should be {
+              authRule shouldBe an[AuthKeyRule]
+              authRule.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
               }
             }

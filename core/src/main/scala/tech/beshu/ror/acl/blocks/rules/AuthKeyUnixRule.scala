@@ -22,11 +22,13 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
+import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.acl.domain.{Credentials, User}
 
-class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials])
+class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+                      override val impersonators: List[ImpersonatorDef])
   extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyUnixRule.name

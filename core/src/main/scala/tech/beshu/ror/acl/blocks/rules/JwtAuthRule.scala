@@ -43,8 +43,8 @@ import scala.util.Try
 
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
-    with AuthorizationRule
     with NoImpersonationSupport
+    with AuthorizationRule
     with Logging {
 
   override val name: Rule.Name = JwtAuthRule.name
@@ -58,8 +58,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
 
   private val hasher = new SecureStringHasher(Algorithm.Sha256)
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task
+  override def tryToAuthenticate(requestContext: RequestContext,
+                                 blockContext: BlockContext): Task[RuleResult] = Task
     .unit
     .flatMap { _ =>
       jwtTokenFrom(requestContext) match {

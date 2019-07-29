@@ -18,13 +18,13 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.acl.blocks.rules.{AuthKeySha512Rule, ImpersonationRuleDecorator}
+import tech.beshu.ror.acl.blocks.rules.AuthKeySha512Rule
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils._
 
-class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[AuthKeySha512Rule]] {
+class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha512Rule] {
 
   "An AuthKeySha512Rule" should {
     "be able to be loaded from config" when {
@@ -41,7 +41,7 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[Imperso
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.underlying.settings.credentials should be {
+            rule.settings.credentials should be {
               HashedCredentials.HashedUserAndPassword("688aced3690d88ae780979585038f4c5072a8f7fce6a8edfdc8e63a6fbf1d5d4c420f60352f90e25d7932234eef8cf17c9d8c9e52dbdce4bad62477d396aa187".nonempty)
             }
           }
@@ -60,7 +60,7 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[Imperso
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.underlying.settings.credentials should be {
+            rule.settings.credentials should be {
               HashedCredentials.HashedOnlyPassword(User.Id("user1".nonempty), "688aced3690d88ae780979585038f4c5072a8f7fce6a8edfdc8e63a6fbf1d5d4c420f60352f90e25d7932234eef8cf17c9d8c9e52dbdce4bad62477d396aa187".nonempty)
             }
           }

@@ -19,15 +19,17 @@ package tech.beshu.ror.acl.blocks.rules
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.NoImpersonationSupport
 import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class LdapAuthenticationRule(val settings: Settings)
-  extends BaseBasicAuthenticationRule {
+  extends BaseBasicAuthenticationRule
+    with NoImpersonationSupport {
 
   override val name: Rule.Name = LdapAuthenticationRule.name
 
-  override protected def authenticate(credentials: Credentials): Task[Boolean] =
+  override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
   override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)

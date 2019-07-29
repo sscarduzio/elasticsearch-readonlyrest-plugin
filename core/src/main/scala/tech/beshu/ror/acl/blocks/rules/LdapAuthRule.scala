@@ -25,12 +25,12 @@ import tech.beshu.ror.acl.request.RequestContext
 class LdapAuthRule(val authentication: LdapAuthenticationRule,
                    val authorization: LdapAuthorizationRule)
   extends AuthenticationRule
-    with AuthorizationRule
-    with NoImpersonationSupport {
+    with NoImpersonationSupport
+    with AuthorizationRule {
 
   override val name: Rule.Name = LdapAuthRule.name
 
-  override def check(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = {
+  override def tryToAuthenticate(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = {
     authentication
       .check(requestContext, blockContext)
       .flatMap {

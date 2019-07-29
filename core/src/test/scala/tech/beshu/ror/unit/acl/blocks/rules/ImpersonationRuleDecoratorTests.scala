@@ -25,10 +25,9 @@ import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext
 import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, ImpersonationRuleDecorator}
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
 import tech.beshu.ror.acl.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.acl.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.acl.orders.userIdOrder
@@ -37,7 +36,7 @@ import tech.beshu.ror.utils.TestsUtils._
 
 class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Inside with BlockContextAssertion {
 
-  private val rule = impersonationRule(authKeyRule("user1", "secret"))
+  private val rule = authKeyRuleWithConfiguredImpersonation("user1", "secret")
 
   "An impersonation rule decorator" should {
     "skip impersonation" when {
@@ -125,8 +124,9 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         )
         val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
 
-        val underlyingRule = new AuthKeySha1Rule(BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx".nonempty)))
-        val rule = impersonationRule(underlyingRule)
+        val rule = authRuleWithImpersonation { defs =>
+          new AuthKeySha1Rule(BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx".nonempty)), defs)
+        }
         val result = rule.check(requestContext, blockContext).runSyncUnsafe()
 
         result should be (Rejected(Cause.ImpersonationNotSupported))
@@ -144,9 +144,17 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
     }
   }
 
-  private def impersonationRule(underlyingRule: AuthenticationRule with ImpersonationSupport) = {
-    new ImpersonationRuleDecorator(
-      underlyingRule,
+  private def authKeyRuleWithConfiguredImpersonation(user: String, password: String) = {
+    authRuleWithImpersonation { defs =>
+      new AuthKeyRule(
+        BasicAuthenticationRule.Settings(Credentials(User.Id(user.nonempty), PlainTextSecret(password.nonempty))),
+        defs
+      )
+    }
+  }
+
+  private def authRuleWithImpersonation(authKeyRuleCreator: List[ImpersonatorDef] => AuthenticationRule) = {
+    authKeyRuleCreator {
       List(
         ImpersonatorDef(
           User.Id("admin1".nonempty),
@@ -164,10 +172,13 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
           NonEmptySet.one(User.Id("user1".nonempty))
         )
       )
-    )
+    }
   }
 
   private def authKeyRule(user: String, password: String) = {
-    new AuthKeyRule(BasicAuthenticationRule.Settings(Credentials(User.Id(user.nonempty), PlainTextSecret(password.nonempty))))
+    new AuthKeyRule(
+      BasicAuthenticationRule.Settings(Credentials(User.Id(user.nonempty), PlainTextSecret(password.nonempty))),
+      Nil
+    )
   }
 }

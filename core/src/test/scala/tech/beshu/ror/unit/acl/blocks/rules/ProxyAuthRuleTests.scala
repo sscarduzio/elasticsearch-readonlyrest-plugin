@@ -21,12 +21,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.User.Id
+import tech.beshu.ror.acl.domain.{Header, User}
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -84,7 +84,7 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     val blockContext = mock[BlockContext]
     val newBlockContext = mock[BlockContext]
-    (requestContext.headers _).expects().returning(Set(header))
+    (requestContext.headers _).expects().returning(Set(header)).twice()
     if(isMatched) (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id(header.value))).returning(newBlockContext)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(newBlockContext)

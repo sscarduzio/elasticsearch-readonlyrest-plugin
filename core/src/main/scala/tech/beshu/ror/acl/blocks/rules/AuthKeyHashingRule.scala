@@ -18,13 +18,15 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.implicits._
 import java.nio.charset.Charset
+
 import com.google.common.hash.{HashFunction, Hashing}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
-import tech.beshu.ror.acl.blocks.rules.Rule.ImpersonationSupport.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.acl.domain._
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
@@ -49,6 +51,7 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
       case HashedOnlyPassword(_, _) => UserExistence.NotExist
     }
   }
+
 }
 
 object AuthKeyHashingRule {
@@ -77,7 +80,8 @@ object AuthKeyHashingRule {
 
 }
 
-class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials])
+class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                      override val impersonators: List[ImpersonatorDef])
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha1()) {
 
   override val name: Rule.Name = AuthKeySha1Rule.name
@@ -87,7 +91,8 @@ object AuthKeySha1Rule {
   val name = Rule.Name("auth_key_sha1")
 }
 
-class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials])
+class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                        override val impersonators: List[ImpersonatorDef])
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha256()) {
 
   override val name: Rule.Name = AuthKeySha256Rule.name
@@ -97,7 +102,8 @@ object AuthKeySha256Rule {
   val name = Rule.Name("auth_key_sha256")
 }
 
-class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials])
+class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                        override val impersonators: List[ImpersonatorDef])
   extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha512()) {
 
   override val name: Rule.Name = AuthKeySha512Rule.name

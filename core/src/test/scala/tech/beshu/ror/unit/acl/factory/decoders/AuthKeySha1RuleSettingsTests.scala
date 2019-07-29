@@ -18,13 +18,13 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.acl.blocks.rules.{AuthKeySha1Rule, ImpersonationRuleDecorator}
+import tech.beshu.ror.acl.blocks.rules.AuthKeySha1Rule
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils._
 
-class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[ImpersonationRuleDecorator[AuthKeySha1Rule]] {
+class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha1Rule] {
 
   "An AuthKeySha1Rule" should {
     "be able to be loaded from config" when {
@@ -41,7 +41,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[Impersona
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.underlying.settings.credentials should be {
+            rule.settings.credentials should be {
               HashedCredentials.HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty)
             }
           }
@@ -60,7 +60,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[Impersona
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.underlying.settings.credentials should be {
+            rule.settings.credentials should be {
               HashedCredentials.HashedOnlyPassword(User.Id("user1".nonempty), "d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty)
             }
           }

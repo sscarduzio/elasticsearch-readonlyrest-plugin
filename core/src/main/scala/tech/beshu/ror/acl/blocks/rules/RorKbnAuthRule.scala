@@ -43,8 +43,8 @@ import scala.util.Try
 
 class RorKbnAuthRule(val settings: Settings)
   extends AuthenticationRule
-    with AuthorizationRule
     with NoImpersonationSupport
+    with AuthorizationRule
     with Logging {
 
   override val name: Rule.Name = RorKbnAuthRule.name
@@ -55,8 +55,8 @@ class RorKbnAuthRule(val settings: Settings)
     case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
   }
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def tryToAuthenticate(requestContext: RequestContext,
+                                 blockContext: BlockContext): Task[RuleResult] = Task {
     val authHeaderName = Header.Name.authorization
     requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>

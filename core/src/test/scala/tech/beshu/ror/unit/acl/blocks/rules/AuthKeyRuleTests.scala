@@ -23,7 +23,8 @@ import tech.beshu.ror.utils.TestsUtils._
 class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {
 
   override protected def ruleName: String = classOf[AuthKeyRule].getSimpleName
-  override protected val rule = new AuthKeyRule(BasicAuthenticationRule.Settings(
-    Credentials(User.Id("logstash".nonempty), PlainTextSecret("logstash".nonempty))
-  ))
+  override protected val rule = new AuthKeyRule(
+    BasicAuthenticationRule.Settings(Credentials(User.Id("logstash".nonempty), PlainTextSecret("logstash".nonempty))),
+    Nil
+  )
 }
