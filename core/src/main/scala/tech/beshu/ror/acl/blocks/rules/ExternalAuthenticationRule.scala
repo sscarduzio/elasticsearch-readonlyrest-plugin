@@ -17,16 +17,21 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.acl.domain.BasicAuth
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.NoImpersonationSupport
+import tech.beshu.ror.acl.domain.{Credentials, User}
 
 class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings)
-  extends BaseBasicAuthenticationRule {
+  extends BaseBasicAuthenticationRule
+    with NoImpersonationSupport{
 
   override val name: Rule.Name = ExternalAuthenticationRule.name
 
-  override protected def authenticate(credentials: BasicAuth): Task[Boolean] =
-    settings.service.authenticate(credentials.user, credentials.secret)
+  override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
+    settings.service.authenticate(credentials)
+
+  override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
 }
 
 object ExternalAuthenticationRule {

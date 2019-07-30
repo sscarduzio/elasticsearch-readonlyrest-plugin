@@ -18,17 +18,16 @@ package tech.beshu.ror.acl.blocks.definitions
 
 import java.nio.charset.Charset
 
-import cats.{Eq, Show}
 import cats.implicits._
+import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import com.softwaremill.sttp._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.CacheableExternalAuthenticationServiceDecorator.HashedUserCredentials
-import tech.beshu.ror.acl.domain.{BasicAuth, Header, Secret, User}
 import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService.Name
-import tech.beshu.ror.acl.domain
+import tech.beshu.ror.acl.domain.{BasicAuth, Credentials, Header, User}
 import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.acl.utils.CacheableActionWithKeyMapping
@@ -38,7 +37,7 @@ import scala.concurrent.duration.FiniteDuration
 trait ExternalAuthenticationService extends Item {
   override type Id = Name
   def id: Id
-  def authenticate(user: User.Id, secret: Secret): Task[Boolean]
+  def authenticate(credentials: Credentials): Task[Boolean]
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -57,8 +56,8 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
                                                  httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
-  override def authenticate(user: User.Id, credentials: Secret): Task[Boolean] = {
-    val basicAuthHeader = BasicAuth(user, credentials).header
+  override def authenticate(credentials: Credentials): Task[Boolean] = {
+    val basicAuthHeader = BasicAuth(credentials).header
     httpClient
       .send(sttp.get(uri).header(basicAuthHeader.name.value.value, basicAuthHeader.value.value))
       .map(_.code === successStatusCode)
@@ -71,9 +70,9 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
                                        httpClient: HttpClient)
   extends ExternalAuthenticationService {
 
-  override def authenticate(user: User.Id, secret: Secret): Task[Boolean] = {
+  override def authenticate(credentials: Credentials): Task[Boolean] = {
     httpClient
-      .send(sttp.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${secret.value}"))
+      .send(sttp.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${credentials.secret.value}"))
       .map(_.code === successStatusCode)
   }
 }
@@ -83,26 +82,24 @@ class CacheableExternalAuthenticationServiceDecorator(underlying: ExternalAuthen
   extends ExternalAuthenticationService {
 
   private val cacheableAuthentication =
-    new CacheableActionWithKeyMapping[(User.Id, domain.Secret), HashedUserCredentials, Boolean](ttl, authenticateAction, hashCredential)
+    new CacheableActionWithKeyMapping[Credentials, HashedUserCredentials, Boolean](ttl, authenticateAction, hashCredential)
 
   override val id: ExternalAuthenticationService#Id = underlying.id
 
-  override def authenticate(user: User.Id, secret: Secret): Task[Boolean] = {
-    cacheableAuthentication.call((user, secret))
+  override def authenticate(credentials: Credentials): Task[Boolean] = {
+    cacheableAuthentication.call(credentials)
   }
 
-  private def hashCredential(value: (User.Id, domain.Secret)) = {
-    val (user, secret) = value
-    HashedUserCredentials(user, Hashing.sha256.hashString(secret.value, Charset.defaultCharset).toString)
+  private def hashCredential(credentials: Credentials) = {
+    HashedUserCredentials(credentials.user, Hashing.sha256.hashString(credentials.secret.value.value, Charset.defaultCharset).toString)
   }
 
-  private def authenticateAction(value: (User.Id, domain.Secret)) = {
-    val (userId, secret) = value
-    underlying.authenticate(userId, secret)
+  private def authenticateAction(credentials: Credentials) = {
+    underlying.authenticate(credentials)
   }
 
 }
 
 object CacheableExternalAuthenticationServiceDecorator {
-  private[CacheableExternalAuthenticationServiceDecorator] final case class HashedUserCredentials(user: User.Id, hashedCredentials: String)
+  private[definitions] final case class HashedUserCredentials(user: User.Id, hashedCredentials: String)
 }

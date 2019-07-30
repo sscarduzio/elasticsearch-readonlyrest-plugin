@@ -19,17 +19,25 @@ package tech.beshu.ror.acl.blocks.rules
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.domain.{BasicAuth, Secret}
+import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.acl.domain.{Credentials, User}
 
-class AuthKeyRule(settings: BasicAuthenticationRule.Settings)
+class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
+                  override val impersonators: List[ImpersonatorDef])
   extends BasicAuthenticationRule(settings)
     with Logging {
 
   override val name: Rule.Name = AuthKeyRule.name
 
-  override protected def compare(configuredAuthKey: Secret,
-                                 basicAuth: BasicAuth): Task[Boolean] = Task {
-    configuredAuthKey === Secret(basicAuth.colonSeparatedString)
+  override protected def compare(configuredCredentials: Credentials,
+                                 credentials: Credentials): Task[Boolean] = Task.now {
+    configuredCredentials == credentials
+  }
+
+  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+    if (user === settings.credentials.user) UserExistence.Exists
+    else UserExistence.NotExist
   }
 }
 

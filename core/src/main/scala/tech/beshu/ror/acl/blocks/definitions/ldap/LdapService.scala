@@ -20,7 +20,7 @@ import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.acl.domain.{Group, Secret, User}
+import tech.beshu.ror.acl.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.acl.factory.decoders.definitions.Definitions.Item
 
 sealed trait LdapService extends Item {
@@ -43,7 +43,7 @@ trait LdapUserService extends LdapService {
 }
 
 trait LdapAuthenticationService extends LdapUserService {
-  def authenticate(user: User.Id, secret: Secret): Task[Boolean]
+  def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean]
 }
 
 trait LdapAuthorizationService extends LdapUserService {
@@ -60,7 +60,7 @@ class ComposedLdapAuthService(override val id: LdapService#Id,
   def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     ldapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: Secret): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: PlainTextSecret): Task[Boolean] =
     ldapAuthenticationService.authenticate(user, secret)
 
   override def groupsOf(id: User.Id): Task[Set[Group]] =

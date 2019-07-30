@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.factory.decoders.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, IndicesRule, RepositoriesRule, SnapshotsRule}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
@@ -72,7 +73,11 @@ class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposit
 
 private object IndicesDecodersHelper {
   private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
-    override def convert: String => Either[Convertible.ConvertError, IndexName] = str => Right(IndexName(str))
+    override def convert: String => Either[Convertible.ConvertError, IndexName] = str =>
+      NonEmptyString
+        .from(str)
+        .map(IndexName.apply)
+        .left.map(_ => Convertible.ConvertError("Index name cannot be empty"))
   }
   implicit val indexNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[IndexName]] =
     DecoderHelpers

@@ -43,7 +43,7 @@ class HeadersOrRule(val settings: Settings)
       .headers
       .filter(h => settings.headers.exists(_.name === h.name))
     if (headersSubset.isEmpty)
-      RuleResult.Rejected
+      RuleResult.Rejected()
     else {
       RuleResult.fromCondition(blockContext) {
         new MatcherWithWildcards(settings.headers.toSortedSet.map(_.flatten).asJava)

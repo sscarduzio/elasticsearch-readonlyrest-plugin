@@ -24,7 +24,6 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.MethodsRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.orders._
@@ -69,7 +68,7 @@ class MethodsRuleTests extends WordSpec with MockFactory {
     (requestContext.method _).expects().returning(requestMethod)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 }

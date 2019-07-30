@@ -25,7 +25,8 @@ import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.definitions.JwtDef
 import tech.beshu.ror.acl.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
@@ -33,14 +34,16 @@ import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
+import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.SecureStringHasher
+import tech.beshu.ror.utils.SecureStringHasher.Algorithm
 
 import scala.collection.SortedSet
 import scala.util.Try
-import tech.beshu.ror.utils.LoggerOps._
 
 class JwtAuthRule(val settings: JwtAuthRule.Settings)
   extends AuthenticationRule
+    with NoImpersonationSupport
     with AuthorizationRule
     with Logging {
 
@@ -53,16 +56,16 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
   }
 
-  private val hasher = new SecureStringHasher("sha256")
+  private val hasher = new SecureStringHasher(Algorithm.Sha256)
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task
+  override def tryToAuthenticate(requestContext: RequestContext,
+                                 blockContext: BlockContext): Task[RuleResult] = Task
     .unit
     .flatMap { _ =>
       jwtTokenFrom(requestContext) match {
         case None =>
           logger.debug(s"Authorization header '${settings.jwt.authorizationTokenDef.headerName.show}' is missing or does not contain a JWT token")
-          Task.now(Rejected)
+          Task.now(Rejected())
         case Some(token) =>
           process(token, blockContext)
       }
@@ -77,7 +80,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
   private def process(token: JwtToken, blockContext: BlockContext) = {
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
-        Task.now(Rejected)
+        Task.now(Rejected())
       case Right((tokenPayload, user, groups)) =>
         logger.debug(s"JWT resolved user for claim ${settings.jwt.userClaim}: $user, and groups for claim ${settings.jwt.groupsClaim}: $groups")
         val claimProcessingResult = for {
@@ -86,12 +89,12 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
         } yield finalBlockContext.withJsonToken(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
-            Task.now(Rejected)
+            Task.now(Rejected())
           case Right(modifiedBlockContext) =>
             settings.jwt.checkMethod match {
               case NoCheck(service) =>
                 service
-                  .authenticate(User.Id(hasher.hash(token.value.value)), Secret(token.value.value))
+                  .authenticate(Credentials(User.Id(hasher.hash(token.value)), PlainTextSecret(token.value)))
                   .map(RuleResult.fromCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))
@@ -143,7 +146,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
   private def handleUserClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[User.Id]]) = {
     result match {
       case None => Right(blockContext)
-      case Some(Found(userId)) => Right(blockContext.withLoggedUser(LoggedUser(userId)))
+      case Some(Found(userId)) => Right(blockContext.withLoggedUser(DirectlyLoggedUser(userId)))
       case Some(NotFound) => Left(())
     }
   }

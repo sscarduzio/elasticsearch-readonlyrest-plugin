@@ -27,6 +27,7 @@ import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Con
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable.CannotExtractValue
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{JwtTokenPayload, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -111,7 +112,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         val variable = forceCreateSingleVariable("@{user}")
           .resolve(
             MockRequestContext.default,
-            fromRequestContext(MockRequestContext.default).withLoggedUser(LoggedUser(User.Id("simone")))
+            fromRequestContext(MockRequestContext.default).withLoggedUser(DirectlyLoggedUser(User.Id("simone".nonempty)))
           )
         variable shouldBe Right("simone")
       }
@@ -119,7 +120,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         val variable = forceCreateMultiVariable("@explode{user}")
           .resolve(
             MockRequestContext.default,
-            fromRequestContext(MockRequestContext.default).withLoggedUser(LoggedUser(User.Id("simone,tony")))
+            fromRequestContext(MockRequestContext.default).withLoggedUser(DirectlyLoggedUser(User.Id("simone,tony".nonempty)))
           )
         variable shouldBe Right(NonEmptyList.of("simone", "tony"))
       }
@@ -234,7 +235,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         val variable = forceCreateSingleVariable("u:@{user}_@{key1}")
           .resolve(
             requestContext,
-            fromRequestContext(requestContext).withLoggedUser(LoggedUser(User.Id("simone")))
+            fromRequestContext(requestContext).withLoggedUser(DirectlyLoggedUser(User.Id("simone".nonempty)))
           )
         variable shouldBe Right("u:simone_x")
       }

@@ -17,10 +17,25 @@
 package tech.beshu.ror.acl.blocks.rules
 
 import cats.Show
+import cats.data.EitherT
+import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{Name, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.acl.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.acl.blocks.{BlockContext, NoOpBlockContext}
+import tech.beshu.ror.acl.domain.LoggedUser.ImpersonatedUser
+import tech.beshu.ror.acl.domain.User
+import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.acl.request.RequestContextOps._
+import tech.beshu.ror.utils.MatcherWithWildcards
+
+import scala.collection.JavaConverters._
 
 sealed trait Rule {
   def name: Name
@@ -33,11 +48,19 @@ object Rule {
   sealed trait RuleResult
   object RuleResult {
     final case class Fulfilled(blockContext: BlockContext) extends RuleResult
-    case object Rejected extends RuleResult
+    final case class Rejected(specialCause: Option[Cause] = None) extends RuleResult
+    object Rejected {
+      def apply(specialCause: Cause): Rejected = new Rejected(Some(specialCause))
+      sealed trait Cause
+      object Cause {
+        case object ImpersonationNotSupported extends Cause
+        case object ImpersonationNotAllowed extends Cause
+      }
+    }
 
     private [rules] def fromCondition(blockContext: BlockContext)(condition: => Boolean): RuleResult = {
       if(condition) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 
@@ -46,9 +69,6 @@ object Rule {
     implicit val show: Show[Name] = Show.show(_.value)
   }
 
-  trait AuthenticationRule extends Rule
-  trait AuthorizationRule extends Rule
-  trait RegularRule extends Rule
   trait MatchingAlwaysRule extends Rule {
 
     def process(requestContext: RequestContext,
@@ -58,4 +78,103 @@ object Rule {
                        blockContext: BlockContext): Task[RuleResult] =
       process(requestContext, blockContext).map(RuleResult.Fulfilled.apply)
   }
+
+  trait RegularRule extends Rule
+
+  trait AuthorizationRule extends Rule
+
+  trait AuthenticationRule extends Rule {
+
+    private lazy val enhancedImpersonatorDefs =
+      impersonators
+        .map { i =>
+          val matcher = new MatcherWithWildcardsScalaAdapter(
+            new MatcherWithWildcards(i.users.map(_.value.value).toSortedSet.asJava)
+          )
+          (i, matcher)
+        }
+
+    protected def impersonators: List[ImpersonatorDef]
+
+    protected def exists(user: User.Id): Task[UserExistence]
+
+    def tryToAuthenticate(requestContext: RequestContext,
+                          blockContext: BlockContext): Task[Rule.RuleResult]
+
+    override def check(requestContext: RequestContext,
+                       blockContext: BlockContext): Task[Rule.RuleResult] = {
+      requestContext.impersonateAs match {
+        case Some(theImpersonatedUserId) => toRuleResult {
+          for {
+            impersonatorDef <- findImpersonatorWithProperRights(theImpersonatedUserId, requestContext)
+            _ <- authenticateImpersonator(impersonatorDef, requestContext)
+            _ <- checkIfTheImpersonatedUserExist(theImpersonatedUserId)
+          } yield blockContext.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id))
+        }
+        case None =>
+          tryToAuthenticate(requestContext, blockContext)
+      }
+    }
+
+    private def findImpersonatorWithProperRights(theImpersonatedUserId: User.Id,
+                                                 requestContext: RequestContext) = {
+      EitherT.fromOption[Task](
+        requestContext
+          .basicAuth
+          .flatMap { basicAuthCredentials =>
+            enhancedImpersonatorDefs.find(_._1.id === basicAuthCredentials.credentials.user)
+          }
+          .flatMap { case (impersonatorDef, matcher) =>
+            if (matcher.`match`(theImpersonatedUserId)) Some(impersonatorDef)
+            else None
+          },
+        ifNone = Rejected(Cause.ImpersonationNotAllowed)
+      )
+    }
+
+    private def authenticateImpersonator(impersonatorDef: ImpersonatorDef,
+                                         requestContext: RequestContext) = EitherT {
+      impersonatorDef
+        .authenticationRule
+        .tryToAuthenticate(requestContext, NoOpBlockContext)
+        .map {
+          case Fulfilled(_) => Right(())
+          case Rejected(_) => Left(Rejected(Cause.ImpersonationNotAllowed))
+        }
+    }
+
+    private def checkIfTheImpersonatedUserExist(theImpersonatedUserId: User.Id) = EitherT {
+      exists(theImpersonatedUserId)
+        .map {
+          case Exists => Right(())
+          case NotExist => Left(Rejected())
+          case CannotCheck => Left(Rejected(Cause.ImpersonationNotSupported))
+        }
+    }
+
+    private def toRuleResult(result: EitherT[Task, Rejected, BlockContext]) = {
+      result
+        .value
+        .map {
+          case Right(newBlockContext) => Fulfilled(newBlockContext)
+          case Left(rejected) => rejected
+        }
+    }
+  }
+  object AuthenticationRule {
+    sealed trait UserExistence
+    object UserExistence {
+      case object Exists extends UserExistence
+      case object NotExist extends UserExistence
+      case object CannotCheck extends UserExistence
+    }
+  }
+
+  trait NoImpersonationSupport {
+    this: AuthenticationRule =>
+
+    override protected val impersonators: List[ImpersonatorDef] = Nil
+    override protected def exists(user: User.Id): Task[UserExistence] = Task.now(CannotCheck)
+  }
+
 }

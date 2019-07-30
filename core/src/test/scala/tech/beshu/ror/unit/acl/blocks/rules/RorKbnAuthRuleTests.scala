@@ -30,6 +30,7 @@ import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils
@@ -65,7 +66,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1")))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
             )(blockContext)
         }
       }
@@ -90,7 +91,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1")))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
             )(blockContext)
         }
       }
@@ -115,7 +116,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1")))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
             )(blockContext)
         }
       }
@@ -141,7 +142,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1"))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(Group("group2".nonempty)),
               availableGroups = Set(Group("group2".nonempty))
             )(blockContext)
@@ -281,7 +282,7 @@ class RorKbnAuthRuleTests
           assertOutputBlockContext(outBlockContext)
         }
       case None =>
-        result should be(Rejected)
+        result should be(Rejected())
     }
   }
 }

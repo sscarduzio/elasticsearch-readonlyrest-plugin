@@ -60,6 +60,38 @@ trait BlockContext {
   def withSnapshots(indices: NonEmptySet[IndexName]): BlockContext
 }
 
+object NoOpBlockContext extends BlockContext {
+  override val loggedUser: Option[LoggedUser] = None
+  override def withLoggedUser(user: LoggedUser): BlockContext = this
+
+  override val jsonToken: Option[JwtTokenPayload] = None
+  override def withJsonToken(token: JwtTokenPayload): BlockContext = this
+
+  override val currentGroup: Option[Group] = None
+  override def withCurrentGroup(group: Group): BlockContext = this
+
+  override val availableGroups: SortedSet[Group] = SortedSet.empty
+  override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext = this
+
+  override val responseHeaders: Set[Header] = Set.empty
+  override def withAddedResponseHeader(header: Header): BlockContext = this
+
+  override val contextHeaders: Set[Header] = Set.empty
+  override def withAddedContextHeader(header: Header): BlockContext = this
+
+  override val kibanaIndex: Option[IndexName] = None
+  override def withKibanaIndex(index: IndexName): BlockContext = this
+
+  override val indices: Set[IndexName] = Set.empty
+  override def withIndices(indices: NonEmptySet[IndexName]): BlockContext = this
+
+  override val repositories: Set[IndexName] = Set.empty
+  override def withRepositories(indices: NonEmptySet[IndexName]): BlockContext = this
+
+  override val snapshots: Set[IndexName] = Set.empty
+  override def withSnapshots(indices: NonEmptySet[IndexName]): BlockContext = this
+}
+
 class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   extends BlockContext {
 

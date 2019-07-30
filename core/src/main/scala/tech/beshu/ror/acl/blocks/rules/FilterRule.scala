@@ -39,11 +39,11 @@ class FilterRule(val settings: Settings)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
-    if (!requestContext.isAllowedForDLS) Rejected
+    if (!requestContext.isAllowedForDLS) Rejected()
     else {
       settings.filter.resolve(requestContext, blockContext) match {
         case Left(_: Unresolvable) =>
-          Rejected
+          Rejected()
         case Right(filter) =>
           Fulfilled(blockContext.withAddedContextHeader(Header(Name.transientFilter, filter)))
       }

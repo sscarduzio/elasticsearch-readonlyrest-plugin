@@ -26,9 +26,8 @@ import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWith
 import tech.beshu.ror.acl.factory.decoders.rules.UsersRuleDecoderHelper.userIdValueDecoder
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
-import tech.beshu.ror.providers.EnvVarsProvider
 
-class UsersRuleDecoder(implicit provider: EnvVarsProvider) extends RuleDecoderWithoutAssociatedFields(
+class UsersRuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
     .map(users => new UsersRule(Settings(users)))

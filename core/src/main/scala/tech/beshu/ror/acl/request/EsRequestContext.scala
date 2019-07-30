@@ -88,21 +88,25 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
     Option(rInfo.extractContent()).getOrElse("")
 
   override val indices: Set[domain.IndexName] =
-    rInfo.extractIndices().asScala.map(IndexName.apply).toSet
+    rInfo.extractIndices().asScala.flatMap(IndexName.fromString).toSet
 
   override val allIndicesAndAliases: Set[IndexWithAliases] =
     rInfo
       .extractAllIndicesAndAliases().asScala
-      .map { entry =>
-        IndexWithAliases(IndexName(entry.getKey), entry.getValue.asScala.map(IndexName.apply).toSet)
+      .flatMap { entry =>
+        IndexName
+          .fromString(entry.getKey)
+          .map { index =>
+            IndexWithAliases(index, entry.getValue.asScala.flatMap(IndexName.fromString).toSet)
+          }
       }
       .toSet
 
   override val repositories: Set[IndexName] =
-    rInfo.extractRepositories().asScala.map(IndexName.apply).toSet
+    rInfo.extractRepositories().asScala.flatMap(IndexName.fromString).toSet
 
   override val snapshots: Set[IndexName] =
-    rInfo.extractSnapshots().asScala.map(IndexName.apply).toSet
+    rInfo.extractSnapshots().asScala.flatMap(IndexName.fromString).toSet
 
   override val isReadOnlyRequest: Boolean =
     rInfo.extractIsReadRequest()

@@ -26,7 +26,7 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SecureStringHasher implements Hasher {
+public class JavaSecureStringHasher implements Hasher {
 
   private static byte[] salt;
   // Salt is expensive because it blocks the JVM on boot when waiting for higher entropy levels
@@ -38,7 +38,7 @@ public class SecureStringHasher implements Hasher {
   private final HashFunction hf;
   private final String algo;
 
-  public SecureStringHasher(String algo) {
+  public JavaSecureStringHasher(String algo) {
 
     int saltSize;
     switch (algo.toLowerCase()) {

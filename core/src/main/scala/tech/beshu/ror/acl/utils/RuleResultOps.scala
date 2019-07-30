@@ -23,13 +23,13 @@ import scala.language.implicitConversions
 
 class RuleResultOps(val ruleResult: RuleResult) extends AnyVal {
 
-  def toEither: Either[Rejected.type, Fulfilled] = ruleResult match {
+  def toEither: Either[Rejected, Fulfilled] = ruleResult match {
     case fulfilled: Fulfilled => Right(fulfilled)
-    case rejected: RuleResult.Rejected.type => Left(rejected)
+    case rejected: RuleResult.Rejected => Left(Rejected())
   }
 }
 
-class RuleResultEitherOps(val ruleResultEither: Either[Rejected.type, Fulfilled]) extends AnyVal {
+class RuleResultEitherOps(val ruleResultEither: Either[Rejected, Fulfilled]) extends AnyVal {
 
   def toRuleResult: RuleResult = ruleResultEither match {
     case Right(value) => value
@@ -39,5 +39,5 @@ class RuleResultEitherOps(val ruleResultEither: Either[Rejected.type, Fulfilled]
 
 object RuleResultOps {
   implicit def from(ruleResult: RuleResult): RuleResultOps = new RuleResultOps(ruleResult)
-  implicit def from(ruleResultEither: Either[Rejected.type, Fulfilled]): RuleResultEitherOps = new RuleResultEitherOps(ruleResultEither)
+  implicit def from(ruleResultEither: Either[Rejected, Fulfilled]): RuleResultEitherOps = new RuleResultEitherOps(ruleResultEither)
 }

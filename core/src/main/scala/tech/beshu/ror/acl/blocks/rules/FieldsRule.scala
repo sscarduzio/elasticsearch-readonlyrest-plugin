@@ -36,7 +36,7 @@ class FieldsRule(val settings: Settings)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
-    if(!requestContext.isReadOnlyRequest) RuleResult.Rejected
+    if(!requestContext.isReadOnlyRequest) RuleResult.Rejected()
     else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
   }
 

@@ -73,7 +73,7 @@ class MaxBodyLengthRuleTests extends WordSpec with MockFactory {
     (requestContext.contentLength _).expects().returning(Bytes(body.length))
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right{
       if (isMatched) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 }

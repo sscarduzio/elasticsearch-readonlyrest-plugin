@@ -44,7 +44,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] = NonEmptySet.one(AlreadyResolved(User.Id("user1").nel))
+            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] = NonEmptySet.one(AlreadyResolved(User.Id("user1".nonempty).nel))
             rule.settings.userIds should be(userIds)
           }
         )
@@ -81,7 +81,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |""".stripMargin,
           assertion = rule => {
             val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] =
-              NonEmptySet.of(AlreadyResolved(User.Id("user1").nel), AlreadyResolved(User.Id("user2").nel))
+              NonEmptySet.of(AlreadyResolved(User.Id("user1".nonempty).nel), AlreadyResolved(User.Id("user2".nonempty).nel))
             rule.settings.userIds should be(userIds)
           }
         )
