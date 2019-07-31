@@ -26,6 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{Filter, LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -51,7 +52,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.default.copy(isReadOnlyRequest = false)
         val blockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(Some(LoggedUser(User.Id("bob"))))
+        (blockContext.loggedUser _).expects().returning(Some(DirectlyLoggedUser(User.Id("bob".nonempty))))
         val newBlockContext = mock[BlockContext]
         (blockContext.withAddedContextHeader _)
           .expects(headerFrom("_filter" -> "rO0ABXNyACR0ZWNoLmJlc2h1LnJvci51dGlscy5GaWx0ZXJUcmFuc2llbnSE82rPUgVsWwIAAUwAB19maWx0ZXJ0ABJMamF2YS9sYW5nL1N0cmluZzt4cHQANXsiYm9vbCI6eyJtdXN0IjpbeyJ0ZXJtIjp7IlVzZXIiOnsidmFsdWUiOiJib2IifX19XX19"))
@@ -66,14 +67,14 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val requestContext = MockRequestContext.default.copy(isReadOnlyRequest = false)
         val blockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(None)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "request is not allowed for DLS" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.default.copy(isAllowedForDLS = false)
         val blockContext = mock[BlockContext]
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
   }

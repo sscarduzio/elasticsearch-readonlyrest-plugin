@@ -24,6 +24,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{LoggedUser, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -94,7 +95,7 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest w
           result.history should have size 2
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(loggedUser = Some(LoggedUser(User.Id("user")))) {
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user".nonempty)))) {
               blockContext
             }
           }

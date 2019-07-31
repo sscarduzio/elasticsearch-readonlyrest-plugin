@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.blocks.rules.utils
 
+import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.ZeroKnowledgeMatchFilter
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
@@ -26,10 +27,10 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
 
   def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher): AlterResult = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-      indices.map(_.value).asJava,
+      indices.map(_.value.value).asJava,
       matcher.underlying
     )) match {
-      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.map(IndexName.apply).toSet)
+      case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
       case None => AlterResult.NotAltered
     }
   }

@@ -18,7 +18,6 @@ package tech.beshu.ror.acl.utils
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import tech.beshu.ror.acl.show.logs._
 import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
@@ -26,19 +25,27 @@ import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.acl.blocks.definitions._
+import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.acl.blocks.rules.Rule
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
+import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, Reason, ValueLevelCreationError}
+import tech.beshu.ror.acl.factory.decoders.definitions.Definitions
+import tech.beshu.ror.acl.factory.decoders.ruleDecoders.authenticationRuleDecoderBy
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers.FieldListResult._
 
 import scala.collection.SortedSet
-import scala.language.higherKinds
+import scala.language.{existentials, higherKinds}
 
 object CirceOps {
 
@@ -246,6 +253,9 @@ object CirceOps {
       downFields(name).asWithError[Option[NonEmptyString]](s"Field $name cannot be empty")
     }
 
+    def withoutKeys(keys: Set[String]): ACursor = {
+      value.withFocus(_.mapObject(_.filterKeys(key => !keys.contains(key))))
+    }
   }
 
   implicit class ACursorOps(val value: ACursor) extends AnyVal {
@@ -255,6 +265,39 @@ object CirceOps {
         .as[T](implicitly[Decoder[T]])
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
+
+    def tryDecodeAuthRule(username: User.Id)
+                         (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                          authProxyDefinitions: Definitions[ProxyAuth],
+                          jwtDefinitions: Definitions[JwtDef],
+                          ldapDefinitions: Definitions[LdapService],
+                          rorKbnDefinitions: Definitions[RorKbnDef],
+                          imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
+      value.keys.map(_.toList) match {
+        case None | Some(Nil) =>
+          Left(Message(s"No authentication method defined for user ['${username.show}']"))
+        case Some(key :: Nil) =>
+          val decoder = authenticationRuleDecoderBy(
+            Rule.Name(key),
+            authenticationServiceDefinitions,
+            authProxyDefinitions,
+            jwtDefinitions,
+            ldapDefinitions,
+            rorKbnDefinitions,
+            imperonatorsDefinitions
+          ) match {
+            case Some(authRuleDecoder) => authRuleDecoder
+            case None => DecoderHelpers.failed[AuthenticationRule](
+              DefinitionsLevelCreationError(Message(s"Rule $key is not authentication rule"))
+            )
+          }
+          decoder
+            .tryDecode(value.downField(key))
+            .left.map(_ => Message(s"Cannot parse '$key' rule declared in user '${username.show}' definition"))
+        case Some(keys) =>
+          Left(Message(s"Only one authentication should be defined for user ['${username.show}']. Found ${keys.mkString(", ")}"))
+      }
+    }
   }
 
 }

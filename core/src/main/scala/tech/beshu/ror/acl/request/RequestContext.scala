@@ -26,7 +26,9 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.acl.domain.LoggedUser._
 import tech.beshu.ror.acl.blocks.{Block, BlockContext}
+import tech.beshu.ror.acl.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.acl.request.RequestContext.Id
 import tech.beshu.ror.acl.request.RequestContextOps._
 import tech.beshu.ror.acl.show.logs._
@@ -70,9 +72,12 @@ object RequestContext extends Logging {
   def show(blockContext: Option[BlockContext],
            history: Vector[Block.History]): Show[RequestContext] =
     Show.show { r =>
-      def stringifyLoggedUser = blockContext.flatMap(_.loggedUser) match {
-        case Some(user) => s"${user.id.show}"
-        case None => "[user not logged]"
+      def stringifyLoggedUser = {
+        blockContext.flatMap(_.loggedUser) match {
+          case Some(DirectlyLoggedUser(user)) => s"${user.show}"
+          case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
+          case None => "[user not logged]"
+        }
       }
 
       def stringifyContentLength = {
@@ -109,6 +114,11 @@ object RequestContext extends Logging {
 }
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
+
+  def impersonateAs: Option[User.Id] = {
+    findHeader(Header.Name.impersonateAs)
+      .map { header => User.Id(header.value) }
+  }
 
   def xForwardedForHeaderValue: Option[Address] = {
     findHeader(Header.Name.xForwardedFor)

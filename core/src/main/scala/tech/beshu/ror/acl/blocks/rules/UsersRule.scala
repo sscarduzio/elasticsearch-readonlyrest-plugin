@@ -38,7 +38,7 @@ class UsersRule(val settings: Settings)
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
     blockContext.loggedUser match {
-      case None => Rejected
+      case None => Rejected()
       case Some(user) => matchUser(user, requestContext, blockContext)
     }
   }
@@ -46,7 +46,7 @@ class UsersRule(val settings: Settings)
   private def matchUser(user: LoggedUser, requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
     val resolvedIds = resolveAll(settings.userIds, requestContext, blockContext).toSet
     RuleResult.fromCondition(blockContext) {
-      new MatcherWithWildcards(resolvedIds.map(_.value).asJava).`match`(user.id.value)
+      new MatcherWithWildcards(resolvedIds.map(_.value.value).asJava).`match`(user.id.value.value)
     }
   }
 }

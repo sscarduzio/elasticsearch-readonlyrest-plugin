@@ -28,21 +28,26 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.Constants
+import tech.beshu.ror.acl.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.util.Try
 
 object domain {
 
-  final case class LoggedUser(id: User.Id)
+  sealed trait LoggedUser {
+    def id: User.Id
+  }
   object LoggedUser {
-    implicit val eqLoggedUser: Eq[LoggedUser] = Eq.fromUniversalEquals
+    final case class DirectlyLoggedUser(id: User.Id) extends LoggedUser
+    final case class ImpersonatedUser(id: User.Id, impersonatedBy: User.Id) extends LoggedUser
+
+    implicit val eqLoggedUser: Eq[DirectlyLoggedUser] = Eq.fromUniversalEquals
   }
 
   object User {
-    final case class Id(value: String)
+    final case class Id(value: NonEmptyString)
     object Id {
       implicit val eqId: Eq[Id] = Eq.fromUniversalEquals
     }
@@ -70,24 +75,25 @@ object domain {
       val kibanaIndex = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_INDEX))
       val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
       val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
+      val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase)
     }
 
     def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
     def apply[T](name: Name, value: T)
-                (implicit ev: ToHeaderValue[T]): Header = new Header(name, NonEmptyString.unsafeFrom(ev.toRawValue(value))) // todo: remove unsafe in future
+                (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
   }
 
-  final case class BasicAuth private(user: User.Id, secret: Secret) {
+  final case class Credentials(user: User.Id, secret: PlainTextSecret)
+  final case class BasicAuth private(credentials: Credentials) {
     def header: Header = Header(
       Header.Name.authorization,
-      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${user.value}:${secret.value}".getBytes(UTF_8))}")
+      NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
     )
-    def colonSeparatedString: String = s"${user.value}:${secret.value}"
   }
   object BasicAuth extends Logging {
     def fromHeader(header: Header): Option[BasicAuth] = {
@@ -114,18 +120,13 @@ object domain {
     }
 
     private def fromBase64(base64Value: String) = {
+      import tech.beshu.ror.utils.StringWiseSplitter._
       Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
-        .map { decoded =>
-          decoded.indexOf(":") match {
-            case -1 => None
-            case index if index == decoded.length -1 => None
-            case index => Some(BasicAuth(
-              User.Id(decoded.substring(0, index)),
-              Secret(decoded.substring(index + 1))
-            ))
-          }
+        .toOption
+        .flatMap(_.toNonEmptyStringsTuple.toOption)
+        .map { case (first, second) =>
+          BasicAuth(Credentials(User.Id(first), PlainTextSecret(second)))
         }
-        .getOrElse(None)
     }
   }
 
@@ -161,20 +162,23 @@ object domain {
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
 
-  final case class IndexName(value: String) {
-    def isClusterIndex: Boolean = value.contains(":")
-    def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
-    def hasWildcard: Boolean = value.contains("*")
+  final case class IndexName(value: NonEmptyString) {
+    def isClusterIndex: Boolean = value.value.contains(":")
+    def hasPrefix(prefix: String): Boolean = value.value.startsWith(prefix)
+    def hasWildcard: Boolean = value.value.contains("*")
   }
   object IndexName {
-
-    val wildcard = IndexName("*")
-    val all = IndexName("_all")
-    val devNullKibana = IndexName(".kibana-devnull")
-    val kibana = IndexName(".kibana")
-    val readonlyrest: IndexName = IndexName(".readonlyrest")
+    val wildcard: IndexName = fromUnsafeString("*")
+    val all: IndexName = fromUnsafeString("_all")
+    val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
+    val kibana: IndexName = fromUnsafeString(".kibana")
+    val readonlyrest: IndexName = fromUnsafeString(".readonlyrest")
 
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
+
+    def fromString(value: String): Option[IndexName] = NonEmptyString.from(value).map(IndexName.apply).toOption
+
+    private def fromUnsafeString(value: String) = IndexName(NonEmptyString.unsafeFrom(value))
   }
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
@@ -186,10 +190,9 @@ object domain {
     implicit val eqApiKey: Eq[ApiKey] = Eq.fromUniversalEquals
   }
 
-  final case class Secret(value: String) extends AnyVal
-  object Secret {
-    implicit val eqAuthKey: Eq[Secret] = Eq.fromUniversalEquals
-    val empty: Secret = Secret("")
+  final case class PlainTextSecret(value: NonEmptyString)
+  object PlainTextSecret {
+    implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
   }
 
   final case class KibanaApp(value: NonEmptyString) 
@@ -208,7 +211,7 @@ object domain {
 
   final case class Type(value: String) extends AnyVal
 
-  final case class Filter(value: String) extends AnyVal
+  final case class Filter(value: NonEmptyString)
 
   sealed trait KibanaAccess
   object KibanaAccess {

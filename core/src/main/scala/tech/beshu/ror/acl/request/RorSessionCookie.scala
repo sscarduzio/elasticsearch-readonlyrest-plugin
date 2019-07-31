@@ -31,6 +31,7 @@ import tech.beshu.ror.acl.request.RorSessionCookie.ExtractingError.{Absent, Expi
 import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.acl.domain.Header.Name.setCookie
 import tech.beshu.ror.acl.show.logs._
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.providers.UuidProvider
 
 import scala.collection.JavaConverters._
@@ -101,14 +102,14 @@ object RorSessionCookie extends Logging {
 
   private object coders {
     implicit val encoder: Encoder[(RorSessionCookie, Signature)] = {
-      implicit val userIdEncoder: Encoder[User.Id] = Encoder.encodeString.contramap(_.value)
+      implicit val userIdEncoder: Encoder[User.Id] = Encoder.encodeString.contramap(_.value.value)
       implicit val expiryDateEncoder: Encoder[Instant] = Encoder.encodeLong.contramap(_.toEpochMilli)
       implicit val signatureEncoder: Encoder[Signature] = Encoder.encodeString.contramap(_.value)
       implicit val cookieEncoder: Encoder[RorSessionCookie] = Encoder.forProduct2("user", "expire")(c => (c.userId, c.expiryDate))
       Encoder.encodeTuple2[RorSessionCookie, Signature]
     }
     implicit val decoder: Decoder[(RorSessionCookie, Signature)] = {
-      implicit val userIdDecoder: Decoder[User.Id] = Decoder.decodeString.map(User.Id.apply)
+      implicit val userIdDecoder: Decoder[User.Id] = DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
       implicit val expiryDateDecoder: Decoder[Instant] = Decoder.decodeLong.map(Instant.ofEpochMilli)
       implicit val signatureDecoder: Decoder[Signature] = Decoder.decodeString.map(Signature.apply)
       implicit val cookieDecoder: Decoder[RorSessionCookie] = Decoder.forProduct2("user", "expire")(RorSessionCookie.apply)

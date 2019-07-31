@@ -37,7 +37,7 @@ class LoggableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationS
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.Secret): Task[Boolean] = {
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] = {
     logger.debug(s"Trying to authenticate user [${user.show}] with LDAP [${id.show}]")
     underlying
       .authenticate(user, secret)
@@ -85,7 +85,7 @@ class LoggableLdapServiceDecorator(underlying: LdapAuthService)
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(userId: User.Id, secret: domain.Secret): Task[Boolean] =
+  override def authenticate(userId: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
     loggableLdapAuthenticationService.authenticate(userId, secret)
 
   override def groupsOf(userId: User.Id): Task[Set[domain.Group]] =

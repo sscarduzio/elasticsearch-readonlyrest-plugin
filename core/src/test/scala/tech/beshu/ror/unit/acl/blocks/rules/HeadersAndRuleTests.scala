@@ -127,7 +127,7 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
     (requestContext.headers _).expects().returning(requestHeaders)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 }

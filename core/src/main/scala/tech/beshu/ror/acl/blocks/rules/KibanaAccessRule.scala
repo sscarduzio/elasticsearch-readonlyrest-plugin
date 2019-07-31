@@ -69,7 +69,7 @@ class KibanaAccessRule(val settings: Settings)
     // Save UI state in discover & Short urls
     kibanaIndexPattern(kibanaIndex) match {
       case None =>
-        Rejected
+        Rejected()
       case Some(pattern) if isRoNonStrictCase(requestContext, kibanaIndex, pattern) =>
         Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
       case Some(_) =>
@@ -88,13 +88,13 @@ class KibanaAccessRule(val settings: Settings)
         Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
       } else {
         logger.info(s"RW access to Kibana, but unrecognized action ${requestContext.action.show} reqID: ${requestContext.id.show}")
-        Rejected
+        Rejected()
       }
     } else if (isReadonlyrestAdmin(requestContext)) {
       Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
     } else {
       logger.debug(s"KIBANA ACCESS DENIED ${requestContext.id.show}")
-      Rejected
+      Rejected()
     }
   }
 
@@ -133,7 +133,7 @@ class KibanaAccessRule(val settings: Settings)
   private def kibanaIndexPattern(kibanaIndex: IndexName) = {
     Try(Pattern.compile(
       "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*"
-        .replace("@kibana_index", kibanaIndex.value)
+        .replace("@kibana_index", kibanaIndex.value.value)
     )).toOption
   }
 

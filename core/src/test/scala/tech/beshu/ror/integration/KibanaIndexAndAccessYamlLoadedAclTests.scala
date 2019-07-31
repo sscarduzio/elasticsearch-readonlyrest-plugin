@@ -25,6 +25,7 @@ import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.headerFrom
+import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside  {
 
@@ -54,7 +55,7 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with BaseYamlLoade
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
           responseHeaders = Set(headerFrom("x-ror-kibana_access" -> "admin")),
-          kibanaIndex = Some(IndexName(".kibana_template"))
+          kibanaIndex = Some(IndexName(".kibana_template".nonempty))
           ) {
             blockContext
           }

@@ -18,6 +18,7 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
@@ -61,7 +62,7 @@ class IndicesRule(val settings: Settings)
   private def process(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
     val matcher: Matcher = initialMatcher.getOrElse {
       val resolvedIndices = resolveAll(settings.allowedIndices, requestContext, blockContext)
-      new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(resolvedIndices.map(_.value).toSet.asJava))
+      new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(resolvedIndices.map(_.value.value).toSet.asJava))
     }
     // Cross cluster search awareness
     if (isSearchAction(requestContext)) {
@@ -89,7 +90,7 @@ class IndicesRule(val settings: Settings)
           } else {
             canPass(requestContext, matcher) match {
               case CanPass.No =>
-                return Rejected
+                return Rejected()
               case CanPass.Yes(indices) =>
                 indices
             }
@@ -98,7 +99,7 @@ class IndicesRule(val settings: Settings)
         val allProcessedIndices = zKindexFilter.check(crossClusterIndices, matcher) match {
           case CheckResult.Ok(processedIndices) => processedIndices ++ processedLocalIndices
           case CheckResult.Failed =>
-            return Rejected
+            return Rejected()
         }
 
         return Fulfilled(blockContextWithIndices(blockContext, allProcessedIndices))
@@ -109,7 +110,7 @@ class IndicesRule(val settings: Settings)
       case CanPass.Yes(indices) =>
         Fulfilled(blockContextWithIndices(blockContext, indices))
       case CanPass.No =>
-        Rejected
+        Rejected()
     }
   }
 
@@ -201,7 +202,7 @@ class IndicesRule(val settings: Settings)
     val indices = requestContext.indices
     val indicesAndAliases = requestContext.allIndicesAndAliases
     val aliases = indicesAndAliases.flatMap(_.aliases)
-    val requestAliases = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(indices.map(_.value).asJava))
+    val requestAliases = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(indices.map(_.value.value).asJava))
       .filter(aliases)
     val realIndicesRelatedToRequestAliases =
       indicesAndAliases
@@ -237,7 +238,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def expandedIndices(requestContext: RequestContext): Set[IndexName] = {
-    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(requestContext.indices.map(_.value).asJava))
+    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(requestContext.indices.map(_.value.value).asJava))
       .filter(requestContext.allIndicesAndAliases.flatMap(_.all))
   }
 
@@ -257,7 +258,7 @@ class IndicesRule(val settings: Settings)
     if (hasVariables) None
     else Some {
       new MatcherWithWildcardsScalaAdapter(
-        new MatcherWithWildcards(alreadyResolvedIndices.map(_.value).asJava)
+        new MatcherWithWildcards(alreadyResolvedIndices.map(_.value.value).asJava)
       )
     }
   }
@@ -286,5 +287,5 @@ object IndicesRule {
   }
 
   private implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
-    StringTNaturalTransformation[IndexName](IndexName.apply, _.value)
+    StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
 }

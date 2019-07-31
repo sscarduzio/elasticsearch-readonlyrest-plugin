@@ -22,6 +22,7 @@ import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.acl.domain.IndexName
+import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {
 
@@ -40,7 +41,7 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName("some_kibana_index")))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName("some_kibana_index".nonempty)))
           }
         )
       }

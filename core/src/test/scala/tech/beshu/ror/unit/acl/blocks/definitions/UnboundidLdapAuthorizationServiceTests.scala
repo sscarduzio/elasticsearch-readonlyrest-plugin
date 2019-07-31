@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.acl.domain.{Group, Secret, User}
+import tech.beshu.ror.acl.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -41,15 +41,17 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
     "has method to provide user groups" which {
       "returns non empty set of groups" when {
         "user has groups" in {
-          authorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be (Set(Group("group2".nonempty), Group("group3".nonempty), Group("groupAll".nonempty)))
+          authorizationService.groupsOf(User.Id("morgan".nonempty)).runSyncUnsafe() should be {
+            Set(Group("group2".nonempty), Group("group3".nonempty), Group("groupAll".nonempty))
+          }
         }
       }
       "returns empty set of groups" when {
         "user has no groups" in {
-          authorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be (Set.empty[Group])
+          authorizationService.groupsOf(User.Id("devito".nonempty)).runSyncUnsafe() should be (Set.empty[Group])
         }
         "there is no user with given name" in {
-          authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be (Set.empty[Group])
+          authorizationService.groupsOf(User.Id("unknown".nonempty)).runSyncUnsafe() should be (Set.empty[Group])
         }
       }
     }
@@ -67,7 +69,7 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
           trustAllCerts = false,
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
-            Secret("password")
+            PlainTextSecret("password".nonempty)
           )
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),

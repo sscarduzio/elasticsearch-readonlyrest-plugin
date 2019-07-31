@@ -30,9 +30,8 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils._
 
-class RorKbnAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] with MockFactory {
-
-
+class RorKbnAuthRuleSettingsTests
+  extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] with MockFactory {
 
   "A RorKbnAuthRule" should {
     "be able to be loaded from config" when {

@@ -118,6 +118,6 @@ object LdapConnectionPoolProvider extends Logging {
 
   private def bindRequest(bindRequestUser: BindRequestUser) = bindRequestUser match {
     case BindRequestUser.Anonymous => new SimpleBindRequest()
-    case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value)
+    case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value.value)
   }
 }

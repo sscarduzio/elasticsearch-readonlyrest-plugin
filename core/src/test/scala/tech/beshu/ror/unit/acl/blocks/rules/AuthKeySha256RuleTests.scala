@@ -16,17 +16,27 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
 import tech.beshu.ror.acl.blocks.rules.{AuthKeySha256Rule, BasicAuthenticationRule}
-import tech.beshu.ror.acl.domain.Secret
+import tech.beshu.ror.acl.domain.User
+import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeySha256RuleTests extends BasicAuthenticationTestTemplate {
 
   override protected def ruleName: String = classOf[AuthKeySha256Rule].getSimpleName
-  override protected val rule = new AuthKeySha256Rule(BasicAuthenticationRule.Settings(Secret("280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9")))
+  override protected val rule = new AuthKeySha256Rule(
+    BasicAuthenticationRule.Settings(HashedUserAndPassword("280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9".nonempty)),
+    Nil
+  )
 }
 
 class AuthKeySha256RuleAltSyntaxTests extends BasicAuthenticationTestTemplate {
 
   override protected def ruleName: String = classOf[AuthKeySha256Rule].getSimpleName
-  override protected val rule = new AuthKeySha256Rule(BasicAuthenticationRule.Settings(Secret("logstash:76cd2c0d589e224531fc6af2c5850e3c9b2aca6902d813ce598833c7c1b28bee")))
+  override protected val rule = new AuthKeySha256Rule(
+    BasicAuthenticationRule.Settings(
+      HashedOnlyPassword(User.Id("logstash".nonempty), "76cd2c0d589e224531fc6af2c5850e3c9b2aca6902d813ce598833c7c1b28bee".nonempty)
+    ),
+    Nil
+  )
 }

@@ -49,7 +49,7 @@ class FieldsRuleTests extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         (requestContext.isReadOnlyRequest _).expects().returning(false)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected())
       }
     }
   }

@@ -20,19 +20,19 @@ import com.github.blemale.scaffeine.Scaffeine
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
+import tech.beshu.ror.utils.TaskOps._
 
+import scala.concurrent.ExecutionContext._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Success
-import tech.beshu.ror.utils.TaskOps._
-import scala.concurrent.ExecutionContext._
 
 class CacheableAction[K, V](ttl: FiniteDuration Refined Positive,
-                                    action: K => Task[V])
+                            action: K => Task[V])
   extends CacheableActionWithKeyMapping[K, K, V](ttl, action, identity)
 
 class CacheableActionWithKeyMapping[K, K1, V](ttl: FiniteDuration Refined Positive,
-                                                      action: K => Task[V],
-                                                      keyMap: K => K1) {
+                                              action: K => Task[V],
+                                              keyMap: K => K1) {
 
   private val cache = Scaffeine()
     .executor(global)

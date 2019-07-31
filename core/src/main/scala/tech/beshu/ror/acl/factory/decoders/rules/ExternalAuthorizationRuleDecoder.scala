@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.acl.domain.{Group, User}
 import tech.beshu.ror.acl.orders._
@@ -53,7 +54,7 @@ object ExternalAuthorizationRuleDecoder {
           groups <- c.downField("groups").as[NonEmptySet[Group]]
           users <- c.downField("users").as[Option[NonEmptySet[User.Id]]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
-        } yield (name, ttl, groups, users.getOrElse(NonEmptySet.one(User.Id("*"))))
+        } yield (name, ttl, groups, users.getOrElse(NonEmptySet.one(User.Id(NonEmptyString.unsafeFrom("*")))))
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)

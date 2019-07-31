@@ -43,7 +43,7 @@ class ActionsRule(val settings: Settings)
       RuleResult.Fulfilled(blockContext)
     } else {
       logger.debug(s"This request uses the action '${requestContext.action.show}' and none of them is on the list.")
-      RuleResult.Rejected
+      RuleResult.Rejected()
     }
   }
 }

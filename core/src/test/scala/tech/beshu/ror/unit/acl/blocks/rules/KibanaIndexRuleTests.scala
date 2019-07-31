@@ -39,7 +39,7 @@ class KibanaIndexRuleTests extends WordSpec with MockFactory {
         val requestContext = MockRequestContext.default
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
-        (blockContext.withKibanaIndex _).expects(IndexName("kibana_index")).returning(newBlockContext)
+        (blockContext.withKibanaIndex _).expects(IndexName("kibana_index".nonempty)).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
       "not set kibana index if cannot be resolved" in {

@@ -27,7 +27,8 @@ import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
 import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps._
@@ -36,11 +37,13 @@ import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.LoggerOps._
+
 import scala.collection.SortedSet
 import scala.util.Try
 
 class RorKbnAuthRule(val settings: Settings)
   extends AuthenticationRule
+    with NoImpersonationSupport
     with AuthorizationRule
     with Logging {
 
@@ -52,13 +55,13 @@ class RorKbnAuthRule(val settings: Settings)
     case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
   }
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def tryToAuthenticate(requestContext: RequestContext,
+                                 blockContext: BlockContext): Task[RuleResult] = Task {
     val authHeaderName = Header.Name.authorization
     requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>
         logger.debug(s"Authorization header '${authHeaderName.show}' is missing or does not contain a bearer token")
-        Rejected
+        Rejected()
       case Some(token) =>
         process(token, blockContext)
     }
@@ -67,7 +70,7 @@ class RorKbnAuthRule(val settings: Settings)
   private def process(token: JwtToken, blockContext: BlockContext) = {
     jwtTokenData(token) match {
       case Left(_) =>
-        Rejected
+        Rejected()
       case Right((tokenPayload, user, groups, userOrigin)) =>
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
@@ -75,7 +78,7 @@ class RorKbnAuthRule(val settings: Settings)
         } yield handleUserOriginResult(finalBlockContext, userOrigin).withJsonToken(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
-            Rejected
+            Rejected()
           case Right(modifiedBlockContext) =>
             Fulfilled(modifiedBlockContext)
         }
@@ -106,7 +109,7 @@ class RorKbnAuthRule(val settings: Settings)
 
   private def handleUserClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[User.Id]) = {
     result match {
-      case Found(userId) => Right(blockContext.withLoggedUser(LoggedUser(userId)))
+      case Found(userId) => Right(blockContext.withLoggedUser(DirectlyLoggedUser(userId)))
       case NotFound => Left(())
     }
   }

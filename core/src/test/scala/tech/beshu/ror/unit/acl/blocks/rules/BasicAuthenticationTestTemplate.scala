@@ -16,22 +16,22 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import org.scalatest.Matchers._
-import org.scalamock.scalatest.MockFactory
-import org.scalatest.WordSpec
-import tech.beshu.ror.acl.request.RequestContext
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import tech.beshu.ror.acl.domain.LoggedUser
-import tech.beshu.ror.acl.domain.User.Id
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.Matchers._
+import org.scalatest.WordSpec
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.rules.BasicAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.acl.domain.User.Id
+import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 
 trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
 
   protected def ruleName: String
-  protected def rule: BasicAuthenticationRule
+  protected def rule: BasicAuthenticationRule[_]
 
   s"An $ruleName" should {
     "match" when {
@@ -40,8 +40,8 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val modifiedBlockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
-        (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:logstash")))
-        (blockContext.withLoggedUser _).expects(LoggedUser(Id("logstash"))).returning(modifiedBlockContext)
+        (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:logstash"))).twice()
+        (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id("logstash".nonempty))).returning(modifiedBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(modifiedBlockContext))
       }
     }
@@ -51,15 +51,15 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
-        (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:nologstash")))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:nologstash"))).twice()
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "basic auth header is absent" in {
         val requestContext = mock[RequestContext]
         val blockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
-        (requestContext.headers _).expects().returning(Set.empty)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected)
+        (requestContext.headers _).expects().returning(Set.empty).twice()
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
   }
